@@ -1,0 +1,75 @@
+import Foundation
+import SwiftUI
+
+/// User-tunable settings.
+///
+/// Backed by `UserDefaults` rather than SwiftData: these are a handful of
+/// scalars read on every launch and on every score computation, and they carry
+/// no health data, so the heavier store buys nothing.
+@MainActor
+@Observable
+final class UserPreferences {
+
+    private enum Key {
+        static let sleepGoalMinutes = "zoon.pref.sleepGoalMinutes"
+        static let hasCompletedOnboarding = "zoon.pref.hasCompletedOnboarding"
+        static let preferredEngine = "zoon.pref.preferredEngine"
+    }
+
+    private let defaults: UserDefaults
+
+    /// Nightly sleep target, minutes. Everything comparative — score, sleep
+    /// debt, "you're short by" — is measured against this, not a population
+    /// average, so a 7-hour sleeper isn't permanently marked down.
+    var sleepGoalMinutes: Double {
+        didSet { defaults.set(sleepGoalMinutes, forKey: Key.sleepGoalMinutes) }
+    }
+
+    var hasCompletedOnboarding: Bool {
+        didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
+    }
+
+    /// Which insight engine to use. The LLM option is present but stubbed —
+    /// see `LocalLLMInsightEngine`.
+    var preferredEngine: EngineChoice {
+        didSet { defaults.set(preferredEngine.rawValue, forKey: Key.preferredEngine) }
+    }
+
+    enum EngineChoice: String, CaseIterable, Identifiable {
+        case ruleBased
+        case localLLM
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .ruleBased: "Rules"
+            case .localLLM: "On-device model"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .ruleBased:
+                "Deterministic thresholds and correlations. Fast, predictable, always available."
+            case .localLLM:
+                "Not yet available — no model is bundled. Falls back to rules."
+            }
+        }
+    }
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        // 8 hours is the default target, overridable in Settings.
+        let storedGoal = defaults.double(forKey: Key.sleepGoalMinutes)
+        self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : 480
+        self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
+        self.preferredEngine = EngineChoice(
+            rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
+        ) ?? .ruleBased
+    }
+
+    var sleepGoalDisplay: String {
+        SleepNightFeatures.formatMinutes(sleepGoalMinutes)
+    }
+}

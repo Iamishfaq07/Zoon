@@ -1,0 +1,36 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## User-specific Xcode state — the shared scheme in xcshareddata/ is committed.
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+## Swift Package Manager
+.build/
+.swiftpm/
+
+## Signing — never commit these. Xcode generates the app's entitlements file
+## when you add the HealthKit capability; it's specific to your team.
+*.mobileprovision
+*.p12
+*.certSigningRequest
+
+## macOS
+.DS_Store
+
+## Models — on-demand resources for the local LLM layer, if you add one.
+*.mlpackage
+*.mlmodelc
+*.safetensors
+*.gguf

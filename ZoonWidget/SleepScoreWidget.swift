@@ -1,0 +1,150 @@
+import WidgetKit
+import SwiftUI
+
+/// Last night's score and headline.
+///
+/// A second, separate widget rather than another family on the first one:
+/// families are chosen by the system based on where you place it, but *which
+/// number you care about* is a user preference. Someone tracking recovery wants
+/// the score; someone digging out of a bad fortnight wants the debt.
+struct SleepScoreWidget: Widget {
+
+    let kind = "ZoonSleepScoreWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: SleepTimelineProvider()) { entry in
+            SleepScoreWidgetView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Last Night")
+        .description("Your sleep score and how the night went.")
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+    }
+}
+
+struct SleepScoreWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: SleepEntry
+
+    private var snapshot: SleepSnapshot { entry.snapshot }
+
+    var body: some View {
+        switch family {
+        case .accessoryRectangular: rectangular
+        case .systemMedium: medium
+        default: small
+        }
+    }
+
+    private var small: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label("Last Night", systemImage: "bed.double.fill")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+
+            Spacer(minLength: 0)
+
+            Text("\(snapshot.score)")
+                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(scoreColor)
+
+            Text(snapshot.scoreBand)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .monospacedDigit()
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var medium: some View {
+        HStack(spacing: 16) {
+            VStack(spacing: 2) {
+                Text("\(snapshot.score)")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(scoreColor)
+                Text(snapshot.scoreBand)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(snapshot.insightSummary)
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 12) {
+                    stat("Asleep", SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
+                    stat("Debt", snapshot.balanceLabel)
+                }
+
+                if entry.isPlaceholder {
+                    Text("Sample data")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var rectangular: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label("Last Night", systemImage: "bed.double.fill")
+                .font(.caption2)
+                .widgetAccentable()
+            Text("\(snapshot.score) · \(snapshot.scoreBand)")
+                .font(.system(.title3, design: .rounded).weight(.bold))
+            Text(snapshot.insightSummary)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func stat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .monospacedDigit()
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var scoreColor: Color {
+        switch snapshot.score {
+        case ..<50: .orange
+        case 50..<70: .yellow
+        case 70..<85: .mint
+        default: .green
+        }
+    }
+}
+
+#Preview("Small", as: .systemSmall) {
+    SleepScoreWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.poorSnapshot, isPlaceholder: false)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    SleepScoreWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.poorSnapshot, isPlaceholder: true)
+}
