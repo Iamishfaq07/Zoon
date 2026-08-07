@@ -285,9 +285,14 @@ struct ConsistencyChartCard: View {
                 )
                 .cornerRadius(4)
             }
-            .chartYScale(domain: -6...12)
+            // Explicit Double literals throughout. `-6...12` would infer
+            // ClosedRange<Int>, which doesn't match the Double-plottable Y
+            // values, and a bare `[-4, -2, ...]` array would infer [Int] —
+            // making `value.as(Double.self)` return nil and silently blanking
+            // every axis label.
+            .chartYScale(domain: -6.0...12.0)
             .chartYAxis {
-                AxisMarks(values: [-4, -2, 0, 2, 4, 6, 8]) { value in
+                AxisMarks(values: [-4.0, -2.0, 0.0, 2.0, 4.0, 6.0, 8.0]) { value in
                     AxisGridLine()
                     AxisValueLabel {
                         if let hour = value.as(Double.self) {

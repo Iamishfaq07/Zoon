@@ -23,13 +23,10 @@ final class HealthKitManager {
     private let store = HKHealthStore()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "HealthKit")
 
-    /// Set when a query fails in a way worth surfacing.
-    private(set) var lastError: String?
-
-    /// True once `requestAuthorization` has returned without throwing. This says
-    /// only "the sheet was presented and dismissed" — see the note above; it
-    /// does **not** mean read access was granted.
-    private(set) var didRequestAuthorization = false
+    // Deliberately no `isAuthorized` / `lastError` state here. Read permission
+    // is unknowable (see above), and error presentation belongs to
+    // `SleepDataCoordinator.State`, which is what the views actually observe —
+    // a second source of truth would only drift from it.
 
     /// Live observer queries, retained so we can stop them. Without this the
     /// observers leak and re-registering stacks duplicates that each fire a
@@ -68,7 +65,6 @@ final class HealthKitManager {
         }
         // Empty `toShare`: read-only by construction, not by convention.
         try await store.requestAuthorization(toShare: [], read: readTypes)
-        didRequestAuthorization = true
     }
 
     // MARK: - Background delivery
@@ -92,11 +88,15 @@ final class HealthKitManager {
         stopObserving()
 
         let sleepType = HKCategoryType(.sleepAnalysis)
+        // Note on captures: the query handler holds `self` weakly, so inside it
+        // `self` is already Optional. The nested Task captures that Optional
+        // directly — writing `[weak self]` a second time would be applying
+        // `weak` to an already-optional binding.
         let observer = HKObserverQuery(sampleType: sleepType, predicate: nil) { [weak self] _, completionHandler, error in
             if let error {
                 // Logged, not surfaced: an observer hiccup shouldn't put a red
                 // banner in front of the user.
-                Task { @MainActor [weak self] in
+                Task { @MainActor in
                     self?.logger.error("Observer query error: \(error.localizedDescription, privacy: .public)")
                 }
             } else {
@@ -111,7 +111,7 @@ final class HealthKitManager {
         activeObservers.append(observer)
 
         store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { [weak self] success, error in
-            Task { @MainActor [weak self] in
+            Task { @MainActor in
                 if let error {
                     self?.logger.notice(
                         """

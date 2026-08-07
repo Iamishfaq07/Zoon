@@ -174,12 +174,11 @@ final class SleepDataCoordinator {
             // rebuild from complete data. The anchor still earns its keep: when
             // nothing changed we skip all of this.
             let hasChanges = !result.samples.isEmpty || !result.deletedUUIDs.isEmpty
-            let samples = hasChanges || store.isEmpty
-                ? try await healthKit.fetchAllSleepSamples(in: window)
-                : []
-
-            if !samples.isEmpty {
-                await processSessions(from: samples)
+            if hasChanges || store.isEmpty {
+                let samples = try await healthKit.fetchAllSleepSamples(in: window)
+                if !samples.isEmpty {
+                    await processSessions(from: samples)
+                }
             }
 
             publishLatest()

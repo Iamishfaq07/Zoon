@@ -123,7 +123,9 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section {
-            LabeledContent("Nights stored", value: "\(coordinator.recentNights.count)")
+            // recentNights is the 30-day window the charts read, not the whole
+            // store — labelled accordingly rather than implying a total.
+            LabeledContent("Nights in last 30 days", value: "\(coordinator.recentNights.count)")
 
             if let last = coordinator.lastRefresh {
                 LabeledContent("Last updated") {

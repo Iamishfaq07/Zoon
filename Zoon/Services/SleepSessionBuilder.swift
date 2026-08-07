@@ -251,9 +251,11 @@ private extension HKCategorySample {
     /// True for the three staged asleep values — used to rank sources by how
     /// much detail they provide.
     var isStagedAsleep: Bool {
-        switch SleepStage(sampleValue: value) {
-        case .core, .deep, .rem: true
-        default: false
+        // Unwrapped first: `switch` over an Optional can't match bare enum cases.
+        guard let stage = SleepStage(sampleValue: value) else { return false }
+        switch stage {
+        case .core, .deep, .rem: return true
+        default: return false
         }
     }
 }

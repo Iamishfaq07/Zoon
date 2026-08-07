@@ -1,12 +1,10 @@
 # XcodeGen spec — a regeneration path for Zoon.xcodeproj.
 #
-# You do NOT need this to build Zoon. The checked-in Zoon.xcodeproj works as-is.
+# You do NOT need this to build Zoon. The checked-in Zoon.xcodeproj works as-is
+# in Xcode 15 and later.
 #
-# It's here for two situations:
-#   1. Your Xcode is older than 16 and can't read the project's synchronized
-#      folder groups (objectVersion 77).
-#   2. The project file gets mangled by a merge and you'd rather regenerate it
-#      than resolve a pbxproj conflict by hand.
+# It's here for one situation: the project file gets mangled by a merge and
+# you'd rather regenerate it than resolve a pbxproj conflict by hand.
 #
 #   brew install xcodegen && xcodegen generate
 #

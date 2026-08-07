@@ -123,7 +123,7 @@ Adding a third engine means writing one conformance and nothing else.
 
 ## Requirements
 
-- **Xcode 16+**, iOS 17+ deployment target, Swift 5.9+
+- **Xcode 15+**, iOS 17+ deployment target, Swift 5.9+
 - **A physical iPhone** for real data — HealthKit sleep data does not exist in
   the Simulator
 - An Apple Watch worn overnight for stage breakdown, HRV, and blood oxygen

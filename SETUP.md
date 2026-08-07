@@ -5,10 +5,10 @@ waiting for Xcode.
 
 ## 0. Requirements
 
-- **Xcode 16 or later.** The project file uses synchronized folder groups
-  (`objectVersion = 77`), so files you add to `Zoon/`, `Shared/`, or
-  `ZoonWidget/` are picked up automatically with no project-file edit. If you're
-  on Xcode 15 or earlier, see [Older Xcode](#older-xcode) below.
+- **Xcode 15 or later.** The project uses the classic explicit-file-reference
+  format (`objectVersion = 56`, compatibility Xcode 14), so it opens in anything
+  current. Every source file is listed explicitly and target membership is
+  already correct — including `Shared/`, which is compiled into both targets.
 - **A physical iPhone running iOS 17+.** Non-negotiable for real data — see
   [Why a device](#why-a-device).
 - An Apple ID in Xcode (a free one is fine for running on your own device).
@@ -168,19 +168,19 @@ Two things to know:
   filter Console.app on that subsystem if automatic updates aren't arriving. The
   app still refreshes whenever it comes to the foreground.
 
-## Older Xcode
+## Regenerating the project file
 
-The project uses `PBXFileSystemSynchronizedRootGroup`, which needs Xcode 16. On
-Xcode 15 or earlier, regenerate the project from the checked-in XcodeGen spec:
+You shouldn't need to. If `project.pbxproj` ever gets mangled by a merge and
+you'd rather regenerate than resolve a conflict by hand:
 
 ```bash
 brew install xcodegen
 xcodegen generate
 ```
 
-That produces an equivalent `Zoon.xcodeproj` with explicit file references. Note
-that after regenerating you'll need to redo steps 2–3 (signing and capabilities
-aren't in the spec, since they're specific to your team).
+`project.yml` describes the same two targets and the same build settings. After
+regenerating you'll need to redo steps 2–3 — signing and capabilities aren't in
+the spec, since they're specific to your team.
 
 ## Adding the local LLM later
 
@@ -209,12 +209,12 @@ already in an async context, so it's a mechanical change.
 
 ## Project layout
 
-Files are picked up from the filesystem automatically (Xcode 16 synchronized
-groups), so adding a file means creating it in the right folder — no project-file
-edit, and no merge conflicts in `project.pbxproj`.
-
 ```
 Shared/       → both targets
 Zoon/         → app target
 ZoonWidget/   → widget target
 ```
+
+When you add a new file, check its target membership in the File Inspector.
+Anything in `Shared/` needs **both** boxes ticked; the existing five files are
+already set up that way and are the pattern to copy.

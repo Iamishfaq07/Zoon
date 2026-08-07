@@ -3,31 +3,67 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ZN0000000000000000000090 /* ZoonWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ZN0000000000000000000021 /* ZoonWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		087E7F3337D2A7FD08502A0F /* SleepInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2DDB308F9F23D99795E240 /* SleepInsightEngine.swift */; };
+		08DC18B7AC84F0F91131ED58 /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234D49A75ED10560B53A2024 /* UserPreferences.swift */; };
+		0AFB79BBE592F3A82611801A /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C905EF878241FBB40DA514 /* PreviewSupport.swift */; };
+		0BFD587316B7C688C3E4FD8E /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
+		0E21C726F36D1A9DA6147C69 /* ZoonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4111F800CE47F2D2FCC0D2D2 /* ZoonApp.swift */; };
+		11CF9E68EA8E74E5F1FEEB28 /* SleepSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01C1C3AA0D42A0AA5AF76875 /* SleepSummaryCard.swift */; };
+		1392657BC356A10710540C9C /* ZoonWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */; };
+		154E2FFCB3D5DD24C50D2651 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
+		1F0BAE90812B36875A249405 /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
+		248785715B3DE2156DD7571C /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
+		280DC4B2F8180261BC53D2E2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90AD8CB0B86EA29FC8EBEF2B /* SettingsView.swift */; };
+		2B161999F3551D16B4DC0D91 /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
+		30D02782ED1C19CF13EB68F2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A642BBA44A200DA78DC8E341 /* Assets.xcassets */; };
+		341925CCB785A77216B06E8A /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E73BF56BE184A76A17FDF61 /* TrendsView.swift */; };
+		37D54E5BDD40739E90B7D9BE /* SleepNightRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8220F4ECA3D51EACAA15 /* SleepNightRecord.swift */; };
+		54A550E8B72A295F8711315C /* SleepTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F17278E812BF344A4F336E /* SleepTimelineProvider.swift */; };
+		5EA91DA4CE2DC82C8268D79F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D31EF0E61E462C6DAC9C5 /* RootView.swift */; };
+		63C0C306002158B02EA497E5 /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
+		6CA4AE04FD206F5A3004A1A5 /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
+		726EAAD9EA6E96203676847F /* ZoonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D4A004F3A4364EBC3BFF32F /* ZoonStyle.swift */; };
+		8244F98542528575434DEA30 /* SleepSessionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */; };
+		9715C5BD2335132F4F8AC6B5 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */; };
+		A6A9D3E2060799C1C6F5FE2C /* SleepDebtWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7F6F54B2365B0030755EB2 /* SleepDebtWidget.swift */; };
+		AD04426F85852FA876D1783B /* SleepHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C5056DFADE6AA9868C543E9 /* SleepHistoryStore.swift */; };
+		AED0FF0C41F4D17DA551838B /* LocalLLMInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */; };
+		BA6CB9436CCAABA2DA57A9FF /* RuleBasedInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */; };
+		C286634AE25F50A8CDC04E6F /* ZoonWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
+		DC2C58193F5F943D820FC820 /* SleepScoreWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */; };
+		DD4DE787CD72A5F4F31090D9 /* StageBreakdownCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914356DD64A0BC877856254D /* StageBreakdownCard.swift */; };
+		E7E68658D923ECD0BD14401E /* InsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45237B7D4C6548BAEC55290F /* InsightCard.swift */; };
+		F093513A2B0112BFAB4586CC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4423A4E415346D2848DCFF7D /* Assets.xcassets */; };
+		F4912FC411860F03F63EB22F /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
+		F7D50D4A2644F88D12CE6225 /* SleepDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */; };
+		F916FCB405E7165A74BCFE05 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C1168408AB1426ED7DCE9DF /* DashboardView.swift */; };
+		FDDD9393A5532F86AFC33A2D /* FeatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE26528CE71795A222831C3 /* FeatureExtractor.swift */; };
+		FF3BFC3E797A78A4EB75D0A7 /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		ZN0000000000000000000081 /* PBXContainerItemProxy */ = {
+		6332FA84B7BDEC43CA23DF4F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = ZN0000000000000000000001 /* Project object */;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = ZN0000000000000000000011;
+			remoteGlobalIDString = 3B349027366F684A61204B00;
 			remoteInfo = ZoonWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		ZN0000000000000000000063 /* Embed Foundation Extensions */ = {
+		496AF46EC2762DDF91F78F13 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				ZN0000000000000000000090 /* ZoonWidgetExtension.appex in Embed Foundation Extensions */,
+				C286634AE25F50A8CDC04E6F,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -35,210 +71,343 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		ZN0000000000000000000020 /* Zoon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zoon.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		ZN0000000000000000000021 /* ZoonWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ZoonWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		ZN00000000000000000000A0 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		ZN00000000000000000000A1 /* SETUP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SETUP.md; sourceTree = "<group>"; };
-		ZN00000000000000000000A2 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
-		ZN00000000000000000000A4 /* project.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yml; sourceTree = "<group>"; };
+		01C1C3AA0D42A0AA5AF76875 /* SleepSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSummaryCard.swift"; sourceTree = "<group>"; };
+		02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWidgetBundle.swift"; sourceTree = "<group>"; };
+		0C7F6F54B2365B0030755EB2 /* SleepDebtWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtWidget.swift"; sourceTree = "<group>"; };
+		1A572D9FB17470E31AB20EEE /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockData.swift"; sourceTree = "<group>"; };
+		22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthKitManager.swift"; sourceTree = "<group>"; };
+		234D49A75ED10560B53A2024 /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserPreferences.swift"; sourceTree = "<group>"; };
+		29BBBECC2713C3FCF9065786 /* SleepScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScore.swift"; sourceTree = "<group>"; };
+		2B50A94B6FCAD440E1EF0A19 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = ".gitignore"; sourceTree = "<group>"; };
+		406D31EF0E61E462C6DAC9C5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView.swift"; sourceTree = "<group>"; };
+		40C905EF878241FBB40DA514 /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PreviewSupport.swift"; sourceTree = "<group>"; };
+		4111F800CE47F2D2FCC0D2D2 /* ZoonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonApp.swift"; sourceTree = "<group>"; };
+		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		45237B7D4C6548BAEC55290F /* InsightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightCard.swift"; sourceTree = "<group>"; };
+		4CE26528CE71795A222831C3 /* FeatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureExtractor.swift"; sourceTree = "<group>"; };
+		597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalLLMInsightEngine.swift"; sourceTree = "<group>"; };
+		5D4A004F3A4364EBC3BFF32F /* ZoonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonStyle.swift"; sourceTree = "<group>"; };
+		6E73BF56BE184A76A17FDF61 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
+		73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSessionBuilder.swift"; sourceTree = "<group>"; };
+		7C5056DFADE6AA9868C543E9 /* SleepHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepHistoryStore.swift"; sourceTree = "<group>"; };
+		8066889AE0CD6E1DB059BF18 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE"; sourceTree = "<group>"; };
+		84337AD8D27FCD69AF2C4FC2 /* Zoon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zoon.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8509DD790DE7D4A444D69168 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "README.md"; sourceTree = "<group>"; };
+		8EF59F8123A0041B8A091BC7 /* project.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "project.yml"; sourceTree = "<group>"; };
+		90AD8CB0B86EA29FC8EBEF2B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
+		914356DD64A0BC877856254D /* StageBreakdownCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StageBreakdownCard.swift"; sourceTree = "<group>"; };
+		93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RuleBasedInsightEngine.swift"; sourceTree = "<group>"; };
+		9C1168408AB1426ED7DCE9DF /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
+		9D123766B00625BEF005F888 /* SleepNightFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepNightFeatures.swift"; sourceTree = "<group>"; };
+		A642BBA44A200DA78DC8E341 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		A9F17278E812BF344A4F336E /* SleepTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepTimelineProvider.swift"; sourceTree = "<group>"; };
+		AF2DDB308F9F23D99795E240 /* SleepInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepInsightEngine.swift"; sourceTree = "<group>"; };
+		B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDataCoordinator.swift"; sourceTree = "<group>"; };
+		CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreWidget.swift"; sourceTree = "<group>"; };
+		CD69CD9C06439C33415CFE06 /* SETUP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SETUP.md"; sourceTree = "<group>"; };
+		CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ZoonWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E37034BC992888E8D1BA676B /* SleepSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSnapshot.swift"; sourceTree = "<group>"; };
+		F85F8220F4ECA3D51EACAA15 /* SleepNightRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepNightRecord.swift"; sourceTree = "<group>"; };
+		F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepInsight.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		ZN0000000000000000000030 /* Zoon */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Zoon;
-			sourceTree = "<group>";
-		};
-		ZN0000000000000000000031 /* Shared */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Shared;
-			sourceTree = "<group>";
-		};
-		ZN0000000000000000000032 /* ZoonWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ZoonWidget;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
 /* Begin PBXFrameworksBuildPhase section */
-		ZN0000000000000000000061 /* Frameworks */ = {
+		C380EA7C32F43BBFAB3A69EC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		ZN0000000000000000000071 /* Frameworks */ = {
+		DB575B01C9EDB90A46216F71 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		ZN0000000000000000000002 = {
+		037D43276F716FE803145F5F /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				ZN0000000000000000000031 /* Shared */,
-				ZN0000000000000000000030 /* Zoon */,
-				ZN0000000000000000000032 /* ZoonWidget */,
-				ZN00000000000000000000A3 /* Documentation */,
-				ZN0000000000000000000003 /* Products */,
+				45237B7D4C6548BAEC55290F,
+				01C1C3AA0D42A0AA5AF76875,
+				914356DD64A0BC877856254D,
+				5D4A004F3A4364EBC3BFF32F,
 			);
+			path = Components;
 			sourceTree = "<group>";
 		};
-		ZN0000000000000000000003 /* Products */ = {
+		1E9E5DCC18BB7937F8B24A56 /* Insights */ = {
 			isa = PBXGroup;
 			children = (
-				ZN0000000000000000000020 /* Zoon.app */,
-				ZN0000000000000000000021 /* ZoonWidgetExtension.appex */,
+				597724864AD5B340EECCB91E,
+				93357909E5FD2CF0EE69F629,
+				AF2DDB308F9F23D99795E240,
+			);
+			path = Insights;
+			sourceTree = "<group>";
+		};
+		22419E6C9150159FB90F5B67 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				4CE26528CE71795A222831C3,
+				22668C3DACB2DCC8884CF14D,
+				B0E516994F630E303DD12E36,
+				7C5056DFADE6AA9868C543E9,
+				73D7172E74524A180449FDD9,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		2DBCBEDD6A9B8440C8705C03 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F85F8220F4ECA3D51EACAA15,
+				234D49A75ED10560B53A2024,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		3B534EC61D756F8D2311F047 /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				8509DD790DE7D4A444D69168,
+				CD69CD9C06439C33415CFE06,
+				8EF59F8123A0041B8A091BC7,
+				8066889AE0CD6E1DB059BF18,
+				2B50A94B6FCAD440E1EF0A19,
+			);
+			name = Documentation;
+			sourceTree = "<group>";
+		};
+		518DA81DB9B99529C0C0AEBE /*  */ = {
+			isa = PBXGroup;
+			children = (
+				B46A6AFB1DC88CE23F6E63F1,
+				B10A1100D1BB4824CA4E3EBE,
+				5404EB41D8A28647E668AC94,
+				3B534EC61D756F8D2311F047,
+				547D009064F7C3F13BEF3460,
+			);
+			name = ;
+			sourceTree = "<group>";
+		};
+		5404EB41D8A28647E668AC94 /* ZoonWidget */ = {
+			isa = PBXGroup;
+			children = (
+				0C7F6F54B2365B0030755EB2,
+				CA1A4C98D8556DDAF0DBEFF6,
+				A9F17278E812BF344A4F336E,
+				02F963BC4B2CA2A8F04DCD42,
+				4423A4E415346D2848DCFF7D,
+			);
+			path = ZoonWidget;
+			sourceTree = "<group>";
+		};
+		547D009064F7C3F13BEF3460 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				84337AD8D27FCD69AF2C4FC2,
+				CFEE55A02984C083C52C8EFC,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		ZN00000000000000000000A3 /* Documentation */ = {
+		B10A1100D1BB4824CA4E3EBE /* Zoon */ = {
 			isa = PBXGroup;
 			children = (
-				ZN00000000000000000000A0 /* README.md */,
-				ZN00000000000000000000A1 /* SETUP.md */,
-				ZN00000000000000000000A4 /* project.yml */,
-				ZN00000000000000000000A2 /* LICENSE */,
+				1E9E5DCC18BB7937F8B24A56,
+				2DBCBEDD6A9B8440C8705C03,
+				22419E6C9150159FB90F5B67,
+				E0CC4950DAAB5A6FE3B7E16D,
+				4111F800CE47F2D2FCC0D2D2,
+				A642BBA44A200DA78DC8E341,
 			);
-			name = Documentation;
+			path = Zoon;
+			sourceTree = "<group>";
+		};
+		B46A6AFB1DC88CE23F6E63F1 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				1A572D9FB17470E31AB20EEE,
+				F9B138F2A60F6322FB92FB15,
+				9D123766B00625BEF005F888,
+				29BBBECC2713C3FCF9065786,
+				E37034BC992888E8D1BA676B,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		E0CC4950DAAB5A6FE3B7E16D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				037D43276F716FE803145F5F,
+				9C1168408AB1426ED7DCE9DF,
+				40C905EF878241FBB40DA514,
+				406D31EF0E61E462C6DAC9C5,
+				90AD8CB0B86EA29FC8EBEF2B,
+				6E73BF56BE184A76A17FDF61,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		ZN0000000000000000000010 /* Zoon */ = {
+		3B349027366F684A61204B00 /* ZoonWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = ZN0000000000000000000041 /* Build configuration list for PBXNativeTarget "Zoon" */;
+			buildConfigurationList = 3D5B5193CF8AC4E310989886 /* Build configuration list for PBXNativeTarget "ZoonWidgetExtension" */;
 			buildPhases = (
-				ZN0000000000000000000060 /* Sources */,
-				ZN0000000000000000000061 /* Frameworks */,
-				ZN0000000000000000000062 /* Resources */,
-				ZN0000000000000000000063 /* Embed Foundation Extensions */,
+				95DAD0AC89EF1F52E2DEFFA0 /* Sources */,
+				C380EA7C32F43BBFAB3A69EC /* Frameworks */,
+				8E8ACC78AEBB48CA6947008B /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				ZN0000000000000000000080 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				ZN0000000000000000000030 /* Zoon */,
-				ZN0000000000000000000031 /* Shared */,
-			);
-			name = Zoon;
-			productName = Zoon;
-			productReference = ZN0000000000000000000020 /* Zoon.app */;
-			productType = "com.apple.product-type.application";
-		};
-		ZN0000000000000000000011 /* ZoonWidgetExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = ZN0000000000000000000042 /* Build configuration list for PBXNativeTarget "ZoonWidgetExtension" */;
-			buildPhases = (
-				ZN0000000000000000000070 /* Sources */,
-				ZN0000000000000000000071 /* Frameworks */,
-				ZN0000000000000000000072 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				ZN0000000000000000000032 /* ZoonWidget */,
-				ZN0000000000000000000031 /* Shared */,
 			);
 			name = ZoonWidgetExtension;
 			productName = ZoonWidgetExtension;
-			productReference = ZN0000000000000000000021 /* ZoonWidgetExtension.appex */;
+			productReference = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		E3435DDA2687639586BF0B70 /* Zoon */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5505F9AF814A7F0992DE2402 /* Build configuration list for PBXNativeTarget "Zoon" */;
+			buildPhases = (
+				4821909E9BF9E73E471FEA84 /* Sources */,
+				DB575B01C9EDB90A46216F71 /* Frameworks */,
+				0BC40DDAB69570E4FBE53FB5 /* Resources */,
+				496AF46EC2762DDF91F78F13 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5A9082BF535D9EBF6E6C908A /* PBXTargetDependency */,
+			);
+			name = Zoon;
+			productName = Zoon;
+			productReference = 84337AD8D27FCD69AF2C4FC2 /* Zoon.app */;
+			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		ZN0000000000000000000001 /* Project object */ = {
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				LastSwiftUpdateCheck = 1520;
+				LastUpgradeCheck = 1520;
 				TargetAttributes = {
-					ZN0000000000000000000010 = {
-						CreatedOnToolsVersion = 16.0;
-					};
-					ZN0000000000000000000011 = {
-						CreatedOnToolsVersion = 16.0;
-					};
+					E3435DDA2687639586BF0B70 = {CreatedOnToolsVersion = 15.2; };
+					3B349027366F684A61204B00 = {CreatedOnToolsVersion = 15.2; };
 				};
 			};
-			buildConfigurationList = ZN0000000000000000000040 /* Build configuration list for PBXProject "Zoon" */;
+			buildConfigurationList = 7EF2517A8FE63F4681EC5EEA /* Build configuration list for PBXProject "Zoon" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = ZN0000000000000000000002;
-			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = ZN0000000000000000000003 /* Products */;
+			mainGroup = 518DA81DB9B99529C0C0AEBE;
+			productRefGroup = 547D009064F7C3F13BEF3460 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				ZN0000000000000000000010 /* Zoon */,
-				ZN0000000000000000000011 /* ZoonWidgetExtension */,
+				E3435DDA2687639586BF0B70 /* Zoon */,
+				3B349027366F684A61204B00 /* ZoonWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		ZN0000000000000000000062 /* Resources */ = {
+		0BC40DDAB69570E4FBE53FB5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				30D02782ED1C19CF13EB68F2,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		ZN0000000000000000000072 /* Resources */ = {
+		8E8ACC78AEBB48CA6947008B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F093513A2B0112BFAB4586CC,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		ZN0000000000000000000060 /* Sources */ = {
+		4821909E9BF9E73E471FEA84 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AED0FF0C41F4D17DA551838B,
+				BA6CB9436CCAABA2DA57A9FF,
+				087E7F3337D2A7FD08502A0F,
+				37D54E5BDD40739E90B7D9BE,
+				08DC18B7AC84F0F91131ED58,
+				FDDD9393A5532F86AFC33A2D,
+				9715C5BD2335132F4F8AC6B5,
+				F7D50D4A2644F88D12CE6225,
+				AD04426F85852FA876D1783B,
+				8244F98542528575434DEA30,
+				E7E68658D923ECD0BD14401E,
+				11CF9E68EA8E74E5F1FEEB28,
+				DD4DE787CD72A5F4F31090D9,
+				726EAAD9EA6E96203676847F,
+				F916FCB405E7165A74BCFE05,
+				0AFB79BBE592F3A82611801A,
+				5EA91DA4CE2DC82C8268D79F,
+				280DC4B2F8180261BC53D2E2,
+				341925CCB785A77216B06E8A,
+				0E21C726F36D1A9DA6147C69,
+				0BFD587316B7C688C3E4FD8E,
+				1F0BAE90812B36875A249405,
+				FF3BFC3E797A78A4EB75D0A7,
+				248785715B3DE2156DD7571C,
+				2B161999F3551D16B4DC0D91,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		ZN0000000000000000000070 /* Sources */ = {
+		95DAD0AC89EF1F52E2DEFFA0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A6A9D3E2060799C1C6F5FE2C,
+				DC2C58193F5F943D820FC820,
+				54A550E8B72A295F8711315C,
+				1392657BC356A10710540C9C,
+				154E2FFCB3D5DD24C50D2651,
+				F4912FC411860F03F63EB22F,
+				6CA4AE04FD206F5A3004A1A5,
+				63C0C306002158B02EA497E5,
+				D5B2AB8453BE04089FAB875E,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		ZN0000000000000000000080 /* PBXTargetDependency */ = {
+		5A9082BF535D9EBF6E6C908A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = ZN0000000000000000000011 /* ZoonWidgetExtension */;
-			targetProxy = ZN0000000000000000000081 /* PBXContainerItemProxy */;
+			target = 3B349027366F684A61204B00 /* ZoonWidgetExtension */;
+			targetProxy = 6332FA84B7BDEC43CA23DF4F /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		ZN0000000000000000000050 /* Debug */ = {
+		06125DCB1954C4F7EEE69894 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -252,32 +421,108 @@
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
 		};
-		ZN0000000000000000000051 /* Release */ = {
+		699FCDBED06EC64C8A6B513F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep;
+			};
+			name = Release;
+		};
+		7E3B7AEEBF5BFFC2BAF4F768 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonWidget;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		A1E63E9AED7999182E6042AA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonWidget;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		AACF5BDB2BC481EB947517D5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -291,8 +536,6 @@
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -301,25 +544,31 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				MTL_ENABLE_DEBUG_INFO = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
-		ZN0000000000000000000052 /* Debug */ = {
+		C0DD1C3E4BFC124D878FE440 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -329,127 +578,42 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
-		};
-		ZN0000000000000000000053 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "";
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
-		};
-		ZN0000000000000000000054 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
-				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		ZN0000000000000000000055 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
-				INFOPLIST_KEY_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		ZN0000000000000000000040 /* Build configuration list for PBXProject "Zoon" */ = {
+		3D5B5193CF8AC4E310989886 /* Build configuration list for PBXNativeTarget "ZoonWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				ZN0000000000000000000050 /* Debug */,
-				ZN0000000000000000000051 /* Release */,
+				A1E63E9AED7999182E6042AA /* Debug */,
+				7E3B7AEEBF5BFFC2BAF4F768 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		ZN0000000000000000000041 /* Build configuration list for PBXNativeTarget "Zoon" */ = {
+		5505F9AF814A7F0992DE2402 /* Build configuration list for PBXNativeTarget "Zoon" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				ZN0000000000000000000052 /* Debug */,
-				ZN0000000000000000000053 /* Release */,
+				C0DD1C3E4BFC124D878FE440 /* Debug */,
+				699FCDBED06EC64C8A6B513F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		ZN0000000000000000000042 /* Build configuration list for PBXNativeTarget "ZoonWidgetExtension" */ = {
+		7EF2517A8FE63F4681EC5EEA /* Build configuration list for PBXProject "Zoon" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				ZN0000000000000000000054 /* Debug */,
-				ZN0000000000000000000055 /* Release */,
+				06125DCB1954C4F7EEE69894 /* Debug */,
+				AACF5BDB2BC481EB947517D5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
 	};
-	rootObject = ZN0000000000000000000001 /* Project object */;
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
 }

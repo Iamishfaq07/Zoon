@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "ZN0000000000000000000010"
+               BlueprintIdentifier = "E3435DDA2687639586BF0B70"
                BuildableName = "Zoon.app"
                BlueprintName = "Zoon"
                ReferencedContainer = "container:Zoon.xcodeproj">
@@ -44,7 +44,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "ZN0000000000000000000010"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Zoon.app"
             BlueprintName = "Zoon"
             ReferencedContainer = "container:Zoon.xcodeproj">
@@ -61,7 +61,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "ZN0000000000000000000010"
+            BlueprintIdentifier = "E3435DDA2687639586BF0B70"
             BuildableName = "Zoon.app"
             BlueprintName = "Zoon"
             ReferencedContainer = "container:Zoon.xcodeproj">
