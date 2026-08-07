@@ -1,0 +1,84 @@
+# XcodeGen spec — a regeneration path for Zoon.xcodeproj.
+#
+# You do NOT need this to build Zoon. The checked-in Zoon.xcodeproj works as-is.
+#
+# It's here for two situations:
+#   1. Your Xcode is older than 16 and can't read the project's synchronized
+#      folder groups (objectVersion 77).
+#   2. The project file gets mangled by a merge and you'd rather regenerate it
+#      than resolve a pbxproj conflict by hand.
+#
+#   brew install xcodegen && xcodegen generate
+#
+# Keep this in sync with the real project when you change build settings.
+
+name: Zoon
+options:
+  bundleIdPrefix: com.zoon
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Zoon:
+    type: application
+    platform: iOS
+    sources:
+      - path: Zoon
+      - path: Shared
+    dependencies:
+      - target: ZoonWidgetExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_PREVIEWS: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_CFBundleDisplayName: Zoon
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+        # Read-only access, so NSHealthUpdateUsageDescription is deliberately absent.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: >-
+          Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen
+          and wrist temperature to explain how you slept. Everything is processed
+          on this device and never leaves it.
+
+  ZoonWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ZoonWidget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.ZoonWidget
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_PREVIEWS: YES
+        SKIP_INSTALL: YES
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
+        INFOPLIST_KEY_CFBundleDisplayName: Zoon
+        INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+schemes:
+  Zoon:
+    build:
+      targets:
+        Zoon: all
+    run:
+      config: Debug
+    archive:
+      config: Release

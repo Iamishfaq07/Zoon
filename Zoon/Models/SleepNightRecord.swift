@@ -1,0 +1,178 @@
+import Foundation
+import SwiftData
+
+/// SwiftData row for one night.
+///
+/// This is a flat mirror of `SleepNightFeatures` rather than a wrapper around it,
+/// for two reasons:
+///
+/// - SwiftData stores stored properties; it cannot persist a struct with
+///   optionals as a single opaque blob without losing queryability. Flat columns
+///   mean `#Predicate` and `SortDescriptor` work on any field.
+/// - The persisted schema and the in-memory feature struct can then evolve
+///   independently. Adding a computed convenience to `SleepNightFeatures` never
+///   forces a store migration.
+///
+/// `date` is unique: one row per night, so a re-sync updates rather than
+/// duplicates.
+@Model
+final class SleepNightRecord {
+
+    /// Start-of-day for the morning the user woke up. Unique key.
+    @Attribute(.unique) var date: Date
+
+    var bedtime: Date
+    var wakeTime: Date
+
+    var timeInBedMinutes: Double
+    var timeAsleepMinutes: Double
+    var sleepEfficiencyPercent: Double
+
+    var coreMinutes: Double
+    var deepMinutes: Double
+    var remMinutes: Double
+    var unspecifiedAsleepMinutes: Double
+    var awakeMinutes: Double
+    var wakeCount: Int
+    var sleepLatencyMinutes: Double?
+
+    var avgHeartRate: Double?
+    var minHeartRate: Double?
+    var avgHRV: Double?
+    var avgRespiratoryRate: Double?
+    var avgSpO2: Double?
+    /// Stored as the **absolute** overnight wrist temperature in °C, not the
+    /// delta. The delta is relative to a baseline that keeps moving as history
+    /// grows, so persisting it would freeze a comparison that should be live.
+    var wristTempAbsoluteC: Double?
+
+    var lastWorkoutHoursBeforeBed: Double?
+    var exerciseMinutesPreviousDay: Double?
+
+    var sourceName: String?
+
+    /// Cached insight so the dashboard and widget don't re-derive it on every
+    /// launch. Regenerated whenever the night is re-processed.
+    var insightSummary: String?
+    var insightLikelyCause: String?
+    var insightTip: String?
+
+    var createdAt: Date
+
+    init(features: SleepNightFeatures, absoluteWristTempC: Double? = nil, insight: SleepInsight? = nil) {
+        self.date = features.date
+        self.bedtime = features.bedtime
+        self.wakeTime = features.wakeTime
+        self.timeInBedMinutes = features.timeInBedMinutes
+        self.timeAsleepMinutes = features.timeAsleepMinutes
+        self.sleepEfficiencyPercent = features.sleepEfficiencyPercent
+        self.coreMinutes = features.coreMinutes
+        self.deepMinutes = features.deepMinutes
+        self.remMinutes = features.remMinutes
+        self.unspecifiedAsleepMinutes = features.unspecifiedAsleepMinutes
+        self.awakeMinutes = features.awakeMinutes
+        self.wakeCount = features.wakeCount
+        self.sleepLatencyMinutes = features.sleepLatencyMinutes
+        self.avgHeartRate = features.avgHeartRate
+        self.minHeartRate = features.minHeartRate
+        self.avgHRV = features.avgHRV
+        self.avgRespiratoryRate = features.avgRespiratoryRate
+        self.avgSpO2 = features.avgSpO2
+        self.wristTempAbsoluteC = absoluteWristTempC
+        self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
+        self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
+        self.sourceName = features.sourceName
+        self.insightSummary = insight?.summary
+        self.insightLikelyCause = insight?.likelyCause
+        self.insightTip = insight?.actionableTip
+        self.createdAt = .now
+    }
+
+    /// Overwrites measured fields from a fresh extraction, leaving identity and
+    /// `createdAt` alone. Used when HealthKit revises a night — which it does,
+    /// often, as the watch finishes syncing through the morning.
+    func update(from features: SleepNightFeatures, absoluteWristTempC: Double?) {
+        bedtime = features.bedtime
+        wakeTime = features.wakeTime
+        timeInBedMinutes = features.timeInBedMinutes
+        timeAsleepMinutes = features.timeAsleepMinutes
+        sleepEfficiencyPercent = features.sleepEfficiencyPercent
+        coreMinutes = features.coreMinutes
+        deepMinutes = features.deepMinutes
+        remMinutes = features.remMinutes
+        unspecifiedAsleepMinutes = features.unspecifiedAsleepMinutes
+        awakeMinutes = features.awakeMinutes
+        wakeCount = features.wakeCount
+        sleepLatencyMinutes = features.sleepLatencyMinutes
+        avgHeartRate = features.avgHeartRate
+        minHeartRate = features.minHeartRate
+        avgHRV = features.avgHRV
+        avgRespiratoryRate = features.avgRespiratoryRate
+        avgSpO2 = features.avgSpO2
+        if let absoluteWristTempC { wristTempAbsoluteC = absoluteWristTempC }
+        lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
+        exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
+        sourceName = features.sourceName
+    }
+
+    func apply(_ insight: SleepInsight) {
+        insightSummary = insight.summary
+        insightLikelyCause = insight.likelyCause
+        insightTip = insight.actionableTip
+    }
+}
+
+// MARK: - Conversion back to the feature struct
+
+extension SleepNightRecord {
+
+    /// Rebuilds a `SleepNightFeatures` from the row.
+    ///
+    /// - Parameter baseline: supplies the comparative fields, which are *not*
+    ///   persisted because they change as history grows. A night from three
+    ///   weeks ago should show today's 7-day-average context, not the context
+    ///   that existed when it was recorded.
+    func features(baseline: RollingBaseline? = nil) -> SleepNightFeatures {
+        SleepNightFeatures(
+            date: date,
+            bedtime: bedtime,
+            wakeTime: wakeTime,
+            timeInBedMinutes: timeInBedMinutes,
+            timeAsleepMinutes: timeAsleepMinutes,
+            sleepEfficiencyPercent: sleepEfficiencyPercent,
+            coreMinutes: coreMinutes,
+            deepMinutes: deepMinutes,
+            remMinutes: remMinutes,
+            unspecifiedAsleepMinutes: unspecifiedAsleepMinutes,
+            awakeMinutes: awakeMinutes,
+            wakeCount: wakeCount,
+            sleepLatencyMinutes: sleepLatencyMinutes,
+            avgHeartRate: avgHeartRate,
+            minHeartRate: minHeartRate,
+            avgHRV: avgHRV,
+            avgRespiratoryRate: avgRespiratoryRate,
+            avgSpO2: avgSpO2,
+            wristTempDeltaC: wristTempDelta(against: baseline),
+            hrv7DayAvg: baseline?.hrv7DayAvg,
+            sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
+            lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
+            exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
+            sourceName: sourceName,
+            isMock: false
+        )
+    }
+
+    private func wristTempDelta(against baseline: RollingBaseline?) -> Double? {
+        guard let absolute = wristTempAbsoluteC, let base = baseline?.wristTempBaselineC else { return nil }
+        return absolute - base
+    }
+
+    var cachedInsight: SleepInsight? {
+        guard let insightSummary, let insightTip else { return nil }
+        return SleepInsight(
+            summary: insightSummary,
+            likelyCause: insightLikelyCause,
+            actionableTip: insightTip
+        )
+    }
+}

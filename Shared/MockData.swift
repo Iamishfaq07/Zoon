@@ -1,0 +1,232 @@
+import Foundation
+
+/// Synthetic sleep data.
+///
+/// This exists because **HealthKit sleep data does not work in the iOS
+/// Simulator.** There is no way to get a realistic night out of a simulated
+/// device, so without mocks every SwiftUI preview and every Simulator run would
+/// show an empty state and the UI would be undevelopable.
+///
+/// Everything here sets `isMock: true`, and the UI badges mock nights, so a
+/// screenshot from the Simulator can never be mistaken for real data.
+enum MockData {
+
+    // MARK: - Single nights
+
+    /// A good night with full Apple Watch staging.
+    static let goodNight = makeNight(
+        daysAgo: 0,
+        asleep: 452, inBed: 488,
+        core: 244, deep: 82, rem: 126,
+        awake: 36, wakes: 2,
+        latency: 12,
+        hr: 58, minHR: 51, hrv: 64, resp: 14.2, spo2: 96.8, tempDelta: -0.08,
+        hrv7: 61, debt: 95, workoutHours: 6.5, exercise: 42
+    )
+
+    /// A poor night: short, fragmented, low HRV, late workout. This is the case
+    /// the rule-based engine has the most to say about.
+    static let poorNight = makeNight(
+        daysAgo: 0,
+        asleep: 318, inBed: 402,
+        core: 208, deep: 34, rem: 76,
+        awake: 84, wakes: 7,
+        latency: 41,
+        hr: 67, minHR: 61, hrv: 38, resp: 16.1, spo2: 94.9, tempDelta: 0.61,
+        hrv7: 60, debt: 340, workoutHours: 1.2, exercise: 78
+    )
+
+    /// A night from a source with no stage breakdown — iPhone sleep schedule or
+    /// a third-party tracker. Exercises the `hasStageBreakdown == false` path,
+    /// which is easy to forget and looks broken when it regresses.
+    static var unstagedNight: SleepNightFeatures {
+        var night = makeNight(
+            daysAgo: 0,
+            asleep: 401, inBed: 436,
+            core: 0, deep: 0, rem: 0,
+            awake: 35, wakes: 3,
+            latency: nil,
+            hr: 60, minHR: 54, hrv: nil, resp: nil, spo2: nil, tempDelta: nil,
+            hrv7: nil, debt: 150, workoutHours: nil, exercise: nil
+        )
+        night = night.withUnspecifiedSleep(401)
+        return night
+    }
+
+    // MARK: - History
+
+    /// 30 nights of plausibly noisy history, newest last.
+    ///
+    /// Deterministically generated from a seeded generator so previews and
+    /// snapshot comparisons are stable across runs — random previews that shift
+    /// every rebuild make chart regressions impossible to spot.
+    static let history: [SleepNightFeatures] = {
+        var rng = SeededGenerator(seed: 20_260_807)
+        return (0..<30).reversed().map { daysAgo -> SleepNightFeatures in
+            // Weekends drift later and longer.
+            let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
+            let isWeekend = Calendar.current.isDateInWeekend(date)
+
+            let baseAsleep = isWeekend ? 455.0 : 405.0
+            let asleep = baseAsleep + rng.nextDouble(in: -55...55)
+            let inBed = asleep + rng.nextDouble(in: 20...70)
+            let deep = asleep * rng.nextDouble(in: 0.11...0.21)
+            let rem = asleep * rng.nextDouble(in: 0.17...0.26)
+            let core = asleep - deep - rem
+            let awake = inBed - asleep
+            let wakes = Int(rng.nextDouble(in: 0...6).rounded())
+
+            return makeNight(
+                daysAgo: daysAgo,
+                asleep: asleep, inBed: inBed,
+                core: core, deep: deep, rem: rem,
+                awake: awake, wakes: wakes,
+                latency: rng.nextDouble(in: 6...34),
+                hr: rng.nextDouble(in: 54...66),
+                minHR: rng.nextDouble(in: 48...58),
+                hrv: rng.nextDouble(in: 42...78),
+                resp: rng.nextDouble(in: 13...16),
+                spo2: rng.nextDouble(in: 94...98),
+                tempDelta: rng.nextDouble(in: -0.4...0.5),
+                hrv7: rng.nextDouble(in: 52...66),
+                debt: max(0, rng.nextDouble(in: -50...420)),
+                workoutHours: rng.nextDouble(in: 0.8...9),
+                exercise: rng.nextDouble(in: 0...95)
+            )
+        }
+    }()
+
+    /// Last 7 nights of `history`.
+    static var recentWeek: [SleepNightFeatures] { Array(history.suffix(7)) }
+
+    // MARK: - Derived mocks
+
+    static let goodInsight = SleepInsight(
+        summary: "Solid night — 7h 32m with strong deep sleep.",
+        likelyCause: nil,
+        actionableTip: "Whatever you did yesterday, repeat it. Same bedtime tonight.",
+        confidence: .high
+    )
+
+    static let poorInsight = SleepInsight(
+        summary: "Rough night — 5h 18m and fragmented.",
+        likelyCause: "Deep sleep was 34m, well below your usual. Your workout ended about 1h before bed, which keeps core body temperature up.",
+        actionableTip: "Try to finish hard training at least 3h before bed tonight.",
+        confidence: .medium
+    )
+
+    static var snapshot: SleepSnapshot {
+        SleepSnapshot(
+            features: goodNight,
+            score: SleepScore.compute(for: goodNight, goalMinutes: 480),
+            insight: goodInsight,
+            goalMinutes: 480
+        )
+    }
+
+    static var poorSnapshot: SleepSnapshot {
+        SleepSnapshot(
+            features: poorNight,
+            score: SleepScore.compute(for: poorNight, goalMinutes: 480),
+            insight: poorInsight,
+            goalMinutes: 480
+        )
+    }
+
+    // MARK: - Builder
+
+    private static func makeNight(
+        daysAgo: Int,
+        asleep: Double, inBed: Double,
+        core: Double, deep: Double, rem: Double,
+        awake: Double, wakes: Int,
+        latency: Double?,
+        hr: Double?, minHR: Double?, hrv: Double?, resp: Double?, spo2: Double?, tempDelta: Double?,
+        hrv7: Double?, debt: Double?, workoutHours: Double?, exercise: Double?
+    ) -> SleepNightFeatures {
+        let calendar = Calendar.current
+        let wake = calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
+        let wakeTime = calendar.date(bySettingHour: 7, minute: 10, second: 0, of: wake) ?? wake
+        let bedtime = wakeTime.addingTimeInterval(-inBed * 60)
+
+        return SleepNightFeatures(
+            date: calendar.startOfDay(for: wakeTime),
+            bedtime: bedtime,
+            wakeTime: wakeTime,
+            timeInBedMinutes: inBed,
+            timeAsleepMinutes: asleep,
+            sleepEfficiencyPercent: inBed > 0 ? min(100, asleep / inBed * 100) : 0,
+            coreMinutes: core,
+            deepMinutes: deep,
+            remMinutes: rem,
+            unspecifiedAsleepMinutes: 0,
+            awakeMinutes: awake,
+            wakeCount: wakes,
+            sleepLatencyMinutes: latency,
+            avgHeartRate: hr,
+            minHeartRate: minHR,
+            avgHRV: hrv,
+            avgRespiratoryRate: resp,
+            avgSpO2: spo2,
+            wristTempDeltaC: tempDelta,
+            hrv7DayAvg: hrv7,
+            sleepDebtMinutes14Day: debt,
+            lastWorkoutHoursBeforeBed: workoutHours,
+            exerciseMinutesPreviousDay: exercise,
+            sourceName: "Mock Data",
+            isMock: true
+        )
+    }
+}
+
+private extension SleepNightFeatures {
+    /// Rebuilds the value with all sleep filed as unspecified — the shape you
+    /// get from a non-staging source.
+    func withUnspecifiedSleep(_ minutes: Double) -> SleepNightFeatures {
+        SleepNightFeatures(
+            date: date, bedtime: bedtime, wakeTime: wakeTime,
+            timeInBedMinutes: timeInBedMinutes,
+            timeAsleepMinutes: minutes,
+            sleepEfficiencyPercent: sleepEfficiencyPercent,
+            coreMinutes: 0, deepMinutes: 0, remMinutes: 0,
+            unspecifiedAsleepMinutes: minutes,
+            awakeMinutes: awakeMinutes, wakeCount: wakeCount,
+            sleepLatencyMinutes: sleepLatencyMinutes,
+            avgHeartRate: avgHeartRate, minHeartRate: minHeartRate, avgHRV: avgHRV,
+            avgRespiratoryRate: avgRespiratoryRate, avgSpO2: avgSpO2,
+            wristTempDeltaC: wristTempDeltaC,
+            hrv7DayAvg: hrv7DayAvg, sleepDebtMinutes14Day: sleepDebtMinutes14Day,
+            lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
+            exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
+            sourceName: "iPhone", isMock: true
+        )
+    }
+}
+
+/// Tiny deterministic PRNG (SplitMix64) so mock history is identical on every
+/// launch. `SystemRandomNumberGenerator` would reshuffle the charts on each
+/// preview rebuild.
+private struct SeededGenerator: RandomNumberGenerator {
+    private var state: UInt64
+
+    init(seed: UInt64) { self.state = seed }
+
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+
+    /// Uniform double in `range`.
+    ///
+    /// Computed directly from `next()` rather than via
+    /// `Double.random(in:using: &self)` — passing `&self` from inside a mutating
+    /// method is an overlapping-access violation.
+    mutating func nextDouble(in range: ClosedRange<Double>) -> Double {
+        // Top 53 bits give a uniform value in [0, 1).
+        let unit = Double(next() >> 11) * (1.0 / 9_007_199_254_740_992.0)
+        return range.lowerBound + unit * (range.upperBound - range.lowerBound)
+    }
+}
