@@ -191,4 +191,9 @@ def main(path):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else 'Zoon.xcodeproj/project.pbxproj'))
+    try:
+        code = main(sys.argv[1] if len(sys.argv) > 1 else 'Zoon.xcodeproj/project.pbxproj')
+    except BrokenPipeError:
+        # Output was piped into something that closed early (`| head`).
+        code = 0
+    sys.exit(code)
