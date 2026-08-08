@@ -181,6 +181,10 @@ running on device.
 errors and zero warnings. CI builds every push on a macOS runner; see
 [BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
+CI also asserts that every Swift file on disk actually reached the compiler,
+and both `canImport` guards emit a `#warning` when their framework is missing —
+so a feature can't silently vanish behind a false `#if` and still report green.
+
 **It has never been run.** Compiling is not working. Everything below is
 untested at runtime, because that needs a Simulator, which needs macOS:
 
@@ -193,12 +197,8 @@ Treat the app as unverified until someone launches it.
 
 ### Known gaps
 
-- **Apple Watch app** — not built. The biggest missing piece: Zoon reads what
-  the watch recorded but shows nothing on the wrist.
-- **Live Activity for naps** and a **Control Center** soundscape control are
-  designed but unimplemented.
-- **Import** reads and validates an archive but doesn't yet restore into the
-  live store — see `MoreView.handleImport`.
+- **Apple Watch app** — not built. The only substantial piece left: Zoon reads
+  what the watch recorded but shows nothing on the wrist.
 - **`LocalLLMInsightEngine`** remains a stub for a *bundled* MLX/Core ML model.
   It is superseded in practice by `FoundationModelInsightEngine`, which uses
   Apple's on-device model and needs nothing bundled.
