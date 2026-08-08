@@ -10,7 +10,7 @@ struct BadgeWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "ZoonBadges", provider: SleepTimelineProvider()) { entry in
-            BadgeWidgetView(snapshot: entry.snapshot)
+            BadgeWidgetView(snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder)
                 // Matches the other widgets: the system material, not the
                 // app's gradient. A widget that paints its own dark background
                 // fights the home screen's tinting rather than sitting in it.
@@ -30,6 +30,13 @@ struct BadgeWidget: Widget {
 struct BadgeWidgetView: View {
 
     let snapshot: SleepSnapshot
+    /// True when this is sample data because no real snapshot was readable.
+    ///
+    /// Flagged on screen, like the other widgets do. A home screen must never
+    /// present an invented health number as a measured one, and the badge count
+    /// is exactly the kind of number someone would otherwise believe.
+    var isPlaceholder = false
+
     @Environment(\.widgetFamily) private var family
 
     private var tint: Color {
@@ -63,7 +70,7 @@ struct BadgeWidgetView: View {
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.8)
 
-            Text("\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal)")
+            Text(isPlaceholder ? "Sample" : "\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal)")
                 .font(.system(size: 10, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -79,7 +86,9 @@ struct BadgeWidgetView: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .lineLimit(1)
 
-                Text("\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal) earned")
+                Text(isPlaceholder
+                     ? "Sample data — open Zoon to see yours"
+                     : "\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal) earned")
                     .font(.system(size: 11, design: .rounded))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -142,7 +151,9 @@ struct BadgeWidgetView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
 
-            Text("\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal) earned")
+            Text(isPlaceholder
+                 ? "Sample data"
+                 : "\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal) earned")
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -181,17 +192,17 @@ struct WidgetHexagon: Shape {
 #Preview("Badges small", as: .systemSmall) {
     BadgeWidget()
 } timeline: {
-    SleepEntry(date: .now, snapshot: MockData.snapshotWithBadges)
+    SleepEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: true)
 }
 
 #Preview("Badges medium", as: .systemMedium) {
     BadgeWidget()
 } timeline: {
-    SleepEntry(date: .now, snapshot: MockData.snapshotWithBadges)
+    SleepEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: true)
 }
 
 #Preview("Badges rectangular", as: .accessoryRectangular) {
     BadgeWidget()
 } timeline: {
-    SleepEntry(date: .now, snapshot: MockData.snapshotWithBadges)
+    SleepEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: true)
 }

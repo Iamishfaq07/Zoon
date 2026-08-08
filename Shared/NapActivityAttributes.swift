@@ -34,10 +34,15 @@ struct NapActivityAttributes: ActivityAttributes {
         startedAt.addingTimeInterval(Double(targetMinutes) * 60)
     }
 }
-#else
+#elseif os(iOS)
 // Reaching this means the nap Live Activity silently does not exist in this
 // build. The source-coverage check in CI cannot detect that — a file excluded
 // by a false #if is still compiled, just to nothing — so the guard reports
 // itself instead.
+//
+// Scoped to iOS: watchOS has no ActivityKit, so on the watch target this
+// branch is the expected outcome, not a problem. A warning that fires every
+// build is a warning people learn to scroll past, which defeats the point of
+// having put it here.
 #warning("ActivityKit unavailable: nap Live Activity excluded from this build.")
 #endif
