@@ -161,6 +161,12 @@ jobs:
 
           mkdir -p screenshots
 
+          # Crash reports land on the *host*, not inside the simulator. Clearing
+          # them first means anything found afterwards belongs to this run.
+          CRASH_DIR="$HOME/Library/Logs/DiagnosticReports"
+          mkdir -p "$CRASH_DIR"
+          rm -f "$CRASH_DIR"/Zoon*.ips || true
+
           shoot() {
             local tab="$1"
             # --terminate-running-process so each tab gets a clean launch;
@@ -174,16 +180,34 @@ jobs:
             # process without instrumenting the app, so this is a plain wait.
             sleep 6
 
-            # If the app died on launch, simctl still returned 0 above — the
-            # missing process is the real signal.
+            # Shoot *before* checking liveness. A crash that happens after the
+            # first frame still leaves a usable screenshot, and having the
+            # picture of the screen that died is worth more than the ordering
+            # purity of failing first.
+            xcrun simctl io "$UDID" screenshot "screenshots/${tab}.png" || true
+
+            # simctl launch returns 0 whether or not the process survives, so
+            # the absence of the process is the real signal.
             if ! xcrun simctl spawn "$UDID" launchctl list | grep -q "$BUNDLE_ID"; then
-              echo "::error::Zoon is not running after launching tab '$tab' — it crashed on launch."
-              xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "Zoon"' \
-                --style compact | tail -60 || true
+              echo "::error::Zoon died on tab '$tab'."
+
+              # The .ips crash report carries the exception type and the stack.
+              # `log show` was tried first and is the wrong tool: it's dominated
+              # by UIKit lifecycle chatter, so a tail of it shows the launch and
+              # cuts off before the crash.
+              for report in "$CRASH_DIR"/Zoon*.ips; do
+                [ -e "$report" ] || continue
+                echo "--- $(basename "$report") ---"
+                cat "$report"
+              done
+
+              echo "--- errors and faults only ---"
+              xcrun simctl spawn "$UDID" log show --last 3m \
+                --predicate 'process == "Zoon" AND messageType >= 16' \
+                --style compact | tail -40 || true
               return 1
             fi
 
-            xcrun simctl io "$UDID" screenshot "screenshots/${tab}.png"
             echo "Captured $tab"
           }
 
@@ -226,9 +250,16 @@ jobs:
         #
         # Full-resolution PNGs are ~1.8 MB each and would bloat history badly;
         # these are ~150 KB JPEGs, which is plenty to judge a layout by.
-        if: success()
+        # Not `success()`: when one tab dies the other four are still worth
+        # having, and the screenshot of a screen that crashed is often the most
+        # informative image in the set.
+        if: ${{ !cancelled() }}
         run: |
           set -euo pipefail
+          if [ ! -d screenshots ] || [ -z "$(ls -A screenshots 2>/dev/null)" ]; then
+            echo "Nothing captured."
+            exit 0
+          fi
           mkdir -p docs/screenshots
           for f in screenshots/*.png; do
             out="docs/screenshots/$(basename "${f%.png}").jpg"
