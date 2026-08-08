@@ -76,17 +76,22 @@ jobs:
         # evaluated false, produces a *successful* build with the feature
         # missing. That's worse than a failure, because nothing reports it.
         # This asserts every .swift on disk actually reached the compiler.
+        #
+        # ZoonWatch is listed explicitly. Without it the watch target could
+        # fail to build at all — or be dropped from the scheme entirely — and
+        # this step would still report green, which is precisely the silent
+        # failure it exists to catch.
         if: steps.build.outcome == 'success'
         run: |
           MISSING=""
-          for f in $(find Shared Zoon ZoonWidget -name '*.swift' | sort); do
+          for f in $(find Shared Zoon ZoonWidget ZoonWatch -name '*.swift' | sort); do
             base=$(basename "$f")
             grep -q -- "$base" build.log || MISSING="$MISSING $base"
           done
           {
             echo "### Sources"
             if [ -z "$MISSING" ]; then
-              COUNT=$(find Shared Zoon ZoonWidget -name '*.swift' | wc -l | tr -d ' ')
+              COUNT=$(find Shared Zoon ZoonWidget ZoonWatch -name '*.swift' | wc -l | tr -d ' ')
               echo ""
               echo "All ${COUNT} Swift files reached the compiler."
             else
