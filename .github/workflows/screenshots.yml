@@ -105,14 +105,52 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             2>&1 | tee build.log
 
+      - name: Inspect the built bundle
+        # Everything here is invisible to the compiler. `GENERATE_INFOPLIST_FILE`
+        # synthesises both Info.plists from build settings, and a wrong or
+        # missing key produces a perfectly good binary that iOS then refuses to
+        # install. Dumping them is the only way to see what was actually written.
+        run: |
+          set -euo pipefail
+          APP=$(find DerivedData/Build/Products -maxdepth 3 -name 'Zoon.app' | head -1)
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          {
+            echo "### Bundle"
+            echo ""
+            echo '<details><summary>Zoon.app/Info.plist</summary>'
+            echo ""; echo '```'
+            plutil -p "$APP/Info.plist"
+            echo '```'; echo "</details>"
+            for ext in "$APP"/PlugIns/*.appex; do
+              [ -e "$ext" ] || continue
+              echo ""
+              echo "<details><summary>$(basename "$ext")/Info.plist</summary>"
+              echo ""; echo '```'
+              plutil -p "$ext/Info.plist"
+              echo '```'; echo "</details>"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Install and capture
         run: |
           set -euo pipefail
           UDID="${{ steps.sim.outputs.udid }}"
-          APP=$(find DerivedData/Build/Products -name 'Zoon.app' -maxdepth 3 | head -1)
-          if [ -z "$APP" ]; then echo "No Zoon.app in build products"; exit 1; fi
+          if [ -z "${APP:-}" ]; then echo "No Zoon.app in build products"; exit 1; fi
+
+          # A bad app *extension* must not cost us the app's screenshots — the
+          # widget isn't visible in any of them. Try the whole bundle first, and
+          # on failure install a copy with PlugIns stripped, loudly.
+          EXT_BROKEN=0
           echo "Installing $APP"
-          xcrun simctl install "$UDID" "$APP"
+          if ! xcrun simctl install "$UDID" "$APP"; then
+            EXT_BROKEN=1
+            echo "::warning::Installing the full bundle failed. Retrying without the widget extension — the widget will not be present in this build."
+            rm -rf /tmp/stripped && mkdir -p /tmp/stripped
+            cp -R "$APP" /tmp/stripped/
+            rm -rf /tmp/stripped/Zoon.app/PlugIns
+            xcrun simctl install "$UDID" /tmp/stripped/Zoon.app
+          fi
+          echo "EXT_BROKEN=$EXT_BROKEN" >> "$GITHUB_ENV"
 
           mkdir -p screenshots
 
@@ -154,6 +192,12 @@ jobs:
           {
             echo "### Screenshots"
             echo ""
+            if [ "${EXT_BROKEN:-0}" = "1" ]; then
+              echo "> The widget extension could not be installed, so it was"
+              echo "> stripped before installing. The screenshots below are the"
+              echo "> app only. See the extension's Info.plist above."
+              echo ""
+            fi
             if [ -d screenshots ] && [ -n "$(ls -A screenshots 2>/dev/null)" ]; then
               echo "Captured on \`$DEVICE\`:"
               echo ""
