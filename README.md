@@ -151,6 +151,11 @@ Adding a third engine means writing one conformance and nothing else.
 
 ## Requirements
 
+**No Mac? You can still build this.** Push to the repo and GitHub Actions
+compiles both targets on a macOS runner — free, no Apple account, no
+certificates. Errors land in the run summary. See
+[BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
+
 - **Xcode 15+**, iOS 18+ deployment target, Swift 5.9+
 - **A physical iPhone** for real data — HealthKit sleep data does not exist in
   the Simulator

@@ -1,0 +1,99 @@
+name: Build
+
+# Compiles Zoon on a GitHub-hosted macOS runner.
+#
+# This exists because iOS apps can only be built on macOS, and not everyone
+# working on this repo has a Mac. Pushing to a branch is enough to get a full
+# type-check of both targets — the errors land in the job summary, readable
+# without digging through raw logs.
+#
+# No signing certificates are needed: building for the Simulator with
+# CODE_SIGNING_ALLOWED=NO skips provisioning entirely, which is what makes this
+# work with nothing configured beyond the repo itself.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# A new push supersedes an in-flight build of the same branch. macOS runner
+# minutes are billed at 10x on private repos, so queued-up stale builds are
+# expensive in a way Linux ones aren't.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (iOS Simulator)
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          echo "### Toolchain" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          xcodebuild -version | tee -a "$GITHUB_STEP_SUMMARY"
+          swift --version 2>&1 | head -2 | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "Available SDKs:"
+          xcodebuild -showsdks | grep -i ios || true
+
+      - name: Build app and widget
+        id: build
+        run: |
+          set -o pipefail
+          # generic/platform rather than a named device: simulator model names
+          # change between runner images, and a build doesn't need a booted one.
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+
+      - name: Summarise errors
+        # Runs even when the build fails — which is the entire point.
+        if: always()
+        run: |
+          {
+            echo "### Result"
+            if [ "${{ steps.build.outcome }}" = "success" ]; then
+              echo ""
+              echo "Build succeeded."
+            else
+              echo ""
+              ERRORS=$(grep -E "error:" build.log | sort -u || true)
+              COUNT=$(printf '%s' "$ERRORS" | grep -c . || true)
+              echo "Build failed with ${COUNT} unique error line(s)."
+              echo ""
+              echo '```'
+              # Capped: a single missing type can cascade into hundreds of
+              # follow-on errors, and the first few are the ones that matter.
+              printf '%s\n' "$ERRORS" | head -60
+              echo '```'
+              echo ""
+              echo "<details><summary>Warnings</summary>"
+              echo ""
+              echo '```'
+              grep -E "warning:" build.log | sort -u | head -40 || true
+              echo '```'
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload full log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 14
