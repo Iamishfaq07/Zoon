@@ -219,6 +219,8 @@ jobs:
             echo "Captured $tab"
           }
 
+          # Ordered as a walkthrough: first run, then the tabs, then the
+          # screens that need a tap to reach.
           FAILED=0
           for tab in onboarding today sleep trends journal more \
                      sleepDetail soundscapes nap report settings badges; do
