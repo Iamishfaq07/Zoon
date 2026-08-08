@@ -13,5 +13,16 @@ struct ZoonWidgetBundle: WidgetBundle {
     var body: some Widget {
         SleepDebtWidget()
         SleepScoreWidget()
+
+        // Live Activities and Control Center controls are both newer than the
+        // app's iOS 18 floor in places, so each is gated rather than assumed.
+        #if canImport(ActivityKit)
+        NapLiveActivity()
+        #endif
+
+        if #available(iOS 18.0, *) {
+            SoundscapeControl()
+            NapControl()
+        }
     }
 }

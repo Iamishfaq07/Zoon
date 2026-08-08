@@ -170,12 +170,11 @@ struct MoreView: View {
             defer { url.stopAccessingSecurityScopedResource() }
 
             let archive = try DataExporter.decode(try Data(contentsOf: url))
-            importMessage = """
-                Read \(archive.nights.count) nights, \(archive.journal.count) journal entries, \
-                and \(archive.naps.count) naps from \(archive.exportedAt.formatted(date: .abbreviated, time: .omitted)).
-
-                Restoring into the live store isn't wired up yet — see MoreView.handleImport.
-                """
+            Task {
+                let summary = await coordinator.importArchive(archive)
+                importMessage = summary
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
         } catch {
             importMessage = error.localizedDescription
         }

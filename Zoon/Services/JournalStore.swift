@@ -58,6 +58,27 @@ final class JournalStore {
         allEntries().filter { !$0.tagIdentifiers.isEmpty }
     }
 
+    /// Restores journal entries from a backup.
+    ///
+    /// Existing entries win on conflict: a tag you set on this device is more
+    /// trustworthy than one from an older archive.
+    /// - Returns: how many entries were created.
+    @discardableResult
+    func importEntries(_ records: [(date: Date, tags: [String], note: String?)]) -> Int {
+        var created = 0
+        for record in records {
+            let day = Calendar.current.startOfDay(for: record.date)
+            guard entry(for: day) == nil else { continue }
+            let entry = JournalEntry(date: day)
+            entry.tagIdentifiers = record.tags
+            entry.note = record.note
+            context.insert(entry)
+            created += 1
+        }
+        save()
+        return created
+    }
+
     func deleteAll() {
         do {
             try context.delete(model: JournalEntry.self)

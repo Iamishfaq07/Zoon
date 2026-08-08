@@ -106,6 +106,23 @@ final class SleepHistoryStore {
         }
     }
 
+    /// Restores nights from a backup.
+    ///
+    /// Upserts rather than replaces, so restoring onto a device that has kept
+    /// recording merges instead of discarding. Imported nights are marked as
+    /// having no live wrist-temperature reading — the archive carries the delta,
+    /// which is meaningless without the baseline it was computed against.
+    /// - Returns: how many rows were written.
+    @discardableResult
+    func importNights(_ nights: [SleepNightFeatures]) -> Int {
+        var written = 0
+        for night in nights.sorted(by: { $0.date < $1.date }) {
+            upsert(night, absoluteWristTempC: nil)
+            written += 1
+        }
+        return written
+    }
+
     private func save() {
         guard context.hasChanges else { return }
         do {

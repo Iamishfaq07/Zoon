@@ -1,5 +1,9 @@
 import Foundation
 import SwiftUI
+import os
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 /// Nap tracking.
 ///
@@ -46,11 +50,13 @@ final class NapStore {
     func start(targetMinutes: Int) {
         activeNap = ActiveNap(start: .now, targetMinutes: targetMinutes)
         persistActive()
+        startLiveActivity()
     }
 
     func cancel() {
         activeNap = nil
         persistActive()
+        endLiveActivity()
     }
 
     /// Ends the nap and records it.
@@ -66,6 +72,58 @@ final class NapStore {
         }
         activeNap = nil
         persistActive()
+        endLiveActivity()
+    }
+
+    // MARK: - Live Activity
+
+    private let logger = Logger(subsystem: "com.zoon.sleep", category: "NapStore")
+
+    /// Puts the nap countdown on the Lock Screen and in the Dynamic Island.
+    ///
+    /// Deliberately fire-and-forget: a nap timer that fails to start an
+    /// activity should still be a working nap timer. Every failure path here
+    /// logs and returns rather than surfacing anything.
+    private func startLiveActivity() {
+        #if canImport(ActivityKit)
+        guard let nap = activeNap else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            logger.info("Live Activities are disabled; nap runs without one")
+            return
+        }
+
+        let attributes = NapActivityAttributes(
+            targetMinutes: nap.targetMinutes,
+            startedAt: nap.start
+        )
+        let state = NapActivityAttributes.ContentState(
+            endsAt: attributes.endDate,
+            progress: 0
+        )
+
+        do {
+            _ = try Activity.request(
+                attributes: attributes,
+                content: .init(state: state, staleDate: attributes.endDate.addingTimeInterval(300)),
+                pushType: nil
+            )
+        } catch {
+            logger.error("Live Activity request failed: \(error.localizedDescription, privacy: .public)")
+        }
+        #endif
+    }
+
+    private func endLiveActivity() {
+        #if canImport(ActivityKit)
+        // Dismiss immediately rather than leaving it to the default policy:
+        // once the nap is over the card is stale, and a stale countdown on the
+        // Lock Screen is worse than no countdown.
+        for activity in Activity<NapActivityAttributes>.activities {
+            Task {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+        #endif
     }
 
     // MARK: - Queries
@@ -95,6 +153,23 @@ final class NapStore {
         activeNap = nil
         persistNaps()
         persistActive()
+        endLiveActivity()
+    }
+
+    /// Merges naps from a backup, keyed on start time.
+    ///
+    /// Merge rather than replace: restoring a backup onto a device that has
+    /// been recording since shouldn't discard the newer nights.
+    /// - Returns: how many were actually added.
+    @discardableResult
+    func importNaps(_ imported: [Nap]) -> Int {
+        let existing = Set(naps.map(\.start))
+        let fresh = imported.filter { !existing.contains($0.start) }
+        guard !fresh.isEmpty else { return 0 }
+        naps.append(contentsOf: fresh)
+        naps.sort { $0.start < $1.start }
+        persistNaps()
+        return fresh.count
     }
 
     // MARK: - Persistence

@@ -8,6 +8,8 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var selection: Tab = .today
+    /// Set when a Control Center button asked for a specific screen.
+    @State private var sleepPath = NavigationPath()
 
     enum Tab: Hashable {
         case today, sleep, trends, journal, more
@@ -19,7 +21,7 @@ struct RootView: View {
                 .tabItem { Label("Today", systemImage: "bolt.heart.fill") }
                 .tag(Tab.today)
 
-            SleepTabView()
+            SleepTabView(path: $sleepPath)
                 .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(Tab.sleep)
 
@@ -41,14 +43,24 @@ struct RootView: View {
         // either done properly.
         .preferredColorScheme(.dark)
         .task { await coordinator.start() }
+        .onAppear(perform: consumeDeepLink)
         .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            // Controls launch the app rather than acting in place (an extension
+            // can't start audio), so the destination is picked up here.
+            consumeDeepLink()
             // Background delivery is best-effort — HealthKit clamps sleep updates
             // to roughly hourly and defers further under low power — so returning
             // to the app is when the user most expects fresh data.
-            if newPhase == .active {
-                Task { await coordinator.refresh() }
-            }
+            Task { await coordinator.refresh() }
         }
+    }
+
+    private func consumeDeepLink() {
+        guard let destination = DeepLink.consume() else { return }
+        selection = .sleep
+        sleepPath = NavigationPath()
+        sleepPath.append(destination)
     }
 }
 
@@ -56,9 +68,10 @@ struct RootView: View {
 struct SleepTabView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Binding var path: NavigationPath
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
                     BedtimeCountdownCard()
@@ -110,6 +123,12 @@ struct SleepTabView: View {
             .nightBackground()
             .navigationTitle("Sleep")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: DeepLink.Destination.self) { destination in
+                switch destination {
+                case .soundscapes: SoundscapeView()
+                case .nap: NapView()
+                }
+            }
         }
     }
 

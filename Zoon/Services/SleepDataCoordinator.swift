@@ -419,6 +419,32 @@ final class SleepDataCoordinator {
         }
     }
 
+    /// Restores a backup into the live stores, then rebuilds everything.
+    ///
+    /// - Returns: a human-readable summary of what landed.
+    func importArchive(_ archive: DataExporter.Archive) async -> String {
+        let nights = store.importNights(archive.nights)
+        let entries = journal.importEntries(
+            archive.journal.map { (date: $0.date, tags: $0.tags, note: $0.note) }
+        )
+        let restoredNaps = naps.importNaps(archive.naps)
+
+        // The archive carries the goal the data was recorded against. Adopting
+        // it matters: sleep debt, need and recovery are all measured against
+        // the goal, so importing nights while keeping a different target would
+        // silently rescore the entire history.
+        if archive.goalMinutes > 0 {
+            preferences.sleepGoalMinutes = archive.goalMinutes
+        }
+
+        // Anchored sync must start over — the store now contains nights
+        // HealthKit never told us about, and the old anchor would skip them.
+        AnchorStore.clear()
+        await recomputeDerivedValues()
+
+        return "Restored \(nights) nights, \(entries) journal entries and \(restoredNaps) naps."
+    }
+
     func deleteAllData() {
         store.deleteAll()
         journal.deleteAll()
