@@ -73,7 +73,18 @@ struct ZoonApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            // Onboarding owns the first launch entirely, rather than appearing
+            // as a sheet over a dashboard full of numbers the user hasn't
+            // agreed to yet.
+            Group {
+                if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
+                    RootView()
+                } else {
+                    OnboardingView()
+                        .transition(.opacity)
+                }
+            }
+                .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
                 .environment(coordinator)
                 .environment(preferences)
                 .environment(naps)

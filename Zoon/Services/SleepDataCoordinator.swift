@@ -114,6 +114,22 @@ final class SleepDataCoordinator {
 
     // MARK: - Lifecycle
 
+    /// Presents the Health permission sheet, if there is one to present.
+    ///
+    /// Split out of `start()` so onboarding can trigger it at a moment the user
+    /// has just been told what it's for. Returns once the sheet is dismissed —
+    /// **not** once permission is granted, because HealthKit deliberately never
+    /// reveals a read denial. An app that could tell would be able to infer
+    /// that you have data worth hiding.
+    func requestHealthAccess() async {
+        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else { return }
+        do {
+            try await healthKit.requestAuthorization()
+        } catch {
+            logger.error("Authorization request failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     func start() async {
         // Screenshot/demo runs: no permission sheet, no queries, no waiting.
         // Checked before availability because the Simulator *does* have a

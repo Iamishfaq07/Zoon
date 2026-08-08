@@ -40,4 +40,18 @@ enum LaunchOptions {
     static var initialTab: String? {
         UserDefaults.standard.string(forKey: "zoonTab")
     }
+
+    /// Demo launches skip onboarding — it's a one-time gate, and a screenshot
+    /// run that got stuck behind it would photograph the same welcome screen
+    /// five times.
+    ///
+    /// `-zoonTab onboarding` opts back in, so the first-run flow can be
+    /// captured deliberately.
+    static var forcesOnboarding: Bool {
+        initialTab == "onboarding"
+    }
+
+    static var skipsOnboarding: Bool {
+        isDemo && !forcesOnboarding
+    }
 }
