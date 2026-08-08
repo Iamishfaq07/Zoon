@@ -126,21 +126,20 @@ enum Theme {
 
     // MARK: - Type
     //
-    // Everything here is sized `relativeTo:` a text style, so it scales with
-    // the reader's Dynamic Type setting. A fixed `.system(size: 13)` ignores
-    // that setting completely — which in a health app is not a rough edge but a
-    // defect, since the people most likely to enlarge text are the people most
-    // likely to be reading it about their own health.
+    // Text scales with the reader's Dynamic Type setting. A fixed
+    // `.system(size: 13)` ignores that setting completely — which in a health
+    // app is not a rough edge but a defect, since the people most likely to
+    // enlarge text are the people most likely to be reading it about their own
+    // health.
     //
-    // Growth is capped at the root of each screen (see `zoonTypography()`)
-    // rather than left unbounded. The honest reason: several cards use fixed
-    // heights, and at the largest accessibility sizes text would clip rather
-    // than reflow. A cap that keeps everything legible and intact is better
-    // than uncapped scaling that breaks the layout, and better than pretending
-    // the setting doesn't exist.
+    // The mechanism is text styles. `relativeTo:` exists only on `Font.custom`;
+    // for system fonts the scaling comes from asking for `.footnote` rather
+    // than for 13 points, so `style(for:)` maps the point sizes this app was
+    // written with onto the nearest style. Sizes shift by a point or two in
+    // places — that is the cost of the text actually responding to the setting,
+    // and it is worth paying.
 
-    /// Maps a point size onto the nearest built-in text style, so
-    /// `relativeTo:` scales from a sensible base.
+    /// Maps a point size onto the nearest built-in text style.
     static func style(for size: CGFloat) -> Font.TextStyle {
         switch size {
         case ..<11: .caption2
@@ -154,19 +153,25 @@ enum Theme {
         }
     }
 
-    /// Big numerals. Rounded + monospaced digits so values don't jitter as they
-    /// animate.
+    /// Big display numerals — a recovery percentage, a night's duration.
+    ///
+    /// Deliberately **not** scaled, and the only thing here that isn't. These
+    /// run from 26 to 52 points, already several times body size and legible
+    /// well past any setting that would help; and each one sits inside a ring
+    /// or a fixed frame that growth would break rather than improve. Scaling
+    /// the text around them is what actually helps someone who needs it.
     static func numeral(_ size: CGFloat) -> Font {
-        .system(size: size, weight: .bold, design: .rounded, relativeTo: style(for: size))
+        .system(size: size, weight: .bold, design: .rounded)
     }
 
-    /// Body and caption text at an explicit size, still Dynamic-Type aware.
+    /// Body and caption text.
     static func text(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .default, relativeTo: style(for: size))
+        .system(style(for: size), design: .default, weight: weight)
     }
 
+    /// Rounded labels — the app's secondary voice.
     static func label(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .rounded, relativeTo: style(for: size))
+        .system(style(for: size), design: .rounded, weight: weight)
     }
 
     // MARK: - Layout
