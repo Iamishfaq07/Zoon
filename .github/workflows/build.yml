@@ -71,6 +71,38 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             2>&1 | tee build.log
 
+      - name: Verify every source compiled
+        # A file dropped from a target, or excluded by a #if that quietly
+        # evaluated false, produces a *successful* build with the feature
+        # missing. That's worse than a failure, because nothing reports it.
+        # This asserts every .swift on disk actually reached the compiler.
+        if: steps.build.outcome == 'success'
+        run: |
+          MISSING=""
+          for f in $(find Shared Zoon ZoonWidget -name '*.swift' | sort); do
+            base=$(basename "$f")
+            grep -q -- "$base" build.log || MISSING="$MISSING $base"
+          done
+          {
+            echo "### Sources"
+            if [ -z "$MISSING" ]; then
+              COUNT=$(find Shared Zoon ZoonWidget -name '*.swift' | wc -l | tr -d ' ')
+              echo ""
+              echo "All ${COUNT} Swift files reached the compiler."
+            else
+              echo ""
+              echo "**Not seen in the build log** — dropped from a target, or excluded by a \`#if\`:"
+              echo ""
+              echo '```'
+              for m in $MISSING; do echo "$m"; done
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$MISSING" ]; then
+            echo "Sources missing from the build: $MISSING"
+            exit 1
+          fi
+
       - name: Summarise errors
         # Runs even when the build fails — which is the entire point.
         if: always()
