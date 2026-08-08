@@ -5,6 +5,7 @@ struct RootView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
+    @Environment(BedtimeReminder.self) private var reminders
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialTab) ?? .today
@@ -55,7 +56,10 @@ struct RootView: View {
         // bedroom, and a half-translated light variant would look worse than
         // either done properly.
         .preferredColorScheme(.dark)
-        .task { await coordinator.start() }
+        .task {
+            await coordinator.start()
+            await refreshReminders()
+        }
         .onAppear(perform: consumeDeepLink)
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
@@ -65,8 +69,27 @@ struct RootView: View {
             // Background delivery is best-effort — HealthKit clamps sleep updates
             // to roughly hourly and defers further under low power — so returning
             // to the app is when the user most expects fresh data.
-            Task { await coordinator.refresh() }
+            Task {
+                await coordinator.refresh()
+                await refreshReminders()
+            }
         }
+    }
+
+    /// Re-arms the nightly reminders against the current sleep need.
+    ///
+    /// Runs on every activation rather than once: the target bedtime moves
+    /// with sleep debt and yesterday's strain, so a reminder scheduled a week
+    /// ago would be firing at last week's bedtime.
+    private func refreshReminders() async {
+        await reminders.refreshAuthorization()
+        guard preferences.bedtimeRemindersEnabled,
+              let bedtime = coordinator.state.context?.targetBedtime()
+        else {
+            if !preferences.bedtimeRemindersEnabled { reminders.cancel() }
+            return
+        }
+        await reminders.schedule(bedtime: bedtime)
     }
 
     private func consumeDeepLink() {

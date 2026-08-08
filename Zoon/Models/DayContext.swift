@@ -26,6 +26,31 @@ struct DayContext: Equatable {
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
 
+    /// Tonight's target bedtime: your usual wake time, minus tonight's need.
+    ///
+    /// Lives here rather than in the view that draws it because two things now
+    /// depend on it — the countdown card and the scheduled reminder — and a
+    /// notification that fires at a different time from the one on screen is
+    /// worse than no notification.
+    ///
+    /// Derived from the user's own wake pattern rather than an alarm they have
+    /// to configure: the data is already here, and a setting you must fill in
+    /// before the feature works is a setting most people never fill in.
+    func targetBedtime(now: Date = .now, calendar: Calendar = .current) -> Date? {
+        let wake = calendar.dateComponents([.hour, .minute], from: night.wakeTime)
+
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
+              let wakeTomorrow = calendar.date(
+                  bySettingHour: wake.hour ?? 7,
+                  minute: wake.minute ?? 0,
+                  second: 0,
+                  of: tomorrow
+              )
+        else { return nil }
+
+        return wakeTomorrow.addingTimeInterval(-sleepNeed.totalNeedMinutes * 60)
+    }
+
     /// The morning headline — what a user reads in two seconds.
     var headline: String {
         if recovery.isEstimate {

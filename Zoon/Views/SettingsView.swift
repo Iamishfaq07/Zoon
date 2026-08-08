@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
+    @Environment(BedtimeReminder.self) private var reminders
 
     @State private var showingDeleteConfirmation = false
 
@@ -14,6 +15,7 @@ struct SettingsView: View {
         // setter has to trigger a recompute, not just store a value.
         Form {
             goalSection
+            remindersSection
             profileSection
             engineSection
             dataSection
@@ -71,6 +73,65 @@ struct SettingsView: View {
             Text("Sleep Goal")
         } footer: {
             Text("Your recovery score, sleep need, and debt are all measured against this — not a population average.")
+        }
+    }
+
+    /// Wind-down and bedtime notifications.
+    ///
+    /// The toggle requests permission on the way *on*, which is the only
+    /// moment the request has context — an app that asks at launch, before
+    /// showing what the notification is for, mostly gets denied permanently.
+    private var remindersSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { preferences.bedtimeRemindersEnabled },
+                set: { wantsOn in
+                    Task {
+                        if wantsOn {
+                            let granted = await reminders.requestAuthorization()
+                            // Only record it as on if iOS actually agreed.
+                            // A switch that stays on while nothing is delivered
+                            // is a lie the user finds out about a week later.
+                            preferences.bedtimeRemindersEnabled = granted
+                            if granted, let bedtime = coordinator.state.context?.targetBedtime() {
+                                await reminders.schedule(bedtime: bedtime)
+                            }
+                        } else {
+                            preferences.bedtimeRemindersEnabled = false
+                            reminders.cancel()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bedtime reminders")
+                    Text("Wind-down nudge \(BedtimeReminder.windDownLeadMinutes) minutes ahead, then bedtime.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let bedtime = coordinator.state.context?.targetBedtime() {
+                LabeledContent("Tonight") {
+                    Text(bedtime, format: .dateTime.hour().minute())
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.Metric.sleep)
+                }
+            }
+
+            if reminders.authorization == .denied {
+                Label(reminders.statusDescription, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Metric.recoveryMid)
+            }
+        } header: {
+            Text("Reminders")
+        } footer: {
+            Text("""
+                Scheduled on this device. Zoon has no push notifications and no server, \
+                so nothing about your sleep leaves the phone to deliver these. The time \
+                moves with your sleep debt, so it is re-armed each time you open the app.
+                """)
         }
     }
 

@@ -305,22 +305,10 @@ struct BedtimeCountdownCard: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
 
-    /// Target bedtime = usual wake time minus sleep need. Derived from the
-    /// user's own pattern rather than asking them to set an alarm, because the
-    /// data to infer it is already here.
+    /// Computed by `DayContext` so the reminder notification and this card can
+    /// never disagree about when bedtime is.
     private var targetBedtime: Date? {
-        guard let context = coordinator.state.context else { return nil }
-        let calendar = Calendar.current
-        let wakeComponents = calendar.dateComponents([.hour, .minute], from: context.night.wakeTime)
-
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: .now),
-              let wakeTomorrow = calendar.date(
-                bySettingHour: wakeComponents.hour ?? 7,
-                minute: wakeComponents.minute ?? 0,
-                second: 0, of: tomorrow
-              ) else { return nil }
-
-        return wakeTomorrow.addingTimeInterval(-context.sleepNeed.totalNeedMinutes * 60)
+        coordinator.state.context?.targetBedtime()
     }
 
     var body: some View {

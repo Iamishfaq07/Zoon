@@ -17,6 +17,7 @@ struct ZoonApp: App {
     @State private var preferences: UserPreferences
     @State private var naps: NapStore
     @State private var soundscape: SoundscapeEngine
+    @State private var reminders: BedtimeReminder
 
     init() {
         let preferences = UserPreferences()
@@ -58,6 +59,7 @@ struct ZoonApp: App {
         _preferences = State(initialValue: preferences)
         _naps = State(initialValue: naps)
         _soundscape = State(initialValue: SoundscapeEngine())
+        _reminders = State(initialValue: BedtimeReminder())
         _coordinator = State(
             initialValue: SleepDataCoordinator(
                 healthKit: HealthKitManager(),
@@ -76,6 +78,7 @@ struct ZoonApp: App {
                 .environment(preferences)
                 .environment(naps)
                 .environment(soundscape)
+                .environment(reminders)
         }
         .modelContainer(modelContainer)
     }

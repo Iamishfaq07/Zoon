@@ -54,6 +54,7 @@ extension View {
             .environment(PreviewSupport.preferences)
             .environment(NapStore.preview)
             .environment(SoundscapeEngine())
+            .environment(BedtimeReminder())
             .modelContainer(PreviewSupport.container)
             .preferredColorScheme(.dark)
     }

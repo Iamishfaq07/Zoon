@@ -15,6 +15,7 @@ final class UserPreferences {
         static let hasCompletedOnboarding = "zoon.pref.hasCompletedOnboarding"
         static let preferredEngine = "zoon.pref.preferredEngine"
         static let age = "zoon.pref.age"
+        static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
     }
 
     private let defaults: UserDefaults
@@ -28,6 +29,12 @@ final class UserPreferences {
 
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
+    }
+
+    /// Wind-down and bedtime notifications. Off until asked for — see
+    /// `BedtimeReminder.requestAuthorization`.
+    var bedtimeRemindersEnabled: Bool {
+        didSet { defaults.set(bedtimeRemindersEnabled, forKey: Key.bedtimeRemindersEnabled) }
     }
 
     /// Used only to estimate maximum heart rate, which sets the heart-rate
@@ -76,6 +83,7 @@ final class UserPreferences {
         let storedGoal = defaults.double(forKey: Key.sleepGoalMinutes)
         self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : 480
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
+        self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
         let storedAge = defaults.integer(forKey: Key.age)
         self.age = storedAge > 0 ? storedAge : nil
         self.preferredEngine = EngineChoice(
