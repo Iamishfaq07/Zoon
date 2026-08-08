@@ -151,6 +151,12 @@ struct SleepTabView: View {
                         }
                         .buttonStyle(.plain)
                         ChronotypeCard(chronotype: context.chronotype)
+                        if let clock = context.bodyClock {
+                            BodyClockCard(
+                                bodyClock: clock,
+                                plannedBedtime: context.targetBedtime()
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal)

@@ -271,15 +271,12 @@ struct ChronotypeCard: View {
 }
 
 /// Mock nights carry no HealthKit timeline, so previews graft one on.
+///
+/// Goes through `replacing(night:)` rather than rebuilding the context by
+/// hand: the hand-rolled version had to list every field, so adding one broke
+/// this file and only announced itself on a CI runner.
 private func withSegments(_ context: DayContext) -> DayContext {
     var night = context.night
     night.stageSegments = AppMockData.stageSegments(for: night)
-    return DayContext(
-        night: night, insight: context.insight, recovery: context.recovery,
-        sleepNeed: context.sleepNeed, sleepScore: context.sleepScore,
-        strain: context.strain, bodyBattery: context.bodyBattery,
-        vitals: context.vitals, hrvStatus: context.hrvStatus,
-        chronotype: context.chronotype, regularity: context.regularity,
-        healthRadar: context.healthRadar, cardiovascularAge: context.cardiovascularAge
-    )
+    return context.replacing(night: night)
 }

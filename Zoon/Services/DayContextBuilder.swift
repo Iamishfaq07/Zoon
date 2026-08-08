@@ -126,7 +126,8 @@ struct DayContextBuilder {
             healthRadar: HealthRadar.detect(nights: fullHistory),
             cardiovascularAge: CardiovascularAge.compute(
                 nights: fullHistory, chronologicalAge: inputs.age
-            )
+            ),
+            bodyClock: BodyClock.compute(nights: fullHistory)
         )
     }
 

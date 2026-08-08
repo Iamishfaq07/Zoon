@@ -22,9 +22,36 @@ struct DayContext: Equatable {
     let regularity: SleepRegularity
     let healthRadar: HealthRadar
     let cardiovascularAge: CardiovascularAge?
+    /// Habitual sleep window. Nil until there is any history at all.
+    let bodyClock: BodyClock?
 
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
+
+    /// A copy with a different night, everything else carried over.
+    ///
+    /// Exists so nothing outside this file has to spell out the full
+    /// initialiser. A memberwise call in a preview is a line that silently
+    /// needs editing every time a field is added here — which has already
+    /// broken the build once.
+    func replacing(night: SleepNightFeatures) -> DayContext {
+        DayContext(
+            night: night,
+            insight: insight,
+            recovery: recovery,
+            sleepNeed: sleepNeed,
+            sleepScore: sleepScore,
+            strain: strain,
+            bodyBattery: bodyBattery,
+            vitals: vitals,
+            hrvStatus: hrvStatus,
+            chronotype: chronotype,
+            regularity: regularity,
+            healthRadar: healthRadar,
+            cardiovascularAge: cardiovascularAge,
+            bodyClock: bodyClock
+        )
+    }
 
     /// Tonight's target bedtime: your usual wake time, minus tonight's need.
     ///
