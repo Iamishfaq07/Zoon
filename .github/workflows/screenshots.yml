@@ -1,0 +1,163 @@
+name: Screenshots
+
+# Boots an iOS Simulator on a GitHub-hosted macOS runner, installs Zoon, and
+# photographs every screen. Download the artifact to see the real app rendered
+# by real SwiftUI at real sizes — no Mac, no Apple ID, no certificates, no
+# money.
+#
+# This is also the only automated evidence that the app *launches*. The Build
+# workflow proves it compiles; a compiling app can still crash in
+# `ModelContainer(for:)` on first run. Here the process has to survive long
+# enough to draw a frame, and the run fails if it doesn't.
+#
+# Run it from the Actions tab (workflow_dispatch) rather than on every push:
+# it boots a simulator, which is slow, and macOS minutes bill at 10x on
+# private repos.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Simulator device name'
+        default: 'iPhone 17 Pro'
+        type: string
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    name: Capture screenshots
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    env:
+      BUNDLE_ID: com.zoon.sleep
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          # Resolve the device by name to a UDID. Runner images add and remove
+          # device models between releases, so a hard-coded UDID — or a name
+          # passed straight to xcodebuild — breaks silently later.
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json,sys
+          want = '''${{ inputs.device }}'''
+          data = json.load(sys.stdin)['devices']
+          for runtime, devices in sorted(data.items()):
+              for d in devices:
+                  if d['name'] == want:
+                      print(d['udid']); sys.exit(0)
+          # Nothing matched: fall back to the newest iPhone the image has, and
+          # say so, rather than failing over a renamed device model.
+          best = None
+          for runtime, devices in sorted(data.items()):
+              for d in devices:
+                  if d['name'].startswith('iPhone'):
+                      best = d
+          if best is None:
+              sys.exit('No iPhone simulator available on this runner.')
+          print(best['udid'], file=sys.stdout)
+          print('Falling back to ' + best['name'], file=sys.stderr)
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          # Freeze the status bar so screenshots are reproducible: without this
+          # the clock and battery differ on every run and every image shows as
+          # changed in a diff.
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 --wifiMode active --wifiBars 3
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+
+      - name: Install and capture
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          APP=$(find DerivedData/Build/Products -name 'Zoon.app' -maxdepth 3 | head -1)
+          if [ -z "$APP" ]; then echo "No Zoon.app in build products"; exit 1; fi
+          echo "Installing $APP"
+          xcrun simctl install "$UDID" "$APP"
+
+          mkdir -p screenshots
+
+          shoot() {
+            local tab="$1"
+            # --terminate-running-process so each tab gets a clean launch;
+            # the tab is chosen at launch (see LaunchOptions) rather than by
+            # driving the tab bar, which would need a UI-test target.
+            xcrun simctl launch --terminate-running-process "$UDID" \
+              "$BUNDLE_ID" -zoonDemo YES -zoonTab "$tab" > /dev/null
+
+            # SwiftUI needs a moment to lay out and run its entry animations.
+            # Polling for "the view is ready" isn't possible from outside the
+            # process without instrumenting the app, so this is a plain wait.
+            sleep 6
+
+            # If the app died on launch, simctl still returned 0 above — the
+            # missing process is the real signal.
+            if ! xcrun simctl spawn "$UDID" launchctl list | grep -q "$BUNDLE_ID"; then
+              echo "::error::Zoon is not running after launching tab '$tab' — it crashed on launch."
+              xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "Zoon"' \
+                --style compact | tail -60 || true
+              return 1
+            fi
+
+            xcrun simctl io "$UDID" screenshot "screenshots/${tab}.png"
+            echo "Captured $tab"
+          }
+
+          FAILED=0
+          for tab in today sleep trends journal more; do
+            shoot "$tab" || FAILED=1
+          done
+          exit $FAILED
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "### Screenshots"
+            echo ""
+            if [ -d screenshots ] && [ -n "$(ls -A screenshots 2>/dev/null)" ]; then
+              echo "Captured on \`${{ inputs.device }}\`:"
+              echo ""
+              for f in screenshots/*.png; do
+                echo "- \`$(basename "$f")\` ($(du -h "$f" | cut -f1))"
+              done
+              echo ""
+              echo "Download the **screenshots** artifact below to view them."
+            else
+              echo "No screenshots produced — see the log above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          retention-days: 30
+          if-no-files-found: warn

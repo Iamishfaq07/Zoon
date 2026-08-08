@@ -115,6 +115,15 @@ final class SleepDataCoordinator {
     // MARK: - Lifecycle
 
     func start() async {
+        // Screenshot/demo runs: no permission sheet, no queries, no waiting.
+        // Checked before availability because the Simulator *does* have a
+        // Health store, so the guard below wouldn't catch it.
+        guard !LaunchOptions.isDemo else {
+            logger.info("Demo launch argument — using mock data")
+            loadMockData()
+            return
+        }
+
         // Simulator and any device without Health: go straight to mock data so
         // the whole UI is explorable. This is the difference between a project
         // you can develop on a laptop and one that requires a phone for every
@@ -143,7 +152,10 @@ final class SleepDataCoordinator {
     /// Full pass: fetch, extract, persist, derive metrics, publish to widget.
     func refresh() async {
         guard !isRefreshing else { return }
-        guard HealthKitManager.isHealthDataAvailable else {
+        // Also guarded here: `refresh()` runs again on every foreground, and a
+        // demo session that quietly swapped to live data on the second
+        // activation would be worse than one that never started.
+        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else {
             loadMockData()
             return
         }

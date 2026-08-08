@@ -4,8 +4,14 @@ iOS apps can only be compiled on macOS. Xcode is macOS-only and there is no
 supported way around that on Windows or Linux — no cross-compiler, no emulator,
 no workaround. That is an Apple constraint, not a gap in this project.
 
-You do not, however, need to *own* a Mac. There are two separate problems, and
-they have different answers.
+You do not, however, need to *own* a Mac. There are three separate problems,
+and they have very different answers:
+
+| | Cost |
+|---|---|
+| **Compiling it** | Free. Works today. |
+| **Seeing it run** | Free. Works today. |
+| **Running it on your own iPhone, reading your real sleep** | $99/year. Unavoidable. |
 
 ---
 
@@ -45,13 +51,59 @@ allowance on builds nobody is waiting for.
 
 ---
 
-## Problem 2 — Running it on your iPhone
+## Problem 2 — Seeing it run (free, works today)
 
-This is the harder one, and it does cost money.
+`.github/workflows/screenshots.yml` boots an **iOS Simulator on the runner**,
+installs the app, launches it once per tab, and photographs each screen. Real
+SwiftUI, real layout, real sizes — not a mockup.
+
+### Using it
+
+1. **Actions** tab → **Screenshots** → **Run workflow**.
+2. Optionally change the device (default `iPhone 17 Pro`).
+3. When it finishes, download the **screenshots** artifact.
+
+The app is launched with `-zoonDemo YES`, which forces the mock dataset and
+skips HealthKit entirely — the Simulator has a Health store but no sleep data
+in it, and no one is there to tap the permission sheet. Every synthetic night
+is badged **Sample data** on screen, so a demo capture can't be mistaken for a
+real one.
+
+This run is also the only automated proof the app *launches*. Building proves
+it type-checks; it can still crash in `ModelContainer(for:)` on first run. The
+job checks the process is still alive before each screenshot and fails with the
+crash log if it isn't.
+
+**What it can't do:** it can't tap. Screens reachable only by interaction
+(sleep detail, soundscapes, nap timer, settings) aren't captured. Adding a
+UI-test target would fix that — worth doing if the top-level captures prove
+useful.
+
+---
+
+## Problem 3 — Running it on your iPhone
+
+This is the one that costs money.
 
 Installing an app on a physical iPhone requires a signed build. Signing requires
 an Apple Developer account, and getting the signed build onto the phone requires
 either a Mac with Xcode or TestFlight.
+
+### Why the free-signing route doesn't work here
+
+A free Apple ID gives you a **Personal Team**, which can sign an app for 7 days
+at a time — and on Windows, tools like Sideloadly and AltStore will do that
+signing and install for you, no Mac involved. That is a genuinely free path to
+getting an app on your phone.
+
+**It does not work for Zoon.** Personal Teams cannot use entitlement-backed
+capabilities, and **HealthKit is one of them** (so are App Groups, push
+notifications, iCloud, and Sign in with Apple). A free-signed Zoon would either
+be rejected at signing or install and then read nothing — an app showing you
+permanent sample data.
+
+Since reading your sleep *is* the app, this route is a dead end. Not a
+limitation worth working around; the capability is simply gated.
 
 ### Option A — TestFlight, driven from CI (no Mac at any point)
 
@@ -68,8 +120,8 @@ it can't be tested until the account and key exist.
 
 ### Option B — Rent a Mac by the hour
 
-Useful for interactive debugging, Simulator screenshots, and Instruments, which
-CI can't give you.
+Useful for interactive debugging and Instruments, which CI can't give you. (For
+screenshots, see Problem 2 — you don't need this.)
 
 - **[MacinCloud](https://www.macincloud.com/)** — from around \$1/hour or ~\$25/month
 - **[MacStadium](https://www.macstadium.com/)** — dedicated hardware, pricier
@@ -85,24 +137,28 @@ of Option B if you expect to keep working on this.
 
 ## What you can do with no Mac and no money
 
-- **Compile and fix errors** — Option 1, free, today.
-- **Read the code** — it's all here.
-- **See the design** — the HTML mockups render anywhere.
+- **Compile it**, and get every error listed — Problem 1.
+- **Run it and see it**, screen by screen — Problem 2.
+- **Confirm it launches without crashing** — Problem 2.
+- **Read the code.** It's all here.
 
 ## What you genuinely cannot do
 
-- **Run it on an iPhone** without the \$99/year developer account.
-- **Use the Simulator interactively** — CI builds, it doesn't let you tap around.
-- **Take real screenshots** — needs a running app, so needs a Mac or a rented one.
+- **Read your real sleep data** without the \$99/year account. HealthKit is
+  gated behind a paid team; free signing can't reach it.
+- **Use the Simulator interactively** — CI can screenshot, it can't let you tap.
+- **Run the widget with live data** — needs an App Group, also paid-only.
+- **Use TestFlight** — paid-only.
 
 ---
 
 ## Recommended order
 
-1. Push, let CI build, collect the errors.
-2. Fix until the build is green. This is the entire "does it work" question, and
-   it costs nothing.
-3. *Then* decide whether it's worth \$99/year to put it on your phone.
+1. Push, let CI build. Free.
+2. Run **Screenshots** and look at what you've got. Free.
+3. Iterate on 1 and 2 until the app is what you want. Still free.
+4. *Then* decide whether it's worth \$99/year to point it at your own sleep.
 
-Step 2 is the one that matters. Until the build is green, everything else is
-premature.
+Steps 1–3 are the whole development loop, and none of it costs anything. Step 4
+buys exactly one thing — real data on your own phone — and it's the last step,
+not the first.

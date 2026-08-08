@@ -185,15 +185,20 @@ CI also asserts that every Swift file on disk actually reached the compiler,
 and both `canImport` guards emit a `#warning` when their framework is missing —
 so a feature can't silently vanish behind a false `#if` and still report green.
 
-**It has never been run.** Compiling is not working. Everything below is
-untested at runtime, because that needs a Simulator, which needs macOS:
+**Runs in the Simulator** — the *Screenshots* workflow boots one on the runner,
+installs the app, and photographs each tab. It fails if the process isn't alive
+when the shutter fires, so a green run is proof the app launches, opens its
+SwiftData store, and draws. No Mac and no Apple account needed; see
+[BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
-- SwiftData container creation and the `SleepNightRecord` / `JournalEntry` schema
+Still unverified, because CI can screenshot but can't tap, and because nobody
+has run this against a real Health store:
+
+- Every HealthKit query against real samples, and the permission flow
 - The `AVAudioEngine` graph behind the soundscapes
-- Every HealthKit query against real samples
-- SwiftUI layout at real sizes, and every animation
-
-Treat the app as unverified until someone launches it.
+- Naps, settings, export, and the sleep detail screen — all reachable only by
+  interaction
+- Animations, and layout on device sizes other than the captured one
 
 ### Known gaps
 

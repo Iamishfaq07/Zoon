@@ -7,12 +7,25 @@ struct RootView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var selection: Tab = .today
+    @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialTab) ?? .today
     /// Set when a Control Center button asked for a specific screen.
     @State private var sleepPath = NavigationPath()
 
     enum Tab: Hashable {
         case today, sleep, trends, journal, more
+
+        /// Maps `-zoonTab <name>` onto a tab. `nil` for anything unrecognised,
+        /// so a typo in a CI script opens the default tab rather than failing.
+        init?(launchArgument: String?) {
+            switch launchArgument {
+            case "today": self = .today
+            case "sleep": self = .sleep
+            case "trends": self = .trends
+            case "journal": self = .journal
+            case "more": self = .more
+            default: return nil
+            }
+        }
     }
 
     var body: some View {

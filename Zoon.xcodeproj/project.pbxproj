@@ -85,6 +85,7 @@
 		F4912FC411860F03F63EB22F /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
 		F5DBED31BF40FC4B08D4D390 /* NapLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */; };
 		F7D50D4A2644F88D12CE6225 /* SleepDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */; };
+		FA872B4C4904465C3E1557A2 /* LaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49631B20B1506B60BDEB8FC7 /* LaunchOptions.swift */; };
 		FB653BDD763662866376DE9F /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		FC1D90B78CCBC21C380EB178 /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		FDDD9393A5532F86AFC33A2D /* FeatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE26528CE71795A222831C3 /* FeatureExtractor.swift */; };
@@ -142,6 +143,7 @@
 		4244633C56362A14F2ABE898 /* JournalEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalEntry.swift"; sourceTree = "<group>"; };
 		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		45237B7D4C6548BAEC55290F /* InsightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightCard.swift"; sourceTree = "<group>"; };
+		49631B20B1506B60BDEB8FC7 /* LaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchOptions.swift"; sourceTree = "<group>"; };
 		4CE26528CE71795A222831C3 /* FeatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureExtractor.swift"; sourceTree = "<group>"; };
 		4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HRVStatus.swift"; sourceTree = "<group>"; };
 		4EC1FF35F8179A094C3AB745 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme.swift"; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 				4CE26528CE71795A222831C3,
 				22668C3DACB2DCC8884CF14D,
 				796AF05941A49BBC5BC53802,
+				49631B20B1506B60BDEB8FC7,
 				7C1DB3776628821BCA9A8964,
 				B0E516994F630E303DD12E36,
 				7C5056DFADE6AA9868C543E9,
@@ -479,6 +482,7 @@
 				FDDD9393A5532F86AFC33A2D,
 				9715C5BD2335132F4F8AC6B5,
 				17F1F32ECCE94547CB95F327,
+				FA872B4C4904465C3E1557A2,
 				402487B4962F61C60243F542,
 				F7D50D4A2644F88D12CE6225,
 				AD04426F85852FA876D1783B,
