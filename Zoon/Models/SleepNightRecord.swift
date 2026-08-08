@@ -51,6 +51,13 @@ final class SleepNightRecord {
 
     var sourceName: String?
 
+    /// The night's stage timeline, JSON-encoded.
+    ///
+    /// A blob rather than a to-many relationship: it's only ever read whole to
+    /// draw the hypnogram, never queried into, and 30–80 child rows per night
+    /// would multiply the store for nothing.
+    var stageSegmentsData: Data?
+
     /// Cached insight so the dashboard and widget don't re-derive it on every
     /// launch. Regenerated whenever the night is re-processed.
     var insightSummary: String?
@@ -82,6 +89,7 @@ final class SleepNightRecord {
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         self.sourceName = features.sourceName
+        self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
         self.insightLikelyCause = insight?.likelyCause
         self.insightTip = insight?.actionableTip
@@ -113,6 +121,11 @@ final class SleepNightRecord {
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         sourceName = features.sourceName
+        // Only overwrite when the fresh extraction actually has a timeline —
+        // a re-sync that lost staging shouldn't erase a good hypnogram.
+        if !features.stageSegments.isEmpty {
+            stageSegmentsData = features.stageSegments.encoded
+        }
     }
 
     func apply(_ insight: SleepInsight) {
@@ -158,7 +171,8 @@ extension SleepNightRecord {
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: sourceName,
-            isMock: false
+            isMock: false,
+            stageSegments: [StageSegment].decode(stageSegmentsData)
         )
     }
 

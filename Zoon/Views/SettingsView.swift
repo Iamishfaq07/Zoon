@@ -1,39 +1,42 @@
 import SwiftUI
 
+/// Pushed from the More tab, so it supplies no `NavigationStack` of its own.
 struct SettingsView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
+    @Environment(NapStore.self) private var naps
 
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
         // Bindings are built by hand rather than with @Bindable because each
         // setter has to trigger a recompute, not just store a value.
-        NavigationStack {
-            Form {
-                goalSection
-                engineSection
-                privacySection
-                dataSection
-                aboutSection
+        Form {
+            goalSection
+            profileSection
+            engineSection
+            dataSection
+        }
+        .scrollContentBackground(.hidden)
+        .nightBackground()
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Delete all Zoon data?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Everything", role: .destructive) {
+                coordinator.deleteAllData()
+                naps.deleteAll()
             }
-            .navigationTitle("Settings")
-            .confirmationDialog(
-                "Delete all sleep history?",
-                isPresented: $showingDeleteConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Delete Everything", role: .destructive) {
-                    coordinator.deleteAllData()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("""
-                    This removes every night Zoon has stored on this device. \
-                    Your data in the Health app is untouched — Zoon only ever reads from it.
-                    """)
-            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("""
+                This removes every night, journal entry, and nap Zoon has stored on this device. \
+                Your data in the Health app is untouched — Zoon only ever reads from it.
+                """)
         }
     }
 
@@ -54,9 +57,10 @@ struct SettingsView: View {
                         get: { preferences.sleepGoalMinutes },
                         set: { newValue in
                             preferences.sleepGoalMinutes = newValue
-                            // Score and sleep debt are both measured against the
-                            // goal, so everything downstream needs recomputing.
-                            coordinator.recomputeDerivedValues()
+                            // Recovery, sleep need, score, and debt are all
+                            // measured against the goal, so everything
+                            // downstream needs recomputing.
+                            Task { await coordinator.recomputeDerivedValues() }
                         }
                     ),
                     in: 360...600,
@@ -66,7 +70,34 @@ struct SettingsView: View {
         } header: {
             Text("Sleep Goal")
         } footer: {
-            Text("Your score and sleep debt are measured against this, not a population average.")
+            Text("Your recovery score, sleep need, and debt are all measured against this — not a population average.")
+        }
+    }
+
+    private var profileSection: some View {
+        Section {
+            Picker(
+                "Age",
+                selection: Binding(
+                    get: { preferences.age ?? 0 },
+                    set: { newValue in
+                        preferences.age = newValue > 0 ? newValue : nil
+                        Task { await coordinator.recomputeDerivedValues() }
+                    }
+                )
+            ) {
+                Text("Not set").tag(0)
+                ForEach(16...90, id: \.self) { age in
+                    Text("\(age)").tag(age)
+                }
+            }
+        } header: {
+            Text("Profile")
+        } footer: {
+            Text("""
+                Used only to estimate your maximum heart rate, which sets the zones behind \
+                Strain and Body Battery. Nothing else reads it, and it never leaves the device.
+                """)
         }
     }
 
@@ -91,41 +122,10 @@ struct SettingsView: View {
         }
     }
 
-    /// The privacy pitch, stated plainly in the app rather than only in the
-    /// README. This is the product's core claim; it should be legible to the
-    /// person trusting it, not just to whoever reads the repo.
-    private var privacySection: some View {
-        Section {
-            PrivacyRow(
-                symbol: "wifi.slash",
-                title: "No network calls",
-                detail: "Zoon contains no networking code. Your sleep data cannot leave this device because there is nowhere for it to go."
-            )
-            PrivacyRow(
-                symbol: "iphone",
-                title: "Processed on device",
-                detail: "Feature extraction and every insight are computed locally."
-            )
-            PrivacyRow(
-                symbol: "eye.slash",
-                title: "Read-only access",
-                detail: "Zoon requests read permission only. It can never write to or modify your Health data."
-            )
-            PrivacyRow(
-                symbol: "person.crop.circle.badge.xmark",
-                title: "No account, no analytics",
-                detail: "No sign-in, no telemetry, no third-party SDKs."
-            )
-        } header: {
-            Text("Privacy")
-        }
-    }
-
     private var dataSection: some View {
         Section {
-            // recentNights is the 30-day window the charts read, not the whole
-            // store — labelled accordingly rather than implying a total.
-            LabeledContent("Nights in last 30 days", value: "\(coordinator.recentNights.count)")
+            LabeledContent("Nights recorded", value: "\(coordinator.recentNights.count)")
+            LabeledContent("Naps logged", value: "\(naps.naps.count)")
 
             if let last = coordinator.lastRefresh {
                 LabeledContent("Last updated") {
@@ -133,11 +133,16 @@ struct SettingsView: View {
                 }
             }
 
+            LabeledContent("Widget data") {
+                Text(AppGroup.isConfigured ? "Live" : "Sample only")
+                    .foregroundStyle(AppGroup.isConfigured ? .green : .secondary)
+            }
+
             Button("Refresh from Health") {
                 Task { await coordinator.refresh() }
             }
 
-            Button("Delete All Sleep History", role: .destructive) {
+            Button("Delete All Data", role: .destructive) {
                 showingDeleteConfirmation = true
             }
         } header: {
@@ -146,49 +151,11 @@ struct SettingsView: View {
             Text("Deleting removes Zoon's local copy only. Health keeps the originals.")
         }
     }
-
-    private var aboutSection: some View {
-        Section {
-            LabeledContent("Widget data") {
-                Text(AppGroup.isConfigured ? "Live" : "Sample only")
-                    .foregroundStyle(AppGroup.isConfigured ? .green : .secondary)
-            }
-            Text(SleepInsight.disclaimer)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } header: {
-            Text("About")
-        } footer: {
-            Text("“Zoon” means moon in Kashmiri.")
-        }
-    }
-}
-
-private struct PrivacyRow: View {
-    let symbol: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.body)
-                .foregroundStyle(.tint)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, 2)
-    }
 }
 
 #Preview("Settings") {
-    SettingsView()
-        .zoonPreviewEnvironment()
+    NavigationStack {
+        SettingsView()
+    }
+    .zoonPreviewEnvironment()
 }

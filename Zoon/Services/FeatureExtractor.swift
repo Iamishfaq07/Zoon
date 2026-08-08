@@ -102,7 +102,8 @@ struct FeatureExtractor {
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercisePrevious,
             sourceName: session.sourceName,
-            isMock: false
+            isMock: false,
+            stageSegments: session.segments
         )
 
         return Result(features: features, absoluteWristTempC: wristTemp)

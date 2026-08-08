@@ -104,6 +104,13 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// output. Views badge these so a Simulator screenshot is never mistaken for
     /// a real night.
     var isMock: Bool = false
+
+    /// The night's shape: every stage run in chronological order.
+    ///
+    /// Declared last with a default so it stays optional at every existing call
+    /// site. Empty is a legitimate value — sources without staging produce no
+    /// segments, and the hypnogram hides itself rather than drawing a flat line.
+    var stageSegments: [StageSegment] = []
 }
 
 // MARK: - Derived values

@@ -7,15 +7,15 @@ import os
 /// The one object views observe.
 ///
 /// Owns the pipeline end to end: HealthKit → sessions → features → SwiftData →
-/// insight → widget snapshot. Views read `state` and call `refresh()`; they know
-/// nothing about `HKQuery` or `ModelContext`.
+/// derived metrics → widget snapshot. Views read `state` and call `refresh()`;
+/// they know nothing about `HKQuery` or `ModelContext`.
 @MainActor
 @Observable
 final class SleepDataCoordinator {
 
     // MARK: - State
 
-    /// Explicit states, not `Optional<SleepNightFeatures>`.
+    /// Explicit states, not `Optional<DayContext>`.
     ///
     /// A nil-Optional cannot distinguish "still loading" from "permission
     /// denied" from "you genuinely didn't wear your watch", and since HealthKit
@@ -26,23 +26,16 @@ final class SleepDataCoordinator {
         case idle
         case loading
         /// Real data.
-        case loaded(SleepNightFeatures, SleepInsight)
+        case loaded(DayContext)
         /// Simulator or no HealthKit — synthetic data, badged in the UI.
-        case mock(SleepNightFeatures, SleepInsight)
+        case mock(DayContext)
         /// Queries ran fine, there was just nothing to find.
         case empty(reason: EmptyReason)
         case failed(String)
 
-        var features: SleepNightFeatures? {
+        var context: DayContext? {
             switch self {
-            case let .loaded(features, _), let .mock(features, _): features
-            default: nil
-            }
-        }
-
-        var insight: SleepInsight? {
-            switch self {
-            case let .loaded(_, insight), let .mock(_, insight): insight
+            case let .loaded(context), let .mock(context): context
             default: nil
             }
         }
@@ -80,7 +73,10 @@ final class SleepDataCoordinator {
     }
 
     private(set) var state: State = .idle
+    /// Stored history, oldest first — what the charts read.
     private(set) var recentNights: [SleepNightFeatures] = []
+    /// Recovery percent per night, for trends and the weekly report.
+    private(set) var recoveryHistory: [Date: Int] = [:]
     private(set) var lastRefresh: Date?
     private(set) var isRefreshing = false
 
@@ -88,32 +84,33 @@ final class SleepDataCoordinator {
 
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
+    let journal: JournalStore
     private let preferences: UserPreferences
     private let sessionBuilder = SleepSessionBuilder()
+    private let contextBuilder = DayContextBuilder()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Coordinator")
 
-    /// Swapped in Settings. `RuleBasedInsightEngine` is the only one that
-    /// currently produces output; see `LocalLLMInsightEngine`.
     private var engine: any SleepInsightEngine
 
-    /// How far back the initial backfill reaches. 30 nights is enough to make
-    /// the 30-day charts meaningful on day one without a slow first launch.
-    private let backfillDays = 30
+    /// How far back the initial backfill reaches. 90 nights makes the HRV status
+    /// baseline reachable on first launch rather than three months from now.
+    private let backfillDays = 90
 
     init(
         healthKit: HealthKitManager,
         store: SleepHistoryStore,
+        journal: JournalStore,
         preferences: UserPreferences
     ) {
         self.healthKit = healthKit
         self.store = store
+        self.journal = journal
         self.preferences = preferences
         self.engine = RuleBasedInsightEngine()
     }
 
     // MARK: - Lifecycle
 
-    /// Called once on launch.
     func start() async {
         // Simulator and any device without Health: go straight to mock data so
         // the whole UI is explorable. This is the difference between a project
@@ -128,13 +125,11 @@ final class SleepDataCoordinator {
         do {
             try await healthKit.requestAuthorization()
         } catch {
-            // A thrown error here is a real failure (Health unavailable, entitlement
-            // missing) — user denial does NOT throw, it succeeds silently.
+            // A thrown error here is a real failure (Health unavailable,
+            // entitlement missing) — user denial does NOT throw.
             logger.error("Authorization request failed: \(error.localizedDescription, privacy: .public)")
         }
 
-        // Register the observer every launch: observer queries don't survive
-        // process death, and background delivery relaunches us expecting one.
         healthKit.startObservingSleep { [weak self] in
             await self?.refresh()
         }
@@ -142,7 +137,7 @@ final class SleepDataCoordinator {
         await refresh()
     }
 
-    /// Full pass: fetch, extract, persist, derive insight, publish to widget.
+    /// Full pass: fetch, extract, persist, derive metrics, publish to widget.
     func refresh() async {
         guard !isRefreshing else { return }
         guard HealthKitManager.isHealthDataAvailable else {
@@ -161,9 +156,6 @@ final class SleepDataCoordinator {
                 end: .now
             )
 
-            // Anchored query for the incremental path. On first run the anchor is
-            // nil and this returns the whole window; afterwards it returns only
-            // what changed, which is what makes a background wake-up cheap.
             let anchor = AnchorStore.load()
             let result = try await healthKit.fetchSleepSamples(since: anchor, window: window)
             AnchorStore.save(result.anchor)
@@ -181,13 +173,13 @@ final class SleepDataCoordinator {
                 }
             }
 
-            publishLatest()
+            await publishLatest()
             lastRefresh = .now
         } catch {
             logger.error("Refresh failed: \(error.localizedDescription, privacy: .public)")
             // Don't blow away good data on a transient query failure — an error
             // banner over yesterday's night beats an empty screen.
-            if state.features == nil {
+            if state.context == nil {
                 state = .failed(error.localizedDescription)
             }
         }
@@ -198,10 +190,8 @@ final class SleepDataCoordinator {
     /// Rebuilds every session in the window and upserts each one.
     ///
     /// Session building stays on the main actor even though it's pure
-    /// computation: `HKCategorySample` is not `Sendable`, so handing the array to
-    /// a detached task is a concurrency violation under strict checking. The
-    /// work is a sort and a linear sweep over a few hundred samples — well under
-    /// a frame, and it only runs when HealthKit reports a change.
+    /// computation: `HKCategorySample` is not `Sendable`, so handing the array
+    /// to a detached task is a concurrency violation under strict checking.
     private func processSessions(from samples: [HKCategorySample]) async {
         let sessions = sessionBuilder.buildSessions(from: samples)
         guard !sessions.isEmpty else { return }
@@ -209,23 +199,19 @@ final class SleepDataCoordinator {
         let extractor = FeatureExtractor(healthKit: healthKit)
         let goal = preferences.sleepGoalMinutes
 
-        // Oldest first: each night's baseline is drawn from the nights before it,
-        // so they must land in the store in chronological order.
+        // Oldest first: each night's baseline is drawn from the nights before
+        // it, so they must land in the store in chronological order.
         for session in sessions {
             let nightDate = Calendar.current.startOfDay(for: session.end)
             let baseline = store.baseline(for: nightDate, goalMinutes: goal)
             let result = await extractor.extract(from: session, baseline: baseline)
-
-            // The absolute wrist temperature is persisted unconditionally, even
-            // on nights that produced no delta — it's what future baselines are
-            // built from.
             store.upsert(result.features, absoluteWristTempC: result.absoluteWristTempC)
         }
     }
 
-    /// Reads the newest stored night back out, derives an insight, updates state
+    /// Reads the newest stored night back out, derives everything, updates state
     /// and hands a snapshot to the widget.
-    private func publishLatest() {
+    private func publishLatest() async {
         let goal = preferences.sleepGoalMinutes
 
         guard let record = store.latestNight else {
@@ -235,16 +221,135 @@ final class SleepDataCoordinator {
         }
 
         let baseline = store.baseline(for: record.date, goalMinutes: goal)
-        let features = record.features(baseline: baseline)
-        let insight = engine.generate(for: features, baseline: baseline, goalMinutes: goal)
-
+        let night = record.features(baseline: baseline)
+        let insight = engine.generate(for: night, baseline: baseline, goalMinutes: goal)
         store.attach(insight, to: record)
 
-        state = .loaded(features, insight)
-        recentNights = store.nights(inLast: 30).map { $0.features(baseline: baseline) }
+        // History for trends and for every rolling baseline, oldest first,
+        // excluding tonight.
+        let history = store.allNights()
+            .map { $0.features(baseline: baseline) }
+            .filter { $0.date < night.date }
+            .sorted { $0.date < $1.date }
 
-        let score = SleepScore.compute(for: features, goalMinutes: goal)
-        SnapshotStore.write(SleepSnapshot(features: features, score: score, insight: insight, goalMinutes: goal))
+        let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
+        let restingHR = history.compactMap(\.minHeartRate).last ?? night.minHeartRate ?? 60
+
+        let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
+            wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
+        )
+
+        let context = contextBuilder.build(.init(
+            night: night,
+            insight: insight,
+            history: history,
+            goalMinutes: goal,
+            yesterdayStrain: yesterdayStrain,
+            todayStrain: todayStrain,
+            hourlyHeartRate: hourly,
+            maxHeartRate: maxHR,
+            napMinutes: 0,
+            bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes
+        ))
+
+        state = .loaded(context)
+        recentNights = history + [night]
+        rebuildRecoveryHistory(goal: goal)
+        publishSnapshot(context, goal: goal)
+    }
+
+    /// Today's and yesterday's strain plus today's hourly heart rate.
+    ///
+    /// Failures degrade to zero rather than propagating: a missing activity
+    /// query should cost you the strain ring, not the entire screen.
+    private func loadActivity(
+        wakeTime: Date,
+        restingHR: Double,
+        maxHR: Double
+    ) async -> (today: StrainScore, yesterday: StrainScore, hourly: [(date: Date, bpm: Double)]) {
+
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: .now)
+        let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+
+        async let todayTask = strain(
+            in: DateInterval(start: todayStart, end: .now), restingHR: restingHR, maxHR: maxHR
+        )
+        async let yesterdayTask = strain(
+            in: DateInterval(start: yesterdayStart, end: todayStart), restingHR: restingHR, maxHR: maxHR
+        )
+
+        let today = await todayTask
+        let yesterday = await yesterdayTask
+
+        let hourly = (try? await healthKit.hourlyHeartRate(
+            in: DateInterval(start: min(wakeTime, .now), end: .now)
+        )) ?? []
+
+        return (today, yesterday, hourly)
+    }
+
+    private func strain(in interval: DateInterval, restingHR: Double, maxHR: Double) async -> StrainScore {
+        guard interval.duration > 0 else { return .zero }
+
+        let energy = (try? await healthKit.sum(.activeEnergyBurned, unit: .kilocalorie(), in: interval)) ?? nil
+        let exercise = (try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)) ?? nil
+
+        guard let result = try? await healthKit.heartRateZones(
+            in: interval, restingHeartRate: restingHR, maxHeartRate: maxHR
+        ), !result.zones.isEmpty, result.coverage >= 0.4 else {
+            // Thin heart-rate coverage — fall back to the energy estimate and
+            // let the UI say so rather than presenting a confident wrong number.
+            return .estimate(activeEnergyKcal: energy ?? 0, exerciseMinutes: exercise ?? 0)
+        }
+
+        return .compute(
+            zoneMinutes: result.zones,
+            activeEnergyKcal: energy,
+            hasHeartRateCoverage: true
+        )
+    }
+
+    /// Recomputes recovery for every stored night, for trends and the report.
+    ///
+    /// Each night is scored against the 30 nights *before it*, not against
+    /// today's baseline — otherwise a night from six weeks ago would be judged
+    /// by a body that didn't exist yet.
+    private func rebuildRecoveryHistory(goal: Double) {
+        var result: [Date: Int] = [:]
+        let nights = recentNights
+
+        for (index, night) in nights.enumerated() {
+            let prior = Array(nights[..<index].suffix(DayContextBuilder.recoveryBaselineWindow))
+            guard prior.count >= RecoveryScore.minimumBaselineNights else { continue }
+
+            let baseline = RecoveryBaseline(
+                hrv: mean(prior.compactMap(\.avgHRV)),
+                restingHeartRate: mean(prior.compactMap(\.minHeartRate)),
+                respiratoryRate: mean(prior.compactMap(\.avgRespiratoryRate)),
+                wristTemperature: mean(prior.compactMap(\.wristTempDeltaC)),
+                nightCount: prior.count
+            )
+            let performance = min(100, night.timeAsleepMinutes / max(goal, 1) * 100)
+            result[night.date] = RecoveryScore.compute(
+                features: night, baseline: baseline, sleepPerformance: performance
+            ).percent
+        }
+
+        recoveryHistory = result
+    }
+
+    private func publishSnapshot(_ context: DayContext, goal: Double) {
+        SnapshotStore.write(SleepSnapshot(
+            features: context.night,
+            score: context.sleepScore,
+            insight: context.insight,
+            goalMinutes: goal,
+            recoveryPercent: context.recovery.percent,
+            bodyBattery: context.bodyBattery.current,
+            strain: context.strain.value,
+            sleepPerformance: context.sleepNeed.performancePercent
+        ))
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -252,64 +357,110 @@ final class SleepDataCoordinator {
 
     /// Populates every observable property from `MockData`.
     ///
-    /// Used in the Simulator and in previews. Deliberately runs the *real*
-    /// insight engine over the *real* score computation — only the input samples
-    /// are synthetic, so a bug in the rules still shows up on a laptop.
+    /// Deliberately runs the *real* builders over synthetic inputs, so a bug in
+    /// a scoring formula still shows up on a laptop.
     func loadMockData() {
         let goal = preferences.sleepGoalMinutes
-        let features = MockData.goodNight
-        let baseline = RollingBaseline(
-            hrv7DayAvg: features.hrv7DayAvg,
-            sleepDebtMinutes14Day: features.sleepDebtMinutes14Day,
-            deep7DayAvg: 74,
-            duration7DayAvg: 421,
-            efficiency7DayAvg: 89,
-            minHeartRate7DayAvg: 52,
-            wristTempBaselineC: 35.1,
-            bedtimeConsistencyMinutes: 38,
-            sampleCount: 7
-        )
-        let insight = engine.generate(for: features, baseline: baseline, goalMinutes: goal)
+        let night = MockData.goodNight
+        let history = MockData.history.filter { $0.date < night.date }
 
-        state = .mock(features, insight)
+        let context = contextBuilder.build(.init(
+            night: night,
+            insight: engine.generate(for: night, baseline: AppMockData.baseline, goalMinutes: goal),
+            history: history,
+            goalMinutes: goal,
+            yesterdayStrain: MockData.yesterdayStrain,
+            todayStrain: MockData.todayStrain,
+            hourlyHeartRate: MockData.hourlyHeartRate(wakeTime: night.wakeTime),
+            maxHeartRate: 185,
+            napMinutes: 0,
+            bedtimeConsistencyMinutes: 38
+        ))
+
+        state = .mock(context)
         recentNights = MockData.history
+        rebuildRecoveryHistory(goal: goal)
         lastRefresh = .now
     }
 
-    // MARK: - Settings actions
+    // MARK: - Actions
 
     func setEngine(_ choice: UserPreferences.EngineChoice) {
         switch choice {
         case .ruleBased:
             engine = RuleBasedInsightEngine()
         case .localLLM:
-            // Composed with the rule engine as fallback, so selecting the model
-            // can never leave the user with a blank card — see the wrapper's docs.
             engine = LocalLLMInsightEngine(fallback: RuleBasedInsightEngine())
         }
         preferences.preferredEngine = choice
-        publishLatestIfPossible()
+        Task { await recomputeDerivedValues() }
     }
 
-    /// Recomputes everything after a settings change that affects derived values
-    /// (sleep goal in particular — it feeds score and sleep debt).
-    func recomputeDerivedValues() {
-        publishLatestIfPossible()
-    }
-
-    private func publishLatestIfPossible() {
+    /// Recomputes everything after a settings change that affects derived
+    /// values (the sleep goal feeds score, sleep need, and debt).
+    func recomputeDerivedValues() async {
         if state.isMock || !HealthKitManager.isHealthDataAvailable {
             loadMockData()
         } else {
-            publishLatest()
+            await publishLatest()
         }
     }
 
-    /// Deletes every stored night. Wired to Settings → Delete all data.
     func deleteAllData() {
         store.deleteAll()
+        journal.deleteAll()
         state = .empty(reason: .noSleepData)
         recentNights = []
+        recoveryHistory = [:]
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    // MARK: - Derived views of history
+
+    /// Journal observations joined to outcomes, for the correlation engine.
+    func journalObservations() -> [JournalCorrelator.Observation] {
+        let entries = journal.allEntries()
+        let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
+        let goal = preferences.sleepGoalMinutes
+
+        return recentNights.compactMap { night in
+            guard let tags = tagsByDate[night.date], !tags.isEmpty else { return nil }
+            return JournalCorrelator.Observation(
+                date: night.date,
+                tags: tags,
+                recoveryPercent: recoveryHistory[night.date].map(Double.init),
+                sleepPerformance: min(100, night.timeAsleepMinutes / max(goal, 1) * 100),
+                deepMinutes: night.hasStageBreakdown ? night.deepMinutes : nil,
+                remMinutes: night.hasStageBreakdown ? night.remMinutes : nil,
+                efficiency: night.sleepEfficiencyPercent,
+                wakeCount: Double(night.wakeCount)
+            )
+        }
+    }
+
+    /// This week vs last week.
+    func weeklyReport() -> WeeklyReport? {
+        guard recentNights.count >= 3 else { return nil }
+        let calendar = Calendar.current
+        let cutoff = calendar.date(byAdding: .day, value: -7, to: .now) ?? .now
+        let previousCutoff = calendar.date(byAdding: .day, value: -14, to: .now) ?? .now
+
+        let thisWeek = recentNights.filter { $0.date >= cutoff }
+        let lastWeek = recentNights.filter { $0.date >= previousCutoff && $0.date < cutoff }
+        guard !thisWeek.isEmpty else { return nil }
+
+        return WeeklyReport.build(
+            nights: thisWeek,
+            recoveries: recoveryHistory,
+            previousNights: lastWeek,
+            previousRecoveries: recoveryHistory,
+            goalMinutes: preferences.sleepGoalMinutes,
+            consistencyMinutes: state.context?.chronotype.consistencyMinutes
+        )
+    }
+
+    private func mean(_ values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Double(values.count)
     }
 }

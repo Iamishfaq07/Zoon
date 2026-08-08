@@ -15,7 +15,10 @@ enum PreviewSupport {
     static let container: ModelContainer = {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
-            return try ModelContainer(for: SleepNightRecord.self, configurations: configuration)
+            return try ModelContainer(
+                for: SleepNightRecord.self, JournalEntry.self,
+                configurations: configuration
+            )
         } catch {
             // A preview container that can't be built is a programmer error in
             // the schema, and there's no graceful degradation worth having here.
@@ -30,10 +33,10 @@ enum PreviewSupport {
 
     /// Coordinator pre-loaded with mock data.
     static var coordinator: SleepDataCoordinator {
-        let store = SleepHistoryStore(context: container.mainContext)
         let coordinator = SleepDataCoordinator(
             healthKit: HealthKitManager(),
-            store: store,
+            store: SleepHistoryStore(context: container.mainContext),
+            journal: JournalStore(context: container.mainContext),
             preferences: preferences
         )
         coordinator.loadMockData()
@@ -48,6 +51,9 @@ extension View {
         self
             .environment(PreviewSupport.coordinator)
             .environment(PreviewSupport.preferences)
+            .environment(NapStore.preview)
+            .environment(SoundscapeEngine())
             .modelContainer(PreviewSupport.container)
+            .preferredColorScheme(.dark)
     }
 }

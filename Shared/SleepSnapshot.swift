@@ -18,6 +18,15 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     let goalMinutes: Double
     let insightSummary: String
     let generatedAt: Date
+
+    /// Added after the first release. Defaulted so a snapshot written by an
+    /// older build still decodes — the widget must never fail to render because
+    /// the app hasn't been relaunched since an update.
+    var recoveryPercent: Int = 0
+    var bodyBattery: Int = 0
+    var strain: Double = 0
+    var sleepPerformance: Double = 0
+
     var isMock: Bool = false
 
     /// Sleep debt expressed in hours, which is how the widget phrases it.
@@ -38,7 +47,16 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
 
 extension SleepSnapshot {
 
-    init(features: SleepNightFeatures, score: SleepScore, insight: SleepInsight, goalMinutes: Double) {
+    init(
+        features: SleepNightFeatures,
+        score: SleepScore,
+        insight: SleepInsight,
+        goalMinutes: Double,
+        recoveryPercent: Int = 0,
+        bodyBattery: Int = 0,
+        strain: Double = 0,
+        sleepPerformance: Double = 0
+    ) {
         self.date = features.date
         self.score = score.value
         self.scoreBand = score.band.label
@@ -47,6 +65,10 @@ extension SleepSnapshot {
         self.goalMinutes = goalMinutes
         self.insightSummary = insight.summary
         self.generatedAt = .now
+        self.recoveryPercent = recoveryPercent
+        self.bodyBattery = bodyBattery
+        self.strain = strain
+        self.sleepPerformance = sleepPerformance
         self.isMock = features.isMock
     }
 }

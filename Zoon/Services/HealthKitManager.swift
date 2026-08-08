@@ -272,6 +272,124 @@ final class HealthKitManager {
         }
     }
 
+    // MARK: - Intraday series
+
+    /// Mean heart rate per hour across an interval.
+    ///
+    /// `HKStatisticsCollectionQuery` is the right tool here: asking for raw
+    /// samples across a day returns thousands of them and we'd bucket them
+    /// ourselves anyway. HealthKit does the bucketing in its own store, which is
+    /// dramatically faster and uses a fraction of the memory.
+    ///
+    /// Hours with no coverage are **omitted**, never zero-filled. A watch on the
+    /// charger is not a resting hour, and Body Battery would happily "charge"
+    /// through it if we pretended otherwise.
+    func hourlyHeartRate(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
+        try await hourlySeries(
+            .heartRate,
+            unit: .beatsPerMinute,
+            options: .discreteAverage,
+            interval: interval
+        ) { $0.averageQuantity() }
+    }
+
+    /// Active energy burned per hour, for the strain estimate fallback.
+    func hourlyActiveEnergy(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
+        try await hourlySeries(
+            .activeEnergyBurned,
+            unit: .kilocalorie(),
+            options: .cumulativeSum,
+            interval: interval
+        ) { $0.sumQuantity() }
+    }
+
+    private func hourlySeries(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        options: HKStatisticsOptions,
+        interval: DateInterval,
+        extract: @escaping @Sendable (HKStatistics) -> HKQuantity?
+    ) async throws -> [(date: Date, bpm: Double)] {
+
+        let type = HKQuantityType(identifier)
+        let predicate = HKQuery.predicateForSamples(withStart: interval.start, end: interval.end)
+
+        // Anchor on the hour so buckets line up with wall-clock hours rather
+        // than with whatever minute the query happened to run.
+        let anchorDate = Calendar.current.dateInterval(of: .hour, for: interval.start)?.start ?? interval.start
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: options,
+                anchorDate: anchorDate,
+                intervalComponents: DateComponents(hour: 1)
+            )
+
+            query.initialResultsHandler = { _, collection, error in
+                if let error {
+                    if (error as? HKError)?.code == .errorNoData {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
+                guard let collection else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                var results: [(date: Date, bpm: Double)] = []
+                collection.enumerateStatistics(from: interval.start, to: interval.end) { statistics, _ in
+                    if let quantity = extract(statistics) {
+                        results.append((date: statistics.startDate, bpm: quantity.doubleValue(for: unit)))
+                    }
+                }
+                continuation.resume(returning: results)
+            }
+
+            store.execute(query)
+        }
+    }
+
+    /// Minutes spent in each heart-rate zone across an interval.
+    ///
+    /// Zones are defined on **heart-rate reserve** (Karvonen) rather than raw
+    /// percentage of max, because HRR accounts for the user's own resting rate.
+    /// Two people with the same max but a 20bpm difference in resting HR are not
+    /// working equally hard at 140bpm, and a %max model says they are.
+    ///
+    /// Built from hourly means, so it's an approximation: an hour containing a
+    /// 20-minute interval session averages out to something moderate. It's
+    /// directionally right and it's what's cheaply available; the UI flags
+    /// strain as an estimate whenever coverage is thin.
+    func heartRateZones(
+        in interval: DateInterval,
+        restingHeartRate: Double,
+        maxHeartRate: Double
+    ) async throws -> (zones: [StrainScore.Zone: Double], coverage: Double) {
+
+        let hourly = try await hourlyHeartRate(in: interval)
+        guard !hourly.isEmpty else { return ([:], 0) }
+
+        let reserve = max(20, maxHeartRate - restingHeartRate)
+        var zones: [StrainScore.Zone: Double] = [:]
+
+        for sample in hourly {
+            let hrr = (sample.bpm - restingHeartRate) / reserve
+            // Highest zone whose lower bound is cleared.
+            guard let zone = StrainScore.Zone.allCases
+                .filter({ hrr >= $0.lowerBoundHRR })
+                .max(by: { $0.lowerBoundHRR < $1.lowerBoundHRR }) else { continue }
+            zones[zone, default: 0] += 60
+        }
+
+        let expectedHours = max(1, interval.duration / 3600)
+        return (zones, min(1, Double(hourly.count) / expectedHours))
+    }
+
     // MARK: - Workouts
 
     /// The most recent workout ending before `date`, within the preceding 24h.

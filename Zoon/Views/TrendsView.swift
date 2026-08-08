@@ -27,7 +27,7 @@ struct TrendsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: ZoonStyle.stackSpacing) {
+                VStack(spacing: Theme.stackSpacing) {
                     if nights.count < 2 {
                         notEnoughData
                     } else {
@@ -39,7 +39,7 @@ struct TrendsView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .nightBackground()
             .navigationTitle("Trends")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -331,7 +331,7 @@ struct ChartCard<Content: View>: View {
                 .frame(height: 170)
                 .padding(.top, 6)
         }
-        .zoonCard()
+        .glassCard()
     }
 }
 
@@ -352,5 +352,5 @@ struct ChartCard<Content: View>: View {
         }
         .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .nightBackground()
 }

@@ -15,6 +15,8 @@ struct ZoonApp: App {
 
     @State private var coordinator: SleepDataCoordinator
     @State private var preferences: UserPreferences
+    @State private var naps: NapStore
+    @State private var soundscape: SoundscapeEngine
 
     init() {
         let preferences = UserPreferences()
@@ -32,7 +34,10 @@ struct ZoonApp: App {
 
         let container: ModelContainer
         do {
-            container = try ModelContainer(for: SleepNightRecord.self, configurations: configuration)
+            container = try ModelContainer(
+                for: SleepNightRecord.self, JournalEntry.self,
+                configurations: configuration
+            )
         } catch {
             // An unopenable store means a schema the app can't read. There is no
             // safe partial mode here, and silently falling back to in-memory
@@ -46,10 +51,13 @@ struct ZoonApp: App {
         // @State properties must be seeded through their storage in init, not
         // assigned directly.
         _preferences = State(initialValue: preferences)
+        _naps = State(initialValue: NapStore())
+        _soundscape = State(initialValue: SoundscapeEngine())
         _coordinator = State(
             initialValue: SleepDataCoordinator(
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
+                journal: JournalStore(context: container.mainContext),
                 preferences: preferences
             )
         )
@@ -60,7 +68,8 @@ struct ZoonApp: App {
             RootView()
                 .environment(coordinator)
                 .environment(preferences)
-                .tint(.indigo)
+                .environment(naps)
+                .environment(soundscape)
         }
         .modelContainer(modelContainer)
     }

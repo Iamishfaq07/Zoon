@@ -35,28 +35,56 @@ It behaves identically.
 
 ## What it does
 
-**Dashboard** — last night's duration, sleep score, efficiency, HRV, and a
-one-line causal read. Stage breakdown for Deep/REM/Core/Awake with typical-range
-markers. Overnight vitals when your watch recorded them.
+Zoon borrows the metrics that each of the big platforms does best, and computes
+all of them locally.
 
-**Trends** — 7- and 30-day charts for duration vs goal, HRV, accumulated sleep
-debt, and schedule consistency (the bedtime/wake-time chart is the one most
-people find genuinely actionable).
+### Today
+- **Recovery %** (Whoop-style) — HRV and resting HR against *your own* 30-day
+  baseline, plus sleep performance and respiratory stability. Shows its working:
+  every input is broken out with its deviation from baseline.
+- **Strain 0–21** (Whoop-style) — heart-rate-zone load on a logarithmic scale, so
+  16→18 reads as much harder than 8→10. Paired with recovery, because strain
+  alone is a vanity metric.
+- **Body Battery** (Garmin-style) — an energy reserve that charges overnight and
+  drains hour by hour with heart rate. The most legible number in the app.
+- **Vitals** (Apple Health iOS 18-style) — six overnight metrics checked against
+  your personal typical range, flagging outliers without ever implying diagnosis.
+- **HRV Status** (Garmin-style) — the last week against a 90-day baseline:
+  balanced, unbalanced, low, or poor.
 
-**Insights** — a rule engine that makes *causal* claims when the data supports
-one:
+### Sleep
+- **Hypnogram** — the full stage timeline, drawn in `Canvas` with connective
+  risers so the night reads as one continuous trace.
+- **Sleep Need** (Whoop-style) — baseline + debt payback + yesterday's strain −
+  nap credit, as a stacked bar against what you actually slept.
+- **Sleep sounds** — seven soundscapes **synthesised in real time**: brown, pink
+  and white noise, rain, ocean, wind, fan. No audio files, no download, no loop
+  seam. Sleep timer fades over the final minute rather than cutting.
+- **Naps** — timer with sleep-architecture-aware presets; logged naps credit
+  against tonight's need.
+- **Bedtime countdown** — the time to be asleep by, derived from your own wake
+  pattern and tonight's need.
+- **Chronotype** (Fitbit-style) — lion, bear, wolf, or dolphin from habitual
+  timing.
 
-> Deep sleep was down 24% (56 min vs your usual 74). Your last workout ended
-> about 1.2h before bed — hard training that close keeps core body temperature
-> and adrenaline up, and deep sleep is the first thing to suffer.
+### Trends & Journal
+- 7/30-day charts for duration, HRV, accumulated debt, and schedule consistency
+  (bedtimes plotted with circular statistics, so 23:50 and 00:10 sit next to each
+  other rather than a day apart).
+- **Journal** (Whoop-style) — 23 tagged behaviours across four categories, and a
+  correlation engine that reports what actually tracks with better nights. It
+  refuses to call anything a pattern without enough tagged *and* untagged nights,
+  and it says "pattern", never "cause".
+- **Weekly report** (Whoop/Garmin-style) — averages, week-over-week trends,
+  narrative highlights, best and worst night.
 
-and stays quiet when it doesn't. `likelyCause` is `nil` unless a rule actually
-fired against real evidence.
-
-**Widgets** — lock-screen and home-screen. Sleep debt as a "bank balance", plus
-last night's score.
-
----
+### Everything else
+- Lock-screen and home-screen **widgets**
+- **Streaks** and goal-met counts, kept modest — a streak that punishes one bad
+  night is actively harmful in a sleep app
+- **Export** to JSON (complete, re-importable) or CSV (one row per night)
+- Insight engine written as a protocol with a complete rule-based implementation
+  and a local-LLM stub
 
 ## Architecture
 

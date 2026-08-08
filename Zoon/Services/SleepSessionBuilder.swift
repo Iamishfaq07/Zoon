@@ -123,6 +123,17 @@ struct SleepSessionBuilder {
         let asleepIntervals = SleepStage.asleepStages.flatMap { merged[$0] ?? [] }
         let mergedAsleep = Self.mergeOverlapping(asleepIntervals)
 
+        // Chronological timeline for the hypnogram. Built from the *merged*
+        // per-stage intervals so duplicate-source overlap is already gone, then
+        // flattened and sorted. `inBed` is excluded — it spans the whole night
+        // and would draw as a bar behind everything else.
+        let segments = merged
+            .filter { $0.key != .inBed }
+            .flatMap { stage, intervals in
+                intervals.map { StageSegment(stage: stage, start: $0.start, end: $0.end) }
+            }
+            .sorted { $0.start < $1.start }
+
         return SleepSession(
             start: start,
             end: end,
@@ -130,6 +141,7 @@ struct SleepSessionBuilder {
             asleepIntervals: mergedAsleep,
             inBedIntervals: merged[.inBed] ?? [],
             awakeIntervals: merged[.awake] ?? [],
+            segments: segments,
             sourceName: samples.first?.sourceRevision.source.name
         )
     }
@@ -170,6 +182,8 @@ struct SleepSession {
     let asleepIntervals: [DateInterval]
     let inBedIntervals: [DateInterval]
     let awakeIntervals: [DateInterval]
+    /// Chronological stage timeline, overlap already merged. Drives the hypnogram.
+    let segments: [StageSegment]
     let sourceName: String?
 
     var timeInBed: TimeInterval { end.timeIntervalSince(start) }
@@ -205,21 +219,16 @@ struct SleepSession {
     }
 }
 
-// MARK: - Stage
+// MARK: - Stage mapping
 
-/// Swift-native mirror of `HKCategoryValueSleepAnalysis`.
+/// HealthKit raw-value mapping for `SleepStage`.
 ///
-/// Wrapping the raw values keeps the "did you remember `asleepUnspecified`?"
-/// question in exactly one place instead of at every switch site.
-enum SleepStage: String, Codable, Hashable, CaseIterable, Sendable {
-    case inBed
-    case awake
-    case core
-    case deep
-    case rem
-    /// Sleep with no stage detail — what non-Watch sources write.
-    case unspecified
-
+/// The stage vocabulary itself lives in `Shared/SleepStage.swift` so the widget
+/// and the hypnogram renderer can use it without importing HealthKit. Only this
+/// mapping is HealthKit-specific, and keeping it in one place is what stops the
+/// "did you remember `asleepUnspecified`?" question from recurring at every
+/// switch site.
+extension SleepStage {
     init?(sampleValue: Int) {
         switch sampleValue {
         case HKCategoryValueSleepAnalysis.inBed.rawValue: self = .inBed
@@ -229,20 +238,6 @@ enum SleepStage: String, Codable, Hashable, CaseIterable, Sendable {
         case HKCategoryValueSleepAnalysis.asleepREM.rawValue: self = .rem
         case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue: self = .unspecified
         default: return nil
-        }
-    }
-
-    /// Every value that counts as sleep. `inBed` and `awake` are not sleep.
-    static let asleepStages: [SleepStage] = [.core, .deep, .rem, .unspecified]
-
-    var displayName: String {
-        switch self {
-        case .inBed: "In Bed"
-        case .awake: "Awake"
-        case .core: "Core"
-        case .deep: "Deep"
-        case .rem: "REM"
-        case .unspecified: "Asleep"
         }
     }
 }

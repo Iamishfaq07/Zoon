@@ -14,6 +14,7 @@ final class UserPreferences {
         static let sleepGoalMinutes = "zoon.pref.sleepGoalMinutes"
         static let hasCompletedOnboarding = "zoon.pref.hasCompletedOnboarding"
         static let preferredEngine = "zoon.pref.preferredEngine"
+        static let age = "zoon.pref.age"
     }
 
     private let defaults: UserDefaults
@@ -27,6 +28,13 @@ final class UserPreferences {
 
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
+    }
+
+    /// Used only to estimate maximum heart rate, which sets the heart-rate
+    /// reserve that strain zones and body battery drain are scaled against.
+    /// `nil` falls back to a generic 190 bpm ceiling.
+    var age: Int? {
+        didSet { defaults.set(age ?? 0, forKey: Key.age) }
     }
 
     /// Which insight engine to use. The LLM option is present but stubbed —
@@ -64,6 +72,8 @@ final class UserPreferences {
         let storedGoal = defaults.double(forKey: Key.sleepGoalMinutes)
         self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : 480
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
+        let storedAge = defaults.integer(forKey: Key.age)
+        self.age = storedAge > 0 ? storedAge : nil
         self.preferredEngine = EngineChoice(
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
         ) ?? .ruleBased
