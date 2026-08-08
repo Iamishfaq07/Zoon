@@ -1,5 +1,7 @@
 # Zoon Sleep
 
+[![Build](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml/badge.svg?branch=claude/check-this-out-t0epv2)](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml)
+
 *Zoon* (زوٗن) means **moon** in Kashmiri.
 
 A local-first iOS sleep app. It reads your Apple Watch sleep data from HealthKit
@@ -175,22 +177,43 @@ running on device.
 
 ## Status
 
-The rule-based pipeline is the shipping path and is complete. Known gaps:
+**Compiles clean** — Xcode 26.6 / Swift 6.3 / iOS 26.5 SDK, both targets, zero
+errors and zero warnings. CI builds every push on a macOS runner; see
+[BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
-- `LocalLLMInsightEngine` is a stub by design (see above).
-- The widget shows live data only once an **App Group** is configured — this is
-  optional so the project builds and runs with no developer-account setup. See
-  SETUP.md → *Enable live widget data*.
-- Background delivery requires the HealthKit background-delivery capability.
-  Without it the app still refreshes on foreground; it just won't update by
-  itself overnight.
+**It has never been run.** Compiling is not working. Everything below is
+untested at runtime, because that needs a Simulator, which needs macOS:
+
+- SwiftData container creation and the `SleepNightRecord` / `JournalEntry` schema
+- The `AVAudioEngine` graph behind the soundscapes
+- Every HealthKit query against real samples
+- SwiftUI layout at real sizes, and every animation
+
+Treat the app as unverified until someone launches it.
+
+### Known gaps
+
+- **Apple Watch app** — not built. The biggest missing piece: Zoon reads what
+  the watch recorded but shows nothing on the wrist.
+- **Live Activity for naps** and a **Control Center** soundscape control are
+  designed but unimplemented.
+- **Import** reads and validates an archive but doesn't yet restore into the
+  live store — see `MoreView.handleImport`.
+- **`LocalLLMInsightEngine`** remains a stub for a *bundled* MLX/Core ML model.
+  It is superseded in practice by `FoundationModelInsightEngine`, which uses
+  Apple's on-device model and needs nothing bundled.
+- The widget shows live data only once an **App Group** is configured. Optional
+  by design so the project builds with no developer-account setup.
+- Background delivery needs the HealthKit background-delivery capability.
+  Without it the app still refreshes on foreground.
 
 ## Not medical advice
 
 Zoon makes correlational, consumer-wellness observations. It cannot diagnose any
-condition, including sleep apnea, and it is deliberately written not to try — the
-rules that touch blood oxygen, respiratory rate, and temperature carry an
-explicit non-diagnostic note. If something here worries you, talk to a clinician.
+condition, including sleep apnea, and is deliberately written not to try — the
+rules touching blood oxygen, respiratory rate, breathing disturbances and
+temperature carry an explicit non-diagnostic note, and the model-backed engine
+rejects generations containing diagnostic language outright.
 
 ## License
 
