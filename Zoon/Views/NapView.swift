@@ -84,6 +84,9 @@ struct NapView: View {
                 }
             }
             .frame(width: 200, height: 200)
+            // The ring breathes only while a nap is actually running. A pulse
+            // on static content trains people to ignore pulses.
+            .breathing(true, tint: Theme.Metric.sleep)
 
             HStack(spacing: 12) {
                 Button {
@@ -98,7 +101,7 @@ struct NapView: View {
 
                 Button {
                     naps.finish()
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    Haptics.success()
                 } label: {
                     Label("I'm awake", systemImage: "sun.max.fill")
                         .font(Theme.label(14, weight: .semibold))
@@ -163,7 +166,7 @@ struct NapView: View {
     private var startButton: some View {
         Button {
             naps.start(targetMinutes: selectedMinutes)
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            Haptics.tap()
         } label: {
             Label("Start nap", systemImage: "play.fill")
                 .font(Theme.label(16, weight: .bold))

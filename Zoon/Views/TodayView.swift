@@ -41,25 +41,29 @@ struct TodayView: View {
     }
 
     private func loadedContent(_ context: DayContext) -> some View {
+        // Indices drive the entrance cascade — see Motion.stagger. Written out
+        // rather than derived, because the order is a design decision and a
+        // reader should be able to see it.
         VStack(spacing: Theme.stackSpacing) {
-            hero(context)
-            guidanceCard(context)
-            ringsCard(context)
-            BodyBatteryCard(battery: context.bodyBattery)
-            SleepSummaryStrip(context: context)
+            hero(context).entrance(0)
+            guidanceCard(context).entrance(1)
+            ringsCard(context).entrance(2)
+            BodyBatteryCard(battery: context.bodyBattery).entrance(3)
+            SleepSummaryStrip(context: context).entrance(4)
             // Radar first among the diagnostics: a sustained multi-signal drift
             // is the rarest and most consequential thing on this screen, and it
             // renders as nothing at all when there's nothing to say.
-            HealthRadarCard(radar: context.healthRadar)
-            RecoveryBreakdownCard(recovery: context.recovery)
-            VitalsCard(vitals: context.vitals)
-            HRVStatusCard(status: context.hrvStatus)
-            RegularityCard(regularity: context.regularity)
+            HealthRadarCard(radar: context.healthRadar).entrance(5)
+            RecoveryBreakdownCard(recovery: context.recovery).entrance(6)
+            VitalsCard(vitals: context.vitals).entrance(7)
+            HRVStatusCard(status: context.hrvStatus).entrance(8)
+            RegularityCard(regularity: context.regularity).entrance(9)
             if let cvAge = context.cardiovascularAge {
-                CardiovascularAgeCard(cvAge: cvAge)
+                CardiovascularAgeCard(cvAge: cvAge).entrance(10)
             }
             InsightCard(insight: context.insight, engineName: context.insight.source.displayName)
-            footer(context)
+                .entrance(11)
+            footer(context).entrance(12)
         }
     }
 

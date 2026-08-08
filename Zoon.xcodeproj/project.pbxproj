@@ -40,6 +40,7 @@
 		3A79A11D0D8F02FADB5E47F5 /* JournalCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3143BC9E915F4D207693A /* JournalCorrelator.swift */; };
 		402487B4962F61C60243F542 /* NapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1DB3776628821BCA9A8964 /* NapStore.swift */; };
 		408D22C1B528FB25B057BC19 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
+		46DA33AE7B59FC64C1022665 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
 		47EF1E15A3967BBBDDE1EAAF /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 198401AD6CC208D4D6138629 /* JournalView.swift */; };
 		49D17492D853157D162DD3F2 /* BodyBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B144AF3807FA6DAA668EFE /* BodyBattery.swift */; };
 		54A550E8B72A295F8711315C /* SleepTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F17278E812BF344A4F336E /* SleepTimelineProvider.swift */; };
@@ -67,6 +68,7 @@
 		B14CE3E0336C3BC2A34B75C7 /* WeeklyReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B703D845C762279417E217 /* WeeklyReport.swift */; };
 		B1B070822C0790707FE00BC1 /* MetricRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213BE1CB4CA529DD53B50FD5 /* MetricRing.swift */; };
 		BA6CB9436CCAABA2DA57A9FF /* RuleBasedInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */; };
+		BD69CD7B133005454B6155FE /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
 		BE8F8EADC36EFF631AA73AC1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC1FF35F8179A094C3AB745 /* Theme.swift */; };
 		C286634AE25F50A8CDC04E6F /* ZoonWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C2FD94B4F7D4CF309A5514A5 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFBC9C57EA44E2338347F52 /* OnboardingView.swift */; };
@@ -156,6 +158,7 @@
 		597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalLLMInsightEngine.swift"; sourceTree = "<group>"; };
 		5C432B8295F6810E7F975CEE /* DayContextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DayContextBuilder.swift"; sourceTree = "<group>"; };
 		5EFBC9C57EA44E2338347F52 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OnboardingView.swift"; sourceTree = "<group>"; };
+		5FF82749F8685C8D51B42E20 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Motion.swift"; sourceTree = "<group>"; };
 		603206A2CDB9BC509E9EAD46 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TodayView.swift"; sourceTree = "<group>"; };
 		63B144AF3807FA6DAA668EFE /* BodyBattery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyBattery.swift"; sourceTree = "<group>"; };
 		6A941681C0FF29010F444059 /* NapActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapActivityAttributes.swift"; sourceTree = "<group>"; };
@@ -347,6 +350,7 @@
 				4D46AFE40EF6A03AB6D2D1BE,
 				03508B538C62AC65FD8AD914,
 				1A572D9FB17470E31AB20EEE,
+				5FF82749F8685C8D51B42E20,
 				6A941681C0FF29010F444059,
 				FBBDF3B33AE740C4B071FD90,
 				F9B138F2A60F6322FB92FB15,
@@ -528,6 +532,7 @@
 				AE3A221E7415F4805F6CF9E7,
 				35E99C1587A2DB7A3425CF63,
 				0BFD587316B7C688C3E4FD8E,
+				46DA33AE7B59FC64C1022665,
 				81C5CE87400BED1A7448534A,
 				F4564ECAF9BD29A9DDF14656,
 				1F0BAE90812B36875A249405,
@@ -560,6 +565,7 @@
 				2F84511FA3AF3BAA1C4DC443,
 				C7141183286099D4C8F5A4D9,
 				154E2FFCB3D5DD24C50D2651,
+				BD69CD7B133005454B6155FE,
 				5B4D3B73E663574D67496403,
 				FB653BDD763662866376DE9F,
 				F4912FC411860F03F63EB22F,

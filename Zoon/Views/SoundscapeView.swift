@@ -93,7 +93,7 @@ struct SoundscapeView: View {
 
         return Button {
             engine.play(sound)
-            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            Haptics.tap()
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: sound.symbol)
@@ -125,7 +125,10 @@ struct SoundscapeView: View {
                     }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
+        // Only the tile that is actually producing audio glows.
+        .breathing(isActive, tint: Theme.Metric.battery)
+        .animation(Motion.tap, value: isActive)
         .accessibilityAddTraits(isActive ? [.isSelected, .isButton] : .isButton)
     }
 

@@ -131,7 +131,7 @@ struct SleepTabView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
-                    BedtimeCountdownCard()
+                    BedtimeCountdownCard().entrance(0)
 
                     NavigationLink {
                         SoundscapeView()
@@ -143,7 +143,8 @@ struct SleepTabView: View {
                             tint: Theme.Metric.battery
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableStyle())
+                    .entrance(1)
 
                     NavigationLink {
                         NapView()
@@ -155,11 +156,12 @@ struct SleepTabView: View {
                             tint: Theme.Metric.strain
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableStyle())
+                    .entrance(2)
 
                     if let context = coordinator.state.context {
                         Divider().overlay(Theme.cardStroke).padding(.vertical, 4)
-                        SleepNeedCard(need: context.sleepNeed)
+                        SleepNeedCard(need: context.sleepNeed).entrance(3)
                         NavigationLink {
                             SleepDetailView(context: context)
                         } label: {
@@ -170,13 +172,15 @@ struct SleepTabView: View {
                                 tint: Theme.Metric.sleep
                             )
                         }
-                        .buttonStyle(.plain)
-                        ChronotypeCard(chronotype: context.chronotype)
+                        .buttonStyle(PressableStyle())
+                        .entrance(4)
+                        ChronotypeCard(chronotype: context.chronotype).entrance(5)
                         if let clock = context.bodyClock {
                             BodyClockCard(
                                 bodyClock: clock,
                                 plannedBedtime: context.targetBedtime()
                             )
+                            .entrance(6)
                         }
                     }
                 }

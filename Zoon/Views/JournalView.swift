@@ -116,7 +116,7 @@ struct JournalView: View {
             reload()
             // Selection is a physical act here — the haptic confirms the toggle
             // landed without needing to look for a colour change.
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.tap()
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: tag.symbol)

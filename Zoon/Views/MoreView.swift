@@ -21,17 +21,20 @@ struct MoreView: View {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
                     StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
+                        .entrance(0)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
                     }
+                    .entrance(1)
                     navRow("Settings", "Goal, engine, privacy", "gearshape.fill", .secondary) {
                         SettingsView()
                     }
+                    .entrance(2)
 
-                    dataCard
-                    privacyCard
-                    aboutCard
+                    dataCard.entrance(3)
+                    privacyCard.entrance(4)
+                    aboutCard.entrance(5)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
@@ -83,7 +86,7 @@ struct MoreView: View {
             }
             .glassCard()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
     }
 
     // MARK: - Data
@@ -164,7 +167,7 @@ struct MoreView: View {
                 )
             }
             exportURL = url
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.success()
         } catch {
             importMessage = "Couldn't build the export: \(error.localizedDescription)"
         }
@@ -185,7 +188,7 @@ struct MoreView: View {
             Task {
                 let summary = await coordinator.importArchive(archive)
                 importMessage = summary
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                Haptics.success()
             }
         } catch {
             importMessage = error.localizedDescription
