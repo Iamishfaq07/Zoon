@@ -3,6 +3,11 @@ import os
 
 #if canImport(FoundationModels)
 import FoundationModels
+#else
+// Without this framework the engine is a permanent pass-through to the rule
+// engine, and nothing at runtime would tell you why. Same reasoning as the
+// ActivityKit guard: the #if reports itself rather than failing silently.
+#warning("FoundationModels unavailable: Apple Intelligence insights fall back to rules in this build.")
 #endif
 
 /// On-device language-model insights via Apple's Foundation Models framework.
