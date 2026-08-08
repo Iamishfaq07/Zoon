@@ -99,7 +99,7 @@ struct NapLiveActivity: Widget {
                 EmptyView()
             } currentValueLabel: {
                 Image(systemName: "moon.zzz.fill")
-                    .font(.system(size: 15))
+                    .font(Theme.text(15))
                     .foregroundStyle(napTint)
             }
             .progressViewStyle(.circular)

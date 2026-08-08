@@ -103,7 +103,7 @@ struct RegularityCard: View {
                     .monospacedDigit()
                     .foregroundStyle(tint)
                 Text("SRI")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(Theme.text(8, weight: .bold))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -119,7 +119,7 @@ struct RegularityCard: View {
                 .font(Theme.label(14, weight: .bold))
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
         }
     }
@@ -162,7 +162,7 @@ struct HealthRadarCard: View {
                 ForEach(radar.signals) { signal in
                     HStack(spacing: 10) {
                         Image(systemName: signal.kind.symbol)
-                            .font(.system(size: 12))
+                            .font(Theme.text(12))
                             .foregroundStyle(tint)
                             .frame(width: 22)
 
@@ -170,7 +170,7 @@ struct HealthRadarCard: View {
                             Text(signal.kind.label)
                                 .font(Theme.label(12, weight: .medium))
                             Text("\(signal.consecutiveNights) nights \(signal.direction == .elevated ? "elevated" : "below baseline")")
-                                .font(.system(size: 10))
+                                .font(Theme.text(10))
                                 .foregroundStyle(.tertiary)
                         }
 
@@ -178,7 +178,7 @@ struct HealthRadarCard: View {
 
                         HStack(spacing: 3) {
                             Image(systemName: signal.direction.symbol)
-                                .font(.system(size: 10, weight: .bold))
+                                .font(Theme.text(10, weight: .bold))
                             Text(String(format: "%+.0f%%", signal.percentChange))
                                 .font(Theme.label(12, weight: .semibold))
                                 .monospacedDigit()
@@ -193,7 +193,7 @@ struct HealthRadarCard: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(SleepInsight.disclaimer)
-                    .font(.system(size: 10))
+                    .font(Theme.text(10))
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -226,7 +226,7 @@ struct CardiovascularAgeCard: View {
                         .monospacedDigit()
                         .foregroundStyle(tint)
                     Text("estimated")
-                        .font(.system(size: 10))
+                        .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
                 }
 
@@ -253,11 +253,11 @@ struct CardiovascularAgeCard: View {
                     .frame(height: 10)
 
                     HStack {
-                        Text("−10y").font(.system(size: 9)).foregroundStyle(.tertiary)
+                        Text("−10y").font(Theme.text(9)).foregroundStyle(.tertiary)
                         Spacer()
-                        Text("age \(cvAge.chronologicalAge)").font(.system(size: 9)).foregroundStyle(.secondary)
+                        Text("age \(cvAge.chronologicalAge)").font(Theme.text(9)).foregroundStyle(.secondary)
                         Spacer()
-                        Text("+10y").font(.system(size: 9)).foregroundStyle(.tertiary)
+                        Text("+10y").font(Theme.text(9)).foregroundStyle(.tertiary)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -269,7 +269,7 @@ struct CardiovascularAgeCard: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(CardiovascularAge.disclaimer)
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }

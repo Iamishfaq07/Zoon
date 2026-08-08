@@ -66,7 +66,7 @@ struct JournalView: View {
         } label: {
             VStack(spacing: 3) {
                 Text(day, format: .dateTime.weekday(.abbreviated))
-                    .font(.system(size: 10, weight: .medium))
+                    .font(Theme.text(10, weight: .medium))
                     .foregroundStyle(.secondary)
                 Text(day, format: .dateTime.day())
                     .font(Theme.label(16, weight: .bold))
@@ -120,7 +120,7 @@ struct JournalView: View {
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: tag.symbol)
-                    .font(.system(size: 11, weight: .medium))
+                    .font(Theme.text(11, weight: .medium))
                 Text(tag.label)
                     .font(Theme.label(12, weight: .medium))
             }
@@ -204,7 +204,7 @@ struct CorrelationRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: finding.tag.symbol)
-                    .font(.system(size: 12))
+                    .font(Theme.text(12))
                     .foregroundStyle(tint)
                     .frame(width: 22, height: 22)
                     .background(tint.opacity(0.15), in: Circle())
@@ -221,7 +221,7 @@ struct CorrelationRow: View {
             }
 
             Text(finding.detail)
-                .font(.system(size: 11))
+                .font(Theme.text(11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

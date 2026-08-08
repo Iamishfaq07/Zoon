@@ -138,7 +138,7 @@ struct NapView: View {
                             Text(preset.label)
                                 .font(Theme.label(14, weight: .semibold))
                             Text(preset.detail)
-                                .font(.system(size: 10))
+                                .font(Theme.text(10))
                                 .foregroundStyle(.tertiary)
                         }
 

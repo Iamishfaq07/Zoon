@@ -91,7 +91,7 @@ struct SleepScoreWidgetView: View {
 
                 if entry.isPlaceholder {
                     Text("Sample data")
-                        .font(.system(size: 9))
+                        .font(Theme.text(9))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -120,7 +120,7 @@ struct SleepScoreWidgetView: View {
                 .font(.caption.weight(.semibold))
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 9))
+                .font(Theme.text(9))
                 .foregroundStyle(.tertiary)
         }
     }

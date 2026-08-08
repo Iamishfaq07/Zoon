@@ -226,7 +226,7 @@ struct ChronotypeCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Image(systemName: chronotype.kind.symbol)
-                    .font(.system(size: 26))
+                    .font(Theme.text(26))
                     .foregroundStyle(Theme.Metric.sleep)
                     .frame(width: 42, height: 42)
                     .background(Theme.Metric.sleep.opacity(0.15), in: Circle())
@@ -236,7 +236,7 @@ struct ChronotypeCard: View {
                         .font(Theme.label(15, weight: .bold))
                     if chronotype.kind != .unknown {
                         Text("Typical bedtime \(chronotype.formattedBedtime) · ±\(Int(chronotype.consistencyMinutes)) min")
-                            .font(.system(size: 11))
+                            .font(Theme.text(11))
                             .foregroundStyle(.tertiary)
                     }
                 }

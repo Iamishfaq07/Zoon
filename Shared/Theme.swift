@@ -125,15 +125,48 @@ enum Theme {
     }
 
     // MARK: - Type
+    //
+    // Everything here is sized `relativeTo:` a text style, so it scales with
+    // the reader's Dynamic Type setting. A fixed `.system(size: 13)` ignores
+    // that setting completely — which in a health app is not a rough edge but a
+    // defect, since the people most likely to enlarge text are the people most
+    // likely to be reading it about their own health.
+    //
+    // Growth is capped at the root of each screen (see `zoonTypography()`)
+    // rather than left unbounded. The honest reason: several cards use fixed
+    // heights, and at the largest accessibility sizes text would clip rather
+    // than reflow. A cap that keeps everything legible and intact is better
+    // than uncapped scaling that breaks the layout, and better than pretending
+    // the setting doesn't exist.
+
+    /// Maps a point size onto the nearest built-in text style, so
+    /// `relativeTo:` scales from a sensible base.
+    static func style(for size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case ..<11: .caption2
+        case ..<13: .caption
+        case ..<15: .footnote
+        case ..<17: .subheadline
+        case ..<20: .body
+        case ..<24: .title3
+        case ..<30: .title2
+        default: .title
+        }
+    }
 
     /// Big numerals. Rounded + monospaced digits so values don't jitter as they
     /// animate.
     static func numeral(_ size: CGFloat) -> Font {
-        .system(size: size, weight: .bold, design: .rounded)
+        .system(size: size, weight: .bold, design: .rounded, relativeTo: style(for: size))
+    }
+
+    /// Body and caption text at an explicit size, still Dynamic-Type aware.
+    static func text(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .default, relativeTo: style(for: size))
     }
 
     static func label(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .system(size: size, weight: weight, design: .rounded, relativeTo: style(for: size))
     }
 
     // MARK: - Layout
@@ -173,9 +206,26 @@ extension View {
         modifier(GlassCard(padding: padding))
     }
 
+    /// Caps Dynamic Type growth to a size the card layouts survive.
+    ///
+    /// Applied once per screen alongside the background, rather than per view.
+    /// `.accessibility1` is roughly 150% of default — a genuine improvement for
+    /// anyone who needs it, and the point at which the fixed-height rows in
+    /// this app begin to clip rather than reflow. Removing those fixed heights
+    /// would let the cap go higher, and is the honest next step.
+    func zoonTypography() -> some View {
+        dynamicTypeSize(...DynamicTypeSize.accessibility1)
+    }
+
     /// Applies the app's night background behind a scrolling screen.
+    ///
+    /// Also applies the Dynamic Type cap, because this modifier already marks
+    /// every screen root in the app — attaching it here means a new screen
+    /// cannot forget it, which is the failure mode of a rule that has to be
+    /// remembered.
     func nightBackground() -> some View {
-        background {
+        zoonTypography()
+        .background {
             ZStack(alignment: .top) {
                 Theme.background
                 Theme.heroGlow
@@ -195,7 +245,7 @@ struct StatusPill: View {
         HStack(spacing: 4) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.text(10, weight: .bold))
             }
             Text(text)
                 .font(Theme.label(11))
@@ -218,7 +268,7 @@ struct SectionHeader: View {
             HStack(spacing: 6) {
                 if let systemImage {
                     Image(systemName: systemImage)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.text(12, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
                 Text(title)

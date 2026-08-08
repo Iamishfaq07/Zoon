@@ -66,7 +66,7 @@ struct RecoveryPage: View {
 
             if snapshot.isMock {
                 Text("Sample data")
-                    .font(.system(size: 9))
+                    .font(Theme.text(9))
                     .foregroundStyle(.secondary)
             }
         }
@@ -80,7 +80,7 @@ struct RecoveryPage: View {
                 .monospacedDigit()
                 .foregroundStyle(colour)
             Text(label)
-                .font(.system(size: 9))
+                .font(Theme.text(9))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -158,7 +158,7 @@ struct BadgePage: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: hasBadge ? snapshot.badgeSymbol : "hexagon")
-                .font(.system(size: 30, weight: .medium))
+                .font(Theme.text(30, weight: .medium))
                 .foregroundStyle(hasBadge ? Theme.Metric.recoveryMid : .secondary)
 
             Text(hasBadge ? snapshot.badgeTitle : "No badges yet")
@@ -199,7 +199,7 @@ struct WaitingPage: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                .font(.system(size: 26))
+                .font(Theme.text(26))
                 .foregroundStyle(Theme.Metric.sleep)
 
             Text("Waiting for your phone")
@@ -209,7 +209,7 @@ struct WaitingPage: View {
             Text(isActivated
                  ? "Open Zoon on your iPhone once and last night will appear here."
                  : "Connecting…")
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }

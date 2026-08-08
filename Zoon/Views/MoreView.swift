@@ -77,17 +77,17 @@ struct MoreView: View {
         NavigationLink(destination: destination) {
             HStack(spacing: 13) {
                 Image(systemName: symbol)
-                    .font(.system(size: 16))
+                    .font(Theme.text(16))
                     .foregroundStyle(tint)
                     .frame(width: 38, height: 38)
                     .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).font(Theme.label(15, weight: .semibold))
-                    Text(detail).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(detail).font(Theme.text(11)).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.text(12, weight: .semibold))
                     .foregroundStyle(.tertiary)
             }
             .glassCard()
@@ -139,12 +139,12 @@ struct MoreView: View {
     private func actionRow(_ title: String, _ detail: String, _ symbol: String, _ tint: Color) -> some View {
         HStack(spacing: 11) {
             Image(systemName: symbol)
-                .font(.system(size: 14))
+                .font(Theme.text(14))
                 .foregroundStyle(tint)
                 .frame(width: 26)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(Theme.label(13, weight: .semibold))
-                Text(detail).font(.system(size: 10)).foregroundStyle(.tertiary)
+                Text(detail).font(Theme.text(10)).foregroundStyle(.tertiary)
             }
             Spacer()
         }
@@ -221,13 +221,13 @@ struct MoreView: View {
     private func privacyRow(_ symbol: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .top, spacing: 11) {
             Image(systemName: symbol)
-                .font(.system(size: 13))
+                .font(Theme.text(13))
                 .foregroundStyle(Theme.Metric.recoveryHigh)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(Theme.label(12, weight: .semibold))
                 Text(detail)
-                    .font(.system(size: 10))
+                    .font(Theme.text(10))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -242,7 +242,7 @@ struct MoreView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(SleepInsight.disclaimer)
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -311,13 +311,13 @@ struct StreakCard: View {
     private func stat(_ value: String, _ label: String, _ tint: Color, _ symbol: String) -> some View {
         VStack(spacing: 3) {
             Image(systemName: symbol)
-                .font(.system(size: 13))
+                .font(Theme.text(13))
                 .foregroundStyle(tint)
             Text(value)
                 .font(Theme.numeral(20))
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 9))
+                .font(Theme.text(9))
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)

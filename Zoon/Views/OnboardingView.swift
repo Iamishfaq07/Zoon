@@ -117,7 +117,7 @@ struct OnboardingView: View {
                 .scaleEffect(moonGlow ? 1.06 : 0.94)
 
             Image(systemName: "moon.stars.fill")
-                .font(.system(size: 88, weight: .light))
+                .font(Theme.text(88, weight: .light))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [Color(white: 0.99), Theme.Metric.sleep],
@@ -135,7 +135,7 @@ struct OnboardingView: View {
 
     private var shield: some View {
         Image(systemName: "lock.shield.fill")
-            .font(.system(size: 78, weight: .light))
+            .font(Theme.text(78, weight: .light))
             .foregroundStyle(
                 LinearGradient(
                     colors: [Theme.Metric.recoveryHigh, Theme.Metric.battery],
@@ -167,7 +167,7 @@ struct OnboardingView: View {
                         .font(Theme.numeral(30))
                         .monospacedDigit()
                     Text("a night")
-                        .font(.system(size: 11))
+                        .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -202,7 +202,7 @@ struct OnboardingView: View {
                     .multilineTextAlignment(.center)
             }
             Text(body)
-                .font(.system(size: 14))
+                .font(Theme.text(14))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)

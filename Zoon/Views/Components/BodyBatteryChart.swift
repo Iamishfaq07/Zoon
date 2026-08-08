@@ -71,7 +71,7 @@ struct BodyBatteryChart: View {
                 AxisValueLabel {
                     if let level = value.as(Double.self) {
                         Text("\(Int(level))")
-                            .font(.system(size: 9))
+                            .font(Theme.text(9))
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -81,7 +81,7 @@ struct BodyBatteryChart: View {
             AxisMarks(values: .stride(by: .hour, count: 4)) { value in
                 AxisGridLine().foregroundStyle(.white.opacity(0.05))
                 AxisValueLabel(format: .dateTime.hour())
-                    .font(.system(size: 9))
+                    .font(Theme.text(9))
                     .foregroundStyle(.tertiary)
             }
         }

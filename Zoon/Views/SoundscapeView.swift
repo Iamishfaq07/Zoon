@@ -64,12 +64,12 @@ struct SoundscapeView: View {
         @Bindable var engine = engine
         return HStack(spacing: 10) {
             Image(systemName: "speaker.fill")
-                .font(.system(size: 11))
+                .font(Theme.text(11))
                 .foregroundStyle(.tertiary)
             Slider(value: $engine.volume, in: 0...1)
                 .tint(Theme.Metric.battery)
             Image(systemName: "speaker.wave.3.fill")
-                .font(.system(size: 11))
+                .font(Theme.text(11))
                 .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 4)
@@ -97,7 +97,7 @@ struct SoundscapeView: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: sound.symbol)
-                    .font(.system(size: 22))
+                    .font(Theme.text(22))
                     .foregroundStyle(isActive ? Theme.Metric.battery : .secondary)
                     .symbolEffect(.variableColor.iterative, isActive: isActive)
 
@@ -105,7 +105,7 @@ struct SoundscapeView: View {
                     .font(Theme.label(14, weight: .semibold))
 
                 Text(sound.detail)
-                    .font(.system(size: 10))
+                    .font(Theme.text(10))
                     .foregroundStyle(.tertiary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)

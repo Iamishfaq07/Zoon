@@ -215,7 +215,7 @@ struct SleepTabView: View {
     private func toolRow(_ title: String, detail: String, symbol: String, tint: Color) -> some View {
         HStack(spacing: 13) {
             Image(systemName: symbol)
-                .font(.system(size: 17))
+                .font(Theme.text(17))
                 .foregroundStyle(tint)
                 .frame(width: 42, height: 42)
                 .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -224,14 +224,14 @@ struct SleepTabView: View {
                 Text(title)
                     .font(Theme.label(15, weight: .semibold))
                 Text(detail)
-                    .font(.system(size: 11))
+                    .font(Theme.text(11))
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
+                .font(Theme.text(12, weight: .semibold))
                 .foregroundStyle(.tertiary)
         }
         .glassCard()

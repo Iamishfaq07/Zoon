@@ -102,12 +102,12 @@ struct RecoveryComplicationView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Label("Recovery", systemImage: "bolt.heart.fill")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.text(13, weight: .semibold))
                 Text("\(percent)%")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Text(entry.isPlaceholder ? "Sample data" : entry.snapshot.scoreBand)
-                    .font(.system(size: 11))
+                    .font(Theme.text(11))
                     .foregroundStyle(.secondary)
             }
 
@@ -157,12 +157,12 @@ struct SleepBankComplicationView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Label("Last night", systemImage: "moon.stars.fill")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.text(13, weight: .semibold))
                 Text(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 Text(entry.isPlaceholder ? "Sample data" : "Bank \(entry.snapshot.balanceLabel)")
-                    .font(.system(size: 11))
+                    .font(Theme.text(11))
                     .foregroundStyle(.secondary)
             }
 
@@ -209,14 +209,14 @@ struct BadgeComplicationView: View {
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Label(hasBadge ? entry.snapshot.badgeTitle : "Badges", systemImage: "hexagon.fill")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(Theme.text(13, weight: .semibold))
                     .lineLimit(1)
                 Text("\(entry.snapshot.badgesUnlocked) of \(entry.snapshot.badgesTotal)")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .monospacedDigit()
                 if entry.isPlaceholder {
                     Text("Sample data")
-                        .font(.system(size: 11))
+                        .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                 }
             }

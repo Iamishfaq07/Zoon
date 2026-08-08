@@ -99,7 +99,7 @@ struct BodyClockCard: View {
 
             VStack(spacing: 0) {
                 Text("MID")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(Theme.text(8, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(BodyClock.formatted(hour: bodyClock.midpoint))
                     .font(Theme.numeral(15))
@@ -124,14 +124,14 @@ struct BodyClockCard: View {
     private var windowRow: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Your window")
-                .font(.system(size: 11))
+                .font(Theme.text(11))
                 .foregroundStyle(.secondary)
             HStack(spacing: 6) {
                 Text(BodyClock.formatted(hour: bodyClock.onsetHour))
                     .font(Theme.numeral(19))
                     .foregroundStyle(Theme.Metric.sleep)
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.text(10, weight: .bold))
                     .foregroundStyle(.secondary)
                 Text(BodyClock.formatted(hour: bodyClock.wakeHour))
                     .font(Theme.numeral(19))
@@ -145,7 +145,7 @@ struct BodyClockCard: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 Text("Stability")
-                    .font(.system(size: 11))
+                    .font(Theme.text(11))
                     .foregroundStyle(.secondary)
                 StatusPill(
                     text: bodyClock.stability.label,
@@ -154,7 +154,7 @@ struct BodyClockCard: View {
                 )
             }
             Text(bodyClock.stability.detail)
-                .font(.system(size: 11))
+                .font(Theme.text(11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

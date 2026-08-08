@@ -108,7 +108,7 @@ struct HypnogramView: View {
                 Text(span.end, format: .dateTime.hour().minute())
             }
         }
-        .font(.system(size: 9))
+        .font(Theme.text(9))
         .foregroundStyle(.tertiary)
         .padding(.leading, 42)
     }
@@ -209,13 +209,13 @@ struct StageLegend: View {
                         .monospacedDigit()
 
                     Text(SleepNightFeatures.formatMinutes(row.minutes))
-                        .font(.system(size: 12))
+                        .font(Theme.text(12))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                         .frame(width: 56, alignment: .trailing)
 
                     Text(row.reference)
-                        .font(.system(size: 10))
+                        .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
                         .frame(width: 48, alignment: .trailing)
                 }

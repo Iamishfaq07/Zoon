@@ -148,19 +148,19 @@ struct BadgeWidgetView: View {
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 1) {
             Label(hasBadge ? snapshot.badgeTitle : "No badges yet", systemImage: "hexagon.fill")
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.text(13, weight: .semibold))
                 .lineLimit(1)
 
             Text(isPlaceholder
                  ? "Sample data"
                  : "\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal) earned")
-                .font(.system(size: 12))
+                .font(Theme.text(12))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
 
             if !snapshot.nextBadgeTitle.isEmpty {
                 Text("Next: \(snapshot.nextBadgeTitle)")
-                    .font(.system(size: 11))
+                    .font(Theme.text(11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

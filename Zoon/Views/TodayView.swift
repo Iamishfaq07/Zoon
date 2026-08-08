@@ -176,11 +176,11 @@ struct TodayView: View {
                 }
                 HStack(spacing: 4) {
                     Text(detail)
-                        .font(.system(size: 10))
+                        .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
                     if let caveat {
                         Text("· \(caveat)")
-                            .font(.system(size: 10))
+                            .font(Theme.text(10))
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -197,7 +197,7 @@ struct TodayView: View {
                 Text("Updated \(last, format: .dateTime.hour().minute())")
             }
         }
-        .font(.system(size: 10))
+        .font(Theme.text(10))
         .foregroundStyle(.tertiary)
         .frame(maxWidth: .infinity)
         .padding(.top, 6)
@@ -247,7 +247,7 @@ struct BodyBatteryCard: View {
                 .font(Theme.label(15, weight: .bold))
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -267,7 +267,7 @@ struct SleepSummaryStrip: View {
                     SectionHeader(title: "Last Night", systemImage: "moon.stars.fill")
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.text(12, weight: .semibold))
                         .foregroundStyle(.tertiary)
                 }
 
@@ -325,14 +325,14 @@ struct RecoveryBreakdownCard: View {
                     .frame(height: 7)
 
                     Text(component.detail)
-                        .font(.system(size: 11))
+                        .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                         .frame(width: 62, alignment: .trailing)
 
                     if let deviation = component.deviationPercent {
                         Text(String(format: "%+.0f%%", deviation))
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(Theme.text(10, weight: .semibold))
                             .foregroundStyle(deviation >= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
                             .frame(width: 40, alignment: .trailing)
                     } else {
@@ -366,7 +366,7 @@ struct VitalsCard: View {
             }
 
             Text(SleepInsight.disclaimer)
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -388,7 +388,7 @@ private struct VitalRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: metric.kind.symbol)
-                .font(.system(size: 12))
+                .font(Theme.text(12))
                 .foregroundStyle(tint)
                 .frame(width: 20)
 
@@ -397,7 +397,7 @@ private struct VitalRow: View {
                     .font(Theme.label(12, weight: .medium))
                 if let range = metric.formattedRange {
                     Text("Typical \(range)")
-                        .font(.system(size: 10))
+                        .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -409,7 +409,7 @@ private struct VitalRow: View {
                 .monospacedDigit()
 
             Image(systemName: metric.state.symbol)
-                .font(.system(size: 11))
+                .font(Theme.text(11))
                 .foregroundStyle(tint)
                 .frame(width: 16)
         }
@@ -454,7 +454,7 @@ struct HRVStatusCard: View {
                         .monospacedDigit()
                     Spacer()
                     Text("Your range \(Int(lower))–\(Int(upper)) ms")
-                        .font(.system(size: 10))
+                        .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
                         .monospacedDigit()
                 }

@@ -76,7 +76,7 @@ struct AchievementsView: View {
                         .font(Theme.numeral(30))
                         .monospacedDigit()
                     Text("of \(achievements.count)")
-                        .font(.system(size: 10))
+                        .font(Theme.text(10))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -87,7 +87,7 @@ struct AchievementsView: View {
                     Text("Closest: \(next.title)")
                         .font(Theme.label(13, weight: .semibold))
                     Text(next.progressText)
-                        .font(.system(size: 11))
+                        .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
@@ -199,7 +199,7 @@ struct BadgeTile: View {
                 }
 
                 Image(systemName: achievement.symbol)
-                    .font(.system(size: 22, weight: .medium))
+                    .font(Theme.text(22, weight: .medium))
                     .foregroundStyle(achievement.isUnlocked ? .black : .secondary)
             }
             .frame(height: 80)
@@ -213,7 +213,7 @@ struct BadgeTile: View {
 
             if !achievement.isUnlocked {
                 Text(achievement.progressText)
-                    .font(.system(size: 9))
+                    .font(Theme.text(9))
                     .monospacedDigit()
                     .foregroundStyle(.tertiary)
             }
@@ -277,7 +277,7 @@ struct AchievementDetailSheet: View {
                 Text(achievement.title)
                     .font(Theme.numeral(22))
                 Text(achievement.detail)
-                    .font(.system(size: 14))
+                    .font(Theme.text(14))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 28)
@@ -291,7 +291,7 @@ struct AchievementDetailSheet: View {
                         .tint(Theme.Metric.sleep)
                         .frame(width: 190)
                     Text(achievement.progressText)
-                        .font(.system(size: 12))
+                        .font(Theme.text(12))
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }

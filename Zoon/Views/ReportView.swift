@@ -67,7 +67,7 @@ struct ReportView: View {
             ForEach(report.highlights) { highlight in
                 HStack(alignment: .top, spacing: 11) {
                     Image(systemName: highlight.symbol)
-                        .font(.system(size: 13))
+                        .font(Theme.text(13))
                         .foregroundStyle(tint(highlight.tone))
                         .frame(width: 26, height: 26)
                         .background(tint(highlight.tone).opacity(0.15), in: Circle())
@@ -76,7 +76,7 @@ struct ReportView: View {
                         Text(highlight.title)
                             .font(Theme.label(13, weight: .semibold))
                         Text(highlight.detail)
-                            .font(.system(size: 11))
+                            .font(Theme.text(11))
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -123,7 +123,7 @@ struct ReportView: View {
     private func statTile(_ label: String, _ value: String, trend: Double?, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
-                .font(.system(size: 10))
+                .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
             Text(value)
                 .font(Theme.label(18, weight: .bold))
@@ -131,7 +131,7 @@ struct ReportView: View {
                 .foregroundStyle(color)
             if let trend {
                 Text(String(format: "%+.0f%%", trend))
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.text(10, weight: .semibold))
                     .foregroundStyle(trend >= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
             }
         }
@@ -172,13 +172,13 @@ struct ReportView: View {
                 .chartYAxis {
                     AxisMarks(values: [0.0, 50.0, 100.0]) { _ in
                         AxisGridLine().foregroundStyle(.white.opacity(0.07))
-                        AxisValueLabel().font(.system(size: 9)).foregroundStyle(.tertiary)
+                        AxisValueLabel().font(Theme.text(9)).foregroundStyle(.tertiary)
                     }
                 }
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: 3)) { _ in
                         AxisValueLabel(format: .dateTime.day())
-                            .font(.system(size: 9))
+                            .font(Theme.text(9))
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -205,7 +205,7 @@ struct ReportView: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.system(size: 10))
+                    .font(Theme.text(10))
                     .foregroundStyle(.tertiary)
                 Text(night.date, format: .dateTime.weekday(.wide))
                     .font(Theme.label(13, weight: .semibold))
@@ -217,7 +217,7 @@ struct ReportView: View {
                     .monospacedDigit()
                     .foregroundStyle(tint)
                 Text("\(Int(night.sleepEfficiencyPercent))% efficiency")
-                    .font(.system(size: 10))
+                    .font(Theme.text(10))
                     .foregroundStyle(.tertiary)
             }
         }
