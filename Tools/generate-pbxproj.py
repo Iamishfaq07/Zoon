@@ -439,6 +439,100 @@ with open(path, "w") as fh:
     fh.write("\n".join(out) + "\n")
 
 print(f"wrote {path}")
+
+# ---------------------------------------------------------------- scheme
+#
+# Generated here rather than hand-maintained: the scheme references the app
+# target by ID, so regenerating the project silently invalidates a stale
+# scheme, and xcodebuild reports that as "Scheme Zoon is not currently
+# configured for the build action" rather than anything about IDs.
+
+SCHEME = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "2600"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{APP_TARGET}"
+               BuildableName = "Zoon.app"
+               BlueprintName = "Zoon"
+               ReferencedContainer = "container:Zoon.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{APP_TARGET}"
+            BuildableName = "Zoon.app"
+            BlueprintName = "Zoon"
+            ReferencedContainer = "container:Zoon.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{APP_TARGET}"
+            BuildableName = "Zoon.app"
+            BlueprintName = "Zoon"
+            ReferencedContainer = "container:Zoon.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
+"""
+
+scheme_dir = os.path.join(ROOT, "Zoon.xcodeproj", "xcshareddata", "xcschemes")
+os.makedirs(scheme_dir, exist_ok=True)
+scheme_path = os.path.join(scheme_dir, "Zoon.xcscheme")
+with open(scheme_path, "w") as fh:
+    fh.write(SCHEME)
+print(f"wrote {scheme_path}")
 print(f"  shared sources : {len(SHARED)} (in both targets)")
 print(f"  app sources    : {len(APP_SRC)}")
 print(f"  widget sources : {len(EXT_SRC)}")

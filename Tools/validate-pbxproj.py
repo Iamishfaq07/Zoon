@@ -179,12 +179,47 @@ def main(path):
         print(f"dangling object references: {sorted(set(dangling))}")
         return 1
 
+    # The scheme references the app target by ID, so a regenerated project
+    # silently invalidates a stale scheme — and xcodebuild reports that as
+    # "Scheme Zoon is not currently configured for the build action", which
+    # points nowhere near the actual cause. An empty scheme file produces the
+    # same message, and is easy to create by accident.
+    import os
+    import xml.etree.ElementTree as ET
+
+    scheme_dir = os.path.join(os.path.dirname(path), 'xcshareddata', 'xcschemes')
+    if os.path.isdir(scheme_dir):
+        for name in sorted(os.listdir(scheme_dir)):
+            if not name.endswith('.xcscheme'):
+                continue
+            scheme_path = os.path.join(scheme_dir, name)
+            if os.path.getsize(scheme_path) == 0:
+                print(f"scheme {name} is empty")
+                return 1
+            try:
+                tree = ET.parse(scheme_path)
+            except ET.ParseError as exc:
+                print(f"scheme {name} is not valid XML: {exc}")
+                return 1
+            blueprints = {
+                ref.get('BlueprintIdentifier')
+                for ref in tree.iter('BuildableReference')
+            }
+            if not blueprints:
+                print(f"scheme {name} references no buildable")
+                return 1
+            unresolved = {b for b in blueprints if b not in objects}
+            if unresolved:
+                print(f"scheme {name} references unknown targets: {sorted(unresolved)}")
+                return 1
+
     isas = {}
     for oid, obj in objects.items():
         if isinstance(obj, dict):
             isas[obj.get('isa', '?')] = isas.get(obj.get('isa', '?'), 0) + 1
 
-    print(f"PLIST OK — {len(objects)} objects, rootObject resolves, no dangling refs")
+    print(f"PLIST OK — {len(objects)} objects, rootObject resolves, "
+          f"no dangling refs, schemes resolve")
     for isa, n in sorted(isas.items()):
         print(f"    {n:3d}  {isa}")
     return 0
