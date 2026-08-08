@@ -7,21 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00E200CB14336925459730FF /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
+		01BF80DA7FEED1F542E212EA /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D25F2515856E1F2C18D447 /* WatchRootView.swift */; };
+		02A58EF630D6157B6BE412EE /* HealthRadar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03508B538C62AC65FD8AD914 /* HealthRadar.swift */; };
 		02D9E671716C7D9592B8303C /* BedtimeReminder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86C4ACEFFCA801C62DFFCF6 /* BedtimeReminder.swift */; };
+		06D8681F9C375CB783DB871A /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
 		087E7F3337D2A7FD08502A0F /* SleepInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2DDB308F9F23D99795E240 /* SleepInsightEngine.swift */; };
 		08DC18B7AC84F0F91131ED58 /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234D49A75ED10560B53A2024 /* UserPreferences.swift */; };
 		0A7C54E3814C703015DAABFB /* BodyBatteryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = B04DB48634B9461AF67635F9 /* BodyBatteryChart.swift */; };
 		0AFB79BBE592F3A82611801A /* PreviewSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C905EF878241FBB40DA514 /* PreviewSupport.swift */; };
 		0BFD587316B7C688C3E4FD8E /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
+		0D00D90826DDCE27EF0C9BCD /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
 		0E21C726F36D1A9DA6147C69 /* ZoonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4111F800CE47F2D2FCC0D2D2 /* ZoonApp.swift */; };
 		127350D1EFDD818C34F178E4 /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
 		1392657BC356A10710540C9C /* ZoonWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */; };
 		154E2FFCB3D5DD24C50D2651 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
+		172E5E6228F43CACD75B25FB /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
 		17755EC22CE9C72898EB8579 /* BodyClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5988981A0B2312A8B53FB4B /* BodyClock.swift */; };
 		17E20F77C3F9E3A12553EC09 /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		17F1F32ECCE94547CB95F327 /* JournalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 796AF05941A49BBC5BC53802 /* JournalStore.swift */; };
 		1C9C1B3034C0D104BD6704D3 /* AchievementsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C72186A2E1CD1862F8CFD8DD /* AchievementsView.swift */; };
+		1D112309BCEC05806E32AD6A /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
 		1E9CA31043BE3458E6F3BD44 /* SoundscapeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB1A978A10EA12B9D48DB4D /* SoundscapeControl.swift */; };
+		1ED9A5367B3705AEEEB0B333 /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
 		1F0BAE90812B36875A249405 /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
 		1F95ADE0352279494A37A30F /* DayContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7C368630DDEC4A2AA747A1 /* DayContext.swift */; };
 		201777ABF9C10100E8D20386 /* StrainScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */; };
@@ -29,8 +37,10 @@
 		248785715B3DE2156DD7571C /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
 		280DC4B2F8180261BC53D2E2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90AD8CB0B86EA29FC8EBEF2B /* SettingsView.swift */; };
 		2B161999F3551D16B4DC0D91 /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
+		2C836742A29F8FE394E70415 /* BodyClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5988981A0B2312A8B53FB4B /* BodyClock.swift */; };
 		2CA9DF6A4727B3E86AE97048 /* SoundscapeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA2A39F223DD162F1139936 /* SoundscapeView.swift */; };
 		2F84511FA3AF3BAA1C4DC443 /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
+		2FA404B23DBAAB638380A2C4 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
 		30D02782ED1C19CF13EB68F2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A642BBA44A200DA78DC8E341 /* Assets.xcassets */; };
 		318F2D3EAEE2B49A3F03B7E2 /* NapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF28EA3935C59AD80111D89 /* NapView.swift */; };
 		341925CCB785A77216B06E8A /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E73BF56BE184A76A17FDF61 /* TrendsView.swift */; };
@@ -49,6 +59,7 @@
 		5B4D3B73E663574D67496403 /* NapActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A941681C0FF29010F444059 /* NapActivityAttributes.swift */; };
 		5EA91DA4CE2DC82C8268D79F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D31EF0E61E462C6DAC9C5 /* RootView.swift */; };
 		5FD7E940C881946CF2A5EF92 /* BodyClockCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B202E4810C0F1C50E34E2DC3 /* BodyClockCard.swift */; };
+		6098DC278D97605174B04846 /* NapActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A941681C0FF29010F444059 /* NapActivityAttributes.swift */; };
 		63C0C306002158B02EA497E5 /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
 		63EACBCDD07E27FB51CFE8A1 /* RegularityCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = C674514EF3C9937365A3C45F /* RegularityCards.swift */; };
 		63F21DE5FD17061A3D6B660F /* SoundscapeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 710B9A0DBC682D2A2A6A1F4E /* SoundscapeEngine.swift */; };
@@ -58,17 +69,23 @@
 		76C0D28CA9E55F71BE2DB9A0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC1FF35F8179A094C3AB745 /* Theme.swift */; };
 		77DB90244BE02A48D458878F /* FoundationModelInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF14B47CE493455F452C408F /* FoundationModelInsightEngine.swift */; };
 		79320CD5F3A7F8E12DA02168 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4CCC9CCF7CEDBD7455FEF2 /* DeepLink.swift */; };
+		813502AF3C887836684BFE9F /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		81C5CE87400BED1A7448534A /* NapActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A941681C0FF29010F444059 /* NapActivityAttributes.swift */; };
 		8244F98542528575434DEA30 /* SleepSessionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */; };
+		8366100265EFFDFFFB217633 /* StrainScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */; };
 		8508204FEC412F59D8F3D82F /* HypnogramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12AB23E8C636FD67F0EFBBA9 /* HypnogramView.swift */; };
+		88CD51271183B7EE86B2AE68 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC1FF35F8179A094C3AB745 /* Theme.swift */; };
 		8D67B569AA15FAD78EC860D7 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB86D405417CEEDF41C16199 /* Achievement.swift */; };
 		96F939EF1F8F92D4E152A63B /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		9715C5BD2335132F4F8AC6B5 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */; };
+		A5D1D9C870BCA2F0798E3AC8 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625E612FBC59560157E62DB /* WatchLink.swift */; };
 		A6A9D3E2060799C1C6F5FE2C /* SleepDebtWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7F6F54B2365B0030755EB2 /* SleepDebtWidget.swift */; };
+		A7D88A8FDA11B60174187EAD /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625E612FBC59560157E62DB /* WatchLink.swift */; };
 		AC4602FA79C1F06E37161F87 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB86D405417CEEDF41C16199 /* Achievement.swift */; };
 		AD04426F85852FA876D1783B /* SleepHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C5056DFADE6AA9868C543E9 /* SleepHistoryStore.swift */; };
 		AE3A221E7415F4805F6CF9E7 /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
 		AED0FF0C41F4D17DA551838B /* LocalLLMInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */; };
+		AF6B7E77E7934584418E449A /* ZoonWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22DD2766CEDC92E27B8248C9 /* ZoonWatchApp.swift */; };
 		B14CE3E0336C3BC2A34B75C7 /* WeeklyReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32B703D845C762279417E217 /* WeeklyReport.swift */; };
 		B1B070822C0790707FE00BC1 /* MetricRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213BE1CB4CA529DD53B50FD5 /* MetricRing.swift */; };
 		BA6CB9436CCAABA2DA57A9FF /* RuleBasedInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */; };
@@ -77,14 +94,20 @@
 		C286634AE25F50A8CDC04E6F /* ZoonWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C2FD94B4F7D4CF309A5514A5 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EFBC9C57EA44E2338347F52 /* OnboardingView.swift */; };
 		C7141183286099D4C8F5A4D9 /* HealthRadar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03508B538C62AC65FD8AD914 /* HealthRadar.swift */; };
+		CF172F688E6D427E01763C3E /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 		D16936FC59B87D97DE8C244A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */; };
+		D2A02A8E3F206303EB92549B /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		D397403DABFEACAA41DB8475 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
 		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		DC2C58193F5F943D820FC820 /* SleepScoreWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */; };
 		DD223371A0B29FBE235BBC6B /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
 		DFB5C693F73E21AC169D52A2 /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97851BDC0CB8EE6780A3E49D /* MoreView.swift */; };
+		E015D8461AE876030C892CD5 /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
+		E0ADC1EF02734DB61EBD094C /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
 		E11AF6F8F50A25A70CB39D3C /* SleepDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C5DEE01809047EF6230EF /* SleepDetailView.swift */; };
 		E2DF80B10EB5CB60C63DEEC1 /* BodyBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B144AF3807FA6DAA668EFE /* BodyBattery.swift */; };
+		E467FBD2E214C053F7A6BEFD /* BodyBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B144AF3807FA6DAA668EFE /* BodyBattery.swift */; };
+		E482FEA3DE69D2AEA8FF39B9 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625E612FBC59560157E62DB /* WatchLink.swift */; };
 		E6F8F401B31F787AC7358604 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4CCC9CCF7CEDBD7455FEF2 /* DeepLink.swift */; };
 		E77CCAEA9A804E80BA0090EA /* StrainScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */; };
 		E7E68658D923ECD0BD14401E /* InsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45237B7D4C6548BAEC55290F /* InsightCard.swift */; };
@@ -92,19 +115,30 @@
 		EB60139530CEC5A1DEFA3F2B /* BodyClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5988981A0B2312A8B53FB4B /* BodyClock.swift */; };
 		EF4827F9DEB3898B7733F8DE /* DayContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C432B8295F6810E7F975CEE /* DayContextBuilder.swift */; };
 		F093513A2B0112BFAB4586CC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4423A4E415346D2848DCFF7D /* Assets.xcassets */; };
+		F40EECA04C7C6AED57BA4AFE /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4CCC9CCF7CEDBD7455FEF2 /* DeepLink.swift */; };
 		F4564ECAF9BD29A9DDF14656 /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		F4912FC411860F03F63EB22F /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
+		F49200DD7A33B2E7955459FE /* ZoonWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 03944FB4BD4F601B7757F914 /* ZoonWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F5DBED31BF40FC4B08D4D390 /* NapLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */; };
 		F7D50D4A2644F88D12CE6225 /* SleepDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */; };
+		F975AEF960918955595FAD4C /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		FA872B4C4904465C3E1557A2 /* LaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49631B20B1506B60BDEB8FC7 /* LaunchOptions.swift */; };
 		FB653BDD763662866376DE9F /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		FC1D90B78CCBC21C380EB178 /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
+		FD9EE8202622680EB36D16BB /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB86D405417CEEDF41C16199 /* Achievement.swift */; };
 		FDDD9393A5532F86AFC33A2D /* FeatureExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CE26528CE71795A222831C3 /* FeatureExtractor.swift */; };
 		FEC6F3C8CE0738C45E564583 /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 603206A2CDB9BC509E9EAD46 /* TodayView.swift */; };
 		FF3BFC3E797A78A4EB75D0A7 /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		30B83BA5BA9280D4379AEEF3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 09548E47F9D3F622CA83E0F9;
+			remoteInfo = ZoonWatch;
+		};
 		6332FA84B7BDEC43CA23DF4F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
@@ -115,6 +149,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		1CBD18B26416D0AD7C8E912E /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				F49200DD7A33B2E7955459FE,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		496AF46EC2762DDF91F78F13 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -132,6 +177,7 @@
 		010D79DAE1D4D7B54F7147DA /* SleepStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStage.swift"; sourceTree = "<group>"; };
 		02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWidgetBundle.swift"; sourceTree = "<group>"; };
 		03508B538C62AC65FD8AD914 /* HealthRadar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadar.swift"; sourceTree = "<group>"; };
+		03944FB4BD4F601B7757F914 /* ZoonWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZoonWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepRegularity.swift"; sourceTree = "<group>"; };
 		0C7F6F54B2365B0030755EB2 /* SleepDebtWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtWidget.swift"; sourceTree = "<group>"; };
 		12AB23E8C636FD67F0EFBBA9 /* HypnogramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HypnogramView.swift"; sourceTree = "<group>"; };
@@ -140,12 +186,14 @@
 		1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapLiveActivity.swift"; sourceTree = "<group>"; };
 		213BE1CB4CA529DD53B50FD5 /* MetricRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricRing.swift"; sourceTree = "<group>"; };
 		22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthKitManager.swift"; sourceTree = "<group>"; };
+		22DD2766CEDC92E27B8248C9 /* ZoonWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWatchApp.swift"; sourceTree = "<group>"; };
 		234D49A75ED10560B53A2024 /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserPreferences.swift"; sourceTree = "<group>"; };
 		29BBBECC2713C3FCF9065786 /* SleepScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScore.swift"; sourceTree = "<group>"; };
 		2B50A94B6FCAD440E1EF0A19 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = ".gitignore"; sourceTree = "<group>"; };
 		2F7C368630DDEC4A2AA747A1 /* DayContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DayContext.swift"; sourceTree = "<group>"; };
 		2FB1A978A10EA12B9D48DB4D /* SoundscapeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundscapeControl.swift"; sourceTree = "<group>"; };
 		32B703D845C762279417E217 /* WeeklyReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyReport.swift"; sourceTree = "<group>"; };
+		35D25F2515856E1F2C18D447 /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchRootView.swift"; sourceTree = "<group>"; };
 		37EAA5532EFA21001A098C97 /* ReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReportView.swift"; sourceTree = "<group>"; };
 		406D31EF0E61E462C6DAC9C5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView.swift"; sourceTree = "<group>"; };
 		40C905EF878241FBB40DA514 /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PreviewSupport.swift"; sourceTree = "<group>"; };
@@ -165,6 +213,7 @@
 		5FF82749F8685C8D51B42E20 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Motion.swift"; sourceTree = "<group>"; };
 		603206A2CDB9BC509E9EAD46 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TodayView.swift"; sourceTree = "<group>"; };
 		63B144AF3807FA6DAA668EFE /* BodyBattery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyBattery.swift"; sourceTree = "<group>"; };
+		6625E612FBC59560157E62DB /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchLink.swift"; sourceTree = "<group>"; };
 		6A941681C0FF29010F444059 /* NapActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapActivityAttributes.swift"; sourceTree = "<group>"; };
 		6E73BF56BE184A76A17FDF61 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
 		6EF28EA3935C59AD80111D89 /* NapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapView.swift"; sourceTree = "<group>"; };
@@ -212,6 +261,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A22E23FD3BB151B5307A8809 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C380EA7C32F43BBFAB3A69EC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -306,6 +363,7 @@
 				B46A6AFB1DC88CE23F6E63F1,
 				B10A1100D1BB4824CA4E3EBE,
 				5404EB41D8A28647E668AC94,
+				748B285E7BBE42DF4EEF9437,
 				3B534EC61D756F8D2311F047,
 				547D009064F7C3F13BEF3460,
 			);
@@ -331,8 +389,18 @@
 			children = (
 				84337AD8D27FCD69AF2C4FC2,
 				CFEE55A02984C083C52C8EFC,
+				03944FB4BD4F601B7757F914,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		748B285E7BBE42DF4EEF9437 /* ZoonWatch */ = {
+			isa = PBXGroup;
+			children = (
+				35D25F2515856E1F2C18D447,
+				22DD2766CEDC92E27B8248C9,
+			);
+			path = ZoonWatch;
 			sourceTree = "<group>";
 		};
 		B10A1100D1BB4824CA4E3EBE /* Zoon */ = {
@@ -372,6 +440,7 @@
 				AD9F7BD8ACF0A1F1076E3A07,
 				4EC1FF35F8179A094C3AB745,
 				7EC392B5759BE3200B53F48D,
+				6625E612FBC59560157E62DB,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -400,6 +469,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		09548E47F9D3F622CA83E0F9 /* ZoonWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CB8D9A4BF60B1B2A1A856CBF /* Build configuration list for PBXNativeTarget "ZoonWatch" */;
+			buildPhases = (
+				E97A1745DCA6497327906814 /* Sources */,
+				A22E23FD3BB151B5307A8809 /* Frameworks */,
+				57143D30FBAEB3D415D2964F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ZoonWatch;
+			productName = ZoonWatch;
+			productReference = 03944FB4BD4F601B7757F914 /* ZoonWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		3B349027366F684A61204B00 /* ZoonWidgetExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3D5B5193CF8AC4E310989886 /* Build configuration list for PBXNativeTarget "ZoonWidgetExtension" */;
@@ -425,11 +511,13 @@
 				DB575B01C9EDB90A46216F71 /* Frameworks */,
 				0BC40DDAB69570E4FBE53FB5 /* Resources */,
 				496AF46EC2762DDF91F78F13 /* Embed Foundation Extensions */,
+				1CBD18B26416D0AD7C8E912E /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				5A9082BF535D9EBF6E6C908A /* PBXTargetDependency */,
+				0E3418FE50D1DCB1DDD77790 /* PBXTargetDependency */,
 			);
 			name = Zoon;
 			productName = Zoon;
@@ -448,6 +536,7 @@
 				TargetAttributes = {
 					E3435DDA2687639586BF0B70 = {CreatedOnToolsVersion = 15.2; };
 					3B349027366F684A61204B00 = {CreatedOnToolsVersion = 15.2; };
+					09548E47F9D3F622CA83E0F9 = {CreatedOnToolsVersion = 15.2; };
 				};
 			};
 			buildConfigurationList = 7EF2517A8FE63F4681EC5EEA /* Build configuration list for PBXProject "Zoon" */;
@@ -465,6 +554,7 @@
 			targets = (
 				E3435DDA2687639586BF0B70 /* Zoon */,
 				3B349027366F684A61204B00 /* ZoonWidgetExtension */,
+				09548E47F9D3F622CA83E0F9 /* ZoonWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -475,6 +565,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				30D02782ED1C19CF13EB68F2,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		57143D30FBAEB3D415D2964F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -557,6 +655,7 @@
 				E77CCAEA9A804E80BA0090EA,
 				BE8F8EADC36EFF631AA73AC1,
 				FC1D90B78CCBC21C380EB178,
+				E482FEA3DE69D2AEA8FF39B9,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -592,12 +691,49 @@
 				201777ABF9C10100E8D20386,
 				76C0D28CA9E55F71BE2DB9A0,
 				6E72E1436F4E1E93625CCCB6,
+				A5D1D9C870BCA2F0798E3AC8,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E97A1745DCA6497327906814 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				01BF80DA7FEED1F542E212EA,
+				AF6B7E77E7934584418E449A,
+				FD9EE8202622680EB36D16BB,
+				E467FBD2E214C053F7A6BEFD,
+				2C836742A29F8FE394E70415,
+				1ED9A5367B3705AEEEB0B333,
+				F40EECA04C7C6AED57BA4AFE,
+				172E5E6228F43CACD75B25FB,
+				02A58EF630D6157B6BE412EE,
+				2FA404B23DBAAB638380A2C4,
+				00E200CB14336925459730FF,
+				6098DC278D97605174B04846,
+				F975AEF960918955595FAD4C,
+				1D112309BCEC05806E32AD6A,
+				06D8681F9C375CB783DB871A,
+				CF172F688E6D427E01763C3E,
+				813502AF3C887836684BFE9F,
+				0D00D90826DDCE27EF0C9BCD,
+				E015D8461AE876030C892CD5,
+				E0ADC1EF02734DB61EBD094C,
+				8366100265EFFDFFFB217633,
+				88CD51271183B7EE86B2AE68,
+				D2A02A8E3F206303EB92549B,
+				A7D88A8FDA11B60174187EAD,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		0E3418FE50D1DCB1DDD77790 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 09548E47F9D3F622CA83E0F9 /* ZoonWatch */;
+			targetProxy = 30B83BA5BA9280D4379AEEF3 /* PBXContainerItemProxy */;
+		};
 		5A9082BF535D9EBF6E6C908A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 3B349027366F684A61204B00 /* ZoonWidgetExtension */;
@@ -646,6 +782,26 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
+		};
+		524F341F4DEE7B9B7183D88F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZoonWatch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchsimulator watchos";
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
 		};
 		699FCDBED06EC64C8A6B513F /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -696,6 +852,26 @@
 				SKIP_INSTALL = YES;
 			};
 			name = Release;
+		};
+		985B02CB3D5279EA5939EC4B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZoonWatch/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchsimulator watchos";
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
 		};
 		A1E63E9AED7999182E6042AA /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -807,6 +983,15 @@
 			buildConfigurations = (
 				06125DCB1954C4F7EEE69894 /* Debug */,
 				AACF5BDB2BC481EB947517D5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CB8D9A4BF60B1B2A1A856CBF /* Build configuration list for PBXNativeTarget "ZoonWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				985B02CB3D5279EA5939EC4B /* Debug */,
+				524F341F4DEE7B9B7183D88F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

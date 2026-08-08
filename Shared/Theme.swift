@@ -35,6 +35,21 @@ enum Theme {
         endRadius: 420
     )
 
+    /// Watch variant of the ground.
+    ///
+    /// Flatter and darker than the phone's. A watch OLED renders true black as
+    /// pixels that are off, so a gradient that looks rich on a phone reads as
+    /// grey haze on a wrist and costs battery to display. The tint is kept only
+    /// at the top, where the app's identity needs to show.
+    static let watchBackground = LinearGradient(
+        colors: [
+            Color(red: 0.055, green: 0.055, blue: 0.145),
+            Color.black
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     static let cardStroke = Color.white.opacity(0.08)
     static let cardFill = Color.white.opacity(0.05)
 

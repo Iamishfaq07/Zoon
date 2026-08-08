@@ -87,6 +87,9 @@ final class SleepDataCoordinator {
     let journal: JournalStore
     private let naps: NapStore
     private let preferences: UserPreferences
+    /// Pushes the snapshot to a paired Apple Watch. Owned here because this is
+    /// the one place a finished snapshot exists.
+    private let watchLink = WatchLink()
     private let sessionBuilder = SleepSessionBuilder()
     private let contextBuilder = DayContextBuilder()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Coordinator")
@@ -110,6 +113,7 @@ final class SleepDataCoordinator {
         self.naps = naps
         self.preferences = preferences
         self.engine = RuleBasedInsightEngine()
+        watchLink.activate()
     }
 
     // MARK: - Lifecycle
@@ -413,6 +417,10 @@ final class SleepDataCoordinator {
 
         SnapshotStore.write(snapshot)
         WidgetCenter.shared.reloadAllTimelines()
+        // Same payload to the wrist. Cheap to call every refresh: the framework
+        // keeps only the latest context and drops an unchanged one rather than
+        // waking the watch for nothing.
+        watchLink.send(snapshot)
     }
 
     // MARK: - Mock path
