@@ -25,8 +25,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Runs on Linux, so a malformed project file fails in seconds without
+  # spending a macOS runner minute (billed at 10x on private repos).
+  project:
+    name: Validate project file
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse project.pbxproj
+        run: python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
+
   build:
     name: Build (iOS Simulator)
+    needs: project
     runs-on: macos-latest
     timeout-minutes: 30
 

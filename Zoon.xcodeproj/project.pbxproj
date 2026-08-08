@@ -266,7 +266,7 @@
 			name = Documentation;
 			sourceTree = "<group>";
 		};
-		518DA81DB9B99529C0C0AEBE /*  */ = {
+		518DA81DB9B99529C0C0AEBE = {
 			isa = PBXGroup;
 			children = (
 				B46A6AFB1DC88CE23F6E63F1,
@@ -275,7 +275,6 @@
 				3B534EC61D756F8D2311F047,
 				547D009064F7C3F13BEF3460,
 			);
-			name = ;
 			sourceTree = "<group>";
 		};
 		5404EB41D8A28647E668AC94 /* ZoonWidget */ = {
