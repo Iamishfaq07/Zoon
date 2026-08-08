@@ -113,7 +113,7 @@ struct RootView: View {
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
-        case .report, .settings:
+        case .report, .settings, .badges:
             selection = .more
             morePath = NavigationPath()
             morePath.append(destination)
@@ -206,7 +206,7 @@ struct SleepTabView: View {
                     }
                 // Owned by the More tab; unreachable here, but the switch has
                 // to stay exhaustive.
-                case .report, .settings: EmptyView()
+                case .report, .settings, .badges: EmptyView()
                 }
             }
         }

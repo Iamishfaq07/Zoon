@@ -378,7 +378,7 @@ final class SleepDataCoordinator {
     }
 
     private func publishSnapshot(_ context: DayContext, goal: Double) {
-        SnapshotStore.write(SleepSnapshot(
+        var snapshot = SleepSnapshot(
             features: context.night,
             score: context.sleepScore,
             insight: context.insight,
@@ -387,7 +387,31 @@ final class SleepDataCoordinator {
             bodyBattery: context.bodyBattery.current,
             strain: context.strain.value,
             sleepPerformance: context.sleepNeed.performancePercent
-        ))
+        )
+
+        // Badges are evaluated here rather than in the extension: the engine
+        // needs the whole night history and the journal, and the widget
+        // deliberately reads nothing but this snapshot.
+        let achievements = AchievementEngine.evaluate(
+            nights: recentNights,
+            goalMinutes: goal,
+            journalTaggedNights: journal.taggedNightCount(),
+            napCount: naps.naps.count,
+            regularityIndex: context.regularity.index
+        )
+        snapshot.badgesUnlocked = achievements.filter(\.isUnlocked).count
+        snapshot.badgesTotal = achievements.count
+        if let headline = AchievementEngine.headline(achievements) {
+            snapshot.badgeTitle = headline.title
+            snapshot.badgeSymbol = headline.symbol
+            snapshot.badgeTier = headline.tier.rawValue
+        }
+        if let next = AchievementEngine.nextUp(achievements) {
+            snapshot.nextBadgeTitle = next.title
+            snapshot.nextBadgeProgress = next.progress
+        }
+
+        SnapshotStore.write(snapshot)
         WidgetCenter.shared.reloadAllTimelines()
     }
 

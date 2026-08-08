@@ -26,12 +26,13 @@ enum DeepLink {
         case sleepDetail
         case report
         case settings
+        case badges
 
         /// Which tab owns this screen.
         var tab: String {
             switch self {
             case .soundscapes, .nap, .sleepDetail: "sleep"
-            case .report, .settings: "more"
+            case .report, .settings, .badges: "more"
             }
         }
     }

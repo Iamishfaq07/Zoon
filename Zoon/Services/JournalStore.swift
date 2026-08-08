@@ -13,6 +13,14 @@ final class JournalStore {
         self.context = context
     }
 
+    /// Nights that carry at least one tag.
+    ///
+    /// An entry with no tags is a row the user opened and left alone; counting
+    /// it would award the journal badge for scrolling past the screen.
+    func taggedNightCount() -> Int {
+        allEntries().filter { !$0.tags.isEmpty }.count
+    }
+
     func allEntries() -> [JournalEntry] {
         let descriptor = FetchDescriptor<JournalEntry>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]

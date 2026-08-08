@@ -13,6 +13,7 @@ struct ZoonWidgetBundle: WidgetBundle {
     var body: some Widget {
         SleepDebtWidget()
         SleepScoreWidget()
+        BadgeWidget()
 
         // Live Activities and Control Center controls are both newer than the
         // app's iOS 18 floor in places, so each is gated rather than assumed.

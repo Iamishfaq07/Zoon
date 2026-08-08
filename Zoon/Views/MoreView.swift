@@ -23,18 +23,23 @@ struct MoreView: View {
                     StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
                         .entrance(0)
 
+                    navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
+                        AchievementsView()
+                    }
+                    .entrance(1)
+
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
                     }
-                    .entrance(1)
+                    .entrance(2)
                     navRow("Settings", "Goal, engine, privacy", "gearshape.fill", .secondary) {
                         SettingsView()
                     }
-                    .entrance(2)
+                    .entrance(3)
 
-                    dataCard.entrance(3)
-                    privacyCard.entrance(4)
-                    aboutCard.entrance(5)
+                    dataCard.entrance(4)
+                    privacyCard.entrance(5)
+                    aboutCard.entrance(6)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
@@ -46,6 +51,7 @@ struct MoreView: View {
                 switch destination {
                 case .report: ReportView()
                 case .settings: SettingsView()
+                case .badges: AchievementsView()
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail: EmptyView()
                 }
@@ -246,11 +252,15 @@ struct MoreView: View {
 
 /// Streaks and milestones.
 ///
-/// Gamification kept deliberately modest: a streak counter and a handful of
-/// milestones, no badges, no levels, no notifications nagging you to protect a
-/// number. A streak that punishes you for one bad night is actively harmful in a
-/// sleep app — the entire point is that some nights are bad and that's data, not
-/// failure.
+/// Gamification kept deliberately modest: no levels, no notifications nagging
+/// you to protect a number. A streak that punishes you for one bad night is
+/// actively harmful in a sleep app — the entire point is that some nights are
+/// bad and that's data, not failure.
+///
+/// Badges exist now (see `AchievementsView`) and are built on the same rule:
+/// every one is cumulative or best-ever, so nothing can be lost. The current
+/// streak below is the one live number in the app, and it is shown as a fact
+/// rather than as something to defend.
 struct StreakCard: View {
     let nights: [SleepNightFeatures]
     let goalMinutes: Double

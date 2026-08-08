@@ -124,6 +124,30 @@ enum MockData {
         )
     }
 
+    /// Snapshot with badge fields filled in, for the badge widget previews.
+    static var snapshotWithBadges: SleepSnapshot {
+        var result = snapshot
+        let achievements = AchievementEngine.evaluate(
+            nights: history,
+            goalMinutes: 420,
+            journalTaggedNights: 9,
+            napCount: 4,
+            regularityIndex: 74
+        )
+        result.badgesUnlocked = achievements.filter(\.isUnlocked).count
+        result.badgesTotal = achievements.count
+        if let headline = AchievementEngine.headline(achievements) {
+            result.badgeTitle = headline.title
+            result.badgeSymbol = headline.symbol
+            result.badgeTier = headline.tier.rawValue
+        }
+        if let next = AchievementEngine.nextUp(achievements) {
+            result.nextBadgeTitle = next.title
+            result.nextBadgeProgress = next.progress
+        }
+        return result
+    }
+
     static var poorSnapshot: SleepSnapshot {
         SleepSnapshot(
             features: poorNight,
