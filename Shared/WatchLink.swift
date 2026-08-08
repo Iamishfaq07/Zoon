@@ -28,14 +28,18 @@ import WatchConnectivity
 /// - `updateApplicationContext` keeps exactly one payload, overwriting any
 ///   undelivered one, and delivers it when the counterpart next wakes. That is
 ///   precisely the semantics of "last night's numbers".
+///
+/// Not `public`: every target compiles these sources directly rather than
+/// importing a module, so `public` here buys nothing and drags every type in
+/// the signatures — `SleepSnapshot` among them — into needing it too.
 @MainActor
 @Observable
-public final class WatchLink: NSObject {
+final class WatchLink: NSObject {
 
     /// Latest snapshot from the phone. `nil` until one arrives.
-    public private(set) var snapshot: SleepSnapshot?
+    private(set) var snapshot: SleepSnapshot?
     /// True once the session has activated, whether or not data has arrived.
-    public private(set) var isActivated = false
+    private(set) var isActivated = false
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "WatchLink")
 
@@ -44,11 +48,11 @@ public final class WatchLink: NSObject {
     /// definition of the wire format on both sides.
     private static let payloadKey = "snapshot"
 
-    public override init() {
+    override init() {
         super.init()
     }
 
-    public func activate() {
+    func activate() {
         #if canImport(WatchConnectivity)
         guard WCSession.isSupported() else {
             logger.notice("WCSession unsupported on this device")
@@ -68,7 +72,7 @@ public final class WatchLink: NSObject {
     /// Cheap enough to call on every refresh — the framework coalesces, and a
     /// context identical to the last one is dropped by the system rather than
     /// waking the watch for nothing.
-    public func send(_ snapshot: SleepSnapshot) {
+    func send(_ snapshot: SleepSnapshot) {
         #if canImport(WatchConnectivity)
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
@@ -99,7 +103,7 @@ public final class WatchLink: NSObject {
 #if canImport(WatchConnectivity)
 extension WatchLink: WCSessionDelegate {
 
-    nonisolated public func session(
+    nonisolated func session(
         _ session: WCSession,
         activationDidCompleteWith state: WCSessionActivationState,
         error: Error?
@@ -112,7 +116,7 @@ extension WatchLink: WCSessionDelegate {
         }
     }
 
-    nonisolated public func session(
+    nonisolated func session(
         _ session: WCSession,
         didReceiveApplicationContext context: [String: Any]
     ) {
@@ -124,9 +128,9 @@ extension WatchLink: WCSessionDelegate {
     // Required on iOS only, and both are no-ops here: the session is
     // reactivated on the next launch anyway.
     #if os(iOS)
-    nonisolated public func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
 
-    nonisolated public func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         // Re-activate so a second paired watch keeps working.
         WCSession.default.activate()
     }
