@@ -191,6 +191,15 @@ when the shutter fires, so a green run is proof the app launches, opens its
 SwiftData store, and draws. No Mac and no Apple account needed; see
 [BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
+| | | | | |
+|---|---|---|---|---|
+| ![Today](docs/screenshots/today.jpg) | ![Sleep](docs/screenshots/sleep.jpg) | ![Trends](docs/screenshots/trends.jpg) | ![Journal](docs/screenshots/journal.jpg) | ![More](docs/screenshots/more.jpg) |
+| Today | Sleep | Trends | Journal | More |
+
+Captured by CI on an iPhone 17 Pro simulator, with the mock dataset — hence the
+**Sample data** badge. They are regenerated on demand, so a layout regression
+shows up as an image diff.
+
 Still unverified, because CI can screenshot but can't tap, and because nobody
 has run this against a real Health store:
 

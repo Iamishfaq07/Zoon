@@ -188,7 +188,15 @@ jobs:
 
             # simctl launch returns 0 whether or not the process survives, so
             # the absence of the process is the real signal.
-            if ! xcrun simctl spawn "$UDID" launchctl list | grep -q "$BUNDLE_ID"; then
+            #
+            # Collected into a variable rather than piped straight into grep.
+            # `... launchctl list | grep -q` is wrong under `pipefail`: grep -q
+            # exits on the first match, SIGPIPEs launchctl, and the pipeline
+            # reports failure *because the app was found*. That produced two
+            # phantom crash reports before the broken-pipe message gave it away.
+            local processes
+            processes=$(xcrun simctl spawn "$UDID" launchctl list || true)
+            if ! printf '%s' "$processes" | grep -q "$BUNDLE_ID"; then
               echo "::error::Zoon died on tab '$tab'."
 
               # The .ips crash report carries the exception type and the stack.
