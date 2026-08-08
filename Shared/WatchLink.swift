@@ -1,5 +1,8 @@
 import Foundation
 import os
+#if os(watchOS)
+import WidgetKit
+#endif
 #if canImport(WatchConnectivity)
 import WatchConnectivity
 #else
@@ -90,7 +93,15 @@ final class WatchLink: NSObject {
     private func apply(_ context: [String: Any]) {
         guard let data = context[Self.payloadKey] as? Data else { return }
         do {
-            snapshot = try JSONDecoder().decode(SleepSnapshot.self, from: data)
+            let decoded = try JSONDecoder().decode(SleepSnapshot.self, from: data)
+            snapshot = decoded
+            #if os(watchOS)
+            // Park it where the complication extension can read it, and ask the
+            // faces to redraw. The extension cannot hold a WCSession, so this
+            // hand-off is the only route to a watch face.
+            WatchSnapshotStore.save(decoded)
+            WidgetCenter.shared.reloadAllTimelines()
+            #endif
         } catch {
             // A decode failure here means the two sides are on different app
             // versions. Logged rather than surfaced: the watch showing slightly

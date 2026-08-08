@@ -84,14 +84,14 @@ jobs:
         if: steps.build.outcome == 'success'
         run: |
           MISSING=""
-          for f in $(find Shared Zoon ZoonWidget ZoonWatch -name '*.swift' | sort); do
+          for f in $(find Shared Zoon ZoonWidget ZoonWatch ZoonWatchWidget -name '*.swift' | sort); do
             base=$(basename "$f")
             grep -q -- "$base" build.log || MISSING="$MISSING $base"
           done
           {
             echo "### Sources"
             if [ -z "$MISSING" ]; then
-              COUNT=$(find Shared Zoon ZoonWidget ZoonWatch -name '*.swift' | wc -l | tr -d ' ')
+              COUNT=$(find Shared Zoon ZoonWidget ZoonWatch ZoonWatchWidget -name '*.swift' | wc -l | tr -d ' ')
               echo ""
               echo "All ${COUNT} Swift files reached the compiler."
             else

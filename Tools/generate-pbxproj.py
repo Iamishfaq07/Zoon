@@ -14,6 +14,7 @@ ROOT = "/home/user/Zoon"
 APP = "Zoon"
 EXT = "ZoonWidgetExtension"
 WATCH = "ZoonWatch"
+WATCH_EXT = "ZoonWatchWidgetExtension"
 
 _used = {}
 
@@ -41,6 +42,7 @@ SHARED = swift_files("Shared")
 APP_SRC = swift_files("Zoon")
 EXT_SRC = swift_files("ZoonWidget")
 WATCH_SRC = swift_files("ZoonWatch")
+WATCH_EXT_SRC = swift_files("ZoonWatchWidget")
 
 APP_ASSETS = "Zoon/Assets.xcassets"
 EXT_ASSETS = "ZoonWidget/Assets.xcassets"
@@ -77,12 +79,13 @@ def file_ref(path, ftype=None, name=None):
 
 
 refs = {}
-for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + [APP_ASSETS, EXT_ASSETS] + DOCS:
+for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + [APP_ASSETS, EXT_ASSETS] + DOCS:
     refs[p] = file_ref(p)
 
 APP_PRODUCT = uid("product:app")
 EXT_PRODUCT = uid("product:ext")
 WATCH_PRODUCT = uid("product:watch")
+WATCH_EXT_PRODUCT = uid("product:watchext")
 emit("PBXFileReference",
      f'\t\t{APP_PRODUCT} /* Zoon.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; '
      f'includeInIndex = 0; path = Zoon.app; sourceTree = BUILT_PRODUCTS_DIR; }};')
@@ -95,6 +98,12 @@ emit("PBXFileReference",
 emit("PBXFileReference",
      f'\t\t{WATCH_PRODUCT} /* {WATCH}.app */ = {{isa = PBXFileReference; '
      f'explicitFileType = wrapper.application; includeInIndex = 0; path = {WATCH}.app; '
+     f'sourceTree = BUILT_PRODUCTS_DIR; }};')
+
+
+emit("PBXFileReference",
+     f'\t\t{WATCH_EXT_PRODUCT} /* {WATCH_EXT}.appex */ = {{isa = PBXFileReference; '
+     f'explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = {WATCH_EXT}.appex; '
      f'sourceTree = BUILT_PRODUCTS_DIR; }};')
 
 
@@ -114,6 +123,7 @@ ext_sources = [build_file(p, EXT) for p in EXT_SRC + SHARED]
 # gets the types, not the pipeline: nothing under Zoon/ is in this list, so the
 # watch app cannot reach HealthKit or SwiftData even by accident.
 watch_sources = [build_file(p, WATCH) for p in WATCH_SRC + SHARED]
+watch_ext_sources = [build_file(p, WATCH_EXT) for p in WATCH_EXT_SRC + SHARED]
 
 
 def resource_file(path, target):
@@ -127,6 +137,12 @@ def resource_file(path, target):
 
 app_resources = [resource_file(APP_ASSETS, APP)]
 ext_resources = [resource_file(EXT_ASSETS, EXT)]
+
+EMBED_WATCH_EXT_BF = uid("embed:watchappex")
+emit("PBXBuildFile",
+     f'\t\t{EMBED_WATCH_EXT_BF} /* {WATCH_EXT}.appex in Embed Foundation Extensions */ = {{isa = PBXBuildFile; '
+     f'fileRef = {WATCH_EXT_PRODUCT} /* {WATCH_EXT}.appex */; '
+     f'settings = {{ATTRIBUTES = (RemoveHeadersOnCopy, ); }}; }};')
 
 EMBED_WATCH_BF = uid("embed:watchapp")
 emit("PBXBuildFile",
@@ -184,10 +200,11 @@ shared_group = tree_groups("Shared", SHARED)
 app_group = tree_groups("Zoon", APP_SRC, extra=[refs[APP_ASSETS]])
 ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS]])
 watch_group = tree_groups("ZoonWatch", WATCH_SRC)
+watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC)
 docs_group = group("docs", "Documentation", [refs[d] for d in DOCS])
-products_group = group("products", "Products", [APP_PRODUCT, EXT_PRODUCT, WATCH_PRODUCT])
+products_group = group("products", "Products", [APP_PRODUCT, EXT_PRODUCT, WATCH_PRODUCT, WATCH_EXT_PRODUCT])
 main_group = group("main", "", [shared_group, app_group, ext_group, watch_group,
-                                docs_group, products_group])
+                                watch_ext_group, docs_group, products_group])
 
 # --- Build phases ---------------------------------------------------------
 APP_SOURCES_PHASE = uid("phase:app:sources")
@@ -201,6 +218,10 @@ WATCH_SOURCES_PHASE = uid("phase:watch:sources")
 WATCH_FW_PHASE = uid("phase:watch:fw")
 WATCH_RES_PHASE = uid("phase:watch:res")
 EMBED_WATCH_PHASE = uid("phase:app:embedwatch")
+WATCH_EXT_SOURCES_PHASE = uid("phase:watchext:sources")
+WATCH_EXT_FW_PHASE = uid("phase:watchext:fw")
+WATCH_EXT_RES_PHASE = uid("phase:watchext:res")
+EMBED_WATCH_EXT_PHASE = uid("phase:watch:embedext")
 
 
 def phase(pid, isa, name, files, extra=""):
@@ -231,6 +252,13 @@ phase(WATCH_RES_PHASE, "PBXResourcesBuildPhase", "Resources", [])
 # dstSubfolderSpec 16 is "Products Directory"; the path does the rest.
 phase(EMBED_WATCH_PHASE, "PBXCopyFilesBuildPhase", "Embed Watch Content", [EMBED_WATCH_BF],
       extra='\t\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";\n\t\t\tdstSubfolderSpec = 16;\n')
+phase(WATCH_EXT_SOURCES_PHASE, "PBXSourcesBuildPhase", "Sources", watch_ext_sources)
+phase(WATCH_EXT_FW_PHASE, "PBXFrameworksBuildPhase", "Frameworks", [])
+phase(WATCH_EXT_RES_PHASE, "PBXResourcesBuildPhase", "Resources", [])
+# The complication extension is embedded in the *watch app*, not the phone app.
+phase(EMBED_WATCH_EXT_PHASE, "PBXCopyFilesBuildPhase", "Embed Foundation Extensions",
+      [EMBED_WATCH_EXT_BF],
+      extra='\t\t\tdstPath = "";\n\t\t\tdstSubfolderSpec = 13;\n')
 
 # --- Target dependency ----------------------------------------------------
 PROJECT = uid("project")
@@ -241,6 +269,9 @@ DEP = uid("dep:ext")
 WATCH_TARGET = uid("target:watch")
 WATCH_PROXY = uid("proxy:watch")
 WATCH_DEP = uid("dep:watch")
+WATCH_EXT_TARGET = uid("target:watchext")
+WATCH_EXT_PROXY = uid("proxy:watchext")
+WATCH_EXT_DEP = uid("dep:watchext")
 
 emit("PBXContainerItemProxy",
      f'\t\t{PROXY} /* PBXContainerItemProxy */ = {{\n'
@@ -272,10 +303,26 @@ emit("PBXTargetDependency",
      f'\t\t\ttargetProxy = {WATCH_PROXY} /* PBXContainerItemProxy */;\n'
      f'\t\t}};')
 
+emit("PBXContainerItemProxy",
+     f'\t\t{WATCH_EXT_PROXY} /* PBXContainerItemProxy */ = {{\n'
+     f'\t\t\tisa = PBXContainerItemProxy;\n'
+     f'\t\t\tcontainerPortal = {PROJECT} /* Project object */;\n'
+     f'\t\t\tproxyType = 1;\n'
+     f'\t\t\tremoteGlobalIDString = {WATCH_EXT_TARGET};\n'
+     f'\t\t\tremoteInfo = {WATCH_EXT};\n'
+     f'\t\t}};')
+emit("PBXTargetDependency",
+     f'\t\t{WATCH_EXT_DEP} /* PBXTargetDependency */ = {{\n'
+     f'\t\t\tisa = PBXTargetDependency;\n'
+     f'\t\t\ttarget = {WATCH_EXT_TARGET} /* {WATCH_EXT} */;\n'
+     f'\t\t\ttargetProxy = {WATCH_EXT_PROXY} /* PBXContainerItemProxy */;\n'
+     f'\t\t}};')
+
 # --- Targets --------------------------------------------------------------
 APP_CFG_LIST = uid("cfglist:app")
 EXT_CFG_LIST = uid("cfglist:ext")
 WATCH_CFG_LIST = uid("cfglist:watch")
+WATCH_EXT_CFG_LIST = uid("cfglist:watchext")
 PROJ_CFG_LIST = uid("cfglist:project")
 
 emit("PBXNativeTarget",
@@ -325,13 +372,31 @@ emit("PBXNativeTarget",
      f'\t\t\t\t{WATCH_SOURCES_PHASE} /* Sources */,\n'
      f'\t\t\t\t{WATCH_FW_PHASE} /* Frameworks */,\n'
      f'\t\t\t\t{WATCH_RES_PHASE} /* Resources */,\n'
+     f'\t\t\t\t{EMBED_WATCH_EXT_PHASE} /* Embed Foundation Extensions */,\n'
      f'\t\t\t);\n'
      f'\t\t\tbuildRules = (\n\t\t\t);\n'
-     f'\t\t\tdependencies = (\n\t\t\t);\n'
+     f'\t\t\tdependencies = (\n\t\t\t\t{WATCH_EXT_DEP} /* PBXTargetDependency */,\n\t\t\t);\n'
      f'\t\t\tname = {WATCH};\n'
      f'\t\t\tproductName = {WATCH};\n'
      f'\t\t\tproductReference = {WATCH_PRODUCT} /* {WATCH}.app */;\n'
      f'\t\t\tproductType = "com.apple.product-type.application";\n'
+     f'\t\t}};')
+
+emit("PBXNativeTarget",
+     f'\t\t{WATCH_EXT_TARGET} /* {WATCH_EXT} */ = {{\n'
+     f'\t\t\tisa = PBXNativeTarget;\n'
+     f'\t\t\tbuildConfigurationList = {WATCH_EXT_CFG_LIST} /* Build configuration list for PBXNativeTarget "{WATCH_EXT}" */;\n'
+     f'\t\t\tbuildPhases = (\n'
+     f'\t\t\t\t{WATCH_EXT_SOURCES_PHASE} /* Sources */,\n'
+     f'\t\t\t\t{WATCH_EXT_FW_PHASE} /* Frameworks */,\n'
+     f'\t\t\t\t{WATCH_EXT_RES_PHASE} /* Resources */,\n'
+     f'\t\t\t);\n'
+     f'\t\t\tbuildRules = (\n\t\t\t);\n'
+     f'\t\t\tdependencies = (\n\t\t\t);\n'
+     f'\t\t\tname = {WATCH_EXT};\n'
+     f'\t\t\tproductName = {WATCH_EXT};\n'
+     f'\t\t\tproductReference = {WATCH_EXT_PRODUCT} /* {WATCH_EXT}.appex */;\n'
+     f'\t\t\tproductType = "com.apple.product-type.app-extension";\n'
      f'\t\t}};')
 
 emit("PBXProject",
@@ -345,6 +410,7 @@ emit("PBXProject",
      f'\t\t\t\t\t{APP_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
      f'\t\t\t\t\t{EXT_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
      f'\t\t\t\t\t{WATCH_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
+     f'\t\t\t\t\t{WATCH_EXT_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
      f'\t\t\t\t}};\n'
      f'\t\t\t}};\n'
      f'\t\t\tbuildConfigurationList = {PROJ_CFG_LIST} /* Build configuration list for PBXProject "{APP}" */;\n'
@@ -360,6 +426,7 @@ emit("PBXProject",
      f'\t\t\t\t{APP_TARGET} /* {APP} */,\n'
      f'\t\t\t\t{EXT_TARGET} /* {EXT} */,\n'
      f'\t\t\t\t{WATCH_TARGET} /* {WATCH} */,\n'
+     f'\t\t\t\t{WATCH_EXT_TARGET} /* {WATCH_EXT} */,\n'
      f'\t\t\t);\n'
      f'\t\t}};')
 
@@ -468,7 +535,18 @@ WATCH_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = NO;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 """
 
-for key, settings in (("app", APP_SETTINGS), ("ext", EXT_SETTINGS), ("watch", WATCH_SETTINGS)):
+WATCH_EXT_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ZoonWatchWidget/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.complication;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchsimulator watchos";
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+"""
+
+for key, settings in (("app", APP_SETTINGS), ("ext", EXT_SETTINGS),
+                      ("watch", WATCH_SETTINGS), ("watchext", WATCH_EXT_SETTINGS)):
     for cfg in ("Debug", "Release"):
         configs[uid(f"cfg:{key}:{cfg}")] = (cfg, settings)
 
@@ -502,6 +580,8 @@ cfg_list(EXT_CFG_LIST, f'Build configuration list for PBXNativeTarget "{EXT}"',
          uid("cfg:ext:Debug"), uid("cfg:ext:Release"))
 cfg_list(WATCH_CFG_LIST, f'Build configuration list for PBXNativeTarget "{WATCH}"',
          uid("cfg:watch:Debug"), uid("cfg:watch:Release"))
+cfg_list(WATCH_EXT_CFG_LIST, f'Build configuration list for PBXNativeTarget "{WATCH_EXT}"',
+         uid("cfg:watchext:Debug"), uid("cfg:watchext:Release"))
 
 # ---------------------------------------------------------------- assemble
 ORDER = ["PBXBuildFile", "PBXContainerItemProxy", "PBXCopyFilesBuildPhase",
@@ -625,10 +705,11 @@ scheme_path = os.path.join(scheme_dir, "Zoon.xcscheme")
 with open(scheme_path, "w") as fh:
     fh.write(SCHEME)
 print(f"wrote {scheme_path}")
-print(f"  shared sources : {len(SHARED)} (in all three targets)")
+print(f"  shared sources : {len(SHARED)} (in all four targets)")
 print(f"  app sources    : {len(APP_SRC)}")
 print(f"  widget sources : {len(EXT_SRC)}")
 print(f"  watch sources  : {len(WATCH_SRC)}")
+print(f"  watch ext src  : {len(WATCH_EXT_SRC)}")
 print(f"  app build files: {len(app_sources)}")
 print(f"  ext build files: {len(ext_sources)}")
 print(f"  watch build files: {len(watch_sources)}")
