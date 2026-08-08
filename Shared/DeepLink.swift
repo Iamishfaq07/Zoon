@@ -13,9 +13,27 @@ import Foundation
 /// SETUP.md → "Enable live widget data".
 enum DeepLink {
 
-    enum Destination: String, Sendable, Hashable {
+    /// Where the app should land.
+    ///
+    /// The first two are set by Control Center intents. The rest exist so
+    /// screenshot capture can reach screens that are only reachable by tapping
+    /// — a UI-test target would be the textbook answer, but that means a third
+    /// target in the project file, which is the part of this repo that has
+    /// broken most often, and this mechanism already works.
+    enum Destination: String, Sendable, Hashable, CaseIterable {
         case soundscapes
         case nap
+        case sleepDetail
+        case report
+        case settings
+
+        /// Which tab owns this screen.
+        var tab: String {
+            switch self {
+            case .soundscapes, .nap, .sleepDetail: "sleep"
+            case .report, .settings: "more"
+            }
+        }
     }
 
     private static let key = "zoon.deeplink.pending"

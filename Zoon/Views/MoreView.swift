@@ -8,12 +8,16 @@ struct MoreView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
 
+    /// Owned by RootView so a launch argument or a Control Center intent can
+    /// push onto it.
+    @Binding var path: NavigationPath
+
     @State private var exportURL: URL?
     @State private var isImporting = false
     @State private var importMessage: String?
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
                     StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
@@ -35,6 +39,14 @@ struct MoreView: View {
             .nightBackground()
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: DeepLink.Destination.self) { destination in
+                switch destination {
+                case .report: ReportView()
+                case .settings: SettingsView()
+                // Owned by the Sleep tab.
+                case .soundscapes, .nap, .sleepDetail: EmptyView()
+                }
+            }
             .fileImporter(
                 isPresented: $isImporting,
                 allowedContentTypes: [.json]
@@ -352,7 +364,7 @@ struct BedtimeCountdownCard: View {
 }
 
 #Preview("More") {
-    MoreView().zoonPreviewEnvironment()
+    MoreView(path: .constant(NavigationPath())).zoonPreviewEnvironment()
 }
 
 #Preview("Streaks") {

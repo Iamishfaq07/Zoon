@@ -60,7 +60,14 @@ struct OnboardingView: View {
         page(
             art: moon,
             title: "Zoon",
-            subtitle: "زوٗن — *moon* in Kashmiri.",
+            // The Kashmiri word is right-to-left, and a bare RTL run inside an
+            // LTR sentence drags the neighbouring punctuation with it — this
+            // line rendered as ".moon in Kashmiri — زوٗن" until the isolate was
+            // added. U+2068 FIRST STRONG ISOLATE / U+2069 POP DIRECTIONAL
+            // ISOLATE fence the run off so the bidi algorithm resolves the rest
+            // of the line as LTR. Caught from a CI screenshot; it is invisible
+            // in source, where the characters are stored in logical order.
+            subtitle: "\u{2068}زوٗن\u{2069} — *moon* in Kashmiri",
             body: """
                 Zoon reads the sleep your Apple Watch already records and explains \
                 why last night went the way it did — not just how long it lasted.

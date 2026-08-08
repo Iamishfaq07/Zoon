@@ -47,6 +47,12 @@ enum LaunchOptions {
     ///
     /// `-zoonTab onboarding` opts back in, so the first-run flow can be
     /// captured deliberately.
+    /// A pushed screen to open on launch, when `-zoonTab` names one rather
+    /// than a tab. Lets capture reach screens that need a tap to get to.
+    static var initialScreen: DeepLink.Destination? {
+        initialTab.flatMap(DeepLink.Destination.init(rawValue:))
+    }
+
     static var forcesOnboarding: Bool {
         initialTab == "onboarding"
     }

@@ -220,7 +220,8 @@ jobs:
           }
 
           FAILED=0
-          for tab in onboarding today sleep trends journal more; do
+          for tab in onboarding today sleep trends journal more \
+                     sleepDetail soundscapes nap report settings; do
             shoot "$tab" || FAILED=1
           done
           exit $FAILED

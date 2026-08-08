@@ -8,9 +8,12 @@ struct RootView: View {
     @Environment(BedtimeReminder.self) private var reminders
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialTab) ?? .today
+    @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialScreen?.tab
+                                            ?? LaunchOptions.initialTab) ?? .today
     /// Set when a Control Center button asked for a specific screen.
     @State private var sleepPath = NavigationPath()
+    /// Same, for screens pushed from the More tab.
+    @State private var morePath = NavigationPath()
 
     enum Tab: Hashable {
         case today, sleep, trends, journal, more
@@ -47,7 +50,7 @@ struct RootView: View {
                 .tabItem { Label("Journal", systemImage: "square.and.pencil") }
                 .tag(Tab.journal)
 
-            MoreView()
+            MoreView(path: $morePath)
                 .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
                 .tag(Tab.more)
         }
@@ -60,7 +63,13 @@ struct RootView: View {
             await coordinator.start()
             await refreshReminders()
         }
-        .onAppear(perform: consumeDeepLink)
+        .onAppear {
+            // A launch argument is consumed once, on appear. It is not routed
+            // through DeepLink's shared storage, which is for cross-process
+            // hand-off from an extension and would outlive this launch.
+            if let screen = LaunchOptions.initialScreen { push(screen) }
+            consumeDeepLink()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             // Controls launch the app rather than acting in place (an extension
@@ -94,9 +103,21 @@ struct RootView: View {
 
     private func consumeDeepLink() {
         guard let destination = DeepLink.consume() else { return }
-        selection = .sleep
-        sleepPath = NavigationPath()
-        sleepPath.append(destination)
+        push(destination)
+    }
+
+    /// Selects the owning tab and pushes the screen onto its stack.
+    private func push(_ destination: DeepLink.Destination) {
+        switch destination {
+        case .soundscapes, .nap, .sleepDetail:
+            selection = .sleep
+            sleepPath = NavigationPath()
+            sleepPath.append(destination)
+        case .report, .settings:
+            selection = .more
+            morePath = NavigationPath()
+            morePath.append(destination)
+        }
     }
 }
 
@@ -169,6 +190,19 @@ struct SleepTabView: View {
                 switch destination {
                 case .soundscapes: SoundscapeView()
                 case .nap: NapView()
+                case .sleepDetail:
+                    if let context = coordinator.state.context {
+                        SleepDetailView(context: context)
+                    } else {
+                        ContentUnavailableView(
+                            "No night yet",
+                            systemImage: "moon.zzz",
+                            description: Text("Zoon hasn't read a night of sleep yet.")
+                        )
+                    }
+                // Owned by the More tab; unreachable here, but the switch has
+                // to stay exhaustive.
+                case .report, .settings: EmptyView()
                 }
             }
         }
