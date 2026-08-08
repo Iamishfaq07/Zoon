@@ -45,6 +45,8 @@ final class SleepNightRecord {
     /// delta. The delta is relative to a baseline that keeps moving as history
     /// grows, so persisting it would freeze a comparison that should be live.
     var wristTempAbsoluteC: Double?
+    /// Overnight breathing disturbances, percent of night. iOS 18+, newer watches only.
+    var breathingDisturbances: Double?
 
     var lastWorkoutHoursBeforeBed: Double?
     var exerciseMinutesPreviousDay: Double?
@@ -86,6 +88,7 @@ final class SleepNightRecord {
         self.avgRespiratoryRate = features.avgRespiratoryRate
         self.avgSpO2 = features.avgSpO2
         self.wristTempAbsoluteC = absoluteWristTempC
+        self.breathingDisturbances = features.breathingDisturbances
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         self.sourceName = features.sourceName
@@ -118,6 +121,7 @@ final class SleepNightRecord {
         avgRespiratoryRate = features.avgRespiratoryRate
         avgSpO2 = features.avgSpO2
         if let absoluteWristTempC { wristTempAbsoluteC = absoluteWristTempC }
+        if let value = features.breathingDisturbances { breathingDisturbances = value }
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         sourceName = features.sourceName
@@ -166,6 +170,7 @@ extension SleepNightRecord {
             avgRespiratoryRate: avgRespiratoryRate,
             avgSpO2: avgSpO2,
             wristTempDeltaC: wristTempDelta(against: baseline),
+            breathingDisturbances: breathingDisturbances,
             hrv7DayAvg: baseline?.hrv7DayAvg,
             sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,

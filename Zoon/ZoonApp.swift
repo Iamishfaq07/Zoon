@@ -50,14 +50,20 @@ struct ZoonApp: App {
 
         // @State properties must be seeded through their storage in init, not
         // assigned directly.
+        // Built as locals first: the coordinator needs the same NapStore
+        // instance the views get, and reading a @State's wrapped value during
+        // init isn't valid.
+        let naps = NapStore()
+
         _preferences = State(initialValue: preferences)
-        _naps = State(initialValue: NapStore())
+        _naps = State(initialValue: naps)
         _soundscape = State(initialValue: SoundscapeEngine())
         _coordinator = State(
             initialValue: SleepDataCoordinator(
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
                 journal: JournalStore(context: container.mainContext),
+                naps: naps,
                 preferences: preferences
             )
         )

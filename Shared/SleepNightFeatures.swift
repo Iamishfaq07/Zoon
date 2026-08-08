@@ -80,6 +80,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// Positive = warmer than usual. Requires ~7 nights of history to populate.
     let wristTempDeltaC: Double?
 
+    /// Apple's overnight breathing-disturbance measure, as a percentage of the
+    /// night. This is the signal behind Apple Watch's sleep apnea notifications.
+    ///
+    /// Declared with a default so it stays optional at existing call sites.
+    /// Requires an Apple Watch Series 9 / Ultra 2 or later with the feature
+    /// enabled; `nil` on everything else.
+    var breathingDisturbances: Double? = nil
+
     // MARK: - Context (needs history, not just this night)
 
     /// Mean overnight HRV across the previous 7 nights, excluding this one.

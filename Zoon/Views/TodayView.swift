@@ -47,9 +47,17 @@ struct TodayView: View {
             ringsCard(context)
             BodyBatteryCard(battery: context.bodyBattery)
             SleepSummaryStrip(context: context)
+            // Radar first among the diagnostics: a sustained multi-signal drift
+            // is the rarest and most consequential thing on this screen, and it
+            // renders as nothing at all when there's nothing to say.
+            HealthRadarCard(radar: context.healthRadar)
             RecoveryBreakdownCard(recovery: context.recovery)
             VitalsCard(vitals: context.vitals)
             HRVStatusCard(status: context.hrvStatus)
+            RegularityCard(regularity: context.regularity)
+            if let cvAge = context.cardiovascularAge {
+                CardiovascularAgeCard(cvAge: cvAge)
+            }
             InsightCard(insight: context.insight, engineName: context.insight.source.displayName)
             footer(context)
         }

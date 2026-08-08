@@ -85,6 +85,7 @@ final class SleepDataCoordinator {
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
     let journal: JournalStore
+    private let naps: NapStore
     private let preferences: UserPreferences
     private let sessionBuilder = SleepSessionBuilder()
     private let contextBuilder = DayContextBuilder()
@@ -100,11 +101,13 @@ final class SleepDataCoordinator {
         healthKit: HealthKitManager,
         store: SleepHistoryStore,
         journal: JournalStore,
+        naps: NapStore,
         preferences: UserPreferences
     ) {
         self.healthKit = healthKit
         self.store = store
         self.journal = journal
+        self.naps = naps
         self.preferences = preferences
         self.engine = RuleBasedInsightEngine()
     }
@@ -222,6 +225,12 @@ final class SleepDataCoordinator {
 
         let baseline = store.baseline(for: record.date, goalMinutes: goal)
         let night = record.features(baseline: baseline)
+        // Foundation Models inference is async and the engine protocol is not,
+        // so generation is primed here and read back synchronously below.
+        if let modelEngine = engine as? FoundationModelInsightEngine {
+            await modelEngine.prepare(for: night, baseline: baseline, goalMinutes: goal)
+        }
+
         let insight = engine.generate(for: night, baseline: baseline, goalMinutes: goal)
         store.attach(insight, to: record)
 
@@ -248,8 +257,9 @@ final class SleepDataCoordinator {
             todayStrain: todayStrain,
             hourlyHeartRate: hourly,
             maxHeartRate: maxHR,
-            napMinutes: 0,
-            bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes
+            napMinutes: naps.minutesBefore(night: night.date),
+            bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes,
+            age: preferences.age
         ))
 
         state = .loaded(context)
@@ -374,7 +384,8 @@ final class SleepDataCoordinator {
             hourlyHeartRate: MockData.hourlyHeartRate(wakeTime: night.wakeTime),
             maxHeartRate: 185,
             napMinutes: 0,
-            bedtimeConsistencyMinutes: 38
+            bedtimeConsistencyMinutes: 38,
+            age: preferences.age ?? 34
         ))
 
         state = .mock(context)
@@ -389,6 +400,8 @@ final class SleepDataCoordinator {
         switch choice {
         case .ruleBased:
             engine = RuleBasedInsightEngine()
+        case .appleIntelligence:
+            engine = FoundationModelInsightEngine(fallback: RuleBasedInsightEngine())
         case .localLLM:
             engine = LocalLLMInsightEngine(fallback: RuleBasedInsightEngine())
         }

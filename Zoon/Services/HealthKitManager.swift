@@ -48,6 +48,11 @@ final class HealthKitManager {
             HKQuantityType(.oxygenSaturation),
             HKQuantityType(.appleExerciseTime),
             HKQuantityType(.activeEnergyBurned),
+            // The signal behind Apple Watch's sleep apnea notifications
+            // (iOS 18+). Only Series 9 / Ultra 2 and later record it, and only
+            // when the user has enabled the feature — everywhere else the query
+            // simply returns nothing, which the extractor handles as nil.
+            HKQuantityType(.appleSleepingBreathingDisturbances),
             HKObjectType.workoutType()
         ]
         // Wrist temperature needs a Series 8 / Ultra or later. The type exists

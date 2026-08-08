@@ -19,6 +19,9 @@ struct DayContext: Equatable {
     let vitals: VitalsStatus
     let hrvStatus: HRVStatus
     let chronotype: Chronotype
+    let regularity: SleepRegularity
+    let healthRadar: HealthRadar
+    let cardiovascularAge: CardiovascularAge?
 
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
@@ -42,5 +45,7 @@ extension DayContext {
             && lhs.recovery == rhs.recovery
             && lhs.bodyBattery == rhs.bodyBattery
             && lhs.strain == rhs.strain
+            && lhs.regularity == rhs.regularity
+            && lhs.healthRadar == rhs.healthRadar
     }
 }

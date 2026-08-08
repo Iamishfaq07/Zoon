@@ -73,6 +73,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
         case oxygenSaturation
         case wristTemperature
         case sleepDuration
+        case breathingDisturbances
 
         var label: String {
             switch self {
@@ -82,6 +83,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
             case .oxygenSaturation: "Blood Oxygen"
             case .wristTemperature: "Wrist Temperature"
             case .sleepDuration: "Sleep Duration"
+            case .breathingDisturbances: "Breathing Disturbances"
             }
         }
 
@@ -93,6 +95,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
             case .oxygenSaturation: "drop.fill"
             case .wristTemperature: "thermometer.medium"
             case .sleepDuration: "bed.double.fill"
+            case .breathingDisturbances: "wind"
             }
         }
 
@@ -104,6 +107,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
             case .oxygenSaturation: String(format: "%.0f%%", value)
             case .wristTemperature: String(format: "%+.1f°", value)
             case .sleepDuration: SleepNightFeatures.formatMinutes(value)
+            case .breathingDisturbances: String(format: "%.1f%%", value)
             }
         }
     }
@@ -166,6 +170,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
         case .oxygenSaturation: features.avgSpO2
         case .wristTemperature: features.wristTempDeltaC
         case .sleepDuration: features.timeAsleepMinutes
+        case .breathingDisturbances: features.breathingDisturbances
         }
     }
 
@@ -177,6 +182,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
         case .oxygenSaturation: sample.oxygenSaturation
         case .wristTemperature: sample.wristTemperatureDelta
         case .sleepDuration: sample.sleepMinutes
+        case .breathingDisturbances: sample.breathingDisturbances
         }
     }
 }
@@ -191,6 +197,7 @@ extension VitalsStatus.Kind {
         case .oxygenSaturation: 0.8
         case .wristTemperature: 0.15
         case .sleepDuration: 25.0
+        case .breathingDisturbances: 0.6
         }
     }
 }
@@ -231,4 +238,5 @@ struct VitalsSample: Codable, Hashable, Sendable {
     let oxygenSaturation: Double?
     let wristTemperatureDelta: Double?
     let sleepMinutes: Double?
+    var breathingDisturbances: Double? = nil
 }

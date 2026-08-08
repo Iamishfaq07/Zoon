@@ -27,6 +27,8 @@ struct DayContextBuilder {
         let maxHeartRate: Double
         let napMinutes: Double
         let bedtimeConsistencyMinutes: Double?
+        /// For cardiovascular age. Nil disables that card rather than guessing.
+        let age: Int?
     }
 
     func build(_ inputs: Inputs) -> DayContext {
@@ -85,7 +87,8 @@ struct DayContextBuilder {
                     respiratoryRate: $0.avgRespiratoryRate,
                     oxygenSaturation: $0.avgSpO2,
                     wristTemperatureDelta: $0.wristTempDeltaC,
-                    sleepMinutes: $0.timeAsleepMinutes
+                    sleepMinutes: $0.timeAsleepMinutes,
+                    breathingDisturbances: $0.breathingDisturbances
                 )
             }
         )
@@ -104,6 +107,10 @@ struct DayContextBuilder {
             consistencyMinutes: inputs.bedtimeConsistencyMinutes
         )
 
+        // Regularity, radar and CV age all read the full record including
+        // tonight — they describe a span, not a single night.
+        let fullHistory = history + [night]
+
         return DayContext(
             night: night,
             insight: inputs.insight,
@@ -114,7 +121,12 @@ struct DayContextBuilder {
             bodyBattery: bodyBattery,
             vitals: vitals,
             hrvStatus: hrvStatus,
-            chronotype: chronotype
+            chronotype: chronotype,
+            regularity: SleepRegularity.compute(nights: fullHistory),
+            healthRadar: HealthRadar.detect(nights: fullHistory),
+            cardiovascularAge: CardiovascularAge.compute(
+                nights: fullHistory, chronologicalAge: inputs.age
+            )
         )
     }
 

@@ -37,6 +37,7 @@ enum PreviewSupport {
             healthKit: HealthKitManager(),
             store: SleepHistoryStore(context: container.mainContext),
             journal: JournalStore(context: container.mainContext),
+            naps: NapStore.preview,
             preferences: preferences
         )
         coordinator.loadMockData()

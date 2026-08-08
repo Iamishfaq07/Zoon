@@ -32,7 +32,8 @@ enum AppMockData {
             hourlyHeartRate: MockData.hourlyHeartRate(wakeTime: night.wakeTime),
             maxHeartRate: 185,
             napMinutes: 0,
-            bedtimeConsistencyMinutes: 38
+            bedtimeConsistencyMinutes: 38,
+            age: 34
         ))
     }
 
@@ -49,7 +50,8 @@ enum AppMockData {
             hourlyHeartRate: MockData.hourlyHeartRate(wakeTime: night.wakeTime),
             maxHeartRate: 185,
             napMinutes: 0,
-            bedtimeConsistencyMinutes: 96
+            bedtimeConsistencyMinutes: 96,
+            age: 34
         ))
     }
 
@@ -80,6 +82,25 @@ enum AppMockData {
 
     static var correlationFindings: [JournalCorrelator.Finding] {
         JournalCorrelator().topFindingPerTag(from: journalObservations)
+    }
+
+    /// A radar with signals firing, so the card is previewable.
+    ///
+    /// Built by hand rather than fed through `HealthRadar.detect` — the seeded
+    /// mock history is deliberately well-behaved, so nothing would fire, and a
+    /// card that renders as nothing is not a useful preview.
+    static var activeRadar: HealthRadar {
+        HealthRadar(
+            signals: [
+                .init(kind: .wristTemperature, direction: .elevated,
+                      consecutiveNights: 3, recentMean: 0.62, baseline: 0.02),
+                .init(kind: .hrv, direction: .suppressed,
+                      consecutiveNights: 3, recentMean: 44, baseline: 61),
+                .init(kind: .restingHeartRate, direction: .elevated,
+                      consecutiveNights: 3, recentMean: 59, baseline: 52)
+            ],
+            nightCount: 30
+        )
     }
 
     /// A synthetic hypnogram: descending into deep early, more REM toward

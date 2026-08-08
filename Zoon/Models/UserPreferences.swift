@@ -45,6 +45,7 @@ final class UserPreferences {
 
     enum EngineChoice: String, CaseIterable, Identifiable {
         case ruleBased
+        case appleIntelligence
         case localLLM
 
         var id: String { rawValue }
@@ -52,7 +53,8 @@ final class UserPreferences {
         var displayName: String {
             switch self {
             case .ruleBased: "Rules"
-            case .localLLM: "On-device model"
+            case .appleIntelligence: "Apple Intelligence"
+            case .localLLM: "Bundled model"
             }
         }
 
@@ -60,8 +62,10 @@ final class UserPreferences {
             switch self {
             case .ruleBased:
                 "Deterministic thresholds and correlations. Fast, predictable, always available."
+            case .appleIntelligence:
+                "Apple's on-device model. Runs locally, nothing downloaded, no network. Falls back to rules if unavailable."
             case .localLLM:
-                "Not yet available — no model is bundled. Falls back to rules."
+                "Reserved for a bundled MLX or Core ML model. None ships today, so this falls back to rules."
             }
         }
     }

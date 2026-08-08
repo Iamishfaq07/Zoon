@@ -9,7 +9,7 @@ waiting for Xcode.
   format (`objectVersion = 56`, compatibility Xcode 14), so it opens in anything
   current. Every source file is listed explicitly and target membership is
   already correct — including `Shared/`, which is compiled into both targets.
-- **A physical iPhone running iOS 17+.** Non-negotiable for real data — see
+- **A physical iPhone running iOS 18+.** Non-negotiable for real data — see
   [Why a device](#why-a-device).
 - An Apple ID in Xcode (a free one is fine for running on your own device).
 
