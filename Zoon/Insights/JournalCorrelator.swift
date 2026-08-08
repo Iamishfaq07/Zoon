@@ -137,7 +137,7 @@ struct JournalCorrelator {
     /// Runs every tag × metric pair, keeping only findings that clear both the
     /// sample-size and effect-size bars. Sorted by magnitude, strongest first.
     func findings(from observations: [Observation]) -> [Finding] {
-        guard observations.count >= minimumTaggedNights + minimumBaselineNights else { return [] }
+        guard observations.count >= Self.minimumTaggedNights + Self.minimumBaselineNights else { return [] }
 
         var results: [Finding] = []
 
