@@ -143,8 +143,13 @@ struct NapView: View {
 
                         Image(systemName: selectedMinutes == preset.minutes
                               ? "largecircle.fill.circle" : "circle")
+                            // Both branches must be the same type: `.tertiary`
+                            // is a ShapeStyle, not a Color, so it can't unify
+                            // with Theme.Metric.strain in a ternary.
                             .foregroundStyle(
-                                selectedMinutes == preset.minutes ? Theme.Metric.strain : .tertiary
+                                selectedMinutes == preset.minutes
+                                    ? Theme.Metric.strain
+                                    : Color.white.opacity(0.35)
                             )
                     }
                     .padding(.vertical, 5)

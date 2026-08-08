@@ -169,13 +169,17 @@ final class SoundscapeEngine {
         }
 
         remainingSeconds = minutes * 60
+        // Task{} started from a @MainActor method inherits that isolation, so
+        // the properties below are reached synchronously — only the sleep
+        // actually suspends.
         timerTask = Task { [weak self] in
-            while let self, await self.remainingSeconds > 0 {
+            while true {
                 try? await Task.sleep(for: .seconds(1))
                 if Task.isCancelled { return }
-                await self.tick()
+                guard let self, self.remainingSeconds > 0 else { break }
+                self.tick()
             }
-            await self?.stop()
+            self?.stop()
         }
     }
 

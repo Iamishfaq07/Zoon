@@ -279,6 +279,7 @@ private func withSegments(_ context: DayContext) -> DayContext {
         sleepNeed: context.sleepNeed, sleepScore: context.sleepScore,
         strain: context.strain, bodyBattery: context.bodyBattery,
         vitals: context.vitals, hrvStatus: context.hrvStatus,
-        chronotype: context.chronotype
+        chronotype: context.chronotype, regularity: context.regularity,
+        healthRadar: context.healthRadar, cardiovascularAge: context.cardiovascularAge
     )
 }
