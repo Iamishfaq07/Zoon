@@ -6,8 +6,11 @@ rejected the file outright — a `name = ;` empty value is well-balanced and
 completely invalid. This actually parses the grammar, so that class of bug
 fails here instead of on a CI runner.
 """
+import os
+import plistlib
 import re
 import sys
+import xml.etree.ElementTree as ET
 
 UNQUOTED = re.compile(r'[A-Za-z0-9_$./:-]+')
 
@@ -184,9 +187,6 @@ def main(path):
     # "Scheme Zoon is not currently configured for the build action", which
     # points nowhere near the actual cause. An empty scheme file produces the
     # same message, and is easy to create by accident.
-    import os
-    import xml.etree.ElementTree as ET
-
     scheme_dir = os.path.join(os.path.dirname(path), 'xcshareddata', 'xcschemes')
     if os.path.isdir(scheme_dir):
         for name in sorted(os.listdir(scheme_dir)):
@@ -213,16 +213,78 @@ def main(path):
                 print(f"scheme {name} references unknown targets: {sorted(unresolved)}")
                 return 1
 
+    # Any Info.plist the project points at with INFOPLIST_FILE.
+    #
+    # This exists because an app extension whose Info.plist is missing a key is
+    # not a build error — it builds clean and then iOS refuses to install the
+    # host app with "Invalid placeholder attributes", which cost several macOS
+    # runs to track down. These keys are checkable on Linux in milliseconds.
+    plist_error = check_infoplists(objects, os.path.dirname(os.path.dirname(path)))
+    if plist_error:
+        print(plist_error)
+        return 1
+
     isas = {}
     for oid, obj in objects.items():
         if isinstance(obj, dict):
             isas[obj.get('isa', '?')] = isas.get(obj.get('isa', '?'), 0) + 1
 
     print(f"PLIST OK — {len(objects)} objects, rootObject resolves, "
-          f"no dangling refs, schemes resolve")
+          f"no dangling refs, schemes resolve, Info.plists complete")
     for isa, n in sorted(isas.items()):
         print(f"    {n:3d}  {isa}")
     return 0
+
+
+PLACEHOLDER_REQUIRED = [
+    'CFBundleIdentifier',
+    'CFBundleExecutable',
+    'CFBundleName',
+    'CFBundlePackageType',
+    'CFBundleShortVersionString',
+    # The one that actually broke: its absence is reported as "invalid
+    # placeholder attributes", never as a missing key.
+    'CFBundleVersion',
+]
+
+
+def check_infoplists(objects, root):
+    """Validate every Info.plist referenced by an INFOPLIST_FILE setting.
+
+    Returns an error string, or None when everything checks out.
+    """
+    paths = set()
+    for obj in objects.values():
+        if not isinstance(obj, dict) or obj.get('isa') != 'XCBuildConfiguration':
+            continue
+        value = (obj.get('buildSettings') or {}).get('INFOPLIST_FILE')
+        if value:
+            paths.add(value.strip('"'))
+
+    for rel in sorted(paths):
+        full = os.path.join(root, rel)
+        if not os.path.exists(full):
+            return f"INFOPLIST_FILE points at a missing file: {rel}"
+        try:
+            with open(full, 'rb') as handle:
+                data = plistlib.load(handle)
+        except Exception as exc:
+            return f"{rel} is not a readable plist: {exc}"
+
+        missing = [k for k in PLACEHOLDER_REQUIRED if not data.get(k)]
+        if missing:
+            return f"{rel} is missing required key(s): {', '.join(missing)}"
+
+        # App extensions specifically.
+        if data.get('CFBundlePackageType') == 'XPC!':
+            extension = data.get('NSExtension')
+            if not isinstance(extension, dict):
+                return (f"{rel} declares CFBundlePackageType XPC! "
+                        f"but has no NSExtension dictionary")
+            if not extension.get('NSExtensionPointIdentifier'):
+                return f"{rel} has NSExtension without NSExtensionPointIdentifier"
+
+    return None
 
 
 if __name__ == '__main__':

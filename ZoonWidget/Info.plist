@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Written out rather than synthesised by GENERATE_INFOPLIST_FILE.
+
+	  The generated version produced a bundle the simulator refused to install:
+
+	      Failed to create app extension placeholder for ZoonWidgetExtension.appex
+	      Invalid placeholder attributes
+
+	  That check reads the appex's Info.plist directly, and the build settings
+	  that feed the generator are two steps removed from what it writes — which
+	  makes the failure invisible until install time and impossible to inspect
+	  without a Mac. An explicit file can be read in the repo and diffed.
+
+	  Every value below is either a literal or a build-setting substitution, so
+	  identifiers and versions still come from one place in the project file.
+	-->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Zoon</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<!--
+	  XPC!, not APPL. An app extension that claims to be an application is one
+	  of the shapes that fails placeholder validation.
+	-->
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<!--
+	  Must be present and must match the host app's. A missing bundle version
+	  is reported as invalid placeholder attributes rather than as a missing
+	  key, which is what made this hard to see.
+	-->
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!--
+	  The extension dictionary. WidgetKit extensions declare only the point
+	  identifier — there is no principal class, because the widget bundle is
+	  found through the @main WidgetBundle rather than by name.
+	-->
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+	<!-- Live Activities are rendered by this extension, so it declares support too. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+</dict>
+</plist>
