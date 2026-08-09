@@ -9,27 +9,33 @@ struct ReportView: View {
 
     private var report: WeeklyReport? { coordinator.weeklyReport() }
 
+    /// Pushed from the More tab, so it supplies no `NavigationStack` of its
+    /// own — the same contract `SettingsView` follows.
+    ///
+    /// It used to carry one. Nesting a stack inside a stack meant the push
+    /// from More didn't land, which nothing revealed until a screenshot of
+    /// `-zoonTab report` came back showing the More screen. Every route to
+    /// this view goes through a tap, so it was invisible for as long as
+    /// nobody could tap.
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.stackSpacing) {
-                    if let report {
-                        header(report)
-                        highlights(report)
-                        averages(report)
-                        recoveryChart
-                        extremes(report)
-                    } else {
-                        notEnoughData
-                    }
+        ScrollView {
+            VStack(spacing: Theme.stackSpacing) {
+                if let report {
+                    header(report)
+                    highlights(report)
+                    averages(report)
+                    recoveryChart
+                    extremes(report)
+                } else {
+                    notEnoughData
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 28)
             }
-            .nightBackground()
-            .navigationTitle("Weekly Report")
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal)
+            .padding(.bottom, 28)
         }
+        .nightBackground()
+        .navigationTitle("Weekly Report")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func header(_ report: WeeklyReport) -> some View {
