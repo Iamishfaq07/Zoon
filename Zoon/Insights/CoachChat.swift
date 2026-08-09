@@ -36,8 +36,14 @@ final class CoachChat {
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "CoachChat")
 
     #if canImport(FoundationModels)
-    @available(iOS 26.0, *)
-    private var session: LanguageModelSession?
+    // `@Observable`'s macro synthesises accessors for every stored property,
+    // and it cannot do that for one individually marked `@available` — the
+    // synthesized code would need to be conditionally available while the
+    // class itself isn't, which the compiler rejects outright. Boxing the
+    // iOS-26-only type behind `Any?` sidesteps the property needing its own
+    // availability annotation; the cast at each use site is where the real
+    // `#available` check still lives.
+    private var session: Any?
     #endif
 
     var unavailabilityReason: String? {
@@ -77,7 +83,7 @@ final class CoachChat {
         defer { isResponding = false }
 
         #if canImport(FoundationModels)
-        guard #available(iOS 26.0, *), let session else {
+        guard #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
             messages.append(Message(role: .assistant, text: unavailabilityReason ?? "Not available."))
             return
         }
