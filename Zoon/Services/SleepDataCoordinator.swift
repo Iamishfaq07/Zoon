@@ -431,7 +431,17 @@ final class SleepDataCoordinator {
     /// a scoring formula still shows up on a laptop.
     func loadMockData() {
         let goal = preferences.sleepGoalMinutes
-        let night = MockData.goodNight
+        // Stage segments are grafted on here, not stored in MockData.
+        //
+        // `MockData` lives in `Shared/` and carries no timeline — the widget has
+        // no use for one. So without this the hypnogram, which is the single
+        // most distinctive thing in the app, rendered as *nothing at all* on
+        // every Simulator run and in every screenshot. The previews grafted
+        // segments and looked right; the running app did not. That gap survived
+        // because previews and the app used different paths to the same screen,
+        // and only a screenshot of the real thing exposed it.
+        var night = MockData.goodNight
+        night.stageSegments = AppMockData.stageSegments(for: night)
         let history = MockData.history.filter { $0.date < night.date }
 
         let context = contextBuilder.build(.init(
