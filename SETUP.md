@@ -40,19 +40,24 @@ The project builds as-is. Two targets:
 4. Repeat for the **ZoonWidgetExtension** target. Its identifier must stay
    prefixed by the app's — e.g. `com.yourname.zoon.ZoonWidget`
 
-## 3. Add the HealthKit capability
+## 3. HealthKit capability
 
-This is the one step the checked-in project can't do for you: the entitlement is
-tied to your team's provisioning profile.
+Already checked in — `Zoon/Zoon.entitlements`, wired to the `Zoon` target via
+`CODE_SIGN_ENTITLEMENTS`. Nothing to add in Xcode.
 
-1. Target **Zoon** → **Signing & Capabilities** → **+ Capability**
-2. Add **HealthKit**
-3. Leave *Clinical Health Records* **unchecked** — Zoon doesn't read them and
-   requesting them triggers extra App Review scrutiny for nothing
-4. Check **Background Delivery** if you want the app to process last night
-   automatically each morning (recommended — see [Background delivery](#background-delivery))
+It grants two things: HealthKit itself, and background delivery (so
+`HKObserverQuery` can relaunch the app when new sleep data appears — see
+[Background delivery](#background-delivery)). *Clinical Health Records* is
+deliberately absent — Zoon doesn't read them, and requesting them triggers
+extra App Review scrutiny for nothing.
 
-The widget target does **not** need HealthKit. It never queries it.
+The widget target does **not** need HealthKit and has no entitlements file.
+It never queries HealthKit — it only reads the snapshot the app writes.
+
+If you ever need to change what's granted, edit `Zoon/Zoon.entitlements`
+directly (it's a plain plist) rather than through Xcode's checkboxes — that
+keeps the file the single source of truth instead of something Xcode can
+silently rewrite.
 
 ## 4. Info.plist keys
 

@@ -107,16 +107,66 @@ limitation worth working around; the capability is simply gated.
 
 ### Option A — TestFlight, driven from CI (no Mac at any point)
 
-- **Apple Developer Program: $99/year.** This is unavoidable.
-- Register at [developer.apple.com](https://developer.apple.com/programs/).
-- Create the app record in App Store Connect.
-- Generate an App Store Connect API key and add it to the repo's GitHub Secrets.
-- Extend the workflow to archive, sign, and upload to TestFlight.
-- Install TestFlight on your iPhone and the build arrives there.
+`.github/workflows/testflight.yml` does this: archives, signs, and uploads to
+TestFlight on the same free macOS runner Build and Screenshots already use.
+Nothing else to write — it exists, and is dormant until the four secrets below
+exist. It fails fast and clearly if any are missing, rather than 20 minutes
+into an archive.
 
-Once configured, every push can put a new build on your phone, and you never
-touch a Mac. Ask and I'll write that workflow — it's roughly 60 more lines, but
-it can't be tested until the account and key exist.
+**Once, in the Apple Developer / App Store Connect sites:**
+
+1. **Enroll in the Apple Developer Program** — [developer.apple.com/programs](https://developer.apple.com/programs/),
+   $99/year. Approval is usually a day or two for an individual account.
+2. **Register the bundle identifiers**, at
+   [developer.apple.com/account/resources/identifiers](https://developer.apple.com/account/resources/identifiers/list) →
+   **+**. Register all four, as plain App IDs (no capabilities need ticking —
+   Xcode's automatic signing adds HealthKit itself when it provisions):
+   `com.zoon.sleep`, `com.zoon.sleep.ZoonWidget`, `com.zoon.sleep.watchkitapp`,
+   `com.zoon.sleep.watchkitapp.complication`.
+   *(Using your own reversed-domain prefix instead of `com.zoon.sleep`? Change
+   it in `Tools/generate-pbxproj.py` — search `PRODUCT_BUNDLE_IDENTIFIER` — then
+   run `python3 Tools/generate-pbxproj.py` and commit the regenerated project
+   file before registering the new identifiers.)*
+3. **Create the app record**, at [App Store Connect](https://appstoreconnect.apple.com/) →
+   **Apps** → **+** → **New App**. Platform iOS, bundle ID `com.zoon.sleep`,
+   any SKU. This is what lets a build with that bundle ID land in TestFlight —
+   without it, upload fails with "no such app".
+4. **Generate an App Store Connect API key**, at App Store Connect →
+   **Users and Access** → **Integrations** → **App Store Connect API** → **+**.
+   Role: **App Manager** (enough to upload builds; not full Admin).
+   Downloads once, as a `.p8` file — Apple will not let you download it again,
+   so save it somewhere before closing the tab.
+5. **Find your Team ID** — App Store Connect → **Membership**, or
+   [developer.apple.com/account](https://developer.apple.com/account/#/membership) →
+   **Membership details**. A 10-character code like `A1B2C3D4E5`.
+
+**Once, in this repo:** GitHub → **Settings** → **Secrets and variables** →
+**Actions** → **New repository secret**, four times:
+
+| Secret | Value |
+|---|---|
+| `APPSTORE_ISSUER_ID` | Shown next to the API key list in App Store Connect |
+| `APPSTORE_KEY_ID` | The key's ID, shown in the same list |
+| `APPSTORE_PRIVATE_KEY` | The full contents of the `.p8` file, pasted as-is (including the `-----BEGIN/END PRIVATE KEY-----` lines) |
+| `APPLE_TEAM_ID` | The 10-character Team ID from step 5 |
+
+**Every time after that:** **Actions** tab → **TestFlight** → **Run workflow**.
+~15–20 minutes — archiving a Release build is slower than the Debug builds
+Build and Screenshots use. Apple then takes a few more minutes to process the
+build on their end before it appears in TestFlight; that part happens on
+Apple's servers, not the runner, so a green workflow doesn't mean it's visible
+on your phone *yet* — check the TestFlight tab in App Store Connect, or the
+TestFlight app itself, a few minutes later.
+
+First build on a fresh App Store Connect record needs one manual step Apple
+doesn't let CI skip: **Export Compliance**. App Store Connect → TestFlight →
+the build → answer "Does your app use encryption?" — **No** is correct here
+(Zoon has no networking code, so nothing to declare). After that first
+answer, later builds in the same app don't ask again.
+
+Once all this exists, install TestFlight on your iPhone, accept the invite
+App Store Connect emails you, and every future push through the workflow puts
+a new build on your phone. You never touch a Mac.
 
 ### Option B — Rent a Mac by the hour
 
