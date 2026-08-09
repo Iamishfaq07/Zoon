@@ -53,7 +53,7 @@ struct MoreView: View {
                 case .settings: SettingsView()
                 case .badges: AchievementsView()
                 // Owned by the Sleep tab.
-                case .soundscapes, .nap, .sleepDetail: EmptyView()
+                case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck: EmptyView()
                 }
             }
             .fileImporter(

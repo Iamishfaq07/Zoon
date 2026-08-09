@@ -104,7 +104,7 @@ struct SnoreCheckView: View {
                       )),
                     in: RoundedRectangle(cornerRadius: 15, style: .continuous)
                 )
-                .foregroundStyle(detector.isRunning ? .primary : .black)
+                .foregroundStyle(detector.isRunning ? Color.primary : Color.black)
         }
         .alert("Microphone access needed", isPresented: $permissionDenied) {
             Button("OK") {}
