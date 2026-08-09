@@ -224,7 +224,9 @@ jobs:
           # it is where the hypnogram lives, and a missing hypnogram is only
           # visible in a render. Same for report: a nested NavigationStack
           # there silently swallowed the push, and the capture is what showed
-          # the More screen where the report should have been.
+          # the More screen where the report should have been. And the
+          # hypnogram's axis labels, which wrapped once the type started
+          # scaling — fixed-width columns holding no-longer-fixed-size text.
           FAILED=0
           for tab in onboarding today sleep trends journal more \
                      sleepDetail soundscapes nap report settings badges; do

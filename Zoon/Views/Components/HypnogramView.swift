@@ -37,17 +37,28 @@ struct HypnogramView: View {
         .accessibilityValue(accessibilitySummary)
     }
 
+    /// Stage names down the left edge.
+    ///
+    /// `lineLimit(1)` and a scale floor, because the column is a fixed width
+    /// and the type is no longer a fixed size. When the fonts became Dynamic
+    /// Type-aware, `label(9)` started resolving to `.caption2` — larger than
+    /// the 9 points this 34-wide column was measured for — and "Awake" wrapped
+    /// to "Awak / e" in the middle of the chart. Shrinking beats wrapping for
+    /// an axis label, and a wider column would eat chart width at every size
+    /// to fix the widest one.
     private var rowLabels: some View {
         VStack(spacing: 0) {
             ForEach(rows, id: \.self) { stage in
                 Text(stage.displayName)
                     .font(Theme.label(9, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .foregroundStyle(Theme.Stage.color(for: stage))
                     .frame(height: height / CGFloat(rows.count), alignment: .center)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
-        .frame(width: 34)
+        .frame(width: 42)
     }
 
     private var chart: some View {
@@ -208,15 +219,23 @@ struct StageLegend: View {
                         .font(Theme.label(13, weight: .semibold))
                         .monospacedDigit()
 
+                    // Same reasoning as the axis labels: fixed-width columns
+                    // holding text that is no longer a fixed size. "1h 22m"
+                    // fits at default and not at the largest setting, and a
+                    // duration that wraps mid-value is unreadable.
                     Text(SleepNightFeatures.formatMinutes(row.minutes))
                         .font(Theme.text(12))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .frame(width: 56, alignment: .trailing)
 
                     Text(row.reference)
                         .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .frame(width: 48, alignment: .trailing)
                 }
             }
