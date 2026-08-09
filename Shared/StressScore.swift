@@ -30,7 +30,7 @@ struct StressScore: Codable, Hashable, Sendable {
     /// False once there's baseline history to compare against honestly.
     let isEstimate: Bool
 
-    enum Band: String, Sendable {
+    enum Band: String, Codable, Sendable {
         case calm, elevated, high
 
         var label: String {
