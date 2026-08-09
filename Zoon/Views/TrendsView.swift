@@ -24,6 +24,25 @@ struct TrendsView: View {
         Array(coordinator.recentNights.suffix(window.days))
     }
 
+    /// `nil` unless cycle tracking is on and there's at least one logged
+    /// period start — both a privacy gate and a "don't show an empty card"
+    /// gate, in one property.
+    private var cycleCorrelations: [CyclePhaseCorrelation]? {
+        guard preferences.cycleTrackingEnabled, !coordinator.cyclePeriodStarts.isEmpty else { return nil }
+        let inputs = coordinator.recentNights.map { night in
+            (
+                date: night.date,
+                recoveryPercent: coordinator.recoveryHistory[night.date] ?? 50,
+                // Duration against goal, as a lightweight stand-in for the full
+                // debt-and-strain-adjusted sleep-need calculation — good enough
+                // for a phase-to-phase comparison, not a claim of precision.
+                sleepPerformance: min(150, night.timeAsleepMinutes / preferences.sleepGoalMinutes * 100)
+            )
+        }
+        let result = CyclePhaseCorrelation.compute(nights: inputs, periodStarts: coordinator.cyclePeriodStarts)
+        return result.isEmpty ? nil : result
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -35,6 +54,9 @@ struct TrendsView: View {
                         HRVChartCard(nights: nights)
                         SleepDebtChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes)
                         ConsistencyChartCard(nights: nights)
+                        if let correlations = cycleCorrelations {
+                            CycleCorrelationCard(correlations: correlations)
+                        }
                     }
                 }
                 .padding()

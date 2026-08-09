@@ -72,6 +72,46 @@ final class HealthKitManager {
         try await store.requestAuthorization(toShare: [], read: readTypes)
     }
 
+    /// Requests menstrual flow separately from the main authorization pass.
+    ///
+    /// Not in `readTypes`: that set is requested on every launch, for every
+    /// user, and reproductive health data is not something to prompt for by
+    /// default just because it happens to be readable. This is called only
+    /// when someone turns the Settings toggle on, so the permission sheet
+    /// appears exactly once, for exactly the people who asked for the feature.
+    func requestCycleTrackingAuthorization() async throws {
+        guard Self.isHealthDataAvailable else {
+            throw HealthKitError.unavailable
+        }
+        try await store.requestAuthorization(
+            toShare: [], read: [HKCategoryType(.menstrualFlow)]
+        )
+    }
+
+    /// Recent menstrual flow samples, oldest first. `nil` entries in the
+    /// underlying record (spotting vs flow) are not distinguished here — cycle
+    /// *day*, which is what the correlation needs, only requires knowing which
+    /// days a period started.
+    func menstrualFlowSamples(in window: DateInterval) async throws -> [HKCategorySample] {
+        let type = HKCategoryType(.menstrualFlow)
+        let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (samples as? [HKCategorySample]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
+
     // MARK: - Background delivery
 
     /// Registers an observer so new sleep data is picked up without polling.

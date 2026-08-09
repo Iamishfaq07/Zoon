@@ -79,6 +79,13 @@ final class SleepDataCoordinator {
     private(set) var recoveryHistory: [Date: Int] = [:]
     private(set) var lastRefresh: Date?
     private(set) var isRefreshing = false
+    /// Live daytime read, refreshed alongside everything else. `nil` until the
+    /// first successful sample — a phone that's never queried HealthKit today
+    /// has nothing honest to report yet.
+    private(set) var todayStress: StressScore?
+    /// Populated only when cycle tracking is on. Empty otherwise, including
+    /// on every code path that never asks HealthKit for it.
+    private(set) var cyclePeriodStarts: [Date] = []
 
     // MARK: - Dependencies
 
@@ -117,6 +124,35 @@ final class SleepDataCoordinator {
     }
 
     // MARK: - Lifecycle
+
+    /// Requests the separate menstrual-flow authorization and, if granted,
+    /// loads what's there. Call only from the Settings toggle — see
+    /// `UserPreferences.cycleTrackingEnabled`.
+    func enableCycleTracking() async {
+        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else {
+            cyclePeriodStarts = AppMockData.cyclePeriodStarts
+            return
+        }
+        do {
+            try await healthKit.requestCycleTrackingAuthorization()
+            await refreshCycleData()
+        } catch {
+            logger.error("Cycle tracking authorization failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func disableCycleTracking() {
+        cyclePeriodStarts = []
+    }
+
+    private func refreshCycleData() async {
+        let window = DateInterval(
+            start: Calendar.current.date(byAdding: .day, value: -180, to: .now) ?? .now,
+            end: .now
+        )
+        guard let samples = try? await healthKit.menstrualFlowSamples(in: window) else { return }
+        cyclePeriodStarts = CycleContext.periodStarts(from: samples)
+    }
 
     /// Presents the Health permission sheet, if there is one to present.
     ///
@@ -171,6 +207,8 @@ final class SleepDataCoordinator {
 
     /// Full pass: fetch, extract, persist, derive metrics, publish to widget.
     func refresh() async {
+        await refreshTodayStress()
+        if preferences.cycleTrackingEnabled { await refreshCycleData() }
         guard !isRefreshing else { return }
         // Also guarded here: `refresh()` runs again on every foreground, and a
         // demo session that quietly swapped to live data on the second
@@ -423,6 +461,44 @@ final class SleepDataCoordinator {
         watchLink.send(snapshot)
     }
 
+    /// Averages heart rate and HRV from midnight to now, and compares against
+    /// the same rolling baseline the overnight recovery score uses.
+    ///
+    /// Deliberately its own pass rather than folded into `refresh()`'s main
+    /// pipeline: it has nothing to do with sessions or SwiftData, and running
+    /// it independently means a HealthKit hiccup here can never block the
+    /// night's real data from landing.
+    private func refreshTodayStress() async {
+        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else {
+            todayStress = AppMockData.stress
+            return
+        }
+
+        let calendar = Calendar.current
+        let now = Date.now
+        let dayStart = calendar.startOfDay(for: now)
+        guard dayStart < now else { return }
+        let interval = DateInterval(start: dayStart, end: now)
+
+        async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: interval)
+        async let hrvTask = try? healthKit.average(
+            .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval
+        )
+        let avgHR = await hrTask ?? nil
+        let avgHRV = await hrvTask ?? nil
+
+        let baseline = store.baseline(for: dayStart, goalMinutes: preferences.sleepGoalMinutes)
+
+        todayStress = StressScore.compute(
+            avgHeartRate: avgHR,
+            avgHRV: avgHRV,
+            hrBaseline: baseline.minHeartRate7DayAvg,
+            hrvBaseline: baseline.hrv7DayAvg,
+            sampledMinutes: now.timeIntervalSince(dayStart) / 60,
+            baselineNightCount: baseline.sampleCount
+        )
+    }
+
     // MARK: - Mock path
 
     /// Populates every observable property from `MockData`.
@@ -461,6 +537,7 @@ final class SleepDataCoordinator {
         state = .mock(context)
         recentNights = MockData.history
         rebuildRecoveryHistory(goal: goal)
+        todayStress = AppMockData.stress
         lastRefresh = .now
     }
 

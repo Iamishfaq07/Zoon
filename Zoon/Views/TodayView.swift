@@ -47,23 +47,26 @@ struct TodayView: View {
         VStack(spacing: Theme.stackSpacing) {
             hero(context).entrance(0)
             guidanceCard(context).entrance(1)
-            ringsCard(context).entrance(2)
-            BodyBatteryCard(battery: context.bodyBattery).entrance(3)
-            SleepSummaryStrip(context: context).entrance(4)
+            if let stress = coordinator.todayStress {
+                StressCard(stress: stress).entrance(2)
+            }
+            ringsCard(context).entrance(3)
+            BodyBatteryCard(battery: context.bodyBattery).entrance(4)
+            SleepSummaryStrip(context: context).entrance(5)
             // Radar first among the diagnostics: a sustained multi-signal drift
             // is the rarest and most consequential thing on this screen, and it
             // renders as nothing at all when there's nothing to say.
-            HealthRadarCard(radar: context.healthRadar).entrance(5)
-            RecoveryBreakdownCard(recovery: context.recovery).entrance(6)
-            VitalsCard(vitals: context.vitals).entrance(7)
+            HealthRadarCard(radar: context.healthRadar).entrance(6)
+            RecoveryBreakdownCard(recovery: context.recovery).entrance(7)
+            VitalsCard(vitals: context.vitals).entrance(8)
             HRVStatusCard(status: context.hrvStatus).entrance(8)
-            RegularityCard(regularity: context.regularity).entrance(9)
+            RegularityCard(regularity: context.regularity).entrance(8)
             if let cvAge = context.cardiovascularAge {
-                CardiovascularAgeCard(cvAge: cvAge).entrance(10)
+                CardiovascularAgeCard(cvAge: cvAge).entrance(8)
             }
             InsightCard(insight: context.insight, engineName: context.insight.source.displayName)
-                .entrance(11)
-            footer(context).entrance(12)
+                .entrance(8)
+            footer(context).entrance(8)
         }
     }
 

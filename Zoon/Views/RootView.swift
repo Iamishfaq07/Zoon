@@ -99,7 +99,23 @@ struct RootView: View {
             return
         }
         await reminders.schedule(bedtime: bedtime)
+
+        // Wake window rides on the same authorization and the same body-clock
+        // data, but is its own toggle — someone might want the bedtime nudge
+        // without a second alarm layered on top of the one they already use.
+        guard preferences.smartWakeEnabled,
+              let wakeTime = coordinator.state.context?.bodyClock?.window(for: .now)?.end
+        else {
+            if !preferences.smartWakeEnabled { reminders.cancelWakeWindow() }
+            return
+        }
+        await reminders.scheduleWakeWindow(wakeTime: wakeTime, leadMinutes: Self.wakeWindowLeadMinutes)
     }
+
+    /// How early the wake-window notification can fire relative to the usual
+    /// wake time. Wider than the bedtime lead — a wake window is trying to
+    /// straddle a plausible light-sleep stretch, not just give advance notice.
+    private static let wakeWindowLeadMinutes = 20
 
     private func consumeDeepLink() {
         guard let destination = DeepLink.consume() else { return }
@@ -109,7 +125,7 @@ struct RootView: View {
     /// Selects the owning tab and pushes the screen onto its stack.
     private func push(_ destination: DeepLink.Destination) {
         switch destination {
-        case .soundscapes, .nap, .sleepDetail:
+        case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck:
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
@@ -159,6 +175,32 @@ struct SleepTabView: View {
                     .buttonStyle(PressableStyle())
                     .entrance(2)
 
+                    NavigationLink {
+                        BreathingView()
+                    } label: {
+                        toolRow(
+                            "Wind Down",
+                            detail: "Narrated 4-7-8 breathing, on device",
+                            symbol: "wind",
+                            tint: Theme.Metric.recoveryHigh
+                        )
+                    }
+                    .buttonStyle(PressableStyle())
+                    .entrance(3)
+
+                    NavigationLink {
+                        SnoreCheckView()
+                    } label: {
+                        toolRow(
+                            "Snore Check",
+                            detail: "Estimate, on device — mic used only while running",
+                            symbol: "waveform.and.mic",
+                            tint: Theme.Metric.hrv
+                        )
+                    }
+                    .buttonStyle(PressableStyle())
+                    .entrance(4)
+
                     if let context = coordinator.state.context {
                         Divider().overlay(Theme.cardStroke).padding(.vertical, 4)
                         SleepNeedCard(need: context.sleepNeed).entrance(3)
@@ -194,6 +236,8 @@ struct SleepTabView: View {
                 switch destination {
                 case .soundscapes: SoundscapeView()
                 case .nap: NapView()
+                case .breathing: BreathingView()
+                case .snoreCheck: SnoreCheckView()
                 case .sleepDetail:
                     if let context = coordinator.state.context {
                         SleepDetailView(context: context)

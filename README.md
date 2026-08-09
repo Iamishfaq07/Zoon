@@ -81,7 +81,23 @@ all of them locally.
   narrative highlights, best and worst night.
 
 ### Everything else
-- Lock-screen and home-screen **widgets**
+- Lock-screen, home-screen, and **watch-face** widgets, plus a companion Apple
+  Watch app
+- **Badges** — 13 of them, every one cumulative or best-ever. Nothing here can
+  be lost to one bad night, on purpose.
+- **Stress today** — the one live, daytime number in an app otherwise built
+  from last night, from the same HR/HRV already granted for sleep
+- **Cycle tracking**, opt-in and off by default, correlating recovery and
+  sleep against cycle phase — a normal luteal shift and an illness-drift
+  pattern can look identical without it
+- **Ask Zoon** — a conversational follow-up on tonight's numbers via Apple's
+  on-device model, alongside the one-shot nightly insight
+- **Wind Down** — a narrated 4-7-8 breathing exercise, spoken on-device with
+  no bundled audio
+- **Snore Check** — an on-device estimate from the microphone, run manually;
+  audio is processed in short bursts and never saved, only a minutes count
+- **Wake window** notification, honestly scoped: nudges within your usual
+  wake time from historical data, not a live sleep-stage alarm
 - **Streaks** and goal-met counts, kept modest — a streak that punishes one bad
   night is actively harmful in a sleep app
 - **Export** to JSON (complete, re-importable) or CSV (one row per night)

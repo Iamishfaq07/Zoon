@@ -16,6 +16,7 @@ struct SettingsView: View {
         Form {
             goalSection
             remindersSection
+            cycleSection
             profileSection
             engineSection
             dataSection
@@ -119,6 +120,28 @@ struct SettingsView: View {
                 }
             }
 
+            Toggle(isOn: Binding(
+                get: { preferences.smartWakeEnabled },
+                set: { wantsOn in
+                    Task {
+                        if wantsOn {
+                            let granted = await reminders.requestAuthorization()
+                            preferences.smartWakeEnabled = granted
+                        } else {
+                            preferences.smartWakeEnabled = false
+                            reminders.cancelWakeWindow()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Wake window")
+                    Text("Notifies within your usual wake window, not a live sleep-stage alarm.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if reminders.authorization == .denied {
                 Label(reminders.statusDescription, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
@@ -131,6 +154,45 @@ struct SettingsView: View {
                 Scheduled on this device. Zoon has no push notifications and no server, \
                 so nothing about your sleep leaves the phone to deliver these. The time \
                 moves with your sleep debt, so it is re-armed each time you open the app.
+                """)
+        }
+    }
+
+    /// Off by default, and asks for its own separate HealthKit permission the
+    /// moment it's turned on — see `HealthKitManager.requestCycleTrackingAuthorization`.
+    /// Reproductive health data doesn't belong in the same blanket prompt every
+    /// other read type shares, even though it's technically readable there.
+    private var cycleSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { preferences.cycleTrackingEnabled },
+                set: { wantsOn in
+                    preferences.cycleTrackingEnabled = wantsOn
+                    Task {
+                        if wantsOn {
+                            await coordinator.enableCycleTracking()
+                        } else {
+                            coordinator.disableCycleTracking()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cycle tracking")
+                    Text("Correlates recovery and sleep with your cycle phase.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Cycle")
+        } footer: {
+            Text("""
+                Off by default. Turning this on asks Health for your logged period \
+                dates specifically — a separate permission from everything else Zoon \
+                reads. Useful because a normal luteal-phase shift in HRV and resting \
+                heart rate can otherwise look identical to the illness-drift pattern \
+                Health Radar watches for.
                 """)
         }
     }

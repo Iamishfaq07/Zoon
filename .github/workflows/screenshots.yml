@@ -229,7 +229,8 @@ jobs:
           # scaling — fixed-width columns holding no-longer-fixed-size text.
           FAILED=0
           for tab in onboarding today sleep trends journal more \
-                     sleepDetail soundscapes nap report settings badges; do
+                     sleepDetail soundscapes nap breathing snoreCheck \
+                     report settings badges; do
             shoot "$tab" || FAILED=1
           done
           exit $FAILED

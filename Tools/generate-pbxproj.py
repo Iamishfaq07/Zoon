@@ -434,6 +434,9 @@ emit("PBXProject",
 HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen "
                "and wrist temperature to explain how you slept. Everything is processed "
                "on this device and never leaves it.")
+MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
+            "patterns. Audio is processed in short bursts and never saved or sent "
+            "anywhere -- only a minutes-snoring count is kept.")
 
 PROJ_COMMON = """				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -498,6 +501,7 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;

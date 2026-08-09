@@ -21,6 +21,15 @@ struct SleepDetailView: View {
         .nightBackground()
         .navigationTitle("Sleep")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    CoachChatView(night: context.night)
+                } label: {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                }
+            }
+        }
     }
 
     private var headline: some View {

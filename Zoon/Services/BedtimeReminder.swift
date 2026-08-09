@@ -35,6 +35,7 @@ final class BedtimeReminder {
     private enum ID {
         static let windDown = "zoon.reminder.winddown"
         static let bedtime = "zoon.reminder.bedtime"
+        static let wakeWindow = "zoon.reminder.wakewindow"
     }
 
     /// How long before target bedtime the wind-down nudge fires.
@@ -109,6 +110,38 @@ final class BedtimeReminder {
         )
 
         logger.info("Scheduled wind-down and bedtime reminders")
+    }
+
+    /// Notifies within a window before your usual wake time, derived from
+    /// `BodyClock`.
+    ///
+    /// Deliberately not a "smart alarm" in the sense competitors use the
+    /// term — those wake you at the lightest point in your sleep cycle,
+    /// detected by watching motion in real time all night. Zoon has no live
+    /// overnight sensing loop, and building one changes what kind of app
+    /// this is. What this does instead: fire early, within `leadMinutes` of
+    /// the wake time your own history already points to, so there's a
+    /// chance of catching a lighter stretch without claiming to have
+    /// detected one.
+    func scheduleWakeWindow(wakeTime: Date, leadMinutes: Int) async {
+        center.removePendingNotificationRequests(withIdentifiers: [ID.wakeWindow])
+
+        guard authorization == .authorized || authorization == .provisional else { return }
+
+        let calendar = Calendar.current
+        let early = wakeTime.addingTimeInterval(-Double(leadMinutes) * 60)
+        let components = calendar.dateComponents([.hour, .minute], from: early)
+
+        await add(
+            id: ID.wakeWindow,
+            title: "Wake window",
+            body: "Somewhere in the next \(leadMinutes) minutes is close to your usual wake time.",
+            components: components
+        )
+    }
+
+    func cancelWakeWindow() {
+        center.removePendingNotificationRequests(withIdentifiers: [ID.wakeWindow])
     }
 
     func cancel() {

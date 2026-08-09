@@ -154,7 +154,17 @@ struct HealthRadarCard: View {
         if radar.isActive {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    SectionHeader(title: "Health Radar", systemImage: "dot.radiowaves.left.and.right")
+                    // Explicit "illness risk" wording rather than a second,
+                    // separately-computed score: the detection underneath is
+                    // already the thing competitors call illness prediction —
+                    // several vitals drifting together, sustained for days.
+                    // Naming it plainly here is cheaper and more honest than
+                    // building a second model that would just restate this one.
+                    SectionHeader(
+                        title: "Health Radar",
+                        subtitle: radar.severity == .notable ? "Possible illness or heavy strain signal" : nil,
+                        systemImage: "dot.radiowaves.left.and.right"
+                    )
                     Spacer()
                     StatusPill(text: radar.severity.label, tint: tint)
                 }

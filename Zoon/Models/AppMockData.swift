@@ -105,6 +105,20 @@ enum AppMockData {
 
     /// A synthetic hypnogram: descending into deep early, more REM toward
     /// morning, a couple of brief awakenings. The shape a real night has.
+    static var cyclePeriodStarts: [Date] {
+        let calendar = Calendar.current
+        return (0..<4).compactMap {
+            calendar.date(byAdding: .day, value: -28 * $0, to: .now)
+        }
+    }
+
+    static var stress: StressScore {
+        StressScore(
+            percent: 34, band: .calm, sampledMinutes: 420,
+            avgHeartRate: 68, avgHRV: 52, isEstimate: false
+        )
+    }
+
     static func stageSegments(for night: SleepNightFeatures) -> [StageSegment] {
         let pattern: [(SleepStage, Double)] = [
             (.core, 22), (.deep, 48), (.core, 26), (.rem, 18),

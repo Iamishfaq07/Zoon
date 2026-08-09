@@ -16,6 +16,8 @@ final class UserPreferences {
         static let preferredEngine = "zoon.pref.preferredEngine"
         static let age = "zoon.pref.age"
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
+        static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
+        static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
     }
 
     private let defaults: UserDefaults
@@ -35,6 +37,18 @@ final class UserPreferences {
     /// `BedtimeReminder.requestAuthorization`.
     var bedtimeRemindersEnabled: Bool {
         didSet { defaults.set(bedtimeRemindersEnabled, forKey: Key.bedtimeRemindersEnabled) }
+    }
+
+    /// Off by default. Turning it on triggers a *separate* HealthKit
+    /// authorization request — see `HealthKitManager.requestCycleTrackingAuthorization`
+    /// — rather than reading reproductive health data for everyone by default.
+    var cycleTrackingEnabled: Bool {
+        didSet { defaults.set(cycleTrackingEnabled, forKey: Key.cycleTrackingEnabled) }
+    }
+
+    /// Wake-window notification — see `BedtimeReminder.scheduleWakeWindow`.
+    var smartWakeEnabled: Bool {
+        didSet { defaults.set(smartWakeEnabled, forKey: Key.smartWakeEnabled) }
     }
 
     /// Used only to estimate maximum heart rate, which sets the heart-rate
@@ -84,6 +98,8 @@ final class UserPreferences {
         self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : 480
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
+        self.cycleTrackingEnabled = defaults.bool(forKey: Key.cycleTrackingEnabled)
+        self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
         let storedAge = defaults.integer(forKey: Key.age)
         self.age = storedAge > 0 ? storedAge : nil
         self.preferredEngine = EngineChoice(
