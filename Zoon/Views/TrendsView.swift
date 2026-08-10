@@ -47,6 +47,8 @@ struct TrendsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
+                    insightsHub
+
                     if nights.count < 2 {
                         notEnoughData
                     } else {
@@ -62,7 +64,7 @@ struct TrendsView: View {
                 .padding()
             }
             .nightBackground()
-            .navigationTitle("Trends")
+            .navigationTitle("Insights")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Picker("Window", selection: $window) {
@@ -72,6 +74,40 @@ struct TrendsView: View {
                 }
             }
         }
+    }
+
+    private var insightsHub: some View {
+        VStack(spacing: 8) {
+            hubRow("Sleep Need", "target", Theme.Metric.sleep) { SleepNeedView() }
+            hubRow("Sleep Debt", "chart.line.downtrend.xyaxis", Theme.Metric.temperature) { SleepDebtView() }
+            hubRow("Body Clock", "clock", Theme.Metric.battery) { BodyClockView() }
+            hubRow("Body Signals", "dot.radiowaves.left.and.right", Theme.Metric.recoveryMid) { HealthRadarView() }
+            hubRow("Cause Finder", "sparkle.magnifyingglass", Theme.Metric.hrv) { CauseFinderView() }
+        }
+    }
+
+    private func hubRow<Destination: View>(
+        _ title: String, _ symbol: String, _ tint: Color,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
+        NavigationLink(destination: destination) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(Theme.text(15))
+                    .foregroundStyle(tint)
+                    .frame(width: 34, height: 34)
+                    .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Text(title)
+                    .font(Theme.label(14, weight: .semibold))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .glassCard()
+        }
+        .buttonStyle(PressableStyle())
     }
 
     private var notEnoughData: some View {

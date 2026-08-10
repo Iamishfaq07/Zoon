@@ -195,6 +195,32 @@ struct JournalCorrelator {
         return results.sorted { abs($0.percentChange) > abs($1.percentChange) }
     }
 
+    struct LearningTag: Identifiable, Hashable {
+        let tag: BehaviorTag
+        let loggedNights: Int
+        var id: String { tag.rawValue }
+        var remainingNights: Int { max(0, JournalCorrelator.minimumMatchedPairs - loggedNights) }
+        var progress: Double { min(1, Double(loggedNights) / Double(JournalCorrelator.minimumMatchedPairs)) }
+    }
+
+    /// Tags that have been logged at all, but not enough to run a matched
+    /// comparison yet -- the "still learning" tab, so logging a behaviour
+    /// once shows *something* happening rather than silence until the
+    /// threshold is cleared.
+    func stillLearning(from observations: [Observation]) -> [LearningTag] {
+        let found = Set(findings(from: observations).map(\.tag))
+        var counts: [BehaviorTag: Int] = [:]
+        for observation in observations {
+            for tag in observation.tags {
+                counts[tag, default: 0] += 1
+            }
+        }
+        return counts
+            .filter { tag, count in count > 0 && count < Self.minimumMatchedPairs && !found.contains(tag) }
+            .map { LearningTag(tag: $0.key, loggedNights: $0.value) }
+            .sorted { $0.loggedNights > $1.loggedNights }
+    }
+
     /// The strongest finding per tag, so one behaviour doesn't fill the screen
     /// with six near-identical rows.
     func topFindingPerTag(from observations: [Observation]) -> [Finding] {

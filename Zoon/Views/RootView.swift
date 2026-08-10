@@ -43,7 +43,7 @@ struct RootView: View {
                 .tag(Tab.sleep)
 
             TrendsView()
-                .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }
+                .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }
                 .tag(Tab.trends)
 
             JournalView()
