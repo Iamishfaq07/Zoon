@@ -45,7 +45,11 @@ struct TodayView: View {
         // rather than derived, because the order is a design decision and a
         // reader should be able to see it.
         VStack(spacing: Theme.stackSpacing) {
-            hero(context).entrance(0)
+            if coordinator.recentNights.count <= 1 {
+                FirstNightCard(night: context.night).entrance(0)
+            } else {
+                hero(context).entrance(0)
+            }
             SleepIntelligenceCard(score: context.sleepIntelligence).entrance(1)
             PersonalizationProgressCard(
                 nightsTracked: coordinator.recentNights.count,
