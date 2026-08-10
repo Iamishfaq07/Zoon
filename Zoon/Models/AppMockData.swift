@@ -58,15 +58,19 @@ enum AppMockData {
     /// Journal observations with a deliberately visible alcohol signal, so the
     /// correlation screen has something real to render in previews.
     static var journalObservations: [JournalCorrelator.Observation] {
-        MockData.history.enumerated().map { index, night in
-            let drank = index % 5 == 0
+        let calendar = Calendar.current
+        return MockData.history.enumerated().map { index, night in
+            // Dense enough to clear `JournalCorrelator.minimumMatchedPairs`
+            // (8) after weekend/weekday hard-matching thins the pool.
+            let drank = index % 3 == 0
             var tags: Set<BehaviorTag> = []
             if drank { tags.insert(.alcohol) }
-            if index % 3 == 0 { tags.insert(.caffeineLate) }
+            if index % 3 == 1 { tags.insert(.caffeineLate) }
             if index % 4 == 0 { tags.insert(.hardTraining) }
             if index % 2 == 0 { tags.insert(.readBeforeBed) }
 
             let penalty = drank ? 0.78 : 1.0
+            let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
@@ -75,7 +79,10 @@ enum AppMockData {
                 deepMinutes: night.deepMinutes * penalty,
                 remMinutes: night.remMinutes * penalty,
                 efficiency: night.sleepEfficiencyPercent * (drank ? 0.94 : 1.0),
-                wakeCount: Double(night.wakeCount) * (drank ? 1.6 : 1.0)
+                wakeCount: Double(night.wakeCount) * (drank ? 1.6 : 1.0),
+                isWeekend: weekday == 1 || weekday == 7,
+                sleepDebtMinutes: night.sleepDebtMinutes14Day,
+                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
             )
         }
     }

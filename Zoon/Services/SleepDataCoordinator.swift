@@ -608,9 +608,17 @@ final class SleepDataCoordinator {
         let entries = journal.allEntries()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
         let goal = preferences.sleepGoalMinutes
+        let calendar = Calendar.current
 
-        return recentNights.compactMap { night in
-            guard let tags = tagsByDate[night.date], !tags.isEmpty else { return nil }
+        // Every recorded night is a valid *comparison* night, tagged or not --
+        // a night nobody opened the Journal for isn't evidence the tagged
+        // behaviour didn't happen, but it's still a legitimate untagged
+        // baseline for every other tag. Previously these were dropped
+        // entirely, which quietly shrank the untagged pool the matcher has
+        // to draw from, especially early on when few nights are logged at all.
+        return recentNights.map { night in
+            let tags = tagsByDate[night.date] ?? []
+            let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
@@ -619,7 +627,10 @@ final class SleepDataCoordinator {
                 deepMinutes: night.hasStageBreakdown ? night.deepMinutes : nil,
                 remMinutes: night.hasStageBreakdown ? night.remMinutes : nil,
                 efficiency: night.sleepEfficiencyPercent,
-                wakeCount: Double(night.wakeCount)
+                wakeCount: Double(night.wakeCount),
+                isWeekend: weekday == 1 || weekday == 7,
+                sleepDebtMinutes: night.sleepDebtMinutes14Day,
+                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
             )
         }
     }

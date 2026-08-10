@@ -203,8 +203,8 @@ struct JournalView: View {
 
             if findings.isEmpty {
                 Text("""
-                    Nothing conclusive yet. Zoon needs at least \(JournalCorrelator.minimumTaggedNights) \
-                    nights with a behaviour and \(JournalCorrelator.minimumBaselineNights) without it before \
+                    Nothing conclusive yet. Zoon needs at least \(JournalCorrelator.minimumMatchedPairs) \
+                    nights with a behaviour that each have a comparable matched night without it before \
                     it will call anything a pattern.
                     """)
                     .font(.caption)
