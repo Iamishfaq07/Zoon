@@ -9,6 +9,8 @@ struct ReportView: View {
 
     private var report: WeeklyReport? { coordinator.weeklyReport() }
 
+    @State private var selectedRecoveryDate: Date?
+
     /// Pushed from the More tab, so it supplies no `NavigationStack` of its
     /// own — the same contract `SettingsView` follows.
     ///
@@ -173,6 +175,23 @@ struct ReportView: View {
                     RuleMark(y: .value("High", 67))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                         .foregroundStyle(.white.opacity(0.25))
+
+                    if let selectedRecoveryDate,
+                       let match = points.first(where: {
+                           Calendar.current.isDate($0.0, inSameDayAs: selectedRecoveryDate)
+                       }) {
+                        RuleMark(x: .value("Selected", match.0, unit: .day))
+                            .foregroundStyle(.white.opacity(0.25))
+                            .annotation(
+                                position: .top,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                            ) {
+                                ChartSelectionBadge(
+                                    title: match.0.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                    lines: [("Recovery", "\(match.1)%", Theme.recoveryColor(Double(match.1)))]
+                                )
+                            }
+                    }
                 }
                 .chartYScale(domain: 0...100)
                 .chartYAxis {
@@ -189,6 +208,7 @@ struct ReportView: View {
                     }
                 }
                 .frame(height: 150)
+                .chartXSelection(value: $selectedRecoveryDate)
             }
             .glassCard()
         }

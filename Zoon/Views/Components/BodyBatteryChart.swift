@@ -11,6 +11,8 @@ struct BodyBatteryChart: View {
     let battery: BodyBattery
     var height: CGFloat = 150
 
+    @State private var selectedDate: Date?
+
     var body: some View {
         if battery.points.count < 2 {
             emptyState
@@ -63,6 +65,20 @@ struct BodyBatteryChart: View {
                 .foregroundStyle(Theme.batteryColor(Double(battery.current)))
                 .symbolSize(90)
             }
+
+            if let selectedDate, let point = nearestPoint(to: selectedDate) {
+                RuleMark(x: .value("Selected", point.date))
+                    .foregroundStyle(.white.opacity(0.25))
+                    .annotation(
+                        position: .top,
+                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                    ) {
+                        ChartSelectionBadge(
+                            title: point.date.formatted(.dateTime.hour().minute()),
+                            lines: [("Level", "\(Int(point.level.rounded()))", Theme.batteryColor(point.level))]
+                        )
+                    }
+            }
         }
         .chartYScale(domain: 0...100)
         .chartYAxis {
@@ -86,6 +102,15 @@ struct BodyBatteryChart: View {
             }
         }
         .frame(height: height)
+        .chartXSelection(value: $selectedDate)
+    }
+
+    /// Points are timestamped continuously through the day, not bucketed —
+    /// `chartXSelection` lands on whatever instant is under the finger, so
+    /// this needs closest-by-time rather than the same-day match the
+    /// once-per-night charts use.
+    private func nearestPoint(to date: Date) -> BodyBattery.Point? {
+        battery.points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
     }
 
     private var emptyState: some View {

@@ -164,6 +164,7 @@
 		F4912FC411860F03F63EB22F /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
 		F49200DD7A33B2E7955459FE /* ZoonWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 03944FB4BD4F601B7757F914 /* ZoonWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F5DBED31BF40FC4B08D4D390 /* NapLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */; };
+		F60C9D12E6B768F3CB1F1C06 /* ChartInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0056BFA9411ACE233F7DC0D1 /* ChartInteraction.swift */; };
 		F7D50D4A2644F88D12CE6225 /* SleepDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */; };
 		F975AEF960918955595FAD4C /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		FA872B4C4904465C3E1557A2 /* LaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49631B20B1506B60BDEB8FC7 /* LaunchOptions.swift */; };
@@ -239,6 +240,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0056BFA9411ACE233F7DC0D1 /* ChartInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChartInteraction.swift"; sourceTree = "<group>"; };
 		010D79DAE1D4D7B54F7147DA /* SleepStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStage.swift"; sourceTree = "<group>"; };
 		02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWidgetBundle.swift"; sourceTree = "<group>"; };
 		03508B538C62AC65FD8AD914 /* HealthRadar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadar.swift"; sourceTree = "<group>"; };
@@ -385,6 +387,7 @@
 			children = (
 				B04DB48634B9461AF67635F9,
 				B202E4810C0F1C50E34E2DC3,
+				0056BFA9411ACE233F7DC0D1,
 				F87DDDFB40C40EF1EEA472F0,
 				12AB23E8C636FD67F0EFBBA9,
 				45237B7D4C6548BAEC55290F,
@@ -806,6 +809,7 @@
 				CE0253756CA59F5F3974A284,
 				0A7C54E3814C703015DAABFB,
 				5FD7E940C881946CF2A5EF92,
+				F60C9D12E6B768F3CB1F1C06,
 				E2035CEA799143574AC638C0,
 				8508204FEC412F59D8F3D82F,
 				E7E68658D923ECD0BD14401E,

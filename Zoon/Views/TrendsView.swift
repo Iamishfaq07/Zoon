@@ -90,6 +90,8 @@ struct DurationChartCard: View {
     let nights: [SleepNightFeatures]
     let goalMinutes: Double
 
+    @State private var selectedDate: Date?
+
     var body: some View {
         ChartCard(
             title: "Sleep Duration",
@@ -107,6 +109,8 @@ struct DurationChartCard: View {
                             : Color.orange.opacity(0.85)
                     )
                     .cornerRadius(3)
+                    .opacity(selectedDate == nil
+                             || Calendar.current.isDate(night.date, inSameDayAs: selectedDate!) ? 1 : 0.35)
                 }
 
                 RuleMark(y: .value("Goal", goalMinutes / 60))
@@ -117,8 +121,27 @@ struct DurationChartCard: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+
+                if let selectedDate, let night = nights.nearest(toDay: selectedDate) {
+                    RuleMark(x: .value("Selected", night.date, unit: .day))
+                        .foregroundStyle(.white.opacity(0.25))
+                        .annotation(
+                            position: .top,
+                            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                        ) {
+                            ChartSelectionBadge(
+                                title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                lines: [(
+                                    "Asleep",
+                                    night.formattedTimeAsleep,
+                                    night.timeAsleepMinutes >= goalMinutes ? .accentColor : .orange
+                                )]
+                            )
+                        }
+                }
             }
             .chartYAxisLabel("hours")
+            .chartXSelection(value: $selectedDate)
         }
     }
 }
@@ -127,6 +150,8 @@ struct DurationChartCard: View {
 
 struct HRVChartCard: View {
     let nights: [SleepNightFeatures]
+
+    @State private var selectedDate: Date?
 
     private var points: [SleepNightFeatures] {
         nights.filter { $0.avgHRV != nil }
@@ -170,11 +195,26 @@ struct HRVChartCard: View {
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                             .foregroundStyle(.secondary)
                     }
+
+                    if let selectedDate, let night = points.nearest(toDay: selectedDate), let hrv = night.avgHRV {
+                        RuleMark(x: .value("Selected", night.date, unit: .day))
+                            .foregroundStyle(.white.opacity(0.25))
+                            .annotation(
+                                position: .top,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                            ) {
+                                ChartSelectionBadge(
+                                    title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                    lines: [("HRV", "\(Int(hrv.rounded())) ms", .pink)]
+                                )
+                            }
+                    }
                 }
                 // HRV varies hugely between people, so a zero-based axis wastes
                 // most of the plot area and flattens the variation that matters.
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartYAxisLabel("ms")
+                .chartXSelection(value: $selectedDate)
             }
         }
     }
@@ -218,31 +258,51 @@ struct SleepDebtChartCard: View {
         }
     }
 
+    @State private var selectedDate: Date?
+
     var body: some View {
         ChartCard(
             title: "Accumulated Sleep Debt",
             subtitle: "Running shortfall across this period. Only short nights add to it."
         ) {
-            Chart(points) { point in
-                AreaMark(
-                    x: .value("Date", point.date, unit: .day),
-                    y: .value("Debt", point.hours)
-                )
-                .foregroundStyle(
-                    .linearGradient(
-                        colors: [.orange.opacity(0.4), .orange.opacity(0.05)],
-                        startPoint: .top,
-                        endPoint: .bottom
+            Chart {
+                ForEach(points) { point in
+                    AreaMark(
+                        x: .value("Date", point.date, unit: .day),
+                        y: .value("Debt", point.hours)
                     )
-                )
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [.orange.opacity(0.4), .orange.opacity(0.05)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
 
-                LineMark(
-                    x: .value("Date", point.date, unit: .day),
-                    y: .value("Debt", point.hours)
-                )
-                .foregroundStyle(.orange)
+                    LineMark(
+                        x: .value("Date", point.date, unit: .day),
+                        y: .value("Debt", point.hours)
+                    )
+                    .foregroundStyle(.orange)
+                }
+
+                if let selectedDate,
+                   let point = points.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
+                    RuleMark(x: .value("Selected", point.date, unit: .day))
+                        .foregroundStyle(.white.opacity(0.25))
+                        .annotation(
+                            position: .top,
+                            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                        ) {
+                            ChartSelectionBadge(
+                                title: point.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                lines: [("Owed", String(format: "%.1fh", point.hours), .orange)]
+                            )
+                        }
+                }
             }
             .chartYAxisLabel("hours owed")
+            .chartXSelection(value: $selectedDate)
         }
     }
 }
@@ -286,26 +346,48 @@ struct ConsistencyChartCard: View {
         return hour >= 18 ? hour - 24 : hour
     }
 
+    @State private var selectedDate: Date?
+
     var body: some View {
         ChartCard(
             title: "Schedule Consistency",
             subtitle: "Bedtime to wake time each night. A steady shape beats a long one."
         ) {
-            Chart(points) { point in
-                RectangleMark(
-                    x: .value("Date", point.date, unit: .day),
-                    yStart: .value("Bedtime", point.bedHour),
-                    yEnd: .value("Wake", point.wakeHour),
-                    width: .ratio(0.55)
-                )
-                .foregroundStyle(
-                    .linearGradient(
-                        colors: [.indigo, .blue.opacity(0.65)],
-                        startPoint: .top,
-                        endPoint: .bottom
+            Chart {
+                ForEach(points) { point in
+                    RectangleMark(
+                        x: .value("Date", point.date, unit: .day),
+                        yStart: .value("Bedtime", point.bedHour),
+                        yEnd: .value("Wake", point.wakeHour),
+                        width: .ratio(0.55)
                     )
-                )
-                .cornerRadius(4)
+                    .foregroundStyle(
+                        .linearGradient(
+                            colors: [.indigo, .blue.opacity(0.65)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .cornerRadius(4)
+                }
+
+                if let selectedDate,
+                   let point = points.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
+                    RuleMark(x: .value("Selected", point.date, unit: .day))
+                        .foregroundStyle(.white.opacity(0.25))
+                        .annotation(
+                            position: .top,
+                            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                        ) {
+                            ChartSelectionBadge(
+                                title: point.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                lines: [
+                                    ("Bed", Self.clockLabel(point.bedHour), .indigo),
+                                    ("Wake", Self.clockLabel(point.wakeHour), .blue)
+                                ]
+                            )
+                        }
+                }
             }
             // Explicit Double literals throughout. `-6...12` would infer
             // ClosedRange<Int>, which doesn't match the Double-plottable Y
@@ -323,6 +405,7 @@ struct ConsistencyChartCard: View {
                     }
                 }
             }
+            .chartXSelection(value: $selectedDate)
         }
     }
 
