@@ -22,7 +22,19 @@ struct HypnogramView: View {
     /// deep sleep — the convention people already know how to read.
     private let rows = SleepStage.hypnogramOrder
 
+    /// Drag/tap position as a 0...1 fraction across the chart width. Driven by
+    /// a gesture rather than `chartXSelection` because this view is a `Canvas`,
+    /// not a Swift Charts mark — the touch-to-time math has to be done by hand.
+    @State private var selectedFraction: CGFloat?
+
     private var span: DateInterval? { segments.span }
+
+    private var selectedSegment: StageSegment? {
+        guard let span, span.duration > 0, let selectedFraction else { return nil }
+        let time = span.start.addingTimeInterval(span.duration * Double(selectedFraction))
+        return segments.first { $0.start <= time && time < $0.start.addingTimeInterval($0.duration) }
+            ?? segments.min { abs($0.start.timeIntervalSince(time)) < abs($1.start.timeIntervalSince(time)) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -62,48 +74,83 @@ struct HypnogramView: View {
     }
 
     private var chart: some View {
-        Canvas { context, size in
-            guard let span, span.duration > 0 else { return }
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+                Canvas { context, size in
+                    guard let span, span.duration > 0 else { return }
 
-            let rowHeight = size.height / CGFloat(rows.count)
-            // Blocks are inset within their row so adjacent stages read as
-            // separate bars rather than one continuous slab.
-            let blockHeight = rowHeight * 0.62
-            let total = span.duration
+                    let rowHeight = size.height / CGFloat(rows.count)
+                    // Blocks are inset within their row so adjacent stages read as
+                    // separate bars rather than one continuous slab.
+                    let blockHeight = rowHeight * 0.62
+                    let total = span.duration
 
-            func rect(for segment: StageSegment) -> CGRect? {
-                guard let rowIndex = rows.firstIndex(of: normalized(segment.stage)) else { return nil }
-                let x = (segment.start.timeIntervalSince(span.start) / total) * size.width
-                let width = max(1.5, (segment.duration / total) * size.width)
-                let y = CGFloat(rowIndex) * rowHeight + (rowHeight - blockHeight) / 2
-                return CGRect(x: x, y: y, width: width, height: blockHeight)
-            }
+                    func rect(for segment: StageSegment) -> CGRect? {
+                        guard let rowIndex = rows.firstIndex(of: normalized(segment.stage)) else { return nil }
+                        let x = (segment.start.timeIntervalSince(span.start) / total) * size.width
+                        let width = max(1.5, (segment.duration / total) * size.width)
+                        let y = CGFloat(rowIndex) * rowHeight + (rowHeight - blockHeight) / 2
+                        return CGRect(x: x, y: y, width: width, height: blockHeight)
+                    }
 
-            let ordered = segments.sorted { $0.start < $1.start }
+                    let ordered = segments.sorted { $0.start < $1.start }
 
-            // Risers first, behind the blocks: thin vertical connectors between
-            // consecutive stages so the eye follows one continuous trace instead
-            // of reading disconnected bars.
-            for (previous, next) in zip(ordered, ordered.dropFirst()) {
-                guard let from = rect(for: previous), let to = rect(for: next) else { continue }
-                let x = from.maxX
-                let path = Path { p in
-                    p.move(to: CGPoint(x: x, y: from.midY))
-                    p.addLine(to: CGPoint(x: x, y: to.midY))
+                    // Risers first, behind the blocks: thin vertical connectors between
+                    // consecutive stages so the eye follows one continuous trace instead
+                    // of reading disconnected bars.
+                    for (previous, next) in zip(ordered, ordered.dropFirst()) {
+                        guard let from = rect(for: previous), let to = rect(for: next) else { continue }
+                        let x = from.maxX
+                        let path = Path { p in
+                            p.move(to: CGPoint(x: x, y: from.midY))
+                            p.addLine(to: CGPoint(x: x, y: to.midY))
+                        }
+                        context.stroke(path, with: .color(.white.opacity(0.18)), lineWidth: 1)
+                    }
+
+                    for segment in ordered {
+                        guard let frame = rect(for: segment) else { continue }
+                        let color = Theme.Stage.color(for: normalized(segment.stage))
+                        let shape = Path(roundedRect: frame, cornerRadius: min(4, frame.height / 2))
+
+                        context.fill(shape, with: .linearGradient(
+                            Gradient(colors: [color, color.opacity(0.72)]),
+                            startPoint: CGPoint(x: frame.minX, y: frame.minY),
+                            endPoint: CGPoint(x: frame.minX, y: frame.maxY)
+                        ))
+                    }
+
+                    if let selectedFraction {
+                        let x = size.width * selectedFraction
+                        let path = Path { p in
+                            p.move(to: CGPoint(x: x, y: 0))
+                            p.addLine(to: CGPoint(x: x, y: size.height))
+                        }
+                        context.stroke(path, with: .color(.white.opacity(0.4)), lineWidth: 1)
+                    }
                 }
-                context.stroke(path, with: .color(.white.opacity(0.18)), lineWidth: 1)
-            }
+                .frame(width: geo.size.width, height: height)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            selectedFraction = min(1, max(0, value.location.x / geo.size.width))
+                        }
+                        .onEnded { _ in selectedFraction = nil }
+                )
 
-            for segment in ordered {
-                guard let frame = rect(for: segment) else { continue }
-                let color = Theme.Stage.color(for: normalized(segment.stage))
-                let shape = Path(roundedRect: frame, cornerRadius: min(4, frame.height / 2))
-
-                context.fill(shape, with: .linearGradient(
-                    Gradient(colors: [color, color.opacity(0.72)]),
-                    startPoint: CGPoint(x: frame.minX, y: frame.minY),
-                    endPoint: CGPoint(x: frame.minX, y: frame.maxY)
-                ))
+                if let selectedFraction, let selectedSegment {
+                    let x = geo.size.width * selectedFraction
+                    ChartSelectionBadge(
+                        title: selectedSegment.start.formatted(.dateTime.hour().minute()),
+                        lines: [(
+                            "Stage",
+                            normalized(selectedSegment.stage).displayName,
+                            Theme.Stage.color(for: normalized(selectedSegment.stage))
+                        )]
+                    )
+                    .offset(x: min(max(0, x - 60), geo.size.width - 120), y: -6)
+                }
             }
         }
         .frame(height: height)
