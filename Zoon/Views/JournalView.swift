@@ -13,6 +13,7 @@ struct JournalView: View {
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var findings: [JournalCorrelator.Finding] = []
     @State private var note: String = ""
+    @FocusState private var noteFieldFocused: Bool
 
     private var entry: JournalEntry {
         coordinator.journal.entryOrCreate(for: selectedDate)
@@ -30,12 +31,28 @@ struct JournalView: View {
                 .padding(.horizontal)
                 .padding(.bottom, 28)
             }
+            .scrollDismissesKeyboard(.interactively)
             .nightBackground()
             .navigationTitle("Journal")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Multiline TextFields (`axis: .vertical`) treat Return as a
+                // newline, not a submit — `onSubmit` never fires, so without
+                // this the keyboard has no dismissal path at all and ends up
+                // eating the first tap on anything underneath it.
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { noteFieldFocused = false }
+                }
+            }
             .onAppear(perform: reload)
             .onChange(of: selectedDate) { _, _ in
                 note = entry.note ?? ""
+            }
+            .onChange(of: noteFieldFocused) { wasFocused, isFocused in
+                if wasFocused, !isFocused {
+                    coordinator.journal.setNote(note, on: selectedDate)
+                }
             }
         }
     }
@@ -152,7 +169,8 @@ struct JournalView: View {
                 .lineLimit(2...5)
                 .font(.subheadline)
                 .textFieldStyle(.plain)
-                .onSubmit { coordinator.journal.setNote(note, on: selectedDate) }
+                .focused($noteFieldFocused)
+                .submitLabel(.done)
         }
         .glassCard()
         .onDisappear { coordinator.journal.setNote(note, on: selectedDate) }
