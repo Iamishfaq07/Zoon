@@ -542,7 +542,7 @@ WATCH_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = NO;
 
 WATCH_EXT_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWatchWidget/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.ZoonWatchWidget;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchsimulator watchos";

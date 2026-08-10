@@ -122,11 +122,14 @@ into an archive.
    **+**. Register all four, as plain App IDs (no capabilities need ticking —
    Xcode's automatic signing adds HealthKit itself when it provisions):
    `com.zoon.sleep`, `com.zoon.sleep.ZoonWidget`, `com.zoon.sleep.watchkitapp`,
-   `com.zoon.sleep.watchkitapp.complication`.
-   *(Using your own reversed-domain prefix instead of `com.zoon.sleep`? Change
-   it in `Tools/generate-pbxproj.py` — search `PRODUCT_BUNDLE_IDENTIFIER` — then
-   run `python3 Tools/generate-pbxproj.py` and commit the regenerated project
-   file before registering the new identifiers.)*
+   `com.zoon.sleep.watchkitapp.ZoonWatchWidget`.
+   *(Bundle IDs are unique across every Apple developer account, not just
+   yours — if any of these is rejected as "not available", someone else has
+   already taken that literal string. Change it in `Tools/generate-pbxproj.py`
+   — search `PRODUCT_BUNDLE_IDENTIFIER` — to any other suffix, then run
+   `python3 Tools/generate-pbxproj.py` and commit the regenerated project file
+   before registering. Using your own reversed-domain prefix instead of
+   `com.zoon.sleep` entirely? Same process — change every occurrence.)*
 3. **Create the app record**, at [App Store Connect](https://appstoreconnect.apple.com/) →
    **Apps** → **+** → **New App**. Platform iOS, bundle ID `com.zoon.sleep`,
    any SKU. This is what lets a build with that bundle ID land in TestFlight —

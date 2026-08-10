@@ -1029,7 +1029,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWatchWidget/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.ZoonWatchWidget;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchsimulator watchos";
@@ -1178,7 +1178,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWatchWidget/Info.plist;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.complication;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.ZoonWatchWidget;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchsimulator watchos";
