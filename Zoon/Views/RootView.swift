@@ -201,6 +201,19 @@ struct SleepTabView: View {
                     .buttonStyle(PressableStyle())
                     .entrance(4)
 
+                    NavigationLink {
+                        BreathingHealthView()
+                    } label: {
+                        toolRow(
+                            "Breathing",
+                            detail: "Respiratory rate, disturbances, oxygen, snoring",
+                            symbol: "lungs.fill",
+                            tint: Theme.Metric.sleep
+                        )
+                    }
+                    .buttonStyle(PressableStyle())
+                    .entrance(4)
+
                     if let context = coordinator.state.context {
                         Divider().overlay(Theme.cardStroke).padding(.vertical, 4)
                         SleepNeedCard(need: context.sleepNeed).entrance(3)
