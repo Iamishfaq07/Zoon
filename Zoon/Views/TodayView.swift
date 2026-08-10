@@ -52,6 +52,11 @@ struct TodayView: View {
                 StressCard(stress: stress).entrance(2)
             }
             ringsCard(context).entrance(3)
+            EnergyForecastCard(forecast: EnergyForecast.compute(
+                wakeTime: context.night.wakeTime,
+                sleepDebtMinutes: context.night.sleepDebtMinutes14Day ?? 0,
+                windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
+            )).entrance(4)
             BodyBatteryCard(battery: context.bodyBattery).entrance(4)
             SleepSummaryStrip(context: context).entrance(5)
             // Radar first among the diagnostics: a sustained multi-signal drift

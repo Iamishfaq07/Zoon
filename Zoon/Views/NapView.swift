@@ -9,9 +9,19 @@ import SwiftUI
 struct NapView: View {
 
     @Environment(NapStore.self) private var naps
+    @Environment(SleepDataCoordinator.self) private var coordinator
 
     @State private var selectedMinutes: Int = 20
     @State private var now: Date = .now
+
+    private var recommendation: NapCoach.Recommendation {
+        NapCoach.recommend(
+            now: now,
+            debtMinutes: coordinator.state.context?.night.sleepDebtMinutes14Day ?? 0,
+            plannedBedtime: coordinator.state.context?.targetBedtime(now: now),
+            napMinutesToday: naps.minutes(on: now)
+        )
+    }
 
     /// Nap lengths that correspond to actual sleep architecture rather than
     /// round numbers: 20 stays above deep sleep and avoids grogginess, 90 is a
@@ -29,6 +39,7 @@ struct NapView: View {
                 if let active = naps.activeNap {
                     activeCard(active)
                 } else {
+                    napCoachCard
                     presetCard
                     startButton
                 }
@@ -112,6 +123,54 @@ struct NapView: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .glassCard()
+    }
+
+    // MARK: - Nap Coach
+
+    private var napCoachCard: some View {
+        let tint: Color = switch recommendation.advice {
+        case .recommended: Theme.Metric.recoveryHigh
+        case .optional: Theme.Metric.sleep
+        case .avoid: Theme.Metric.recoveryMid
+        }
+        let symbol: String = switch recommendation.advice {
+        case .recommended: "checkmark.circle.fill"
+        case .optional: "circle.dashed"
+        case .avoid: "xmark.circle.fill"
+        }
+        let title: String = switch recommendation.advice {
+        case .recommended(let minutes): "Nap recommended · ~\(minutes) min"
+        case .optional: "Nap optional"
+        case .avoid: "Skip the nap"
+        }
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .foregroundStyle(tint)
+                Text(title)
+                    .font(Theme.label(14, weight: .bold))
+                Spacer()
+                if recommendation.isRecommended {
+                    Button {
+                        if case .recommended(let minutes) = recommendation.advice {
+                            selectedMinutes = minutes
+                        }
+                    } label: {
+                        Text("Use this")
+                            .font(Theme.label(11, weight: .semibold))
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(tint.opacity(0.2), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Text(recommendation.reason)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         .glassCard()
     }
 
@@ -236,6 +295,5 @@ struct NapView: View {
 
 #Preview("Nap") {
     NavigationStack { NapView() }
-        .environment(NapStore.preview)
-        .preferredColorScheme(.dark)
+        .zoonPreviewEnvironment()
 }
