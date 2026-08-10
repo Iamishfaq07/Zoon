@@ -216,6 +216,20 @@ struct SleepTabView: View {
                         }
                         .buttonStyle(PressableStyle())
                         .entrance(4)
+                        NavigationLink {
+                            NightHistoryView()
+                        } label: {
+                            toolRow(
+                                "Past Nights",
+                                detail: coordinator.recentNights.isEmpty
+                                    ? "Nothing recorded yet"
+                                    : "\(coordinator.recentNights.count) night\(coordinator.recentNights.count == 1 ? "" : "s") on file",
+                                symbol: "calendar",
+                                tint: Theme.Metric.hrv
+                            )
+                        }
+                        .buttonStyle(PressableStyle())
+                        .entrance(4)
                         ChronotypeCard(chronotype: context.chronotype).entrance(5)
                         if let clock = context.bodyClock {
                             BodyClockCard(
