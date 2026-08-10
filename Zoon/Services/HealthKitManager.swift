@@ -23,13 +23,10 @@ final class HealthKitManager {
     private let store = HKHealthStore()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "HealthKit")
 
-    /// Set when a query fails in a way worth surfacing.
-    private(set) var lastError: String?
-
-    /// True once `requestAuthorization` has returned without throwing. This says
-    /// only "the sheet was presented and dismissed" — see the note above; it
-    /// does **not** mean read access was granted.
-    private(set) var didRequestAuthorization = false
+    // Deliberately no `isAuthorized` / `lastError` state here. Read permission
+    // is unknowable (see above), and error presentation belongs to
+    // `SleepDataCoordinator.State`, which is what the views actually observe —
+    // a second source of truth would only drift from it.
 
     /// Live observer queries, retained so we can stop them. Without this the
     /// observers leak and re-registering stacks duplicates that each fire a
@@ -51,6 +48,11 @@ final class HealthKitManager {
             HKQuantityType(.oxygenSaturation),
             HKQuantityType(.appleExerciseTime),
             HKQuantityType(.activeEnergyBurned),
+            // The signal behind Apple Watch's sleep apnea notifications
+            // (iOS 18+). Only Series 9 / Ultra 2 and later record it, and only
+            // when the user has enabled the feature — everywhere else the query
+            // simply returns nothing, which the extractor handles as nil.
+            HKQuantityType(.appleSleepingBreathingDisturbances),
             HKObjectType.workoutType()
         ]
         // Wrist temperature needs a Series 8 / Ultra or later. The type exists
@@ -68,7 +70,46 @@ final class HealthKitManager {
         }
         // Empty `toShare`: read-only by construction, not by convention.
         try await store.requestAuthorization(toShare: [], read: readTypes)
-        didRequestAuthorization = true
+    }
+
+    /// Requests menstrual flow separately from the main authorization pass.
+    ///
+    /// Not in `readTypes`: that set is requested on every launch, for every
+    /// user, and reproductive health data is not something to prompt for by
+    /// default just because it happens to be readable. This is called only
+    /// when someone turns the Settings toggle on, so the permission sheet
+    /// appears exactly once, for exactly the people who asked for the feature.
+    func requestCycleTrackingAuthorization() async throws {
+        guard Self.isHealthDataAvailable else {
+            throw HealthKitError.unavailable
+        }
+        try await store.requestAuthorization(
+            toShare: [], read: [HKCategoryType(.menstrualFlow)]
+        )
+    }
+
+    /// Recent menstrual flow samples, oldest first. `nil` entries in the
+    /// underlying record (spotting vs flow) are not distinguished here — cycle
+    /// *day*, which is what the correlation needs, only requires knowing which
+    /// days a period started.
+    func menstrualFlowSamples(in window: DateInterval) async throws -> [HKCategorySample] {
+        let type = HKCategoryType(.menstrualFlow)
+        let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (samples as? [HKCategorySample]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
     }
 
     // MARK: - Background delivery
@@ -92,11 +133,15 @@ final class HealthKitManager {
         stopObserving()
 
         let sleepType = HKCategoryType(.sleepAnalysis)
+        // Note on captures: the query handler holds `self` weakly, so inside it
+        // `self` is already Optional. The nested Task captures that Optional
+        // directly — writing `[weak self]` a second time would be applying
+        // `weak` to an already-optional binding.
         let observer = HKObserverQuery(sampleType: sleepType, predicate: nil) { [weak self] _, completionHandler, error in
             if let error {
                 // Logged, not surfaced: an observer hiccup shouldn't put a red
                 // banner in front of the user.
-                Task { @MainActor [weak self] in
+                Task { @MainActor in
                     self?.logger.error("Observer query error: \(error.localizedDescription, privacy: .public)")
                 }
             } else {
@@ -111,7 +156,7 @@ final class HealthKitManager {
         activeObservers.append(observer)
 
         store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { [weak self] success, error in
-            Task { @MainActor [weak self] in
+            Task { @MainActor in
                 if let error {
                     self?.logger.notice(
                         """
@@ -270,6 +315,124 @@ final class HealthKitManager {
             }
             store.execute(query)
         }
+    }
+
+    // MARK: - Intraday series
+
+    /// Mean heart rate per hour across an interval.
+    ///
+    /// `HKStatisticsCollectionQuery` is the right tool here: asking for raw
+    /// samples across a day returns thousands of them and we'd bucket them
+    /// ourselves anyway. HealthKit does the bucketing in its own store, which is
+    /// dramatically faster and uses a fraction of the memory.
+    ///
+    /// Hours with no coverage are **omitted**, never zero-filled. A watch on the
+    /// charger is not a resting hour, and Body Battery would happily "charge"
+    /// through it if we pretended otherwise.
+    func hourlyHeartRate(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
+        try await hourlySeries(
+            .heartRate,
+            unit: .beatsPerMinute,
+            options: .discreteAverage,
+            interval: interval
+        ) { $0.averageQuantity() }
+    }
+
+    /// Active energy burned per hour, for the strain estimate fallback.
+    func hourlyActiveEnergy(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
+        try await hourlySeries(
+            .activeEnergyBurned,
+            unit: .kilocalorie(),
+            options: .cumulativeSum,
+            interval: interval
+        ) { $0.sumQuantity() }
+    }
+
+    private func hourlySeries(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        options: HKStatisticsOptions,
+        interval: DateInterval,
+        extract: @escaping @Sendable (HKStatistics) -> HKQuantity?
+    ) async throws -> [(date: Date, bpm: Double)] {
+
+        let type = HKQuantityType(identifier)
+        let predicate = HKQuery.predicateForSamples(withStart: interval.start, end: interval.end)
+
+        // Anchor on the hour so buckets line up with wall-clock hours rather
+        // than with whatever minute the query happened to run.
+        let anchorDate = Calendar.current.dateInterval(of: .hour, for: interval.start)?.start ?? interval.start
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKStatisticsCollectionQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: options,
+                anchorDate: anchorDate,
+                intervalComponents: DateComponents(hour: 1)
+            )
+
+            query.initialResultsHandler = { _, collection, error in
+                if let error {
+                    if (error as? HKError)?.code == .errorNoData {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
+                guard let collection else {
+                    continuation.resume(returning: [])
+                    return
+                }
+
+                var results: [(date: Date, bpm: Double)] = []
+                collection.enumerateStatistics(from: interval.start, to: interval.end) { statistics, _ in
+                    if let quantity = extract(statistics) {
+                        results.append((date: statistics.startDate, bpm: quantity.doubleValue(for: unit)))
+                    }
+                }
+                continuation.resume(returning: results)
+            }
+
+            store.execute(query)
+        }
+    }
+
+    /// Minutes spent in each heart-rate zone across an interval.
+    ///
+    /// Zones are defined on **heart-rate reserve** (Karvonen) rather than raw
+    /// percentage of max, because HRR accounts for the user's own resting rate.
+    /// Two people with the same max but a 20bpm difference in resting HR are not
+    /// working equally hard at 140bpm, and a %max model says they are.
+    ///
+    /// Built from hourly means, so it's an approximation: an hour containing a
+    /// 20-minute interval session averages out to something moderate. It's
+    /// directionally right and it's what's cheaply available; the UI flags
+    /// strain as an estimate whenever coverage is thin.
+    func heartRateZones(
+        in interval: DateInterval,
+        restingHeartRate: Double,
+        maxHeartRate: Double
+    ) async throws -> (zones: [StrainScore.Zone: Double], coverage: Double) {
+
+        let hourly = try await hourlyHeartRate(in: interval)
+        guard !hourly.isEmpty else { return ([:], 0) }
+
+        let reserve = max(20, maxHeartRate - restingHeartRate)
+        var zones: [StrainScore.Zone: Double] = [:]
+
+        for sample in hourly {
+            let hrr = (sample.bpm - restingHeartRate) / reserve
+            // Highest zone whose lower bound is cleared.
+            guard let zone = StrainScore.Zone.allCases
+                .filter({ hrr >= $0.lowerBoundHRR })
+                .max(by: { $0.lowerBoundHRR < $1.lowerBoundHRR }) else { continue }
+            zones[zone, default: 0] += 60
+        }
+
+        let expectedHours = max(1, interval.duration / 3600)
+        return (zones, min(1, Double(hourly.count) / expectedHours))
     }
 
     // MARK: - Workouts

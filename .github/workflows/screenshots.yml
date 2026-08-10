@@ -1,0 +1,309 @@
+name: Screenshots
+
+# Boots an iOS Simulator on a GitHub-hosted macOS runner, installs Zoon, and
+# photographs every screen. Download the artifact to see the real app rendered
+# by real SwiftUI at real sizes — no Mac, no Apple ID, no certificates, no
+# money.
+#
+# This is also the only automated evidence that the app *launches*. The Build
+# workflow proves it compiles; a compiling app can still crash in
+# `ModelContainer(for:)` on first run. Here the process has to survive long
+# enough to draw a frame, and the run fails if it doesn't.
+#
+# Deliberately not on every push: booting a simulator is slow, and macOS
+# minutes bill at 10x on private repos. This comment-only edit exists to
+# retrigger a capture after the seven-feature batch landed. Two ways to run it:
+#
+#   - **Actions tab → Screenshots → Run workflow.** Note that GitHub only
+#     offers that button for workflows present on the *default* branch, so
+#     until this is merged the dispatch trigger won't appear.
+#   - **Touch this file and push.** The `paths` filter below makes editing the
+#     workflow (or the launch-argument plumbing it drives) the request to run
+#     it, which is what makes it usable from a feature branch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Simulator device name'
+        default: 'iPhone 17 Pro'
+        type: string
+        required: false
+  push:
+    paths:
+      - '.github/workflows/screenshots.yml'
+      - 'Zoon/Services/LaunchOptions.swift'
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+# Needed to commit the downscaled captures back to the branch.
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    name: Capture screenshots
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    env:
+      BUNDLE_ID: com.zoon.sleep
+      # `inputs` is empty on a push trigger, so the default lives here rather
+      # than only in the dispatch form.
+      DEVICE: ${{ inputs.device || 'iPhone 17 Pro' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          # Resolve the device by name to a UDID. Runner images add and remove
+          # device models between releases, so a hard-coded UDID — or a name
+          # passed straight to xcodebuild — breaks silently later.
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json,sys
+          want = '''${DEVICE}'''
+          data = json.load(sys.stdin)['devices']
+          for runtime, devices in sorted(data.items()):
+              for d in devices:
+                  if d['name'] == want:
+                      print(d['udid']); sys.exit(0)
+          # Nothing matched: fall back to the newest iPhone the image has, and
+          # say so, rather than failing over a renamed device model.
+          best = None
+          for runtime, devices in sorted(data.items()):
+              for d in devices:
+                  if d['name'].startswith('iPhone'):
+                      best = d
+          if best is None:
+              sys.exit('No iPhone simulator available on this runner.')
+          print(best['udid'], file=sys.stdout)
+          print('Falling back to ' + best['name'], file=sys.stderr)
+          ")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          # Freeze the status bar so screenshots are reproducible: without this
+          # the clock and battery differ on every run and every image shows as
+          # changed in a diff.
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 --wifiMode active --wifiBars 3
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee build.log
+
+      - name: Inspect the built bundle
+        # Everything here is invisible to the compiler. `GENERATE_INFOPLIST_FILE`
+        # synthesises both Info.plists from build settings, and a wrong or
+        # missing key produces a perfectly good binary that iOS then refuses to
+        # install. Dumping them is the only way to see what was actually written.
+        run: |
+          set -euo pipefail
+          APP=$(find DerivedData/Build/Products -maxdepth 3 -name 'Zoon.app' | head -1)
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          # `tee`, not `>>`: the step summary is convenient to read in the
+          # browser but can't be fetched back through the API, so the log gets
+          # a copy too.
+          {
+            echo "### Bundle"
+            echo ""
+            echo '<details><summary>Zoon.app/Info.plist</summary>'
+            echo ""; echo '```'
+            plutil -p "$APP/Info.plist"
+            echo '```'; echo "</details>"
+            for ext in "$APP"/PlugIns/*.appex; do
+              [ -e "$ext" ] || continue
+              echo ""
+              echo "<details><summary>$(basename "$ext")/Info.plist</summary>"
+              echo ""; echo '```'
+              plutil -p "$ext/Info.plist"
+              echo '```'; echo "</details>"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install and capture
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          if [ -z "${APP:-}" ]; then echo "No Zoon.app in build products"; exit 1; fi
+
+          # A bad app *extension* must not cost us the app's screenshots — the
+          # widget isn't visible in any of them. Try the whole bundle first, and
+          # on failure install a copy with PlugIns stripped, loudly.
+          EXT_BROKEN=0
+          echo "Installing $APP"
+          if ! xcrun simctl install "$UDID" "$APP"; then
+            EXT_BROKEN=1
+            echo "::warning::Installing the full bundle failed. Retrying without the widget extension — the widget will not be present in this build."
+            rm -rf /tmp/stripped && mkdir -p /tmp/stripped
+            cp -R "$APP" /tmp/stripped/
+            rm -rf /tmp/stripped/Zoon.app/PlugIns
+            xcrun simctl install "$UDID" /tmp/stripped/Zoon.app
+          fi
+          echo "EXT_BROKEN=$EXT_BROKEN" >> "$GITHUB_ENV"
+
+          mkdir -p screenshots
+
+          # Crash reports land on the *host*, not inside the simulator. Clearing
+          # them first means anything found afterwards belongs to this run.
+          CRASH_DIR="$HOME/Library/Logs/DiagnosticReports"
+          mkdir -p "$CRASH_DIR"
+          rm -f "$CRASH_DIR"/Zoon*.ips || true
+
+          shoot() {
+            local tab="$1"
+            # --terminate-running-process so each tab gets a clean launch;
+            # the tab is chosen at launch (see LaunchOptions) rather than by
+            # driving the tab bar, which would need a UI-test target.
+            xcrun simctl launch --terminate-running-process "$UDID" \
+              "$BUNDLE_ID" -zoonDemo YES -zoonTab "$tab" > /dev/null
+
+            # SwiftUI needs a moment to lay out and run its entry animations.
+            # Polling for "the view is ready" isn't possible from outside the
+            # process without instrumenting the app, so this is a plain wait.
+            sleep 6
+
+            # Shoot *before* checking liveness. A crash that happens after the
+            # first frame still leaves a usable screenshot, and having the
+            # picture of the screen that died is worth more than the ordering
+            # purity of failing first.
+            xcrun simctl io "$UDID" screenshot "screenshots/${tab}.png" || true
+
+            # simctl launch returns 0 whether or not the process survives, so
+            # the absence of the process is the real signal.
+            #
+            # Collected into a variable rather than piped straight into grep.
+            # `... launchctl list | grep -q` is wrong under `pipefail`: grep -q
+            # exits on the first match, SIGPIPEs launchctl, and the pipeline
+            # reports failure *because the app was found*. That produced two
+            # phantom crash reports before the broken-pipe message gave it away.
+            local processes
+            processes=$(xcrun simctl spawn "$UDID" launchctl list || true)
+            if ! printf '%s' "$processes" | grep -q "$BUNDLE_ID"; then
+              echo "::error::Zoon died on tab '$tab'."
+
+              # The .ips crash report carries the exception type and the stack.
+              # `log show` was tried first and is the wrong tool: it's dominated
+              # by UIKit lifecycle chatter, so a tail of it shows the launch and
+              # cuts off before the crash.
+              for report in "$CRASH_DIR"/Zoon*.ips; do
+                [ -e "$report" ] || continue
+                echo "--- $(basename "$report") ---"
+                cat "$report"
+              done
+
+              echo "--- errors and faults only ---"
+              xcrun simctl spawn "$UDID" log show --last 3m \
+                --predicate 'process == "Zoon" AND messageType >= 16' \
+                --style compact | tail -40 || true
+              return 1
+            fi
+
+            echo "Captured $tab"
+          }
+
+          # Ordered as a walkthrough: first run, then the tabs, then the
+          # screens that need a tap to reach. Keep sleepDetail in the list —
+          # it is where the hypnogram lives, and a missing hypnogram is only
+          # visible in a render. Same for report: a nested NavigationStack
+          # there silently swallowed the push, and the capture is what showed
+          # the More screen where the report should have been. And the
+          # hypnogram's axis labels, which wrapped once the type started
+          # scaling — fixed-width columns holding no-longer-fixed-size text.
+          FAILED=0
+          for tab in onboarding today sleep trends journal more \
+                     sleepDetail soundscapes nap breathing snoreCheck \
+                     report settings badges; do
+            shoot "$tab" || FAILED=1
+          done
+          exit $FAILED
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "### Screenshots"
+            echo ""
+            if [ "${EXT_BROKEN:-0}" = "1" ]; then
+              echo "> The widget extension could not be installed, so it was"
+              echo "> stripped before installing. The screenshots below are the"
+              echo "> app only. See the extension's Info.plist above."
+              echo ""
+            fi
+            if [ -d screenshots ] && [ -n "$(ls -A screenshots 2>/dev/null)" ]; then
+              echo "Captured on \`$DEVICE\`:"
+              echo ""
+              for f in screenshots/*.png; do
+                echo "- \`$(basename "$f")\` ($(du -h "$f" | cut -f1))"
+              done
+              echo ""
+              echo "Download the **screenshots** artifact below to view them."
+            else
+              echo "No screenshots produced — see the log above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit downscaled captures
+        # Artifacts expire, need a login to download, and can't be viewed in
+        # the browser. Downscaled copies in the repo can be linked from the
+        # README and reviewed in a diff — you can see a layout regression
+        # rather than being told about one.
+        #
+        # Full-resolution PNGs are ~1.8 MB each and would bloat history badly;
+        # these are ~150 KB JPEGs, which is plenty to judge a layout by.
+        # Not `success()`: when one tab dies the other four are still worth
+        # having, and the screenshot of a screen that crashed is often the most
+        # informative image in the set.
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          if [ ! -d screenshots ] || [ -z "$(ls -A screenshots 2>/dev/null)" ]; then
+            echo "Nothing captured."
+            exit 0
+          fi
+          mkdir -p docs/screenshots
+          for f in screenshots/*.png; do
+            out="docs/screenshots/$(basename "${f%.png}").jpg"
+            # sips ships with macOS, so no extra tooling to install.
+            sips -Z 900 -s format jpeg -s formatOptions 70 "$f" --out "$out" > /dev/null
+          done
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged."
+            exit 0
+          fi
+          # [skip ci] matters: this push touches neither the workflow nor
+          # LaunchOptions, so the paths filter wouldn't retrigger — but the
+          # marker makes that explicit rather than incidental.
+          git commit -m "Update screenshots [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          retention-days: 30
+          if-no-files-found: warn

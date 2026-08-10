@@ -1,39 +1,45 @@
 import SwiftUI
 
+/// Pushed from the More tab, so it supplies no `NavigationStack` of its own.
 struct SettingsView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
+    @Environment(NapStore.self) private var naps
+    @Environment(BedtimeReminder.self) private var reminders
 
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
         // Bindings are built by hand rather than with @Bindable because each
         // setter has to trigger a recompute, not just store a value.
-        NavigationStack {
-            Form {
-                goalSection
-                engineSection
-                privacySection
-                dataSection
-                aboutSection
+        Form {
+            goalSection
+            remindersSection
+            cycleSection
+            profileSection
+            engineSection
+            dataSection
+        }
+        .scrollContentBackground(.hidden)
+        .nightBackground()
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Delete all Zoon data?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Everything", role: .destructive) {
+                coordinator.deleteAllData()
+                naps.deleteAll()
             }
-            .navigationTitle("Settings")
-            .confirmationDialog(
-                "Delete all sleep history?",
-                isPresented: $showingDeleteConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Delete Everything", role: .destructive) {
-                    coordinator.deleteAllData()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("""
-                    This removes every night Zoon has stored on this device. \
-                    Your data in the Health app is untouched — Zoon only ever reads from it.
-                    """)
-            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("""
+                This removes every night, journal entry, and nap Zoon has stored on this device. \
+                Your data in the Health app is untouched — Zoon only ever reads from it.
+                """)
         }
     }
 
@@ -54,9 +60,10 @@ struct SettingsView: View {
                         get: { preferences.sleepGoalMinutes },
                         set: { newValue in
                             preferences.sleepGoalMinutes = newValue
-                            // Score and sleep debt are both measured against the
-                            // goal, so everything downstream needs recomputing.
-                            coordinator.recomputeDerivedValues()
+                            // Recovery, sleep need, score, and debt are all
+                            // measured against the goal, so everything
+                            // downstream needs recomputing.
+                            Task { await coordinator.recomputeDerivedValues() }
                         }
                     ),
                     in: 360...600,
@@ -66,7 +73,154 @@ struct SettingsView: View {
         } header: {
             Text("Sleep Goal")
         } footer: {
-            Text("Your score and sleep debt are measured against this, not a population average.")
+            Text("Your recovery score, sleep need, and debt are all measured against this — not a population average.")
+        }
+    }
+
+    /// Wind-down and bedtime notifications.
+    ///
+    /// The toggle requests permission on the way *on*, which is the only
+    /// moment the request has context — an app that asks at launch, before
+    /// showing what the notification is for, mostly gets denied permanently.
+    private var remindersSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { preferences.bedtimeRemindersEnabled },
+                set: { wantsOn in
+                    Task {
+                        if wantsOn {
+                            let granted = await reminders.requestAuthorization()
+                            // Only record it as on if iOS actually agreed.
+                            // A switch that stays on while nothing is delivered
+                            // is a lie the user finds out about a week later.
+                            preferences.bedtimeRemindersEnabled = granted
+                            if granted, let bedtime = coordinator.state.context?.targetBedtime() {
+                                await reminders.schedule(bedtime: bedtime)
+                            }
+                        } else {
+                            preferences.bedtimeRemindersEnabled = false
+                            reminders.cancel()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Bedtime reminders")
+                    Text("Wind-down nudge \(BedtimeReminder.windDownLeadMinutes) minutes ahead, then bedtime.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let bedtime = coordinator.state.context?.targetBedtime() {
+                LabeledContent("Tonight") {
+                    Text(bedtime, format: .dateTime.hour().minute())
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.Metric.sleep)
+                }
+            }
+
+            Toggle(isOn: Binding(
+                get: { preferences.smartWakeEnabled },
+                set: { wantsOn in
+                    Task {
+                        if wantsOn {
+                            let granted = await reminders.requestAuthorization()
+                            preferences.smartWakeEnabled = granted
+                        } else {
+                            preferences.smartWakeEnabled = false
+                            reminders.cancelWakeWindow()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Wake window")
+                    Text("Notifies within your usual wake window, not a live sleep-stage alarm.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if reminders.authorization == .denied {
+                Label(reminders.statusDescription, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Metric.recoveryMid)
+            }
+        } header: {
+            Text("Reminders")
+        } footer: {
+            Text("""
+                Scheduled on this device. Zoon has no push notifications and no server, \
+                so nothing about your sleep leaves the phone to deliver these. The time \
+                moves with your sleep debt, so it is re-armed each time you open the app.
+                """)
+        }
+    }
+
+    /// Off by default, and asks for its own separate HealthKit permission the
+    /// moment it's turned on — see `HealthKitManager.requestCycleTrackingAuthorization`.
+    /// Reproductive health data doesn't belong in the same blanket prompt every
+    /// other read type shares, even though it's technically readable there.
+    private var cycleSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { preferences.cycleTrackingEnabled },
+                set: { wantsOn in
+                    preferences.cycleTrackingEnabled = wantsOn
+                    Task {
+                        if wantsOn {
+                            await coordinator.enableCycleTracking()
+                        } else {
+                            coordinator.disableCycleTracking()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cycle tracking")
+                    Text("Correlates recovery and sleep with your cycle phase.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Cycle")
+        } footer: {
+            Text("""
+                Off by default. Turning this on asks Health for your logged period \
+                dates specifically — a separate permission from everything else Zoon \
+                reads. Useful because a normal luteal-phase shift in HRV and resting \
+                heart rate can otherwise look identical to the illness-drift pattern \
+                Health Radar watches for.
+                """)
+        }
+    }
+
+    private var profileSection: some View {
+        Section {
+            Picker(
+                "Age",
+                selection: Binding(
+                    get: { preferences.age ?? 0 },
+                    set: { newValue in
+                        preferences.age = newValue > 0 ? newValue : nil
+                        Task { await coordinator.recomputeDerivedValues() }
+                    }
+                )
+            ) {
+                Text("Not set").tag(0)
+                ForEach(16...90, id: \.self) { age in
+                    Text("\(age)").tag(age)
+                }
+            }
+        } header: {
+            Text("Profile")
+        } footer: {
+            Text("""
+                Used only to estimate your maximum heart rate, which sets the zones behind \
+                Strain and Body Battery. Nothing else reads it, and it never leaves the device.
+                """)
         }
     }
 
@@ -91,39 +245,10 @@ struct SettingsView: View {
         }
     }
 
-    /// The privacy pitch, stated plainly in the app rather than only in the
-    /// README. This is the product's core claim; it should be legible to the
-    /// person trusting it, not just to whoever reads the repo.
-    private var privacySection: some View {
-        Section {
-            PrivacyRow(
-                symbol: "wifi.slash",
-                title: "No network calls",
-                detail: "Zoon contains no networking code. Your sleep data cannot leave this device because there is nowhere for it to go."
-            )
-            PrivacyRow(
-                symbol: "iphone",
-                title: "Processed on device",
-                detail: "Feature extraction and every insight are computed locally."
-            )
-            PrivacyRow(
-                symbol: "eye.slash",
-                title: "Read-only access",
-                detail: "Zoon requests read permission only. It can never write to or modify your Health data."
-            )
-            PrivacyRow(
-                symbol: "person.crop.circle.badge.xmark",
-                title: "No account, no analytics",
-                detail: "No sign-in, no telemetry, no third-party SDKs."
-            )
-        } header: {
-            Text("Privacy")
-        }
-    }
-
     private var dataSection: some View {
         Section {
-            LabeledContent("Nights stored", value: "\(coordinator.recentNights.count)")
+            LabeledContent("Nights recorded", value: "\(coordinator.recentNights.count)")
+            LabeledContent("Naps logged", value: "\(naps.naps.count)")
 
             if let last = coordinator.lastRefresh {
                 LabeledContent("Last updated") {
@@ -131,11 +256,16 @@ struct SettingsView: View {
                 }
             }
 
+            LabeledContent("Widget data") {
+                Text(AppGroup.isConfigured ? "Live" : "Sample only")
+                    .foregroundStyle(AppGroup.isConfigured ? .green : .secondary)
+            }
+
             Button("Refresh from Health") {
                 Task { await coordinator.refresh() }
             }
 
-            Button("Delete All Sleep History", role: .destructive) {
+            Button("Delete All Data", role: .destructive) {
                 showingDeleteConfirmation = true
             }
         } header: {
@@ -144,49 +274,11 @@ struct SettingsView: View {
             Text("Deleting removes Zoon's local copy only. Health keeps the originals.")
         }
     }
-
-    private var aboutSection: some View {
-        Section {
-            LabeledContent("Widget data") {
-                Text(AppGroup.isConfigured ? "Live" : "Sample only")
-                    .foregroundStyle(AppGroup.isConfigured ? .green : .secondary)
-            }
-            Text(SleepInsight.disclaimer)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } header: {
-            Text("About")
-        } footer: {
-            Text("“Zoon” means moon in Kashmiri.")
-        }
-    }
-}
-
-private struct PrivacyRow: View {
-    let symbol: String
-    let title: String
-    let detail: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.body)
-                .foregroundStyle(.tint)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, 2)
-    }
 }
 
 #Preview("Settings") {
-    SettingsView()
-        .zoonPreviewEnvironment()
+    NavigationStack {
+        SettingsView()
+    }
+    .zoonPreviewEnvironment()
 }

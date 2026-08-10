@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Without this file, Zoon builds, signs, and installs perfectly, and then
+	  reads no Health data at all — the NSHealthShareUsageDescription string in
+	  Info.plist controls the *permission prompt's wording*, not whether the app
+	  is allowed to ask in the first place. That requires this entitlement.
+
+	  Xcode's Signing & Capabilities UI normally writes this file for you the
+	  moment you tick "HealthKit". Written by hand here because there is no
+	  Xcode in this project's workflow — the file has to exist before the first
+	  archive, or the first real-device test silently shows nothing.
+	-->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<!--
+	  Background delivery specifically, not a blanket HealthKit background mode.
+	  Lets HKObserverQuery relaunch the app when new sleep data appears, which is
+	  what makes "open Health this morning" turn into "open Zoon this morning
+	  and it's already refreshed" rather than requiring a manual pull.
+	-->
+	<key>com.apple.developer.healthkit.background-delivery</key>
+	<true/>
+</dict>
+</plist>

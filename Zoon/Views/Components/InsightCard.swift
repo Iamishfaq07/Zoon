@@ -48,7 +48,7 @@ struct InsightCard: View {
             }
             .labelStyle(.topAligned)
         }
-        .zoonCard()
+        .glassCard()
     }
 
     private var header: some View {
@@ -90,7 +90,7 @@ extension LabelStyle where Self == TopAlignedLabelStyle {
         InsightCard(insight: MockData.poorInsight, engineName: "Rules")
             .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .nightBackground()
 }
 
 #Preview("No cause") {
@@ -98,7 +98,7 @@ extension LabelStyle where Self == TopAlignedLabelStyle {
         InsightCard(insight: MockData.goodInsight, engineName: "Rules")
             .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .nightBackground()
 }
 
 #Preview("Live rule engine") {
@@ -122,5 +122,5 @@ extension LabelStyle where Self == TopAlignedLabelStyle {
         }
         .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .nightBackground()
 }

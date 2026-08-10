@@ -179,7 +179,7 @@ struct SleepDebtWidgetView: View {
 
     private var placeholderBadge: some View {
         Text("Sample")
-            .font(.system(size: 9, weight: .medium))
+            .font(Theme.text(9, weight: .medium))
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(.quaternary, in: Capsule())
@@ -201,7 +201,7 @@ struct ScoreBadge: View {
                 Text(band)
                     .font(.caption2.weight(.semibold))
                 Text("score")
-                    .font(.system(size: 9))
+                    .font(Theme.text(9))
                     .foregroundStyle(.tertiary)
             }
         }

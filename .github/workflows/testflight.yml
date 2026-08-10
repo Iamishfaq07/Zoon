@@ -1,0 +1,158 @@
+name: TestFlight
+
+# Archives, signs, and uploads Zoon to TestFlight — from the same free
+# macOS runner Build and Screenshots already use. No Mac, no local Xcode,
+# no manually-exported certificates.
+#
+# Requires an Apple Developer Program membership ($99/yr) and four repo
+# secrets — see BUILDING-WITHOUT-A-MAC.md → "Option A: TestFlight from CI"
+# for the one-time setup. Until those secrets exist this workflow will fail
+# immediately and cleanly at the "Check required secrets" step, rather than
+# midway through a 15-minute archive.
+#
+# Signing is automatic (`-allowProvisioningUpdates`), authenticated with an
+# App Store Connect API key rather than an Apple ID + password. The key can
+# create and download whatever certificates and profiles it needs on the
+# runner, so nothing is manually exported, base64-encoded, or kept in sync
+# by hand — the classic way this kind of workflow rots.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'CFBundleVersion override (defaults to the GitHub run number)'
+        required: false
+        type: string
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  # A TestFlight upload should never be cancelled mid-flight by a newer
+  # push — that risks an inconsistent build reaching App Store Connect.
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Archive and upload
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets
+        # Fails in seconds with a clear message, instead of failing 20
+        # minutes into an archive with a cryptic signing error. Every secret
+        # is named so a missing one is obvious from the log alone.
+        run: |
+          missing=""
+          [ -z "${{ secrets.APPSTORE_ISSUER_ID }}" ] && missing="$missing APPSTORE_ISSUER_ID"
+          [ -z "${{ secrets.APPSTORE_KEY_ID }}" ] && missing="$missing APPSTORE_KEY_ID"
+          [ -z "${{ secrets.APPSTORE_PRIVATE_KEY }}" ] && missing="$missing APPSTORE_PRIVATE_KEY"
+          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && missing="$missing APPLE_TEAM_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repo secret(s):$missing"
+            echo "See BUILDING-WITHOUT-A-MAC.md → 'TestFlight from CI' for how to create each one."
+            exit 1
+          fi
+
+      - name: Install the App Store Connect API key
+        # xcodebuild looks for the key in this exact location. The key
+        # content itself never touches disk in the log or in a temp file
+        # outside this directory.
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPSTORE_PRIVATE_KEY }}" > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+
+      - name: Set the build number
+        id: version
+        run: |
+          NUMBER="${{ inputs.build_number }}"
+          if [ -z "$NUMBER" ]; then NUMBER="${{ github.run_number }}"; fi
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Build number: $NUMBER"
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Release \
+            -archivePath build/Zoon.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" \
+            -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            CURRENT_PROJECT_VERSION="${{ steps.version.outputs.number }}" \
+            CODE_SIGN_STYLE=Automatic \
+            2>&1 | tee archive.log
+
+      - name: Write the export options
+        # method=app-store-connect (not the older "app-store") is what
+        # current Xcode expects for a TestFlight/App Store destination.
+        # destination=upload skips the local .ipa entirely and sends the
+        # archive straight to App Store Connect during export — one fewer
+        # step, and one fewer place for a stale IPA to go stale.
+        run: |
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+              <key>teamID</key>
+              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Export and upload to TestFlight
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/Zoon.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" \
+            -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
+            2>&1 | tee export.log
+
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "### TestFlight"
+            echo ""
+            if grep -q "Upload succeeded" export.log 2>/dev/null; then
+              echo "Uploaded build **${{ steps.version.outputs.number }}**. It will appear in"
+              echo "App Store Connect → TestFlight in a few minutes, once Apple finishes"
+              echo "processing it — that step happens on Apple's servers, not here."
+            else
+              echo "Upload did not confirm success. Check the logs below."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload logs
+        # Always, and always all three: whichever step failed, the log that
+        # explains why is the one worth having, and a missing archive.log
+        # from a failed archive step is a dead end on its own.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-logs
+          path: |
+            archive.log
+            export.log
+            build/export
+          retention-days: 14
+          if-no-files-found: ignore

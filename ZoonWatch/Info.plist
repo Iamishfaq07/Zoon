@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Explicit, for the same reason the widget extension's is: the keys a watch
+	  app needs are checked at install time, not at build time, and a generated
+	  plist puts them two steps away from anywhere you can read them.
+	-->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Zoon</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!--
+	  WKApplication marks this as a modern, single-target watch app (watchOS 7+)
+	  rather than the old WatchKit app-plus-extension pair. Without it the
+	  installer looks for a WKExtension that does not exist.
+	-->
+	<key>WKApplication</key>
+	<true/>
+	<!--
+	  Ties the watch app to its phone app. This must match the iOS bundle
+	  identifier exactly, or the pair will not install together and
+	  WatchConnectivity will never activate.
+	-->
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>com.zoon.sleep</string>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
+	<false/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+</dict>
+</plist>

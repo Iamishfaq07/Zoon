@@ -46,6 +46,7 @@ struct FeatureExtractor {
         async let respiratoryTask = optionalAverage(.respiratoryRate, unit: .breathsPerMinute, in: interval)
         async let spo2Task = optionalAverage(.oxygenSaturation, unit: .percent(), in: interval)
         async let wristTempTask = optionalAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: interval)
+        async let breathingTask = optionalAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: interval)
 
         let avgHR = await avgHRTask
         let minHR = await minHRTask
@@ -53,6 +54,7 @@ struct FeatureExtractor {
         let respiratory = await respiratoryTask
         let spo2Fraction = await spo2Task
         let wristTemp = await wristTempTask
+        let breathingFraction = await breathingTask
 
         let workoutHours = await lastWorkoutContext(before: session.start)
         let exercisePrevious = await exerciseMinutes(onDayOf: session.start)
@@ -60,6 +62,10 @@ struct FeatureExtractor {
         // HKUnit.percent() yields a 0–1 fraction, NOT 0–100. Forgetting this is
         // how you end up displaying "0.97% blood oxygen".
         let spo2Percent = spo2Fraction.map { $0 * 100 }
+
+        // Breathing disturbances also arrive as a 0-1 fraction under
+        // HKUnit.percent(), same trap as SpO2.
+        let breathingPercent = breathingFraction.map { $0 * 100 }
 
         // Wrist temperature is only meaningful as a delta from the user's own
         // baseline — the absolute number varies too much between people and
@@ -97,12 +103,14 @@ struct FeatureExtractor {
             avgRespiratoryRate: respiratory,
             avgSpO2: spo2Percent,
             wristTempDeltaC: tempDelta,
+            breathingDisturbances: breathingPercent,
             hrv7DayAvg: baseline?.hrv7DayAvg,
             sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercisePrevious,
             sourceName: session.sourceName,
-            isMock: false
+            isMock: false,
+            stageSegments: session.segments
         )
 
         return Result(features: features, absoluteWristTempC: wristTemp)

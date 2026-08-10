@@ -80,6 +80,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// Positive = warmer than usual. Requires ~7 nights of history to populate.
     let wristTempDeltaC: Double?
 
+    /// Apple's overnight breathing-disturbance measure, as a percentage of the
+    /// night. This is the signal behind Apple Watch's sleep apnea notifications.
+    ///
+    /// Declared with a default so it stays optional at existing call sites.
+    /// Requires an Apple Watch Series 9 / Ultra 2 or later with the feature
+    /// enabled; `nil` on everything else.
+    var breathingDisturbances: Double? = nil
+
     // MARK: - Context (needs history, not just this night)
 
     /// Mean overnight HRV across the previous 7 nights, excluding this one.
@@ -104,6 +112,13 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// output. Views badge these so a Simulator screenshot is never mistaken for
     /// a real night.
     var isMock: Bool = false
+
+    /// The night's shape: every stage run in chronological order.
+    ///
+    /// Declared last with a default so it stays optional at every existing call
+    /// site. Empty is a legitimate value — sources without staging produce no
+    /// segments, and the hypnogram hides itself rather than drawing a flat line.
+    var stageSegments: [StageSegment] = []
 }
 
 // MARK: - Derived values

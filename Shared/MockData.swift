@@ -124,6 +124,30 @@ enum MockData {
         )
     }
 
+    /// Snapshot with badge fields filled in, for the badge widget previews.
+    static var snapshotWithBadges: SleepSnapshot {
+        var result = snapshot
+        let achievements = AchievementEngine.evaluate(
+            nights: history,
+            goalMinutes: 420,
+            journalTaggedNights: 9,
+            napCount: 4,
+            regularityIndex: 74
+        )
+        result.badgesUnlocked = achievements.filter(\.isUnlocked).count
+        result.badgesTotal = achievements.count
+        if let headline = AchievementEngine.headline(achievements) {
+            result.badgeTitle = headline.title
+            result.badgeSymbol = headline.symbol
+            result.badgeTier = headline.tier.rawValue
+        }
+        if let next = AchievementEngine.nextUp(achievements) {
+            result.nextBadgeTitle = next.title
+            result.nextBadgeProgress = next.progress
+        }
+        return result
+    }
+
     static var poorSnapshot: SleepSnapshot {
         SleepSnapshot(
             features: poorNight,
@@ -131,6 +155,41 @@ enum MockData {
             insight: poorInsight,
             goalMinutes: 480
         )
+    }
+
+    // MARK: - Derived inputs for the Today screen
+
+    static let todayStrain = StrainScore.compute(
+        zoneMinutes: [.light: 95, .moderate: 42, .vigorous: 26, .hard: 11],
+        activeEnergyKcal: 612,
+        hasHeartRateCoverage: true
+    )
+
+    static let yesterdayStrain = StrainScore.compute(
+        zoneMinutes: [.light: 120, .moderate: 55, .vigorous: 38, .hard: 22, .maximum: 6],
+        activeEnergyKcal: 890,
+        hasHeartRateCoverage: true
+    )
+
+    /// A plausible waking day of hourly heart rate.
+    ///
+    /// Shaped rather than random: quiet morning, a midday session that spikes,
+    /// an afternoon plateau, an evening wind-down. A flat noise field would make
+    /// the body battery curve look broken even though the maths was right.
+    static func hourlyHeartRate(wakeTime: Date) -> [(date: Date, bpm: Double)] {
+        let profile: [Double] = [
+            62, 68, 71, 74, 70,      // morning
+            88, 132, 118, 84,        // midday session and cooldown
+            76, 73, 71, 74, 78,      // afternoon
+            70, 66, 63, 61           // evening
+        ]
+        let elapsed = Date.now.timeIntervalSince(wakeTime) / 3600
+        let hours = max(1, min(profile.count, Int(elapsed)))
+
+        return (0..<hours).map { index in
+            (date: wakeTime.addingTimeInterval(Double(index + 1) * 3600),
+             bpm: profile[index])
+        }
     }
 
     // MARK: - Builder

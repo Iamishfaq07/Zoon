@@ -24,10 +24,29 @@ struct TrendsView: View {
         Array(coordinator.recentNights.suffix(window.days))
     }
 
+    /// `nil` unless cycle tracking is on and there's at least one logged
+    /// period start — both a privacy gate and a "don't show an empty card"
+    /// gate, in one property.
+    private var cycleCorrelations: [CyclePhaseCorrelation]? {
+        guard preferences.cycleTrackingEnabled, !coordinator.cyclePeriodStarts.isEmpty else { return nil }
+        let inputs = coordinator.recentNights.map { night in
+            (
+                date: night.date,
+                recoveryPercent: coordinator.recoveryHistory[night.date] ?? 50,
+                // Duration against goal, as a lightweight stand-in for the full
+                // debt-and-strain-adjusted sleep-need calculation — good enough
+                // for a phase-to-phase comparison, not a claim of precision.
+                sleepPerformance: min(150, night.timeAsleepMinutes / preferences.sleepGoalMinutes * 100)
+            )
+        }
+        let result = CyclePhaseCorrelation.compute(nights: inputs, periodStarts: coordinator.cyclePeriodStarts)
+        return result.isEmpty ? nil : result
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: ZoonStyle.stackSpacing) {
+                VStack(spacing: Theme.stackSpacing) {
                     if nights.count < 2 {
                         notEnoughData
                     } else {
@@ -35,11 +54,14 @@ struct TrendsView: View {
                         HRVChartCard(nights: nights)
                         SleepDebtChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes)
                         ConsistencyChartCard(nights: nights)
+                        if let correlations = cycleCorrelations {
+                            CycleCorrelationCard(correlations: correlations)
+                        }
                     }
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .nightBackground()
             .navigationTitle("Trends")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -285,9 +307,14 @@ struct ConsistencyChartCard: View {
                 )
                 .cornerRadius(4)
             }
-            .chartYScale(domain: -6...12)
+            // Explicit Double literals throughout. `-6...12` would infer
+            // ClosedRange<Int>, which doesn't match the Double-plottable Y
+            // values, and a bare `[-4, -2, ...]` array would infer [Int] —
+            // making `value.as(Double.self)` return nil and silently blanking
+            // every axis label.
+            .chartYScale(domain: -6.0...12.0)
             .chartYAxis {
-                AxisMarks(values: [-4, -2, 0, 2, 4, 6, 8]) { value in
+                AxisMarks(values: [-4.0, -2.0, 0.0, 2.0, 4.0, 6.0, 8.0]) { value in
                     AxisGridLine()
                     AxisValueLabel {
                         if let hour = value.as(Double.self) {
@@ -326,7 +353,7 @@ struct ChartCard<Content: View>: View {
                 .frame(height: 170)
                 .padding(.top, 6)
         }
-        .zoonCard()
+        .glassCard()
     }
 }
 
@@ -347,5 +374,5 @@ struct ChartCard<Content: View>: View {
         }
         .padding()
     }
-    .background(Color(.systemGroupedBackground))
+    .nightBackground()
 }

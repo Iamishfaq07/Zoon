@@ -45,11 +45,20 @@ final class SleepNightRecord {
     /// delta. The delta is relative to a baseline that keeps moving as history
     /// grows, so persisting it would freeze a comparison that should be live.
     var wristTempAbsoluteC: Double?
+    /// Overnight breathing disturbances, percent of night. iOS 18+, newer watches only.
+    var breathingDisturbances: Double?
 
     var lastWorkoutHoursBeforeBed: Double?
     var exerciseMinutesPreviousDay: Double?
 
     var sourceName: String?
+
+    /// The night's stage timeline, JSON-encoded.
+    ///
+    /// A blob rather than a to-many relationship: it's only ever read whole to
+    /// draw the hypnogram, never queried into, and 30–80 child rows per night
+    /// would multiply the store for nothing.
+    var stageSegmentsData: Data?
 
     /// Cached insight so the dashboard and widget don't re-derive it on every
     /// launch. Regenerated whenever the night is re-processed.
@@ -79,9 +88,11 @@ final class SleepNightRecord {
         self.avgRespiratoryRate = features.avgRespiratoryRate
         self.avgSpO2 = features.avgSpO2
         self.wristTempAbsoluteC = absoluteWristTempC
+        self.breathingDisturbances = features.breathingDisturbances
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         self.sourceName = features.sourceName
+        self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
         self.insightLikelyCause = insight?.likelyCause
         self.insightTip = insight?.actionableTip
@@ -110,9 +121,15 @@ final class SleepNightRecord {
         avgRespiratoryRate = features.avgRespiratoryRate
         avgSpO2 = features.avgSpO2
         if let absoluteWristTempC { wristTempAbsoluteC = absoluteWristTempC }
+        if let value = features.breathingDisturbances { breathingDisturbances = value }
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         sourceName = features.sourceName
+        // Only overwrite when the fresh extraction actually has a timeline —
+        // a re-sync that lost staging shouldn't erase a good hypnogram.
+        if !features.stageSegments.isEmpty {
+            stageSegmentsData = features.stageSegments.encoded
+        }
     }
 
     func apply(_ insight: SleepInsight) {
@@ -153,12 +170,14 @@ extension SleepNightRecord {
             avgRespiratoryRate: avgRespiratoryRate,
             avgSpO2: avgSpO2,
             wristTempDeltaC: wristTempDelta(against: baseline),
+            breathingDisturbances: breathingDisturbances,
             hrv7DayAvg: baseline?.hrv7DayAvg,
             sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: sourceName,
-            isMock: false
+            isMock: false,
+            stageSegments: [StageSegment].decode(stageSegmentsData)
         )
     }
 

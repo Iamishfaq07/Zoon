@@ -15,6 +15,9 @@ struct ZoonApp: App {
 
     @State private var coordinator: SleepDataCoordinator
     @State private var preferences: UserPreferences
+    @State private var naps: NapStore
+    @State private var soundscape: SoundscapeEngine
+    @State private var reminders: BedtimeReminder
 
     init() {
         let preferences = UserPreferences()
@@ -32,7 +35,10 @@ struct ZoonApp: App {
 
         let container: ModelContainer
         do {
-            container = try ModelContainer(for: SleepNightRecord.self, configurations: configuration)
+            container = try ModelContainer(
+                for: SleepNightRecord.self, JournalEntry.self,
+                configurations: configuration
+            )
         } catch {
             // An unopenable store means a schema the app can't read. There is no
             // safe partial mode here, and silently falling back to in-memory
@@ -45,11 +51,21 @@ struct ZoonApp: App {
 
         // @State properties must be seeded through their storage in init, not
         // assigned directly.
+        // Built as locals first: the coordinator needs the same NapStore
+        // instance the views get, and reading a @State's wrapped value during
+        // init isn't valid.
+        let naps = NapStore()
+
         _preferences = State(initialValue: preferences)
+        _naps = State(initialValue: naps)
+        _soundscape = State(initialValue: SoundscapeEngine())
+        _reminders = State(initialValue: BedtimeReminder())
         _coordinator = State(
             initialValue: SleepDataCoordinator(
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
+                journal: JournalStore(context: container.mainContext),
+                naps: naps,
                 preferences: preferences
             )
         )
@@ -57,10 +73,23 @@ struct ZoonApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            // Onboarding owns the first launch entirely, rather than appearing
+            // as a sheet over a dashboard full of numbers the user hasn't
+            // agreed to yet.
+            Group {
+                if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
+                    RootView()
+                } else {
+                    OnboardingView()
+                        .transition(.opacity)
+                }
+            }
+                .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
                 .environment(coordinator)
                 .environment(preferences)
-                .tint(.indigo)
+                .environment(naps)
+                .environment(soundscape)
+                .environment(reminders)
         }
         .modelContainer(modelContainer)
     }

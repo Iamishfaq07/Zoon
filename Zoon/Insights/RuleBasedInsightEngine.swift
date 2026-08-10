@@ -220,12 +220,12 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 70,
-            cause: String(
-                format: "You woke %d times and spent %@ awake in bed — efficiency came out at %.0f%%. Fragmentation like this usually traces to room temperature, light, noise, or a late drink.",
-                features.wakeCount,
-                SleepNightFeatures.formatMinutes(features.awakeMinutes),
-                features.sleepEfficiencyPercent
-            ),
+            // Int is interpolated rather than passed through %d: Swift's Int is
+            // 64-bit and %d expects a 32-bit value.
+            cause: "You woke \(features.wakeCount) times and spent "
+                + "\(SleepNightFeatures.formatMinutes(features.awakeMinutes)) awake in bed — "
+                + String(format: "efficiency came out at %.0f%%. ", features.sleepEfficiencyPercent)
+                + "Fragmentation like this usually traces to room temperature, light, noise, or a late drink.",
             tip: "Try the room a couple of degrees cooler tonight, and cut liquids an hour before bed.",
             confidence: .medium
         )

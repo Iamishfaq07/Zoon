@@ -1,5 +1,7 @@
 # Zoon Sleep
 
+[![Build](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml/badge.svg?branch=claude/check-this-out-t0epv2)](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml)
+
 *Zoon* (زوٗن) means **moon** in Kashmiri.
 
 A local-first iOS sleep app. It reads your Apple Watch sleep data from HealthKit
@@ -35,28 +37,72 @@ It behaves identically.
 
 ## What it does
 
-**Dashboard** — last night's duration, sleep score, efficiency, HRV, and a
-one-line causal read. Stage breakdown for Deep/REM/Core/Awake with typical-range
-markers. Overnight vitals when your watch recorded them.
+Zoon borrows the metrics that each of the big platforms does best, and computes
+all of them locally.
 
-**Trends** — 7- and 30-day charts for duration vs goal, HRV, accumulated sleep
-debt, and schedule consistency (the bedtime/wake-time chart is the one most
-people find genuinely actionable).
+### Today
+- **Recovery %** (Whoop-style) — HRV and resting HR against *your own* 30-day
+  baseline, plus sleep performance and respiratory stability. Shows its working:
+  every input is broken out with its deviation from baseline.
+- **Strain 0–21** (Whoop-style) — heart-rate-zone load on a logarithmic scale, so
+  16→18 reads as much harder than 8→10. Paired with recovery, because strain
+  alone is a vanity metric.
+- **Body Battery** (Garmin-style) — an energy reserve that charges overnight and
+  drains hour by hour with heart rate. The most legible number in the app.
+- **Vitals** (Apple Health iOS 18-style) — six overnight metrics checked against
+  your personal typical range, flagging outliers without ever implying diagnosis.
+- **HRV Status** (Garmin-style) — the last week against a 90-day baseline:
+  balanced, unbalanced, low, or poor.
 
-**Insights** — a rule engine that makes *causal* claims when the data supports
-one:
+### Sleep
+- **Hypnogram** — the full stage timeline, drawn in `Canvas` with connective
+  risers so the night reads as one continuous trace.
+- **Sleep Need** (Whoop-style) — baseline + debt payback + yesterday's strain −
+  nap credit, as a stacked bar against what you actually slept.
+- **Sleep sounds** — seven soundscapes **synthesised in real time**: brown, pink
+  and white noise, rain, ocean, wind, fan. No audio files, no download, no loop
+  seam. Sleep timer fades over the final minute rather than cutting.
+- **Naps** — timer with sleep-architecture-aware presets; logged naps credit
+  against tonight's need.
+- **Bedtime countdown** — the time to be asleep by, derived from your own wake
+  pattern and tonight's need.
+- **Chronotype** (Fitbit-style) — lion, bear, wolf, or dolphin from habitual
+  timing.
 
-> Deep sleep was down 24% (56 min vs your usual 74). Your last workout ended
-> about 1.2h before bed — hard training that close keeps core body temperature
-> and adrenaline up, and deep sleep is the first thing to suffer.
+### Trends & Journal
+- 7/30-day charts for duration, HRV, accumulated debt, and schedule consistency
+  (bedtimes plotted with circular statistics, so 23:50 and 00:10 sit next to each
+  other rather than a day apart).
+- **Journal** (Whoop-style) — 23 tagged behaviours across four categories, and a
+  correlation engine that reports what actually tracks with better nights. It
+  refuses to call anything a pattern without enough tagged *and* untagged nights,
+  and it says "pattern", never "cause".
+- **Weekly report** (Whoop/Garmin-style) — averages, week-over-week trends,
+  narrative highlights, best and worst night.
 
-and stays quiet when it doesn't. `likelyCause` is `nil` unless a rule actually
-fired against real evidence.
-
-**Widgets** — lock-screen and home-screen. Sleep debt as a "bank balance", plus
-last night's score.
-
----
+### Everything else
+- Lock-screen, home-screen, and **watch-face** widgets, plus a companion Apple
+  Watch app
+- **Badges** — 13 of them, every one cumulative or best-ever. Nothing here can
+  be lost to one bad night, on purpose.
+- **Stress today** — the one live, daytime number in an app otherwise built
+  from last night, from the same HR/HRV already granted for sleep
+- **Cycle tracking**, opt-in and off by default, correlating recovery and
+  sleep against cycle phase — a normal luteal shift and an illness-drift
+  pattern can look identical without it
+- **Ask Zoon** — a conversational follow-up on tonight's numbers via Apple's
+  on-device model, alongside the one-shot nightly insight
+- **Wind Down** — a narrated 4-7-8 breathing exercise, spoken on-device with
+  no bundled audio
+- **Snore Check** — an on-device estimate from the microphone, run manually;
+  audio is processed in short bursts and never saved, only a minutes count
+- **Wake window** notification, honestly scoped: nudges within your usual
+  wake time from historical data, not a live sleep-stage alarm
+- **Streaks** and goal-met counts, kept modest — a streak that punishes one bad
+  night is actively harmful in a sleep app
+- **Export** to JSON (complete, re-importable) or CSV (one row per night)
+- Insight engine written as a protocol with a complete rule-based implementation
+  and a local-LLM stub
 
 ## Architecture
 
@@ -123,7 +169,12 @@ Adding a third engine means writing one conformance and nothing else.
 
 ## Requirements
 
-- **Xcode 16+**, iOS 17+ deployment target, Swift 5.9+
+**No Mac? You can still build this.** Push to the repo and GitHub Actions
+compiles both targets on a macOS runner — free, no Apple account, no
+certificates. Errors land in the run summary. See
+[BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
+
+- **Xcode 15+**, iOS 18+ deployment target, Swift 5.9+
 - **A physical iPhone** for real data — HealthKit sleep data does not exist in
   the Simulator
 - An Apple Watch worn overnight for stage breakdown, HRV, and blood oxygen
@@ -142,22 +193,57 @@ running on device.
 
 ## Status
 
-The rule-based pipeline is the shipping path and is complete. Known gaps:
+**Compiles clean** — Xcode 26.6 / Swift 6.3 / iOS 26.5 SDK, both targets, zero
+errors and zero warnings. CI builds every push on a macOS runner; see
+[BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
-- `LocalLLMInsightEngine` is a stub by design (see above).
-- The widget shows live data only once an **App Group** is configured — this is
-  optional so the project builds and runs with no developer-account setup. See
-  SETUP.md → *Enable live widget data*.
-- Background delivery requires the HealthKit background-delivery capability.
-  Without it the app still refreshes on foreground; it just won't update by
-  itself overnight.
+CI also asserts that every Swift file on disk actually reached the compiler,
+and both `canImport` guards emit a `#warning` when their framework is missing —
+so a feature can't silently vanish behind a false `#if` and still report green.
+
+**Runs in the Simulator** — the *Screenshots* workflow boots one on the runner,
+installs the app, and photographs each tab. It fails if the process isn't alive
+when the shutter fires, so a green run is proof the app launches, opens its
+SwiftData store, and draws. No Mac and no Apple account needed; see
+[BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
+
+| | | | | |
+|---|---|---|---|---|
+| ![Today](docs/screenshots/today.jpg) | ![Sleep](docs/screenshots/sleep.jpg) | ![Trends](docs/screenshots/trends.jpg) | ![Journal](docs/screenshots/journal.jpg) | ![More](docs/screenshots/more.jpg) |
+| Today | Sleep | Trends | Journal | More |
+
+Captured by CI on an iPhone 17 Pro simulator, with the mock dataset — hence the
+**Sample data** badge. They are regenerated on demand, so a layout regression
+shows up as an image diff.
+
+Still unverified, because CI can screenshot but can't tap, and because nobody
+has run this against a real Health store:
+
+- Every HealthKit query against real samples, and the permission flow
+- The `AVAudioEngine` graph behind the soundscapes
+- Naps, settings, export, and the sleep detail screen — all reachable only by
+  interaction
+- Animations, and layout on device sizes other than the captured one
+
+### Known gaps
+
+- **Apple Watch app** — not built. The only substantial piece left: Zoon reads
+  what the watch recorded but shows nothing on the wrist.
+- **`LocalLLMInsightEngine`** remains a stub for a *bundled* MLX/Core ML model.
+  It is superseded in practice by `FoundationModelInsightEngine`, which uses
+  Apple's on-device model and needs nothing bundled.
+- The widget shows live data only once an **App Group** is configured. Optional
+  by design so the project builds with no developer-account setup.
+- Background delivery needs the HealthKit background-delivery capability.
+  Without it the app still refreshes on foreground.
 
 ## Not medical advice
 
 Zoon makes correlational, consumer-wellness observations. It cannot diagnose any
-condition, including sleep apnea, and it is deliberately written not to try — the
-rules that touch blood oxygen, respiratory rate, and temperature carry an
-explicit non-diagnostic note. If something here worries you, talk to a clinician.
+condition, including sleep apnea, and is deliberately written not to try — the
+rules touching blood oxygen, respiratory rate, breathing disturbances and
+temperature carry an explicit non-diagnostic note, and the model-backed engine
+rejects generations containing diagnostic language outright.
 
 ## License
 
