@@ -46,6 +46,16 @@ struct StressCard: View {
             }
 
             Spacer(minLength: 0)
+
+            MetricInfoButton(
+                title: "Stress Today",
+                symbol: "waveform.path.ecg",
+                tint: tint,
+                explanation: [
+                    "Compares your heart rate and HRV so far today against your own rolling baseline -- a live, same-day reading rather than a look back at last night.",
+                    "Resolution is limited by however much of the day has elapsed: an early reading is a smaller sample than one taken in the evening, which is why it's shown as an estimate until there's enough baseline history."
+                ]
+            )
         }
         .glassCard()
         // Elapsed-day fraction as a subtitle rather than a clock — "so far

@@ -30,6 +30,16 @@ struct RegularityCard: View {
                     systemImage: "repeat"
                 )
                 Spacer(minLength: 8)
+                MetricInfoButton(
+                    title: "Sleep Regularity",
+                    symbol: "repeat",
+                    tint: tint,
+                    explanation: [
+                        "The Sleep Regularity Index measures how consistent your sleep and wake times are night to night, on a 0-100 scale -- it's about rhythm, not duration.",
+                        "Social jetlag is the gap between your work-day and free-day sleep midpoints. A large gap behaves physiologically a lot like crossing time zones, even without travelling."
+                    ],
+                    relatedArticleID: "sleep-consistency"
+                )
                 if regularity.hasEnoughData {
                     StatusPill(text: regularity.band.label, tint: tint)
                 }
@@ -166,6 +176,15 @@ struct HealthRadarCard: View {
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                     Spacer()
+                    MetricInfoButton(
+                        title: "Health Radar",
+                        symbol: "dot.radiowaves.left.and.right",
+                        tint: tint,
+                        explanation: [
+                            "Watches several vitals at once -- resting heart rate, HRV, respiratory rate, wrist temperature -- for a sustained drift together over multiple nights, which is a stronger signal than any one of them moving alone.",
+                            "This is a wellness observation, not a diagnosis. It cannot identify illness, only flag a pattern worth paying attention to."
+                        ]
+                    )
                     StatusPill(text: radar.severity.label, tint: tint)
                 }
 
@@ -227,7 +246,19 @@ struct CardiovascularAgeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            SectionHeader(title: "Cardiovascular Age", systemImage: "heart.circle")
+            HStack(alignment: .top) {
+                SectionHeader(title: "Cardiovascular Age", systemImage: "heart.circle")
+                Spacer(minLength: 8)
+                MetricInfoButton(
+                    title: "Cardiovascular Age",
+                    symbol: "heart.circle",
+                    tint: tint,
+                    explanation: [
+                        "An estimate derived from your resting heart rate and HRV relative to population norms for your age -- not a clinical or lab-based measurement.",
+                        "Treat the direction (younger, aligned, older than your actual age) as more meaningful than the exact number, which will vary night to night."
+                    ]
+                )
+            }
 
             HStack(alignment: .center, spacing: 18) {
                 VStack(spacing: -2) {

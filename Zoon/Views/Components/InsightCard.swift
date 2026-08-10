@@ -14,6 +14,9 @@ struct InsightCard: View {
 
     let insight: SleepInsight
     var engineName: String?
+    /// When set, the card offers a way to ask a follow-up about tonight's
+    /// numbers instead of just reading a fixed three-line summary.
+    var night: SleepNightFeatures?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -47,6 +50,23 @@ struct InsightCard: View {
                     .foregroundStyle(.yellow)
             }
             .labelStyle(.topAligned)
+
+            if let night {
+                NavigationLink {
+                    CoachChatView(night: night)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                        Text("Ask a follow-up")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(Theme.text(11, weight: .semibold))
+                    }
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .glassCard()
     }

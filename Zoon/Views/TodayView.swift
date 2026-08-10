@@ -64,8 +64,12 @@ struct TodayView: View {
             if let cvAge = context.cardiovascularAge {
                 CardiovascularAgeCard(cvAge: cvAge).entrance(8)
             }
-            InsightCard(insight: context.insight, engineName: context.insight.source.displayName)
-                .entrance(8)
+            InsightCard(
+                insight: context.insight,
+                engineName: context.insight.source.displayName,
+                night: context.night
+            )
+            .entrance(8)
             footer(context).entrance(8)
         }
     }
@@ -143,19 +147,56 @@ struct TodayView: View {
             ])
 
             VStack(alignment: .leading, spacing: 10) {
-                metricRow(
-                    "Strain", context.strain.displayValue,
-                    detail: context.strain.band, color: Theme.Metric.strain,
-                    caveat: context.strain.isEstimate ? "estimated" : nil
-                )
-                metricRow(
-                    "Sleep", "\(Int(context.sleepNeed.performancePercent))%",
-                    detail: context.sleepNeed.performanceBand, color: Theme.Metric.sleep
-                )
-                metricRow(
-                    "Battery", "\(context.bodyBattery.current)",
-                    detail: context.bodyBattery.band, color: Theme.Metric.battery
-                )
+                HStack(spacing: 8) {
+                    metricRow(
+                        "Strain", context.strain.displayValue,
+                        detail: context.strain.band, color: Theme.Metric.strain,
+                        caveat: context.strain.isEstimate ? "estimated" : nil
+                    )
+                    Spacer(minLength: 4)
+                    MetricInfoButton(
+                        title: "Strain",
+                        symbol: "flame.fill",
+                        tint: Theme.Metric.strain,
+                        explanation: [
+                            "Strain is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
+                            "It's read next to Sleep Need and Recovery deliberately: a high-strain day increases what your body needs from that night's sleep to fully recover."
+                        ]
+                    )
+                }
+
+                NavigationLink {
+                    SleepDetailView(context: context)
+                } label: {
+                    HStack(spacing: 8) {
+                        metricRow(
+                            "Sleep", "\(Int(context.sleepNeed.performancePercent))%",
+                            detail: context.sleepNeed.performanceBand, color: Theme.Metric.sleep
+                        )
+                        Spacer(minLength: 4)
+                        Image(systemName: "chevron.right")
+                            .font(Theme.text(11, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                HStack(spacing: 8) {
+                    metricRow(
+                        "Battery", "\(context.bodyBattery.current)",
+                        detail: context.bodyBattery.band, color: Theme.Metric.battery
+                    )
+                    Spacer(minLength: 4)
+                    MetricInfoButton(
+                        title: "Body Battery",
+                        symbol: "bolt.fill",
+                        tint: Theme.Metric.battery,
+                        explanation: [
+                            "Body Battery models your energy reserve through the day: it fills overnight based on how restorative your sleep was, then drains with activity and stress signals as the day goes on.",
+                            "It's a same-day curve, not a rolling average -- see the full shape of today in the Body Battery card below."
+                        ]
+                    )
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -217,6 +258,15 @@ struct BodyBatteryCard: View {
             HStack(alignment: .firstTextBaseline) {
                 SectionHeader(title: "Body Battery", systemImage: "bolt.fill")
                 Spacer()
+                MetricInfoButton(
+                    title: "Body Battery",
+                    symbol: "bolt.fill",
+                    tint: Theme.Metric.battery,
+                    explanation: [
+                        "Fills overnight based on how restorative your sleep was, then drains through the day with activity and stress signals -- a same-day curve, not a running average.",
+                        "Tap and drag anywhere on the chart below to see the exact level at any point in the day."
+                    ]
+                )
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(battery.current)")
                         .font(Theme.numeral(28))
@@ -305,11 +355,23 @@ struct RecoveryBreakdownCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(
-                title: "What drove your recovery",
-                subtitle: "Each input measured against your own baseline, not a population average.",
-                systemImage: "chart.bar.doc.horizontal"
-            )
+            HStack(alignment: .top) {
+                SectionHeader(
+                    title: "What drove your recovery",
+                    subtitle: "Each input measured against your own baseline, not a population average.",
+                    systemImage: "chart.bar.doc.horizontal"
+                )
+                Spacer(minLength: 8)
+                MetricInfoButton(
+                    title: "Recovery Score",
+                    symbol: "chart.bar.doc.horizontal",
+                    tint: Theme.recoveryColor(Double(recovery.percent)),
+                    explanation: [
+                        "Recovery blends several signals -- HRV, resting heart rate, and sleep performance among them -- each compared against your own baseline rather than a fixed target.",
+                        "The bars above show how much each input pulled the score up or down. A component with no baseline yet contributes less weight until it has one."
+                    ]
+                )
+            }
 
             ForEach(recovery.components) { component in
                 HStack(spacing: 10) {
@@ -357,6 +419,15 @@ struct VitalsCard: View {
             HStack(alignment: .top) {
                 SectionHeader(title: "Vitals", subtitle: vitals.detail, systemImage: "waveform.path.ecg")
                 Spacer(minLength: 8)
+                MetricInfoButton(
+                    title: "Vitals",
+                    symbol: "waveform.path.ecg",
+                    tint: Theme.Metric.recoveryHigh,
+                    explanation: [
+                        "Each row compares last night's reading against the typical range Zoon has built from your own recent history -- not a clinical or population range.",
+                        "A single reading outside the typical range is common and usually not meaningful on its own. It's worth attention mainly if several nights in a row land outside it."
+                    ]
+                )
                 StatusPill(
                     text: vitals.outliers.isEmpty ? "Typical" : "\(vitals.outliers.count)",
                     systemImage: vitals.outliers.isEmpty ? "checkmark" : "exclamationmark",
@@ -431,6 +502,16 @@ struct HRVStatusCard: View {
             HStack {
                 SectionHeader(title: "HRV Status", systemImage: "heart.text.square")
                 Spacer()
+                MetricInfoButton(
+                    title: "HRV Status",
+                    symbol: "heart.text.square",
+                    tint: tint,
+                    explanation: [
+                        "This compares your HRV this week against your own rolling quarterly range, not a population average -- what's balanced for you can be a meaningful drop for someone else.",
+                        "It needs a few weeks of nights before the range is trustworthy, and one low night on its own is normal noise, not a signal."
+                    ],
+                    relatedArticleID: "hrv-explained"
+                )
                 StatusPill(text: status.state.label, tint: tint)
             }
 
