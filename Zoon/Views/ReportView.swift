@@ -27,6 +27,7 @@ struct ReportView: View {
                     highlights(report)
                     averages(report)
                     recoveryChart
+                    trendsCard
                     extremes(report)
                 } else {
                     notEnoughData
@@ -209,6 +210,32 @@ struct ReportView: View {
                 }
                 .frame(height: 150)
                 .chartXSelection(value: $selectedRecoveryDate)
+            }
+            .glassCard()
+        }
+    }
+
+    @ViewBuilder
+    private var trendsCard: some View {
+        let trends = TrendEngine.detect(nights: coordinator.recentNights)
+        if !trends.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader(
+                    title: "What Changed",
+                    subtitle: "Meaningful shifts only -- small night-to-night noise is filtered out.",
+                    systemImage: "arrow.up.arrow.down"
+                )
+                ForEach(trends.prefix(4)) { trend in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: trend.isImprovement ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                            .font(Theme.text(14))
+                            .foregroundStyle(trend.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+                        Text(trend.sentence)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
             .glassCard()
         }
