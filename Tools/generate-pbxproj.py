@@ -46,6 +46,7 @@ WATCH_EXT_SRC = swift_files("ZoonWatchWidget")
 
 APP_ASSETS = "Zoon/Assets.xcassets"
 EXT_ASSETS = "ZoonWidget/Assets.xcassets"
+WATCH_ASSETS = "ZoonWatch/Assets.xcassets"
 DOCS = ["README.md", "SETUP.md", "project.yml", "LICENSE", ".gitignore"]
 
 # ---------------------------------------------------------------- objects
@@ -79,7 +80,7 @@ def file_ref(path, ftype=None, name=None):
 
 
 refs = {}
-for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + [APP_ASSETS, EXT_ASSETS] + DOCS:
+for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + [APP_ASSETS, EXT_ASSETS, WATCH_ASSETS] + DOCS:
     refs[p] = file_ref(p)
 
 APP_PRODUCT = uid("product:app")
@@ -137,6 +138,7 @@ def resource_file(path, target):
 
 app_resources = [resource_file(APP_ASSETS, APP)]
 ext_resources = [resource_file(EXT_ASSETS, EXT)]
+watch_resources = [resource_file(WATCH_ASSETS, WATCH)]
 
 EMBED_WATCH_EXT_BF = uid("embed:watchappex")
 emit("PBXBuildFile",
@@ -199,7 +201,7 @@ def tree_groups(prefix, files, extra=()):
 shared_group = tree_groups("Shared", SHARED)
 app_group = tree_groups("Zoon", APP_SRC, extra=[refs[APP_ASSETS]])
 ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS]])
-watch_group = tree_groups("ZoonWatch", WATCH_SRC)
+watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS]])
 watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC)
 docs_group = group("docs", "Documentation", [refs[d] for d in DOCS])
 products_group = group("products", "Products", [APP_PRODUCT, EXT_PRODUCT, WATCH_PRODUCT, WATCH_EXT_PRODUCT])
@@ -247,7 +249,7 @@ phase(EMBED_PHASE, "PBXCopyFilesBuildPhase", "Embed Foundation Extensions", [EMB
       extra='\t\t\tdstPath = "";\n\t\t\tdstSubfolderSpec = 13;\n')
 phase(WATCH_SOURCES_PHASE, "PBXSourcesBuildPhase", "Sources", watch_sources)
 phase(WATCH_FW_PHASE, "PBXFrameworksBuildPhase", "Frameworks", [])
-phase(WATCH_RES_PHASE, "PBXResourcesBuildPhase", "Resources", [])
+phase(WATCH_RES_PHASE, "PBXResourcesBuildPhase", "Resources", watch_resources)
 # A watch app is embedded at Watch/ inside the iOS app, not PlugIns/.
 # dstSubfolderSpec 16 is "Products Directory"; the path does the rest.
 phase(EMBED_WATCH_PHASE, "PBXCopyFilesBuildPhase", "Embed Watch Content", [EMBED_WATCH_BF],
@@ -437,6 +439,9 @@ HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood 
 MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
             "patterns. Audio is processed in short bursts and never saved or sent "
             "anywhere -- only a minutes-snoring count is kept.")
+HEALTH_UPDATE_DESC = ("Zoon never writes anything to Health -- it only reads your sleep "
+                      "and vitals. This permission is requested only because the app's "
+                      "HealthKit entitlement requires it; no data is ever saved back.")
 
 PROJ_COMMON = """				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -501,6 +506,7 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -530,7 +536,8 @@ EXT_SETTINGS = TARGET_COMMON + """				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_
 # The watch target overrides the project-level SDK and device family. Those
 # two settings are the whole difference between "an iOS target" and "a watchOS
 # target" as far as the build system is concerned.
-WATCH_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = NO;
+WATCH_SETTINGS = TARGET_COMMON + """				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWatch/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp;
 				SDKROOT = watchos;
