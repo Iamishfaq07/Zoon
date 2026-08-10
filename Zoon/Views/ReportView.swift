@@ -28,6 +28,7 @@ struct ReportView: View {
                     averages(report)
                     recoveryChart
                     trendsCard
+                    topHabitCard
                     extremes(report)
                 } else {
                     notEnoughData
@@ -236,6 +237,42 @@ struct ReportView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+            }
+            .glassCard()
+        }
+    }
+
+    @ViewBuilder
+    private var topHabitCard: some View {
+        let finding = JournalCorrelator()
+            .topFindingPerTag(from: coordinator.journalObservations())
+            .first
+
+        if let finding {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader(title: "Top Habit Association", systemImage: "sparkle.magnifyingglass")
+                HStack(alignment: .top, spacing: 11) {
+                    Image(systemName: finding.tag.symbol)
+                        .font(Theme.text(13))
+                        .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+                        .frame(width: 26, height: 26)
+                        .background(
+                            (finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid).opacity(0.15),
+                            in: Circle()
+                        )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(finding.headline)
+                            .font(Theme.label(13, weight: .semibold))
+                        Text(finding.detail)
+                            .font(Theme.text(11))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                NavigationLink("See all patterns") {
+                    CauseFinderView()
+                }
+                .font(Theme.text(11, weight: .semibold))
             }
             .glassCard()
         }
