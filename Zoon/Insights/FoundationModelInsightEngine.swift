@@ -133,13 +133,29 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
 
             guard let insight = Self.validate(response.content) else {
                 logger.notice("Model output failed validation; falling back to rules")
+                FoundationModelDiagnostics.shared.record(
+                    "The model's answer didn't pass Zoon's safety checks (empty text, or "
+                    + "language it isn't allowed to use), so tonight fell back to rules."
+                )
                 return false
             }
 
+            FoundationModelDiagnostics.shared.record(nil)
             InsightCache.shared.store(insight, for: features.date)
             return true
         } catch {
             logger.error("Generation failed: \(error.localizedDescription, privacy: .public)")
+            // The single most common real-world cause once the model reports
+            // itself `.available`: Apple's built-in safety guardrail rejecting
+            // the prompt outright because it touches health data, even framed
+            // as general wellness. `unavailabilityReason` cannot see this --
+            // it only inspects `SystemLanguageModel.default.availability`,
+            // which stays `.available` right up until the actual generation
+            // call throws. Recording the raw error is the only way this
+            // becomes debuggable without a Mac attached to the device.
+            FoundationModelDiagnostics.shared.record(
+                "Generation failed: \(error.localizedDescription)"
+            )
             return false
         }
         #else
@@ -286,5 +302,28 @@ final class InsightCache: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         storage.removeAll()
+    }
+}
+
+/// Why the *last* generation attempt fell back to rules, when it did.
+///
+/// `unavailabilityReason` only answers "can this run at all" -- it cannot see
+/// a generation that started, was reported `.available`, and then failed or
+/// got rejected by the model's own safety guardrail. Without this, that
+/// failure is invisible: the UI just quietly shows "On-device rules" forever,
+/// with no way for anyone without Xcode's console attached to know why.
+final class FoundationModelDiagnostics: @unchecked Sendable {
+
+    static let shared = FoundationModelDiagnostics()
+
+    private(set) var lastFailureReason: String?
+    private let lock = NSLock()
+
+    private init() {}
+
+    func record(_ reason: String?) {
+        lock.lock()
+        defer { lock.unlock() }
+        lastFailureReason = reason
     }
 }

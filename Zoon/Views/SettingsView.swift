@@ -240,6 +240,18 @@ struct SettingsView: View {
             Text(preferences.preferredEngine.detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            // Apple Intelligence can be selected, report itself `.available`,
+            // and still fall back silently every single night if generation
+            // throws or the model's own safety guardrail rejects the prompt.
+            // Without this, that reads as "the toggle doesn't do anything" --
+            // there is otherwise no way to see why short of a Mac and Console.
+            if preferences.preferredEngine == .appleIntelligence,
+               let reason = FoundationModelDiagnostics.shared.lastFailureReason {
+                Label(reason, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Metric.recoveryLow)
+            }
         } header: {
             Text("Insights")
         }
