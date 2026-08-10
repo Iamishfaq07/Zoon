@@ -47,6 +47,10 @@ struct TodayView: View {
         VStack(spacing: Theme.stackSpacing) {
             hero(context).entrance(0)
             SleepIntelligenceCard(score: context.sleepIntelligence).entrance(1)
+            PersonalizationProgressCard(
+                nightsTracked: coordinator.recentNights.count,
+                taggedNights: coordinator.journal.taggedNightCount()
+            ).entrance(1)
             guidanceCard(context).entrance(1)
             if let stress = coordinator.todayStress {
                 StressCard(stress: stress).entrance(2)

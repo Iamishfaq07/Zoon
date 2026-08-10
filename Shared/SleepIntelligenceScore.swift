@@ -69,11 +69,16 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     }
 
     /// Nominal weights. `compute` renormalizes among whatever subset is
-    /// actually available for a given night.
-    private static let nominalWeights: [String: Double] = [
-        "Duration": 0.25, "Continuity": 0.20, "Regularity": 0.15,
-        "Recovery": 0.15, "Circadian": 0.10, "Breathing": 0.10, "Architecture": 0.05
+    /// actually available for a given night. Exposed (not just `private`) so
+    /// the algorithm-transparency screen can show the real table rather than
+    /// a hand-copied duplicate that could drift out of sync with it.
+    static let nominalWeights: [(component: String, weight: Double)] = [
+        ("Duration", 0.25), ("Continuity", 0.20), ("Regularity", 0.15),
+        ("Recovery", 0.15), ("Circadian", 0.10), ("Breathing", 0.10), ("Architecture", 0.05)
     ]
+    private static let nominalWeightsByName = Dictionary(
+        uniqueKeysWithValues: nominalWeights.map { ($0.component, $0.weight) }
+    )
 
     // MARK: - Compute
 
@@ -106,7 +111,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             detail: signedMinutes(deltaMinutes) + " vs need",
             normalized: durationNormalized,
             weightUsed: 0
-        ), nominalWeights["Duration"]!))
+        ), nominalWeightsByName["Duration"]!))
 
         // --- Continuity ------------------------------------------------------
         if night.timeAsleepMinutes > 0 {
@@ -133,7 +138,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 detail: "\(Int(night.sleepEfficiencyPercent))% efficient, \(Int(waso))m awake",
                 normalized: continuityNormalized,
                 weightUsed: 0
-            ), nominalWeights["Continuity"]!))
+            ), nominalWeightsByName["Continuity"]!))
         }
 
         // --- Regularity ------------------------------------------------------
@@ -143,7 +148,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 detail: "\(Int(index.rounded())) SRI",
                 normalized: index / 100,
                 weightUsed: 0
-            ), nominalWeights["Regularity"]!))
+            ), nominalWeightsByName["Regularity"]!))
         }
 
         // --- Recovery (HRV, resting HR, temperature) -----------------------
@@ -153,7 +158,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 detail: recoveryDetail(night: night, history: history),
                 normalized: recoveryNormalized,
                 weightUsed: 0
-            ), nominalWeights["Recovery"]!))
+            ), nominalWeightsByName["Recovery"]!))
         }
 
         // --- Circadian -------------------------------------------------------
@@ -169,7 +174,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 detail: String(format: "%+.0fm vs usual timing", (tonightMidpoint - habitual) * 60),
                 normalized: circadianNormalized,
                 weightUsed: 0
-            ), nominalWeights["Circadian"]!))
+            ), nominalWeightsByName["Circadian"]!))
         }
 
         // --- Breathing -------------------------------------------------------
@@ -179,7 +184,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 detail: night.avgRespiratoryRate.map { String(format: "%.1f br/min", $0) } ?? "—",
                 normalized: breathingNormalized,
                 weightUsed: 0
-            ), nominalWeights["Breathing"]!))
+            ), nominalWeightsByName["Breathing"]!))
         }
 
         // --- Architecture ------------------------------------------------------
@@ -189,7 +194,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 detail: "\(Int(night.deepMinutes))m deep, \(Int(night.remMinutes))m REM",
                 normalized: architectureNormalized,
                 weightUsed: 0
-            ), nominalWeights["Architecture"]!))
+            ), nominalWeightsByName["Architecture"]!))
         }
 
         // --- Renormalize -----------------------------------------------------

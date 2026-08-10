@@ -252,6 +252,11 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(Theme.Metric.recoveryLow)
             }
+
+            NavigationLink("How your Sleep Intelligence score works") {
+                AlgorithmTransparencyView()
+            }
+            .font(.caption)
         } header: {
             Text("Insights")
         }
