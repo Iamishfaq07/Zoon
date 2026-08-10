@@ -27,19 +27,23 @@ struct MoreView: View {
                         AchievementsView()
                     }
                     .entrance(1)
+                    navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
+                        ArticlesView()
+                    }
+                    .entrance(2)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
                     }
-                    .entrance(2)
+                    .entrance(3)
                     navRow("Settings", "Goal, engine, privacy", "gearshape.fill", .secondary) {
                         SettingsView()
                     }
-                    .entrance(3)
+                    .entrance(4)
 
-                    dataCard.entrance(4)
-                    privacyCard.entrance(5)
-                    aboutCard.entrance(6)
+                    dataCard.entrance(5)
+                    privacyCard.entrance(6)
+                    aboutCard.entrance(7)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
