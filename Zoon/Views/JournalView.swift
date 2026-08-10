@@ -15,6 +15,14 @@ struct JournalView: View {
     @State private var note: String = ""
     @FocusState private var noteFieldFocused: Bool
 
+    // The source of truth for what's highlighted. `entry.contains(tag)` used
+    // to be read straight from the SwiftData model on every render, but a tap
+    // saved through the store and re-fetched a model instance SwiftUI hadn't
+    // been told to re-observe -- the chip only caught up on the next render
+    // triggered by something unrelated, like switching days. Owning the set
+    // as plain @State makes a tap's visual result unconditional on that.
+    @State private var selectedTagIdentifiers: Set<String> = []
+
     private var entry: JournalEntry {
         coordinator.journal.entryOrCreate(for: selectedDate)
     }
@@ -48,6 +56,7 @@ struct JournalView: View {
             .onAppear(perform: reload)
             .onChange(of: selectedDate) { _, _ in
                 note = entry.note ?? ""
+                selectedTagIdentifiers = Set(entry.tagIdentifiers)
             }
             .onChange(of: noteFieldFocused) { wasFocused, isFocused in
                 if wasFocused, !isFocused {
@@ -126,11 +135,16 @@ struct JournalView: View {
     }
 
     private func tagChip(_ tag: BehaviorTag) -> some View {
-        let isOn = entry.contains(tag)
+        let isOn = selectedTagIdentifiers.contains(tag.rawValue)
 
         return Button {
+            if isOn {
+                selectedTagIdentifiers.remove(tag.rawValue)
+            } else {
+                selectedTagIdentifiers.insert(tag.rawValue)
+            }
             coordinator.journal.toggle(tag, on: selectedDate)
-            reload()
+            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
             // Selection is a physical act here — the haptic confirms the toggle
             // landed without needing to look for a colour change.
             Haptics.tap()
@@ -207,6 +221,7 @@ struct JournalView: View {
 
     private func reload() {
         note = entry.note ?? ""
+        selectedTagIdentifiers = Set(entry.tagIdentifiers)
         findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
     }
 }
