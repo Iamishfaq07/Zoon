@@ -14,6 +14,7 @@ struct SleepDetailView: View {
                 stagesCard
                 timingCard
                 ChronotypeCard(chronotype: context.chronotype)
+                dataCompletenessCard
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -132,6 +133,48 @@ struct SleepDetailView: View {
                     "There's no universal 'normal' count; it's most useful compared against your own recent nights rather than a fixed target."
                 ]
             )
+        }
+        .glassCard()
+    }
+
+    // MARK: - Data completeness
+
+    @ViewBuilder
+    private var dataCompletenessCard: some View {
+        let sources: [(label: String, available: Bool)] = [
+            ("Sleep stages", context.night.hasStageBreakdown),
+            ("Heart rate", context.night.avgHeartRate != nil),
+            ("HRV", context.night.avgHRV != nil),
+            ("Respiration", context.night.avgRespiratoryRate != nil),
+            ("Wrist temperature", context.night.wristTempDeltaC != nil),
+            ("Blood oxygen", context.night.avgSpO2 != nil),
+            ("Breathing disturbances", context.night.breathingDisturbances != nil)
+        ]
+
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                SectionHeader(title: "Tracking Completeness", systemImage: "checklist")
+                Spacer()
+                Text("\(context.sleepIntelligence.dataCompletenessPercent)%")
+                    .font(Theme.label(14, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.Metric.sleep)
+            }
+            ForEach(sources, id: \.label) { source in
+                HStack {
+                    Text(source.label)
+                        .font(Theme.label(11))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Image(systemName: source.available ? "checkmark.circle.fill" : "minus.circle")
+                        .font(Theme.text(11))
+                        .foregroundStyle(source.available ? Theme.Metric.recoveryHigh : .tertiary)
+                }
+            }
+            Text("Missing data is never treated as zero -- a metric with nothing available here is simply left out of tonight's score and comparisons.")
+                .font(Theme.text(9))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
     }
