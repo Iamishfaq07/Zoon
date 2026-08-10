@@ -36,6 +36,10 @@ struct MoreView: View {
                         ReportView()
                     }
                     .entrance(3)
+                    navRow("Clinician Report", "30/90-day PDF summary to share", "doc.text.fill", Theme.Metric.hrv) {
+                        ClinicianReportView()
+                    }
+                    .entrance(3)
                     navRow("Settings", "Goal, engine, privacy", "gearshape.fill", .secondary) {
                         SettingsView()
                     }
