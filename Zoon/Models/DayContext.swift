@@ -14,6 +14,7 @@ struct DayContext: Equatable {
     let recovery: RecoveryScore
     let sleepNeed: SleepNeed
     let sleepScore: SleepScore
+    let sleepIntelligence: SleepIntelligenceScore
     let strain: StrainScore
     let bodyBattery: BodyBattery
     let vitals: VitalsStatus
@@ -41,6 +42,7 @@ struct DayContext: Equatable {
             recovery: recovery,
             sleepNeed: sleepNeed,
             sleepScore: sleepScore,
+            sleepIntelligence: sleepIntelligence,
             strain: strain,
             bodyBattery: bodyBattery,
             vitals: vitals,

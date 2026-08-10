@@ -111,23 +111,35 @@ struct DayContextBuilder {
         // tonight — they describe a span, not a single night.
         let fullHistory = history + [night]
 
+        let regularity = SleepRegularity.compute(nights: fullHistory)
+        let bodyClock = BodyClock.compute(nights: fullHistory)
+
+        let sleepIntelligence = SleepIntelligenceScore.compute(.init(
+            night: night,
+            history: history,
+            sleepNeedMinutes: sleepNeed.totalNeedMinutes,
+            regularityIndex: regularity.nightCount >= 3 ? regularity.index : nil,
+            habitualMidpointHours: bodyClock?.isEstimate == false ? bodyClock?.midpoint : nil
+        ))
+
         return DayContext(
             night: night,
             insight: inputs.insight,
             recovery: recovery,
             sleepNeed: sleepNeed,
             sleepScore: SleepScore.compute(for: night, goalMinutes: inputs.goalMinutes),
+            sleepIntelligence: sleepIntelligence,
             strain: inputs.todayStrain,
             bodyBattery: bodyBattery,
             vitals: vitals,
             hrvStatus: hrvStatus,
             chronotype: chronotype,
-            regularity: SleepRegularity.compute(nights: fullHistory),
+            regularity: regularity,
             healthRadar: HealthRadar.detect(nights: fullHistory),
             cardiovascularAge: CardiovascularAge.compute(
                 nights: fullHistory, chronologicalAge: inputs.age
             ),
-            bodyClock: BodyClock.compute(nights: fullHistory)
+            bodyClock: bodyClock
         )
     }
 
