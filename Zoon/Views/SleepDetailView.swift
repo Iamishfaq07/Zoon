@@ -106,20 +106,51 @@ struct SleepDetailView: View {
             row("Bedtime", context.night.bedtime.formatted(.dateTime.hour().minute()))
             row("Wake time", context.night.wakeTime.formatted(.dateTime.hour().minute()))
             row("Time in bed", SleepNightFeatures.formatMinutes(context.night.timeInBedMinutes))
-            row("Efficiency", "\(Int(context.night.sleepEfficiencyPercent))%")
+            row(
+                "Efficiency", "\(Int(context.night.sleepEfficiencyPercent))%",
+                definitionTitle: "Sleep Efficiency", definitionSymbol: "gauge.with.dots.needle.67percent",
+                definition: [
+                    "The percentage of your time in bed that you actually spent asleep -- total sleep time divided by time in bed.",
+                    "Above 85% is generally considered efficient. A lower number usually means either a long time falling asleep or a lot of time awake overnight, both broken out separately below."
+                ]
+            )
             if let latency = context.night.sleepLatencyMinutes {
-                row("Fell asleep in", "\(Int(latency)) min")
+                row(
+                    "Fell asleep in", "\(Int(latency)) min",
+                    definitionTitle: "Sleep Latency", definitionSymbol: "hourglass",
+                    definition: [
+                        "The time from getting into bed to your first sustained sleep. Only available when your sleep source records in-bed time -- Apple Watch alone doesn't, so this needs an iPhone sleep schedule or a third-party app contributing that data.",
+                        "Under 20 minutes is typical for most people. A latency that's crept up over several nights is often more meaningful than one long night."
+                    ]
+                )
             }
-            row("Awakenings", "\(context.night.wakeCount)")
+            row(
+                "Awakenings", "\(context.night.wakeCount)",
+                definitionTitle: "Awakenings", definitionSymbol: "eye",
+                definition: [
+                    "Meaningful wake periods after you first fell asleep, not counting brief stirs before sleep onset. Everyone wakes briefly several times a night without remembering it -- this counts the ones long enough to register.",
+                    "There's no universal 'normal' count; it's most useful compared against your own recent nights rather than a fixed target."
+                ]
+            )
         }
         .glassCard()
     }
 
-    private func row(_ label: String, _ value: String) -> some View {
+    private func row(
+        _ label: String, _ value: String,
+        definitionTitle: String? = nil, definitionSymbol: String = "info.circle",
+        definition: [String]? = nil
+    ) -> some View {
         HStack {
             Text(label)
                 .font(Theme.label(12))
                 .foregroundStyle(.secondary)
+            if let definitionTitle, let definition {
+                MetricInfoButton(
+                    title: definitionTitle, symbol: definitionSymbol,
+                    tint: Theme.Metric.sleep, explanation: definition
+                )
+            }
             Spacer()
             Text(value)
                 .font(Theme.label(13, weight: .semibold))
