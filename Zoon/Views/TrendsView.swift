@@ -24,6 +24,14 @@ struct TrendsView: View {
         Array(coordinator.recentNights.suffix(window.days))
     }
 
+    /// Journal tags per night, so the duration chart's tap-to-inspect badge
+    /// can show what was logged alongside the sleep number -- "annotations"
+    /// per the spec, kept lightweight: no icons crowding the chart itself,
+    /// just context on the selection that's already there.
+    private var tagsByDate: [Date: Set<BehaviorTag>] {
+        Dictionary(uniqueKeysWithValues: coordinator.journal.allEntries().map { ($0.date, Set($0.tags)) })
+    }
+
     /// `nil` unless cycle tracking is on and there's at least one logged
     /// period start — both a privacy gate and a "don't show an empty card"
     /// gate, in one property.
@@ -52,7 +60,7 @@ struct TrendsView: View {
                     if nights.count < 2 {
                         notEnoughData
                     } else {
-                        DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes)
+                        DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
                         HRVChartCard(nights: nights)
                         SleepDebtChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes)
                         ConsistencyChartCard(nights: nights)
@@ -125,6 +133,7 @@ struct TrendsView: View {
 struct DurationChartCard: View {
     let nights: [SleepNightFeatures]
     let goalMinutes: Double
+    var tagsByDate: [Date: Set<BehaviorTag>] = [:]
 
     @State private var selectedDate: Date?
 
@@ -167,11 +176,13 @@ struct DurationChartCard: View {
                         ) {
                             ChartSelectionBadge(
                                 title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
-                                lines: [(
-                                    "Asleep",
-                                    night.formattedTimeAsleep,
-                                    night.timeAsleepMinutes >= goalMinutes ? .accentColor : .orange
-                                )]
+                                lines: [
+                                    (
+                                        "Asleep",
+                                        night.formattedTimeAsleep,
+                                        night.timeAsleepMinutes >= goalMinutes ? .accentColor : .orange
+                                    )
+                                ] + loggedLine(for: night.date)
                             )
                         }
                 }
@@ -179,6 +190,14 @@ struct DurationChartCard: View {
             .chartYAxisLabel("hours")
             .chartXSelection(value: $selectedDate)
         }
+    }
+
+    /// Sparse by design -- only nights with a journal entry get a second
+    /// line, so the badge doesn't imply every night was logged.
+    private func loggedLine(for date: Date) -> [(label: String, value: String, tint: Color)] {
+        guard let tags = tagsByDate[date], !tags.isEmpty else { return [] }
+        let labels = tags.map(\.label).sorted().joined(separator: ", ")
+        return [("Logged", labels, Theme.Metric.hrv)]
     }
 }
 
