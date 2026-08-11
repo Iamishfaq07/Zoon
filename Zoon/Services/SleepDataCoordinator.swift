@@ -645,20 +645,26 @@ final class SleepDataCoordinator {
     // MARK: - Derived views of history
 
     /// Journal observations joined to outcomes, for the correlation engine.
+    ///
+    /// Only nights with a `JournalEntry` row are included -- a night nobody
+    /// opened the Journal for is genuinely unknown for every tag, not
+    /// evidence any particular behaviour didn't happen, and treating it as a
+    /// confirmed "no" biases whatever tag happens to be under test. A
+    /// `JournalEntry` row exists as soon as the screen is opened for that
+    /// date, before any tag is toggled (see `JournalStore.entryOrCreate`), so
+    /// its presence -- not whether it happens to carry the tag in question --
+    /// is the real "the user actually looked" signal. This does shrink the
+    /// comparison pool versus treating every recorded night as a control,
+    /// especially early on when few nights are logged at all, but a smaller
+    /// honest pool is the right trade against a larger biased one.
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
         let goal = preferences.sleepGoalMinutes
         let calendar = Calendar.current
 
-        // Every recorded night is a valid *comparison* night, tagged or not --
-        // a night nobody opened the Journal for isn't evidence the tagged
-        // behaviour didn't happen, but it's still a legitimate untagged
-        // baseline for every other tag. Previously these were dropped
-        // entirely, which quietly shrank the untagged pool the matcher has
-        // to draw from, especially early on when few nights are logged at all.
-        return recentNights.map { night in
-            let tags = tagsByDate[night.date] ?? []
+        return recentNights.compactMap { night -> JournalCorrelator.Observation? in
+            guard let tags = tagsByDate[night.date] else { return nil }
             let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
