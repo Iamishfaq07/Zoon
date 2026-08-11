@@ -51,8 +51,13 @@ struct DayContextBuilder {
         )
 
         // --- Sleep need ---------------------------------------------------
+        // The baseline SleepNeed builds on top of is the learned figure once
+        // there's enough history for one, not always the raw Settings goal --
+        // see LearnedSleepNeed's own doc comment for why a straight average
+        // of past nights isn't used instead.
+        let learnedNeed = LearnedSleepNeed.compute(goalMinutes: inputs.goalMinutes, history: history)
         let sleepNeed = SleepNeed.compute(
-            goalMinutes: inputs.goalMinutes,
+            goalMinutes: learnedNeed.minutes,
             outstandingDebtMinutes: night.sleepDebtMinutes14Day ?? 0,
             yesterdayStrain: inputs.yesterdayStrain.value,
             napMinutes: inputs.napMinutes,
@@ -143,6 +148,7 @@ struct DayContextBuilder {
             insight: inputs.insight,
             recovery: recovery,
             sleepNeed: sleepNeed,
+            learnedSleepNeed: learnedNeed,
             sleepScore: SleepScore.compute(for: night, goalMinutes: inputs.goalMinutes),
             sleepIntelligence: sleepIntelligence,
             strain: inputs.todayStrain,

@@ -7,6 +7,7 @@ struct SleepNeedView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
 
     private var need: SleepNeed? { coordinator.state.context?.sleepNeed }
+    private var learned: LearnedSleepNeed? { coordinator.state.context?.learnedSleepNeed }
 
     var body: some View {
         ScrollView {
@@ -36,18 +37,18 @@ struct SleepNeedView: View {
             Text(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))
                 .font(Theme.numeral(46))
                 .monospacedDigit()
-            StatusPill(text: confidenceLabel, tint: Theme.Metric.sleep)
+            StatusPill(text: learned?.confidence.label ?? "Low confidence", tint: Theme.Metric.sleep)
+            if let learned, let learnedMinutes = learned.learnedMinutes {
+                Text("Based on \(learned.qualifyingNightCount) qualifying nights -- your own baseline is estimated at \(SleepNightFeatures.formatMinutes(learnedMinutes)), blended with your goal below.")
+                    .font(Theme.text(10))
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+            }
         }
         .frame(maxWidth: .infinity)
         .glassCard()
-    }
-
-    private var confidenceLabel: String {
-        switch coordinator.recentNights.count {
-        case ..<7: "Low confidence"
-        case 7..<30: "Moderate confidence"
-        default: "High confidence"
-        }
     }
 
     private func breakdownCard(_ need: SleepNeed) -> some View {
@@ -120,17 +121,37 @@ struct SleepNeedView: View {
             Label("How this is estimated", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(.secondary)
-            Text("""
-                Starts from your sleep goal in Settings, then adjusts up for outstanding sleep \
-                debt and yesterday's exertion, and down for any naps -- so a harder day or a \
-                short night genuinely raises tonight's target instead of treating every night \
-                the same.
-                """)
+            Text(learnedExplanationText)
                 .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
+    }
+
+    private var learnedExplanationText: String {
+        let base: String
+        if let learned, learned.learnedMinutes != nil {
+            base = """
+                The baseline starts from your own recent history rather than just your goal: \
+                the typical duration of your efficient, unfragmented, well-measured nights \
+                (\(learned.qualifyingNightCount) of them so far), blended with your Settings \
+                goal -- more weight on your own history the more qualifying nights you have, \
+                up to \(LearnedSleepNeed.fullConfidenceNights).
+                """
+        } else {
+            base = """
+                Starts from your sleep goal in Settings. Once you have \
+                \(LearnedSleepNeed.minimumQualifyingNights) or more nights of efficient, \
+                well-measured sleep, this baseline starts blending in a figure learned from \
+                your own history instead of relying on the goal alone.
+                """
+        }
+        return base + """
+             Then it adjusts up for outstanding sleep debt and yesterday's exertion, and down \
+            for any naps -- so a harder day or a short night genuinely raises tonight's target \
+            instead of treating every night the same.
+            """
     }
 }
 
