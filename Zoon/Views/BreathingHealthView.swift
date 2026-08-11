@@ -146,6 +146,8 @@ struct BreathingHealthView: View {
 
     // MARK: - Oxygen
 
+    @State private var selectedOxygenDate: Date?
+
     @ViewBuilder
     private var oxygenCard: some View {
         if health.oxygenTrend.count >= 2 {
@@ -160,9 +162,26 @@ struct BreathingHealthView: View {
                         .foregroundStyle(Theme.Metric.hrv)
                         .symbol(.circle)
                     }
+                    if let selectedOxygenDate,
+                       let point = health.oxygenTrend.first(where: {
+                           Calendar.current.isDate($0.date, inSameDayAs: selectedOxygenDate)
+                       }) {
+                        RuleMark(x: .value("Selected", point.date, unit: .day))
+                            .foregroundStyle(.white.opacity(0.25))
+                            .annotation(
+                                position: .top,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                            ) {
+                                ChartSelectionBadge(
+                                    title: point.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                    lines: [("SpO2", String(format: "%.0f%%", point.value), Theme.Metric.hrv)]
+                                )
+                            }
+                    }
                 }
                 .chartYScale(domain: 88...100)
                 .frame(height: 90)
+                .chartXSelection(value: $selectedOxygenDate)
             }
             .glassCard()
         }
