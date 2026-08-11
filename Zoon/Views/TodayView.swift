@@ -75,9 +75,10 @@ struct TodayView: View {
             VitalsCard(vitals: context.vitals).entrance(8)
             HRVStatusCard(status: context.hrvStatus).entrance(8)
             RegularityCard(regularity: context.regularity).entrance(8)
-            if let cvAge = context.cardiovascularAge {
-                CardiovascularAgeCard(cvAge: cvAge).entrance(8)
-            }
+            // Cardiovascular Age deliberately isn't here: it's an
+            // internally-invented formula, not a validated clinical measure,
+            // and sitting beside baseline-derived cards like Recovery lent it
+            // a credibility it hasn't earned. It lives in Insights → Labs.
             InsightCard(
                 insight: context.insight,
                 engineName: context.insight.source.displayName,
