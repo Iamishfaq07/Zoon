@@ -13,6 +13,22 @@ struct DayContextBuilder {
     /// you're buried in it.
     static let recoveryBaselineWindow = 30
 
+    /// Window for the two "habitual timing" metrics -- `SleepRegularity` and
+    /// `BodyClock` -- that, unlike their siblings below, don't do any
+    /// internal windowing of their own: `CardiovascularAge` re-slices to its
+    /// own `.suffix(30)` and `HealthRadar` to its own recent + baseline
+    /// windows regardless of how much history is handed to them, but
+    /// `SleepRegularity.compute`/`BodyClock.compute` use exactly the array
+    /// they're given. Passing them the ever-growing full record meant a
+    /// habitual bedtime or regularity index quietly became a lifetime
+    /// average -- a genuine schedule change (new job, new baby, a permanent
+    /// timezone move) got diluted more and more slowly the longer someone
+    /// had used the app, instead of the "recent pattern" both are meant to
+    /// describe. 60 nights is comfortably above each metric's own minimum
+    /// (14 for BodyClock, 7 for SleepRegularity) while still adapting to a
+    /// real change within a couple of months.
+    static let habitWindow = 60
+
     struct Inputs {
         let night: SleepNightFeatures
         let insight: SleepInsight
@@ -120,12 +136,17 @@ struct DayContextBuilder {
             consistencyMinutes: inputs.bedtimeConsistencyMinutes
         )
 
-        // Regularity, radar and CV age all read the full record including
-        // tonight — they describe a span, not a single night.
+        // Regularity, radar and CV age all read a span including tonight
+        // rather than tonight alone. Radar and CV age get the unbounded
+        // record because each does its own internal windowing regardless of
+        // input size; regularity and body clock get a bounded recent window
+        // instead, since neither windows internally — see `habitWindow`'s
+        // doc comment for why passing them the full record was a bug.
         let fullHistory = history + [night]
+        let habitWindow = Array(fullHistory.suffix(Self.habitWindow))
 
-        let regularity = SleepRegularity.compute(nights: fullHistory)
-        let bodyClock = BodyClock.compute(nights: fullHistory)
+        let regularity = SleepRegularity.compute(nights: habitWindow)
+        let bodyClock = BodyClock.compute(nights: habitWindow)
 
         let sleepIntelligence = SleepIntelligenceScore.compute(.init(
             night: night,
