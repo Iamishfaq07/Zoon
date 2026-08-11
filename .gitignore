@@ -34,3 +34,7 @@ xcuserdata/
 *.mlmodelc
 *.safetensors
 *.gguf
+
+## Python
+__pycache__/
+*.pyc
