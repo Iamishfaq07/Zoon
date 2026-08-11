@@ -312,7 +312,15 @@ final class SleepDataCoordinator {
             .sorted { $0.date < $1.date }
 
         let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
-        let restingHR = history.compactMap(\.minHeartRate).last ?? night.minHeartRate ?? 60
+        // True RHR first (see SleepNightFeatures.restingHeartRate), falling
+        // back to the sleep-window low only when no daily RHR sample exists
+        // yet — heart-rate-reserve zones are sensitive to this baseline, so
+        // the more accurate figure is worth preferring wherever it's there.
+        let restingHR = history.compactMap(\.restingHeartRate).last
+            ?? night.restingHeartRate
+            ?? history.compactMap(\.minHeartRate).last
+            ?? night.minHeartRate
+            ?? 60
 
         let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
@@ -405,7 +413,11 @@ final class SleepDataCoordinator {
 
             let baseline = RecoveryBaseline(
                 hrv: mean(prior.compactMap(\.avgHRV)),
-                restingHeartRate: mean(prior.compactMap(\.minHeartRate)),
+                // Must match RecoveryScore's own per-night source (true RHR,
+                // no minHeartRate fallback) — a baseline built from one
+                // concept and scored against another silently corrupts every
+                // deviation percentage.
+                restingHeartRate: mean(prior.compactMap(\.restingHeartRate)),
                 respiratoryRate: mean(prior.compactMap(\.avgRespiratoryRate)),
                 wristTemperature: mean(prior.compactMap(\.wristTempDeltaC)),
                 nightCount: prior.count

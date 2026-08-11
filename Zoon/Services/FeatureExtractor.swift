@@ -42,6 +42,14 @@ struct FeatureExtractor {
         // failure: one missing signal should degrade the record, not fail it.
         async let avgHRTask = optionalAverage(.heartRate, unit: .beatsPerMinute, in: interval)
         async let minHRTask = optionalMinimum(.heartRate, unit: .beatsPerMinute, in: interval)
+        // Allowing up to 24h after wake, not just up to `session.end`: Apple
+        // computes this once for the calendar day, sometimes later in the day
+        // than the moment someone wakes up, so a strict "before wake" cutoff
+        // would frequently miss that day's own RHR and silently fall back to
+        // the previous day's.
+        async let restingHRTask = optionalMostRecent(
+            .restingHeartRate, unit: .beatsPerMinute, onOrBefore: session.end.addingTimeInterval(86_400)
+        )
         async let hrvTask = optionalAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval)
         async let respiratoryTask = optionalAverage(.respiratoryRate, unit: .breathsPerMinute, in: interval)
         async let spo2Task = optionalAverage(.oxygenSaturation, unit: .percent(), in: interval)
@@ -50,6 +58,7 @@ struct FeatureExtractor {
 
         let avgHR = await avgHRTask
         let minHR = await minHRTask
+        let restingHR = await restingHRTask
         let hrv = await hrvTask
         let respiratory = await respiratoryTask
         let spo2Fraction = await spo2Task
@@ -99,6 +108,7 @@ struct FeatureExtractor {
             sleepLatencyMinutes: session.latencyMinutes,
             avgHeartRate: avgHR,
             minHeartRate: minHR,
+            restingHeartRate: restingHR,
             avgHRV: hrv,
             avgRespiratoryRate: respiratory,
             avgSpO2: spo2Percent,
@@ -136,6 +146,14 @@ struct FeatureExtractor {
         in interval: DateInterval
     ) async -> Double? {
         try? await healthKit.minimum(identifier, unit: unit, in: interval)
+    }
+
+    private func optionalMostRecent(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        onOrBefore cutoff: Date
+    ) async -> Double? {
+        try? await healthKit.mostRecentSample(identifier, unit: unit, onOrBefore: cutoff)
     }
 
     // MARK: - Context helpers

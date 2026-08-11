@@ -70,7 +70,7 @@ enum DataExporter {
         let header = [
             "date", "bedtime", "wake_time", "time_in_bed_min", "time_asleep_min",
             "efficiency_pct", "deep_min", "rem_min", "core_min", "unspecified_min",
-            "awake_min", "wake_count", "latency_min", "avg_hr", "min_hr", "hrv_ms",
+            "awake_min", "wake_count", "latency_min", "avg_hr", "min_hr", "resting_hr", "hrv_ms",
             "respiratory_rate", "spo2_pct", "wrist_temp_delta_c", "source"
         ].joined(separator: ",")
 
@@ -87,7 +87,7 @@ enum DataExporter {
                 num(night.unspecifiedAsleepMinutes), num(night.awakeMinutes),
                 "\(night.wakeCount)",
                 num(night.sleepLatencyMinutes), num(night.avgHeartRate),
-                num(night.minHeartRate), num(night.avgHRV),
+                num(night.minHeartRate), num(night.restingHeartRate), num(night.avgHRV),
                 num(night.avgRespiratoryRate), num(night.avgSpO2),
                 num(night.wristTempDeltaC),
                 escape(night.sourceName ?? "")

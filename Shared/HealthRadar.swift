@@ -106,7 +106,7 @@ struct HealthRadar: Codable, Hashable, Sendable {
 
     private static func value(_ kind: VitalsStatus.Kind, in night: SleepNightFeatures) -> Double? {
         switch kind {
-        case .restingHeartRate: night.minHeartRate
+        case .restingHeartRate: night.restingHeartRate
         case .hrv: night.avgHRV
         case .respiratoryRate: night.avgRespiratoryRate
         case .oxygenSaturation: night.avgSpO2

@@ -224,6 +224,11 @@ enum MockData {
             sleepLatencyMinutes: latency,
             avgHeartRate: hr,
             minHeartRate: minHR,
+            // A plausible true RHR a few bpm above the sleep-window low,
+            // rather than reusing minHR outright -- they're different
+            // signals in reality, and mock data pretending they're identical
+            // would hide a mismatch other code might have.
+            restingHeartRate: minHR.map { $0 + 4 },
             avgHRV: hrv,
             avgRespiratoryRate: resp,
             avgSpO2: spo2,

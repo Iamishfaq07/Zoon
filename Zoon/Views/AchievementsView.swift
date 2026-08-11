@@ -19,7 +19,13 @@ struct AchievementsView: View {
             goalMinutes: preferences.sleepGoalMinutes,
             journalTaggedNights: coordinator.journal.taggedNightCount(),
             napCount: naps.naps.count,
-            regularityIndex: coordinator.state.context?.regularity.index
+            // Same reasoning as DayContextBuilder: `.index` is a hardcoded 0
+            // below SleepRegularity.minimumNights, not a real "zero
+            // regularity" reading, so it must not reach the badge engine
+            // until `hasEnoughData` says the number means something.
+            regularityIndex: coordinator.state.context?.regularity.hasEnoughData == true
+                ? coordinator.state.context?.regularity.index
+                : nil
         )
     }
 

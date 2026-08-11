@@ -43,6 +43,11 @@ final class HealthKitManager {
         var types: Set<HKObjectType> = [
             HKCategoryType(.sleepAnalysis),
             HKQuantityType(.heartRate),
+            // Apple's own once-a-day resting heart rate, computed from a
+            // rolling window of low-activity readings -- distinct from, and
+            // read separately from, the plain `.heartRate` samples taken
+            // during sleep. See `SleepNightFeatures.restingHeartRate`.
+            HKQuantityType(.restingHeartRate),
             HKQuantityType(.heartRateVariabilitySDNN),
             HKQuantityType(.respiratoryRate),
             HKQuantityType(.oxygenSaturation),
@@ -312,6 +317,44 @@ final class HealthKitManager {
                     return
                 }
                 continuation.resume(returning: extract(statistics)?.doubleValue(for: unit))
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Most recent sample of a quantity type, at or before `cutoff`.
+    ///
+    /// For discrete once-a-day metrics like `.restingHeartRate`, which
+    /// HealthKit computes once per day from a rolling window rather than
+    /// continuously — averaging or min/maxing it over a sleep window the way
+    /// `average`/`minimum` do for continuous signals like heart rate wouldn't
+    /// be meaningful, since there's normally at most one sample a day to find.
+    func mostRecentSample(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        onOrBefore cutoff: Date
+    ) async throws -> Double? {
+        let type = HKQuantityType(identifier)
+        let predicate = HKQuery.predicateForSamples(withStart: nil, end: cutoff)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type, predicate: predicate, limit: 1, sortDescriptors: [sort]
+            ) { _, samples, error in
+                if let error {
+                    if (error as? HKError)?.code == .errorNoData {
+                        continuation.resume(returning: nil)
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
+                guard let sample = samples?.first as? HKQuantitySample else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: sample.quantity.doubleValue(for: unit))
             }
             store.execute(query)
         }

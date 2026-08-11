@@ -71,7 +71,10 @@ struct CardiovascularAge: Codable, Hashable, Sendable {
 
         let window = Array(nights.suffix(30))
         let hrvValues = window.compactMap(\.avgHRV)
-        let rhrValues = window.compactMap(\.minHeartRate)
+        // True RHR (see SleepNightFeatures.restingHeartRate) wherever a night
+        // has it; the sleep-window low is a fallback only for nights recorded
+        // before that field existed, not a preferred source.
+        let rhrValues = window.compactMap { $0.restingHeartRate ?? $0.minHeartRate }
 
         guard window.count >= minimumNights, !hrvValues.isEmpty || !rhrValues.isEmpty else { return nil }
 

@@ -39,7 +39,12 @@ struct DayContextBuilder {
         let window = Array(history.suffix(Self.recoveryBaselineWindow))
         let recoveryBaseline = RecoveryBaseline(
             hrv: mean(window.compactMap(\.avgHRV)),
-            restingHeartRate: mean(window.compactMap(\.minHeartRate)),
+            // True RHR only -- see SleepNightFeatures.restingHeartRate. No
+            // fallback to minHeartRate here: mixing the two into one baseline
+            // would make a genuine RHR reading being compared against a
+            // baseline partly built from noisy sleep-window minimums, which
+            // is worse than just excluding nights that predate this field.
+            restingHeartRate: mean(window.compactMap(\.restingHeartRate)),
             respiratoryRate: mean(window.compactMap(\.avgRespiratoryRate)),
             wristTemperature: mean(window.compactMap(\.wristTempDeltaC)),
             nightCount: window.count
@@ -62,9 +67,12 @@ struct DayContextBuilder {
         )
 
         // --- Body battery -------------------------------------------------
-        // Resting HR falls back to the night's own low, then to a plausible
-        // default — a nil here would zero the drain model rather than degrade it.
-        let restingHR = recoveryBaseline.restingHeartRate ?? night.minHeartRate ?? 60
+        // Resting HR falls back through the night's own true RHR, then its
+        // sleep-window low, then a plausible default — a nil here would zero
+        // the drain model rather than degrade it. Body Battery is a wellness
+        // curve, not a scored component, so this looser fallback chain (unlike
+        // RecoveryBaseline above) is an acceptable approximation.
+        let restingHR = recoveryBaseline.restingHeartRate ?? night.restingHeartRate ?? night.minHeartRate ?? 60
         let bodyBattery = BodyBattery.build(
             startLevel: BodyBattery.overnightCharge(
                 recoveryPercent: recovery.percent,
@@ -82,7 +90,7 @@ struct DayContextBuilder {
             history: window.map {
                 VitalsSample(
                     date: $0.date,
-                    restingHeartRate: $0.minHeartRate,
+                    restingHeartRate: $0.restingHeartRate,
                     hrv: $0.avgHRV,
                     respiratoryRate: $0.avgRespiratoryRate,
                     oxygenSaturation: $0.avgSpO2,
@@ -118,7 +126,15 @@ struct DayContextBuilder {
             night: night,
             history: history,
             sleepNeedMinutes: sleepNeed.totalNeedMinutes,
-            regularityIndex: regularity.nightCount >= 3 ? regularity.index : nil,
+            // `SleepRegularity.compute` returns a hardcoded index of 0 -- not
+            // nil -- below its own `minimumNights` (7), since SRI needs a full
+            // week of consecutive-night comparisons to mean anything. Gating on
+            // `hasEnoughData` here (rather than a separate, looser threshold)
+            // is what keeps that 0 from ever being read as "no regularity"
+            // instead of "not enough history yet" -- a new user with 3-6
+            // nights was previously scored as having zero regularity, the
+            // worst possible value, purely for being new.
+            regularityIndex: regularity.hasEnoughData ? regularity.index : nil,
             habitualMidpointHours: bodyClock?.isEstimate == false ? bodyClock?.midpoint : nil
         ))
 

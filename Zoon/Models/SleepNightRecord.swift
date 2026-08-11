@@ -38,6 +38,10 @@ final class SleepNightRecord {
 
     var avgHeartRate: Double?
     var minHeartRate: Double?
+    /// True resting heart rate from HealthKit's daily `.restingHeartRate`
+    /// sample. See `SleepNightFeatures.restingHeartRate` -- `minHeartRate`
+    /// above is a different concept and must not be read as this one.
+    var restingHeartRate: Double?
     var avgHRV: Double?
     var avgRespiratoryRate: Double?
     var avgSpO2: Double?
@@ -84,6 +88,7 @@ final class SleepNightRecord {
         self.sleepLatencyMinutes = features.sleepLatencyMinutes
         self.avgHeartRate = features.avgHeartRate
         self.minHeartRate = features.minHeartRate
+        self.restingHeartRate = features.restingHeartRate
         self.avgHRV = features.avgHRV
         self.avgRespiratoryRate = features.avgRespiratoryRate
         self.avgSpO2 = features.avgSpO2
@@ -117,6 +122,10 @@ final class SleepNightRecord {
         sleepLatencyMinutes = features.sleepLatencyMinutes
         avgHeartRate = features.avgHeartRate
         minHeartRate = features.minHeartRate
+        // Preserve a previously-fetched RHR rather than clearing it: HealthKit
+        // posts the day's RHR sample on its own schedule, which may not have
+        // happened yet the moment a re-sync re-extracts this night.
+        if let value = features.restingHeartRate { restingHeartRate = value }
         avgHRV = features.avgHRV
         avgRespiratoryRate = features.avgRespiratoryRate
         avgSpO2 = features.avgSpO2
@@ -166,6 +175,7 @@ extension SleepNightRecord {
             sleepLatencyMinutes: sleepLatencyMinutes,
             avgHeartRate: avgHeartRate,
             minHeartRate: minHeartRate,
+            restingHeartRate: restingHeartRate,
             avgHRV: avgHRV,
             avgRespiratoryRate: avgRespiratoryRate,
             avgSpO2: avgSpO2,
