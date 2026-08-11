@@ -204,7 +204,7 @@ enum AchievementEngine {
 
         // Debt cleared. Measured as nights where the rolling 14-day shortfall
         // sat under half an hour — "no debt" is a range, not a point.
-        let clearNights = sorted.filter { abs($0.sleepDebtMinutes14Day ?? 999) <= 30 }.count
+        let clearNights = sorted.filter { abs($0.sleepDebtMinutes ?? 999) <= 30 }.count
         out.append(Achievement(
             id: "debt-clear",
             title: "Paid off",

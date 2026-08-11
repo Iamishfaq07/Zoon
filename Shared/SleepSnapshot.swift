@@ -78,7 +78,7 @@ extension SleepSnapshot {
         self.score = score.value
         self.scoreBand = score.band.label
         self.timeAsleepMinutes = features.timeAsleepMinutes
-        self.sleepDebtMinutes = features.sleepDebtMinutes14Day ?? 0
+        self.sleepDebtMinutes = features.sleepDebtMinutes ?? 0
         self.goalMinutes = goalMinutes
         self.insightSummary = insight.summary
         self.generatedAt = .now

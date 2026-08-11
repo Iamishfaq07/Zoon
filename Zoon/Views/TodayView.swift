@@ -62,7 +62,7 @@ struct TodayView: View {
             ringsCard(context).entrance(3)
             EnergyForecastCard(forecast: EnergyForecast.compute(
                 wakeTime: context.night.wakeTime,
-                sleepDebtMinutes: context.night.sleepDebtMinutes14Day ?? 0,
+                sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
                 windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
             )).entrance(4)
             BodyBatteryCard(battery: context.bodyBattery).entrance(4)

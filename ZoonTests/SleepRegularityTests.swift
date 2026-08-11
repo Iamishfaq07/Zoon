@@ -81,7 +81,7 @@ private extension SleepNightFeatures {
             wristTempDeltaC: wristTempDeltaC,
             breathingDisturbances: breathingDisturbances,
             hrv7DayAvg: hrv7DayAvg,
-            sleepDebtMinutes14Day: sleepDebtMinutes14Day,
+            sleepDebtMinutes: sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: sourceName,

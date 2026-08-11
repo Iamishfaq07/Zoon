@@ -661,7 +661,7 @@ final class SleepDataCoordinator {
                 efficiency: night.sleepEfficiencyPercent,
                 wakeCount: Double(night.wakeCount),
                 isWeekend: weekday == 1 || weekday == 7,
-                sleepDebtMinutes: night.sleepDebtMinutes14Day,
+                sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
             )
         }

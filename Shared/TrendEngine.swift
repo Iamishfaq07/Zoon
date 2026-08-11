@@ -81,7 +81,7 @@ enum TrendEngine {
             case .hrv: night.avgHRV
             case .restingHeartRate: night.restingHeartRate
             case .efficiency: night.sleepEfficiencyPercent
-            case .sleepDebt: night.sleepDebtMinutes14Day
+            case .sleepDebt: night.sleepDebtMinutes
             }
         }
     }

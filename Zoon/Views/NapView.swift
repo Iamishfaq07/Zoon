@@ -17,7 +17,7 @@ struct NapView: View {
     private var recommendation: NapCoach.Recommendation {
         NapCoach.recommend(
             now: now,
-            debtMinutes: coordinator.state.context?.night.sleepDebtMinutes14Day ?? 0,
+            debtMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
             plannedBedtime: coordinator.state.context?.targetBedtime(now: now),
             napMinutesToday: naps.minutes(on: now)
         )

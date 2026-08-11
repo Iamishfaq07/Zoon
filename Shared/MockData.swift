@@ -234,7 +234,7 @@ enum MockData {
             avgSpO2: spo2,
             wristTempDeltaC: tempDelta,
             hrv7DayAvg: hrv7,
-            sleepDebtMinutes14Day: debt,
+            sleepDebtMinutes: debt,
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercise,
             sourceName: "Mock Data",
@@ -259,7 +259,7 @@ private extension SleepNightFeatures {
             avgHeartRate: avgHeartRate, minHeartRate: minHeartRate, avgHRV: avgHRV,
             avgRespiratoryRate: avgRespiratoryRate, avgSpO2: avgSpO2,
             wristTempDeltaC: wristTempDeltaC,
-            hrv7DayAvg: hrv7DayAvg, sleepDebtMinutes14Day: sleepDebtMinutes14Day,
+            hrv7DayAvg: hrv7DayAvg, sleepDebtMinutes: sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: "iPhone", isMock: true

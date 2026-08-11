@@ -122,7 +122,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// Cumulative shortfall against the user's sleep goal over 14 days, in
     /// minutes. Positive = under-slept. Never negative — banking extra sleep
     /// does not create credit.
-    let sleepDebtMinutes14Day: Double?
+    let sleepDebtMinutes: Double?
     /// Hours between the end of the last workout and `bedtime`.
     /// `nil` if no workout that day.
     let lastWorkoutHoursBeforeBed: Double?
@@ -214,7 +214,7 @@ extension SleepNightFeatures {
             avgRespiratoryRate: avgRespiratoryRate?.rounded(to: 1),
             avgSpo2Pct: avgSpO2?.rounded(to: 1),
             wristTempDeltaC: wristTempDeltaC?.rounded(to: 2),
-            sleepDebtMin14day: sleepDebtMinutes14Day?.rounded(to: 0),
+            sleepDebtMin14day: sleepDebtMinutes?.rounded(to: 0),
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed?.rounded(to: 1),
             exerciseMinPreviousDay: exerciseMinutesPreviousDay?.rounded(to: 0)
         )

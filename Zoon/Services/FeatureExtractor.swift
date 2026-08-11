@@ -116,7 +116,7 @@ struct FeatureExtractor {
             wristTempDeltaC: tempDelta,
             breathingDisturbances: breathingPercent,
             hrv7DayAvg: baseline?.hrv7DayAvg,
-            sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
+            sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercisePrevious,
             sourceName: session.sourceName,
@@ -198,7 +198,7 @@ struct RollingBaseline: Sendable {
     /// Mean overnight HRV, previous 7 nights, excluding tonight.
     let hrv7DayAvg: Double?
     /// Cumulative shortfall vs the sleep goal over 14 days, minutes. Never < 0.
-    let sleepDebtMinutes14Day: Double?
+    let sleepDebtMinutes: Double?
     /// Mean deep-sleep minutes over the previous 7 nights.
     let deep7DayAvg: Double?
     /// Mean sleep duration over the previous 7 nights.
@@ -222,7 +222,7 @@ struct RollingBaseline: Sendable {
 
     static let empty = RollingBaseline(
         hrv7DayAvg: nil,
-        sleepDebtMinutes14Day: nil,
+        sleepDebtMinutes: nil,
         deep7DayAvg: nil,
         duration7DayAvg: nil,
         efficiency7DayAvg: nil,

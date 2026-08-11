@@ -187,7 +187,7 @@ extension SleepNightRecord {
             wristTempDeltaC: wristTempDelta(against: baseline),
             breathingDisturbances: breathingDisturbances,
             hrv7DayAvg: baseline?.hrv7DayAvg,
-            sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
+            sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: sourceName,

@@ -58,7 +58,7 @@ enum Fixture {
             wristTempDeltaC: wristTempDeltaC,
             breathingDisturbances: breathingDisturbances,
             hrv7DayAvg: avgHRV,
-            sleepDebtMinutes14Day: 0,
+            sleepDebtMinutes: 0,
             lastWorkoutHoursBeforeBed: nil,
             exerciseMinutesPreviousDay: nil,
             sourceName: "Fixture",

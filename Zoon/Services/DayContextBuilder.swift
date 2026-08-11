@@ -58,7 +58,7 @@ struct DayContextBuilder {
         let learnedNeed = LearnedSleepNeed.compute(goalMinutes: inputs.goalMinutes, history: history)
         let sleepNeed = SleepNeed.compute(
             goalMinutes: learnedNeed.minutes,
-            outstandingDebtMinutes: night.sleepDebtMinutes14Day ?? 0,
+            outstandingDebtMinutes: night.sleepDebtMinutes ?? 0,
             yesterdayStrain: inputs.yesterdayStrain.value,
             napMinutes: inputs.napMinutes,
             achievedMinutes: night.timeAsleepMinutes

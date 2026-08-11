@@ -10,7 +10,7 @@ enum AppMockData {
 
     /// Rolling baseline matching `MockData.goodNight`.
     static let baseline = RollingBaseline(
-        hrv7DayAvg: 61, sleepDebtMinutes14Day: 95, deep7DayAvg: 74,
+        hrv7DayAvg: 61, sleepDebtMinutes: 95, deep7DayAvg: 74,
         duration7DayAvg: 421, efficiency7DayAvg: 89, minHeartRate7DayAvg: 52,
         wristTempBaselineC: 35.1, bedtimeConsistencyMinutes: 38, sampleCount: 7
     )
@@ -81,7 +81,7 @@ enum AppMockData {
                 efficiency: night.sleepEfficiencyPercent * (drank ? 0.94 : 1.0),
                 wakeCount: Double(night.wakeCount) * (drank ? 1.6 : 1.0),
                 isWeekend: weekday == 1 || weekday == 7,
-                sleepDebtMinutes: night.sleepDebtMinutes14Day,
+                sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
             )
         }
