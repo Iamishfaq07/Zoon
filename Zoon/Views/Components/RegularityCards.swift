@@ -171,13 +171,13 @@ struct HealthRadarCard: View {
                     // Naming it plainly here is cheaper and more honest than
                     // building a second model that would just restate this one.
                     SectionHeader(
-                        title: "Health Radar",
+                        title: "Body Signals",
                         subtitle: radar.severity == .notable ? "Possible illness or heavy strain signal" : nil,
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                     Spacer()
                     MetricInfoButton(
-                        title: "Health Radar",
+                        title: "Body Signals",
                         symbol: "dot.radiowaves.left.and.right",
                         tint: tint,
                         explanation: [

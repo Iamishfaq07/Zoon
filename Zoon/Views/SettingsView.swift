@@ -192,7 +192,7 @@ struct SettingsView: View {
                 dates specifically — a separate permission from everything else Zoon \
                 reads. Useful because a normal luteal-phase shift in HRV and resting \
                 heart rate can otherwise look identical to the illness-drift pattern \
-                Health Radar watches for.
+                Body Signals watches for.
                 """)
         }
     }

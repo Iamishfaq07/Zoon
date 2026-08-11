@@ -45,7 +45,7 @@ struct CycleCorrelationCard: View {
                 }
             }
 
-            Text("A dip in the luteal phase is common and not the same signal Health Radar watches for — that's exactly why this exists.")
+            Text("A dip in the luteal phase is common and not the same signal Body Signals watches for — that's exactly why this exists.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
