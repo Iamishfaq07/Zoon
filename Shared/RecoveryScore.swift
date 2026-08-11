@@ -215,8 +215,12 @@ extension RecoveryScore {
     }
 
     /// The single strongest driver, for the "why" line under the ring.
+    /// Unavailable components default their `normalized` to 0 internally
+    /// (irrelevant once excluded from scoring, since `effectiveWeight` is
+    /// also 0) -- filtered out here so a missing signal can never be picked
+    /// as "the weakest driver" ahead of a real, measured low one.
     var primaryDriver: Component? {
-        components.min { $0.normalized < $1.normalized }
+        components.filter(\.isAvailable).min { $0.normalized < $1.normalized }
     }
 }
 

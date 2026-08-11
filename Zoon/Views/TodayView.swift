@@ -382,7 +382,7 @@ struct RecoveryBreakdownCard: View {
                     tint: Theme.recoveryColor(Double(recovery.percent)),
                     explanation: [
                         "Recovery blends several signals -- HRV, resting heart rate, and sleep performance among them -- each compared against your own baseline rather than a fixed target.",
-                        "The bars above show how much each input pulled the score up or down. A component with no baseline yet contributes less weight until it has one."
+                        "The bars above show how much each input pulled the score up or down. A signal with nothing to measure tonight (no reading, or no baseline yet) is left out entirely and its weight redistributes among the rest -- it's never scored as average or assumed fine."
                     ]
                 )
             }
@@ -391,25 +391,34 @@ struct RecoveryBreakdownCard: View {
                 HStack(spacing: 10) {
                     Text(component.label)
                         .font(Theme.label(12, weight: .medium))
+                        .foregroundStyle(component.isAvailable ? .primary : .tertiary)
                         .frame(width: 82, alignment: .leading)
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.08))
-                            Capsule()
-                                .fill(Theme.recoveryColor(component.normalized * 100))
-                                .frame(width: geo.size.width * min(1, max(0.02, component.normalized)))
+                    if component.isAvailable {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.white.opacity(0.08))
+                                Capsule()
+                                    .fill(Theme.recoveryColor(component.normalized * 100))
+                                    .frame(width: geo.size.width * min(1, max(0.02, component.normalized)))
+                            }
                         }
+                        .frame(height: 7)
+                    } else {
+                        // Not a zero-width or zero-value bar: that would read
+                        // as "scored badly" rather than "wasn't measured."
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .frame(height: 7)
                     }
-                    .frame(height: 7)
 
-                    Text(component.detail)
+                    Text(component.isAvailable ? component.detail : "Not available")
                         .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
-                        .frame(width: 62, alignment: .trailing)
+                        .frame(width: 74, alignment: .trailing)
 
-                    if let deviation = component.deviationPercent {
+                    if let deviation = component.deviationPercent, component.isAvailable {
                         Text(String(format: "%+.0f%%", deviation))
                             .font(Theme.text(10, weight: .semibold))
                             .foregroundStyle(deviation >= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
@@ -418,6 +427,14 @@ struct RecoveryBreakdownCard: View {
                         Spacer().frame(width: 40)
                     }
                 }
+            }
+
+            if recovery.dataCompletenessPercent < 100 {
+                Divider().overlay(Theme.cardStroke)
+                Text("Based on \(recovery.availableComponentCount) of \(recovery.components.count) signals tonight (\(recovery.dataCompletenessPercent)% of the full model). Missing signals were excluded, not assumed average.")
+                    .font(Theme.text(10))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .glassCard()

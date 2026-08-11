@@ -84,4 +84,18 @@ final class RecoveryScoreTests: XCTestCase {
         let hrv = score.components.first { $0.label == "HRV" }!
         XCTAssertFalse(hrv.isAvailable)
     }
+
+    /// `primaryDriver` defaults an unavailable component's `normalized` to 0
+    /// internally (harmless for scoring, since `effectiveWeight` is also 0 --
+    /// but `primaryDriver` picks the *lowest* `normalized`, so an unfiltered
+    /// version would always pick the unavailable component over a real,
+    /// merely-low one).
+    func testPrimaryDriverNeverPicksAnUnavailableComponent() {
+        // Sleep performance is mediocre (a real, measured low point) but
+        // every physiological signal is missing outright.
+        let night = Fixture.night(avgHRV: nil, restingHeartRate: nil, avgRespiratoryRate: nil)
+        let score = RecoveryScore.compute(features: night, baseline: fullBaseline, sleepPerformance: 60)
+
+        XCTAssertEqual(score.primaryDriver?.label, "Sleep")
+    }
 }
