@@ -269,12 +269,32 @@ final class SleepDataCoordinator {
         let sessions = sessionBuilder.buildSessions(from: samples)
         guard !sessions.isEmpty else { return }
 
+        // `SleepNightRecord` is one row per calendar day (see its own doc
+        // comment), keyed by the date the session ended -- so two sessions
+        // that both end on the same day, a main sleep and a same-day nap most
+        // often, both want the same row. `SleepSessionBuilder` no longer
+        // discards short sessions as aggressively as it used to (see its
+        // `minimumSessionDuration` comment), which means a real nap now
+        // survives to reach here far more often. Upserting in chronological
+        // order would let whichever session merely happened to be *processed
+        // last* silently overwrite the other -- typically the nap
+        // clobbering the main sleep, since naps tend to fall later in the
+        // day. Keeping only the longest session per date is a stopgap for
+        // that, not the full multi-episode-per-day model (naps still aren't
+        // recorded anywhere once discarded here); it just guarantees the
+        // one thing that would otherwise be silently wrong: a full night's
+        // sleep can never be replaced by a shorter same-day nap.
+        let longestPerDate = Dictionary(grouping: sessions) { Calendar.current.startOfDay(for: $0.end) }
+            .compactMapValues { $0.max { $0.timeInBed < $1.timeInBed } }
+            .values
+            .sorted { $0.start < $1.start }
+
         let extractor = FeatureExtractor(healthKit: healthKit)
         let goal = preferences.sleepGoalMinutes
 
         // Oldest first: each night's baseline is drawn from the nights before
         // it, so they must land in the store in chronological order.
-        for session in sessions {
+        for session in longestPerDate {
             let nightDate = Calendar.current.startOfDay(for: session.end)
             let baseline = store.baseline(for: nightDate, goalMinutes: goal)
             let result = await extractor.extract(from: session, baseline: baseline)

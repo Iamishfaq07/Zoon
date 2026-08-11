@@ -92,6 +92,7 @@
 		3E6C06A884263EFC17721347 /* BreathingHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA66C12A65CB79C420569CF /* BreathingHealth.swift */; };
 		402487B4962F61C60243F542 /* NapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1DB3776628821BCA9A8964 /* NapStore.swift */; };
 		408D22C1B528FB25B057BC19 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
+		432F30A14EEFE12881030E12 /* SleepSessionBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02032F4DEAB22D8D55BEC054 /* SleepSessionBuilderTests.swift */; };
 		450E281C5214BB9D72AB6AB7 /* SnoreCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 535295682035DA5DB54FA632 /* SnoreCheckView.swift */; };
 		45DF1C4A781FBD1D86965CF1 /* SleepRegularityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22352B1B6ACE1C047925BE1 /* SleepRegularityTests.swift */; };
 		46DA33AE7B59FC64C1022665 /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
@@ -203,6 +204,7 @@
 		D2A02A8E3F206303EB92549B /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		D397403DABFEACAA41DB8475 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
 		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
+		D82BBBFA0333215822EA5D08 /* SleepSessionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */; };
 		D92C20AD9E19D6322BE37D32 /* FirstNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0270263CE62B9C1BB2D468 /* FirstNightCard.swift */; };
 		DC2C58193F5F943D820FC820 /* SleepScoreWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */; };
 		DD223371A0B29FBE235BBC6B /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
@@ -319,6 +321,7 @@
 /* Begin PBXFileReference section */
 		0056BFA9411ACE233F7DC0D1 /* ChartInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChartInteraction.swift"; sourceTree = "<group>"; };
 		010D79DAE1D4D7B54F7147DA /* SleepStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStage.swift"; sourceTree = "<group>"; };
+		02032F4DEAB22D8D55BEC054 /* SleepSessionBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSessionBuilderTests.swift"; sourceTree = "<group>"; };
 		02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWidgetBundle.swift"; sourceTree = "<group>"; };
 		03508B538C62AC65FD8AD914 /* HealthRadar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadar.swift"; sourceTree = "<group>"; };
 		03944FB4BD4F601B7757F914 /* ZoonWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZoonWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -631,6 +634,7 @@
 				728522C938EB304A352B98B0,
 				609825EF9FEE9342ACE3B4C4,
 				F22352B1B6ACE1C047925BE1,
+				02032F4DEAB22D8D55BEC054,
 				9F6E6954AE9E93E1873800C5,
 			);
 			path = ZoonTests;
@@ -1120,6 +1124,7 @@
 				8B838995599BC2BFFAC52ECC,
 				6198D747B24D464F27331AFB,
 				45DF1C4A781FBD1D86965CF1,
+				432F30A14EEFE12881030E12,
 				B95CF23D3F31346556325772,
 				E1BD2C0D78C37991446153DF,
 				E4383511D0B87CB1BBE51C0F,
@@ -1151,6 +1156,7 @@
 				80FDDCD8D8006B95DAA56E4D,
 				4B92794B1F3F85EEF0D2E7CE,
 				A1E3EE2060208B1676A63154,
+				D82BBBFA0333215822EA5D08,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

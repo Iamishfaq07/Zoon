@@ -45,6 +45,11 @@ EXT_SRC = swift_files("ZoonWidget")
 WATCH_SRC = swift_files("ZoonWatch")
 WATCH_EXT_SRC = swift_files("ZoonWatchWidget")
 TESTS_SRC = swift_files("ZoonTests")
+# Not in Shared/ (it imports HealthKit), but it's pure logic over
+# HKCategorySample -- constructible off-device with no store access needed --
+# so it's worth compiling into the test target too rather than leaving its
+# source-canonicalization and session-clustering behavior untested.
+TESTS_EXTRA_APP_FILES = ["Zoon/Services/SleepSessionBuilder.swift"]
 
 APP_ASSETS = "Zoon/Assets.xcassets"
 EXT_ASSETS = "ZoonWidget/Assets.xcassets"
@@ -137,7 +142,7 @@ watch_ext_sources = [build_file(p, WATCH_EXT) for p in WATCH_EXT_SRC + SHARED]
 # logic-only test bundle with no dependency on (or host-app relationship to)
 # Zoon itself, so it builds and runs fast and can never accidentally reach
 # HealthKit or SwiftData.
-tests_sources = [build_file(p, TESTS) for p in TESTS_SRC + SHARED]
+tests_sources = [build_file(p, TESTS) for p in TESTS_SRC + SHARED + TESTS_EXTRA_APP_FILES]
 
 
 def resource_file(path, target):
