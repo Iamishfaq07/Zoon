@@ -44,7 +44,7 @@ struct FirstNightCard: View {
         VStack(spacing: 3) {
             Image(systemName: available ? "checkmark.circle.fill" : "circle.dashed")
                 .font(Theme.text(14))
-                .foregroundStyle(available ? Theme.Metric.recoveryHigh : .tertiary)
+                .foregroundStyle(available ? Theme.Metric.recoveryHigh : .secondary)
             Text(label)
                 .font(Theme.text(9))
                 .foregroundStyle(.secondary)

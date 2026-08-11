@@ -170,7 +170,7 @@ struct ArticleDetailView: View {
     private var hero: some View {
         ZStack(alignment: .bottomLeading) {
             LinearGradient(
-                colors: [article.category.tint.opacity(0.65), Theme.background],
+                colors: [article.category.tint.opacity(0.65), Color(red: 0.024, green: 0.031, blue: 0.078)],
                 startPoint: .top, endPoint: .bottom
             )
             .frame(height: 220)

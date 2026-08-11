@@ -22,7 +22,7 @@ struct PastNightDetailView: View {
             .padding(.bottom, 28)
         }
         .nightBackground()
-        .navigationTitle(night.date, format: .dateTime.weekday(.wide).month().day())
+        .navigationTitle(night.date.formatted(.dateTime.weekday(.wide).month().day()))
         .navigationBarTitleDisplayMode(.inline)
     }
 

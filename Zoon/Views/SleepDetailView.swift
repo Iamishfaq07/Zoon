@@ -168,7 +168,7 @@ struct SleepDetailView: View {
                     Spacer()
                     Image(systemName: source.available ? "checkmark.circle.fill" : "minus.circle")
                         .font(Theme.text(11))
-                        .foregroundStyle(source.available ? Theme.Metric.recoveryHigh : .tertiary)
+                        .foregroundStyle(source.available ? Theme.Metric.recoveryHigh : .secondary)
                 }
             }
             Text("Missing data is never treated as zero -- a metric with nothing available here is simply left out of tonight's score and comparisons.")
