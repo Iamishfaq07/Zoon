@@ -1,0 +1,25 @@
+import Foundation
+
+/// Shared backstop against diagnostic language reaching the screen from any
+/// on-device model output.
+///
+/// `FoundationModelInsightEngine` and `CoachChat` both generate free text
+/// from the same on-device model, and both prompt it never to diagnose or
+/// name a condition. A prompt instruction is a request the model may or may
+/// not honour every single turn, not a guarantee -- this is the structural
+/// check that runs after generation regardless of what the model actually
+/// produced, so a lapse in one bad response can't reach a screen where it
+/// would read as a medical claim this app has no business making.
+enum DiagnosticLanguageGuard {
+
+    /// Diagnostic language this app must never produce.
+    static let bannedTerms = [
+        "apnea", "apnoea", "insomnia", "narcolepsy", "diagnos",
+        "disorder", "syndrome", "disease", "you should see a doctor"
+    ]
+
+    static func containsBannedLanguage(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        return bannedTerms.contains { lowered.contains($0) }
+    }
+}
