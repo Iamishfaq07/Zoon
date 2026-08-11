@@ -99,7 +99,36 @@ struct ZoonShortcuts: AppShortcutsProvider {
 extension BehaviorTag: AppEnum {
     static var typeDisplayRepresentation: TypeDisplayRepresentation { "Sleep Habit" }
 
+    // The AppIntents metadata processor statically analyses this property at
+    // build time to generate Siri's vocabulary -- it can't evaluate a
+    // `Dictionary(uniqueKeysWithValues: allCases.map { ... })` the way the
+    // compiler can, only a literal dictionary. Duplicates the text `.label`
+    // already has, but there's no way around it for this one property.
     static var caseDisplayRepresentations: [BehaviorTag: DisplayRepresentation] {
-        Dictionary(uniqueKeysWithValues: allCases.map { ($0, DisplayRepresentation(title: "\($0.label)")) })
+        [
+            .alcohol: DisplayRepresentation(title: "Alcohol"),
+            .caffeineLate: DisplayRepresentation(title: "Caffeine after 4pm"),
+            .nicotine: DisplayRepresentation(title: "Nicotine"),
+            .cannabis: DisplayRepresentation(title: "Cannabis"),
+            .sleepAid: DisplayRepresentation(title: "Sleep aid"),
+            .magnesium: DisplayRepresentation(title: "Magnesium"),
+            .lateMeal: DisplayRepresentation(title: "Ate late"),
+            .largeDinner: DisplayRepresentation(title: "Large dinner"),
+            .fasted: DisplayRepresentation(title: "Fasted evening"),
+            .hydrated: DisplayRepresentation(title: "Well hydrated"),
+            .hardTraining: DisplayRepresentation(title: "Hard training"),
+            .lateTraining: DisplayRepresentation(title: "Trained late"),
+            .restDay: DisplayRepresentation(title: "Rest day"),
+            .sauna: DisplayRepresentation(title: "Sauna"),
+            .coldPlunge: DisplayRepresentation(title: "Cold plunge"),
+            .stretching: DisplayRepresentation(title: "Stretched"),
+            .screenBeforeBed: DisplayRepresentation(title: "Screens in bed"),
+            .readBeforeBed: DisplayRepresentation(title: "Read before bed"),
+            .stressfulDay: DisplayRepresentation(title: "Stressful day"),
+            .travelled: DisplayRepresentation(title: "Travelled"),
+            .sharedBed: DisplayRepresentation(title: "Shared bed"),
+            .coolRoom: DisplayRepresentation(title: "Cool room"),
+            .sick: DisplayRepresentation(title: "Feeling unwell")
+        ]
     }
 }
