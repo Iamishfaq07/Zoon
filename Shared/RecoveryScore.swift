@@ -235,10 +235,60 @@ struct RecoveryBaseline: Codable, Hashable, Sendable {
     let restingHeartRate: Double?
     let respiratoryRate: Double?
     let wristTemperature: Double?
+    /// Total nights in the window this was built from -- *not* the number of
+    /// nights that actually carried any given metric. Each metric's own
+    /// availability is carried by whether its value is nil (see
+    /// `from(nights:)`); this count only gates the overall "still building a
+    /// baseline" flag.
     let nightCount: Int
 
     static let empty = RecoveryBaseline(
         hrv: nil, restingHeartRate: nil, respiratoryRate: nil,
         wristTemperature: nil, nightCount: 0
     )
+
+    /// Samples a single metric needs before its mean is worth comparing
+    /// against.
+    ///
+    /// Enforced per metric rather than across the window as a whole, because
+    /// a window is only uniformly populated in theory. Wrist temperature
+    /// needs a Series 8 or later, respiratory rate and blood oxygen need the
+    /// feature enabled and a night wearing the watch, and true resting heart
+    /// rate only appears once HealthKit has computed it for that day -- so
+    /// "30 nights of history" routinely means 30 nights of duration, 28 of
+    /// heart rate, and 2 of temperature. Averaging those 2 and calling it a
+    /// 30-night baseline is the bug this guards: the comparison looks just
+    /// as authoritative as a well-sampled one, and nothing downstream can
+    /// tell the difference.
+    static let minimumSamplesPerMetric = 3
+
+    /// Builds a baseline from a window of nights, requiring every metric to
+    /// clear `minimumSamplesPerMetric` on its own before it contributes.
+    ///
+    /// A metric that doesn't clear it comes back nil, which
+    /// `RecoveryScore.compute` already treats as unavailable -- excluded from
+    /// the score and renormalized around, rather than compared against a mean
+    /// of one or two readings.
+    ///
+    /// Both callers go through here so the two can't drift apart; they have
+    /// before, with `rebuildRecoveryHistory` briefly sourcing resting heart
+    /// rate differently from the live path and silently scoring history
+    /// against a baseline the live screen never used.
+    static func from(nights: [SleepNightFeatures]) -> RecoveryBaseline {
+        func gatedMean(_ values: [Double]) -> Double? {
+            guard values.count >= minimumSamplesPerMetric else { return nil }
+            return values.reduce(0, +) / Double(values.count)
+        }
+
+        return RecoveryBaseline(
+            hrv: gatedMean(nights.compactMap(\.avgHRV)),
+            // True RHR only -- never minHeartRate. See
+            // SleepNightFeatures.restingHeartRate for why mixing the two
+            // into one baseline is worse than excluding the older nights.
+            restingHeartRate: gatedMean(nights.compactMap(\.restingHeartRate)),
+            respiratoryRate: gatedMean(nights.compactMap(\.avgRespiratoryRate)),
+            wristTemperature: gatedMean(nights.compactMap(\.wristTempDeltaC)),
+            nightCount: nights.count
+        )
+    }
 }

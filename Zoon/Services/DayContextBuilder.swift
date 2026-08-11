@@ -53,18 +53,10 @@ struct DayContextBuilder {
 
         // --- Baselines ----------------------------------------------------
         let window = Array(history.suffix(Self.recoveryBaselineWindow))
-        let recoveryBaseline = RecoveryBaseline(
-            hrv: mean(window.compactMap(\.avgHRV)),
-            // True RHR only -- see SleepNightFeatures.restingHeartRate. No
-            // fallback to minHeartRate here: mixing the two into one baseline
-            // would make a genuine RHR reading being compared against a
-            // baseline partly built from noisy sleep-window minimums, which
-            // is worse than just excluding nights that predate this field.
-            restingHeartRate: mean(window.compactMap(\.restingHeartRate)),
-            respiratoryRate: mean(window.compactMap(\.avgRespiratoryRate)),
-            wristTemperature: mean(window.compactMap(\.wristTempDeltaC)),
-            nightCount: window.count
-        )
+        // Per-metric sample gating lives in the factory -- see
+        // RecoveryBaseline.minimumSamplesPerMetric for why a shared
+        // window-wide night count isn't good enough.
+        let recoveryBaseline = RecoveryBaseline.from(nights: window)
 
         // --- Sleep need ---------------------------------------------------
         // The baseline SleepNeed builds on top of is the learned figure once
@@ -202,10 +194,5 @@ struct DayContextBuilder {
     static func estimatedMaxHeartRate(age: Int?) -> Double {
         guard let age, age > 0, age < 120 else { return 190 }
         return 208 - 0.7 * Double(age)
-    }
-
-    private func mean(_ values: [Double]) -> Double? {
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Double(values.count)
     }
 }

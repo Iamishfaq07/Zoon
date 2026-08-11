@@ -460,17 +460,10 @@ final class SleepDataCoordinator {
             let prior = Array(nights[..<index].suffix(DayContextBuilder.recoveryBaselineWindow))
             guard prior.count >= RecoveryScore.minimumBaselineNights else { continue }
 
-            let baseline = RecoveryBaseline(
-                hrv: mean(prior.compactMap(\.avgHRV)),
-                // Must match RecoveryScore's own per-night source (true RHR,
-                // no minHeartRate fallback) — a baseline built from one
-                // concept and scored against another silently corrupts every
-                // deviation percentage.
-                restingHeartRate: mean(prior.compactMap(\.restingHeartRate)),
-                respiratoryRate: mean(prior.compactMap(\.avgRespiratoryRate)),
-                wristTemperature: mean(prior.compactMap(\.wristTempDeltaC)),
-                nightCount: prior.count
-            )
+            // Same factory the live path uses, so history can't be scored
+            // against a differently-built baseline than the Today screen —
+            // which has happened here before.
+            let baseline = RecoveryBaseline.from(nights: prior)
             let performance = min(100, night.timeAsleepMinutes / max(goal, 1) * 100)
             result[night.date] = RecoveryScore.compute(
                 features: night, baseline: baseline, sleepPerformance: performance
@@ -721,10 +714,5 @@ final class SleepDataCoordinator {
             goalMinutes: preferences.sleepGoalMinutes,
             consistencyMinutes: state.context?.chronotype.consistencyMinutes
         )
-    }
-
-    private func mean(_ values: [Double]) -> Double? {
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Double(values.count)
     }
 }

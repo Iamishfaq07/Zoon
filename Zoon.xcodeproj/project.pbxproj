@@ -162,6 +162,7 @@
 		8B7038ED93B97636A1357706 /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		8B838995599BC2BFFAC52ECC /* RecoveryScoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728522C938EB304A352B98B0 /* RecoveryScoreTests.swift */; };
 		8D67B569AA15FAD78EC860D7 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB86D405417CEEDF41C16199 /* Achievement.swift */; };
+		8D97CC1A03164A983BD15302 /* RecoveryBaselineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE191264FB836AC4CAD15978 /* RecoveryBaselineTests.swift */; };
 		8F858888E8AD3A81C63D3851 /* ZoonWatchComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F357D0A5A2FCA6CE564D13 /* ZoonWatchComplications.swift */; };
 		90CA6DAF5F2D035F8E30F5F6 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
 		9295A28E94455EEA676C8A61 /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
@@ -464,6 +465,7 @@
 		CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreWidget.swift"; sourceTree = "<group>"; };
 		CC432720166E6624FE4B4078 /* BreathingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingView.swift"; sourceTree = "<group>"; };
 		CD69CD9C06439C33415CFE06 /* SETUP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SETUP.md"; sourceTree = "<group>"; };
+		CE191264FB836AC4CAD15978 /* RecoveryBaselineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryBaselineTests.swift"; sourceTree = "<group>"; };
 		CED7225BE24ECD0414B324C9 /* SnoreStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreStore.swift"; sourceTree = "<group>"; };
 		CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ZoonWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2085D9AC2A441527B854FCA /* SnoreDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreDetector.swift"; sourceTree = "<group>"; };
@@ -668,6 +670,7 @@
 				844B434C335D18DD6B927A95,
 				0E46E316C65A5379A85FC2C3,
 				6D31C7DE63B4080D06AF6341,
+				CE191264FB836AC4CAD15978,
 				728522C938EB304A352B98B0,
 				2F52218C052A9B2F2CFF1E9A,
 				609825EF9FEE9342ACE3B4C4,
@@ -1180,6 +1183,7 @@
 				5C04B1B5AB2945E5CDFB21A5,
 				934405094CF2483A4F0844B8,
 				E13D865C46A69974CCCAA22C,
+				8D97CC1A03164A983BD15302,
 				8B838995599BC2BFFAC52ECC,
 				FC3AC4B8299A511E0964A699,
 				6198D747B24D464F27331AFB,
