@@ -75,3 +75,16 @@ struct OpenNapIntent: AppIntent {
         return .result()
     }
 }
+
+/// Backs the interactive "Log a habit" button on the medium Sleep Score
+/// widget, in addition to the Control Center buttons above.
+struct OpenJournalIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open Journal"
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        DeepLink.pending = .journal
+        return .result()
+    }
+}

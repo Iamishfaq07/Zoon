@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 /// Last night's score and headline.
 ///
@@ -93,6 +94,17 @@ struct SleepScoreWidgetView: View {
                     Text("Sample data")
                         .font(Theme.text(9))
                         .foregroundStyle(.tertiary)
+                } else {
+                    // The one action worth surfacing here: journaling only
+                    // matters if it happens close to when something occurred,
+                    // and "open the app, tap Journal, tap the tab" is exactly
+                    // the friction that makes people skip it.
+                    Button(intent: OpenJournalIntent()) {
+                        Label("Log a habit", systemImage: "square.and.pencil")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.Metric.sleep)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

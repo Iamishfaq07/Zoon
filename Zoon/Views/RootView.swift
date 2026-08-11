@@ -133,6 +133,10 @@ struct RootView: View {
             selection = .more
             morePath = NavigationPath()
             morePath.append(destination)
+        case .journal:
+            // The Journal tab is its own root, not a pushed screen -- nothing
+            // to append to a path.
+            selection = .journal
         }
     }
 }
@@ -278,6 +282,8 @@ struct SleepTabView: View {
                 // Owned by the More tab; unreachable here, but the switch has
                 // to stay exhaustive.
                 case .report, .settings, .badges: EmptyView()
+                // Owned by the Journal tab; never pushed onto this stack.
+                case .journal: EmptyView()
                 }
             }
         }

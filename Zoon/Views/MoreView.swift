@@ -62,6 +62,8 @@ struct MoreView: View {
                 case .badges: AchievementsView()
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck: EmptyView()
+                // Owned by the Journal tab.
+                case .journal: EmptyView()
                 }
             }
             .fileImporter(
