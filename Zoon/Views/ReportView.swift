@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import UIKit
 
 /// The weekly review — Whoop's Performance Assessment, Garmin's Morning Report.
 struct ReportView: View {
@@ -10,6 +11,7 @@ struct ReportView: View {
     private var report: WeeklyReport? { coordinator.weeklyReport() }
 
     @State private var selectedRecoveryDate: Date?
+    @State private var wrappedImageURL: URL?
 
     /// Pushed from the More tab, so it supplies no `NavigationStack` of its
     /// own — the same contract `SettingsView` follows.
@@ -24,6 +26,7 @@ struct ReportView: View {
             VStack(spacing: Theme.stackSpacing) {
                 if let report {
                     header(report)
+                    shareCard(report)
                     highlights(report)
                     averages(report)
                     recoveryChart
@@ -68,6 +71,37 @@ struct ReportView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
+    }
+
+    private func shareCard(_ report: WeeklyReport) -> some View {
+        Button {
+            wrappedImageURL = WeeklyWrappedExporter.export(report)
+        } label: {
+            HStack {
+                Image(systemName: "square.and.arrow.up")
+                Text("Share my week")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .font(Theme.label(14, weight: .semibold))
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                LinearGradient(colors: [Theme.Metric.sleep.opacity(0.25), Theme.Metric.battery.opacity(0.15)], startPoint: .leading, endPoint: .trailing),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: Binding(
+            get: { wrappedImageURL != nil },
+            set: { if !$0 { wrappedImageURL = nil } }
+        )) {
+            if let wrappedImageURL {
+                ActivitySheet(items: [wrappedImageURL])
+            }
+        }
     }
 
     private func highlights(_ report: WeeklyReport) -> some View {
@@ -325,4 +359,18 @@ struct ReportView: View {
 
 #Preview("Report") {
     ReportView().zoonPreviewEnvironment()
+}
+
+/// Thin bridge to the system share sheet -- SwiftUI's `ShareLink` alone would
+/// need the image ready before the button renders, which means a first tap
+/// that silently does nothing while it exports. This presents immediately and
+/// exports into it, so one tap is the whole interaction.
+struct ActivitySheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
