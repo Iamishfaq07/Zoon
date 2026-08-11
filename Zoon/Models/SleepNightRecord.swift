@@ -25,6 +25,8 @@ final class SleepNightRecord {
     var wakeTime: Date
 
     var timeInBedMinutes: Double
+    /// See `SleepNightFeatures.timeInBedIsEstimated`.
+    var timeInBedIsEstimated: Bool = false
     var timeAsleepMinutes: Double
     var sleepEfficiencyPercent: Double
 
@@ -77,6 +79,7 @@ final class SleepNightRecord {
         self.bedtime = features.bedtime
         self.wakeTime = features.wakeTime
         self.timeInBedMinutes = features.timeInBedMinutes
+        self.timeInBedIsEstimated = features.timeInBedIsEstimated
         self.timeAsleepMinutes = features.timeAsleepMinutes
         self.sleepEfficiencyPercent = features.sleepEfficiencyPercent
         self.coreMinutes = features.coreMinutes
@@ -111,6 +114,7 @@ final class SleepNightRecord {
         bedtime = features.bedtime
         wakeTime = features.wakeTime
         timeInBedMinutes = features.timeInBedMinutes
+        timeInBedIsEstimated = features.timeInBedIsEstimated
         timeAsleepMinutes = features.timeAsleepMinutes
         sleepEfficiencyPercent = features.sleepEfficiencyPercent
         coreMinutes = features.coreMinutes
@@ -164,6 +168,7 @@ extension SleepNightRecord {
             bedtime: bedtime,
             wakeTime: wakeTime,
             timeInBedMinutes: timeInBedMinutes,
+            timeInBedIsEstimated: timeInBedIsEstimated,
             timeAsleepMinutes: timeAsleepMinutes,
             sleepEfficiencyPercent: sleepEfficiencyPercent,
             coreMinutes: coreMinutes,

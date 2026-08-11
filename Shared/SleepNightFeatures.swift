@@ -35,6 +35,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     // MARK: - Duration & structure (minutes)
 
     let timeInBedMinutes: Double
+    /// False when the source wrote real HealthKit `inBed` samples, so
+    /// `timeInBedMinutes` is measured. True when it didn't -- Apple Watch
+    /// alone never does -- and `timeInBedMinutes` is standing in for it with
+    /// the asleep/awake session span instead, which omits any time spent
+    /// lying awake before falling asleep or after the final waking, and so
+    /// tends to overstate `sleepEfficiencyPercent` slightly. Declared with a
+    /// default so it stays optional at every existing call site.
+    var timeInBedIsEstimated: Bool = false
     let timeAsleepMinutes: Double
     /// `timeAsleep / timeInBed * 100`. Clamped to 0...100.
     let sleepEfficiencyPercent: Double

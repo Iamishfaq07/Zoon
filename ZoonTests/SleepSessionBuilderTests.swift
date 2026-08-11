@@ -81,6 +81,40 @@ final class SleepSessionBuilderTests: XCTestCase {
         XCTAssertEqual(sessions.count, 1, "A short gap inside one night must not split it into two sessions")
     }
 
+    /// The exact distinction `SleepNightFeatures.timeInBedIsEstimated`
+    /// depends on: Apple Watch alone writes no `inBed` samples, so
+    /// `timeInBed` there is the asleep/awake span standing in for a real
+    /// measurement, not one.
+    func testSessionWithoutInBedSamplesIsNotExplicitInBedData() {
+        let start = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let end = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 7))!
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: [sample(.asleepCore, start: start, end: end)]).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertFalse(session.hasExplicitInBedData)
+    }
+
+    func testSessionWithInBedSamplesIsExplicitInBedData() {
+        let bedStart = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 22, minute: 30))!
+        let onset = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let end = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 7))!
+
+        let samples = [
+            sample(.inBed, start: bedStart, end: end),
+            sample(.asleepCore, start: onset, end: end)
+        ]
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertTrue(session.hasExplicitInBedData)
+    }
+
     func testWakeCountOnlyCountsAwakeningsAfterSleepOnset() {
         let bedStart = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 22))!
         let restlessBeforeSleep = bedStart.addingTimeInterval(10 * 60)

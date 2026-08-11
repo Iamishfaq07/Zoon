@@ -213,7 +213,20 @@ struct SleepSession {
     let segments: [StageSegment]
     let sourceName: String?
 
+    /// Session span from first sample to last -- **not** necessarily a real
+    /// measurement of time in bed. When the source wrote explicit `inBed`
+    /// samples (`hasExplicitInBedData`), this is exactly that. When it
+    /// didn't (Apple Watch alone never does), this is standing in for it:
+    /// the span of asleep/awake activity, which omits any time lying awake
+    /// before the first asleep sample or after the last, so it understates
+    /// true time in bed and correspondingly overstates efficiency. See
+    /// `FeatureExtractor` for where that distinction gets surfaced.
     var timeInBed: TimeInterval { end.timeIntervalSince(start) }
+
+    /// True when the source wrote real `inBed` samples for this session, so
+    /// `timeInBed` is an actual measurement rather than a same-shaped
+    /// approximation from the asleep/awake span.
+    var hasExplicitInBedData: Bool { !inBedIntervals.isEmpty }
 
     func minutes(_ stage: SleepStage) -> Double { stageMinutes[stage] ?? 0 }
 

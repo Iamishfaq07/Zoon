@@ -97,6 +97,7 @@ struct FeatureExtractor {
             bedtime: session.start,
             wakeTime: session.end,
             timeInBedMinutes: inBed,
+            timeInBedIsEstimated: !session.hasExplicitInBedData,
             timeAsleepMinutes: asleep,
             sleepEfficiencyPercent: efficiency,
             coreMinutes: stageMinutes[.core] ?? 0,

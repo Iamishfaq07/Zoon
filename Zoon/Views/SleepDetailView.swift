@@ -106,14 +106,25 @@ struct SleepDetailView: View {
 
             row("Bedtime", context.night.bedtime.formatted(.dateTime.hour().minute()))
             row("Wake time", context.night.wakeTime.formatted(.dateTime.hour().minute()))
-            row("Time in bed", SleepNightFeatures.formatMinutes(context.night.timeInBedMinutes))
+            row(
+                context.night.timeInBedIsEstimated ? "Time in bed (estimated)" : "Time in bed",
+                SleepNightFeatures.formatMinutes(context.night.timeInBedMinutes),
+                definitionTitle: context.night.timeInBedIsEstimated ? "Estimated Time in Bed" : nil,
+                definitionSymbol: "bed.double",
+                definition: context.night.timeInBedIsEstimated ? [
+                    "Your sleep source (most often an Apple Watch on its own) doesn't record when you got into or out of bed, so this is standing in with the span from your first sleep reading to your last -- it leaves out any time spent lying awake before falling asleep or after waking, so it tends to run a little short.",
+                    "An iPhone sleep schedule or a third-party app that logs in-bed time directly would make this exact instead of estimated."
+                ] : nil
+            )
             row(
                 "Efficiency", "\(Int(context.night.sleepEfficiencyPercent))%",
                 definitionTitle: "Sleep Efficiency", definitionSymbol: "gauge.with.dots.needle.67percent",
                 definition: [
                     "The percentage of your time in bed that you actually spent asleep -- total sleep time divided by time in bed.",
                     "Above 85% is generally considered efficient. A lower number usually means either a long time falling asleep or a lot of time awake overnight, both broken out separately below."
-                ]
+                ] + (context.night.timeInBedIsEstimated ? [
+                    "Tonight's time-in-bed figure is estimated rather than measured (see the row above), so this efficiency number is likely a little higher than your true efficiency would read with exact in-bed data."
+                ] : [])
             )
             if let latency = context.night.sleepLatencyMinutes {
                 row(
