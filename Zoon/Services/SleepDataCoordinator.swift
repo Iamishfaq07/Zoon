@@ -682,7 +682,6 @@ final class SleepDataCoordinator {
 
         return recentNights.compactMap { night -> JournalCorrelator.Observation? in
             guard let tags = tagsByDate[night.date] else { return nil }
-            let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
@@ -692,7 +691,15 @@ final class SleepDataCoordinator {
                 remMinutes: night.hasStageBreakdown ? night.remMinutes : nil,
                 efficiency: night.sleepEfficiencyPercent,
                 wakeCount: Double(night.wakeCount),
-                isWeekend: weekday == 1 || weekday == 7,
+                // Same locale-aware check SleepRegularity's social-jetlag
+                // split uses, not a hardcoded weekday==1||weekday==7 -- two
+                // different weekend definitions in the same codebase is its
+                // own bug even before either one gets a real shift-work
+                // setting. Still the documented Sat/Sun simplification, not
+                // a user-configured work schedule (see SleepRegularity's
+                // `midpoints` doc comment); a genuine fix needs a Settings
+                // schedule type, which is feature work, not a bug fix.
+                isWeekend: calendar.isDateInWeekend(night.date),
                 sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
             )
