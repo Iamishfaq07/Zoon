@@ -7,7 +7,9 @@ final class SleepDebtCalculatorTests: XCTestCase {
     }
 
     func testSingleShortNightContributesItsShortfall() {
-        let debt = SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: [420], goalMinutes: 480)
+        guard let debt = SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: [420], goalMinutes: 480) else {
+            return XCTFail("expected a debt value")
+        }
         XCTAssertEqual(debt, 60, accuracy: 0.01)
     }
 
@@ -55,7 +57,9 @@ final class SleepDebtCalculatorTests: XCTestCase {
     func testMissingNightsAreSimplyAbsentNotZeroSleep() {
         // Two consecutive on-goal nights (missing nights are never passed in
         // at all by the caller -- this just confirms on-goal nights add nothing).
-        let debt = SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: [480, 480], goalMinutes: 480)
+        guard let debt = SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: [480, 480], goalMinutes: 480) else {
+            return XCTFail("expected a debt value")
+        }
         XCTAssertEqual(debt, 0, accuracy: 0.01)
     }
 }
