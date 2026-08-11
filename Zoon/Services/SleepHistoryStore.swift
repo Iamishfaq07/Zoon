@@ -76,10 +76,22 @@ final class SleepHistoryStore {
     /// syncs progressively through the morning, and the same night gets richer
     /// over a few hours. Blind inserts would produce duplicates that break the
     /// one-row-per-day assumption the rolling windows rely on.
+    /// - Parameter confirmedAbsent: metrics HealthKit definitively reported no
+    ///   data for, which may therefore clear a stored value. Defaults to empty
+    ///   so callers without query provenance -- an archive import, say -- can
+    ///   never clear a measured value they know nothing about.
     @discardableResult
-    func upsert(_ features: SleepNightFeatures, absoluteWristTempC: Double? = nil) -> SleepNightRecord {
+    func upsert(
+        _ features: SleepNightFeatures,
+        absoluteWristTempC: Double? = nil,
+        confirmedAbsent: Set<VitalMetric> = []
+    ) -> SleepNightRecord {
         if let existing = night(on: features.date) {
-            existing.update(from: features, absoluteWristTempC: absoluteWristTempC)
+            existing.update(
+                from: features,
+                absoluteWristTempC: absoluteWristTempC,
+                confirmedAbsent: confirmedAbsent
+            )
             save()
             return existing
         }

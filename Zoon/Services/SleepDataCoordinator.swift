@@ -317,7 +317,11 @@ final class SleepDataCoordinator {
             let nightDate = Calendar.current.startOfDay(for: session.end)
             let baseline = store.baseline(for: nightDate, goalMinutes: goal)
             let result = await extractor.extract(from: session, baseline: baseline)
-            store.upsert(result.features, absoluteWristTempC: result.absoluteWristTempC)
+            store.upsert(
+                result.features,
+                absoluteWristTempC: result.absoluteWristTempC,
+                confirmedAbsent: result.confirmedAbsent
+            )
         }
 
         // `samples` here is always a full re-fetch of `window` (see call site),

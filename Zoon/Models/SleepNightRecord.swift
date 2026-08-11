@@ -110,7 +110,36 @@ final class SleepNightRecord {
     /// Overwrites measured fields from a fresh extraction, leaving identity and
     /// `createdAt` alone. Used when HealthKit revises a night — which it does,
     /// often, as the watch finishes syncing through the morning.
-    func update(from features: SleepNightFeatures, absoluteWristTempC: Double?) {
+    /// - Parameter confirmedAbsent: metrics HealthKit definitively reported
+    ///   nothing for this night. A metric arriving as `nil` means one of two
+    ///   very different things -- HealthKit answered "nothing recorded", or
+    ///   the query failed -- and only the first justifies clearing a value
+    ///   already on disk. Previously this couldn't be told apart, so each
+    ///   optional field picked one behaviour and lived with the other being
+    ///   wrong: HRV, respiratory rate and SpO2 cleared unconditionally (a
+    ///   transient query failure destroyed a good night's readings), while
+    ///   resting HR, temperature and breathing disturbances preserved
+    ///   unconditionally (a reading deleted in Health lived on in Zoon
+    ///   forever). Both are now correct. See `MeasurementOutcome`.
+    func update(
+        from features: SleepNightFeatures,
+        absoluteWristTempC: Double?,
+        confirmedAbsent: Set<VitalMetric> = []
+    ) {
+        /// Writes a new value, clears on confirmed absence, and otherwise
+        /// leaves whatever is already stored alone.
+        func apply(
+            _ new: Double?,
+            _ metric: VitalMetric,
+            to keyPath: ReferenceWritableKeyPath<SleepNightRecord, Double?>
+        ) {
+            if let new {
+                self[keyPath: keyPath] = new
+            } else if confirmedAbsent.contains(metric) {
+                self[keyPath: keyPath] = nil
+            }
+        }
+
         bedtime = features.bedtime
         wakeTime = features.wakeTime
         timeInBedMinutes = features.timeInBedMinutes
@@ -124,17 +153,14 @@ final class SleepNightRecord {
         awakeMinutes = features.awakeMinutes
         wakeCount = features.wakeCount
         sleepLatencyMinutes = features.sleepLatencyMinutes
-        avgHeartRate = features.avgHeartRate
-        minHeartRate = features.minHeartRate
-        // Preserve a previously-fetched RHR rather than clearing it: HealthKit
-        // posts the day's RHR sample on its own schedule, which may not have
-        // happened yet the moment a re-sync re-extracts this night.
-        if let value = features.restingHeartRate { restingHeartRate = value }
-        avgHRV = features.avgHRV
-        avgRespiratoryRate = features.avgRespiratoryRate
-        avgSpO2 = features.avgSpO2
-        if let absoluteWristTempC { wristTempAbsoluteC = absoluteWristTempC }
-        if let value = features.breathingDisturbances { breathingDisturbances = value }
+        apply(features.avgHeartRate, .averageHeartRate, to: \.avgHeartRate)
+        apply(features.minHeartRate, .minimumHeartRate, to: \.minHeartRate)
+        apply(features.restingHeartRate, .restingHeartRate, to: \.restingHeartRate)
+        apply(features.avgHRV, .hrv, to: \.avgHRV)
+        apply(features.avgRespiratoryRate, .respiratoryRate, to: \.avgRespiratoryRate)
+        apply(features.avgSpO2, .oxygenSaturation, to: \.avgSpO2)
+        apply(absoluteWristTempC, .wristTemperature, to: \.wristTempAbsoluteC)
+        apply(features.breathingDisturbances, .breathingDisturbances, to: \.breathingDisturbances)
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         sourceName = features.sourceName

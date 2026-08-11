@@ -27,6 +27,10 @@ struct FeatureExtractor {
     struct Result {
         let features: SleepNightFeatures
         let absoluteWristTempC: Double?
+        /// Metrics HealthKit definitively reported nothing for, as opposed to
+        /// ones whose query failed. Only these may clear a previously-stored
+        /// value on re-sync -- see `MeasurementOutcome`.
+        let confirmedAbsent: Set<VitalMetric>
     }
 
     /// Builds features for one session.
@@ -40,41 +44,39 @@ struct FeatureExtractor {
         // Vitals are queried concurrently — six sequential round trips to the
         // health store is a visible pause on a cold refresh. Each returns nil on
         // failure: one missing signal should degrade the record, not fail it.
-        async let avgHRTask = optionalAverage(.heartRate, unit: .beatsPerMinute, in: interval)
-        async let minHRTask = optionalMinimum(.heartRate, unit: .beatsPerMinute, in: interval)
+        async let avgHRTask = measuredAverage(.heartRate, unit: .beatsPerMinute, in: interval)
+        async let minHRTask = measuredMinimum(.heartRate, unit: .beatsPerMinute, in: interval)
         // Allowing up to 24h after wake, not just up to `session.end`: Apple
         // computes this once for the calendar day, sometimes later in the day
         // than the moment someone wakes up, so a strict "before wake" cutoff
         // would frequently miss that day's own RHR and silently fall back to
         // the previous day's.
-        async let restingHRTask = optionalMostRecent(
+        async let restingHRTask = measuredMostRecent(
             .restingHeartRate, unit: .beatsPerMinute, onOrBefore: session.end.addingTimeInterval(86_400)
         )
-        async let hrvTask = optionalAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval)
-        async let respiratoryTask = optionalAverage(.respiratoryRate, unit: .breathsPerMinute, in: interval)
-        async let spo2Task = optionalAverage(.oxygenSaturation, unit: .percent(), in: interval)
-        async let wristTempTask = optionalAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: interval)
-        async let breathingTask = optionalAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: interval)
+        async let hrvTask = measuredAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval)
+        async let respiratoryTask = measuredAverage(.respiratoryRate, unit: .breathsPerMinute, in: interval)
+        async let spo2Task = measuredAverage(.oxygenSaturation, unit: .percent(), in: interval)
+        async let wristTempTask = measuredAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: interval)
+        async let breathingTask = measuredAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: interval)
 
-        let avgHR = await avgHRTask
-        let minHR = await minHRTask
-        let restingHR = await restingHRTask
-        let hrv = await hrvTask
-        let respiratory = await respiratoryTask
-        let spo2Fraction = await spo2Task
-        let wristTemp = await wristTempTask
-        let breathingFraction = await breathingTask
+        let avgHROutcome = await avgHRTask
+        let minHROutcome = await minHRTask
+        let restingHROutcome = await restingHRTask
+        let hrvOutcome = await hrvTask
+        let respiratoryOutcome = await respiratoryTask
+        // HKUnit.percent() yields a 0–1 fraction, NOT 0–100. Forgetting this is
+        // how you end up displaying "0.97% blood oxygen".
+        let spo2Outcome = await spo2Task.map { $0 * 100 }
+        let wristTempOutcome = await wristTempTask
+        // Breathing disturbances also arrive as a 0-1 fraction under
+        // HKUnit.percent(), same trap as SpO2.
+        let breathingOutcome = await breathingTask.map { $0 * 100 }
 
         let workoutHours = await lastWorkoutContext(before: session.start)
         let exercisePrevious = await exerciseMinutes(onDayOf: session.start)
 
-        // HKUnit.percent() yields a 0–1 fraction, NOT 0–100. Forgetting this is
-        // how you end up displaying "0.97% blood oxygen".
-        let spo2Percent = spo2Fraction.map { $0 * 100 }
-
-        // Breathing disturbances also arrive as a 0-1 fraction under
-        // HKUnit.percent(), same trap as SpO2.
-        let breathingPercent = breathingFraction.map { $0 * 100 }
+        let wristTemp = wristTempOutcome.value
 
         // Wrist temperature is only meaningful as a delta from the user's own
         // baseline — the absolute number varies too much between people and
@@ -83,6 +85,24 @@ struct FeatureExtractor {
             guard let absolute = wristTemp, let base = baseline?.wristTempBaselineC else { return nil }
             return absolute - base
         }()
+
+        // Only a definitive "nothing recorded" clears a stored value on
+        // re-sync. A query that threw leaves the existing record alone --
+        // see MeasurementOutcome and SleepNightRecord.update.
+        var confirmedAbsent: Set<VitalMetric> = []
+        let outcomes: [(VitalMetric, MeasurementOutcome)] = [
+            (.averageHeartRate, avgHROutcome),
+            (.minimumHeartRate, minHROutcome),
+            (.restingHeartRate, restingHROutcome),
+            (.hrv, hrvOutcome),
+            (.respiratoryRate, respiratoryOutcome),
+            (.oxygenSaturation, spo2Outcome),
+            (.wristTemperature, wristTempOutcome),
+            (.breathingDisturbances, breathingOutcome)
+        ]
+        for (metric, outcome) in outcomes where outcome.confirmsAbsence {
+            confirmedAbsent.insert(metric)
+        }
 
         let stageMinutes = session.stageMinutes
         let asleep = session.totalAsleepMinutes
@@ -107,14 +127,14 @@ struct FeatureExtractor {
             awakeMinutes: stageMinutes[.awake] ?? 0,
             wakeCount: session.wakeCountAfterOnset,
             sleepLatencyMinutes: session.latencyMinutes,
-            avgHeartRate: avgHR,
-            minHeartRate: minHR,
-            restingHeartRate: restingHR,
-            avgHRV: hrv,
-            avgRespiratoryRate: respiratory,
-            avgSpO2: spo2Percent,
+            avgHeartRate: avgHROutcome.value,
+            minHeartRate: minHROutcome.value,
+            restingHeartRate: restingHROutcome.value,
+            avgHRV: hrvOutcome.value,
+            avgRespiratoryRate: respiratoryOutcome.value,
+            avgSpO2: spo2Outcome.value,
             wristTempDeltaC: tempDelta,
-            breathingDisturbances: breathingPercent,
+            breathingDisturbances: breathingOutcome.value,
             hrv7DayAvg: baseline?.hrv7DayAvg,
             sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: workoutHours,
@@ -124,37 +144,65 @@ struct FeatureExtractor {
             stageSegments: session.segments
         )
 
-        return Result(features: features, absoluteWristTempC: wristTemp)
+        return Result(
+            features: features,
+            absoluteWristTempC: wristTemp,
+            confirmedAbsent: confirmedAbsent
+        )
     }
 
     // MARK: - Query wrappers
     //
-    // These collapse `throws` + `Double?` into a plain `Double?`. A night with no
-    // SpO2 readings and a night where the SpO2 query errored are the same thing
-    // as far as the feature record is concerned: no value.
+    // These used to collapse `throws` + `Double?` into a plain `Double?`, on
+    // the reasoning that a night with no SpO2 readings and a night where the
+    // SpO2 query errored are the same thing to the feature record. That held
+    // only while nothing acted on the absence. Now that a re-sync can clear a
+    // stale stored value, the two must stay distinguishable: a confirmed
+    // absence should clear, a failed query must not. See `MeasurementOutcome`.
 
-    private func optionalAverage(
+    private func measuredAverage(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         in interval: DateInterval
-    ) async -> Double? {
-        try? await healthKit.average(identifier, unit: unit, in: interval)
+    ) async -> MeasurementOutcome {
+        do {
+            guard let value = try await healthKit.average(identifier, unit: unit, in: interval) else {
+                return .noData
+            }
+            return .measured(value)
+        } catch {
+            return .queryFailed
+        }
     }
 
-    private func optionalMinimum(
+    private func measuredMinimum(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         in interval: DateInterval
-    ) async -> Double? {
-        try? await healthKit.minimum(identifier, unit: unit, in: interval)
+    ) async -> MeasurementOutcome {
+        do {
+            guard let value = try await healthKit.minimum(identifier, unit: unit, in: interval) else {
+                return .noData
+            }
+            return .measured(value)
+        } catch {
+            return .queryFailed
+        }
     }
 
-    private func optionalMostRecent(
+    private func measuredMostRecent(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         onOrBefore cutoff: Date
-    ) async -> Double? {
-        try? await healthKit.mostRecentSample(identifier, unit: unit, onOrBefore: cutoff)
+    ) async -> MeasurementOutcome {
+        do {
+            guard let value = try await healthKit.mostRecentSample(identifier, unit: unit, onOrBefore: cutoff) else {
+                return .noData
+            }
+            return .measured(value)
+        } catch {
+            return .queryFailed
+        }
     }
 
     // MARK: - Context helpers
