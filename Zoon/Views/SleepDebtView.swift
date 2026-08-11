@@ -67,6 +67,8 @@ struct SleepDebtView: View {
         .glassCard()
     }
 
+    @State private var selectedDate: Date?
+
     @ViewBuilder
     private var trendChart: some View {
         let nights = Array(coordinator.recentNights.suffix(30))
@@ -88,9 +90,28 @@ struct SleepDebtView: View {
                         )
                         .foregroundStyle(band.tint)
                     }
+
+                    if let selectedDate, let night = nights.nearest(toDay: selectedDate) {
+                        RuleMark(x: .value("Selected", night.date, unit: .day))
+                            .foregroundStyle(.white.opacity(0.25))
+                            .annotation(
+                                position: .top,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                            ) {
+                                ChartSelectionBadge(
+                                    title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                    lines: [(
+                                        "Owed",
+                                        SleepNightFeatures.formatMinutes(night.sleepDebtMinutes14Day ?? 0),
+                                        band.tint
+                                    )]
+                                )
+                            }
+                    }
                 }
                 .chartYAxisLabel("hours owed")
                 .frame(height: 110)
+                .chartXSelection(value: $selectedDate)
             }
             .glassCard()
         }

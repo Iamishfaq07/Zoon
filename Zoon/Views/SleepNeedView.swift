@@ -76,6 +76,8 @@ struct SleepNeedView: View {
         .glassCard()
     }
 
+    @State private var selectedDate: Date?
+
     @ViewBuilder
     private var trendChart: some View {
         let nights = Array(coordinator.recentNights.suffix(30))
@@ -91,8 +93,23 @@ struct SleepNeedView: View {
                         .foregroundStyle(Theme.Metric.sleep.opacity(0.85))
                         .cornerRadius(2)
                     }
+
+                    if let selectedDate, let night = nights.nearest(toDay: selectedDate) {
+                        RuleMark(x: .value("Selected", night.date, unit: .day))
+                            .foregroundStyle(.white.opacity(0.25))
+                            .annotation(
+                                position: .top,
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                            ) {
+                                ChartSelectionBadge(
+                                    title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
+                                    lines: [("Asleep", night.formattedTimeAsleep, Theme.Metric.sleep)]
+                                )
+                            }
+                    }
                 }
                 .frame(height: 100)
+                .chartXSelection(value: $selectedDate)
             }
             .glassCard()
         }
