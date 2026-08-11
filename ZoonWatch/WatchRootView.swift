@@ -14,6 +14,7 @@ struct WatchRootView: View {
             if let snapshot = link.snapshot {
                 RecoveryPage(snapshot: snapshot)
                 SleepPage(snapshot: snapshot)
+                BatteryPage(snapshot: snapshot)
                 BadgePage(snapshot: snapshot)
             } else {
                 WaitingPage(isActivated: link.isActivated)
@@ -148,6 +149,53 @@ struct SleepPage: View {
     }
 }
 
+/// Body Battery on its own page — it was previously only a mini-stat on the
+/// Recovery page, too small to read the exact number without stopping to
+/// squint. A dedicated ring gives it the same legibility as Recovery gets.
+struct BatteryPage: View {
+
+    let snapshot: SleepSnapshot
+
+    private var tint: Color {
+        switch snapshot.bodyBattery {
+        case 60...: Theme.Metric.recoveryHigh
+        case 30..<60: Theme.Metric.battery
+        default: Theme.Metric.recoveryLow
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 9)
+                Circle()
+                    .trim(from: 0, to: Double(snapshot.bodyBattery) / 100)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .shadow(color: tint.opacity(0.5), radius: 5)
+
+                VStack(spacing: -3) {
+                    Text("\(snapshot.bodyBattery)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                    Text("BATTERY")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxHeight: .infinity)
+
+            if snapshot.isMock {
+                Text("Sample data")
+                    .font(Theme.text(9))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 6)
+    }
+}
+
 /// Badges, so the wrist carries the reward too.
 struct BadgePage: View {
 
@@ -223,6 +271,10 @@ struct WaitingPage: View {
 
 #Preview("Sleep") {
     SleepPage(snapshot: MockData.snapshotWithBadges)
+}
+
+#Preview("Battery") {
+    BatteryPage(snapshot: MockData.snapshotWithBadges)
 }
 
 #Preview("Badges") {
