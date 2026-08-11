@@ -57,14 +57,16 @@ struct YearHeatmapView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
-                summaryCard
-                gridCard
+                summaryCard.entrance(0)
+                gridCard.entrance(1)
                 if let selectedDate {
                     detailCard(for: selectedDate)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                legendCard
+                legendCard.entrance(2)
             }
             .padding()
+            .animation(Motion.value, value: selectedDate)
         }
         .nightBackground()
         .navigationTitle("Year in Sleep")
@@ -154,14 +156,17 @@ struct YearHeatmapView: View {
         return RoundedRectangle(cornerRadius: 3, style: .continuous)
             .fill(color(for: recovery, isFuture: isFuture))
             .frame(width: cellSize, height: cellSize)
+            .scaleEffect(isSelected ? 1.35 : 1)
             .overlay {
                 if isSelected {
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
                         .strokeBorder(.white, lineWidth: 1.5)
                 }
             }
+            .animation(Motion.tap, value: isSelected)
             .onTapGesture {
                 guard !isFuture else { return }
+                Haptics.select()
                 selectedDate = calendar.isDate(selectedDate ?? .distantPast, inSameDayAs: day) ? nil : day
             }
     }

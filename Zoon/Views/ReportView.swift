@@ -75,6 +75,7 @@ struct ReportView: View {
 
     private func shareCard(_ report: WeeklyReport) -> some View {
         Button {
+            Haptics.tap()
             wrappedImageURL = WeeklyWrappedExporter.export(report)
         } label: {
             HStack {
@@ -93,7 +94,7 @@ struct ReportView: View {
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .sheet(isPresented: Binding(
             get: { wrappedImageURL != nil },
             set: { if !$0 { wrappedImageURL = nil } }
