@@ -22,23 +22,9 @@ struct ZoonApp: App {
     init() {
         let preferences = UserPreferences()
 
-        // If an App Group is configured, the store lives in the shared container
-        // so future features (and any diagnostics) can reach it from the
-        // extension. Without one it falls back to the app's own container —
-        // fully functional, just not shared. See `AppGroup` and SETUP.md.
-        let configuration: ModelConfiguration
-        if let groupURL = AppGroup.containerURL {
-            configuration = ModelConfiguration(url: groupURL.appendingPathComponent("Zoon.store"))
-        } else {
-            configuration = ModelConfiguration()
-        }
-
         let container: ModelContainer
         do {
-            container = try ModelContainer(
-                for: SleepNightRecord.self, JournalEntry.self,
-                configurations: configuration
-            )
+            container = try PersistentStore.open()
         } catch {
             // An unopenable store means a schema the app can't read. There is no
             // safe partial mode here, and silently falling back to in-memory

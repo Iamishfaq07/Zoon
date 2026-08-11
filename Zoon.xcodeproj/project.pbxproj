@@ -30,6 +30,8 @@
 		0E21C726F36D1A9DA6147C69 /* ZoonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4111F800CE47F2D2FCC0D2D2 /* ZoonApp.swift */; };
 		0E7A629918EBFC0C945C7227 /* StressScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BFFA2C02EE15C5E13B57E9B /* StressScore.swift */; };
 		10002633F956390118F079A1 /* SleepDebtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C04C95F7B4CAD642DA384A03 /* SleepDebtView.swift */; };
+		1108CAF7451794712C1E8EBB /* ZoonIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADFBFF192F82BF1AF28487A /* ZoonIntents.swift */; };
+		1209AD7C72CC0DF78D801683 /* PersistentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753455C5E45B0F317E8996AE /* PersistentStore.swift */; };
 		127350D1EFDD818C34F178E4 /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
 		13137BF7DE656B122B85EE2D /* StrainScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */; };
 		136B301DD045AB52B80281FC /* WeeklyWrappedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39A93CBDC0796684C98A6E4 /* WeeklyWrappedCard.swift */; };
@@ -345,6 +347,7 @@
 		6EF28EA3935C59AD80111D89 /* NapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapView.swift"; sourceTree = "<group>"; };
 		710B9A0DBC682D2A2A6A1F4E /* SoundscapeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundscapeEngine.swift"; sourceTree = "<group>"; };
 		73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSessionBuilder.swift"; sourceTree = "<group>"; };
+		753455C5E45B0F317E8996AE /* PersistentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersistentStore.swift"; sourceTree = "<group>"; };
 		796AF05941A49BBC5BC53802 /* JournalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalStore.swift"; sourceTree = "<group>"; };
 		7C1DB3776628821BCA9A8964 /* NapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapStore.swift"; sourceTree = "<group>"; };
 		7C5056DFADE6AA9868C543E9 /* SleepHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepHistoryStore.swift"; sourceTree = "<group>"; };
@@ -374,6 +377,7 @@
 		B202E4810C0F1C50E34E2DC3 /* BodyClockCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClockCard.swift"; sourceTree = "<group>"; };
 		B44F3703015A6C11B51F7F00 /* CauseFinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CauseFinderView.swift"; sourceTree = "<group>"; };
 		B5988981A0B2312A8B53FB4B /* BodyClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClock.swift"; sourceTree = "<group>"; };
+		BADFBFF192F82BF1AF28487A /* ZoonIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonIntents.swift"; sourceTree = "<group>"; };
 		BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataExporter.swift"; sourceTree = "<group>"; };
 		C04C95F7B4CAD642DA384A03 /* SleepDebtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtView.swift"; sourceTree = "<group>"; };
 		C18237AF80A96726E915E09D /* BadgeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BadgeWidget.swift"; sourceTree = "<group>"; };
@@ -493,6 +497,7 @@
 				796AF05941A49BBC5BC53802,
 				49631B20B1506B60BDEB8FC7,
 				7C1DB3776628821BCA9A8964,
+				753455C5E45B0F317E8996AE,
 				B0E516994F630E303DD12E36,
 				7C5056DFADE6AA9868C543E9,
 				73D7172E74524A180449FDD9,
@@ -578,9 +583,18 @@
 			path = ZoonWatch;
 			sourceTree = "<group>";
 		};
+		A486469D116EFE6D8531B0F6 /* AppIntents */ = {
+			isa = PBXGroup;
+			children = (
+				BADFBFF192F82BF1AF28487A,
+			);
+			path = AppIntents;
+			sourceTree = "<group>";
+		};
 		B10A1100D1BB4824CA4E3EBE /* Zoon */ = {
 			isa = PBXGroup;
 			children = (
+				A486469D116EFE6D8531B0F6,
 				1E9E5DCC18BB7937F8B24A56,
 				2DBCBEDD6A9B8440C8705C03,
 				22419E6C9150159FB90F5B67,
@@ -864,6 +878,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1108CAF7451794712C1E8EBB,
 				5E4DDA74EC47B99CD053766B,
 				77DB90244BE02A48D458878F,
 				3A79A11D0D8F02FADB5E47F5,
@@ -888,6 +903,7 @@
 				17F1F32ECCE94547CB95F327,
 				FA872B4C4904465C3E1557A2,
 				402487B4962F61C60243F542,
+				1209AD7C72CC0DF78D801683,
 				F7D50D4A2644F88D12CE6225,
 				AD04426F85852FA876D1783B,
 				8244F98542528575434DEA30,
