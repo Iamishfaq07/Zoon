@@ -45,11 +45,23 @@ EXT_SRC = swift_files("ZoonWidget")
 WATCH_SRC = swift_files("ZoonWatch")
 WATCH_EXT_SRC = swift_files("ZoonWatchWidget")
 TESTS_SRC = swift_files("ZoonTests")
-# Not in Shared/ (it imports HealthKit), but it's pure logic over
-# HKCategorySample -- constructible off-device with no store access needed --
-# so it's worth compiling into the test target too rather than leaving its
-# source-canonicalization and session-clustering behavior untested.
-TESTS_EXTRA_APP_FILES = ["Zoon/Services/SleepSessionBuilder.swift"]
+# Not in Shared/ (they import HealthKit and/or SwiftData), but none of them
+# need a live health store or a real device to test:
+#
+# - SleepSessionBuilder is pure logic over HKCategorySample, constructible
+#   off-device with no store access needed.
+# - SleepHistoryStore's read/write/prune logic only needs an in-memory
+#   ModelContext. Its `baseline(for:)` signature references RollingBaseline,
+#   which pulls in FeatureExtractor and (transitively) HealthKitManager --
+#   those two are compiled in for that reference to resolve, never
+#   instantiated by a test, so no entitlement or live store is required.
+TESTS_EXTRA_APP_FILES = [
+    "Zoon/Services/SleepSessionBuilder.swift",
+    "Zoon/Services/SleepHistoryStore.swift",
+    "Zoon/Services/FeatureExtractor.swift",
+    "Zoon/Services/HealthKitManager.swift",
+    "Zoon/Models/SleepNightRecord.swift",
+]
 
 APP_ASSETS = "Zoon/Assets.xcassets"
 EXT_ASSETS = "ZoonWidget/Assets.xcassets"

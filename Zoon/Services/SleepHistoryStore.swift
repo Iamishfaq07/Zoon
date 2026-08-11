@@ -94,6 +94,35 @@ final class SleepHistoryStore {
         save()
     }
 
+    /// Removes stored nights within `window` that no longer have a
+    /// corresponding session in `validDates` — the counterpart to `upsert`
+    /// for a night deleted or corrected away in the Health app, rather than
+    /// added or changed.
+    ///
+    /// Scoped to `window`: only nights the caller actually re-verified
+    /// against a fresh full-window fetch are eligible. A night stored outside
+    /// `window` was never re-checked by this pass and must not be touched,
+    /// or an old record could vanish just because the rolling sync window
+    /// has since moved past it.
+    func prune(window: DateInterval, keeping validDates: Set<Date>) {
+        let start = window.start
+        let end = window.end
+        let descriptor = FetchDescriptor<SleepNightRecord>(
+            predicate: #Predicate { $0.date >= start && $0.date <= end }
+        )
+        let inWindow: [SleepNightRecord]
+        do {
+            inWindow = try context.fetch(descriptor)
+        } catch {
+            logger.error("Prune fetch failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let stale = inWindow.filter { !validDates.contains($0.date) }
+        guard !stale.isEmpty else { return }
+        for night in stale { context.delete(night) }
+        save()
+    }
+
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
     /// user a one-tap way to destroy everything it holds.
     func deleteAll() {

@@ -240,10 +240,12 @@ final class SleepDataCoordinator {
             // nothing changed we skip all of this.
             let hasChanges = !result.samples.isEmpty || !result.deletedUUIDs.isEmpty
             if hasChanges || store.isEmpty {
+                // Not gated on `!samples.isEmpty`: a window whose only sample
+                // was deleted in Health legitimately refetches to nothing,
+                // and `processSessions` still needs to run so it prunes the
+                // now-stale stored night rather than leaving it behind.
                 let samples = try await healthKit.fetchAllSleepSamples(in: window)
-                if !samples.isEmpty {
-                    await processSessions(from: samples)
-                }
+                await processSessions(from: samples, window: window)
             }
 
             await publishLatest()
@@ -265,9 +267,8 @@ final class SleepDataCoordinator {
     /// Session building stays on the main actor even though it's pure
     /// computation: `HKCategorySample` is not `Sendable`, so handing the array
     /// to a detached task is a concurrency violation under strict checking.
-    private func processSessions(from samples: [HKCategorySample]) async {
+    private func processSessions(from samples: [HKCategorySample], window: DateInterval) async {
         let sessions = sessionBuilder.buildSessions(from: samples)
-        guard !sessions.isEmpty else { return }
 
         // `SleepNightRecord` is one row per calendar day (see its own doc
         // comment), keyed by the date the session ended -- so two sessions
@@ -300,6 +301,14 @@ final class SleepDataCoordinator {
             let result = await extractor.extract(from: session, baseline: baseline)
             store.upsert(result.features, absoluteWristTempC: result.absoluteWristTempC)
         }
+
+        // `samples` here is always a full re-fetch of `window` (see call site),
+        // never an incremental delta -- so any previously-stored night in
+        // `window` that didn't produce a session this pass genuinely no
+        // longer has HealthKit data behind it (deleted or corrected away in
+        // the Health app), not just "wasn't included in today's delta".
+        let validDates = Set(longestPerDate.map { Calendar.current.startOfDay(for: $0.end) })
+        store.prune(window: window, keeping: validDates)
     }
 
     /// Reads the newest stored night back out, derives everything, updates state
