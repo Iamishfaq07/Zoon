@@ -231,7 +231,6 @@ final class SleepDataCoordinator {
 
             let anchor = AnchorStore.load()
             let result = try await healthKit.fetchSleepSamples(since: anchor, window: window)
-            AnchorStore.save(result.anchor)
 
             // The anchored delta alone isn't enough to rebuild whole sessions —
             // a delta can land mid-night and we'd segment against a partial
@@ -239,13 +238,28 @@ final class SleepDataCoordinator {
             // rebuild from complete data. The anchor still earns its keep: when
             // nothing changed we skip all of this.
             let hasChanges = !result.samples.isEmpty || !result.deletedUUIDs.isEmpty
+            var persisted = true
             if hasChanges || store.isEmpty {
                 // Not gated on `!samples.isEmpty`: a window whose only sample
                 // was deleted in Health legitimately refetches to nothing,
                 // and `processSessions` still needs to run so it prunes the
                 // now-stale stored night rather than leaving it behind.
                 let samples = try await healthKit.fetchAllSleepSamples(in: window)
-                await processSessions(from: samples, window: window)
+                persisted = await processSessions(from: samples, window: window)
+            }
+
+            // Anchor advances only after the delta it covers has actually been
+            // processed and written. Saving it immediately after the fetch --
+            // as this did previously -- meant a throw from
+            // `fetchAllSleepSamples`, a failed SwiftData write, or the app
+            // being killed mid-processing left the anchor pointing past data
+            // Zoon never stored, and HealthKit would never report that change
+            // again. Keeping the old anchor costs one redundant re-fetch on
+            // the next refresh; advancing it early can silently lose a night.
+            if persisted {
+                AnchorStore.save(result.anchor)
+            } else {
+                logger.error("Persistence failed; keeping the previous HealthKit anchor so this delta is retried")
             }
 
             await publishLatest()
@@ -267,7 +281,11 @@ final class SleepDataCoordinator {
     /// Session building stays on the main actor even though it's pure
     /// computation: `HKCategorySample` is not `Sendable`, so handing the array
     /// to a detached task is a concurrency violation under strict checking.
-    private func processSessions(from samples: [HKCategorySample], window: DateInterval) async {
+    /// - Returns: whether every write in this pass actually reached disk.
+    ///   `refresh()` gates the HealthKit anchor advance on this.
+    @discardableResult
+    private func processSessions(from samples: [HKCategorySample], window: DateInterval) async -> Bool {
+        store.beginTrackingWrites()
         let sessions = sessionBuilder.buildSessions(from: samples)
 
         // `SleepNightRecord` is one row per calendar day (see its own doc
@@ -309,6 +327,8 @@ final class SleepDataCoordinator {
         // the Health app), not just "wasn't included in today's delta".
         let validDates = Set(longestPerDate.map { Calendar.current.startOfDay(for: $0.end) })
         store.prune(window: window, keeping: validDates)
+
+        return store.writesSucceeded
     }
 
     /// Reads the newest stored night back out, derives everything, updates state

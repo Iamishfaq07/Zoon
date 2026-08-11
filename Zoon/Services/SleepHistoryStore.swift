@@ -152,11 +152,29 @@ final class SleepHistoryStore {
         return written
     }
 
+    /// True when every write since the last `beginTrackingWrites()` actually
+    /// reached disk.
+    ///
+    /// Exists because `save()` deliberately swallows its error -- a failed
+    /// write should never crash a health app mid-sync -- but `refresh()` must
+    /// still know whether persistence succeeded before it advances the
+    /// HealthKit anchor past a delta. Without this, a swallowed save failure
+    /// looked identical to success at the call site, and the anchor moved on
+    /// regardless. See `SleepDataCoordinator.refresh`.
+    private(set) var writesSucceeded = true
+
+    /// Resets the write-success flag at the start of a batch the caller
+    /// intends to check afterwards.
+    func beginTrackingWrites() {
+        writesSucceeded = true
+    }
+
     private func save() {
         guard context.hasChanges else { return }
         do {
             try context.save()
         } catch {
+            writesSucceeded = false
             logger.error("Save failed: \(error.localizedDescription, privacy: .public)")
         }
     }
