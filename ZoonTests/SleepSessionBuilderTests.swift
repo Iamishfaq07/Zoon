@@ -47,8 +47,11 @@ final class SleepSessionBuilderTests: XCTestCase {
         let builder = SleepSessionBuilder()
         let sessions = builder.buildSessions(from: [sample(.asleepCore, start: start, end: end)])
 
+        guard let session = sessions.first else {
+            return XCTFail("Expected the 45-minute session to survive filtering")
+        }
         XCTAssertEqual(sessions.count, 1)
-        XCTAssertEqual(sessions.first?.timeInBed, 45 * 60, accuracy: 1)
+        XCTAssertEqual(session.timeInBed, 45 * 60, accuracy: 1)
     }
 
     func testSessionBelowNoiseFloorIsDiscarded() {
