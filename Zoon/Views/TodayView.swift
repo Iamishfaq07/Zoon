@@ -57,7 +57,7 @@ struct TodayView: View {
             ).entrance(1)
             guidanceCard(context).entrance(1)
             if let stress = coordinator.todayStress {
-                StressCard(stress: stress).entrance(2)
+                StressCard(stress: stress, todayStrain: context.strain.value).entrance(2)
             }
             ringsCard(context).entrance(3)
             EnergyForecastCard(forecast: EnergyForecast.compute(
