@@ -107,11 +107,12 @@ all of them locally.
 ## Architecture
 
 ```
-Shared/          Types used by both the app and the widget extension
+Shared/          Types compiled into every target — app, both widget
+                 extensions, the watch app, and ZoonTests
   SleepNightFeatures    The boundary between raw HealthKit and everything else
-  SleepScore            0–100 score, computed identically in both targets
+  SleepScore            0–100 score, computed identically everywhere it's used
   SleepInsight          Constrained output shape for any insight engine
-  SleepSnapshot         Small JSON payload the app hands the widget
+  SleepSnapshot         Small JSON payload the app hands the widget and watch
   MockData              Deterministic sample data for previews and Simulator
 
 Zoon/
@@ -121,8 +122,13 @@ Zoon/
   Insights/      SleepInsightEngine protocol + implementations
   Views/         SwiftUI screens and components
 
-ZoonWidget/      WidgetKit extension. Reads the snapshot; never touches
-                 HealthKit or SwiftData.
+ZoonWidget/          WidgetKit extension (lock screen, home screen). Reads the
+                     snapshot; never touches HealthKit or SwiftData.
+ZoonWatch/           Companion watchOS app. Reads the same snapshot.
+ZoonWatchWidget/     Watch-face complications, a separate extension target
+                     from the phone-side widget.
+ZoonTests/           XCTest target: pure-logic and SwiftData-free unit tests
+                     for the Shared/ statistics and score engines.
 ```
 
 The data flow is one direction:
@@ -133,7 +139,7 @@ HealthKit samples
   → FeatureExtractor      (join vitals, convert units, compute latency)
   → SleepNightFeatures    ← everything downstream consumes only this
   → SwiftData             (rolling history)
-  → RollingBaseline       (7-day HRV, 14-day debt, bedtime consistency)
+  → RollingBaseline       (7-day HRV, decaying sleep debt, bedtime consistency)
   → SleepInsightEngine    (causal explanation)
   → Views + widget snapshot
 ```
@@ -170,8 +176,9 @@ Adding a third engine means writing one conformance and nothing else.
 ## Requirements
 
 **No Mac? You can still build this.** Push to the repo and GitHub Actions
-compiles both targets on a macOS runner — free, no Apple account, no
-certificates. Errors land in the run summary. See
+compiles every target — app, both widget extensions, the watch app, and the
+test target — on a macOS runner, free, no Apple account, no certificates.
+Errors land in the run summary. See
 [BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
 - **Xcode 15+**, iOS 18+ deployment target, Swift 5.9+
@@ -193,8 +200,9 @@ running on device.
 
 ## Status
 
-**Compiles clean** — Xcode 26.6 / Swift 6.3 / iOS 26.5 SDK, both targets, zero
-errors and zero warnings. CI builds every push on a macOS runner; see
+**Compiles clean** — Xcode 26.6 / Swift 6.3 / iOS 26.5 SDK, every target, zero
+errors and zero warnings. CI builds every push on a macOS runner and runs the
+`ZoonTests` unit test target against a simulator; see
 [BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
 CI also asserts that every Swift file on disk actually reached the compiler,
@@ -227,8 +235,6 @@ has run this against a real Health store:
 
 ### Known gaps
 
-- **Apple Watch app** — not built. The only substantial piece left: Zoon reads
-  what the watch recorded but shows nothing on the wrist.
 - **`LocalLLMInsightEngine`** remains a stub for a *bundled* MLX/Core ML model.
   It is superseded in practice by `FoundationModelInsightEngine`, which uses
   Apple's on-device model and needs nothing bundled.

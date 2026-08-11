@@ -17,8 +17,10 @@ and they have very different answers:
 
 ## Problem 1 — Compiling it (free, works today)
 
-`.github/workflows/build.yml` builds both targets on a GitHub-hosted macOS
-runner every time you push. **No Apple Developer account, no certificates, no
+`.github/workflows/build.yml` builds every target — app, both widget
+extensions, and the watch app, which is embedded in the iOS app build — on a
+GitHub-hosted macOS runner every time you push, then runs the `ZoonTests`
+unit test target. **No Apple Developer account, no certificates, no
 configuration.** Building for the Simulator with signing disabled skips
 provisioning entirely.
 
