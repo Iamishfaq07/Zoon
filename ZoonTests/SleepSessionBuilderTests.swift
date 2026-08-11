@@ -138,4 +138,51 @@ final class SleepSessionBuilderTests: XCTestCase {
 
         XCTAssertEqual(session.wakeCountAfterOnset, 1, "The restless period before onset must not count as an awakening")
     }
+
+    /// Wearable stage classification flickers -- a single movement can emit a
+    /// sub-minute `awake` sample the sleeper never experienced. Those must not
+    /// be scored as fragmentation, but must still be drawn on the hypnogram.
+    func testSubThresholdFlickerIsNotAMeaningfulAwakening() {
+        let onset = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let flickerStart = onset.addingTimeInterval(2 * 3600)
+        let flickerEnd = flickerStart.addingTimeInterval(30)
+        let wakeUp = onset.addingTimeInterval(8 * 3600)
+
+        let samples = [
+            sample(.asleepCore, start: onset, end: flickerStart),
+            sample(.awake, start: flickerStart, end: flickerEnd),
+            sample(.asleepCore, start: flickerEnd, end: wakeUp)
+        ]
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertEqual(session.wakeCountAfterOnset, 0, "A 30-second flicker is not an awakening")
+        // The raw picture is preserved for the hypnogram and any view that
+        // wants it -- this fix filters the scored count, it doesn't discard data.
+        XCTAssertEqual(session.rawAwakeningCountAfterOnset, 1)
+        XCTAssertEqual(session.awakeIntervals.count, 1)
+    }
+
+    func testAwakeningAtTheThresholdCounts() {
+        let onset = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let wakeStart = onset.addingTimeInterval(2 * 3600)
+        let wakeEnd = wakeStart.addingTimeInterval(SleepSession.meaningfulAwakeningThreshold)
+        let wakeUp = onset.addingTimeInterval(8 * 3600)
+
+        let samples = [
+            sample(.asleepCore, start: onset, end: wakeStart),
+            sample(.awake, start: wakeStart, end: wakeEnd),
+            sample(.asleepCore, start: wakeEnd, end: wakeUp)
+        ]
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertEqual(session.wakeCountAfterOnset, 1)
+    }
 }

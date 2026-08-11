@@ -249,11 +249,37 @@ struct SleepSession {
         return onset.timeIntervalSince(bedStart) / 60
     }
 
-    /// Awakenings after sleep onset only.
+    /// Shortest awake stretch that counts as a real awakening.
+    ///
+    /// Wearable stage classification flickers: a single restless movement can
+    /// produce a 30-second `awake` sample between two `core` samples, and the
+    /// sleeper has no memory of it. Counting those as awakenings inflates a
+    /// number the score and the insight engine both read as fragmentation,
+    /// and it inflates it most for light sleepers wearing the watch tightly
+    /// -- exactly the people most likely to already believe they sleep badly.
+    ///
+    /// Two minutes is the conventional floor for a "meaningful" awakening in
+    /// actigraphy. The raw intervals stay untouched in `awakeIntervals` and
+    /// the raw samples in `segments`, so the hypnogram still draws every
+    /// blip -- this only governs the count that gets scored.
+    static let meaningfulAwakeningThreshold: TimeInterval = 120
+
+    /// Meaningful awakenings after sleep onset.
     ///
     /// Tossing around before you fall asleep is not fragmentation, and counting
-    /// it inflates a number the insight engine reads as a signal.
+    /// it inflates a number the insight engine reads as a signal. Neither is a
+    /// momentary classification flicker -- see
+    /// `meaningfulAwakeningThreshold`.
     var wakeCountAfterOnset: Int {
+        guard let onset = sleepOnset else { return 0 }
+        return awakeIntervals
+            .filter { $0.start > onset && $0.duration >= Self.meaningfulAwakeningThreshold }
+            .count
+    }
+
+    /// Every awake stretch after onset, including sub-threshold flickers.
+    /// Kept separate so a view that wants the raw picture can still get it.
+    var rawAwakeningCountAfterOnset: Int {
         guard let onset = sleepOnset else { return 0 }
         return awakeIntervals.filter { $0.start > onset }.count
     }
