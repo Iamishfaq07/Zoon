@@ -55,18 +55,8 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
         }
     }
 
-    enum Confidence: String, Codable, Sendable {
-        case insufficient, low, moderate, high
-
-        var label: String {
-            switch self {
-            case .insufficient: "Insufficient data"
-            case .low: "Low confidence"
-            case .moderate: "Moderate confidence"
-            case .high: "High confidence"
-            }
-        }
-    }
+    /// See `MetricConfidence`.
+    typealias Confidence = MetricConfidence
 
     /// Nominal weights. `compute` renormalizes among whatever subset is
     /// actually available for a given night. Exposed (not just `private`) so

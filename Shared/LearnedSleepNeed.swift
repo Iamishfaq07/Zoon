@@ -29,18 +29,11 @@ import Foundation
 ///    threshold.
 struct LearnedSleepNeed: Codable, Hashable, Sendable {
 
-    enum Confidence: String, Codable, Sendable {
-        case insufficient, low, moderate, high
-
-        var label: String {
-            switch self {
-            case .insufficient: "Not enough history yet"
-            case .low: "Low confidence"
-            case .moderate: "Moderate confidence"
-            case .high: "High confidence"
-            }
-        }
-    }
+    /// See `MetricConfidence`. `.low` isn't currently reachable here --
+    /// `compute` only ever produces `.insufficient`, `.moderate`, or `.high`
+    /// -- but the shared type carries it for consistency with the other
+    /// metrics that do use it.
+    typealias Confidence = MetricConfidence
 
     /// The baseline to actually use -- the goal alone below
     /// `minimumQualifyingNights`, a progressive blend of goal and learned
