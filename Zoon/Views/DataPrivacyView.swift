@@ -120,7 +120,7 @@ struct DataPrivacyView: View {
 
     private func freshnessLabel(since date: Date) -> String {
         let age = Date.now.timeIntervalSince(date)
-        switch age {
+        return switch age {
         case ..<3_600: "Current"
         case ..<21_600: "A few hours old"
         default: "Stale — refresh recommended"
