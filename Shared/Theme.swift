@@ -104,6 +104,14 @@ enum Theme {
     static var cardStroke: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.08) }
     static var cardFill: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.05) }
 
+    /// A card's drop shadow. Black at a fixed low opacity works in both
+    /// appearances without branching: it's imperceptible against Dark's
+    /// near-black ground (which needs none -- `.ultraThinMaterial` already
+    /// separates from black on its own), and it's what gives a card real
+    /// depth against Light's pale ground, where material + a hairline stroke
+    /// alone reads as a flat pasted rectangle rather than glass.
+    static let cardShadow = Color.black.opacity(0.14)
+
     /// A neutral overlay with caller-controlled strength. This is for rings,
     /// ticks and empty chart cells where a literal white works in Dark but
     /// disappears on the dawn palette in Light.
@@ -261,6 +269,7 @@ struct GlassCard: ViewModifier {
                             .strokeBorder(Theme.cardStroke, lineWidth: 1)
                     }
             }
+            .shadow(color: Theme.cardShadow, radius: 16, x: 0, y: 8)
     }
 }
 
