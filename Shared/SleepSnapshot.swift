@@ -119,7 +119,7 @@ enum AppGroup {
 
     /// Change this to your own App Group ID if you configure one, and set the
     /// same string in the App Groups capability on **both** targets.
-    static let identifier = "group.com.zoon.sleep"
+    static let identifier = "group.com.zoon.sleep.shared"
 
     private static let logger = Logger(subsystem: "com.zoon.sleep", category: "AppGroup")
 
