@@ -82,26 +82,29 @@ struct SleepIntelligenceOrb: View {
 
             ForEach(segments, id: \.component.id) { segment in
                 let isDimmed = selectedID != nil && selectedID != segment.component.id
-                Circle()
-                    .trim(from: 0, to: max(0, min(segment.end, animatedProgress) - segment.start))
-                    .stroke(
-                        color(for: segment.component),
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(segment.start * 360 - 90))
-                    .opacity(isDimmed ? 0.3 : 1)
-                    // Widened hit area -- the visible arc is thin, and a
-                    // 16pt-wide target is too easy to miss on a first try.
-                    // `.strokedPath(_:)` (not `.stroke(style:)`, which
-                    // returns a View here, not a Shape) is what actually
-                    // produces a `Shape` `.contentShape` can take.
-                    .contentShape(
-                        Circle()
-                            .trim(from: segment.start, to: segment.end)
-                            .rotation(.degrees(-90))
-                            .strokedPath(StrokeStyle(lineWidth: lineWidth + 20, lineCap: .butt))
-                    )
-                    .onTapGesture { select(segment.component) }
+                ZStack {
+                    // The visible arc.
+                    Circle()
+                        .trim(from: 0, to: max(0, min(segment.end, animatedProgress) - segment.start))
+                        .stroke(
+                            color(for: segment.component),
+                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                        )
+                        .opacity(isDimmed ? 0.3 : 1)
+
+                    // An invisible, wider stroke of the same trimmed arc,
+                    // purely as a tap target -- the visible arc alone is too
+                    // thin to hit reliably. A second `.stroke()`'d sibling
+                    // (an ordinary View, hit-tested against its own rendered
+                    // shape) rather than `.contentShape` with a hand-built
+                    // Shape chain, which kept failing to typecheck across
+                    // trim/rotation/strokedPath in this SDK.
+                    Circle()
+                        .trim(from: 0, to: max(0, min(segment.end, animatedProgress) - segment.start))
+                        .stroke(Color.white.opacity(0.001), lineWidth: lineWidth + 22)
+                        .onTapGesture { select(segment.component) }
+                }
+                .rotationEffect(.degrees(segment.start * 360 - 90))
             }
 
             center
