@@ -1433,6 +1433,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon never writes anything to Health -- it only reads your sleep and vitals. This permission is requested only because the app's HealthKit entitlement requires it; no data is ever saved back.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1616,6 +1617,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon never writes anything to Health -- it only reads your sleep and vitals. This permission is requested only because the app's HealthKit entitlement requires it; no data is ever saved back.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
