@@ -88,6 +88,12 @@ struct SleepScoreWidgetView: View {
                 HStack(spacing: 12) {
                     stat("Asleep", SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
                     stat("Debt", snapshot.balanceLabel)
+                    // A snapshot from before this field existed decodes with
+                    // an empty band -- omit the stat rather than show a
+                    // misleading "0".
+                    if !snapshot.sleepIntelligenceBand.isEmpty {
+                        stat("Sleep Intel", "\(snapshot.sleepIntelligencePercent)")
+                    }
                 }
 
                 if entry.isPlaceholder {
