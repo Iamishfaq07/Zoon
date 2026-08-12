@@ -63,6 +63,7 @@
 		1F95ADE0352279494A37A30F /* DayContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7C368630DDEC4A2AA747A1 /* DayContext.swift */; };
 		1FE3B67D7D550351A7006072 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
 		201777ABF9C10100E8D20386 /* StrainScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */; };
+		21C99678C209300372D988F8 /* SleepIntelligenceOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 423CBBEE5037B19C59780D54 /* SleepIntelligenceOrb.swift */; };
 		2233FE64FFCC356E0CC0FE26 /* AppMockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B124910D4BF411B8AA63C68C /* AppMockData.swift */; };
 		24801F5BE1E41A7EECB2066E /* TrendEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1083224E0CD6417FD16C4075 /* TrendEngine.swift */; };
 		248785715B3DE2156DD7571C /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
@@ -393,6 +394,7 @@
 		40C905EF878241FBB40DA514 /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PreviewSupport.swift"; sourceTree = "<group>"; };
 		4111F800CE47F2D2FCC0D2D2 /* ZoonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonApp.swift"; sourceTree = "<group>"; };
 		41F3143BC9E915F4D207693A /* JournalCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalCorrelator.swift"; sourceTree = "<group>"; };
+		423CBBEE5037B19C59780D54 /* SleepIntelligenceOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepIntelligenceOrb.swift"; sourceTree = "<group>"; };
 		4244633C56362A14F2ABE898 /* JournalEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalEntry.swift"; sourceTree = "<group>"; };
 		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		449A6ED264EB4AB017A39AF5 /* CyclePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CyclePhase.swift"; sourceTree = "<group>"; };
@@ -565,6 +567,7 @@
 				FBA68EDD0820A539DCB0B786,
 				C674514EF3C9937365A3C45F,
 				ECE30B82E446955CA1BDB5BB,
+				423CBBEE5037B19C59780D54,
 				66E3F1F807708E82035C5C98,
 				F39A93CBDC0796684C98A6E4,
 			);
@@ -1087,6 +1090,7 @@
 				C773D4AF2F15394933066A75,
 				63EACBCDD07E27FB51CFE8A1,
 				C7D2DEF7B9FDA579511A6D4E,
+				21C99678C209300372D988F8,
 				54E28A0193AEAEE3A2B8AE50,
 				136B301DD045AB52B80281FC,
 				0102704614FA1A59431C3D1C,

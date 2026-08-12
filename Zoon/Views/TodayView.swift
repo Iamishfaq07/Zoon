@@ -92,17 +92,25 @@ struct TodayView: View {
 
     // MARK: - Hero
 
+    /// Sleep Intelligence, not Recovery, leads the screen -- "how did I
+    /// sleep" is the more fundamental question, and Recovery ("how
+    /// recovered does my body look") keeps its own place further down at
+    /// `RecoveryBreakdownCard`. `context.headline` is still Recovery-derived
+    /// text ("You're recovered", "You need to take it easy"); it reads fine
+    /// as the supporting line under the new hero since `guidanceCard`
+    /// immediately below spells out what to actually do about it.
     private func hero(_ context: DayContext) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             if context.isMock {
                 StatusPill(text: "Sample data", systemImage: "wand.and.stars", tint: Theme.Metric.sleep)
             }
 
-            RecoveryRing(recovery: context.recovery)
+            SleepIntelligenceOrb(score: context.sleepIntelligence)
                 .padding(.top, 4)
 
             Text(context.headline)
-                .font(Theme.label(22, weight: .bold))
+                .font(Theme.label(17, weight: .semibold))
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
             if context.recovery.isEstimate {
