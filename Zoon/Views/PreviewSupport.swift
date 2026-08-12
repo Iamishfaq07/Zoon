@@ -16,7 +16,7 @@ enum PreviewSupport {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
             return try ModelContainer(
-                for: SleepNightRecord.self, JournalEntry.self,
+                for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
                 configurations: configuration
             )
         } catch {

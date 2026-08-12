@@ -35,7 +35,7 @@ struct ZoonApp: App {
             let fallback = ModelConfiguration(isStoredInMemoryOnly: true)
             do {
                 container = try ModelContainer(
-                    for: SleepNightRecord.self, JournalEntry.self,
+                    for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
                     configurations: fallback
                 )
             } catch {

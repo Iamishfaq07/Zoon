@@ -205,12 +205,90 @@ final class SleepHistoryStore {
         save()
     }
 
+    // MARK: - Secondary sleep episodes (naps, split sleep)
+
+    /// Persists a session that wasn't selected as its wake date's main sleep.
+    /// Upserts on `id` so a re-processed session updates in place rather than
+    /// duplicating, the same shape as `upsert(_:)` for the main night.
+    func upsertEpisode(
+        id: String,
+        nightKey: String,
+        startDate: Date,
+        endDate: Date,
+        timezoneIdentifier: String,
+        episodeType: SleepEpisodeType,
+        asleepMinutes: Double,
+        timeInBedMinutes: Double,
+        sourceName: String?
+    ) {
+        let descriptor = FetchDescriptor<SleepEpisodeRecord>(predicate: #Predicate { $0.id == id })
+        if let existing = try? context.fetch(descriptor).first {
+            existing.nightKey = nightKey
+            existing.startDate = startDate
+            existing.endDate = endDate
+            existing.timezoneIdentifier = timezoneIdentifier
+            existing.episodeType = episodeType
+            existing.asleepMinutes = asleepMinutes
+            existing.timeInBedMinutes = timeInBedMinutes
+            existing.sourceName = sourceName
+        } else {
+            context.insert(SleepEpisodeRecord(
+                id: id,
+                nightKey: nightKey,
+                startDate: startDate,
+                endDate: endDate,
+                timezoneIdentifier: timezoneIdentifier,
+                episodeType: episodeType,
+                asleepMinutes: asleepMinutes,
+                timeInBedMinutes: timeInBedMinutes,
+                sourceName: sourceName
+            ))
+        }
+        save()
+    }
+
+    /// Counterpart to `prune(window:keeping:)` for episodes: removes stored
+    /// episodes whose `nightKey` wasn't reconfirmed by this pass's full
+    /// re-fetch of `window` -- a nap deleted or corrected away in the Health
+    /// app should disappear from Zoon the same way a deleted main night does.
+    func pruneEpisodes(window: DateInterval, keeping validNightKeys: Set<String>) {
+        let start = window.start
+        let end = window.end
+        let descriptor = FetchDescriptor<SleepEpisodeRecord>(
+            predicate: #Predicate { $0.startDate >= start && $0.startDate <= end }
+        )
+        let inWindow: [SleepEpisodeRecord]
+        do {
+            inWindow = try context.fetch(descriptor)
+        } catch {
+            logger.error("Episode prune fetch failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let stale = inWindow.filter { !validNightKeys.contains($0.nightKey) }
+        guard !stale.isEmpty else { return }
+        for episode in stale { context.delete(episode) }
+        save()
+    }
+
+    /// Total minutes asleep across every stored secondary episode tied to a
+    /// given night's key -- naps and split-sleep blocks the main night's own
+    /// `timeAsleepMinutes` doesn't include. Used to build a day's true
+    /// 24-hour asleep total alongside the main sleep figure.
+    func secondaryEpisodeAsleepMinutes(forNightKey nightKey: String) -> Double {
+        let descriptor = FetchDescriptor<SleepEpisodeRecord>(
+            predicate: #Predicate { $0.nightKey == nightKey }
+        )
+        let episodes = (try? context.fetch(descriptor)) ?? []
+        return episodes.reduce(0) { $0 + $1.asleepMinutes }
+    }
+
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
     /// user a one-tap way to destroy everything it holds.
     @discardableResult
     func deleteAll() -> Bool {
         do {
             try context.delete(model: SleepNightRecord.self)
+            try context.delete(model: SleepEpisodeRecord.self)
             try context.save()
             AnchorStore.clear()
             return true
