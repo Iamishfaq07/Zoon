@@ -9,7 +9,7 @@ PBXBuildFile entries.
 import hashlib
 import os
 
-ROOT = "/home/user/Zoon"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 APP = "Zoon"
 EXT = "ZoonWidgetExtension"
@@ -35,7 +35,11 @@ def swift_files(folder):
         dirnames[:] = sorted(d for d in dirnames if not d.endswith(".xcassets"))
         for f in sorted(filenames):
             if f.endswith(".swift"):
-                out.append(os.path.relpath(os.path.join(dirpath, f), ROOT))
+                relative = os.path.relpath(os.path.join(dirpath, f), ROOT)
+                # pbxproj paths use forward slashes on every host. Normalizing
+                # here also keeps explicit extra files addressable when the
+                # generator runs on Windows.
+                out.append(relative.replace(os.sep, "/"))
     return sorted(out)
 
 
@@ -63,12 +67,19 @@ TESTS_SRC = swift_files("ZoonTests")
 # since it's a verified, real correctness fix, just not one with automated
 # coverage right now. See git history around "sync now prunes nights deleted
 # or corrected away in Health" for the two failed attempts' full CI logs.
-TESTS_EXTRA_APP_FILES = ["Zoon/Services/SleepSessionBuilder.swift"]
+TESTS_EXTRA_APP_FILES = [
+    "Zoon/Services/SleepSessionBuilder.swift",
+    "Zoon/Services/SnoreSignalAnalyzer.swift",
+]
 
 APP_ASSETS = "Zoon/Assets.xcassets"
 EXT_ASSETS = "ZoonWidget/Assets.xcassets"
 WATCH_ASSETS = "ZoonWatch/Assets.xcassets"
-DOCS = ["README.md", "SETUP.md", "project.yml", "LICENSE", ".gitignore"]
+APP_PRIVACY = "Zoon/PrivacyInfo.xcprivacy"
+EXT_PRIVACY = "ZoonWidget/PrivacyInfo.xcprivacy"
+WATCH_PRIVACY = "ZoonWatch/PrivacyInfo.xcprivacy"
+WATCH_EXT_PRIVACY = "ZoonWatchWidget/PrivacyInfo.xcprivacy"
+DOCS = ["README.md", "SETUP.md", "PRIVACY.md", "project.yml", "LICENSE", ".gitignore"]
 
 # ---------------------------------------------------------------- objects
 
@@ -92,6 +103,8 @@ def file_ref(path, ftype=None, name=None):
             ftype = "net.daringfireball.markdown"
         elif base.endswith(".yml"):
             ftype = "text.yaml"
+        elif base.endswith(".xcprivacy"):
+            ftype = "text.xml"
         else:
             ftype = "text"
     emit("PBXFileReference",
@@ -101,7 +114,10 @@ def file_ref(path, ftype=None, name=None):
 
 
 refs = {}
-for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + TESTS_SRC + [APP_ASSETS, EXT_ASSETS, WATCH_ASSETS] + DOCS:
+for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + TESTS_SRC + [
+    APP_ASSETS, EXT_ASSETS, WATCH_ASSETS,
+    APP_PRIVACY, EXT_PRIVACY, WATCH_PRIVACY, WATCH_EXT_PRIVACY,
+] + DOCS:
     refs[p] = file_ref(p)
 
 APP_PRODUCT = uid("product:app")
@@ -168,9 +184,10 @@ def resource_file(path, target):
     return bid
 
 
-app_resources = [resource_file(APP_ASSETS, APP)]
-ext_resources = [resource_file(EXT_ASSETS, EXT)]
-watch_resources = [resource_file(WATCH_ASSETS, WATCH)]
+app_resources = [resource_file(APP_ASSETS, APP), resource_file(APP_PRIVACY, APP)]
+ext_resources = [resource_file(EXT_ASSETS, EXT), resource_file(EXT_PRIVACY, EXT)]
+watch_resources = [resource_file(WATCH_ASSETS, WATCH), resource_file(WATCH_PRIVACY, WATCH)]
+watch_ext_resources = [resource_file(WATCH_EXT_PRIVACY, WATCH_EXT)]
 
 EMBED_WATCH_EXT_BF = uid("embed:watchappex")
 emit("PBXBuildFile",
@@ -216,25 +233,25 @@ def tree_groups(prefix, files, extra=()):
     subdirs = {}
     direct = []
     for p in files:
-        rel = os.path.relpath(p, prefix)
-        if os.sep in rel:
-            head = rel.split(os.sep)[0]
+        rel = os.path.relpath(p, prefix).replace(os.sep, "/")
+        if "/" in rel:
+            head = rel.split("/")[0]
             subdirs.setdefault(head, []).append(p)
         else:
             direct.append(p)
     children = []
     for name in sorted(subdirs):
-        children.append(tree_groups(os.path.join(prefix, name), subdirs[name]))
+        children.append(tree_groups(f"{prefix}/{name}", subdirs[name]))
     children += [refs[p] for p in sorted(direct)]
     children += list(extra)
     return group(prefix, os.path.basename(prefix), children, path=os.path.basename(prefix))
 
 
 shared_group = tree_groups("Shared", SHARED)
-app_group = tree_groups("Zoon", APP_SRC, extra=[refs[APP_ASSETS]])
-ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS]])
-watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS]])
-watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC)
+app_group = tree_groups("Zoon", APP_SRC, extra=[refs[APP_ASSETS], refs[APP_PRIVACY]])
+ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS], refs[EXT_PRIVACY]])
+watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS], refs[WATCH_PRIVACY]])
+watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC, extra=[refs[WATCH_EXT_PRIVACY]])
 tests_group = tree_groups("ZoonTests", TESTS_SRC)
 docs_group = group("docs", "Documentation", [refs[d] for d in DOCS])
 products_group = group("products", "Products",
@@ -292,7 +309,7 @@ phase(EMBED_WATCH_PHASE, "PBXCopyFilesBuildPhase", "Embed Watch Content", [EMBED
       extra='\t\t\tdstPath = "$(CONTENTS_FOLDER_PATH)/Watch";\n\t\t\tdstSubfolderSpec = 16;\n')
 phase(WATCH_EXT_SOURCES_PHASE, "PBXSourcesBuildPhase", "Sources", watch_ext_sources)
 phase(WATCH_EXT_FW_PHASE, "PBXFrameworksBuildPhase", "Frameworks", [])
-phase(WATCH_EXT_RES_PHASE, "PBXResourcesBuildPhase", "Resources", [])
+phase(WATCH_EXT_RES_PHASE, "PBXResourcesBuildPhase", "Resources", watch_ext_resources)
 # The complication extension is embedded in the *watch app*, not the phone app.
 phase(EMBED_WATCH_EXT_PHASE, "PBXCopyFilesBuildPhase", "Embed Foundation Extensions",
       [EMBED_WATCH_EXT_BF],
@@ -497,9 +514,6 @@ HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood 
 MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
             "patterns. Audio is processed in short bursts and never saved or sent "
             "anywhere -- only a minutes-snoring count is kept.")
-HEALTH_UPDATE_DESC = ("Zoon never writes anything to Health -- it only reads your sleep "
-                      "and vitals. This permission is requested only because the app's "
-                      "HealthKit entitlement requires it; no data is ever saved back.")
 
 PROJ_COMMON = """				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -564,8 +578,8 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
+				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -580,6 +594,7 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 
 EXT_SETTINGS = TARGET_COMMON + """				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = ZoonWidget/ZoonWidget.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -595,6 +610,7 @@ EXT_SETTINGS = TARGET_COMMON + """				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_
 # two settings are the whole difference between "an iOS target" and "a watchOS
 # target" as far as the build system is concerned.
 WATCH_SETTINGS = TARGET_COMMON + """				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ZoonWatch/ZoonWatch.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWatch/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp;
@@ -605,7 +621,8 @@ WATCH_SETTINGS = TARGET_COMMON + """				ASSETCATALOG_COMPILER_APPICON_NAME = App
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 """
 
-WATCH_EXT_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = NO;
+WATCH_EXT_SETTINGS = TARGET_COMMON + """				CODE_SIGN_ENTITLEMENTS = ZoonWatchWidget/ZoonWatchWidget.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ZoonWatchWidget/Info.plist;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.watchkitapp.ZoonWatchWidget;
 				SDKROOT = watchos;

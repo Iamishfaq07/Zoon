@@ -49,25 +49,25 @@ struct TodayView: View {
             if coordinator.recentNights.count <= 1 {
                 FirstNightCard(night: context.night).entrance(0)
             } else {
-                hero(context).entrance(0)
+                morningBrief(context).entrance(0)
             }
-            SleepIntelligenceCard(score: context.sleepIntelligence).entrance(1)
-            PersonalizationProgressCard(
-                nightsTracked: coordinator.recentNights.count,
-                taggedNights: coordinator.journal.taggedNightCount()
-            ).entrance(1)
-            guidanceCard(context).entrance(1)
             if let stress = coordinator.todayStress {
-                StressCard(stress: stress, todayStrain: context.strain.value).entrance(2)
+                StressCard(stress: stress, todayStrain: context.strain.value).entrance(1)
             }
-            ringsCard(context).entrance(3)
+            ringsCard(context).entrance(2)
+            SleepSummaryStrip(context: context).entrance(3)
+            if coordinator.recentNights.count < 30 {
+                PersonalizationProgressCard(
+                    nightsTracked: coordinator.recentNights.count,
+                    taggedNights: coordinator.journal.taggedNightCount()
+                ).entrance(4)
+            }
             EnergyForecastCard(forecast: EnergyForecast.compute(
                 wakeTime: context.night.wakeTime,
                 sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
                 windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
-            )).entrance(4)
-            BodyBatteryCard(battery: context.bodyBattery).entrance(4)
-            SleepSummaryStrip(context: context).entrance(5)
+            )).entrance(5)
+            BodyBatteryCard(battery: context.bodyBattery).entrance(5)
             // Radar first among the diagnostics: a sustained multi-signal drift
             // is the rarest and most consequential thing on this screen, and it
             // renders as nothing at all when there's nothing to say.
@@ -90,7 +90,7 @@ struct TodayView: View {
         }
     }
 
-    // MARK: - Hero
+    // MARK: - Morning brief
 
     /// Sleep Intelligence, not Recovery, leads the screen -- "how did I
     /// sleep" is the more fundamental question, and Recovery ("how
@@ -99,53 +99,83 @@ struct TodayView: View {
     /// text ("You're recovered", "You need to take it easy"); it reads fine
     /// as the supporting line under the new hero since `guidanceCard`
     /// immediately below spells out what to actually do about it.
-    private func hero(_ context: DayContext) -> some View {
-        VStack(spacing: 10) {
+    private func morningBrief(_ context: DayContext) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
             if context.isMock {
                 StatusPill(text: "Sample data", systemImage: "wand.and.stars", tint: Theme.Metric.sleep)
             }
 
-            SleepIntelligenceOrb(score: context.sleepIntelligence)
-                .padding(.top, 4)
+            HStack(alignment: .center, spacing: 18) {
+                SleepIntelligenceOrb(
+                    score: context.sleepIntelligence,
+                    size: 156,
+                    lineWidth: 12
+                )
 
-            Text(context.headline)
-                .font(Theme.label(17, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Morning brief")
+                        .font(Theme.label(12, weight: .bold))
+                        .foregroundStyle(.tertiary)
+
+                    Text(context.headline)
+                        .font(Theme.label(18, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("\(context.sleepIntelligence.confidence.label) confidence · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if context.recovery.isEstimate {
                 Text("Zoon needs a few more nights before this number is trustworthy.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
             }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-    }
 
-    private func guidanceCard(_ context: DayContext) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Today's call", systemImage: "flag.checkered")
-                .font(Theme.label(13, weight: .bold))
-                .foregroundStyle(Theme.recoveryColor(Double(context.recovery.percent)))
-
-            Text(context.recovery.band.guidance)
-                .font(Theme.label(15, weight: .medium))
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !context.strain.isEstimate || context.strain.value > 0 {
+            let drivers = topDrivers(context.sleepIntelligence)
+            if !drivers.isEmpty {
                 Divider().overlay(Theme.cardStroke)
-                Text(StrainScore.balanceVerdict(
-                    strain: context.strain.value,
-                    recoveryPercent: context.recovery.percent
-                ))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("What moved it")
+                        .font(Theme.label(12, weight: .bold))
+                        .foregroundStyle(.tertiary)
+                    ForEach(drivers) { driver in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Image(systemName: driver.pointContribution >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                .font(Theme.text(10, weight: .bold))
+                                .foregroundStyle(driver.pointContribution >= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
+                                .frame(width: 14)
+                            Text(driver.label)
+                                .font(Theme.label(12, weight: .semibold))
+                            Text(driver.detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 4)
+                        }
+                    }
+                }
+            }
+
+            Divider().overlay(Theme.cardStroke)
+            VStack(alignment: .leading, spacing: 5) {
+                Label("One action for tonight", systemImage: "checkmark.circle.fill")
+                    .font(Theme.label(12, weight: .bold))
+                    .foregroundStyle(Theme.recoveryColor(Double(context.recovery.percent)))
+                Text(context.insight.actionableTip)
+                    .font(Theme.label(14, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .glassCard()
+    }
+
+    private func topDrivers(
+        _ score: SleepIntelligenceScore
+    ) -> [SleepIntelligenceScore.Component] {
+        Array((score.negativeContributors + score.positiveContributors).prefix(3))
     }
 
     // MARK: - Rings
@@ -407,7 +437,7 @@ struct RecoveryBreakdownCard: View {
                     if component.isAvailable {
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
-                                Capsule().fill(Color.white.opacity(0.08))
+                                Capsule().fill(Theme.neutral(0.08))
                                 Capsule()
                                     .fill(Theme.recoveryColor(component.normalized * 100))
                                     .frame(width: geo.size.width * min(1, max(0.02, component.normalized)))
@@ -418,7 +448,7 @@ struct RecoveryBreakdownCard: View {
                         // Not a zero-width or zero-value bar: that would read
                         // as "scored badly" rather than "wasn't measured."
                         Capsule()
-                            .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .strokeBorder(Theme.neutral(0.12), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
                             .frame(height: 7)
                     }
 

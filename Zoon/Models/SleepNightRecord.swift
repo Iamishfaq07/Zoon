@@ -20,6 +20,10 @@ final class SleepNightRecord {
 
     /// Start-of-day for the morning the user woke up. Unique key.
     @Attribute(.unique) var date: Date
+    /// Stable local-date identity captured from the HealthKit sample timezone.
+    /// Optional so existing stores migrate without assigning every historical
+    /// row the same default key; rows are backfilled as HealthKit re-syncs.
+    var nightKey: String?
 
     var bedtime: Date
     var wakeTime: Date
@@ -74,8 +78,14 @@ final class SleepNightRecord {
 
     var createdAt: Date
 
-    init(features: SleepNightFeatures, absoluteWristTempC: Double? = nil, insight: SleepInsight? = nil) {
+    init(
+        features: SleepNightFeatures,
+        absoluteWristTempC: Double? = nil,
+        insight: SleepInsight? = nil,
+        nightKey: String? = nil
+    ) {
         self.date = features.date
+        self.nightKey = nightKey
         self.bedtime = features.bedtime
         self.wakeTime = features.wakeTime
         self.timeInBedMinutes = features.timeInBedMinutes

@@ -64,7 +64,7 @@ struct AchievementsView: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 10)
+                    .stroke(Theme.neutral(0.08), lineWidth: 10)
                 Circle()
                     .trim(from: 0, to: Double(unlockedCount) / Double(max(1, achievements.count)))
                     .stroke(
@@ -174,13 +174,13 @@ struct BadgeTile: View {
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                         : LinearGradient(
-                            colors: [Color.white.opacity(0.07), Color.white.opacity(0.03)],
+                            colors: [Theme.neutral(0.07), Theme.neutral(0.03)],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                     )
                     .overlay {
                         Hexagon().strokeBorder(
-                            achievement.isUnlocked ? tint : Color.white.opacity(0.12),
+                            achievement.isUnlocked ? tint : Theme.neutral(0.12),
                             lineWidth: 1.5
                         )
                     }

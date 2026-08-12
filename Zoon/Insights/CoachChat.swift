@@ -100,7 +100,7 @@ final class CoachChat {
             // rules engine the way the nightly insight can -- there's no
             // rule-based conversation to hand off to -- so it shows a plain
             // refusal instead of the raw response.
-            if DiagnosticLanguageGuard.containsBannedLanguage(response.content) {
+            if DiagnosticLanguageGuard.rejects(response.content) {
                 logger.notice("Chat response failed the diagnostic-language check; not shown")
                 messages.append(Message(
                     role: .assistant,

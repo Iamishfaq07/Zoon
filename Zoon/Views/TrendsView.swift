@@ -172,7 +172,7 @@ struct DurationChartCard: View {
 
                 if let selectedDate, let night = nights.nearest(toDay: selectedDate) {
                     RuleMark(x: .value("Selected", night.date, unit: .day))
-                        .foregroundStyle(.white.opacity(0.25))
+                        .foregroundStyle(Theme.neutral(0.25))
                         .annotation(
                             position: .top,
                             overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
@@ -256,7 +256,7 @@ struct HRVChartCard: View {
 
                     if let selectedDate, let night = points.nearest(toDay: selectedDate), let hrv = night.avgHRV {
                         RuleMark(x: .value("Selected", night.date, unit: .day))
-                            .foregroundStyle(.white.opacity(0.25))
+                            .foregroundStyle(Theme.neutral(0.25))
                             .annotation(
                                 position: .top,
                                 overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
@@ -347,7 +347,7 @@ struct SleepDebtChartCard: View {
                 if let selectedDate,
                    let point = points.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
                     RuleMark(x: .value("Selected", point.date, unit: .day))
-                        .foregroundStyle(.white.opacity(0.25))
+                        .foregroundStyle(Theme.neutral(0.25))
                         .annotation(
                             position: .top,
                             overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
@@ -432,7 +432,7 @@ struct ConsistencyChartCard: View {
                 if let selectedDate,
                    let point = points.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
                     RuleMark(x: .value("Selected", point.date, unit: .day))
-                        .foregroundStyle(.white.opacity(0.25))
+                        .foregroundStyle(Theme.neutral(0.25))
                         .annotation(
                             position: .top,
                             overflowResolution: .init(x: .fit(to: .chart), y: .disabled)

@@ -151,7 +151,7 @@ enum WeeklyWrappedExporter {
     }
 }
 
-#Preview("Weekly Wrapped") {
+#Preview("Weekly Wrapped", traits: .sizeThatFitsLayout) {
     let nights = MockData.recentWeek
     let recoveries = Dictionary(uniqueKeysWithValues: nights.map { ($0.date, Int.random(in: 55...92)) })
     let report = WeeklyReport.build(
@@ -160,5 +160,4 @@ enum WeeklyWrappedExporter {
         goalMinutes: 480, consistencyMinutes: 22
     )
     return WeeklyWrappedCard(report: report)
-        .previewLayout(.sizeThatFits)
 }

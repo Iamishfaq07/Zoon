@@ -157,7 +157,7 @@ private struct LearningRow: View {
                 Image(systemName: tag.tag.symbol)
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
-                    .background(Color.white.opacity(0.06), in: Circle())
+                    .background(Theme.neutral(0.06), in: Circle())
                 Text(tag.tag.label)
                     .font(Theme.label(14, weight: .semibold))
                 Spacer()
@@ -169,7 +169,7 @@ private struct LearningRow: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.08))
+                    Capsule().fill(Theme.neutral(0.08))
                     Capsule()
                         .fill(Theme.Metric.sleep)
                         .frame(width: geo.size.width * tag.progress)

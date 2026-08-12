@@ -30,6 +30,8 @@ enum PreviewSupport {
         // A dedicated defaults suite so previews can't stomp on real settings.
         defaults: UserDefaults(suiteName: "com.zoon.sleep.previews") ?? .standard
     )
+    static let naps = NapStore.preview
+    static let reminders = BedtimeReminder()
 
     /// Coordinator pre-loaded with mock data.
     static var coordinator: SleepDataCoordinator {
@@ -37,8 +39,9 @@ enum PreviewSupport {
             healthKit: HealthKitManager(),
             store: SleepHistoryStore(context: container.mainContext),
             journal: JournalStore(context: container.mainContext),
-            naps: NapStore.preview,
-            preferences: preferences
+            naps: naps,
+            preferences: preferences,
+            reminders: reminders
         )
         coordinator.loadMockData()
         return coordinator
@@ -52,9 +55,9 @@ extension View {
         self
             .environment(PreviewSupport.coordinator)
             .environment(PreviewSupport.preferences)
-            .environment(NapStore.preview)
+            .environment(PreviewSupport.naps)
             .environment(SoundscapeEngine())
-            .environment(BedtimeReminder())
+            .environment(PreviewSupport.reminders)
             .environment(GlobalPresentation())
             .modelContainer(PreviewSupport.container)
             .preferredColorScheme(.dark)

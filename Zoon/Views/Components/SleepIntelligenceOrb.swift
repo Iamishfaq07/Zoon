@@ -14,9 +14,8 @@ import SwiftUI
 ///
 /// Tap a segment to see that component's own detail and point contribution
 /// in the center; tap it again, or tap the center, to return to the total.
-/// `SleepIntelligenceCard` below still carries the itemized "what helped /
-/// what held you back" list -- this is the at-a-glance visual, not a
-/// replacement for the readable one.
+/// `TodayView` places a readable driver list beside/below the orb, so the arcs
+/// are never the only way to understand the score.
 struct SleepIntelligenceOrb: View {
     let score: SleepIntelligenceScore
 
@@ -78,7 +77,7 @@ struct SleepIntelligenceOrb: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: lineWidth)
+                .stroke(Theme.cardStroke, lineWidth: lineWidth)
 
             ForEach(segments, id: \.component.id) { segment in
                 let isDimmed = selectedID != nil && selectedID != segment.component.id
@@ -101,7 +100,7 @@ struct SleepIntelligenceOrb: View {
                     // trim/rotation/strokedPath in this SDK.
                     Circle()
                         .trim(from: 0, to: max(0, min(segment.end, animatedProgress) - segment.start))
-                        .stroke(Color.white.opacity(0.001), lineWidth: lineWidth + 22)
+                        .stroke(Color.primary.opacity(0.001), lineWidth: lineWidth + 22)
                         .onTapGesture { select(segment.component) }
                 }
                 .rotationEffect(.degrees(segment.start * 360 - 90))
@@ -127,9 +126,8 @@ struct SleepIntelligenceOrb: View {
         }
         // One summary element rather than seven interactive sub-elements:
         // VoiceOver has no equivalent of "tap a 4pt arc," and
-        // SleepIntelligenceCard right below already exposes every
-        // component's detail as ordinary, accessible text -- that's the
-        // textual equivalent this chart needs, not a duplicate of it here.
+        // The Morning Brief exposes component details as ordinary accessible
+        // text; that is the equivalent of the visual arcs for VoiceOver.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sleep Intelligence")
         .accessibilityValue("\(score.percent), \(score.band.label)")

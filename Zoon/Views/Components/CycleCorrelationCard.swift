@@ -60,7 +60,7 @@ struct CycleCorrelationCard: View {
                     .fill(tint.opacity(0.8))
                     .frame(width: geo.size.width * min(1, value / 100))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Capsule().fill(Color.white.opacity(0.08)))
+                    .background(Capsule().fill(Theme.neutral(0.08)))
             }
             .frame(height: 8)
 

@@ -235,7 +235,7 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
         // Backstop on the diagnosis rule. The instructions forbid it; this makes
         // it structural rather than a request the model may or may not honour.
         let combined = "\(summary) \(generated.likelyCause) \(tip)"
-        guard !DiagnosticLanguageGuard.containsBannedLanguage(combined) else { return nil }
+        guard !DiagnosticLanguageGuard.rejects(combined) else { return nil }
 
         let cause = generated.likelyCause.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedCause = cause.isEmpty || cause.lowercased() == "null" ? nil : cause
@@ -247,7 +247,7 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
             // Generated text never claims high confidence. The rules can prove
             // their claims; a model cannot.
             confidence: .medium,
-            source: .localLLM
+            source: .appleIntelligence
         )
     }
     #endif

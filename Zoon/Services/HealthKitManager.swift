@@ -322,7 +322,7 @@ final class HealthKitManager {
         }
     }
 
-    /// Most recent sample of a quantity type, at or before `cutoff`.
+    /// Most recent sample of a quantity type inside a bounded interval.
     ///
     /// For discrete once-a-day metrics like `.restingHeartRate`, which
     /// HealthKit computes once per day from a rolling window rather than
@@ -332,10 +332,13 @@ final class HealthKitManager {
     func mostRecentSample(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        onOrBefore cutoff: Date
+        in interval: DateInterval
     ) async throws -> Double? {
         let type = HKQuantityType(identifier)
-        let predicate = HKQuery.predicateForSamples(withStart: nil, end: cutoff)
+        let predicate = HKQuery.predicateForSamples(
+            withStart: interval.start,
+            end: interval.end
+        )
         let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
 
         return try await withCheckedThrowingContinuation { continuation in

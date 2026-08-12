@@ -48,9 +48,11 @@ final class SnoreDetector {
 
     private var burstTimestamps: [Date] = []
     private let burstThresholdRMS: Float = 0.02
+    private let minimumLowFrequencyRatio: Float = 0.45
     private let minBurstGap: TimeInterval = 1.2
     private let maxBurstGap: TimeInterval = 6.0
     private var lastBurst: Date?
+    private var isInsideBurst = false
     private var tickAccumulator: TimeInterval = 0
     private let tickInterval: TimeInterval = 1.0
 
@@ -83,15 +85,21 @@ final class SnoreDetector {
         snoreSeconds = 0
         burstTimestamps.removeAll()
         lastBurst = nil
+        isInsideBurst = false
         tickAccumulator = 0
 
         // ~100ms buffers: short enough that nothing meaningful survives one
         // tick, long enough for a stable RMS reading.
         input.installTap(onBus: 0, bufferSize: 4800, format: format) { [weak self] buffer, _ in
-            let rms = Self.rms(of: buffer)
+            guard let channel = buffer.floatChannelData?[0] else { return }
+            let samples = UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))
+            let energy = SnoreSignalAnalyzer.energy(
+                samples: samples,
+                sampleRate: format.sampleRate
+            )
             let bufferSeconds = Double(buffer.frameLength) / format.sampleRate
             Task { @MainActor [weak self] in
-                self?.process(rms: rms, elapsed: bufferSeconds)
+                self?.process(energy: energy, elapsed: bufferSeconds)
             }
         }
 
@@ -118,11 +126,17 @@ final class SnoreDetector {
 
     // MARK: - Processing
 
-    private func process(rms: Float, elapsed: Double) {
+    private func process(energy: SnoreSignalAnalyzer.Energy, elapsed: Double) {
         monitoredSeconds += elapsed
         tickAccumulator += elapsed
 
-        if rms >= burstThresholdRMS {
+        let qualifiesAsLowBurst = energy.broadbandRMS >= burstThresholdRMS
+            && energy.lowFrequencyRatio >= minimumLowFrequencyRatio
+
+        // Register the leading edge once. Updating `lastBurst` for every loud
+        // 100 ms buffer makes a one-second snore continually reset its own gap,
+        // so no later burst can ever satisfy the 1.2-second cadence floor.
+        if qualifiesAsLowBurst && !isInsideBurst {
             let now = Date.now
             if let last = lastBurst {
                 let gap = now.timeIntervalSince(last)
@@ -136,6 +150,7 @@ final class SnoreDetector {
             }
             lastBurst = now
         }
+        isInsideBurst = qualifiesAsLowBurst
 
         // Three or more bursts on a snore-like cadence counts the elapsed
         // second as snoring. Requiring a run of bursts, not a single one, is
@@ -150,13 +165,4 @@ final class SnoreDetector {
         burstTimestamps.removeAll { $0 < cutoff }
     }
 
-    private static func rms(of buffer: AVAudioPCMBuffer) -> Float {
-        guard let data = buffer.floatChannelData else { return 0 }
-        let channel = data[0]
-        let count = Int(buffer.frameLength)
-        guard count > 0 else { return 0 }
-        var sum: Float = 0
-        for i in 0..<count { sum += channel[i] * channel[i] }
-        return (sum / Float(count)).squareRoot()
-    }
 }

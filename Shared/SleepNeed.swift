@@ -27,7 +27,15 @@ struct SleepNeed: Codable, Hashable, Sendable {
     let achievedMinutes: Double
 
     var totalNeedMinutes: Double {
-        max(baselineMinutes, baselineMinutes + debtMinutes + strainMinutes - napCreditMinutes)
+        // A nap is part of the day's sleep, so it must be able to reduce the
+        // nocturnal target below the full daily baseline. Keep a substantial
+        // night floor, though: a long afternoon nap should not turn into advice
+        // to sleep only a few hours overnight.
+        let nightFloor = max(baselineMinutes * 0.75, baselineMinutes - 120)
+        return max(
+            nightFloor,
+            baselineMinutes + debtMinutes + strainMinutes - napCreditMinutes
+        )
     }
 
     /// 0–100+, capped at 100 for display. Whoop calls this Sleep Performance.
@@ -82,6 +90,9 @@ struct SleepNeed: Codable, Hashable, Sendable {
     private static let maxDebtBonus = 90.0
     /// Cap on strain-driven extra, minutes.
     private static let maxStrainBonus = 55.0
+    /// A nap can offset at most two hours of the nocturnal target. Longer naps
+    /// still appear in history, but should not produce an unsafe bedtime plan.
+    private static let maxNapCredit = 120.0
 
     static func compute(
         goalMinutes: Double,
@@ -103,7 +114,7 @@ struct SleepNeed: Codable, Hashable, Sendable {
             baselineMinutes: goalMinutes,
             debtMinutes: debt,
             strainMinutes: strain,
-            napCreditMinutes: max(0, napMinutes),
+            napCreditMinutes: min(maxNapCredit, max(0, napMinutes)),
             achievedMinutes: achievedMinutes
         )
     }

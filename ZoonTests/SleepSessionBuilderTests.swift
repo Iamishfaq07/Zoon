@@ -16,8 +16,19 @@ final class SleepSessionBuilderTests: XCTestCase {
 
     private let calendar = Calendar.current
 
-    private func sample(_ stage: HKCategoryValueSleepAnalysis, start: Date, end: Date) -> HKCategorySample {
-        HKCategorySample(type: HKCategoryType(.sleepAnalysis), value: stage.rawValue, start: start, end: end)
+    private func sample(
+        _ stage: HKCategoryValueSleepAnalysis,
+        start: Date,
+        end: Date,
+        metadata: [String: Any]? = nil
+    ) -> HKCategorySample {
+        HKCategorySample(
+            type: HKCategoryType(.sleepAnalysis),
+            value: stage.rawValue,
+            start: start,
+            end: end,
+            metadata: metadata
+        )
     }
 
     func testTwoNightsSeparatedByADayAreDistinctSessions() {
@@ -62,6 +73,56 @@ final class SleepSessionBuilderTests: XCTestCase {
         let sessions = builder.buildSessions(from: [sample(.asleepCore, start: start, end: end)])
 
         XCTAssertTrue(sessions.isEmpty)
+    }
+
+    func testInBedOnlySessionIsNotSleep() {
+        let start = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 22))!
+        let end = start.addingTimeInterval(8 * 3600)
+
+        let sessions = SleepSessionBuilder().buildSessions(
+            from: [sample(.inBed, start: start, end: end)]
+        )
+
+        XCTAssertTrue(sessions.isEmpty)
+    }
+
+    func testMainSleepSelectionPrefersAsleepDurationOverSpan() {
+        let nightStart = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let napStart = nightStart.addingTimeInterval(14 * 3600)
+        let samples = [
+            sample(.asleepCore, start: nightStart, end: nightStart.addingTimeInterval(6 * 3600)),
+            sample(.asleepCore, start: napStart, end: napStart.addingTimeInterval(90 * 60)),
+        ]
+        let sessions = SleepSessionBuilder().buildSessions(from: samples)
+
+        let selected = SleepSessionBuilder.preferredMainSleep(in: sessions)
+
+        XCTAssertEqual(selected?.totalAsleepMinutes ?? 0, 360, accuracy: 0.001)
+    }
+
+    func testNightIdentityUsesRecordedTimezoneNotCurrentCalendar() {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = utc.date(from: DateComponents(
+            year: 2026, month: 1, day: 1, hour: 20
+        ))!
+        let end = start.addingTimeInterval(8 * 3_600)
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let samples = [sample(
+            .asleepCore,
+            start: start,
+            end: end,
+            metadata: [HKMetadataKeyTimeZone: timeZone.identifier]
+        )]
+        guard let session = SleepSessionBuilder().buildSessions(from: samples).first else {
+            return XCTFail("Expected a session")
+        }
+
+        var recordedCalendar = Calendar(identifier: .gregorian)
+        recordedCalendar.timeZone = timeZone
+
+        XCTAssertEqual(session.nightKey, "2026-01-01@America/Los_Angeles")
+        XCTAssertEqual(session.wakeDate, recordedCalendar.startOfDay(for: end))
     }
 
     func testGapWithinThresholdStaysOneSession() {

@@ -104,6 +104,13 @@ enum Theme {
     static var cardStroke: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.08) }
     static var cardFill: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.05) }
 
+    /// A neutral overlay with caller-controlled strength. This is for rings,
+    /// ticks and empty chart cells where a literal white works in Dark but
+    /// disappears on the dawn palette in Light.
+    static func neutral(_ opacity: Double) -> Color {
+        adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(opacity)
+    }
+
     // MARK: - Metric hues
 
     enum Metric {
@@ -139,7 +146,7 @@ enum Theme {
             case .core: core
             case .awake: awake
             case .unspecified: unspecified
-            case .inBed: Color.white.opacity(0.18)
+            case .inBed: Color.primary.opacity(0.18)
             }
         }
     }

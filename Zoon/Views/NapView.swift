@@ -72,7 +72,7 @@ struct NapView: View {
         return VStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 14)
+                    .stroke(Theme.neutral(0.08), lineWidth: 14)
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
@@ -106,7 +106,7 @@ struct NapView: View {
                     Text("Cancel")
                         .font(Theme.label(14, weight: .semibold))
                         .padding(.horizontal, 22).padding(.vertical, 11)
-                        .background(Color.white.opacity(0.09), in: Capsule())
+                        .background(Theme.neutral(0.09), in: Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -211,7 +211,7 @@ struct NapView: View {
                             .foregroundStyle(
                                 selectedMinutes == preset.minutes
                                     ? Theme.Metric.strain
-                                    : Color.white.opacity(0.35)
+                                    : Theme.neutral(0.35)
                             )
                     }
                     .padding(.vertical, 5)

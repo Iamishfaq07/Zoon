@@ -67,7 +67,7 @@ struct ArticlesView: View {
                 .padding(.vertical, 7)
                 .background {
                     Capsule()
-                        .fill(isOn ? tint.opacity(0.3) : Color.white.opacity(0.06))
+                        .fill(isOn ? tint.opacity(0.3) : Theme.neutral(0.06))
                         .overlay {
                             Capsule().strokeBorder(isOn ? tint : Theme.cardStroke, lineWidth: 1)
                         }
@@ -104,7 +104,7 @@ private struct ArticleCard: View {
                     .tracking(0.5)
                 Text(article.title)
                     .font(Theme.label(13, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("\(article.readMinutes) min read")
@@ -114,7 +114,7 @@ private struct ArticleCard: View {
             .padding(11)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Theme.cardStroke, lineWidth: 1)

@@ -112,7 +112,7 @@ struct JournalView: View {
             .frame(width: 46, height: 62)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? Theme.Metric.sleep.opacity(0.25) : Color.white.opacity(0.05))
+                    .fill(isSelected ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.05))
                     .overlay {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .strokeBorder(
@@ -168,7 +168,7 @@ struct JournalView: View {
             .padding(.vertical, 8)
             .background {
                 Capsule()
-                    .fill(isOn ? Theme.Metric.sleep.opacity(0.3) : Color.white.opacity(0.06))
+                    .fill(isOn ? Theme.Metric.sleep.opacity(0.3) : Theme.neutral(0.06))
                     .overlay {
                         Capsule().strokeBorder(
                             isOn ? Theme.Metric.sleep : Theme.cardStroke,

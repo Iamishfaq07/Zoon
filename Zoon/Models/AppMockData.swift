@@ -12,6 +12,7 @@ enum AppMockData {
     static let baseline = RollingBaseline(
         hrv7DayAvg: 61, sleepDebtMinutes: 95, deep7DayAvg: 74,
         duration7DayAvg: 421, efficiency7DayAvg: 89, minHeartRate7DayAvg: 52,
+        restingHeartRate7DayAvg: 56,
         wristTempBaselineC: 35.1, bedtimeConsistencyMinutes: 38, sampleCount: 7
     )
 

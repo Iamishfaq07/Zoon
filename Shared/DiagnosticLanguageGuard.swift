@@ -18,8 +18,22 @@ enum DiagnosticLanguageGuard {
         "disorder", "syndrome", "disease", "you should see a doctor"
     ]
 
+    /// Prescriptive health actions that are unsafe for a wellness model to
+    /// improvise even when it avoids naming a diagnosis.
+    static let unsafeGuidanceTerms = [
+        "stop taking", "start taking", "change your dose", "increase your dose",
+        "decrease your dose", "skip your medication", "replace your medication",
+        "sleep fewer than", "stay awake all night", "ignore chest pain"
+    ]
+
     static func containsBannedLanguage(_ text: String) -> Bool {
         let lowered = text.lowercased()
         return bannedTerms.contains { lowered.contains($0) }
+    }
+
+    static func rejects(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        return containsBannedLanguage(text)
+            || unsafeGuidanceTerms.contains { lowered.contains($0) }
     }
 }

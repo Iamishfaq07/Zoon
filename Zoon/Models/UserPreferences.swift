@@ -148,4 +148,31 @@ final class UserPreferences {
     var sleepGoalDisplay: String {
         SleepNightFeatures.formatMinutes(sleepGoalMinutes)
     }
+
+    /// Resets every app-owned preference to its first-launch value and removes
+    /// the persisted keys. Assigning first updates the observable in-memory
+    /// state; removing afterwards ensures the erase operation leaves no age,
+    /// cycle choice, engine choice, schedule, or onboarding marker on disk.
+    func resetForDataErasure() {
+        sleepGoalMinutes = 480
+        hasCompletedOnboarding = false
+        bedtimeRemindersEnabled = false
+        cycleTrackingEnabled = false
+        smartWakeEnabled = false
+        appearance = .dark
+        age = nil
+        preferredEngine = .ruleBased
+
+        let keys = [
+            Key.sleepGoalMinutes,
+            Key.hasCompletedOnboarding,
+            Key.preferredEngine,
+            Key.age,
+            Key.bedtimeRemindersEnabled,
+            Key.cycleTrackingEnabled,
+            Key.smartWakeEnabled,
+            Key.appearance,
+        ]
+        for key in keys { defaults.removeObject(forKey: key) }
+    }
 }
