@@ -120,7 +120,9 @@ enum MockData {
             features: goodNight,
             score: SleepScore.compute(for: goodNight, goalMinutes: 480),
             insight: goodInsight,
-            goalMinutes: 480
+            goalMinutes: 480,
+            sleepIntelligencePercent: 84,
+            sleepIntelligenceBand: "Excellent"
         )
     }
 

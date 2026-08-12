@@ -486,7 +486,9 @@ final class SleepDataCoordinator {
             recoveryPercent: context.recovery.percent,
             bodyBattery: context.bodyBattery.current,
             strain: context.strain.value,
-            sleepPerformance: context.sleepNeed.performancePercent
+            sleepPerformance: context.sleepNeed.performancePercent,
+            sleepIntelligencePercent: context.sleepIntelligence.percent,
+            sleepIntelligenceBand: context.sleepIntelligence.band.label
         )
 
         // Badges are evaluated here rather than in the extension: the engine
