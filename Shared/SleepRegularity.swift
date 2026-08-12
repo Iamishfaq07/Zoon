@@ -84,7 +84,15 @@ struct SleepRegularity: Codable, Hashable, Sendable {
             var cursor = windowStart
             while cursor < windowEnd {
                 let asleepNow = previous.isAsleep(at: cursor)
-                let asleepTomorrow = next.isAsleep(at: cursor.addingTimeInterval(day))
+                // Calendar-day addition, not cursor + 86,400 seconds: on a DST
+                // transition night that's a 23- or 25-hour day, "24 hours
+                // later" by the clock is not 86,400 seconds later in absolute
+                // time. Comparing against the wrong wall-clock instant would
+                // read as a spurious agreement or disagreement for every
+                // sample that night, right when DST nights are already the
+                // one time a regularity metric most needs to stay correct.
+                let sameTimeNextDay = calendar.date(byAdding: .day, value: 1, to: cursor) ?? cursor.addingTimeInterval(day)
+                let asleepTomorrow = next.isAsleep(at: sameTimeNextDay)
                 if asleepNow == asleepTomorrow { agreements += 1 }
                 comparisons += 1
                 cursor = cursor.addingTimeInterval(step)

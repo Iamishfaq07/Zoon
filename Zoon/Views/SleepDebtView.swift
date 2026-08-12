@@ -7,7 +7,7 @@ struct SleepDebtView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
-    private var currentDebt: Double { coordinator.state.context?.night.sleepDebtMinutes14Day ?? 0 }
+    private var currentDebt: Double { coordinator.state.context?.night.sleepDebtMinutes ?? 0 }
 
     private var band: (label: String, tint: Color) {
         switch currentDebt {
@@ -58,7 +58,7 @@ struct SleepDebtView: View {
                         .font(Theme.label(12))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(SleepNightFeatures.formatMinutes(night.sleepDebtMinutes14Day ?? 0) + " owed")
+                    Text(SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0) + " owed")
                         .font(Theme.label(12, weight: .semibold))
                         .monospacedDigit()
                 }
@@ -74,19 +74,19 @@ struct SleepDebtView: View {
         let nights = Array(coordinator.recentNights.suffix(30))
         if nights.count >= 3 {
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "14-day balance, last 30 nights", systemImage: "chart.line.uptrend.xyaxis")
+                SectionHeader(title: "Running balance, last 30 nights", systemImage: "chart.line.uptrend.xyaxis")
                 Chart {
                     ForEach(nights, id: \.date) { night in
                         AreaMark(
                             x: .value("Date", night.date, unit: .day),
-                            y: .value("Debt", (night.sleepDebtMinutes14Day ?? 0) / 60)
+                            y: .value("Debt", (night.sleepDebtMinutes ?? 0) / 60)
                         )
                         .foregroundStyle(
                             .linearGradient(colors: [band.tint.opacity(0.4), band.tint.opacity(0.05)], startPoint: .top, endPoint: .bottom)
                         )
                         LineMark(
                             x: .value("Date", night.date, unit: .day),
-                            y: .value("Debt", (night.sleepDebtMinutes14Day ?? 0) / 60)
+                            y: .value("Debt", (night.sleepDebtMinutes ?? 0) / 60)
                         )
                         .foregroundStyle(band.tint)
                     }
@@ -102,7 +102,7 @@ struct SleepDebtView: View {
                                     title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
                                     lines: [(
                                         "Owed",
-                                        SleepNightFeatures.formatMinutes(night.sleepDebtMinutes14Day ?? 0),
+                                        SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0),
                                         band.tint
                                     )]
                                 )
@@ -123,10 +123,11 @@ struct SleepDebtView: View {
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(.secondary)
             Text("""
-                A running shortfall against your sleep goal over the last 14 nights -- a \
-                planning figure, not a direct physiological measurement. It doesn't repay \
-                one-for-one: a single long night helps, but consistently adequate nights matter \
-                more than one oversized catch-up sleep.
+                A running shortfall against your sleep goal -- a planning figure, not a direct \
+                physiological measurement. Recent nights count most; older ones fade out \
+                gradually rather than dropping off all at once. A single long night doesn't \
+                erase it -- there's no one-for-one repayment -- but consistently adequate nights \
+                bring the balance down over time.
                 """)
                 .font(Theme.text(10))
                 .foregroundStyle(.tertiary)

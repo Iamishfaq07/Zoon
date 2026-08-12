@@ -13,6 +13,22 @@ struct DayContextBuilder {
     /// you're buried in it.
     static let recoveryBaselineWindow = 30
 
+    /// Window for the two "habitual timing" metrics -- `SleepRegularity` and
+    /// `BodyClock` -- that, unlike their siblings below, don't do any
+    /// internal windowing of their own: `CardiovascularAge` re-slices to its
+    /// own `.suffix(30)` and `HealthRadar` to its own recent + baseline
+    /// windows regardless of how much history is handed to them, but
+    /// `SleepRegularity.compute`/`BodyClock.compute` use exactly the array
+    /// they're given. Passing them the ever-growing full record meant a
+    /// habitual bedtime or regularity index quietly became a lifetime
+    /// average -- a genuine schedule change (new job, new baby, a permanent
+    /// timezone move) got diluted more and more slowly the longer someone
+    /// had used the app, instead of the "recent pattern" both are meant to
+    /// describe. 60 nights is comfortably above each metric's own minimum
+    /// (14 for BodyClock, 7 for SleepRegularity) while still adapting to a
+    /// real change within a couple of months.
+    static let habitWindow = 60
+
     struct Inputs {
         let night: SleepNightFeatures
         let insight: SleepInsight
@@ -37,18 +53,20 @@ struct DayContextBuilder {
 
         // --- Baselines ----------------------------------------------------
         let window = Array(history.suffix(Self.recoveryBaselineWindow))
-        let recoveryBaseline = RecoveryBaseline(
-            hrv: mean(window.compactMap(\.avgHRV)),
-            restingHeartRate: mean(window.compactMap(\.minHeartRate)),
-            respiratoryRate: mean(window.compactMap(\.avgRespiratoryRate)),
-            wristTemperature: mean(window.compactMap(\.wristTempDeltaC)),
-            nightCount: window.count
-        )
+        // Per-metric sample gating lives in the factory -- see
+        // RecoveryBaseline.minimumSamplesPerMetric for why a shared
+        // window-wide night count isn't good enough.
+        let recoveryBaseline = RecoveryBaseline.from(nights: window)
 
         // --- Sleep need ---------------------------------------------------
+        // The baseline SleepNeed builds on top of is the learned figure once
+        // there's enough history for one, not always the raw Settings goal --
+        // see LearnedSleepNeed's own doc comment for why a straight average
+        // of past nights isn't used instead.
+        let learnedNeed = LearnedSleepNeed.compute(goalMinutes: inputs.goalMinutes, history: history)
         let sleepNeed = SleepNeed.compute(
-            goalMinutes: inputs.goalMinutes,
-            outstandingDebtMinutes: night.sleepDebtMinutes14Day ?? 0,
+            goalMinutes: learnedNeed.minutes,
+            outstandingDebtMinutes: night.sleepDebtMinutes ?? 0,
             yesterdayStrain: inputs.yesterdayStrain.value,
             napMinutes: inputs.napMinutes,
             achievedMinutes: night.timeAsleepMinutes
@@ -62,9 +80,12 @@ struct DayContextBuilder {
         )
 
         // --- Body battery -------------------------------------------------
-        // Resting HR falls back to the night's own low, then to a plausible
-        // default — a nil here would zero the drain model rather than degrade it.
-        let restingHR = recoveryBaseline.restingHeartRate ?? night.minHeartRate ?? 60
+        // Resting HR falls back through the night's own true RHR, then its
+        // sleep-window low, then a plausible default — a nil here would zero
+        // the drain model rather than degrade it. Body Battery is a wellness
+        // curve, not a scored component, so this looser fallback chain (unlike
+        // RecoveryBaseline above) is an acceptable approximation.
+        let restingHR = recoveryBaseline.restingHeartRate ?? night.restingHeartRate ?? night.minHeartRate ?? 60
         let bodyBattery = BodyBattery.build(
             startLevel: BodyBattery.overnightCharge(
                 recoveryPercent: recovery.percent,
@@ -82,7 +103,7 @@ struct DayContextBuilder {
             history: window.map {
                 VitalsSample(
                     date: $0.date,
-                    restingHeartRate: $0.minHeartRate,
+                    restingHeartRate: $0.restingHeartRate,
                     hrv: $0.avgHRV,
                     respiratoryRate: $0.avgRespiratoryRate,
                     oxygenSaturation: $0.avgSpO2,
@@ -107,18 +128,31 @@ struct DayContextBuilder {
             consistencyMinutes: inputs.bedtimeConsistencyMinutes
         )
 
-        // Regularity, radar and CV age all read the full record including
-        // tonight — they describe a span, not a single night.
+        // Regularity, radar and CV age all read a span including tonight
+        // rather than tonight alone. Radar and CV age get the unbounded
+        // record because each does its own internal windowing regardless of
+        // input size; regularity and body clock get a bounded recent window
+        // instead, since neither windows internally — see `habitWindow`'s
+        // doc comment for why passing them the full record was a bug.
         let fullHistory = history + [night]
+        let habitWindow = Array(fullHistory.suffix(Self.habitWindow))
 
-        let regularity = SleepRegularity.compute(nights: fullHistory)
-        let bodyClock = BodyClock.compute(nights: fullHistory)
+        let regularity = SleepRegularity.compute(nights: habitWindow)
+        let bodyClock = BodyClock.compute(nights: habitWindow)
 
         let sleepIntelligence = SleepIntelligenceScore.compute(.init(
             night: night,
             history: history,
             sleepNeedMinutes: sleepNeed.totalNeedMinutes,
-            regularityIndex: regularity.nightCount >= 3 ? regularity.index : nil,
+            // `SleepRegularity.compute` returns a hardcoded index of 0 -- not
+            // nil -- below its own `minimumNights` (7), since SRI needs a full
+            // week of consecutive-night comparisons to mean anything. Gating on
+            // `hasEnoughData` here (rather than a separate, looser threshold)
+            // is what keeps that 0 from ever being read as "no regularity"
+            // instead of "not enough history yet" -- a new user with 3-6
+            // nights was previously scored as having zero regularity, the
+            // worst possible value, purely for being new.
+            regularityIndex: regularity.hasEnoughData ? regularity.index : nil,
             habitualMidpointHours: bodyClock?.isEstimate == false ? bodyClock?.midpoint : nil
         ))
 
@@ -127,6 +161,7 @@ struct DayContextBuilder {
             insight: inputs.insight,
             recovery: recovery,
             sleepNeed: sleepNeed,
+            learnedSleepNeed: learnedNeed,
             sleepScore: SleepScore.compute(for: night, goalMinutes: inputs.goalMinutes),
             sleepIntelligence: sleepIntelligence,
             strain: inputs.todayStrain,
@@ -159,10 +194,5 @@ struct DayContextBuilder {
     static func estimatedMaxHeartRate(age: Int?) -> Double {
         guard let age, age > 0, age < 120 else { return 190 }
         return 208 - 0.7 * Double(age)
-    }
-
-    private func mean(_ values: [Double]) -> Double? {
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Double(values.count)
     }
 }

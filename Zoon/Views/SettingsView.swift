@@ -15,6 +15,7 @@ struct SettingsView: View {
         // setter has to trigger a recompute, not just store a value.
         Form {
             goalSection
+            appearanceSection
             remindersSection
             cycleSection
             profileSection
@@ -74,6 +75,24 @@ struct SettingsView: View {
             Text("Sleep Goal")
         } footer: {
             Text("Your recovery score, sleep need, and debt are all measured against this — not a population average.")
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section {
+            Picker("Appearance", selection: Binding(
+                get: { preferences.appearance },
+                set: { preferences.appearance = $0 }
+            )) {
+                ForEach(UserPreferences.AppearancePreference.allCases) { option in
+                    Text(option.displayName).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("Zoon was built dark-first for a bedroom screen. Light follows the same palette in daylight tones.")
         }
     }
 
@@ -192,7 +211,7 @@ struct SettingsView: View {
                 dates specifically — a separate permission from everything else Zoon \
                 reads. Useful because a normal luteal-phase shift in HRV and resting \
                 heart rate can otherwise look identical to the illness-drift pattern \
-                Health Radar watches for.
+                Body Signals watches for.
                 """)
         }
     }
@@ -219,7 +238,7 @@ struct SettingsView: View {
         } footer: {
             Text("""
                 Used only to estimate your maximum heart rate, which sets the zones behind \
-                Strain and Body Battery. Nothing else reads it, and it never leaves the device.
+                Daily Load and Energy Reserve. Nothing else reads it, and it never leaves the device.
                 """)
         }
     }

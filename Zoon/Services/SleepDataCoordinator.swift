@@ -231,7 +231,6 @@ final class SleepDataCoordinator {
 
             let anchor = AnchorStore.load()
             let result = try await healthKit.fetchSleepSamples(since: anchor, window: window)
-            AnchorStore.save(result.anchor)
 
             // The anchored delta alone isn't enough to rebuild whole sessions —
             // a delta can land mid-night and we'd segment against a partial
@@ -239,11 +238,28 @@ final class SleepDataCoordinator {
             // rebuild from complete data. The anchor still earns its keep: when
             // nothing changed we skip all of this.
             let hasChanges = !result.samples.isEmpty || !result.deletedUUIDs.isEmpty
+            var persisted = true
             if hasChanges || store.isEmpty {
+                // Not gated on `!samples.isEmpty`: a window whose only sample
+                // was deleted in Health legitimately refetches to nothing,
+                // and `processSessions` still needs to run so it prunes the
+                // now-stale stored night rather than leaving it behind.
                 let samples = try await healthKit.fetchAllSleepSamples(in: window)
-                if !samples.isEmpty {
-                    await processSessions(from: samples)
-                }
+                persisted = await processSessions(from: samples, window: window)
+            }
+
+            // Anchor advances only after the delta it covers has actually been
+            // processed and written. Saving it immediately after the fetch --
+            // as this did previously -- meant a throw from
+            // `fetchAllSleepSamples`, a failed SwiftData write, or the app
+            // being killed mid-processing left the anchor pointing past data
+            // Zoon never stored, and HealthKit would never report that change
+            // again. Keeping the old anchor costs one redundant re-fetch on
+            // the next refresh; advancing it early can silently lose a night.
+            if persisted {
+                AnchorStore.save(result.anchor)
+            } else {
+                logger.error("Persistence failed; keeping the previous HealthKit anchor so this delta is retried")
             }
 
             await publishLatest()
@@ -265,21 +281,58 @@ final class SleepDataCoordinator {
     /// Session building stays on the main actor even though it's pure
     /// computation: `HKCategorySample` is not `Sendable`, so handing the array
     /// to a detached task is a concurrency violation under strict checking.
-    private func processSessions(from samples: [HKCategorySample]) async {
+    /// - Returns: whether every write in this pass actually reached disk.
+    ///   `refresh()` gates the HealthKit anchor advance on this.
+    @discardableResult
+    private func processSessions(from samples: [HKCategorySample], window: DateInterval) async -> Bool {
+        store.beginTrackingWrites()
         let sessions = sessionBuilder.buildSessions(from: samples)
-        guard !sessions.isEmpty else { return }
+
+        // `SleepNightRecord` is one row per calendar day (see its own doc
+        // comment), keyed by the date the session ended -- so two sessions
+        // that both end on the same day, a main sleep and a same-day nap most
+        // often, both want the same row. `SleepSessionBuilder` no longer
+        // discards short sessions as aggressively as it used to (see its
+        // `minimumSessionDuration` comment), which means a real nap now
+        // survives to reach here far more often. Upserting in chronological
+        // order would let whichever session merely happened to be *processed
+        // last* silently overwrite the other -- typically the nap
+        // clobbering the main sleep, since naps tend to fall later in the
+        // day. Keeping only the longest session per date is a stopgap for
+        // that, not the full multi-episode-per-day model (naps still aren't
+        // recorded anywhere once discarded here); it just guarantees the
+        // one thing that would otherwise be silently wrong: a full night's
+        // sleep can never be replaced by a shorter same-day nap.
+        let longestPerDate = Dictionary(grouping: sessions) { Calendar.current.startOfDay(for: $0.end) }
+            .compactMapValues { $0.max { $0.timeInBed < $1.timeInBed } }
+            .values
+            .sorted { $0.start < $1.start }
 
         let extractor = FeatureExtractor(healthKit: healthKit)
         let goal = preferences.sleepGoalMinutes
 
         // Oldest first: each night's baseline is drawn from the nights before
         // it, so they must land in the store in chronological order.
-        for session in sessions {
+        for session in longestPerDate {
             let nightDate = Calendar.current.startOfDay(for: session.end)
             let baseline = store.baseline(for: nightDate, goalMinutes: goal)
             let result = await extractor.extract(from: session, baseline: baseline)
-            store.upsert(result.features, absoluteWristTempC: result.absoluteWristTempC)
+            store.upsert(
+                result.features,
+                absoluteWristTempC: result.absoluteWristTempC,
+                confirmedAbsent: result.confirmedAbsent
+            )
         }
+
+        // `samples` here is always a full re-fetch of `window` (see call site),
+        // never an incremental delta -- so any previously-stored night in
+        // `window` that didn't produce a session this pass genuinely no
+        // longer has HealthKit data behind it (deleted or corrected away in
+        // the Health app), not just "wasn't included in today's delta".
+        let validDates = Set(longestPerDate.map { Calendar.current.startOfDay(for: $0.end) })
+        store.prune(window: window, keeping: validDates)
+
+        return store.writesSucceeded
     }
 
     /// Reads the newest stored night back out, derives everything, updates state
@@ -312,7 +365,15 @@ final class SleepDataCoordinator {
             .sorted { $0.date < $1.date }
 
         let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
-        let restingHR = history.compactMap(\.minHeartRate).last ?? night.minHeartRate ?? 60
+        // True RHR first (see SleepNightFeatures.restingHeartRate), falling
+        // back to the sleep-window low only when no daily RHR sample exists
+        // yet — heart-rate-reserve zones are sensitive to this baseline, so
+        // the more accurate figure is worth preferring wherever it's there.
+        let restingHR = history.compactMap(\.restingHeartRate).last
+            ?? night.restingHeartRate
+            ?? history.compactMap(\.minHeartRate).last
+            ?? night.minHeartRate
+            ?? 60
 
         let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
@@ -403,13 +464,10 @@ final class SleepDataCoordinator {
             let prior = Array(nights[..<index].suffix(DayContextBuilder.recoveryBaselineWindow))
             guard prior.count >= RecoveryScore.minimumBaselineNights else { continue }
 
-            let baseline = RecoveryBaseline(
-                hrv: mean(prior.compactMap(\.avgHRV)),
-                restingHeartRate: mean(prior.compactMap(\.minHeartRate)),
-                respiratoryRate: mean(prior.compactMap(\.avgRespiratoryRate)),
-                wristTemperature: mean(prior.compactMap(\.wristTempDeltaC)),
-                nightCount: prior.count
-            )
+            // Same factory the live path uses, so history can't be scored
+            // against a differently-built baseline than the Today screen —
+            // which has happened here before.
+            let baseline = RecoveryBaseline.from(nights: prior)
             let performance = min(100, night.timeAsleepMinutes / max(goal, 1) * 100)
             result[night.date] = RecoveryScore.compute(
                 features: night, baseline: baseline, sleepPerformance: performance
@@ -428,7 +486,9 @@ final class SleepDataCoordinator {
             recoveryPercent: context.recovery.percent,
             bodyBattery: context.bodyBattery.current,
             strain: context.strain.value,
-            sleepPerformance: context.sleepNeed.performancePercent
+            sleepPerformance: context.sleepNeed.performancePercent,
+            sleepIntelligencePercent: context.sleepIntelligence.percent,
+            sleepIntelligenceBand: context.sleepIntelligence.band.label
         )
 
         // Badges are evaluated here rather than in the extension: the engine
@@ -604,21 +664,26 @@ final class SleepDataCoordinator {
     // MARK: - Derived views of history
 
     /// Journal observations joined to outcomes, for the correlation engine.
+    ///
+    /// Only nights with a `JournalEntry` row are included -- a night nobody
+    /// opened the Journal for is genuinely unknown for every tag, not
+    /// evidence any particular behaviour didn't happen, and treating it as a
+    /// confirmed "no" biases whatever tag happens to be under test. A
+    /// `JournalEntry` row exists as soon as the screen is opened for that
+    /// date, before any tag is toggled (see `JournalStore.entryOrCreate`), so
+    /// its presence -- not whether it happens to carry the tag in question --
+    /// is the real "the user actually looked" signal. This does shrink the
+    /// comparison pool versus treating every recorded night as a control,
+    /// especially early on when few nights are logged at all, but a smaller
+    /// honest pool is the right trade against a larger biased one.
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
         let goal = preferences.sleepGoalMinutes
         let calendar = Calendar.current
 
-        // Every recorded night is a valid *comparison* night, tagged or not --
-        // a night nobody opened the Journal for isn't evidence the tagged
-        // behaviour didn't happen, but it's still a legitimate untagged
-        // baseline for every other tag. Previously these were dropped
-        // entirely, which quietly shrank the untagged pool the matcher has
-        // to draw from, especially early on when few nights are logged at all.
-        return recentNights.map { night in
-            let tags = tagsByDate[night.date] ?? []
-            let weekday = calendar.component(.weekday, from: night.date)
+        return recentNights.compactMap { night -> JournalCorrelator.Observation? in
+            guard let tags = tagsByDate[night.date] else { return nil }
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
@@ -628,8 +693,16 @@ final class SleepDataCoordinator {
                 remMinutes: night.hasStageBreakdown ? night.remMinutes : nil,
                 efficiency: night.sleepEfficiencyPercent,
                 wakeCount: Double(night.wakeCount),
-                isWeekend: weekday == 1 || weekday == 7,
-                sleepDebtMinutes: night.sleepDebtMinutes14Day,
+                // Same locale-aware check SleepRegularity's social-jetlag
+                // split uses, not a hardcoded weekday==1||weekday==7 -- two
+                // different weekend definitions in the same codebase is its
+                // own bug even before either one gets a real shift-work
+                // setting. Still the documented Sat/Sun simplification, not
+                // a user-configured work schedule (see SleepRegularity's
+                // `midpoints` doc comment); a genuine fix needs a Settings
+                // schedule type, which is feature work, not a bug fix.
+                isWeekend: calendar.isDateInWeekend(night.date),
+                sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
             )
         }
@@ -654,10 +727,5 @@ final class SleepDataCoordinator {
             goalMinutes: preferences.sleepGoalMinutes,
             consistencyMinutes: state.context?.chronotype.consistencyMinutes
         )
-    }
-
-    private func mean(_ values: [Double]) -> Double? {
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Double(values.count)
     }
 }

@@ -186,9 +186,9 @@ struct RangeGauge: View {
             RecoveryRing(recovery: AppMockData.dayContext().recovery)
             RecoveryRing(recovery: AppMockData.poorDayContext().recovery, size: 150, lineWidth: 14)
             TripleRing(arcs: [
-                .init(fraction: 0.62, color: Theme.Metric.strain, label: "Strain", value: "13.1"),
+                .init(fraction: 0.62, color: Theme.Metric.strain, label: "Load", value: "13.1"),
                 .init(fraction: 0.88, color: Theme.Metric.sleep, label: "Sleep", value: "88%"),
-                .init(fraction: 0.44, color: Theme.Metric.battery, label: "Battery", value: "44")
+                .init(fraction: 0.44, color: Theme.Metric.battery, label: "Energy", value: "44")
             ])
             RangeGauge(position: 0.72, bandStart: 0.3, bandEnd: 0.7, tint: Theme.Metric.hrv)
                 .padding(.horizontal, 40)

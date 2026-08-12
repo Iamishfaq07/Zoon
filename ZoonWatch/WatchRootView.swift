@@ -12,6 +12,16 @@ struct WatchRootView: View {
     var body: some View {
         TabView {
             if let snapshot = link.snapshot {
+                // Leads the same way the phone's hero now does: "how did I
+                // sleep" ahead of "how recovered does my body look".
+                // Snapshots written before this field existed decode with
+                // sleepIntelligenceBand == "" -- that's the one signal this
+                // page has to fall back on Recovery leading instead, since a
+                // percent of 0 with a real band is indistinguishable from a
+                // genuine (if unlikely) rock-bottom score.
+                if !snapshot.sleepIntelligenceBand.isEmpty {
+                    SleepIntelligencePage(snapshot: snapshot)
+                }
                 RecoveryPage(snapshot: snapshot)
                 SleepPage(snapshot: snapshot)
                 BatteryPage(snapshot: snapshot)
@@ -22,6 +32,57 @@ struct WatchRootView: View {
         }
         .tabViewStyle(.verticalPage)
         .containerBackground(Theme.watchBackground, for: .tabView)
+    }
+}
+
+/// Sleep Intelligence: "how did I sleep", the same question the phone's
+/// hero now leads with.
+struct SleepIntelligencePage: View {
+
+    let snapshot: SleepSnapshot
+
+    private var tint: Color {
+        switch snapshot.sleepIntelligencePercent {
+        case 80...: Theme.Metric.recoveryHigh
+        case 60..<80: Theme.Metric.battery
+        case 40..<60: Theme.Metric.recoveryMid
+        default: Theme.Metric.recoveryLow
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.12), lineWidth: 9)
+                Circle()
+                    .trim(from: 0, to: Double(snapshot.sleepIntelligencePercent) / 100)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .shadow(color: tint.opacity(0.5), radius: 5)
+
+                VStack(spacing: -3) {
+                    Text("\(snapshot.sleepIntelligencePercent)")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                    Text("SLEEP")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxHeight: .infinity)
+
+            Text(snapshot.sleepIntelligenceBand)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+
+            if snapshot.isMock {
+                Text("Sample data")
+                    .font(Theme.text(9))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 6)
     }
 }
 
@@ -61,8 +122,8 @@ struct RecoveryPage: View {
             .frame(maxHeight: .infinity)
 
             HStack(spacing: 10) {
-                miniStat("\(snapshot.bodyBattery)", "battery", Theme.Metric.battery)
-                miniStat(String(format: "%.1f", snapshot.strain), "strain", Theme.Metric.strain)
+                miniStat("\(snapshot.bodyBattery)", "energy", Theme.Metric.battery)
+                miniStat(String(format: "%.1f", snapshot.strain), "load", Theme.Metric.strain)
             }
 
             if snapshot.isMock {
@@ -179,7 +240,7 @@ struct BatteryPage: View {
                     Text("\(snapshot.bodyBattery)")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                    Text("BATTERY")
+                    Text("ENERGY")
                         .font(.system(size: 9, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
                 }
@@ -263,6 +324,10 @@ struct WaitingPage: View {
         }
         .padding(.horizontal, 10)
     }
+}
+
+#Preview("Sleep Intelligence") {
+    SleepIntelligencePage(snapshot: MockData.snapshotWithBadges)
 }
 
 #Preview("Recovery") {

@@ -1,10 +1,19 @@
 import SwiftUI
+// For UIColor(dynamicProvider:) -- available on iOS and watchOS alike (this
+// file compiles into both), which is what lets `adaptive(dark:light:)` below
+// resolve per-trait without any call site needing `@Environment(\.colorScheme)`.
+import UIKit
 
 /// Zoon's visual language.
 ///
 /// Dark-first by intention, not fashion: this is an app you open at 7am in a
-/// dark bedroom and glance at on a lock screen at night. A light-first palette
-/// inverted for dark mode would be the wrong way round.
+/// dark bedroom and glance at on a lock screen at night, and Dark stays the
+/// default (`UserPreferences.appearance`) for exactly that reason. Light and
+/// System are real options, not a checkbox that quietly breaks the app --
+/// the core surface tokens below (`background`, `heroGlow`, `cardStroke`,
+/// `cardFill`) resolve per-trait via `adaptive(dark:light:)`, a soft-dawn
+/// reinterpretation rather than a straight invert, which would fight the
+/// saturated metric hues below.
 ///
 /// Colours are declared as explicit sRGB rather than system semantic colours
 /// because the metric hues carry meaning (a red recovery must read as *red*,
@@ -15,25 +24,64 @@ enum Theme {
 
     // MARK: - Surfaces
 
-    /// Deep night gradient — the app's ground. "Zoon" means moon; the palette
-    /// is the sky around it.
-    static let background = LinearGradient(
-        colors: [
-            Color(red: 0.024, green: 0.031, blue: 0.078),
-            Color(red: 0.051, green: 0.063, blue: 0.141),
-            Color(red: 0.078, green: 0.063, blue: 0.200)
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-    )
+    /// Deep night gradient — the app's ground in Dark. "Zoon" means moon; the
+    /// palette is the sky around it. In Light this becomes a soft dawn sky
+    /// rather than a straight invert to white: an invert would fight the
+    /// saturated metric hues, which were tuned to sit on something dark.
+    ///
+    /// `Color(uiColor:)` wrapping a `UIColor(dynamicProvider:)` rather than
+    /// two separate `LinearGradient` constants picked by `\.colorScheme`
+    /// at each call site, so every one of the dozens of places that already
+    /// write `Theme.background` keeps working unchanged and adapts for free.
+    static var background: LinearGradient {
+        LinearGradient(
+            colors: [
+                adaptive(dark: (0.024, 0.031, 0.078), light: (0.902, 0.914, 0.965)),
+                adaptive(dark: (0.051, 0.063, 0.141), light: (0.925, 0.925, 0.976)),
+                adaptive(dark: (0.078, 0.063, 0.200), light: (0.949, 0.925, 0.976))
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
     /// Subtle top-glow used behind hero content.
-    static let heroGlow = RadialGradient(
-        colors: [Color(red: 0.35, green: 0.30, blue: 0.95).opacity(0.35), .clear],
-        center: .top,
-        startRadius: 10,
-        endRadius: 420
-    )
+    static var heroGlow: RadialGradient {
+        RadialGradient(
+            colors: [adaptive(dark: (0.35, 0.30, 0.95), light: (0.55, 0.50, 0.95)).opacity(0.35), .clear],
+            center: .top,
+            startRadius: 10,
+            endRadius: 420
+        )
+    }
+
+    /// Builds a `Color` that resolves to one sRGB triple in Dark and another
+    /// in Light, following whatever the trait environment actually is
+    /// (System, or an explicit override from `UserPreferences.appearance`
+    /// applied via `.preferredColorScheme` further up the view tree) rather
+    /// than a preference read here, which a `Color` has no way to do.
+    ///
+    /// iOS/widget only: `UIColor(dynamicProvider:)` and `.userInterfaceStyle`
+    /// are unavailable on watchOS (confirmed by CI, not assumed -- the watch
+    /// build failed on this the first time). watchOS falls back to `dark`
+    /// unconditionally, which is a no-op change from before this file had
+    /// any adaptive colors at all: the watch app has always been dark-only
+    /// by deliberate design (see `watchBackground`'s doc comment on OLED
+    /// battery cost), so Light on the watch was never on offer to begin with.
+    private static func adaptive(
+        dark: (Double, Double, Double),
+        light: (Double, Double, Double)
+    ) -> Color {
+        #if os(watchOS)
+        let (r, g, b) = dark
+        return Color(red: r, green: g, blue: b)
+        #else
+        return Color(uiColor: UIColor { traits in
+            let (r, g, b) = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: r, green: g, blue: b, alpha: 1)
+        })
+        #endif
+    }
 
     /// Watch variant of the ground.
     ///
@@ -50,8 +98,11 @@ enum Theme {
         endPoint: .bottom
     )
 
-    static let cardStroke = Color.white.opacity(0.08)
-    static let cardFill = Color.white.opacity(0.05)
+    /// A hardcoded white overlay reads as a hairline in Dark and is nearly
+    /// invisible against a light card in Light -- glass needs a dark edge to
+    /// read as glass once the surface behind it is pale rather than black.
+    static var cardStroke: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.08) }
+    static var cardFill: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.05) }
 
     // MARK: - Metric hues
 

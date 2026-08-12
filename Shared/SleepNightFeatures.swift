@@ -35,6 +35,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     // MARK: - Duration & structure (minutes)
 
     let timeInBedMinutes: Double
+    /// False when the source wrote real HealthKit `inBed` samples, so
+    /// `timeInBedMinutes` is measured. True when it didn't -- Apple Watch
+    /// alone never does -- and `timeInBedMinutes` is standing in for it with
+    /// the asleep/awake session span instead, which omits any time spent
+    /// lying awake before falling asleep or after the final waking, and so
+    /// tends to overstate `sleepEfficiencyPercent` slightly. Declared with a
+    /// default so it stays optional at every existing call site.
+    var timeInBedIsEstimated: Bool = false
     let timeAsleepMinutes: Double
     /// `timeAsleep / timeInBed * 100`. Clamped to 0...100.
     let sleepEfficiencyPercent: Double
@@ -66,9 +74,28 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     // MARK: - Physiology (averaged across the session)
 
     let avgHeartRate: Double?
-    /// Resting-ish low: the minimum heart rate observed during the session, a
-    /// steadier night-to-night signal than the mean.
+    /// The lowest heart-rate sample observed during the sleep session -- a
+    /// single noisy reading, not a resting heart rate. Kept for the "sleeping
+    /// low" display and for existing history; anything that means *resting
+    /// heart rate* should read `restingHeartRate` instead. See that
+    /// property's doc comment for why these are not interchangeable.
     let minHeartRate: Double?
+    /// True resting heart rate, from HealthKit's daily `.restingHeartRate`
+    /// sample -- the value Apple itself computes from a rolling window of
+    /// low-activity heart-rate readings, distinct from `minHeartRate`.
+    ///
+    /// `minHeartRate` used to be displayed and scored as "Resting HR"
+    /// throughout the app; it is not one. It is the single lowest heart-rate
+    /// sample observed during a sleep session, which can be noisy (one good
+    /// low reading during a brief deep-sleep dip reads no differently than a
+    /// stable low night). This field is Apple's own daily RHR figure, sourced
+    /// from a type this app didn't previously request read access to at all.
+    ///
+    /// `nil` when no daily resting-heart-rate sample overlaps this night's
+    /// date -- e.g. the Watch wasn't worn during the day, or on a night
+    /// imported before this field existed. Declared with a default so it
+    /// stays optional at every existing call site.
+    var restingHeartRate: Double? = nil
     /// SDNN, milliseconds.
     let avgHRV: Double?
     /// Breaths per minute.
@@ -95,7 +122,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// Cumulative shortfall against the user's sleep goal over 14 days, in
     /// minutes. Positive = under-slept. Never negative — banking extra sleep
     /// does not create credit.
-    let sleepDebtMinutes14Day: Double?
+    let sleepDebtMinutes: Double?
     /// Hours between the end of the last workout and `bedtime`.
     /// `nil` if no workout that day.
     let lastWorkoutHoursBeforeBed: Double?
@@ -183,10 +210,11 @@ extension SleepNightFeatures {
             avgHrvMs: avgHRV?.rounded(to: 0),
             hrv7dayAvgMs: hrv7DayAvg?.rounded(to: 0),
             minHeartRate: minHeartRate?.rounded(to: 0),
+            restingHeartRate: restingHeartRate?.rounded(to: 0),
             avgRespiratoryRate: avgRespiratoryRate?.rounded(to: 1),
             avgSpo2Pct: avgSpO2?.rounded(to: 1),
             wristTempDeltaC: wristTempDeltaC?.rounded(to: 2),
-            sleepDebtMin14day: sleepDebtMinutes14Day?.rounded(to: 0),
+            sleepDebtMin14day: sleepDebtMinutes?.rounded(to: 0),
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed?.rounded(to: 1),
             exerciseMinPreviousDay: exerciseMinutesPreviousDay?.rounded(to: 0)
         )
@@ -217,6 +245,7 @@ extension SleepNightFeatures {
         let avgHrvMs: Double?
         let hrv7dayAvgMs: Double?
         let minHeartRate: Double?
+        let restingHeartRate: Double?
         let avgRespiratoryRate: Double?
         let avgSpo2Pct: Double?
         let wristTempDeltaC: Double?
@@ -237,6 +266,7 @@ extension SleepNightFeatures {
             case avgHrvMs = "avg_hrv_ms"
             case hrv7dayAvgMs = "hrv_7day_avg_ms"
             case minHeartRate = "min_heart_rate"
+            case restingHeartRate = "resting_heart_rate"
             case avgRespiratoryRate = "avg_respiratory_rate"
             case avgSpo2Pct = "avg_spo2_pct"
             case wristTempDeltaC = "wrist_temp_delta_c"

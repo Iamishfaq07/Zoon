@@ -32,18 +32,41 @@ struct SleepSessionBuilder {
     /// from the main night.
     var sessionGapThreshold: TimeInterval = 60 * 60
 
-    /// Sessions shorter than this are discarded as naps/noise rather than
-    /// reported as a night.
-    var minimumSessionDuration: TimeInterval = 60 * 60 * 2
+    /// Sessions shorter than this are discarded outright, as sensor noise
+    /// rather than real sleep -- a few minutes of a stray `inBed` sample, not
+    /// anything a person would call a sleep or a nap.
+    ///
+    /// This used to be two hours, which silently discarded genuinely real
+    /// short sleep along with actual noise: a fragmented main-sleep night cut
+    /// short by an early flight, or an honest 45-minute nap, both vanished
+    /// with no record at all -- not shown as short, just absent, which reads
+    /// to a user as "the app didn't track last night" rather than "you slept
+    /// less than usual." 15 minutes is a genuine sensor-noise floor; nothing
+    /// above it gets classified as main-sleep-vs-nap yet (that's a larger
+    /// change -- `latestSession` still just takes the most recent cluster),
+    /// but it no longer disappears.
+    var minimumSessionDuration: TimeInterval = 60 * 15
 
     // MARK: - Public API
 
     /// Groups samples into sessions, newest last.
+    ///
+    /// Source selection happens **after** clustering, one winner per cluster —
+    /// not once for the whole batch. `buildSessions` is routinely called with
+    /// weeks of history in one query (an initial import, a wide incremental
+    /// sync window), and choosing a single source for that entire span meant
+    /// switching Apple Watches, or losing Watch coverage for even one night,
+    /// silently discarded every night written by whichever source didn't win
+    /// -- not just that one night's ambiguity, but every other night's
+    /// perfectly good data from the "losing" source. Clustering by time gap
+    /// doesn't care which source a sample came from, so it's safe to run
+    /// across every source's samples together; only the per-night dedup step
+    /// that follows needs to pick one source, and it needs to do that once
+    /// per night, not once for the query.
     func buildSessions(from samples: [HKCategorySample]) -> [SleepSession] {
         guard !samples.isEmpty else { return [] }
 
-        let preferred = preferredSourceSamples(from: samples)
-        let sorted = preferred.sorted { $0.startDate < $1.startDate }
+        let sorted = samples.sorted { $0.startDate < $1.startDate }
 
         // Walk the samples, cutting a new session whenever the gap from the
         // furthest-seen end date exceeds the threshold. Tracking the max end
@@ -65,6 +88,7 @@ struct SleepSessionBuilder {
         if !current.isEmpty { clusters.append(current) }
 
         return clusters
+            .map(preferredSourceSamples)
             .compactMap(makeSession)
             .filter { $0.timeInBed >= minimumSessionDuration }
     }
@@ -76,7 +100,10 @@ struct SleepSessionBuilder {
 
     // MARK: - Source selection
 
-    /// Picks one source and drops the rest.
+    /// Picks one source and drops the rest, **within a single already-clustered
+    /// session's candidate samples** -- called once per cluster, not once for
+    /// an entire query's worth of samples. See `buildSessions`'s doc comment
+    /// for why that distinction is the whole fix.
     ///
     /// Merging *across* sources is a trap: two trackers disagree about stage
     /// boundaries, and any union of their samples produces a night that neither
@@ -186,7 +213,20 @@ struct SleepSession {
     let segments: [StageSegment]
     let sourceName: String?
 
+    /// Session span from first sample to last -- **not** necessarily a real
+    /// measurement of time in bed. When the source wrote explicit `inBed`
+    /// samples (`hasExplicitInBedData`), this is exactly that. When it
+    /// didn't (Apple Watch alone never does), this is standing in for it:
+    /// the span of asleep/awake activity, which omits any time lying awake
+    /// before the first asleep sample or after the last, so it understates
+    /// true time in bed and correspondingly overstates efficiency. See
+    /// `FeatureExtractor` for where that distinction gets surfaced.
     var timeInBed: TimeInterval { end.timeIntervalSince(start) }
+
+    /// True when the source wrote real `inBed` samples for this session, so
+    /// `timeInBed` is an actual measurement rather than a same-shaped
+    /// approximation from the asleep/awake span.
+    var hasExplicitInBedData: Bool { !inBedIntervals.isEmpty }
 
     func minutes(_ stage: SleepStage) -> Double { stageMinutes[stage] ?? 0 }
 
@@ -209,11 +249,37 @@ struct SleepSession {
         return onset.timeIntervalSince(bedStart) / 60
     }
 
-    /// Awakenings after sleep onset only.
+    /// Shortest awake stretch that counts as a real awakening.
+    ///
+    /// Wearable stage classification flickers: a single restless movement can
+    /// produce a 30-second `awake` sample between two `core` samples, and the
+    /// sleeper has no memory of it. Counting those as awakenings inflates a
+    /// number the score and the insight engine both read as fragmentation,
+    /// and it inflates it most for light sleepers wearing the watch tightly
+    /// -- exactly the people most likely to already believe they sleep badly.
+    ///
+    /// Two minutes is the conventional floor for a "meaningful" awakening in
+    /// actigraphy. The raw intervals stay untouched in `awakeIntervals` and
+    /// the raw samples in `segments`, so the hypnogram still draws every
+    /// blip -- this only governs the count that gets scored.
+    static let meaningfulAwakeningThreshold: TimeInterval = 120
+
+    /// Meaningful awakenings after sleep onset.
     ///
     /// Tossing around before you fall asleep is not fragmentation, and counting
-    /// it inflates a number the insight engine reads as a signal.
+    /// it inflates a number the insight engine reads as a signal. Neither is a
+    /// momentary classification flicker -- see
+    /// `meaningfulAwakeningThreshold`.
     var wakeCountAfterOnset: Int {
+        guard let onset = sleepOnset else { return 0 }
+        return awakeIntervals
+            .filter { $0.start > onset && $0.duration >= Self.meaningfulAwakeningThreshold }
+            .count
+    }
+
+    /// Every awake stretch after onset, including sub-threshold flickers.
+    /// Kept separate so a view that wants the raw picture can still get it.
+    var rawAwakeningCountAfterOnset: Int {
         guard let onset = sleepOnset else { return 0 }
         return awakeIntervals.filter { $0.start > onset }.count
     }

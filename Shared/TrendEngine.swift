@@ -79,9 +79,9 @@ enum TrendEngine {
             case .duration: night.timeAsleepMinutes
             case .bedtime: Statistics.circularMinutesFromMidnight(night.bedtime)
             case .hrv: night.avgHRV
-            case .restingHeartRate: night.minHeartRate
+            case .restingHeartRate: night.restingHeartRate
             case .efficiency: night.sleepEfficiencyPercent
-            case .sleepDebt: night.sleepDebtMinutes14Day
+            case .sleepDebt: night.sleepDebtMinutes
             }
         }
     }

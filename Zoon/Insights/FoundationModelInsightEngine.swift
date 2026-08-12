@@ -234,10 +234,8 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
 
         // Backstop on the diagnosis rule. The instructions forbid it; this makes
         // it structural rather than a request the model may or may not honour.
-        let combined = "\(summary) \(generated.likelyCause) \(tip)".lowercased()
-        for term in bannedTerms where combined.contains(term) {
-            return nil
-        }
+        let combined = "\(summary) \(generated.likelyCause) \(tip)"
+        guard !DiagnosticLanguageGuard.containsBannedLanguage(combined) else { return nil }
 
         let cause = generated.likelyCause.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedCause = cause.isEmpty || cause.lowercased() == "null" ? nil : cause
@@ -252,12 +250,6 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
             source: .localLLM
         )
     }
-
-    /// Diagnostic language this app must never produce.
-    private static let bannedTerms = [
-        "apnea", "apnoea", "insomnia", "narcolepsy", "diagnos",
-        "disorder", "syndrome", "disease", "you should see a doctor"
-    ]
     #endif
 }
 

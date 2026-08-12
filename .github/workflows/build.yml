@@ -71,6 +71,47 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             2>&1 | tee build.log
 
+      - name: Run ZoonTests
+        id: test
+        if: steps.build.outcome == 'success'
+        run: |
+          set -o pipefail
+          # A concrete simulator UDID rather than a device name string: model
+          # names available on a runner image drift with the Xcode version,
+          # and a hardcoded "iPhone 16" here would eventually start failing
+          # for a reason that has nothing to do with whether the tests pass.
+          UDID=$(xcrun simctl list devices available -j \
+            | python3 -c "import json,sys; data=json.load(sys.stdin)['devices']; \
+              print(next(d['udid'] for runtime in data.values() for d in runtime if d['name'].startswith('iPhone')))")
+          echo "Testing on simulator $UDID"
+          xcodebuild test \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -only-testing:ZoonTests \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee test.log
+
+      - name: Summarise tests
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          {
+            echo "### ZoonTests"
+            echo ""
+            if [ "${{ steps.test.outcome }}" = "success" ]; then
+              PASSED=$(grep -c "Test Case.*passed" test.log || true)
+              echo "${PASSED} test(s) passed."
+            else
+              echo "Failed. Relevant lines:"
+              echo ""
+              echo '```'
+              grep -E "error:|Test Case.*failed|fatal error" test.log | sort -u || true
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify every source compiled
         # A file dropped from a target, or excluded by a #if that quietly
         # evaluated false, produces a *successful* build with the feature

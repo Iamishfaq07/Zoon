@@ -27,6 +27,13 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     var strain: Double = 0
     var sleepPerformance: Double = 0
 
+    /// Added alongside the Sleep Intelligence redesign. Defaulted to 0/"" so a
+    /// snapshot written by a build that predates this field still decodes —
+    /// the Watch app treats 0 with an empty band the same way it already
+    /// treats a missing recovery reading: as "nothing to show yet", not zero.
+    var sleepIntelligencePercent: Int = 0
+    var sleepIntelligenceBand: String = ""
+
     var isMock: Bool = false
 
     // MARK: - Badges
@@ -72,13 +79,15 @@ extension SleepSnapshot {
         recoveryPercent: Int = 0,
         bodyBattery: Int = 0,
         strain: Double = 0,
-        sleepPerformance: Double = 0
+        sleepPerformance: Double = 0,
+        sleepIntelligencePercent: Int = 0,
+        sleepIntelligenceBand: String = ""
     ) {
         self.date = features.date
         self.score = score.value
         self.scoreBand = score.band.label
         self.timeAsleepMinutes = features.timeAsleepMinutes
-        self.sleepDebtMinutes = features.sleepDebtMinutes14Day ?? 0
+        self.sleepDebtMinutes = features.sleepDebtMinutes ?? 0
         self.goalMinutes = goalMinutes
         self.insightSummary = insight.summary
         self.generatedAt = .now
@@ -86,6 +95,8 @@ extension SleepSnapshot {
         self.bodyBattery = bodyBattery
         self.strain = strain
         self.sleepPerformance = sleepPerformance
+        self.sleepIntelligencePercent = sleepIntelligencePercent
+        self.sleepIntelligenceBand = sleepIntelligenceBand
         self.isMock = features.isMock
     }
 }

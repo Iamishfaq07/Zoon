@@ -76,10 +76,22 @@ final class SleepHistoryStore {
     /// syncs progressively through the morning, and the same night gets richer
     /// over a few hours. Blind inserts would produce duplicates that break the
     /// one-row-per-day assumption the rolling windows rely on.
+    /// - Parameter confirmedAbsent: metrics HealthKit definitively reported no
+    ///   data for, which may therefore clear a stored value. Defaults to empty
+    ///   so callers without query provenance -- an archive import, say -- can
+    ///   never clear a measured value they know nothing about.
     @discardableResult
-    func upsert(_ features: SleepNightFeatures, absoluteWristTempC: Double? = nil) -> SleepNightRecord {
+    func upsert(
+        _ features: SleepNightFeatures,
+        absoluteWristTempC: Double? = nil,
+        confirmedAbsent: Set<VitalMetric> = []
+    ) -> SleepNightRecord {
         if let existing = night(on: features.date) {
-            existing.update(from: features, absoluteWristTempC: absoluteWristTempC)
+            existing.update(
+                from: features,
+                absoluteWristTempC: absoluteWristTempC,
+                confirmedAbsent: confirmedAbsent
+            )
             save()
             return existing
         }
@@ -91,6 +103,35 @@ final class SleepHistoryStore {
 
     func attach(_ insight: SleepInsight, to record: SleepNightRecord) {
         record.apply(insight)
+        save()
+    }
+
+    /// Removes stored nights within `window` that no longer have a
+    /// corresponding session in `validDates` — the counterpart to `upsert`
+    /// for a night deleted or corrected away in the Health app, rather than
+    /// added or changed.
+    ///
+    /// Scoped to `window`: only nights the caller actually re-verified
+    /// against a fresh full-window fetch are eligible. A night stored outside
+    /// `window` was never re-checked by this pass and must not be touched,
+    /// or an old record could vanish just because the rolling sync window
+    /// has since moved past it.
+    func prune(window: DateInterval, keeping validDates: Set<Date>) {
+        let start = window.start
+        let end = window.end
+        let descriptor = FetchDescriptor<SleepNightRecord>(
+            predicate: #Predicate { $0.date >= start && $0.date <= end }
+        )
+        let inWindow: [SleepNightRecord]
+        do {
+            inWindow = try context.fetch(descriptor)
+        } catch {
+            logger.error("Prune fetch failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let stale = inWindow.filter { !validDates.contains($0.date) }
+        guard !stale.isEmpty else { return }
+        for night in stale { context.delete(night) }
         save()
     }
 
@@ -123,11 +164,29 @@ final class SleepHistoryStore {
         return written
     }
 
+    /// True when every write since the last `beginTrackingWrites()` actually
+    /// reached disk.
+    ///
+    /// Exists because `save()` deliberately swallows its error -- a failed
+    /// write should never crash a health app mid-sync -- but `refresh()` must
+    /// still know whether persistence succeeded before it advances the
+    /// HealthKit anchor past a delta. Without this, a swallowed save failure
+    /// looked identical to success at the call site, and the anchor moved on
+    /// regardless. See `SleepDataCoordinator.refresh`.
+    private(set) var writesSucceeded = true
+
+    /// Resets the write-success flag at the start of a batch the caller
+    /// intends to check afterwards.
+    func beginTrackingWrites() {
+        writesSucceeded = true
+    }
+
     private func save() {
         guard context.hasChanges else { return }
         do {
             try context.save()
         } catch {
+            writesSucceeded = false
             logger.error("Save failed: \(error.localizedDescription, privacy: .public)")
         }
     }
@@ -147,7 +206,10 @@ final class SleepHistoryStore {
         let priorNights = history.filter { $0.date < date }
 
         let last7 = Array(priorNights.prefix(7))
-        let last14 = Array(priorNights.prefix(14))
+        // Wide enough that the decay in `sleepDebt` below has fully faded a
+        // night's contribution before it would fall out of this window —
+        // see that function's doc comment for why a hard cutoff is wrong.
+        let debtWindow = Array(priorNights.prefix(60))
 
         // Wrist-temp baseline uses a longer window: the signal is small (tenths
         // of a degree) and needs more samples before a delta means anything.
@@ -155,7 +217,7 @@ final class SleepHistoryStore {
 
         return RollingBaseline(
             hrv7DayAvg: mean(last7.compactMap(\.avgHRV)),
-            sleepDebtMinutes14Day: sleepDebt(nights: last14, goalMinutes: goalMinutes),
+            sleepDebtMinutes: sleepDebt(nights: debtWindow, goalMinutes: goalMinutes),
             deep7DayAvg: mean(last7.filter { $0.deepMinutes > 0 }.map(\.deepMinutes)),
             duration7DayAvg: mean(last7.map(\.timeAsleepMinutes)),
             efficiency7DayAvg: mean(last7.map(\.sleepEfficiencyPercent)),
@@ -173,23 +235,14 @@ final class SleepHistoryStore {
 
     // MARK: - Statistics
 
-    /// Cumulative shortfall against the goal, in minutes, floored at zero.
-    ///
-    /// Two deliberate choices:
-    ///
-    /// - **Surplus does not cancel debt.** Sleeping ten hours on Saturday does
-    ///   not undo five short weeknights; the physiology doesn't work that way and
-    ///   a metric that says otherwise encourages exactly the wrong behaviour. Only
-    ///   nights *below* goal contribute.
-    /// - **Missing nights are skipped, not counted as zero sleep.** A night you
-    ///   didn't wear the watch isn't a night you didn't sleep, and treating it as
-    ///   8 hours of debt would make the number useless after one forgotten charge.
+    /// See `SleepDebtCalculator` for the model and why it decays rather than
+    /// using a hard window cutoff. `nights` arrives newest-first, matching
+    /// what that function expects.
     private func sleepDebt(nights: [SleepNightRecord], goalMinutes: Double) -> Double? {
-        guard !nights.isEmpty else { return nil }
-        let debt = nights.reduce(0.0) { total, night in
-            total + max(0, goalMinutes - night.timeAsleepMinutes)
-        }
-        return debt
+        SleepDebtCalculator.debt(
+            timeAsleepMinutesNewestFirst: nights.map(\.timeAsleepMinutes),
+            goalMinutes: goalMinutes
+        )
     }
 
     /// Standard deviation of bedtime-of-day, in minutes.

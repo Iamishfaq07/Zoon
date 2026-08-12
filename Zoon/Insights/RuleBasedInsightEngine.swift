@@ -291,7 +291,7 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
     /// Accumulated debt worth flagging.
     private let sleepDebtRule: Rule = { features, _, _ in
-        guard let debt = features.sleepDebtMinutes14Day, debt >= T.notableDebtMinutes else { return nil }
+        guard let debt = features.sleepDebtMinutes, debt >= T.notableDebtMinutes else { return nil }
 
         return Finding(
             priority: 50,

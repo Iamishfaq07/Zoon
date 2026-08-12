@@ -13,6 +13,7 @@ struct DayContext: Equatable {
 
     let recovery: RecoveryScore
     let sleepNeed: SleepNeed
+    let learnedSleepNeed: LearnedSleepNeed
     let sleepScore: SleepScore
     let sleepIntelligence: SleepIntelligenceScore
     let strain: StrainScore
@@ -41,6 +42,7 @@ struct DayContext: Equatable {
             insight: insight,
             recovery: recovery,
             sleepNeed: sleepNeed,
+            learnedSleepNeed: learnedSleepNeed,
             sleepScore: sleepScore,
             sleepIntelligence: sleepIntelligence,
             strain: strain,

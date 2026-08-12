@@ -120,7 +120,9 @@ enum MockData {
             features: goodNight,
             score: SleepScore.compute(for: goodNight, goalMinutes: 480),
             insight: goodInsight,
-            goalMinutes: 480
+            goalMinutes: 480,
+            sleepIntelligencePercent: 84,
+            sleepIntelligenceBand: "Excellent"
         )
     }
 
@@ -153,7 +155,9 @@ enum MockData {
             features: poorNight,
             score: SleepScore.compute(for: poorNight, goalMinutes: 480),
             insight: poorInsight,
-            goalMinutes: 480
+            goalMinutes: 480,
+            sleepIntelligencePercent: 41,
+            sleepIntelligenceBand: "Fair"
         )
     }
 
@@ -224,12 +228,17 @@ enum MockData {
             sleepLatencyMinutes: latency,
             avgHeartRate: hr,
             minHeartRate: minHR,
+            // A plausible true RHR a few bpm above the sleep-window low,
+            // rather than reusing minHR outright -- they're different
+            // signals in reality, and mock data pretending they're identical
+            // would hide a mismatch other code might have.
+            restingHeartRate: minHR.map { $0 + 4 },
             avgHRV: hrv,
             avgRespiratoryRate: resp,
             avgSpO2: spo2,
             wristTempDeltaC: tempDelta,
             hrv7DayAvg: hrv7,
-            sleepDebtMinutes14Day: debt,
+            sleepDebtMinutes: debt,
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercise,
             sourceName: "Mock Data",
@@ -254,7 +263,7 @@ private extension SleepNightFeatures {
             avgHeartRate: avgHeartRate, minHeartRate: minHeartRate, avgHRV: avgHRV,
             avgRespiratoryRate: avgRespiratoryRate, avgSpO2: avgSpO2,
             wristTempDeltaC: wristTempDeltaC,
-            hrv7DayAvg: hrv7DayAvg, sleepDebtMinutes14Day: sleepDebtMinutes14Day,
+            hrv7DayAvg: hrv7DayAvg, sleepDebtMinutes: sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: "iPhone", isMock: true

@@ -7,9 +7,10 @@ struct MoreView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
+    @Environment(\.dismiss) private var dismiss
 
-    /// Owned by RootView so a launch argument or a Control Center intent can
-    /// push onto it.
+    /// Owned by `GlobalPresentation` so a launch argument or a Control Center
+    /// intent can push onto it before the sheet even opens.
     @Binding var path: NavigationPath
 
     @State private var exportURL: URL?
@@ -55,6 +56,13 @@ struct MoreView: View {
             .nightBackground()
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                // Sheet-presented from every tab now rather than a tab of its
+                // own — same reasoning as JournalView's Done button.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
             .navigationDestination(for: DeepLink.Destination.self) { destination in
                 switch destination {
                 case .report: ReportView()
@@ -62,7 +70,8 @@ struct MoreView: View {
                 case .badges: AchievementsView()
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck: EmptyView()
-                // Owned by the Journal tab.
+                // Presented as its own sheet from GlobalPresentation, not
+                // reachable through this stack.
                 case .journal: EmptyView()
                 }
             }

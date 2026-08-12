@@ -25,6 +25,8 @@ final class SleepNightRecord {
     var wakeTime: Date
 
     var timeInBedMinutes: Double
+    /// See `SleepNightFeatures.timeInBedIsEstimated`.
+    var timeInBedIsEstimated: Bool = false
     var timeAsleepMinutes: Double
     var sleepEfficiencyPercent: Double
 
@@ -38,6 +40,10 @@ final class SleepNightRecord {
 
     var avgHeartRate: Double?
     var minHeartRate: Double?
+    /// True resting heart rate from HealthKit's daily `.restingHeartRate`
+    /// sample. See `SleepNightFeatures.restingHeartRate` -- `minHeartRate`
+    /// above is a different concept and must not be read as this one.
+    var restingHeartRate: Double?
     var avgHRV: Double?
     var avgRespiratoryRate: Double?
     var avgSpO2: Double?
@@ -73,6 +79,7 @@ final class SleepNightRecord {
         self.bedtime = features.bedtime
         self.wakeTime = features.wakeTime
         self.timeInBedMinutes = features.timeInBedMinutes
+        self.timeInBedIsEstimated = features.timeInBedIsEstimated
         self.timeAsleepMinutes = features.timeAsleepMinutes
         self.sleepEfficiencyPercent = features.sleepEfficiencyPercent
         self.coreMinutes = features.coreMinutes
@@ -84,6 +91,7 @@ final class SleepNightRecord {
         self.sleepLatencyMinutes = features.sleepLatencyMinutes
         self.avgHeartRate = features.avgHeartRate
         self.minHeartRate = features.minHeartRate
+        self.restingHeartRate = features.restingHeartRate
         self.avgHRV = features.avgHRV
         self.avgRespiratoryRate = features.avgRespiratoryRate
         self.avgSpO2 = features.avgSpO2
@@ -102,10 +110,40 @@ final class SleepNightRecord {
     /// Overwrites measured fields from a fresh extraction, leaving identity and
     /// `createdAt` alone. Used when HealthKit revises a night — which it does,
     /// often, as the watch finishes syncing through the morning.
-    func update(from features: SleepNightFeatures, absoluteWristTempC: Double?) {
+    /// - Parameter confirmedAbsent: metrics HealthKit definitively reported
+    ///   nothing for this night. A metric arriving as `nil` means one of two
+    ///   very different things -- HealthKit answered "nothing recorded", or
+    ///   the query failed -- and only the first justifies clearing a value
+    ///   already on disk. Previously this couldn't be told apart, so each
+    ///   optional field picked one behaviour and lived with the other being
+    ///   wrong: HRV, respiratory rate and SpO2 cleared unconditionally (a
+    ///   transient query failure destroyed a good night's readings), while
+    ///   resting HR, temperature and breathing disturbances preserved
+    ///   unconditionally (a reading deleted in Health lived on in Zoon
+    ///   forever). Both are now correct. See `MeasurementOutcome`.
+    func update(
+        from features: SleepNightFeatures,
+        absoluteWristTempC: Double?,
+        confirmedAbsent: Set<VitalMetric> = []
+    ) {
+        /// Writes a new value, clears on confirmed absence, and otherwise
+        /// leaves whatever is already stored alone.
+        func apply(
+            _ new: Double?,
+            _ metric: VitalMetric,
+            to keyPath: ReferenceWritableKeyPath<SleepNightRecord, Double?>
+        ) {
+            if let new {
+                self[keyPath: keyPath] = new
+            } else if confirmedAbsent.contains(metric) {
+                self[keyPath: keyPath] = nil
+            }
+        }
+
         bedtime = features.bedtime
         wakeTime = features.wakeTime
         timeInBedMinutes = features.timeInBedMinutes
+        timeInBedIsEstimated = features.timeInBedIsEstimated
         timeAsleepMinutes = features.timeAsleepMinutes
         sleepEfficiencyPercent = features.sleepEfficiencyPercent
         coreMinutes = features.coreMinutes
@@ -115,13 +153,14 @@ final class SleepNightRecord {
         awakeMinutes = features.awakeMinutes
         wakeCount = features.wakeCount
         sleepLatencyMinutes = features.sleepLatencyMinutes
-        avgHeartRate = features.avgHeartRate
-        minHeartRate = features.minHeartRate
-        avgHRV = features.avgHRV
-        avgRespiratoryRate = features.avgRespiratoryRate
-        avgSpO2 = features.avgSpO2
-        if let absoluteWristTempC { wristTempAbsoluteC = absoluteWristTempC }
-        if let value = features.breathingDisturbances { breathingDisturbances = value }
+        apply(features.avgHeartRate, .averageHeartRate, to: \.avgHeartRate)
+        apply(features.minHeartRate, .minimumHeartRate, to: \.minHeartRate)
+        apply(features.restingHeartRate, .restingHeartRate, to: \.restingHeartRate)
+        apply(features.avgHRV, .hrv, to: \.avgHRV)
+        apply(features.avgRespiratoryRate, .respiratoryRate, to: \.avgRespiratoryRate)
+        apply(features.avgSpO2, .oxygenSaturation, to: \.avgSpO2)
+        apply(absoluteWristTempC, .wristTemperature, to: \.wristTempAbsoluteC)
+        apply(features.breathingDisturbances, .breathingDisturbances, to: \.breathingDisturbances)
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         sourceName = features.sourceName
@@ -155,6 +194,7 @@ extension SleepNightRecord {
             bedtime: bedtime,
             wakeTime: wakeTime,
             timeInBedMinutes: timeInBedMinutes,
+            timeInBedIsEstimated: timeInBedIsEstimated,
             timeAsleepMinutes: timeAsleepMinutes,
             sleepEfficiencyPercent: sleepEfficiencyPercent,
             coreMinutes: coreMinutes,
@@ -166,13 +206,14 @@ extension SleepNightRecord {
             sleepLatencyMinutes: sleepLatencyMinutes,
             avgHeartRate: avgHeartRate,
             minHeartRate: minHeartRate,
+            restingHeartRate: restingHeartRate,
             avgHRV: avgHRV,
             avgRespiratoryRate: avgRespiratoryRate,
             avgSpO2: avgSpO2,
             wristTempDeltaC: wristTempDelta(against: baseline),
             breathingDisturbances: breathingDisturbances,
             hrv7DayAvg: baseline?.hrv7DayAvg,
-            sleepDebtMinutes14Day: baseline?.sleepDebtMinutes14Day,
+            sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: sourceName,

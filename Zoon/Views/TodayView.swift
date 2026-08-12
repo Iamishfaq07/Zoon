@@ -22,6 +22,7 @@ struct TodayView: View {
             .navigationTitle("Today")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
+            .zoonGlobalToolbar()
             .refreshable { await coordinator.refresh() }
         }
     }
@@ -57,12 +58,12 @@ struct TodayView: View {
             ).entrance(1)
             guidanceCard(context).entrance(1)
             if let stress = coordinator.todayStress {
-                StressCard(stress: stress).entrance(2)
+                StressCard(stress: stress, todayStrain: context.strain.value).entrance(2)
             }
             ringsCard(context).entrance(3)
             EnergyForecastCard(forecast: EnergyForecast.compute(
                 wakeTime: context.night.wakeTime,
-                sleepDebtMinutes: context.night.sleepDebtMinutes14Day ?? 0,
+                sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
                 windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
             )).entrance(4)
             BodyBatteryCard(battery: context.bodyBattery).entrance(4)
@@ -75,9 +76,10 @@ struct TodayView: View {
             VitalsCard(vitals: context.vitals).entrance(8)
             HRVStatusCard(status: context.hrvStatus).entrance(8)
             RegularityCard(regularity: context.regularity).entrance(8)
-            if let cvAge = context.cardiovascularAge {
-                CardiovascularAgeCard(cvAge: cvAge).entrance(8)
-            }
+            // Cardiovascular Age deliberately isn't here: it's an
+            // internally-invented formula, not a validated clinical measure,
+            // and sitting beside baseline-derived cards like Recovery lent it
+            // a credibility it hasn't earned. It lives in Insights → Labs.
             InsightCard(
                 insight: context.insight,
                 engineName: context.insight.source.displayName,
@@ -90,17 +92,25 @@ struct TodayView: View {
 
     // MARK: - Hero
 
+    /// Sleep Intelligence, not Recovery, leads the screen -- "how did I
+    /// sleep" is the more fundamental question, and Recovery ("how
+    /// recovered does my body look") keeps its own place further down at
+    /// `RecoveryBreakdownCard`. `context.headline` is still Recovery-derived
+    /// text ("You're recovered", "You need to take it easy"); it reads fine
+    /// as the supporting line under the new hero since `guidanceCard`
+    /// immediately below spells out what to actually do about it.
     private func hero(_ context: DayContext) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             if context.isMock {
                 StatusPill(text: "Sample data", systemImage: "wand.and.stars", tint: Theme.Metric.sleep)
             }
 
-            RecoveryRing(recovery: context.recovery)
+            SleepIntelligenceOrb(score: context.sleepIntelligence)
                 .padding(.top, 4)
 
             Text(context.headline)
-                .font(Theme.label(22, weight: .bold))
+                .font(Theme.label(17, weight: .semibold))
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
             if context.recovery.isEstimate {
@@ -146,7 +156,7 @@ struct TodayView: View {
                 .init(
                     fraction: context.strain.value / StrainScore.maxValue,
                     color: Theme.Metric.strain,
-                    label: "Strain", value: context.strain.displayValue
+                    label: "Load", value: context.strain.displayValue
                 ),
                 .init(
                     fraction: context.sleepNeed.performancePercent / 100,
@@ -156,25 +166,25 @@ struct TodayView: View {
                 .init(
                     fraction: Double(context.bodyBattery.current) / 100,
                     color: Theme.Metric.battery,
-                    label: "Battery", value: "\(context.bodyBattery.current)"
+                    label: "Energy", value: "\(context.bodyBattery.current)"
                 )
             ])
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     metricRow(
-                        "Strain", context.strain.displayValue,
+                        "Load", context.strain.displayValue,
                         detail: context.strain.band, color: Theme.Metric.strain,
                         caveat: context.strain.isEstimate ? "estimated" : nil
                     )
                     Spacer(minLength: 4)
                     MetricInfoButton(
-                        title: "Strain",
+                        title: "Daily Load",
                         symbol: "flame.fill",
                         tint: Theme.Metric.strain,
                         explanation: [
-                            "Strain is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
-                            "It's read next to Sleep Need and Recovery deliberately: a high-strain day increases what your body needs from that night's sleep to fully recover."
+                            "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
+                            "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
                         ]
                     )
                 }
@@ -197,17 +207,17 @@ struct TodayView: View {
 
                 HStack(spacing: 8) {
                     metricRow(
-                        "Battery", "\(context.bodyBattery.current)",
+                        "Energy", "\(context.bodyBattery.current)",
                         detail: context.bodyBattery.band, color: Theme.Metric.battery
                     )
                     Spacer(minLength: 4)
                     MetricInfoButton(
-                        title: "Body Battery",
+                        title: "Energy Reserve",
                         symbol: "bolt.fill",
                         tint: Theme.Metric.battery,
                         explanation: [
-                            "Body Battery models your energy reserve through the day: it fills overnight based on how restorative your sleep was, then drains with activity and stress signals as the day goes on.",
-                            "It's a same-day curve, not a rolling average -- see the full shape of today in the Body Battery card below."
+                            "Energy Reserve models how much you have left through the day: it fills overnight based on how restorative your sleep was, then drains with activity and stress signals as the day goes on.",
+                            "It's a same-day curve, not a rolling average -- see the full shape of today in the Energy Reserve card below."
                         ]
                     )
                 }
@@ -270,10 +280,10 @@ struct BodyBatteryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                SectionHeader(title: "Body Battery", systemImage: "bolt.fill")
+                SectionHeader(title: "Energy Reserve", systemImage: "bolt.fill")
                 Spacer()
                 MetricInfoButton(
-                    title: "Body Battery",
+                    title: "Energy Reserve",
                     symbol: "bolt.fill",
                     tint: Theme.Metric.battery,
                     explanation: [
@@ -382,7 +392,7 @@ struct RecoveryBreakdownCard: View {
                     tint: Theme.recoveryColor(Double(recovery.percent)),
                     explanation: [
                         "Recovery blends several signals -- HRV, resting heart rate, and sleep performance among them -- each compared against your own baseline rather than a fixed target.",
-                        "The bars above show how much each input pulled the score up or down. A component with no baseline yet contributes less weight until it has one."
+                        "The bars above show how much each input pulled the score up or down. A signal with nothing to measure tonight (no reading, or no baseline yet) is left out entirely and its weight redistributes among the rest -- it's never scored as average or assumed fine."
                     ]
                 )
             }
@@ -391,25 +401,34 @@ struct RecoveryBreakdownCard: View {
                 HStack(spacing: 10) {
                     Text(component.label)
                         .font(Theme.label(12, weight: .medium))
+                        .foregroundStyle(component.isAvailable ? .primary : .tertiary)
                         .frame(width: 82, alignment: .leading)
 
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.08))
-                            Capsule()
-                                .fill(Theme.recoveryColor(component.normalized * 100))
-                                .frame(width: geo.size.width * min(1, max(0.02, component.normalized)))
+                    if component.isAvailable {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.white.opacity(0.08))
+                                Capsule()
+                                    .fill(Theme.recoveryColor(component.normalized * 100))
+                                    .frame(width: geo.size.width * min(1, max(0.02, component.normalized)))
+                            }
                         }
+                        .frame(height: 7)
+                    } else {
+                        // Not a zero-width or zero-value bar: that would read
+                        // as "scored badly" rather than "wasn't measured."
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.12), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                            .frame(height: 7)
                     }
-                    .frame(height: 7)
 
-                    Text(component.detail)
+                    Text(component.isAvailable ? component.detail : "Not available")
                         .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
-                        .frame(width: 62, alignment: .trailing)
+                        .frame(width: 74, alignment: .trailing)
 
-                    if let deviation = component.deviationPercent {
+                    if let deviation = component.deviationPercent, component.isAvailable {
                         Text(String(format: "%+.0f%%", deviation))
                             .font(Theme.text(10, weight: .semibold))
                             .foregroundStyle(deviation >= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
@@ -418,6 +437,14 @@ struct RecoveryBreakdownCard: View {
                         Spacer().frame(width: 40)
                     }
                 }
+            }
+
+            if recovery.dataCompletenessPercent < 100 {
+                Divider().overlay(Theme.cardStroke)
+                Text("Based on \(recovery.availableComponentCount) of \(recovery.components.count) signals tonight (\(recovery.dataCompletenessPercent)% of the full model). Missing signals were excluded, not assumed average.")
+                    .font(Theme.text(10))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .glassCard()

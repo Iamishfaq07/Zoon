@@ -34,13 +34,33 @@ struct RecoveryScore: Codable, Hashable, Sendable {
     /// False when there wasn't enough baseline history to score honestly.
     /// The UI shows a "building baseline" state instead of a fake number.
     let isEstimate: Bool
+    /// Share of the nominal weight actually backed by real data, 0...100.
+    /// 100 when every component was available; lower when some were excluded
+    /// and the rest had to be reweighted to fill the gap.
+    let dataCompletenessPercent: Int
+    /// How many of the (up to 4) components had real data behind them.
+    let availableComponentCount: Int
 
     struct Component: Codable, Hashable, Sendable, Identifiable {
         let label: String
         let detail: String
-        /// 0...1
+        /// 0...1. Meaningless when `isAvailable` is false -- present only so
+        /// existing callers that read `normalized` unconditionally don't crash;
+        /// always check `isAvailable` first.
         let normalized: Double
+        /// The nominal weight from the table in this file's doc comment.
         let weight: Double
+        /// The weight this component actually carried in the final score,
+        /// after excluded components' weight was redistributed. Equal to
+        /// `weight` when every component was available; 0 when this one
+        /// wasn't. `effectiveWeight * normalized * 100`, summed across
+        /// components, reconstructs `percent`.
+        let effectiveWeight: Double
+        /// False when the underlying signal (HRV, RHR, respiration) simply
+        /// wasn't there -- no Watch that night, hardware that doesn't measure
+        /// it, or not enough baseline history yet. An unavailable component
+        /// contributes nothing, never a neutral or favorable stand-in.
+        let isAvailable: Bool
         /// Deviation from baseline as a signed percentage, when meaningful.
         let deviationPercent: Double?
 
@@ -56,86 +76,101 @@ struct RecoveryScore: Codable, Hashable, Sendable {
     /// Nights of history before the score stops being flagged as an estimate.
     static let minimumBaselineNights = 4
 
+    /// True resting heart rate, from HealthKit's daily `.restingHeartRate`
+    /// sample -- not the lowest heart-rate reading during sleep, which is a
+    /// noisier, different concept. See `SleepNightFeatures.restingHeartRate`.
     static func compute(
         features: SleepNightFeatures,
         baseline: RecoveryBaseline,
         sleepPerformance: Double
     ) -> RecoveryScore {
 
-        var components: [Component] = []
+        // Each entry only enters the weighted sum if `isAvailable` -- a
+        // missing signal is excluded and renormalized among what's left, never
+        // filled in with a neutral 0.5 or (worse) a favorable default. That was
+        // the bug this replaced: a night with no HRV or RHR reading used to
+        // silently score those components at "average," which floors recovery
+        // at a comfortable-looking number regardless of how little data backed
+        // it, and briefly rewarded missing respiration outright.
 
         // --- HRV ---------------------------------------------------------
         // Scored on relative deviation, not absolute value. ±25% from baseline
         // maps across the full range: at baseline you sit mid-scale, well above
         // is a green light, well below means the nervous system is still working.
-        var hrvNormalized = 0.5
+        var hrvNormalized = 0.0
         var hrvDeviation: Double?
+        var hrvAvailable = false
         if let hrv = features.avgHRV, let base = baseline.hrv, base > 0 {
             let deviation = (hrv - base) / base
             hrvDeviation = deviation * 100
             hrvNormalized = clamp01(0.5 + deviation / 0.5)
+            hrvAvailable = true
         }
-        components.append(Component(
-            label: "HRV",
-            detail: features.avgHRV.map { "\(Int($0)) ms" } ?? "—",
-            normalized: hrvNormalized,
-            weight: hrvWeight,
-            deviationPercent: hrvDeviation
-        ))
 
         // --- Resting heart rate ------------------------------------------
         // Inverted: higher than baseline is worse. RHR moves less than HRV but
         // it's less noisy, so it acts as a check on a single odd HRV reading.
-        var rhrNormalized = 0.5
+        var rhrNormalized = 0.0
         var rhrDeviation: Double?
-        if let rhr = features.minHeartRate, let base = baseline.restingHeartRate, base > 0 {
+        var rhrAvailable = false
+        if let rhr = features.restingHeartRate, let base = baseline.restingHeartRate, base > 0 {
             let deviation = (rhr - base) / base
             rhrDeviation = deviation * 100
             // ±12% spans the scale — RHR is a tighter distribution than HRV.
             rhrNormalized = clamp01(0.5 - deviation / 0.24)
+            rhrAvailable = true
         }
-        components.append(Component(
-            label: "Resting HR",
-            detail: features.minHeartRate.map { "\(Int($0)) bpm" } ?? "—",
-            normalized: rhrNormalized,
-            weight: rhrWeight,
-            deviationPercent: rhrDeviation
-        ))
-
-        // --- Sleep performance -------------------------------------------
-        components.append(Component(
-            label: "Sleep",
-            detail: "\(Int(sleepPerformance))% of need",
-            normalized: clamp01(sleepPerformance / 100),
-            weight: sleepWeight,
-            deviationPercent: nil
-        ))
 
         // --- Respiratory rate ---------------------------------------------
         // Very stable night to night in a healthy adult, so a small absolute
         // rise is a real signal. A full breath per minute above baseline is a
         // meaningful departure — hence the tight ±1.5 br/min scale.
-        var respiratoryNormalized = 0.75
+        var respiratoryNormalized = 0.0
         var respiratoryDeviation: Double?
+        var respiratoryAvailable = false
         if let rate = features.avgRespiratoryRate, let base = baseline.respiratoryRate, base > 0 {
             let delta = rate - base
             respiratoryDeviation = (delta / base) * 100
             respiratoryNormalized = clamp01(1 - abs(delta) / 1.5)
+            respiratoryAvailable = true
         }
-        components.append(Component(
-            label: "Respiratory",
-            detail: features.avgRespiratoryRate.map { String(format: "%.1f br/min", $0) } ?? "—",
-            normalized: respiratoryNormalized,
-            weight: respiratoryWeight,
-            deviationPercent: respiratoryDeviation
-        ))
 
-        let total = components.reduce(0.0) { $0 + $1.normalized * $1.weight } * 100
+        // Sleep performance has no missing-data path — it's always derived
+        // from the night's own duration and the caller's sleep-need estimate,
+        // both of which exist whenever there's a night to score at all.
+        let raw: [(label: String, detail: String, normalized: Double, weight: Double, available: Bool, deviation: Double?)] = [
+            ("HRV", features.avgHRV.map { "\(Int($0)) ms" } ?? "—", hrvNormalized, hrvWeight, hrvAvailable, hrvDeviation),
+            ("Resting HR", features.restingHeartRate.map { "\(Int($0)) bpm" } ?? "—", rhrNormalized, rhrWeight, rhrAvailable, rhrDeviation),
+            ("Sleep", "\(Int(sleepPerformance))% of need", clamp01(sleepPerformance / 100), sleepWeight, true, nil),
+            ("Respiratory", features.avgRespiratoryRate.map { String(format: "%.1f br/min", $0) } ?? "—", respiratoryNormalized, respiratoryWeight, respiratoryAvailable, respiratoryDeviation)
+        ]
+
+        let availableWeight = raw.filter(\.available).reduce(0.0) { $0 + $1.weight }
+        // Sleep performance is always available, so this can't be zero in
+        // practice, but guard the division regardless.
+        let renormalize = availableWeight > 0 ? 1.0 / availableWeight : 0
+
+        let components = raw.map { entry in
+            Component(
+                label: entry.label,
+                detail: entry.detail,
+                normalized: entry.normalized,
+                weight: entry.weight,
+                effectiveWeight: entry.available ? entry.weight * renormalize : 0,
+                isAvailable: entry.available,
+                deviationPercent: entry.deviation
+            )
+        }
+
+        let total = components.reduce(0.0) { $0 + $1.normalized * $1.effectiveWeight } * 100
+        let availableCount = components.filter(\.isAvailable).count
 
         return RecoveryScore(
             percent: Int(total.rounded()),
             components: components,
-            isEstimate: baseline.nightCount < minimumBaselineNights
+            isEstimate: baseline.nightCount < minimumBaselineNights,
+            dataCompletenessPercent: Int((availableWeight * 100).rounded()),
+            availableComponentCount: availableCount
         )
     }
 
@@ -180,8 +215,12 @@ extension RecoveryScore {
     }
 
     /// The single strongest driver, for the "why" line under the ring.
+    /// Unavailable components default their `normalized` to 0 internally
+    /// (irrelevant once excluded from scoring, since `effectiveWeight` is
+    /// also 0) -- filtered out here so a missing signal can never be picked
+    /// as "the weakest driver" ahead of a real, measured low one.
     var primaryDriver: Component? {
-        components.min { $0.normalized < $1.normalized }
+        components.filter(\.isAvailable).min { $0.normalized < $1.normalized }
     }
 }
 
@@ -196,10 +235,60 @@ struct RecoveryBaseline: Codable, Hashable, Sendable {
     let restingHeartRate: Double?
     let respiratoryRate: Double?
     let wristTemperature: Double?
+    /// Total nights in the window this was built from -- *not* the number of
+    /// nights that actually carried any given metric. Each metric's own
+    /// availability is carried by whether its value is nil (see
+    /// `from(nights:)`); this count only gates the overall "still building a
+    /// baseline" flag.
     let nightCount: Int
 
     static let empty = RecoveryBaseline(
         hrv: nil, restingHeartRate: nil, respiratoryRate: nil,
         wristTemperature: nil, nightCount: 0
     )
+
+    /// Samples a single metric needs before its mean is worth comparing
+    /// against.
+    ///
+    /// Enforced per metric rather than across the window as a whole, because
+    /// a window is only uniformly populated in theory. Wrist temperature
+    /// needs a Series 8 or later, respiratory rate and blood oxygen need the
+    /// feature enabled and a night wearing the watch, and true resting heart
+    /// rate only appears once HealthKit has computed it for that day -- so
+    /// "30 nights of history" routinely means 30 nights of duration, 28 of
+    /// heart rate, and 2 of temperature. Averaging those 2 and calling it a
+    /// 30-night baseline is the bug this guards: the comparison looks just
+    /// as authoritative as a well-sampled one, and nothing downstream can
+    /// tell the difference.
+    static let minimumSamplesPerMetric = 3
+
+    /// Builds a baseline from a window of nights, requiring every metric to
+    /// clear `minimumSamplesPerMetric` on its own before it contributes.
+    ///
+    /// A metric that doesn't clear it comes back nil, which
+    /// `RecoveryScore.compute` already treats as unavailable -- excluded from
+    /// the score and renormalized around, rather than compared against a mean
+    /// of one or two readings.
+    ///
+    /// Both callers go through here so the two can't drift apart; they have
+    /// before, with `rebuildRecoveryHistory` briefly sourcing resting heart
+    /// rate differently from the live path and silently scoring history
+    /// against a baseline the live screen never used.
+    static func from(nights: [SleepNightFeatures]) -> RecoveryBaseline {
+        func gatedMean(_ values: [Double]) -> Double? {
+            guard values.count >= minimumSamplesPerMetric else { return nil }
+            return values.reduce(0, +) / Double(values.count)
+        }
+
+        return RecoveryBaseline(
+            hrv: gatedMean(nights.compactMap(\.avgHRV)),
+            // True RHR only -- never minHeartRate. See
+            // SleepNightFeatures.restingHeartRate for why mixing the two
+            // into one baseline is worse than excluding the older nights.
+            restingHeartRate: gatedMean(nights.compactMap(\.restingHeartRate)),
+            respiratoryRate: gatedMean(nights.compactMap(\.avgRespiratoryRate)),
+            wristTemperature: gatedMean(nights.compactMap(\.wristTempDeltaC)),
+            nightCount: nights.count
+        )
+    }
 }

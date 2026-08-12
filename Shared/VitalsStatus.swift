@@ -164,7 +164,7 @@ struct VitalsStatus: Codable, Hashable, Sendable {
 
     private static func currentValue(_ kind: Kind, features: SleepNightFeatures) -> Double? {
         switch kind {
-        case .restingHeartRate: features.minHeartRate
+        case .restingHeartRate: features.restingHeartRate
         case .hrv: features.avgHRV
         case .respiratoryRate: features.avgRespiratoryRate
         case .oxygenSaturation: features.avgSpO2

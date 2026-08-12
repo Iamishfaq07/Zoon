@@ -9,6 +9,14 @@
 #   brew install xcodegen && xcodegen generate
 #
 # Keep this in sync with the real project when you change build settings.
+#
+# CI never exercises this file -- `xcodegen` isn't installed in the build
+# environment, so it hasn't been generated-and-diffed against the real
+# Tools/generate-pbxproj.py output since the watch and test targets were
+# added. The five targets and their settings below were transcribed from
+# that script's TARGET_COMMON blocks by hand and should match, but if you
+# actually hit the "regenerate" scenario, run `xcodegen generate` locally
+# and confirm the app builds before trusting it over Tools/generate-pbxproj.py.
 
 name: Zoon
 options:
@@ -37,6 +45,8 @@ targets:
     dependencies:
       - target: ZoonWidgetExtension
         embed: true
+      - target: ZoonWatch
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep
@@ -63,20 +73,77 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.ZoonWidget
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ZoonWidget/Info.plist
         ENABLE_PREVIEWS: YES
         SKIP_INSTALL: YES
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME: WidgetBackground
-        INFOPLIST_KEY_CFBundleDisplayName: Zoon
-        INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # Modern single-target (WKApplication) watch app, embedded in Zoon.app at
+  # build time — not the old WatchKit app-plus-extension pair. Overrides the
+  # project-level iOS SDK/device family: those two settings are the whole
+  # difference between "an iOS target" and "a watchOS target" here.
+  ZoonWatch:
+    type: application.watchapp2
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: ZoonWatch
+      - path: Shared
+    dependencies:
+      - target: ZoonWatchWidgetExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.watchkitapp
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ZoonWatch/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "4"
+
+  ZoonWatchWidgetExtension:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: ZoonWatchWidget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.watchkitapp.ZoonWatchWidget
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ZoonWatchWidget/Info.plist
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "4"
+
+  # No TEST_HOST / BUNDLE_LOADER: a standalone "library" test bundle, not
+  # hosted inside Zoon.app. It only touches Shared/'s pure algorithm code, so
+  # it never needs the app process, HealthKit, or SwiftData to run.
+  ZoonTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ZoonTests
+      - path: Shared
+      - path: Zoon/Services/SleepSessionBuilder.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.ZoonTests
+        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   Zoon:
     build:
       targets:
         Zoon: all
+        ZoonTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - ZoonTests
     archive:
       config: Release

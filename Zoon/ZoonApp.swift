@@ -18,6 +18,7 @@ struct ZoonApp: App {
     @State private var naps: NapStore
     @State private var soundscape: SoundscapeEngine
     @State private var reminders: BedtimeReminder
+    @State private var presentation = GlobalPresentation()
 
     init() {
         let preferences = UserPreferences()
@@ -76,6 +77,7 @@ struct ZoonApp: App {
                 .environment(naps)
                 .environment(soundscape)
                 .environment(reminders)
+                .environment(presentation)
         }
         .modelContainer(modelContainer)
     }

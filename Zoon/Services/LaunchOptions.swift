@@ -30,8 +30,11 @@ enum LaunchOptions {
         UserDefaults.standard.bool(forKey: "zoonDemo")
     }
 
-    /// Which tab to open on. One of `today`, `sleep`, `trends`, `journal`,
-    /// `more`; anything else is ignored.
+    /// Which tab to open on, or which sheet to open over the default tab.
+    /// One of `today`, `sleep`, `trends`, `coach` (a real tab), or `journal`,
+    /// `more` (open that sheet on top of whichever tab is default); anything
+    /// else is ignored. See `RootView.Tab.init?(launchArgument:)` and
+    /// `RootView.onAppear` for how the two kinds are told apart.
     ///
     /// Screenshot capture relaunches the app once per tab rather than driving
     /// the tab bar, which avoids needing a UI-test target — and a UI test would

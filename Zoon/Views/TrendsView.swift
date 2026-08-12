@@ -81,6 +81,7 @@ struct TrendsView: View {
                     .pickerStyle(.segmented)
                 }
             }
+            .zoonGlobalToolbar()
         }
     }
 
@@ -92,6 +93,7 @@ struct TrendsView: View {
             hubRow("Body Signals", "dot.radiowaves.left.and.right", Theme.Metric.recoveryMid) { HealthRadarView() }
             hubRow("Cause Finder", "sparkle.magnifyingglass", Theme.Metric.hrv) { CauseFinderView() }
             hubRow("Year in Sleep", "square.grid.3x3.fill", Theme.Metric.recoveryHigh) { YearHeatmapView() }
+            hubRow("Labs", "flask", .secondary) { LabsView() }
         }
     }
 

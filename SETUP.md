@@ -8,7 +8,7 @@ waiting for Xcode.
 - **Xcode 15 or later.** The project uses the classic explicit-file-reference
   format (`objectVersion = 56`, compatibility Xcode 14), so it opens in anything
   current. Every source file is listed explicitly and target membership is
-  already correct — including `Shared/`, which is compiled into both targets.
+  already correct — including `Shared/`, which is compiled into every target.
 - **A physical iPhone running iOS 18+.** Non-negotiable for real data — see
   [Why a device](#why-a-device).
 - An Apple ID in Xcode (a free one is fine for running on your own device).
@@ -21,15 +21,22 @@ cd Zoon
 open Zoon.xcodeproj
 ```
 
-The project builds as-is. Two targets:
+The project builds as-is. Five targets:
 
 | Target | Product | Contains |
 |---|---|---|
 | `Zoon` | `Zoon.app` | `Zoon/` + `Shared/` |
 | `ZoonWidgetExtension` | `ZoonWidgetExtension.appex` | `ZoonWidget/` + `Shared/` |
+| `ZoonWatch` | `ZoonWatch.app` | `ZoonWatch/` + `Shared/` |
+| `ZoonWatchWidgetExtension` | `ZoonWatchWidgetExtension.appex` | `ZoonWatchWidget/` + `Shared/` |
+| `ZoonTests` | `ZoonTests.xctest` | `ZoonTests/` + `Shared/` |
 
-`Shared/` belongs to **both**. If Xcode ever loses that membership, select the
-`Shared` folder in the navigator and tick both targets in the File Inspector.
+`Shared/` belongs to **every** target. If Xcode ever loses that membership,
+select the `Shared` folder in the navigator and tick all the target boxes in
+the File Inspector.
+
+Only `Zoon`, `ZoonWidgetExtension`, `ZoonWatch`, and `ZoonWatchWidgetExtension`
+need a signing team to run on a device — `ZoonTests` runs unsigned.
 
 ## 2. Set your signing team
 
@@ -37,8 +44,13 @@ The project builds as-is. Two targets:
 2. Set **Team** to your Apple ID
 3. Change **Bundle Identifier** from `com.zoon.sleep` to something unique to you,
    e.g. `com.yourname.zoon`
-4. Repeat for the **ZoonWidgetExtension** target. Its identifier must stay
-   prefixed by the app's — e.g. `com.yourname.zoon.ZoonWidget`
+4. Repeat for **ZoonWidgetExtension**, **ZoonWatch**, and
+   **ZoonWatchWidgetExtension**. Each identifier must stay prefixed by the
+   app's — e.g. `com.yourname.zoon.ZoonWidget`, `com.yourname.zoon.watchkitapp`,
+   `com.yourname.zoon.watchkitapp.ZoonWatchWidget`
+
+You only need this if you're running on a device or archiving. `ZoonTests`
+doesn't need a team — it runs unsigned, same as any other unit test bundle.
 
 ## 3. HealthKit capability
 
@@ -183,7 +195,7 @@ brew install xcodegen
 xcodegen generate
 ```
 
-`project.yml` describes the same two targets and the same build settings. After
+`project.yml` describes the same targets and the same build settings. After
 regenerating you'll need to redo steps 2–3 — signing and capabilities aren't in
 the spec, since they're specific to your team.
 
@@ -215,11 +227,14 @@ already in an async context, so it's a mechanical change.
 ## Project layout
 
 ```
-Shared/       → both targets
-Zoon/         → app target
-ZoonWidget/   → widget target
+Shared/           → every target
+Zoon/             → app target
+ZoonWidget/       → phone widget target
+ZoonWatch/        → watch app target
+ZoonWatchWidget/  → watch complication target
+ZoonTests/        → test target
 ```
 
 When you add a new file, check its target membership in the File Inspector.
-Anything in `Shared/` needs **both** boxes ticked; the existing five files are
-already set up that way and are the pattern to copy.
+Anything in `Shared/` needs **every** target's box ticked; the existing files
+there are already set up that way and are the pattern to copy.

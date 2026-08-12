@@ -125,7 +125,7 @@ extension LabelStyle where Self == TopAlignedLabelStyle {
     // Runs the real engine so a rule change shows up in previews immediately.
     let engine = RuleBasedInsightEngine()
     let baseline = RollingBaseline(
-        hrv7DayAvg: 60, sleepDebtMinutes14Day: 340, deep7DayAvg: 74,
+        hrv7DayAvg: 60, sleepDebtMinutes: 340, deep7DayAvg: 74,
         duration7DayAvg: 420, efficiency7DayAvg: 88, minHeartRate7DayAvg: 53,
         wristTempBaselineC: 35.1, bedtimeConsistencyMinutes: 72, sampleCount: 7
     )

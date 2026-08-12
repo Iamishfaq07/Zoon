@@ -92,7 +92,23 @@ final class CoachChat {
                 to: trimmed,
                 options: GenerationOptions(temperature: 0.4)
             )
-            messages.append(Message(role: .assistant, text: response.content))
+            // Same backstop FoundationModelInsightEngine applies to the
+            // nightly insight: the instructions forbid diagnostic language,
+            // but that's a request the model may not honour on every turn,
+            // and a chat has many more turns than one fixed-shape generation
+            // to get it wrong on. A failed check here can't fall back to a
+            // rules engine the way the nightly insight can -- there's no
+            // rule-based conversation to hand off to -- so it shows a plain
+            // refusal instead of the raw response.
+            if DiagnosticLanguageGuard.containsBannedLanguage(response.content) {
+                logger.notice("Chat response failed the diagnostic-language check; not shown")
+                messages.append(Message(
+                    role: .assistant,
+                    text: "I can't help with that one -- ask me something about tonight's numbers instead."
+                ))
+            } else {
+                messages.append(Message(role: .assistant, text: response.content))
+            }
         } catch {
             logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
             messages.append(Message(

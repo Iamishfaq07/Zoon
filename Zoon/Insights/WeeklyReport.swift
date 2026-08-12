@@ -64,7 +64,9 @@ struct WeeklyReport {
         let avgRecovery = mean(recoveryValues)
         let avgSleep = mean(sorted.map(\.timeAsleepMinutes))
         let avgHRV = mean(sorted.compactMap(\.avgHRV))
-        let avgRHR = mean(sorted.compactMap(\.minHeartRate))
+        // True RHR (see SleepNightFeatures.restingHeartRate), not the
+        // sleep-window low -- this is displayed labeled "Resting HR".
+        let avgRHR = mean(sorted.compactMap(\.restingHeartRate))
 
         let sleepPerformances = sorted.map { min(100, $0.timeAsleepMinutes / max(goalMinutes, 1) * 100) }
         let avgPerformance = mean(sleepPerformances)

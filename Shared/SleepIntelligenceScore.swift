@@ -55,18 +55,8 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
         }
     }
 
-    enum Confidence: String, Codable, Sendable {
-        case insufficient, low, moderate, high
-
-        var label: String {
-            switch self {
-            case .insufficient: "Insufficient data"
-            case .low: "Low confidence"
-            case .moderate: "Moderate confidence"
-            case .high: "High confidence"
-            }
-        }
-    }
+    /// See `MetricConfidence`.
+    typealias Confidence = MetricConfidence
 
     /// Nominal weights. `compute` renormalizes among whatever subset is
     /// actually available for a given night. Exposed (not just `private`) so
@@ -237,8 +227,8 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 ]), 0.5))
             }
         }
-        if let rhr = night.minHeartRate {
-            let history30 = Array(history.suffix(30)).compactMap(\.minHeartRate)
+        if let rhr = night.restingHeartRate {
+            let history30 = Array(history.suffix(30)).compactMap(\.restingHeartRate)
             if let z = Statistics.robustZ(rhr, in: history30) {
                 // Elevated resting HR relative to baseline is unfavorable.
                 scores.append((interpolate(z, anchors: [
@@ -263,7 +253,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
 
     private static func recoveryDetail(night: SleepNightFeatures, history: [SleepNightFeatures]) -> String {
         if let hrv = night.avgHRV { return "HRV \(Int(hrv)) ms" }
-        if let rhr = night.minHeartRate { return "Resting HR \(Int(rhr)) bpm" }
+        if let rhr = night.restingHeartRate { return "Resting HR \(Int(rhr)) bpm" }
         return "—"
     }
 

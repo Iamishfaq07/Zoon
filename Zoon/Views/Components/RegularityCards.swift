@@ -171,13 +171,13 @@ struct HealthRadarCard: View {
                     // Naming it plainly here is cheaper and more honest than
                     // building a second model that would just restate this one.
                     SectionHeader(
-                        title: "Health Radar",
+                        title: "Body Signals",
                         subtitle: radar.severity == .notable ? "Possible illness or heavy strain signal" : nil,
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                     Spacer()
                     MetricInfoButton(
-                        title: "Health Radar",
+                        title: "Body Signals",
                         symbol: "dot.radiowaves.left.and.right",
                         tint: tint,
                         explanation: [
@@ -249,12 +249,17 @@ struct CardiovascularAgeCard: View {
             HStack(alignment: .top) {
                 SectionHeader(title: "Cardiovascular Age", systemImage: "heart.circle")
                 Spacer(minLength: 8)
+                // A tertiary-colored disclaimer at the bottom of the card is
+                // easy to skim past on a number this large and this
+                // confident-looking. This sits right next to the title
+                // instead, where it's read first.
+                StatusPill(text: "Experimental", tint: .secondary)
                 MetricInfoButton(
                     title: "Cardiovascular Age",
                     symbol: "heart.circle",
                     tint: tint,
                     explanation: [
-                        "An estimate derived from your resting heart rate and HRV relative to population norms for your age -- not a clinical or lab-based measurement.",
+                        "An estimate derived from your resting heart rate and HRV relative to population norms for your age -- not a clinical or lab-based measurement, and not validated against any reference standard.",
                         "Treat the direction (younger, aligned, older than your actual age) as more meaningful than the exact number, which will vary night to night."
                     ]
                 )
