@@ -238,7 +238,7 @@ struct SettingsView: View {
         } footer: {
             Text("""
                 Used only to estimate your maximum heart rate, which sets the zones behind \
-                Strain and Body Battery. Nothing else reads it, and it never leaves the device.
+                Daily Load and Energy Reserve. Nothing else reads it, and it never leaves the device.
                 """)
         }
     }

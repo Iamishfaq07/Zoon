@@ -156,7 +156,7 @@ struct TodayView: View {
                 .init(
                     fraction: context.strain.value / StrainScore.maxValue,
                     color: Theme.Metric.strain,
-                    label: "Strain", value: context.strain.displayValue
+                    label: "Load", value: context.strain.displayValue
                 ),
                 .init(
                     fraction: context.sleepNeed.performancePercent / 100,
@@ -166,25 +166,25 @@ struct TodayView: View {
                 .init(
                     fraction: Double(context.bodyBattery.current) / 100,
                     color: Theme.Metric.battery,
-                    label: "Battery", value: "\(context.bodyBattery.current)"
+                    label: "Energy", value: "\(context.bodyBattery.current)"
                 )
             ])
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     metricRow(
-                        "Strain", context.strain.displayValue,
+                        "Load", context.strain.displayValue,
                         detail: context.strain.band, color: Theme.Metric.strain,
                         caveat: context.strain.isEstimate ? "estimated" : nil
                     )
                     Spacer(minLength: 4)
                     MetricInfoButton(
-                        title: "Strain",
+                        title: "Daily Load",
                         symbol: "flame.fill",
                         tint: Theme.Metric.strain,
                         explanation: [
-                            "Strain is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
-                            "It's read next to Sleep Need and Recovery deliberately: a high-strain day increases what your body needs from that night's sleep to fully recover."
+                            "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
+                            "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
                         ]
                     )
                 }
@@ -207,17 +207,17 @@ struct TodayView: View {
 
                 HStack(spacing: 8) {
                     metricRow(
-                        "Battery", "\(context.bodyBattery.current)",
+                        "Energy", "\(context.bodyBattery.current)",
                         detail: context.bodyBattery.band, color: Theme.Metric.battery
                     )
                     Spacer(minLength: 4)
                     MetricInfoButton(
-                        title: "Body Battery",
+                        title: "Energy Reserve",
                         symbol: "bolt.fill",
                         tint: Theme.Metric.battery,
                         explanation: [
-                            "Body Battery models your energy reserve through the day: it fills overnight based on how restorative your sleep was, then drains with activity and stress signals as the day goes on.",
-                            "It's a same-day curve, not a rolling average -- see the full shape of today in the Body Battery card below."
+                            "Energy Reserve models how much you have left through the day: it fills overnight based on how restorative your sleep was, then drains with activity and stress signals as the day goes on.",
+                            "It's a same-day curve, not a rolling average -- see the full shape of today in the Energy Reserve card below."
                         ]
                     )
                 }
@@ -280,10 +280,10 @@ struct BodyBatteryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                SectionHeader(title: "Body Battery", systemImage: "bolt.fill")
+                SectionHeader(title: "Energy Reserve", systemImage: "bolt.fill")
                 Spacer()
                 MetricInfoButton(
-                    title: "Body Battery",
+                    title: "Energy Reserve",
                     symbol: "bolt.fill",
                     tint: Theme.Metric.battery,
                     explanation: [

@@ -122,8 +122,8 @@ struct RecoveryPage: View {
             .frame(maxHeight: .infinity)
 
             HStack(spacing: 10) {
-                miniStat("\(snapshot.bodyBattery)", "battery", Theme.Metric.battery)
-                miniStat(String(format: "%.1f", snapshot.strain), "strain", Theme.Metric.strain)
+                miniStat("\(snapshot.bodyBattery)", "energy", Theme.Metric.battery)
+                miniStat(String(format: "%.1f", snapshot.strain), "load", Theme.Metric.strain)
             }
 
             if snapshot.isMock {
@@ -240,7 +240,7 @@ struct BatteryPage: View {
                     Text("\(snapshot.bodyBattery)")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                    Text("BATTERY")
+                    Text("ENERGY")
                         .font(.system(size: 9, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
                 }

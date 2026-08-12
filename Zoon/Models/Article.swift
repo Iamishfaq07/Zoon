@@ -133,7 +133,7 @@ extension Article {
             id: "sleep-and-training",
             category: .recovery,
             title: "Why Hard Training Days Change What You Need",
-            subtitle: "Strain and sleep need are linked, not separate numbers",
+            subtitle: "Daily Load and sleep need are linked, not separate numbers",
             symbol: "figure.run",
             readMinutes: 3,
             body: [

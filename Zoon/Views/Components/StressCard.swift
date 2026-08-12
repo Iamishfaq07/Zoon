@@ -78,7 +78,7 @@ struct StressCard: View {
                 tint: tint,
                 explanation: [
                     "Compares your heart rate and HRV so far today against your own rolling baseline -- a live, same-day reading rather than a look back at last night.",
-                    "This averages the whole elapsed day without separating out exercise: a run or a hard workout raises heart rate the same way psychological stress does, physiologically, so an elevated reading on an active day often reflects exertion rather than autonomic load. Check today's Strain if this reads high and you know you've been active.",
+                    "This averages the whole elapsed day without separating out exercise: a run or a hard workout raises heart rate the same way psychological stress does, physiologically, so an elevated reading on an active day often reflects exertion rather than autonomic load. Check today's Daily Load if this reads high and you know you've been active.",
                     "Resolution is limited by however much of the day has elapsed: an early reading is a smaller sample than one taken in the evening, which is why it's shown as an estimate until there's enough baseline history."
                 ]
             )
