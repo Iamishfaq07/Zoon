@@ -46,8 +46,13 @@ struct SleepIntelligenceOrb: View {
         "Architecture": Theme.Metric.temperature
     ]
 
+    /// `score.components` only ever contains components that actually ran
+    /// tonight -- `SleepIntelligenceScore.compute` excludes anything missing
+    /// data before the array is built, rather than including it with a flag
+    /// (that's `RecoveryScore.Component`'s shape, not this one). No filter
+    /// needed here; the name stays for readability at each call site below.
     private var available: [SleepIntelligenceScore.Component] {
-        score.components.filter(\.isAvailable)
+        score.components
     }
 
     private var selected: SleepIntelligenceScore.Component? {
@@ -63,9 +68,9 @@ struct SleepIntelligenceOrb: View {
         let gap = 0.006
         var cursor = 0.0
         return available.map { component in
-            let span = max(0, component.effectiveWeight - gap)
+            let span = max(0, component.weightUsed - gap)
             let result = (component, cursor, cursor + span)
-            cursor += component.effectiveWeight
+            cursor += component.weightUsed
             return result
         }
     }
@@ -85,13 +90,16 @@ struct SleepIntelligenceOrb: View {
                     )
                     .rotationEffect(.degrees(segment.start * 360 - 90))
                     .opacity(isDimmed ? 0.3 : 1)
-                    // Widened, unstroked hit area -- the visible arc is thin,
-                    // and a 16pt-wide target is too easy to miss on a first try.
+                    // Widened hit area -- the visible arc is thin, and a
+                    // 16pt-wide target is too easy to miss on a first try.
+                    // `.strokedPath(_:)` (not `.stroke(style:)`, which
+                    // returns a View here, not a Shape) is what actually
+                    // produces a `Shape` `.contentShape` can take.
                     .contentShape(
                         Circle()
                             .trim(from: segment.start, to: segment.end)
-                            .stroke(style: StrokeStyle(lineWidth: lineWidth + 20, lineCap: .butt))
-                            .rotationEffect(.degrees(-90))
+                            .rotation(.degrees(-90))
+                            .strokedPath(StrokeStyle(lineWidth: lineWidth + 20, lineCap: .butt))
                     )
                     .onTapGesture { select(segment.component) }
             }
