@@ -9,6 +9,7 @@ import SwiftData
 struct JournalView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(\.dismiss) private var dismiss
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var findings: [JournalCorrelator.Finding] = []
@@ -51,6 +52,14 @@ struct JournalView: View {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { noteFieldFocused = false }
+                }
+                // Needed now that Journal is sheet-presented from every tab
+                // rather than a tab in its own right — a sheet with no close
+                // affordance relies entirely on the swipe-down gesture, which
+                // isn't discoverable and doesn't work at all once a field is
+                // focused and the keyboard is up.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
             .onAppear(perform: reload)

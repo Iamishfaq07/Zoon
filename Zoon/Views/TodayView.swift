@@ -22,6 +22,7 @@ struct TodayView: View {
             .navigationTitle("Today")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
+            .zoonGlobalToolbar()
             .refreshable { await coordinator.refresh() }
         }
     }

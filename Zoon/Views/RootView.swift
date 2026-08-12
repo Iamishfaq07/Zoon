@@ -6,33 +6,41 @@ struct RootView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(BedtimeReminder.self) private var reminders
+    @Environment(GlobalPresentation.self) private var presentation
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialScreen?.tab
                                             ?? LaunchOptions.initialTab) ?? .today
     /// Set when a Control Center button asked for a specific screen.
     @State private var sleepPath = NavigationPath()
-    /// Same, for screens pushed from the More tab.
-    @State private var morePath = NavigationPath()
 
+    /// Today, Sleep, Insights, Coach — Journal and Settings/More moved off
+    /// the tab bar entirely (see `GlobalPresentation`), which is what frees
+    /// the fourth slot for Coach instead of splitting it across a fifth tab.
     enum Tab: Hashable {
-        case today, sleep, trends, journal, more
+        case today, sleep, trends, coach
 
-        /// Maps `-zoonTab <name>` onto a tab. `nil` for anything unrecognised,
-        /// so a typo in a CI script opens the default tab rather than failing.
+        /// Maps `-zoonTab <name>` onto a tab. `nil` for anything unrecognised
+        /// -- including "journal" and "more", which are still valid
+        /// `-zoonTab` values for screenshot capture but now open a sheet
+        /// rather than select a tab; `RootView.onAppear` handles those
+        /// directly rather than through this initializer, so a typo or one
+        /// of those two names both fall back to the default tab here without
+        /// otherwise failing.
         init?(launchArgument: String?) {
             switch launchArgument {
             case "today": self = .today
             case "sleep": self = .sleep
             case "trends": self = .trends
-            case "journal": self = .journal
-            case "more": self = .more
+            case "coach": self = .coach
             default: return nil
             }
         }
     }
 
     var body: some View {
+        @Bindable var bindablePresentation = presentation
+
         TabView(selection: $selection) {
             TodayView()
                 .tabItem { Label("Today", systemImage: "bolt.heart.fill") }
@@ -46,19 +54,21 @@ struct RootView: View {
                 .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }
                 .tag(Tab.trends)
 
-            JournalView()
-                .tabItem { Label("Journal", systemImage: "square.and.pencil") }
-                .tag(Tab.journal)
-
-            MoreView(path: $morePath)
-                .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
-                .tag(Tab.more)
+            CoachTabView()
+                .tabItem { Label("Coach", systemImage: "sparkles") }
+                .tag(Tab.coach)
         }
         .tint(Theme.Metric.sleep)
         // Dark-committed rather than adaptive: the palette is built for a dark
         // bedroom, and a half-translated light variant would look worse than
         // either done properly.
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $bindablePresentation.showingJournal) {
+            JournalView()
+        }
+        .sheet(isPresented: $bindablePresentation.showingMore) {
+            MoreView(path: $bindablePresentation.morePath)
+        }
         .task {
             await coordinator.start()
             await refreshReminders()
@@ -67,7 +77,15 @@ struct RootView: View {
             // A launch argument is consumed once, on appear. It is not routed
             // through DeepLink's shared storage, which is for cross-process
             // hand-off from an extension and would outlive this launch.
-            if let screen = LaunchOptions.initialScreen { push(screen) }
+            if let screen = LaunchOptions.initialScreen {
+                push(screen)
+            } else if LaunchOptions.initialTab == "more" {
+                // The one `-zoonTab` value that is neither a real `Tab` case
+                // nor a valid `DeepLink.Destination` (unlike "journal", which
+                // is both a tab name historically and a Destination case, so
+                // it already flows through `push(_:)` below).
+                presentation.presentMore()
+            }
             consumeDeepLink()
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -122,7 +140,9 @@ struct RootView: View {
         push(destination)
     }
 
-    /// Selects the owning tab and pushes the screen onto its stack.
+    /// Routes a destination to the tab that owns it, or to the appropriate
+    /// global sheet for the two screens (Journal, More/Settings) that no
+    /// longer live on the tab bar.
     private func push(_ destination: DeepLink.Destination) {
         switch destination {
         case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck:
@@ -130,13 +150,9 @@ struct RootView: View {
             sleepPath = NavigationPath()
             sleepPath.append(destination)
         case .report, .settings, .badges:
-            selection = .more
-            morePath = NavigationPath()
-            morePath.append(destination)
+            presentation.presentMore(pushing: destination)
         case .journal:
-            // The Journal tab is its own root, not a pushed screen -- nothing
-            // to append to a path.
-            selection = .journal
+            presentation.presentJournal()
         }
     }
 }
@@ -263,6 +279,7 @@ struct SleepTabView: View {
             .nightBackground()
             .navigationTitle("Sleep")
             .navigationBarTitleDisplayMode(.inline)
+            .zoonGlobalToolbar()
             .navigationDestination(for: DeepLink.Destination.self) { destination in
                 switch destination {
                 case .soundscapes: SoundscapeView()

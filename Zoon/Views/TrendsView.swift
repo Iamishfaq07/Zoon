@@ -81,6 +81,7 @@ struct TrendsView: View {
                     .pickerStyle(.segmented)
                 }
             }
+            .zoonGlobalToolbar()
         }
     }
 
