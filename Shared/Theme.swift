@@ -60,14 +60,27 @@ enum Theme {
     /// (System, or an explicit override from `UserPreferences.appearance`
     /// applied via `.preferredColorScheme` further up the view tree) rather
     /// than a preference read here, which a `Color` has no way to do.
+    ///
+    /// iOS/widget only: `UIColor(dynamicProvider:)` and `.userInterfaceStyle`
+    /// are unavailable on watchOS (confirmed by CI, not assumed -- the watch
+    /// build failed on this the first time). watchOS falls back to `dark`
+    /// unconditionally, which is a no-op change from before this file had
+    /// any adaptive colors at all: the watch app has always been dark-only
+    /// by deliberate design (see `watchBackground`'s doc comment on OLED
+    /// battery cost), so Light on the watch was never on offer to begin with.
     private static func adaptive(
         dark: (Double, Double, Double),
         light: (Double, Double, Double)
     ) -> Color {
-        Color(uiColor: UIColor { traits in
+        #if os(watchOS)
+        let (r, g, b) = dark
+        return Color(red: r, green: g, blue: b)
+        #else
+        return Color(uiColor: UIColor { traits in
             let (r, g, b) = traits.userInterfaceStyle == .dark ? dark : light
             return UIColor(red: r, green: g, blue: b, alpha: 1)
         })
+        #endif
     }
 
     /// Watch variant of the ground.
