@@ -71,14 +71,14 @@ struct BodyClockCard: View {
             ForEach(0..<24, id: \.self) { hour in
                 let major = hour % 6 == 0
                 Capsule()
-                    .fill(Color.white.opacity(major ? 0.30 : 0.12))
+                    .fill(Theme.neutral(major ? 0.30 : 0.12))
                     .frame(width: major ? 2 : 1, height: major ? 8 : 5)
                     .offset(y: -52)
                     .rotationEffect(.degrees(Double(hour) / 24 * 360))
             }
 
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: 10)
+                .stroke(Theme.neutral(0.07), lineWidth: 10)
                 .frame(width: 92, height: 92)
 
             // The window itself.

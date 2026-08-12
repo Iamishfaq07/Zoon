@@ -182,7 +182,7 @@ struct ReportView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(11)
-        .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     @ViewBuilder
@@ -211,14 +211,14 @@ struct ReportView: View {
                     // the level above which hard training is a good idea.
                     RuleMark(y: .value("High", 67))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                        .foregroundStyle(.white.opacity(0.25))
+                        .foregroundStyle(Theme.neutral(0.25))
 
                     if let selectedRecoveryDate,
                        let match = points.first(where: {
                            Calendar.current.isDate($0.0, inSameDayAs: selectedRecoveryDate)
                        }) {
                         RuleMark(x: .value("Selected", match.0, unit: .day))
-                            .foregroundStyle(.white.opacity(0.25))
+                            .foregroundStyle(Theme.neutral(0.25))
                             .annotation(
                                 position: .top,
                                 overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
@@ -233,7 +233,7 @@ struct ReportView: View {
                 .chartYScale(domain: 0...100)
                 .chartYAxis {
                     AxisMarks(values: [0.0, 50.0, 100.0]) { _ in
-                        AxisGridLine().foregroundStyle(.white.opacity(0.07))
+                        AxisGridLine().foregroundStyle(Theme.neutral(0.07))
                         AxisValueLabel().font(Theme.text(9)).foregroundStyle(.tertiary)
                     }
                 }

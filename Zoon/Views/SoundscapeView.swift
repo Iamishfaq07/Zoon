@@ -51,7 +51,7 @@ struct SoundscapeView: View {
                         .font(Theme.label(14, weight: .semibold))
                         .padding(.horizontal, 22)
                         .padding(.vertical, 11)
-                        .background(Color.white.opacity(0.1), in: Capsule())
+                        .background(Theme.neutral(0.1), in: Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -115,7 +115,7 @@ struct SoundscapeView: View {
             .padding(14)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(isActive ? Theme.Metric.battery.opacity(0.18) : Color.white.opacity(0.05))
+                    .fill(isActive ? Theme.Metric.battery.opacity(0.18) : Theme.neutral(0.05))
                     .overlay {
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .strokeBorder(
@@ -164,7 +164,7 @@ struct SoundscapeView: View {
                 .padding(.vertical, 9)
                 .background {
                     Capsule()
-                        .fill(isSelected ? Theme.Metric.battery.opacity(0.28) : Color.white.opacity(0.06))
+                        .fill(isSelected ? Theme.Metric.battery.opacity(0.28) : Theme.neutral(0.06))
                         .overlay {
                             Capsule().strokeBorder(
                                 isSelected ? Theme.Metric.battery : Theme.cardStroke,

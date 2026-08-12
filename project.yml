@@ -10,13 +10,10 @@
 #
 # Keep this in sync with the real project when you change build settings.
 #
-# CI never exercises this file -- `xcodegen` isn't installed in the build
-# environment, so it hasn't been generated-and-diffed against the real
-# Tools/generate-pbxproj.py output since the watch and test targets were
-# added. The five targets and their settings below were transcribed from
-# that script's TARGET_COMMON blocks by hand and should match, but if you
-# actually hit the "regenerate" scenario, run `xcodegen generate` locally
-# and confirm the app builds before trusting it over Tools/generate-pbxproj.py.
+# Tools/generate-pbxproj.py is the canonical project definition and CI fails
+# when its deterministic output differs from the checked-in project. This
+# XcodeGen spec is kept as a human-readable recovery path; update it alongside
+# the generator whenever target membership or settings change.
 
 name: Zoon
 options:
@@ -50,15 +47,20 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep
+        CODE_SIGN_ENTITLEMENTS: Zoon/Zoon.entitlements
         GENERATE_INFOPLIST_FILE: YES
         ENABLE_PREVIEWS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         INFOPLIST_KEY_CFBundleDisplayName: Zoon
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: >-
+          Zoon listens for sound patterns while Snore Check is running. Audio is
+          analyzed live on this device and is never recorded or saved.
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
+        INFOPLIST_KEY_UIBackgroundModes: audio
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
-        # Read-only access, so NSHealthUpdateUsageDescription is deliberately absent.
         INFOPLIST_KEY_NSHealthShareUsageDescription: >-
           Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen
           and wrist temperature to explain how you slept. Everything is processed
@@ -73,6 +75,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.ZoonWidget
+        CODE_SIGN_ENTITLEMENTS: ZoonWidget/ZoonWidget.entitlements
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ZoonWidget/Info.plist
         ENABLE_PREVIEWS: YES
@@ -97,6 +100,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.watchkitapp
+        CODE_SIGN_ENTITLEMENTS: ZoonWatch/ZoonWatch.entitlements
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ZoonWatch/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -113,6 +117,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.watchkitapp.ZoonWatchWidget
+        CODE_SIGN_ENTITLEMENTS: ZoonWatchWidget/ZoonWatchWidget.entitlements
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ZoonWatchWidget/Info.plist
         SKIP_INSTALL: YES
@@ -128,6 +133,7 @@ targets:
       - path: ZoonTests
       - path: Shared
       - path: Zoon/Services/SleepSessionBuilder.swift
+      - path: Zoon/Services/SnoreSignalAnalyzer.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.zoon.sleep.ZoonTests

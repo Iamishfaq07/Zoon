@@ -147,6 +147,9 @@ struct LocalLLMInsightEngine: SleepInsightEngine {
         let tip = decoded.actionableTip.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !summary.isEmpty, !tip.isEmpty else { return nil }
 
+        let combined = "\(summary) \(decoded.likelyCause ?? "") \(tip)"
+        guard !DiagnosticLanguageGuard.rejects(combined) else { return nil }
+
         // Models like to emit the literal string "null" for an absent cause.
         let cause = decoded.likelyCause?.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedCause = (cause?.isEmpty == false && cause?.lowercased() != "null") ? cause : nil

@@ -32,6 +32,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify generated project is current
+        run: |
+          python3 Tools/generate-pbxproj.py
+          git diff --exit-code -- Zoon.xcodeproj/project.pbxproj Zoon.xcodeproj/xcshareddata/xcschemes/Zoon.xcscheme
       - name: Parse project.pbxproj
         run: python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
 
@@ -69,6 +73,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             2>&1 | tee build.log
 
       - name: Run ZoonTests

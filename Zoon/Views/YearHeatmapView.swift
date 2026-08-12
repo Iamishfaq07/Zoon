@@ -173,7 +173,7 @@ struct YearHeatmapView: View {
 
     private func color(for recovery: Int?, isFuture: Bool) -> Color {
         guard !isFuture else { return .clear }
-        guard let recovery else { return Color.white.opacity(0.06) }
+        guard let recovery else { return Theme.neutral(0.06) }
         return Theme.recoveryColor(Double(recovery)).opacity(0.35 + 0.65 * (Double(recovery) / 100))
     }
 

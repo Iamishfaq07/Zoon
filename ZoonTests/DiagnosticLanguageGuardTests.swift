@@ -32,4 +32,13 @@ final class DiagnosticLanguageGuardTests: XCTestCase {
         // "diagnos" is a stem match by design (diagnose/diagnosis/diagnostic).
         XCTAssertTrue(DiagnosticLanguageGuard.containsBannedLanguage("I can't diagnose that."))
     }
+
+    func testRejectsMedicationAndSleepRestrictionAdvice() {
+        for phrase in DiagnosticLanguageGuard.unsafeGuidanceTerms {
+            XCTAssertTrue(
+                DiagnosticLanguageGuard.rejects("Tonight, \(phrase) before bed."),
+                "expected unsafe guidance \"\(phrase)\" to be rejected"
+            )
+        }
+    }
 }

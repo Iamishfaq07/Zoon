@@ -110,7 +110,7 @@ struct BreathingHealthView: View {
                            Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
                        }) {
                         RuleMark(x: .value("Selected", point.date, unit: .day))
-                            .foregroundStyle(.white.opacity(0.25))
+                            .foregroundStyle(Theme.neutral(0.25))
                             .annotation(
                                 position: .top,
                                 overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
@@ -167,7 +167,7 @@ struct BreathingHealthView: View {
                            Calendar.current.isDate($0.date, inSameDayAs: selectedOxygenDate)
                        }) {
                         RuleMark(x: .value("Selected", point.date, unit: .day))
-                            .foregroundStyle(.white.opacity(0.25))
+                            .foregroundStyle(Theme.neutral(0.25))
                             .annotation(
                                 position: .top,
                                 overflowResolution: .init(x: .fit(to: .chart), y: .disabled)

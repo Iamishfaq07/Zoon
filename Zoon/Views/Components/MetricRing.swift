@@ -26,7 +26,7 @@ struct RecoveryRing: View {
         ZStack {
             // Track
             Circle()
-                .stroke(Color.white.opacity(0.07), lineWidth: lineWidth)
+                .stroke(Theme.neutral(0.07), lineWidth: lineWidth)
 
             // Soft outer bloom — reads as light rather than paint.
             Circle()
@@ -162,7 +162,7 @@ struct RangeGauge: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.08))
+                    .fill(Theme.neutral(0.08))
 
                 Capsule()
                     .fill(tint.opacity(0.28))

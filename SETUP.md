@@ -52,10 +52,11 @@ need a signing team to run on a device — `ZoonTests` runs unsigned.
 You only need this if you're running on a device or archiving. `ZoonTests`
 doesn't need a team — it runs unsigned, same as any other unit test bundle.
 
-## 3. HealthKit capability
+## 3. HealthKit and App Group capabilities
 
-Already checked in — `Zoon/Zoon.entitlements`, wired to the `Zoon` target via
-`CODE_SIGN_ENTITLEMENTS`. Nothing to add in Xcode.
+Already checked in — one entitlement file per executable target, each wired by
+`CODE_SIGN_ENTITLEMENTS`. The main app file carries HealthKit and App Groups;
+the widget and Watch files carry App Groups only.
 
 It grants two things: HealthKit itself, and background delivery (so
 `HKObserverQuery` can relaunch the app when new sleep data appears — see
@@ -63,13 +64,15 @@ It grants two things: HealthKit itself, and background delivery (so
 deliberately absent — Zoon doesn't read them, and requesting them triggers
 extra App Review scrutiny for nothing.
 
-The widget target does **not** need HealthKit and has no entitlements file.
-It never queries HealthKit — it only reads the snapshot the app writes.
+The widget and Watch targets do **not** receive HealthKit access. They do have
+small entitlements files containing only `group.com.zoon.sleep`, so the iOS app
+can hand data to its widget and the Watch app can hand a received snapshot to
+its complication. The group identifier must be registered for your Apple team
+before a signed device or TestFlight build can provision.
 
-If you ever need to change what's granted, edit `Zoon/Zoon.entitlements`
-directly (it's a plain plist) rather than through Xcode's checkboxes — that
-keeps the file the single source of truth instead of something Xcode can
-silently rewrite.
+If you change the shared group, edit all four entitlement files and
+`Shared/SleepSnapshot.swift` directly rather than relying on Xcode's checkboxes.
+That keeps the checked-in configuration as the single source of truth.
 
 ## 4. Info.plist keys
 
@@ -145,24 +148,20 @@ widget. A screenshot from the Simulator can't be mistaken for a real night.
 
 ## Enable live widget data
 
-**Optional.** Skip it and everything still builds and runs — the widget just
-shows sample data.
+The entitlement files and shared identifier are checked in. For a signed build,
+register `group.com.zoon.sleep` in the Apple Developer portal and attach it to
+all four App IDs. If you use your own reverse-domain bundle IDs, replace the
+group identifier in the four entitlement files and `Shared/SleepSnapshot.swift`.
 
 The widget reads a small JSON snapshot the app writes. For the extension to see
 that file, both targets need to share a container:
 
-1. Target **Zoon** → **+ Capability** → **App Groups** → **+** → create
-   `group.com.yourname.zoon`
-2. Target **ZoonWidgetExtension** → **+ Capability** → **App Groups** → tick the
-   *same* group
-3. In `Shared/SleepSnapshot.swift`, set:
-   ```swift
-   static let identifier = "group.com.yourname.zoon"
-   ```
-4. Run the app once so it writes a snapshot, then add the widget
+After provisioning, run the phone app once so it writes a snapshot, then add
+the widget. Open the Watch app once to activate WatchConnectivity; subsequent
+snapshots and deletion tombstones are delivered in the background.
 
-Settings → About → **Widget data** shows `Live` or `Sample only`, so you can
-confirm it took.
+Settings → **Data Quality & Privacy** → **Widget sharing** shows `App Group` or
+`Sample only`, so you can confirm it took.
 
 Without an App Group, `AppGroup.containerURL` returns `nil` and the snapshot
 falls back to the app's own Documents directory — the app works fully, the

@@ -62,7 +62,7 @@ struct PersonalizationProgressCard: View {
             if !done {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.08))
+                        Capsule().fill(Theme.neutral(0.08))
                         Capsule().fill(Theme.Metric.sleep).frame(width: geo.size.width * progress)
                     }
                 }

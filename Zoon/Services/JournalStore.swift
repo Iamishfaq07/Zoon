@@ -87,12 +87,15 @@ final class JournalStore {
         return created
     }
 
-    func deleteAll() {
+    @discardableResult
+    func deleteAll() -> Bool {
         do {
             try context.delete(model: JournalEntry.self)
             try context.save()
+            return true
         } catch {
             logger.error("Journal delete-all failed: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 

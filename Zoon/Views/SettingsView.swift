@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(BedtimeReminder.self) private var reminders
 
     @State private var showingDeleteConfirmation = false
+    @State private var showingDeleteFailure = false
 
     var body: some View {
         // Bindings are built by hand rather than with @Bindable because each
@@ -32,8 +33,7 @@ struct SettingsView: View {
             titleVisibility: .visible
         ) {
             Button("Delete Everything", role: .destructive) {
-                coordinator.deleteAllData()
-                naps.deleteAll()
+                showingDeleteFailure = !coordinator.deleteAllData()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -41,6 +41,11 @@ struct SettingsView: View {
                 This removes every night, journal entry, and nap Zoon has stored on this device. \
                 Your data in the Health app is untouched — Zoon only ever reads from it.
                 """)
+        }
+        .alert("Some data could not be deleted", isPresented: $showingDeleteFailure) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Zoon cleared every store it could, but one or more local files or database rows reported an error. Try again before uninstalling the app.")
         }
     }
 
@@ -295,6 +300,12 @@ struct SettingsView: View {
             LabeledContent("Widget data") {
                 Text(AppGroup.isConfigured ? "Live" : "Sample only")
                     .foregroundStyle(AppGroup.isConfigured ? .green : .secondary)
+            }
+
+            NavigationLink {
+                DataPrivacyView()
+            } label: {
+                Label("Data Quality & Privacy", systemImage: "checkmark.shield")
             }
 
             Button("Refresh from Health") {

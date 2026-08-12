@@ -1,6 +1,6 @@
 # Zoon Sleep
 
-[![Build](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml/badge.svg?branch=claude/check-this-out-t0epv2)](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml)
+[![Build](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Iamishfaq07/Zoon/actions/workflows/build.yml)
 
 *Zoon* (زوٗن) means **moon** in Kashmiri.
 
@@ -26,7 +26,7 @@ Zoon's position is simple: **that data has no reason to leave your device.**
 | **No network calls** | The app contains no `URLSession`, no analytics SDK, no crash reporter. Your data can't leave because there's nowhere for it to go. |
 | **Read-only HealthKit** | Zoon requests read permission only — `toShare:` is empty. It cannot write to or alter your Health data. |
 | **On-device processing** | Feature extraction, scoring, and every insight are computed locally in Swift. |
-| **Local storage** | History lives in a SwiftData store in the app's own container. Settings → *Delete All Sleep History* destroys it. |
+| **Local storage** | History lives in a SwiftData store in the shared App Group container. Settings → *Delete Everything* removes history, preferences, snapshots, summaries, caches, reminders, and temporary exports. |
 | **No account** | Nothing to sign up for. Nothing to delete from someone else's database. |
 
 This isn't a policy promise, it's an architectural one — you can verify it by
@@ -41,6 +41,8 @@ Zoon borrows the metrics that each of the big platforms does best, and computes
 all of them locally.
 
 ### Today
+- **Morning Brief** — one confidence-aware headline, the three strongest
+  drivers, and one concrete action before the detailed dashboards.
 - **Recovery %** (Whoop-style) — HRV and resting HR against *your own* 30-day
   baseline, plus sleep performance and respiratory stability. Shows its working:
   every input is broken out with its deviation from baseline.
@@ -101,6 +103,8 @@ all of them locally.
 - **Streaks** and goal-met counts, kept modest — a streak that punishes one bad
   night is actively harmful in a sleep app
 - **Export** to JSON (complete, re-importable) or CSV (one row per night)
+- **Data Quality & Privacy** — freshness, per-sensor coverage, storage details,
+  permission access, and the full local-data policy in one screen
 - Insight engine written as a protocol with a complete rule-based implementation
   and a local-LLM stub
 
@@ -238,8 +242,8 @@ has run this against a real Health store:
 - **`LocalLLMInsightEngine`** remains a stub for a *bundled* MLX/Core ML model.
   It is superseded in practice by `FoundationModelInsightEngine`, which uses
   Apple's on-device model and needs nothing bundled.
-- The widget shows live data only once an **App Group** is configured. Optional
-  by design so the project builds with no developer-account setup.
+- Signed device and TestFlight builds require the checked-in **App Group** to be
+  registered and associated with all four App IDs in the Apple Developer portal.
 - Background delivery needs the HealthKit background-delivery capability.
   Without it the app still refreshes on foreground.
 

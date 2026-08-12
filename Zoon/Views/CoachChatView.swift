@@ -64,7 +64,7 @@ struct CoachChatView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(
-                    message.role == .user ? Theme.Metric.sleep.opacity(0.25) : Color.white.opacity(0.06),
+                    message.role == .user ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.06),
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             if message.role == .user { Spacer(minLength: 40) }
@@ -79,7 +79,7 @@ struct CoachChatView: View {
                 .focused($inputFocused)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(Color.white.opacity(0.06), in: Capsule())
+                .background(Theme.neutral(0.06), in: Capsule())
 
             Button {
                 let text = input

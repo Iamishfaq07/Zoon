@@ -4,14 +4,13 @@ import SwiftData
 /// Zoon Sleep — local-first sleep insights.
 ///
 /// The whole object graph is assembled here and injected through the
-/// environment. There are no singletons and no global mutable state: every
-/// dependency is constructible in a test or a preview with different arguments,
-/// which is what makes `PreviewSupport` possible.
+/// environment. Every dependency is constructible in a test or preview.
 @main
+@MainActor
 struct ZoonApp: App {
 
-    /// Persistent store. Created once for the process lifetime.
     private let modelContainer: ModelContainer
+    private let storeOpeningError: String?
 
     @State private var coordinator: SleepDataCoordinator
     @State private var preferences: UserPreferences
@@ -22,63 +21,100 @@ struct ZoonApp: App {
 
     init() {
         let preferences = UserPreferences()
-
         let container: ModelContainer
+        let storeOpeningError: String?
+
         do {
             container = try PersistentStore.open()
+            storeOpeningError = nil
         } catch {
-            // An unopenable store means a schema the app can't read. There is no
-            // safe partial mode here, and silently falling back to in-memory
-            // would quietly discard the user's history on every launch — a worse
-            // outcome than a crash that surfaces the bug.
-            fatalError("Could not open the Zoon data store: \(error)")
+            // Preserve the unreadable store and mount only a recovery screen.
+            // The normal app never sees this in-memory container, so it cannot
+            // mistake the failure for empty history or overwrite the disk.
+            storeOpeningError = error.localizedDescription
+            let fallback = ModelConfiguration(isStoredInMemoryOnly: true)
+            do {
+                container = try ModelContainer(
+                    for: SleepNightRecord.self, JournalEntry.self,
+                    configurations: fallback
+                )
+            } catch {
+                fatalError("Could not create recovery container: \(error)")
+            }
         }
 
         self.modelContainer = container
+        self.storeOpeningError = storeOpeningError
 
-        // @State properties must be seeded through their storage in init, not
-        // assigned directly.
-        // Built as locals first: the coordinator needs the same NapStore
-        // instance the views get, and reading a @State's wrapped value during
-        // init isn't valid.
         let naps = NapStore()
+        let reminders = BedtimeReminder()
 
         _preferences = State(initialValue: preferences)
         _naps = State(initialValue: naps)
         _soundscape = State(initialValue: SoundscapeEngine())
-        _reminders = State(initialValue: BedtimeReminder())
+        _reminders = State(initialValue: reminders)
         _coordinator = State(
             initialValue: SleepDataCoordinator(
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
                 journal: JournalStore(context: container.mainContext),
                 naps: naps,
-                preferences: preferences
+                preferences: preferences,
+                reminders: reminders
             )
         )
     }
 
     var body: some Scene {
         WindowGroup {
-            // Onboarding owns the first launch entirely, rather than appearing
-            // as a sheet over a dashboard full of numbers the user hasn't
-            // agreed to yet.
             Group {
-                if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
+                if let storeOpeningError {
+                    StoreRecoveryView(message: storeOpeningError)
+                } else if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
                     RootView()
                 } else {
                     OnboardingView()
                         .transition(.opacity)
                 }
             }
-                .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
-                .environment(coordinator)
-                .environment(preferences)
-                .environment(naps)
-                .environment(soundscape)
-                .environment(reminders)
-                .environment(presentation)
+            .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
+            .environment(coordinator)
+            .environment(preferences)
+            .environment(naps)
+            .environment(soundscape)
+            .environment(reminders)
+            .environment(presentation)
         }
         .modelContainer(modelContainer)
+    }
+}
+
+private struct StoreRecoveryView: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .font(.system(size: 46))
+                .foregroundStyle(Theme.Metric.recoveryMid)
+            Text("Zoon couldn't open your data")
+                .font(Theme.label(22, weight: .bold))
+                .multilineTextAlignment(.center)
+            Text("Your existing store has not been deleted or replaced. Quit and reopen Zoon after installing the latest update. If the problem continues, report the diagnostic below before resetting anything.")
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(.caption.monospaced())
+                .foregroundStyle(.tertiary)
+                .textSelection(.enabled)
+            Link(
+                "Report this problem",
+                destination: URL(string: "https://github.com/Iamishfaq07/Zoon/issues")!
+            )
+        }
+        .padding(28)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .nightBackground()
     }
 }

@@ -127,6 +127,7 @@ extension LabelStyle where Self == TopAlignedLabelStyle {
     let baseline = RollingBaseline(
         hrv7DayAvg: 60, sleepDebtMinutes: 340, deep7DayAvg: 74,
         duration7DayAvg: 420, efficiency7DayAvg: 88, minHeartRate7DayAvg: 53,
+        restingHeartRate7DayAvg: 57,
         wristTempBaselineC: 35.1, bedtimeConsistencyMinutes: 72, sampleCount: 7
     )
     return ScrollView {

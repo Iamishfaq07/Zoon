@@ -43,11 +43,13 @@ struct SleepInsight: Codable, Hashable, Sendable {
 
     enum Source: String, Codable, Hashable, Sendable {
         case ruleBased = "rule_based"
+        case appleIntelligence = "apple_intelligence"
         case localLLM = "local_llm"
 
         var displayName: String {
             switch self {
             case .ruleBased: "On-device rules"
+            case .appleIntelligence: "Apple Intelligence"
             case .localLLM: "On-device model"
             }
         }

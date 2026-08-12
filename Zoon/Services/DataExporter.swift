@@ -20,7 +20,7 @@ enum DataExporter {
 
     /// Version stamped into every export so a future importer can migrate
     /// older files instead of rejecting them.
-    static let formatVersion = 1
+    static let formatVersion = 2
 
     struct Archive: Codable {
         let formatVersion: Int
@@ -29,21 +29,51 @@ enum DataExporter {
         let nights: [SleepNightFeatures]
         let journal: [JournalRecord]
         let naps: [NapStore.Nap]
+        /// Optional for backward compatibility with format 1 exports.
+        let preferences: PreferencesRecord?
+        let snoreSummaries: [SnoreStore.NightSummary]?
+        let wristTemperatures: [WristTemperatureRecord]?
 
         struct JournalRecord: Codable {
             let date: Date
             let tags: [String]
             let note: String?
         }
+
+        struct PreferencesRecord: Codable {
+            let age: Int?
+            let preferredEngine: String
+            let appearance: String
+            let bedtimeRemindersEnabled: Bool
+            let cycleTrackingEnabled: Bool
+            let smartWakeEnabled: Bool
+        }
+
+        struct WristTemperatureRecord: Codable {
+            let date: Date
+            let absoluteCelsius: Double
+        }
+
+        var wristTemperaturesByDate: [Date: Double] {
+            (wristTemperatures ?? []).reduce(into: [:]) { result, record in
+                // A hand-edited or older backup may contain duplicate rows.
+                // Last value wins; imported user data must never crash the app.
+                result[record.date] = record.absoluteCelsius
+            }
+        }
     }
 
     // MARK: - Build
 
+    @MainActor
     static func archive(
         nights: [SleepNightFeatures],
         journal: [JournalEntry],
         naps: [NapStore.Nap],
-        goalMinutes: Double
+        goalMinutes: Double,
+        preferences: UserPreferences,
+        snoreSummaries: [SnoreStore.NightSummary],
+        wristTemperatures: [(date: Date, absoluteCelsius: Double)]
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -53,7 +83,22 @@ enum DataExporter {
             journal: journal.map {
                 Archive.JournalRecord(date: $0.date, tags: $0.tagIdentifiers, note: $0.note)
             },
-            naps: naps
+            naps: naps,
+            preferences: Archive.PreferencesRecord(
+                age: preferences.age,
+                preferredEngine: preferences.preferredEngine.rawValue,
+                appearance: preferences.appearance.rawValue,
+                bedtimeRemindersEnabled: preferences.bedtimeRemindersEnabled,
+                cycleTrackingEnabled: preferences.cycleTrackingEnabled,
+                smartWakeEnabled: preferences.smartWakeEnabled
+            ),
+            snoreSummaries: snoreSummaries,
+            wristTemperatures: wristTemperatures.map {
+                Archive.WristTemperatureRecord(
+                    date: $0.date,
+                    absoluteCelsius: $0.absoluteCelsius
+                )
+            }
         )
     }
 
@@ -118,12 +163,34 @@ enum DataExporter {
     /// in Documents forever would be careless.
     static func writeTemporary(_ data: Data, filename: String) throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        try data.write(to: url, options: .atomic)
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
         return url
     }
 
     static func defaultFilename(extension ext: String) -> String {
         "zoon-export-\(ISO8601DateFormatter.dayOnly.string(from: .now)).\(ext)"
+    }
+
+    /// Removes health-data export artefacts still owned by Zoon. Copies the
+    /// user deliberately saved through the share sheet live outside this
+    /// sandbox and remain under their control.
+    @discardableResult
+    static func clearTemporaryExports() -> Bool {
+        let directory = FileManager.default.temporaryDirectory
+        guard let urls = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return false }
+
+        var succeeded = true
+        for url in urls where url.lastPathComponent.hasPrefix("zoon-export-") {
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                succeeded = false
+            }
+        }
+        return succeeded
     }
 
     // MARK: - Import

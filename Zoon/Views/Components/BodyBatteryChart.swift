@@ -68,7 +68,7 @@ struct BodyBatteryChart: View {
 
             if let selectedDate, let point = nearestPoint(to: selectedDate) {
                 RuleMark(x: .value("Selected", point.date))
-                    .foregroundStyle(.white.opacity(0.25))
+                    .foregroundStyle(Theme.neutral(0.25))
                     .annotation(
                         position: .top,
                         overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
@@ -83,7 +83,7 @@ struct BodyBatteryChart: View {
         .chartYScale(domain: 0...100)
         .chartYAxis {
             AxisMarks(values: [0.0, 50.0, 100.0]) { value in
-                AxisGridLine().foregroundStyle(.white.opacity(0.08))
+                AxisGridLine().foregroundStyle(Theme.neutral(0.08))
                 AxisValueLabel {
                     if let level = value.as(Double.self) {
                         Text("\(Int(level))")
@@ -95,7 +95,7 @@ struct BodyBatteryChart: View {
         }
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 4)) { value in
-                AxisGridLine().foregroundStyle(.white.opacity(0.05))
+                AxisGridLine().foregroundStyle(Theme.neutral(0.05))
                 AxisValueLabel(format: .dateTime.hour())
                     .font(Theme.text(9))
                     .foregroundStyle(.tertiary)

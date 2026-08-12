@@ -170,11 +170,19 @@ jobs:
 
           shoot() {
             local tab="$1"
+            local appearance="${2:-dark}"
+            local output="$tab"
+            local appearance_args=()
+            if [ "$appearance" = "light" ]; then
+              output="${tab}-light"
+              appearance_args=(-zoon.pref.appearance light)
+            fi
             # --terminate-running-process so each tab gets a clean launch;
             # the tab is chosen at launch (see LaunchOptions) rather than by
             # driving the tab bar, which would need a UI-test target.
             xcrun simctl launch --terminate-running-process "$UDID" \
-              "$BUNDLE_ID" -zoonDemo YES -zoonTab "$tab" > /dev/null
+              "$BUNDLE_ID" -zoonDemo YES -zoonTab "$tab" \
+              "${appearance_args[@]}" > /dev/null
 
             # SwiftUI needs a moment to lay out and run its entry animations.
             # Polling for "the view is ready" isn't possible from outside the
@@ -185,7 +193,7 @@ jobs:
             # first frame still leaves a usable screenshot, and having the
             # picture of the screen that died is worth more than the ordering
             # purity of failing first.
-            xcrun simctl io "$UDID" screenshot "screenshots/${tab}.png" || true
+            xcrun simctl io "$UDID" screenshot "screenshots/${output}.png" || true
 
             # simctl launch returns 0 whether or not the process survives, so
             # the absence of the process is the real signal.
@@ -198,7 +206,7 @@ jobs:
             local processes
             processes=$(xcrun simctl spawn "$UDID" launchctl list || true)
             if ! printf '%s' "$processes" | grep -q "$BUNDLE_ID"; then
-              echo "::error::Zoon died on tab '$tab'."
+              echo "::error::Zoon died on screen '$output'."
 
               # The .ips crash report carries the exception type and the stack.
               # `log show` was tried first and is the wrong tool: it's dominated
@@ -217,7 +225,7 @@ jobs:
               return 1
             fi
 
-            echo "Captured $tab"
+            echo "Captured $output"
           }
 
           # Ordered as a walkthrough: first run, then the tabs, then the
@@ -234,6 +242,11 @@ jobs:
                      report settings badges; do
             shoot "$tab" || FAILED=1
           done
+          # The app is dark-first, but Light is a real preference. Keep two
+          # representative screens in the visual regression set so neutral
+          # strokes and secondary text cannot silently disappear on pale cards.
+          shoot today light || FAILED=1
+          shoot settings light || FAILED=1
           exit $FAILED
 
       - name: Summarise

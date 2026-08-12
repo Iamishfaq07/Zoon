@@ -97,7 +97,7 @@ struct RegularityCard: View {
         ZStack {
             Circle()
                 .trim(from: 0, to: 0.75)
-                .stroke(Color.white.opacity(0.08), style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                .stroke(Theme.neutral(0.08), style: StrokeStyle(lineWidth: 9, lineCap: .round))
             Circle()
                 .trim(from: 0, to: animated ? 0.75 * (regularity.index / 100) : 0)
                 .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
@@ -284,7 +284,7 @@ struct CardiovascularAgeCard: View {
                         let span = 20.0
                         let position = (cvAge.deltaYears + span / 2) / span
                         ZStack(alignment: .leading) {
-                            Capsule().fill(Color.white.opacity(0.08))
+                            Capsule().fill(Theme.neutral(0.08))
                             Capsule()
                                 .fill(Theme.Metric.battery.opacity(0.3))
                                 .frame(width: geo.size.width * 0.5)

@@ -74,4 +74,11 @@ enum DeepLink {
         pending = nil
         return value
     }
+
+    /// Clears both possible stores so changing App Group configuration cannot
+    /// resurrect a destination written by an older build.
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: key)
+    }
 }

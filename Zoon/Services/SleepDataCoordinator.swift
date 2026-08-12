@@ -94,6 +94,7 @@ final class SleepDataCoordinator {
     let journal: JournalStore
     private let naps: NapStore
     private let preferences: UserPreferences
+    private let reminders: BedtimeReminder
     /// Pushes the snapshot to a paired Apple Watch. Owned here because this is
     /// the one place a finished snapshot exists.
     private let watchLink = WatchLink()
@@ -112,14 +113,19 @@ final class SleepDataCoordinator {
         store: SleepHistoryStore,
         journal: JournalStore,
         naps: NapStore,
-        preferences: UserPreferences
+        preferences: UserPreferences,
+        reminders: BedtimeReminder
     ) {
         self.healthKit = healthKit
         self.store = store
         self.journal = journal
         self.naps = naps
         self.preferences = preferences
-        self.engine = RuleBasedInsightEngine()
+        self.reminders = reminders
+        // The picker persists independently of this coordinator. Restore the
+        // selected implementation here so the displayed preference and the
+        // engine doing the work cannot diverge after a relaunch.
+        self.engine = Self.makeEngine(for: preferences.preferredEngine)
         watchLink.activate()
     }
 
@@ -288,23 +294,15 @@ final class SleepDataCoordinator {
         store.beginTrackingWrites()
         let sessions = sessionBuilder.buildSessions(from: samples)
 
-        // `SleepNightRecord` is one row per calendar day (see its own doc
-        // comment), keyed by the date the session ended -- so two sessions
-        // that both end on the same day, a main sleep and a same-day nap most
-        // often, both want the same row. `SleepSessionBuilder` no longer
-        // discards short sessions as aggressively as it used to (see its
-        // `minimumSessionDuration` comment), which means a real nap now
-        // survives to reach here far more often. Upserting in chronological
-        // order would let whichever session merely happened to be *processed
-        // last* silently overwrite the other -- typically the nap
-        // clobbering the main sleep, since naps tend to fall later in the
-        // day. Keeping only the longest session per date is a stopgap for
-        // that, not the full multi-episode-per-day model (naps still aren't
-        // recorded anywhere once discarded here); it just guarantees the
-        // one thing that would otherwise be silently wrong: a full night's
-        // sleep can never be replaced by a shorter same-day nap.
-        let longestPerDate = Dictionary(grouping: sessions) { Calendar.current.startOfDay(for: $0.end) }
-            .compactMapValues { $0.max { $0.timeInBed < $1.timeInBed } }
+        // `SleepNightRecord` is one row per wake date, so a main sleep and a
+        // same-day nap compete for that row until the multi-episode model ships.
+        // Select on actual asleep duration and stage quality rather than the raw
+        // first-to-last sample span; a long in-bed-only schedule must never beat
+        // a real Watch night.
+        let mainSleepPerDate = Dictionary(grouping: sessions) {
+            $0.wakeDate
+        }
+            .compactMapValues { SleepSessionBuilder.preferredMainSleep(in: $0) }
             .values
             .sorted { $0.start < $1.start }
 
@@ -313,14 +311,15 @@ final class SleepDataCoordinator {
 
         // Oldest first: each night's baseline is drawn from the nights before
         // it, so they must land in the store in chronological order.
-        for session in longestPerDate {
-            let nightDate = Calendar.current.startOfDay(for: session.end)
+        for session in mainSleepPerDate {
+            let nightDate = session.wakeDate
             let baseline = store.baseline(for: nightDate, goalMinutes: goal)
             let result = await extractor.extract(from: session, baseline: baseline)
             store.upsert(
                 result.features,
                 absoluteWristTempC: result.absoluteWristTempC,
-                confirmedAbsent: result.confirmedAbsent
+                confirmedAbsent: result.confirmedAbsent,
+                nightKey: session.nightKey
             )
         }
 
@@ -329,7 +328,7 @@ final class SleepDataCoordinator {
         // `window` that didn't produce a session this pass genuinely no
         // longer has HealthKit data behind it (deleted or corrected away in
         // the Health app), not just "wasn't included in today's delta".
-        let validDates = Set(longestPerDate.map { Calendar.current.startOfDay(for: $0.end) })
+        let validDates = Set(mainSleepPerDate.map(\.wakeDate))
         store.prune(window: window, keeping: validDates)
 
         return store.writesSucceeded
@@ -357,12 +356,12 @@ final class SleepDataCoordinator {
         let insight = engine.generate(for: night, baseline: baseline, goalMinutes: goal)
         store.attach(insight, to: record)
 
-        // History for trends and for every rolling baseline, oldest first,
-        // excluding tonight.
-        let history = store.allNights()
-            .map { $0.features(baseline: baseline) }
+        // Rebuild each stored night against the context that existed before
+        // that specific night. Reusing the latest baseline for the whole array
+        // makes historical debt flat and can corrupt correlations and
+        // achievements that consume `recentNights`.
+        let history = store.historicalFeatures(goalMinutes: goal)
             .filter { $0.date < night.date }
-            .sorted { $0.date < $1.date }
 
         let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
         // True RHR first (see SleepNightFeatures.restingHeartRate), falling
@@ -521,8 +520,8 @@ final class SleepDataCoordinator {
         watchLink.send(snapshot)
     }
 
-    /// Averages heart rate and HRV from midnight to now, and compares against
-    /// the same rolling baseline the overnight recovery score uses.
+    /// Averages heart rate and HRV from today's wake time to now, and compares
+    /// them against rolling values from equivalent physiological metrics.
     ///
     /// Deliberately its own pass rather than folded into `refresh()`'s main
     /// pipeline: it has nothing to do with sessions or SwiftData, and running
@@ -537,8 +536,9 @@ final class SleepDataCoordinator {
         let calendar = Calendar.current
         let now = Date.now
         let dayStart = calendar.startOfDay(for: now)
-        guard dayStart < now else { return }
-        let interval = DateInterval(start: dayStart, end: now)
+        let samplingStart = max(dayStart, store.latestNight?.wakeTime ?? dayStart)
+        guard samplingStart < now else { return }
+        let interval = DateInterval(start: samplingStart, end: now)
 
         async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: interval)
         async let hrvTask = try? healthKit.average(
@@ -552,9 +552,9 @@ final class SleepDataCoordinator {
         todayStress = StressScore.compute(
             avgHeartRate: avgHR,
             avgHRV: avgHRV,
-            hrBaseline: baseline.minHeartRate7DayAvg,
+            hrBaseline: baseline.restingHeartRate7DayAvg,
             hrvBaseline: baseline.hrv7DayAvg,
-            sampledMinutes: now.timeIntervalSince(dayStart) / 60,
+            sampledMinutes: now.timeIntervalSince(samplingStart) / 60,
             baselineNightCount: baseline.sampleCount
         )
     }
@@ -603,15 +603,21 @@ final class SleepDataCoordinator {
 
     // MARK: - Actions
 
-    func setEngine(_ choice: UserPreferences.EngineChoice) {
+    private static func makeEngine(
+        for choice: UserPreferences.EngineChoice
+    ) -> any SleepInsightEngine {
         switch choice {
         case .ruleBased:
-            engine = RuleBasedInsightEngine()
+            RuleBasedInsightEngine()
         case .appleIntelligence:
-            engine = FoundationModelInsightEngine(fallback: RuleBasedInsightEngine())
+            FoundationModelInsightEngine(fallback: RuleBasedInsightEngine())
         case .localLLM:
-            engine = LocalLLMInsightEngine(fallback: RuleBasedInsightEngine())
+            LocalLLMInsightEngine(fallback: RuleBasedInsightEngine())
         }
+    }
+
+    func setEngine(_ choice: UserPreferences.EngineChoice) {
+        engine = Self.makeEngine(for: choice)
         preferences.preferredEngine = choice
         Task { await recomputeDerivedValues() }
     }
@@ -630,11 +636,15 @@ final class SleepDataCoordinator {
     ///
     /// - Returns: a human-readable summary of what landed.
     func importArchive(_ archive: DataExporter.Archive) async -> String {
-        let nights = store.importNights(archive.nights)
+        let nights = store.importNights(
+            archive.nights,
+            absoluteTemperatures: archive.wristTemperaturesByDate
+        )
         let entries = journal.importEntries(
             archive.journal.map { (date: $0.date, tags: $0.tags, note: $0.note) }
         )
         let restoredNaps = naps.importNaps(archive.naps)
+        let restoredSnore = SnoreStore().importSummaries(archive.snoreSummaries ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -643,22 +653,73 @@ final class SleepDataCoordinator {
         if archive.goalMinutes > 0 {
             preferences.sleepGoalMinutes = archive.goalMinutes
         }
+        if let restored = archive.preferences {
+            preferences.age = restored.age
+            preferences.appearance = UserPreferences.AppearancePreference(
+                rawValue: restored.appearance
+            ) ?? .dark
+            preferences.bedtimeRemindersEnabled = restored.bedtimeRemindersEnabled
+            preferences.cycleTrackingEnabled = restored.cycleTrackingEnabled
+            preferences.smartWakeEnabled = restored.smartWakeEnabled
+            preferences.preferredEngine = UserPreferences.EngineChoice(
+                rawValue: restored.preferredEngine
+            ) ?? .ruleBased
+            engine = Self.makeEngine(for: preferences.preferredEngine)
+        }
 
         // Anchored sync must start over — the store now contains nights
         // HealthKit never told us about, and the old anchor would skip them.
         AnchorStore.clear()
         await recomputeDerivedValues()
 
-        return "Restored \(nights) nights, \(entries) journal entries and \(restoredNaps) naps."
+        if preferences.bedtimeRemindersEnabled {
+            await reminders.refreshAuthorization()
+            if let bedtime = state.context?.targetBedtime() {
+                await reminders.schedule(bedtime: bedtime)
+            }
+        }
+
+        return "Restored \(nights) nights, \(entries) journal entries, \(restoredNaps) naps and \(restoredSnore) snore summaries."
     }
 
-    func deleteAllData() {
-        store.deleteAll()
-        journal.deleteAll()
+    func absoluteWristTemperaturesForExport() -> [(date: Date, absoluteCelsius: Double)] {
+        store.absoluteWristTemperaturesForExport()
+    }
+
+    /// Erases every Zoon-owned representation of the user's data, including
+    /// derived copies outside SwiftData. HealthKit itself remains untouched.
+    /// - Returns: `false` if any disk-backed deletion reported a failure.
+    @discardableResult
+    func deleteAllData() -> Bool {
+        let nightsDeleted = store.deleteAll()
+        let journalDeleted = journal.deleteAll()
+        naps.deleteAll()
+        SnoreStore.erasePersistedData()
+        let snapshotDeleted = SnapshotStore.clear()
+        let legacyStoreDeleted = PersistentStore.eraseLegacyStoreFiles()
+        let temporaryExportsDeleted = DataExporter.clearTemporaryExports()
+        watchLink.clearSnapshot()
+        InsightCache.shared.clear()
+        DeepLink.clear()
+        AnchorStore.clear()
+        reminders.cancel()
+        reminders.cancelWakeWindow()
+        preferences.resetForDataErasure()
+        engine = Self.makeEngine(for: preferences.preferredEngine)
+
         state = .empty(reason: .noSleepData)
         recentNights = []
         recoveryHistory = [:]
+        todayStress = nil
+        cyclePeriodStarts = []
+        lastRefresh = nil
         WidgetCenter.shared.reloadAllTimelines()
+
+        return nightsDeleted
+            && journalDeleted
+            && snapshotDeleted
+            && legacyStoreDeleted
+            && temporaryExportsDeleted
     }
 
     // MARK: - Derived views of history

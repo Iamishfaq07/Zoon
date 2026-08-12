@@ -46,7 +46,7 @@ struct BodyClockView: View {
                 // Hour ticks, four per side, unlabeled dial marks.
                 ForEach(0..<24, id: \.self) { hour in
                     Rectangle()
-                        .fill(Color.white.opacity(hour % 6 == 0 ? 0.25 : 0.08))
+                        .fill(Theme.neutral(hour % 6 == 0 ? 0.25 : 0.08))
                         .frame(width: hour % 6 == 0 ? 2 : 1, height: hour % 6 == 0 ? 10 : 5)
                         .offset(y: -108)
                         .rotationEffect(.degrees(Double(hour) / 24 * 360))

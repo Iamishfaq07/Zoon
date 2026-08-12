@@ -46,13 +46,19 @@ struct FeatureExtractor {
         // failure: one missing signal should degrade the record, not fail it.
         async let avgHRTask = measuredAverage(.heartRate, unit: .beatsPerMinute, in: interval)
         async let minHRTask = measuredMinimum(.heartRate, unit: .beatsPerMinute, in: interval)
-        // Allowing up to 24h after wake, not just up to `session.end`: Apple
-        // computes this once for the calendar day, sometimes later in the day
-        // than the moment someone wakes up, so a strict "before wake" cutoff
-        // would frequently miss that day's own RHR and silently fall back to
-        // the previous day's.
+        // Resting HR is a once-daily value that can arrive after wake. Bound the
+        // query to the wake date so a missing reading cannot silently reuse an
+        // arbitrarily old sample or reach into the following day.
+        let wakeDayStart = Calendar.current.startOfDay(for: session.end)
+        let wakeDayEnd = Calendar.current.date(
+            byAdding: .day,
+            value: 1,
+            to: wakeDayStart
+        ) ?? session.end.addingTimeInterval(86_400)
         async let restingHRTask = measuredMostRecent(
-            .restingHeartRate, unit: .beatsPerMinute, onOrBefore: session.end.addingTimeInterval(86_400)
+            .restingHeartRate,
+            unit: .beatsPerMinute,
+            in: DateInterval(start: wakeDayStart, end: wakeDayEnd)
         )
         async let hrvTask = measuredAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval)
         async let respiratoryTask = measuredAverage(.respiratoryRate, unit: .breathsPerMinute, in: interval)
@@ -113,7 +119,7 @@ struct FeatureExtractor {
 
         let features = SleepNightFeatures(
             // Filed under the wake-up day, matching Health app convention.
-            date: Calendar.current.startOfDay(for: session.end),
+            date: session.wakeDate,
             bedtime: session.start,
             wakeTime: session.end,
             timeInBedMinutes: inBed,
@@ -193,10 +199,14 @@ struct FeatureExtractor {
     private func measuredMostRecent(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        onOrBefore cutoff: Date
+        in interval: DateInterval
     ) async -> MeasurementOutcome {
         do {
-            guard let value = try await healthKit.mostRecentSample(identifier, unit: unit, onOrBefore: cutoff) else {
+            guard let value = try await healthKit.mostRecentSample(
+                identifier,
+                unit: unit,
+                in: interval
+            ) else {
                 return .noData
             }
             return .measured(value)
@@ -255,6 +265,8 @@ struct RollingBaseline: Sendable {
     let efficiency7DayAvg: Double?
     /// Mean resting (minimum) overnight heart rate over the previous 7 nights.
     let minHeartRate7DayAvg: Double?
+    /// Mean HealthKit resting-heart-rate sample over the previous 7 nights.
+    let restingHeartRate7DayAvg: Double?
     /// Personal wrist-temperature baseline in °C — the mean of available
     /// overnight readings. `nil` until enough nights exist to be meaningful.
     let wristTempBaselineC: Double?
@@ -275,6 +287,7 @@ struct RollingBaseline: Sendable {
         duration7DayAvg: nil,
         efficiency7DayAvg: nil,
         minHeartRate7DayAvg: nil,
+        restingHeartRate7DayAvg: nil,
         wristTempBaselineC: nil,
         bedtimeConsistencyMinutes: nil,
         sampleCount: 0

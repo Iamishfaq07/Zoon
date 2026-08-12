@@ -68,6 +68,35 @@ final class SleepHistoryStore {
         (try? context.fetchCount(FetchDescriptor<SleepNightRecord>())) ?? 0 == 0
     }
 
+    /// Every stored night, oldest first, rebuilt with the rolling context that
+    /// existed immediately before that night.
+    ///
+    /// Comparative fields are intentionally not persisted, but that does not
+    /// mean one current baseline can be stamped onto all of history. Sleep debt
+    /// in particular is a date-derived value consumed by charts, achievements,
+    /// and journal correlations. This bounded chronological pass fetches once
+    /// and retains only the longest rolling window used by any baseline field.
+    func historicalFeatures(goalMinutes: Double) -> [SleepNightFeatures] {
+        let chronological = allNights().reversed()
+        var priorNewestFirst: [SleepNightRecord] = []
+        var features: [SleepNightFeatures] = []
+
+        for record in chronological {
+            let rolling = makeBaseline(
+                priorNightsNewestFirst: priorNewestFirst,
+                goalMinutes: goalMinutes
+            )
+            features.append(record.features(baseline: rolling))
+
+            priorNewestFirst.insert(record, at: 0)
+            if priorNewestFirst.count > 60 {
+                priorNewestFirst.removeLast(priorNewestFirst.count - 60)
+            }
+        }
+
+        return features
+    }
+
     // MARK: - Writes
 
     /// Inserts or updates the night, keyed on date.
@@ -84,9 +113,19 @@ final class SleepHistoryStore {
     func upsert(
         _ features: SleepNightFeatures,
         absoluteWristTempC: Double? = nil,
-        confirmedAbsent: Set<VitalMetric> = []
+        confirmedAbsent: Set<VitalMetric> = [],
+        nightKey: String? = nil
     ) -> SleepNightRecord {
-        if let existing = night(on: features.date) {
+        if let existing = matchingNight(
+            key: nightKey,
+            date: features.date,
+            wakeTime: features.wakeTime
+        ) {
+            // A legacy row may have been filed using the device timezone at the
+            // time of import. Once the recorded timezone is available, migrate
+            // both its stable key and canonical wake-date boundary in place.
+            existing.nightKey = nightKey ?? existing.nightKey
+            existing.date = features.date
             existing.update(
                 from: features,
                 absoluteWristTempC: absoluteWristTempC,
@@ -95,10 +134,41 @@ final class SleepHistoryStore {
             save()
             return existing
         }
-        let record = SleepNightRecord(features: features, absoluteWristTempC: absoluteWristTempC)
+        let record = SleepNightRecord(
+            features: features,
+            absoluteWristTempC: absoluteWristTempC,
+            nightKey: nightKey
+        )
         context.insert(record)
         save()
         return record
+    }
+
+    private func matchingNight(
+        key: String?,
+        date: Date,
+        wakeTime: Date
+    ) -> SleepNightRecord? {
+        if let key {
+            let descriptor = FetchDescriptor<SleepNightRecord>(
+                predicate: #Predicate { $0.nightKey == key }
+            )
+            if let keyed = try? context.fetch(descriptor).first {
+                return keyed
+            }
+        }
+
+        // Migration fallback for rows created before `nightKey`: the same
+        // HealthKit episode can move to a different absolute midnight after a
+        // timezone change, but its actual wake instant remains stable.
+        if let nearby = allNights().min(by: {
+            abs($0.wakeTime.timeIntervalSince(wakeTime))
+                < abs($1.wakeTime.timeIntervalSince(wakeTime))
+        }), abs(nearby.wakeTime.timeIntervalSince(wakeTime)) < 6 * 3_600 {
+            return nearby
+        }
+
+        return night(on: date)
     }
 
     func attach(_ insight: SleepInsight, to record: SleepNightRecord) {
@@ -137,13 +207,16 @@ final class SleepHistoryStore {
 
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
     /// user a one-tap way to destroy everything it holds.
-    func deleteAll() {
+    @discardableResult
+    func deleteAll() -> Bool {
         do {
             try context.delete(model: SleepNightRecord.self)
             try context.save()
             AnchorStore.clear()
+            return true
         } catch {
             logger.error("Delete-all failed: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
@@ -155,13 +228,26 @@ final class SleepHistoryStore {
     /// which is meaningless without the baseline it was computed against.
     /// - Returns: how many rows were written.
     @discardableResult
-    func importNights(_ nights: [SleepNightFeatures]) -> Int {
+    func importNights(
+        _ nights: [SleepNightFeatures],
+        absoluteTemperatures: [Date: Double] = [:]
+    ) -> Int {
         var written = 0
         for night in nights.sorted(by: { $0.date < $1.date }) {
-            upsert(night, absoluteWristTempC: nil)
+            upsert(
+                night,
+                absoluteWristTempC: absoluteTemperatures[night.date]
+            )
             written += 1
         }
         return written
+    }
+
+    func absoluteWristTemperaturesForExport() -> [(date: Date, absoluteCelsius: Double)] {
+        allNights().compactMap { record in
+            guard let value = record.wristTempAbsoluteC else { return nil }
+            return (date: record.date, absoluteCelsius: value)
+        }
     }
 
     /// True when every write since the last `beginTrackingWrites()` actually
@@ -205,6 +291,17 @@ final class SleepHistoryStore {
         let history = allNights()
         let priorNights = history.filter { $0.date < date }
 
+        return makeBaseline(
+            priorNightsNewestFirst: priorNights,
+            goalMinutes: goalMinutes
+        )
+    }
+
+    private func makeBaseline(
+        priorNightsNewestFirst priorNights: [SleepNightRecord],
+        goalMinutes: Double
+    ) -> RollingBaseline {
+
         let last7 = Array(priorNights.prefix(7))
         // Wide enough that the decay in `sleepDebt` below has fully faded a
         // night's contribution before it would fall out of this window —
@@ -222,6 +319,7 @@ final class SleepHistoryStore {
             duration7DayAvg: mean(last7.map(\.timeAsleepMinutes)),
             efficiency7DayAvg: mean(last7.map(\.sleepEfficiencyPercent)),
             minHeartRate7DayAvg: mean(last7.compactMap(\.minHeartRate)),
+            restingHeartRate7DayAvg: mean(last7.compactMap(\.restingHeartRate)),
             wristTempBaselineC: tempWindow.count >= 7 ? mean(tempWindow.compactMap(\.wristTempAbsoluteC)) : nil,
             bedtimeConsistencyMinutes: bedtimeStandardDeviation(last7),
             sampleCount: last7.count

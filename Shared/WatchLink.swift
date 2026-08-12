@@ -50,6 +50,15 @@ final class WatchLink: NSObject {
     /// rather than a spread of primitives, so `SleepSnapshot` stays the single
     /// definition of the wire format on both sides.
     private static let payloadKey = "snapshot"
+    /// A tombstone is sent instead of an empty/invalid snapshot so an offline
+    /// watch can erase its last value the next time WatchConnectivity delivers
+    /// application context.
+    private static let deletionKey = "snapshotDeleted"
+    private static let pendingDeletionKey = "zoon.watch.pendingSnapshotDeletion"
+    /// A refresh can finish before WCSession activation on a cold launch. Keep
+    /// that value in memory and publish it from the activation callback rather
+    /// than silently losing the night's only phone-to-watch hand-off.
+    private var pendingSnapshot: SleepSnapshot?
 
     override init() {
         super.init()
@@ -76,6 +85,7 @@ final class WatchLink: NSObject {
     /// context identical to the last one is dropped by the system rather than
     /// waking the watch for nothing.
     func send(_ snapshot: SleepSnapshot) {
+        pendingSnapshot = snapshot
         #if canImport(WatchConnectivity)
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
@@ -84,13 +94,50 @@ final class WatchLink: NSObject {
         do {
             let data = try JSONEncoder().encode(snapshot)
             try session.updateApplicationContext([Self.payloadKey: data])
+            pendingSnapshot = nil
+            UserDefaults.standard.removeObject(forKey: Self.pendingDeletionKey)
         } catch {
             logger.error("Could not send snapshot: \(error.localizedDescription, privacy: .public)")
         }
         #endif
     }
 
+    /// Phone side: replace the latest application context with an erasure
+    /// tombstone. Watch side: `apply` removes both its in-memory value and the
+    /// complication store before asking timelines to redraw.
+    func clearSnapshot() {
+        snapshot = nil
+        pendingSnapshot = nil
+        UserDefaults.standard.set(true, forKey: Self.pendingDeletionKey)
+        sendPendingDeletionIfPossible()
+    }
+
+    private func sendPendingDeletionIfPossible() {
+        #if canImport(WatchConnectivity)
+        guard UserDefaults.standard.bool(forKey: Self.pendingDeletionKey) else { return }
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+
+        do {
+            try session.updateApplicationContext([Self.deletionKey: true])
+            UserDefaults.standard.removeObject(forKey: Self.pendingDeletionKey)
+        } catch {
+            logger.error("Could not send snapshot deletion: \(error.localizedDescription, privacy: .public)")
+        }
+        #endif
+    }
+
     private func apply(_ context: [String: Any]) {
+        if context[Self.deletionKey] as? Bool == true {
+            snapshot = nil
+            #if os(watchOS)
+            WatchSnapshotStore.clear()
+            WidgetCenter.shared.reloadAllTimelines()
+            #endif
+            return
+        }
+
         guard let data = context[Self.payloadKey] as? Data else { return }
         do {
             let decoded = try JSONDecoder().decode(SleepSnapshot.self, from: data)
@@ -123,6 +170,11 @@ extension WatchLink: WCSessionDelegate {
             isActivated = state == .activated
             if state == .activated {
                 apply(session.receivedApplicationContext)
+                if UserDefaults.standard.bool(forKey: Self.pendingDeletionKey) {
+                    sendPendingDeletionIfPossible()
+                } else if let pendingSnapshot {
+                    send(pendingSnapshot)
+                }
             }
         }
     }

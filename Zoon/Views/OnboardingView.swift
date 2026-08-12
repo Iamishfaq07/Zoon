@@ -150,7 +150,7 @@ struct OnboardingView: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 12)
+                    .stroke(Theme.neutral(0.08), lineWidth: 12)
                 Circle()
                     .trim(from: 0, to: (goalHours - 4) / 8)
                     .stroke(
@@ -216,7 +216,7 @@ struct OnboardingView: View {
         HStack(spacing: 7) {
             ForEach(0..<pageCount, id: \.self) { index in
                 Capsule()
-                    .fill(index == page ? Theme.Metric.sleep : Color.white.opacity(0.20))
+                    .fill(index == page ? Theme.Metric.sleep : Theme.neutral(0.20))
                     .frame(width: index == page ? 20 : 7, height: 7)
                     .animation(.snappy(duration: 0.3), value: page)
             }

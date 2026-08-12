@@ -97,7 +97,7 @@ struct SnoreCheckView: View {
                 .padding(.vertical, 15)
                 .background(
                     detector.isRunning
-                    ? AnyShapeStyle(Color.white.opacity(0.12))
+                    ? AnyShapeStyle(Theme.neutral(0.12))
                     : AnyShapeStyle(LinearGradient(
                         colors: [Theme.Metric.sleep, Theme.Metric.battery],
                         startPoint: .leading, endPoint: .trailing

@@ -90,12 +90,33 @@ struct SleepSessionBuilder {
         return clusters
             .map(preferredSourceSamples)
             .compactMap(makeSession)
-            .filter { $0.timeInBed >= minimumSessionDuration }
+            // An in-bed schedule with no asleep sample is not a sleep episode.
+            // Letting it through can make a long empty span beat the user's
+            // actual staged night when the coordinator chooses one row per day.
+            .filter {
+                $0.timeInBed >= minimumSessionDuration
+                    && $0.totalAsleepMinutes > 0
+            }
     }
 
     /// The most recent qualifying session — "last night".
     func latestSession(from samples: [HKCategorySample]) -> SleepSession? {
         buildSessions(from: samples).last
+    }
+
+    /// Chooses the episode most likely to be the main sleep when several end
+    /// on the same calendar date. Total asleep is the primary signal; staged
+    /// coverage breaks close calls, followed by the overall span.
+    static func preferredMainSleep(in sessions: [SleepSession]) -> SleepSession? {
+        sessions.max { lhs, rhs in
+            if lhs.totalAsleepMinutes != rhs.totalAsleepMinutes {
+                return lhs.totalAsleepMinutes < rhs.totalAsleepMinutes
+            }
+            if lhs.stagedAsleepMinutes != rhs.stagedAsleepMinutes {
+                return lhs.stagedAsleepMinutes < rhs.stagedAsleepMinutes
+            }
+            return lhs.timeInBed < rhs.timeInBed
+        }
     }
 
     // MARK: - Source selection
@@ -169,7 +190,12 @@ struct SleepSessionBuilder {
             inBedIntervals: merged[.inBed] ?? [],
             awakeIntervals: merged[.awake] ?? [],
             segments: segments,
-            sourceName: samples.first?.sourceRevision.source.name
+            sourceName: samples.first?.sourceRevision.source.name,
+            timeZoneIdentifier: samples.compactMap { sample in
+                guard let identifier = sample.metadata?[HKMetadataKeyTimeZone] as? String,
+                      TimeZone(identifier: identifier) != nil else { return nil }
+                return identifier
+            }.first ?? TimeZone.current.identifier
         )
     }
 
@@ -212,6 +238,29 @@ struct SleepSession {
     /// Chronological stage timeline, overlap already merged. Drives the hypnogram.
     let segments: [StageSegment]
     let sourceName: String?
+    /// Timezone recorded with the HealthKit samples. This must travel with the
+    /// episode: `Calendar.current` may be somewhere else when a traveler next
+    /// refreshes the same historical night.
+    let timeZoneIdentifier: String
+
+    var wakeDate: Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        return calendar.startOfDay(for: end)
+    }
+
+    var nightKey: String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        let components = calendar.dateComponents([.year, .month, .day], from: end)
+        return String(
+            format: "%04d-%02d-%02d@%@",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0,
+            calendar.timeZone.identifier
+        )
+    }
 
     /// Session span from first sample to last -- **not** necessarily a real
     /// measurement of time in bed. When the source wrote explicit `inBed`
@@ -232,6 +281,10 @@ struct SleepSession {
 
     var totalAsleepMinutes: Double {
         asleepIntervals.reduce(0) { $0 + $1.duration } / 60
+    }
+
+    var stagedAsleepMinutes: Double {
+        minutes(.core) + minutes(.deep) + minutes(.rem)
     }
 
     /// When the user actually fell asleep — start of the first asleep interval.

@@ -180,4 +180,33 @@ enum SnapshotStore {
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(SleepSnapshot.self, from: data)
     }
+
+    /// Removes every phone-side copy of the snapshot.
+    ///
+    /// Both locations matter during App Group setup: an older build may have
+    /// written to Documents before the shared entitlement became available.
+    /// Leaving that fallback file behind would violate the promise made by the
+    /// app's Delete Everything action even if no extension can currently see it.
+    @discardableResult
+    static func clear() -> Bool {
+        let documents = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask
+        ).first
+        let directories = [AppGroup.containerURL, documents].compactMap { $0 }
+        var succeeded = true
+
+        for directory in Set(directories) {
+            let candidate = directory.appendingPathComponent(filename)
+            guard FileManager.default.fileExists(atPath: candidate.path) else { continue }
+            do {
+                try FileManager.default.removeItem(at: candidate)
+            } catch {
+                succeeded = false
+                logger.error("Snapshot deletion failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        return succeeded
+    }
 }

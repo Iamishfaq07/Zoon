@@ -121,8 +121,8 @@ into an archive.
    $99/year. Approval is usually a day or two for an individual account.
 2. **Register the bundle identifiers**, at
    [developer.apple.com/account/resources/identifiers](https://developer.apple.com/account/resources/identifiers/list) →
-   **+**. Register all four, as plain App IDs (no capabilities need ticking —
-   Xcode's automatic signing adds HealthKit itself when it provisions):
+   **+**. Register all four App IDs and enable **App Groups** on each. Enable
+   **HealthKit** and **Background Delivery** on the main `com.zoon.sleep` App ID:
    `com.zoon.sleep`, `com.zoon.sleep.ZoonWidget`, `com.zoon.sleep.watchkitapp`,
    `com.zoon.sleep.watchkitapp.ZoonWatchWidget`.
    *(Bundle IDs are unique across every Apple developer account, not just
@@ -132,16 +132,20 @@ into an archive.
    `python3 Tools/generate-pbxproj.py` and commit the regenerated project file
    before registering. Using your own reversed-domain prefix instead of
    `com.zoon.sleep` entirely? Same process — change every occurrence.)*
-3. **Create the app record**, at [App Store Connect](https://appstoreconnect.apple.com/) →
+3. **Register the App Group** `group.com.zoon.sleep` in Certificates,
+   Identifiers & Profiles → **Identifiers** → **App Groups**, then associate it
+   with all four App IDs. If you changed the bundle prefix, change this value in
+   all four `.entitlements` files and `Shared/SleepSnapshot.swift` first.
+4. **Create the app record**, at [App Store Connect](https://appstoreconnect.apple.com/) →
    **Apps** → **+** → **New App**. Platform iOS, bundle ID `com.zoon.sleep`,
    any SKU. This is what lets a build with that bundle ID land in TestFlight —
    without it, upload fails with "no such app".
-4. **Generate an App Store Connect API key**, at App Store Connect →
+5. **Generate an App Store Connect API key**, at App Store Connect →
    **Users and Access** → **Integrations** → **App Store Connect API** → **+**.
    Role: **App Manager** (enough to upload builds; not full Admin).
    Downloads once, as a `.p8` file — Apple will not let you download it again,
    so save it somewhere before closing the tab.
-5. **Find your Team ID** — App Store Connect → **Membership**, or
+6. **Find your Team ID** — App Store Connect → **Membership**, or
    [developer.apple.com/account](https://developer.apple.com/account/#/membership) →
    **Membership details**. A 10-character code like `A1B2C3D4E5`.
 
