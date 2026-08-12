@@ -132,7 +132,7 @@ into an archive.
    `python3 Tools/generate-pbxproj.py` and commit the regenerated project file
    before registering. Using your own reversed-domain prefix instead of
    `com.zoon.sleep` entirely? Same process — change every occurrence.)*
-3. **Register the App Group** `group.com.zoon.sleep` in Certificates,
+3. **Register the App Group** `group.com.zoon.sleep.shared` in Certificates,
    Identifiers & Profiles → **Identifiers** → **App Groups**, then associate it
    with all four App IDs. If you changed the bundle prefix, change this value in
    all four `.entitlements` files and `Shared/SleepSnapshot.swift` first.

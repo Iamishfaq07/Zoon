@@ -65,7 +65,7 @@ deliberately absent — Zoon doesn't read them, and requesting them triggers
 extra App Review scrutiny for nothing.
 
 The widget and Watch targets do **not** receive HealthKit access. They do have
-small entitlements files containing only `group.com.zoon.sleep`, so the iOS app
+small entitlements files containing only `group.com.zoon.sleep.shared`, so the iOS app
 can hand data to its widget and the Watch app can hand a received snapshot to
 its complication. The group identifier must be registered for your Apple team
 before a signed device or TestFlight build can provision.
@@ -149,7 +149,7 @@ widget. A screenshot from the Simulator can't be mistaken for a real night.
 ## Enable live widget data
 
 The entitlement files and shared identifier are checked in. For a signed build,
-register `group.com.zoon.sleep` in the Apple Developer portal and attach it to
+register `group.com.zoon.sleep.shared` in the Apple Developer portal and attach it to
 all four App IDs. If you use your own reverse-domain bundle IDs, replace the
 group identifier in the four entitlement files and `Shared/SleepSnapshot.swift`.
 
