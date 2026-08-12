@@ -18,6 +18,7 @@ final class UserPreferences {
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
+        static let appearance = "zoon.pref.appearance"
     }
 
     private let defaults: UserDefaults
@@ -49,6 +50,40 @@ final class UserPreferences {
     /// Wake-window notification — see `BedtimeReminder.scheduleWakeWindow`.
     var smartWakeEnabled: Bool {
         didSet { defaults.set(smartWakeEnabled, forKey: Key.smartWakeEnabled) }
+    }
+
+    /// System / Dark / Light. Defaults to Dark, not System: the palette was
+    /// built dark-first for a bedroom screen, and defaulting to System would
+    /// silently put a daytime user into a mode the app never used to have,
+    /// on an upgrade they didn't ask for. Anyone who wants it light now can
+    /// have it -- see `Theme`'s adaptive tokens -- but the existing look
+    /// stays the default rather than changing out from under people already
+    /// using it.
+    var appearance: AppearancePreference {
+        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+    }
+
+    enum AppearancePreference: String, CaseIterable, Identifiable {
+        case system, dark, light
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .system: "System"
+            case .dark: "Dark"
+            case .light: "Light"
+            }
+        }
+
+        /// `nil` lets SwiftUI follow the system setting.
+        var colorScheme: ColorScheme? {
+            switch self {
+            case .system: nil
+            case .dark: .dark
+            case .light: .light
+            }
+        }
     }
 
     /// Used only to estimate maximum heart rate, which sets the heart-rate
@@ -100,6 +135,9 @@ final class UserPreferences {
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
         self.cycleTrackingEnabled = defaults.bool(forKey: Key.cycleTrackingEnabled)
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
+        self.appearance = AppearancePreference(
+            rawValue: defaults.string(forKey: Key.appearance) ?? ""
+        ) ?? .dark
         let storedAge = defaults.integer(forKey: Key.age)
         self.age = storedAge > 0 ? storedAge : nil
         self.preferredEngine = EngineChoice(

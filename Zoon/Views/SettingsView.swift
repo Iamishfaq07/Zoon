@@ -15,6 +15,7 @@ struct SettingsView: View {
         // setter has to trigger a recompute, not just store a value.
         Form {
             goalSection
+            appearanceSection
             remindersSection
             cycleSection
             profileSection
@@ -74,6 +75,24 @@ struct SettingsView: View {
             Text("Sleep Goal")
         } footer: {
             Text("Your recovery score, sleep need, and debt are all measured against this — not a population average.")
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section {
+            Picker("Appearance", selection: Binding(
+                get: { preferences.appearance },
+                set: { preferences.appearance = $0 }
+            )) {
+                ForEach(UserPreferences.AppearancePreference.allCases) { option in
+                    Text(option.displayName).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("Zoon was built dark-first for a bedroom screen. Light follows the same palette in daylight tones.")
         }
     }
 

@@ -59,10 +59,12 @@ struct RootView: View {
                 .tag(Tab.coach)
         }
         .tint(Theme.Metric.sleep)
-        // Dark-committed rather than adaptive: the palette is built for a dark
-        // bedroom, and a half-translated light variant would look worse than
-        // either done properly.
-        .preferredColorScheme(.dark)
+        // System/Dark/Light, from Settings — `nil` for System lets SwiftUI
+        // follow the device setting. `Theme`'s core surface tokens
+        // (background, heroGlow, cardStroke, cardFill) are trait-adaptive,
+        // so this is what actually switches the whole app's appearance
+        // rather than just unlocking a toggle that used to do nothing.
+        .preferredColorScheme(preferences.appearance.colorScheme)
         .sheet(isPresented: $bindablePresentation.showingJournal) {
             JournalView()
         }
