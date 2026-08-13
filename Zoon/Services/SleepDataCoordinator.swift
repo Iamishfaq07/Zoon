@@ -808,10 +808,15 @@ final class SleepDataCoordinator {
         let entries = journal.allEntries()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
         let goal = preferences.sleepGoalMinutes
-        let calendar = Calendar.current
+        var calendar = Calendar.current
 
         return recentNights.compactMap { night -> JournalCorrelator.Observation? in
             guard let tags = tagsByDate[night.date] else { return nil }
+            // Each night's own timezone, not the device's current one -- see
+            // SleepNightFeatures.timeZoneIdentifier. Otherwise a night
+            // recorded while traveling can flip which weekday it's classified
+            // as once the user is back home.
+            calendar.timeZone = night.timeZone
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
@@ -831,7 +836,7 @@ final class SleepDataCoordinator {
                 // schedule type, which is feature work, not a bug fix.
                 isWeekend: calendar.isDateInWeekend(night.date),
                 sleepDebtMinutes: night.sleepDebtMinutes,
-                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
+                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime, timeZone: night.timeZone)
             )
         }
     }

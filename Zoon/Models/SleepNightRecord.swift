@@ -25,6 +25,12 @@ final class SleepNightRecord {
     /// row the same default key; rows are backfilled as HealthKit re-syncs.
     var nightKey: String?
 
+    /// Timezone the night was actually recorded in -- see
+    /// `SleepNightFeatures.timeZoneIdentifier`. Optional for the same reason
+    /// as `nightKey`: existing rows predate this column and are backfilled on
+    /// the next re-sync rather than migrated to a guessed value.
+    var timeZoneIdentifier: String?
+
     var bedtime: Date
     var wakeTime: Date
 
@@ -86,6 +92,7 @@ final class SleepNightRecord {
     ) {
         self.date = features.date
         self.nightKey = nightKey
+        self.timeZoneIdentifier = features.timeZoneIdentifier
         self.bedtime = features.bedtime
         self.wakeTime = features.wakeTime
         self.timeInBedMinutes = features.timeInBedMinutes
@@ -150,6 +157,7 @@ final class SleepNightRecord {
             }
         }
 
+        timeZoneIdentifier = features.timeZoneIdentifier
         bedtime = features.bedtime
         wakeTime = features.wakeTime
         timeInBedMinutes = features.timeInBedMinutes
@@ -228,7 +236,8 @@ extension SleepNightRecord {
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             sourceName: sourceName,
             isMock: false,
-            stageSegments: [StageSegment].decode(stageSegmentsData)
+            stageSegments: [StageSegment].decode(stageSegmentsData),
+            timeZoneIdentifier: timeZoneIdentifier ?? TimeZone.current.identifier
         )
     }
 

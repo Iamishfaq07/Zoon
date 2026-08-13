@@ -133,6 +133,13 @@ struct SleepRegularity: Codable, Hashable, Sendable {
     /// same simplification the published social-jetlag questionnaire makes, and
     /// the alternative is asking the user to configure a work schedule, which
     /// almost nobody will do.
+    ///
+    /// Each night's wall-clock hour and weekday are read using *that night's
+    /// own* timezone (`night.timeZoneIdentifier`), not the caller's `calendar`
+    /// -- a night recorded in Tokyo doesn't change which local hour someone
+    /// went to bed just because they've since flown to New York. `calendar`
+    /// only supplies the locale/weekend-definition behavior, its timeZone is
+    /// overridden per night.
     private static func midpoints(
         nights: [SleepNightFeatures],
         calendar: Calendar
@@ -140,18 +147,20 @@ struct SleepRegularity: Codable, Hashable, Sendable {
 
         var work: [Double] = []
         var free: [Double] = []
+        var localCalendar = calendar
 
         for night in nights {
+            localCalendar.timeZone = night.timeZone
             let midpoint = night.bedtime.addingTimeInterval(
                 night.wakeTime.timeIntervalSince(night.bedtime) / 2
             )
-            let components = calendar.dateComponents([.hour, .minute], from: midpoint)
+            let components = localCalendar.dateComponents([.hour, .minute], from: midpoint)
             var hour = Double(components.hour ?? 0) + Double(components.minute ?? 0) / 60
             // Shift so an evening midpoint reads as negative and the median
             // isn't torn apart by the midnight wrap.
             if hour >= 18 { hour -= 24 }
 
-            if calendar.isDateInWeekend(night.date) {
+            if localCalendar.isDateInWeekend(night.date) {
                 free.append(hour)
             } else {
                 work.append(hour)

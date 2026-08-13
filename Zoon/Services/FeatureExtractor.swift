@@ -153,7 +153,8 @@ struct FeatureExtractor {
             exerciseMinutesPreviousDay: exercisePrevious,
             sourceName: session.sourceName,
             isMock: false,
-            stageSegments: session.segments
+            stageSegments: session.segments,
+            timeZoneIdentifier: session.timeZoneIdentifier
         )
 
         return Result(
