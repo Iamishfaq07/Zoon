@@ -339,7 +339,7 @@ final class SleepDataCoordinator {
             )
         }
 
-        persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)
+        let validEpisodeIDs = persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)
 
         // `samples` here is always a full re-fetch of `window` (see call site),
         // never an incremental delta -- so any previously-stored night in
@@ -348,7 +348,7 @@ final class SleepDataCoordinator {
         // the Health app), not just "wasn't included in today's delta".
         let validDates = Set(mainSleepPerDate.map(\.wakeDate))
         store.prune(window: window, keeping: validDates)
-        store.pruneEpisodes(window: window, keeping: Set(mainSleepPerDate.map(\.nightKey)))
+        store.pruneEpisodes(window: window, keeping: validEpisodeIDs)
 
         return store.writesSucceeded
     }
@@ -362,10 +362,15 @@ final class SleepDataCoordinator {
     /// secondary sleep), not the fuller duration/schedule/shift-work-aware
     /// model a mature version would use. Deliberately conservative rather
     /// than confidently wrong.
+    ///
+    /// - Returns: the `id` of every episode this pass wrote, so the caller
+    ///   can prune any previously-stored episode that this full re-fetch did
+    ///   not reconfirm -- see `SleepHistoryStore.pruneEpisodes`.
+    @discardableResult
     private func persistSecondaryEpisodes(
         groupedByWakeDate: [Date: [SleepSession]],
         mainSleepPerDate: [SleepSession]
-    ) {
+    ) -> Set<String> {
         // Below this, a session is more likely a HealthKit fragment (a brief
         // "in bed" flicker, a watch mis-detection) than a real nap worth
         // surfacing -- the same reasoning `SleepSessionBuilder`'s minimum
@@ -373,14 +378,16 @@ final class SleepDataCoordinator {
         let minimumMeaningfulMinutes = 10.0
 
         let mainByWakeDate = Dictionary(uniqueKeysWithValues: mainSleepPerDate.map { ($0.wakeDate, $0) })
+        var writtenIDs: Set<String> = []
 
         for (wakeDate, group) in groupedByWakeDate {
             guard let main = mainByWakeDate[wakeDate] else { continue }
             let secondary = group.filter { $0.start != main.start || $0.end != main.end }
 
             for session in secondary where session.totalAsleepMinutes >= minimumMeaningfulMinutes {
+                let id = "\(main.nightKey)@\(Int(session.start.timeIntervalSince1970))"
                 store.upsertEpisode(
-                    id: "\(main.nightKey)@\(Int(session.start.timeIntervalSince1970))",
+                    id: id,
                     nightKey: main.nightKey,
                     startDate: session.start,
                     endDate: session.end,
@@ -390,8 +397,10 @@ final class SleepDataCoordinator {
                     timeInBedMinutes: session.timeInBed / 60,
                     sourceName: session.sourceName
                 )
+                writtenIDs.insert(id)
             }
         }
+        return writtenIDs
     }
 
     /// A session whose midpoint falls in a broad daytime window (9am-6pm, in
