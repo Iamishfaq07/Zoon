@@ -24,6 +24,19 @@ struct TrendsView: View {
         Array(coordinator.recentNights.suffix(window.days))
     }
 
+    /// Debt-in-minutes for each night in `nights`, aligned by index.
+    ///
+    /// Computed over `coordinator.recentNights` in full, not the already-
+    /// sliced `nights` -- see `SleepDebtChartCard`'s doc comment for why a
+    /// night's debt needs decayed context from before the display window.
+    private var debtMinutesForDisplayedNights: [Double] {
+        let fullSeries = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: coordinator.recentNights.map(\.timeAsleepMinutes),
+            goalMinutes: preferences.sleepGoalMinutes
+        )
+        return Array(fullSeries.suffix(window.days))
+    }
+
     /// Journal tags per night, so the duration chart's tap-to-inspect badge
     /// can show what was logged alongside the sleep number -- "annotations"
     /// per the spec, kept lightweight: no icons crowding the chart itself,
@@ -62,7 +75,7 @@ struct TrendsView: View {
                     } else {
                         DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
                         HRVChartCard(nights: nights)
-                        SleepDebtChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes)
+                        SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
                         ConsistencyChartCard(nights: nights)
                         if let correlations = cycleCorrelations {
                             CycleCorrelationCard(correlations: correlations)
@@ -295,12 +308,24 @@ struct HRVChartCard: View {
 
 /// Running sleep debt across the window.
 ///
-/// Recomputed here as a running total rather than plotting each night's stored
-/// 14-day figure: the stored value is a trailing window that slides, so charting
-/// it produces a line that moves for reasons unrelated to how you slept.
+/// Plots `SleepDebtCalculator.debtSeries` -- the exact same decay recurrence
+/// the Sleep Debt screen's headline number comes from, not a second,
+/// independent running total. That used to be two different algorithms: this
+/// chart previously accumulated `max(0, goal - sleep)` with no decay, which
+/// only ever grows, while the Sleep Debt screen showed an exponentially
+/// decaying figure that can fall night to night -- so the same user, the same
+/// nights, could show two different "Sleep Debt" numbers depending which
+/// screen they were on. There is now exactly one implementation of this
+/// metric; see `SleepDebtCalculator`.
 struct SleepDebtChartCard: View {
     let nights: [SleepNightFeatures]
-    let goalMinutes: Double
+    /// Debt in minutes as of each night in `nights`, same order and count.
+    /// Computed by the caller (`TrendsView`) via `SleepDebtCalculator
+    /// .debtSeries` over the *full* stored history, not just this chart's
+    /// display window -- a night's debt depends on decayed contributions
+    /// from nights before the window starts, so slicing history before
+    /// running the decay would understate every point on the chart.
+    let debtMinutes: [Double]
 
     private struct DebtPoint: Identifiable {
         let date: Date
@@ -309,10 +334,8 @@ struct SleepDebtChartCard: View {
     }
 
     private var points: [DebtPoint] {
-        var running = 0.0
-        return nights.map { night in
-            running += max(0, goalMinutes - night.timeAsleepMinutes)
-            return DebtPoint(date: night.date, hours: running / 60)
+        zip(nights, debtMinutes).map { night, minutes in
+            DebtPoint(date: night.date, hours: minutes / 60)
         }
     }
 
@@ -510,7 +533,13 @@ struct ChartCard<Content: View>: View {
         VStack(spacing: 16) {
             DurationChartCard(nights: MockData.history, goalMinutes: 480)
             HRVChartCard(nights: MockData.history)
-            SleepDebtChartCard(nights: MockData.history, goalMinutes: 480)
+            SleepDebtChartCard(
+                nights: MockData.history,
+                debtMinutes: SleepDebtCalculator.debtSeries(
+                    timeAsleepMinutesOldestFirst: MockData.history.map(\.timeAsleepMinutes),
+                    goalMinutes: 480
+                )
+            )
             ConsistencyChartCard(nights: MockData.recentWeek)
         }
         .padding()

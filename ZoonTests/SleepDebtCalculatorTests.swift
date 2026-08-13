@@ -62,4 +62,43 @@ final class SleepDebtCalculatorTests: XCTestCase {
         }
         XCTAssertEqual(debt, 0, accuracy: 0.01)
     }
+
+    /// The whole point of `debtSeries`: it and `debt` must be the same
+    /// recurrence, not two implementations that happen to agree today. This
+    /// is what stops a chart (which needs the series) and a detail screen
+    /// (which needs the scalar) from ever showing different numbers for the
+    /// same night again -- the bug this type replaced (TrendsView's
+    /// independently reimplemented, non-decaying running total) was exactly
+    /// that: two call sites, two answers.
+    func testSeriesLastElementMatchesScalarDebt() {
+        let oldestFirst: [Double] = [480, 420, 390, 500, 460, 300, 480]
+        let series = SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst: oldestFirst, goalMinutes: 480)
+        let scalar = SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: oldestFirst.reversed(), goalMinutes: 480)
+
+        XCTAssertEqual(series.count, oldestFirst.count)
+        XCTAssertEqual(series.last, scalar)
+    }
+
+    /// Every prefix of the series must also equal what `debt` would report
+    /// for that prefix alone -- the series isn't just right at the end, it's
+    /// right at every point a chart might plot.
+    func testEachSeriesElementMatchesDebtOfThatPrefix() {
+        let oldestFirst: [Double] = [420, 480, 350, 480, 480, 300]
+        let series = SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst: oldestFirst, goalMinutes: 480)
+
+        for prefixLength in 1...oldestFirst.count {
+            let prefix = Array(oldestFirst.prefix(prefixLength))
+            let expected = SleepDebtCalculator.debt(
+                timeAsleepMinutesNewestFirst: prefix.reversed(), goalMinutes: 480
+            )
+            XCTAssertEqual(series[prefixLength - 1], expected, accuracy: 0.0001)
+        }
+    }
+
+    func testEmptySeriesForEmptyInput() {
+        XCTAssertEqual(
+            SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst: [], goalMinutes: 480),
+            []
+        )
+    }
 }
