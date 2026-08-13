@@ -61,6 +61,12 @@ final class JournalStore {
         save()
     }
 
+    func setFeeling(_ feeling: MorningFeeling?, on date: Date) {
+        let entry = entryOrCreate(for: date)
+        entry.feeling = feeling
+        save()
+    }
+
     /// Days that have at least one tag — for the journal's history list.
     func taggedDays() -> [JournalEntry] {
         allEntries().filter { !$0.tagIdentifiers.isEmpty }
@@ -72,7 +78,7 @@ final class JournalStore {
     /// trustworthy than one from an older archive.
     /// - Returns: how many entries were created.
     @discardableResult
-    func importEntries(_ records: [(date: Date, tags: [String], note: String?)]) -> Int {
+    func importEntries(_ records: [(date: Date, tags: [String], note: String?, feelingRaw: Int?)]) -> Int {
         var created = 0
         for record in records {
             let day = Calendar.current.startOfDay(for: record.date)
@@ -80,6 +86,7 @@ final class JournalStore {
             let entry = JournalEntry(date: day)
             entry.tagIdentifiers = record.tags
             entry.note = record.note
+            entry.feelingRaw = record.feelingRaw
             context.insert(entry)
             created += 1
         }

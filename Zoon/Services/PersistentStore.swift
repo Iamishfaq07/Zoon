@@ -80,6 +80,7 @@ enum PersistentStore {
                 let copy = JournalEntry(date: entry.date)
                 copy.tagIdentifiers = entry.tagIdentifiers
                 copy.note = entry.note
+                copy.feelingRaw = entry.feelingRaw
                 copy.updatedAt = entry.updatedAt
                 destinationContext.insert(copy)
             }
