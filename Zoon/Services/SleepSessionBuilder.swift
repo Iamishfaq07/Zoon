@@ -47,6 +47,11 @@ struct SleepSessionBuilder {
     /// but it no longer disappears.
     var minimumSessionDuration: TimeInterval = 60 * 15
 
+    /// Overrides automatic source selection when set -- see
+    /// `UserPreferences.preferredSleepSourceName`. `nil` (the default) keeps
+    /// the automatic richest-source pick.
+    var preferredSourceName: String? = nil
+
     // MARK: - Public API
 
     /// Groups samples into sessions, newest last.
@@ -131,11 +136,18 @@ struct SleepSessionBuilder {
     /// device reported. Choosing the single richest source gives an answer that
     /// matches what the user sees in the Health app.
     ///
-    /// Preference order: most staged samples wins (an Apple Watch will always
-    /// beat an iPhone here), ties broken by total sample count.
+    /// Preference order: `preferredSourceName` wins outright when present in
+    /// this cluster (a user's explicit choice beats a heuristic); otherwise
+    /// most staged samples wins (an Apple Watch will always beat an iPhone
+    /// here), ties broken by total sample count.
     private func preferredSourceSamples(from samples: [HKCategorySample]) -> [HKCategorySample] {
         let grouped = Dictionary(grouping: samples) { $0.sourceRevision.source.bundleIdentifier }
         guard grouped.count > 1 else { return samples }
+
+        if let preferredSourceName,
+           let match = grouped.values.first(where: { $0.first?.sourceRevision.source.name == preferredSourceName }) {
+            return match
+        }
 
         let best = grouped.max { lhs, rhs in
             let lhsStaged = lhs.value.filter(\.isStagedAsleep).count

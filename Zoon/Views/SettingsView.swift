@@ -26,6 +26,7 @@ struct SettingsView: View {
             cycleSection
             profileSection
             engineSection
+            sourceSection
             dataSection
         }
         .scrollContentBackground(.hidden)
@@ -317,6 +318,42 @@ struct SettingsView: View {
             .font(.caption)
         } header: {
             Text("Insights")
+        }
+    }
+
+    /// Only shown once there's more than one known source -- a picker with
+    /// one option (or none yet) has nothing to choose between.
+    @ViewBuilder
+    private var sourceSection: some View {
+        let sources = coordinator.knownSleepSourceNames()
+        if sources.count > 1 {
+            Section {
+                Picker("Preferred source", selection: Binding(
+                    get: { preferences.preferredSleepSourceName ?? "" },
+                    set: { newValue in
+                        preferences.preferredSleepSourceName = newValue.isEmpty ? nil : newValue
+                        // The picked source only takes effect for nights
+                        // processed from here on -- force a full re-sync so
+                        // it also applies to what's already stored, the same
+                        // way restoring a backup does.
+                        AnchorStore.clear()
+                        Task { await coordinator.refresh() }
+                    }
+                )) {
+                    Text("Automatic").tag("")
+                    ForEach(sources, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+            } header: {
+                Text("Sleep Source")
+            } footer: {
+                Text("""
+                    When more than one source reports sleep for the same night, Zoon picks \
+                    whichever has the richest data automatically. Choose one here to always \
+                    prefer it instead.
+                    """)
+            }
         }
     }
 
