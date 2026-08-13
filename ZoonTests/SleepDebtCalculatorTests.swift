@@ -82,15 +82,15 @@ final class SleepDebtCalculatorTests: XCTestCase {
     /// Every prefix of the series must also equal what `debt` would report
     /// for that prefix alone -- the series isn't just right at the end, it's
     /// right at every point a chart might plot.
-    func testEachSeriesElementMatchesDebtOfThatPrefix() {
+    func testEachSeriesElementMatchesDebtOfThatPrefix() throws {
         let oldestFirst: [Double] = [420, 480, 350, 480, 480, 300]
         let series = SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst: oldestFirst, goalMinutes: 480)
 
         for prefixLength in 1...oldestFirst.count {
             let prefix = Array(oldestFirst.prefix(prefixLength))
-            let expected = SleepDebtCalculator.debt(
+            let expected = try XCTUnwrap(SleepDebtCalculator.debt(
                 timeAsleepMinutesNewestFirst: prefix.reversed(), goalMinutes: 480
-            )
+            ))
             XCTAssertEqual(series[prefixLength - 1], expected, accuracy: 0.0001)
         }
     }
