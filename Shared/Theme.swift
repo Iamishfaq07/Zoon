@@ -119,6 +119,16 @@ enum Theme {
         adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(opacity)
     }
 
+    /// A glass card's specular highlight -- the soft sheen a curved glass
+    /// surface catches along its top edge. Deliberately **not** built from
+    /// `neutral`, which flips to black in Light on purpose (it needs to
+    /// separate a chart tick from a pale background). A light reflection is
+    /// a light reflection regardless of appearance -- inverting it to a dark
+    /// smudge in Light would read as a stain, not glass.
+    static func glassHighlight(_ opacity: Double) -> Color {
+        Color.white.opacity(opacity)
+    }
+
     // MARK: - Metric hues
 
     enum Metric {
@@ -263,6 +273,23 @@ struct GlassCard: ViewModifier {
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(Theme.cardFill)
+                    }
+                    .overlay {
+                        // Liquid Glass sheen: a soft highlight that fades from
+                        // the top edge toward the middle, the way light catches
+                        // the curved top of a real glass surface. Additive on
+                        // top of the material rather than a stroke, so it reads
+                        // as a reflection rather than an outline -- this is what
+                        // separates "blurred rectangle" from "glass" at a glance.
+                        RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Theme.glassHighlight(0.10), Theme.glassHighlight(0)],
+                                    startPoint: .top,
+                                    endPoint: UnitPoint(x: 0.5, y: 0.45)
+                                )
+                            )
+                            .blendMode(.plusLighter)
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
