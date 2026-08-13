@@ -19,6 +19,7 @@ final class UserPreferences {
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
         static let appearance = "zoon.pref.appearance"
+        static let recoveryModeDate = "zoon.pref.recoveryModeDate"
     }
 
     private let defaults: UserDefaults
@@ -93,6 +94,29 @@ final class UserPreferences {
         didSet { defaults.set(age ?? 0, forKey: Key.age) }
     }
 
+    /// The date Recovery Mode was manually turned on, if any -- not a plain
+    /// Bool, because it needs to stop applying once the day it was set for
+    /// has passed rather than staying stuck on indefinitely. See
+    /// `isRecoveryModeManuallyEnabledToday` and `RecoveryMode`.
+    private var recoveryModeDate: Date? {
+        didSet {
+            if let recoveryModeDate {
+                defaults.set(recoveryModeDate, forKey: Key.recoveryModeDate)
+            } else {
+                defaults.removeObject(forKey: Key.recoveryModeDate)
+            }
+        }
+    }
+
+    var isRecoveryModeManuallyEnabledToday: Bool {
+        guard let recoveryModeDate else { return false }
+        return Calendar.current.isDateInToday(recoveryModeDate)
+    }
+
+    func setRecoveryModeEnabledToday(_ enabled: Bool) {
+        recoveryModeDate = enabled ? .now : nil
+    }
+
     /// Which insight engine to use. The LLM option is present but stubbed —
     /// see `LocalLLMInsightEngine`.
     var preferredEngine: EngineChoice {
@@ -143,6 +167,7 @@ final class UserPreferences {
         self.preferredEngine = EngineChoice(
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
         ) ?? .ruleBased
+        self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
     }
 
     var sleepGoalDisplay: String {
@@ -162,6 +187,7 @@ final class UserPreferences {
         appearance = .dark
         age = nil
         preferredEngine = .ruleBased
+        recoveryModeDate = nil
 
         let keys = [
             Key.sleepGoalMinutes,
@@ -172,6 +198,7 @@ final class UserPreferences {
             Key.cycleTrackingEnabled,
             Key.smartWakeEnabled,
             Key.appearance,
+            Key.recoveryModeDate,
         ]
         for key in keys { defaults.removeObject(forKey: key) }
     }
