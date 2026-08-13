@@ -201,7 +201,7 @@ extension RecoveryScore {
             case .moderate:
                 "Ready for moderate work. Train, but leave something in the tank."
             case .high:
-                "Primed. This is the day to go hard if you're going to."
+                "Primed. Your body looks ready for a harder session today, if that's part of your plan."
             }
         }
     }
