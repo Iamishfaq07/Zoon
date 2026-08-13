@@ -295,13 +295,14 @@ final class SleepDataCoordinator {
         let sessions = sessionBuilder.buildSessions(from: samples)
 
         // `SleepNightRecord` is one row per wake date, so a main sleep and a
-        // same-day nap compete for that row until the multi-episode model ships.
-        // Select on actual asleep duration and stage quality rather than the raw
-        // first-to-last sample span; a long in-bed-only schedule must never beat
-        // a real Watch night.
-        let mainSleepPerDate = Dictionary(grouping: sessions) {
-            $0.wakeDate
-        }
+        // same-day nap compete for that row: `preferredMainSleep` picks the
+        // one that becomes the night's row (actual asleep duration and stage
+        // quality, not raw first-to-last sample span, so a long in-bed-only
+        // schedule never beats a real Watch night). Everything else in the
+        // group used to be discarded entirely -- `persistSecondaryEpisodes`
+        // below is what keeps a same-day nap alive instead of losing it here.
+        let groupedByWakeDate = Dictionary(grouping: sessions) { $0.wakeDate }
+        let mainSleepPerDate = groupedByWakeDate
             .compactMapValues { SleepSessionBuilder.preferredMainSleep(in: $0) }
             .values
             .sorted { $0.start < $1.start }
@@ -323,6 +324,8 @@ final class SleepDataCoordinator {
             )
         }
 
+        persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)
+
         // `samples` here is always a full re-fetch of `window` (see call site),
         // never an incremental delta -- so any previously-stored night in
         // `window` that didn't produce a session this pass genuinely no
@@ -330,8 +333,62 @@ final class SleepDataCoordinator {
         // the Health app), not just "wasn't included in today's delta".
         let validDates = Set(mainSleepPerDate.map(\.wakeDate))
         store.prune(window: window, keeping: validDates)
+        store.pruneEpisodes(window: window, keeping: Set(mainSleepPerDate.map(\.nightKey)))
 
         return store.writesSucceeded
+    }
+
+    /// Persists every session in a wake-date group that wasn't the one chosen
+    /// as main sleep -- a nap, a second sleep block, a split-sleep session --
+    /// as a `SleepEpisodeRecord` instead of discarding it.
+    ///
+    /// Classification is a first pass: clock-time only (a session mostly
+    /// inside a broad daytime window reads as a nap, everything else as
+    /// secondary sleep), not the fuller duration/schedule/shift-work-aware
+    /// model a mature version would use. Deliberately conservative rather
+    /// than confidently wrong.
+    private func persistSecondaryEpisodes(
+        groupedByWakeDate: [Date: [SleepSession]],
+        mainSleepPerDate: [SleepSession]
+    ) {
+        // Below this, a session is more likely a HealthKit fragment (a brief
+        // "in bed" flicker, a watch mis-detection) than a real nap worth
+        // surfacing -- the same reasoning `SleepSessionBuilder`'s minimum
+        // session duration already applies to main sleep candidates.
+        let minimumMeaningfulMinutes = 10.0
+
+        let mainByWakeDate = Dictionary(uniqueKeysWithValues: mainSleepPerDate.map { ($0.wakeDate, $0) })
+
+        for (wakeDate, group) in groupedByWakeDate {
+            guard let main = mainByWakeDate[wakeDate] else { continue }
+            let secondary = group.filter { $0.start != main.start || $0.end != main.end }
+
+            for session in secondary where session.totalAsleepMinutes >= minimumMeaningfulMinutes {
+                store.upsertEpisode(
+                    id: "\(main.nightKey)@\(Int(session.start.timeIntervalSince1970))",
+                    nightKey: main.nightKey,
+                    startDate: session.start,
+                    endDate: session.end,
+                    timezoneIdentifier: session.timeZoneIdentifier,
+                    episodeType: classify(session),
+                    asleepMinutes: session.totalAsleepMinutes,
+                    timeInBedMinutes: session.timeInBed / 60,
+                    sourceName: session.sourceName
+                )
+            }
+        }
+    }
+
+    /// A session whose midpoint falls in a broad daytime window (9am-6pm, in
+    /// its own recorded timezone) reads as a nap; anything else -- an early
+    /// morning or late-evening block -- reads as secondary sleep rather than
+    /// guessing which one is "primary" from duration alone.
+    private func classify(_ session: SleepSession) -> SleepEpisodeType {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: session.timeZoneIdentifier) ?? .current
+        let midpoint = session.start.addingTimeInterval(session.end.timeIntervalSince(session.start) / 2)
+        let hour = calendar.component(.hour, from: midpoint)
+        return (9..<18).contains(hour) ? .nap : .secondarySleep
     }
 
     /// Reads the newest stored night back out, derives everything, updates state

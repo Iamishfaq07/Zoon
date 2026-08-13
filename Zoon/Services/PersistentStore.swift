@@ -20,7 +20,7 @@ enum PersistentStore {
         }
 
         let container = try ModelContainer(
-            for: SleepNightRecord.self, JournalEntry.self,
+            for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
             configurations: configuration
         )
         if AppGroup.isConfigured {
@@ -59,7 +59,7 @@ enum PersistentStore {
 
         do {
             let legacy = try ModelContainer(
-                for: SleepNightRecord.self, JournalEntry.self,
+                for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
                 configurations: ModelConfiguration()
             )
             let source = legacy.mainContext
