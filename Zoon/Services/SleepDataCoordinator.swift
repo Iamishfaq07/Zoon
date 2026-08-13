@@ -187,8 +187,8 @@ final class SleepDataCoordinator {
     /// is true, so by the time this runs, onboarding's `requestHealthAccess()`
     /// has always already run first. The duplicate was harmless *today*
     /// only because HealthKit doesn't reprompt for a type it has already
-    /// answered — but that protection silently disappears the moment
-    /// `readTypes` ever gains a new type: every returning user's very next
+    /// answered — but that protection silently disappears the moment the
+    /// requested type set ever gains a new type: every returning user's very next
     /// cold launch would then trigger a brand-new system permission sheet,
     /// unexplained, on `start()`, with no onboarding context and no Settings
     /// visit involved. Removing the call here closes that gap without
