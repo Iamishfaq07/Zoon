@@ -40,6 +40,14 @@ struct CardiovascularAge: Codable, Hashable, Sendable {
     /// a decade of ageing.
     static let minimumNights = 14
 
+    /// Samples a single metric (HRV or RHR) needs before its mean is worth
+    /// feeding into the blend -- same reasoning as
+    /// `RecoveryBaseline.minimumSamplesPerMetric`. A 30-night window with
+    /// only one or two HRV readings (the watch rarely worn, say) would
+    /// otherwise blend that one reading into the estimate carrying the same
+    /// weight as a properly-sampled signal.
+    private static let minimumSamplesPerMetric = 3
+
     /// Maximum deviation the model will claim, in years.
     private static let maxDelta = 15.0
 
@@ -76,10 +84,14 @@ struct CardiovascularAge: Codable, Hashable, Sendable {
         // before that field existed, not a preferred source.
         let rhrValues = window.compactMap { $0.restingHeartRate ?? $0.minHeartRate }
 
-        guard window.count >= minimumNights, !hrvValues.isEmpty || !rhrValues.isEmpty else { return nil }
+        guard window.count >= minimumNights else { return nil }
 
-        let hrv = mean(hrvValues)
-        let rhr = mean(rhrValues)
+        // Each metric must clear its own sample-count floor, not just be
+        // non-empty -- see `minimumSamplesPerMetric`.
+        let hrv = hrvValues.count >= minimumSamplesPerMetric ? mean(hrvValues) : nil
+        let rhr = rhrValues.count >= minimumSamplesPerMetric ? mean(rhrValues) : nil
+        guard hrv != nil || rhr != nil else { return nil }
+
         let age = Double(chronologicalAge)
 
         // Each signal produces its own age estimate; they're then blended.
