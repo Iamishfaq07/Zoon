@@ -206,7 +206,12 @@ extension SleepNightRecord {
     ///   persisted because they change as history grows. A night from three
     ///   weeks ago should show today's 7-day-average context, not the context
     ///   that existed when it was recorded.
-    func features(baseline: RollingBaseline? = nil) -> SleepNightFeatures {
+    /// - Parameter secondaryAsleepMinutes: naps/split-sleep tied to this
+    ///   night's `nightKey`, looked up by the caller (`SleepHistoryStore`
+    ///   owns the query since it needs the model context). Defaults to 0 for
+    ///   callers that don't have or need that lookup, e.g. the store-migration
+    ///   copy path.
+    func features(baseline: RollingBaseline? = nil, secondaryAsleepMinutes: Double = 0) -> SleepNightFeatures {
         SleepNightFeatures(
             date: date,
             bedtime: bedtime,
@@ -234,6 +239,7 @@ extension SleepNightRecord {
             sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
+            secondaryAsleepMinutes: secondaryAsleepMinutes,
             sourceName: sourceName,
             isMock: false,
             stageSegments: [StageSegment].decode(stageSegmentsData),

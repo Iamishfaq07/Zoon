@@ -427,7 +427,10 @@ final class SleepDataCoordinator {
         }
 
         let baseline = store.baseline(for: record.date, goalMinutes: goal)
-        let night = record.features(baseline: baseline)
+        let night = record.features(
+            baseline: baseline,
+            secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(forNightKey: record.nightKey ?? "")
+        )
         // Foundation Models inference is async and the engine protocol is not,
         // so generation is primed here and read back synchronously below.
         if let modelEngine = engine as? FoundationModelInsightEngine {
