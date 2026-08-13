@@ -150,7 +150,9 @@ struct SleepNeedView: View {
         return base + """
              Then it adjusts up for outstanding sleep debt and yesterday's exertion, and down \
             for any naps -- so a harder day or a short night genuinely raises tonight's target \
-            instead of treating every night the same.
+            instead of treating every night the same. Sleep debt itself is tracked separately, \
+            as a running shortfall against your Settings goal rather than this learned baseline \
+            -- see Sleep Debt for how that number is built.
             """
     }
 }
