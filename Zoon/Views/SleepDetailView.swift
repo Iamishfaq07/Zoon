@@ -312,7 +312,8 @@ struct SleepNeedCard: View {
     }
 }
 
-/// Fitbit-style chronotype card.
+/// Chronotype card. Plain timing labels rather than an animal name -- see
+/// `Chronotype.Kind.label`'s doc comment for why.
 struct ChronotypeCard: View {
     let chronotype: Chronotype
 
@@ -326,7 +327,7 @@ struct ChronotypeCard: View {
                     .background(Theme.Metric.sleep.opacity(0.15), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("You sleep like a \(chronotype.kind.label)")
+                    Text(chronotype.kind == .unknown ? "Learning your rhythm" : chronotype.kind.label)
                         .font(Theme.label(15, weight: .bold))
                     if chronotype.kind != .unknown {
                         Text("Typical bedtime \(chronotype.formattedBedtime) · ±\(Int(chronotype.consistencyMinutes)) min")
