@@ -20,13 +20,18 @@ import os
 ///
 /// Raw audio is processed in ~100ms buffers and **discarded immediately**
 /// after each buffer's energy is measured. Nothing is written to disk,
-/// nothing is buffered beyond the current tick, and the only value that
-/// survives the session is a per-night minute count — see `SnoreStore`. This
-/// is the one feature in Zoon that asks for a new, more sensitive
+/// nothing is buffered beyond the current tick. What survives the session is
+/// a per-night minute count (see `SnoreStore`) and, since `SoundEventClassifier`
+/// was added, a short list of *categorized* moments -- "snoring" or
+/// "coughing" and a timestamp, from Apple's on-device sound classifier
+/// running on the same buffers, never audio itself (see `SoundEventStore`).
+/// This is the one feature in Zoon that asks for a new, more sensitive
 /// permission than everything else combined, and the privacy design here is
 /// deliberately stricter than the rest of the app's already-strict baseline:
 /// a partner or roommate's voice must never be capturable even in principle,
-/// because they never consented to anything.
+/// because they never consented to anything -- which is exactly why the
+/// classifier is deliberately never asked about speech, only about sounds
+/// tied to the user's own sleep (see `SoundEventClassifier`).
 @MainActor
 @Observable
 final class SnoreDetector {
@@ -34,8 +39,12 @@ final class SnoreDetector {
     private(set) var isRunning = false
     private(set) var monitoredSeconds: Double = 0
     private(set) var snoreSeconds: Double = 0
+    /// Categorized sound events recognized so far this session -- see
+    /// `SoundEventClassifier`. Same tap, same session, second observer.
+    private(set) var recentEvents: [SoundEvent] = []
 
     private let engine = AVAudioEngine()
+    private let soundClassifier = SoundEventClassifier()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "SnoreDetector")
 
     // MARK: - Heuristic state
@@ -87,10 +96,17 @@ final class SnoreDetector {
         lastBurst = nil
         isInsideBurst = false
         tickAccumulator = 0
+        recentEvents.removeAll()
+
+        soundClassifier.start(format: format) { [weak self] identifier, confidence in
+            Task { @MainActor [weak self] in
+                self?.recordEvent(identifier: identifier, confidence: confidence)
+            }
+        }
 
         // ~100ms buffers: short enough that nothing meaningful survives one
         // tick, long enough for a stable RMS reading.
-        input.installTap(onBus: 0, bufferSize: 4800, format: format) { [weak self] buffer, _ in
+        input.installTap(onBus: 0, bufferSize: 4800, format: format) { [weak self] buffer, time in
             guard let channel = buffer.floatChannelData?[0] else { return }
             let samples = UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))
             let energy = SnoreSignalAnalyzer.energy(
@@ -98,6 +114,7 @@ final class SnoreDetector {
                 sampleRate: format.sampleRate
             )
             let bufferSeconds = Double(buffer.frameLength) / format.sampleRate
+            self?.soundClassifier.process(buffer, atFramePosition: time.sampleTime)
             Task { @MainActor [weak self] in
                 self?.process(energy: energy, elapsed: bufferSeconds)
             }
@@ -112,6 +129,7 @@ final class SnoreDetector {
         guard isRunning else { return nil }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        soundClassifier.stop()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         isRunning = false
         logger.info("Snore detection stopped")
@@ -122,6 +140,22 @@ final class SnoreDetector {
             monitoredMinutes: monitoredSeconds / 60,
             snoreMinutes: snoreSeconds / 60
         )
+    }
+
+    /// Collapses repeats of the same category within a short window into the
+    /// one event they actually are -- a several-second snore or cough spans
+    /// many ~1-second analysis windows, and without this it would register
+    /// as a dozen near-identical events instead of one.
+    private func recordEvent(identifier: String, confidence: Double) {
+        if let last = recentEvents.last,
+           last.identifier == identifier,
+           Date.now.timeIntervalSince(last.date) < 5 {
+            return
+        }
+        recentEvents.append(SoundEvent(identifier: identifier, confidence: confidence))
+        if recentEvents.count > 200 {
+            recentEvents.removeFirst(recentEvents.count - 200)
+        }
     }
 
     // MARK: - Processing
