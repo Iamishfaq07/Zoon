@@ -498,7 +498,7 @@ final class SleepDataCoordinator {
             todayStrain: todayStrain,
             hourlyHeartRate: hourly,
             maxHeartRate: maxHR,
-            napMinutes: naps.minutesBefore(night: night.date),
+            napMinutes: deduplicatedNapMinutes(before: night.date),
             bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes,
             age: preferences.age
         ))
@@ -507,6 +507,34 @@ final class SleepDataCoordinator {
         recentNights = history + [night]
         rebuildRecoveryHistory(goal: goal)
         publishSnapshot(context, goal: goal)
+    }
+
+    /// Nap credit for the night ending `night`, combining manually-logged
+    /// naps with HealthKit-auto-detected ones without double-crediting a nap
+    /// caught by both.
+    ///
+    /// Before this, `SleepNeed`'s nap offset only ever looked at `NapStore`
+    /// (see its own doc comment: HealthKit "rarely" catches a short daytime
+    /// nap, which is why manual logging exists at all) -- auto-detected naps
+    /// contributed nothing to it, even though they're already persisted as
+    /// `SleepEpisodeRecord`s. Simply summing both sources would double-count
+    /// the rare case where a nap genuinely was caught by both, so intervals
+    /// from the two sources are merged first (`DateInterval.merging`) and
+    /// only the union's total duration counted.
+    private func deduplicatedNapMinutes(before night: Date) -> Double {
+        let calendar = Calendar.current
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: night) ?? night
+        guard let dayInterval = calendar.dateInterval(of: .day, for: previousDay) else {
+            return naps.minutesBefore(night: night)
+        }
+
+        let manualIntervals = naps.naps
+            .filter { calendar.isDate($0.start, inSameDayAs: previousDay) }
+            .map { DateInterval(start: $0.start, end: $0.end) }
+        let autoIntervals = store.autoDetectedNapIntervals(in: dayInterval)
+
+        let merged = DateInterval.merging(manualIntervals + autoIntervals)
+        return merged.reduce(0) { $0 + $1.duration } / 60
     }
 
     /// Today's and yesterday's strain plus today's hourly heart rate.
