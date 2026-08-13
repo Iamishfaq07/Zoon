@@ -78,9 +78,10 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
         /// baseline for every history-relative component.
         let history: [SleepNightFeatures]
         let sleepNeedMinutes: Double
-        /// Already-computed Sleep Regularity Index (0–100) -- reused rather
-        /// than reimplementing the same circular bedtime/wake statistics a
-        /// second time.
+        /// Already-computed `SleepRegularity.index` (0–100, see that type for
+        /// what it does and doesn't measure) -- reused rather than
+        /// reimplementing the same circular bedtime/wake statistics a second
+        /// time.
         let regularityIndex: Double?
         /// Habitual sleep midpoint from `BodyClock`, hours from midnight,
         /// evening negative. `nil` until there's enough history for one.
@@ -135,7 +136,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
         if let index = inputs.regularityIndex {
             raw.append((Component(
                 label: "Regularity",
-                detail: "\(Int(index.rounded())) SRI",
+                detail: "\(Int(index.rounded())) timing score",
                 normalized: index / 100,
                 weightUsed: 0
             ), nominalWeightsByName["Regularity"]!))

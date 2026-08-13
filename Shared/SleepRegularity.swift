@@ -2,17 +2,24 @@ import Foundation
 
 /// How consistent your sleep timing is, and what it costs you.
 ///
-/// The headline metric here is the **Sleep Regularity Index** — the academic
-/// one, not a marketing invention. SRI is the probability that you are in the
-/// same state (asleep or awake) at any two moments exactly 24 hours apart,
-/// rescaled to 0–100. A perfectly regular sleeper scores 100; someone with no
-/// pattern at all scores 0.
+/// This is **Sleep Timing Regularity**, built on the same core idea as the
+/// academic Sleep Regularity Index -- the probability that you're in the same
+/// state (asleep or awake) at two moments 24 hours apart, rescaled to 0–100 --
+/// but it is not a full implementation of that metric and should not be
+/// presented as one. The genuine SRI samples every moment of a full 24-hour
+/// day, including daytime awake-to-awake agreement; this only samples a
+/// window around each night's actual sleep period (`compute`'s
+/// `windowStart`/`windowEnd`, roughly bedtime−2h to wake+2h), so two people
+/// with identical sleep timing but very different daytime schedules can score
+/// differently here even though a full SRI would treat them the same.
+/// Deliberately not labelled "SRI" anywhere user-facing for that reason --
+/// see `RegularityCard`.
 ///
-/// It earns its place because the evidence is strong and the metric is almost
-/// absent from consumer apps: across several large cohort studies SRI predicts
-/// mortality risk *more strongly than sleep duration does*. Duration is the
-/// number everyone optimises; regularity is the one that moves the needle and
-/// nobody shows you.
+/// The metric it approximates still earns its place: across several large
+/// cohort studies, regularity of this kind predicts mortality risk *more
+/// strongly than sleep duration does*, and it's almost absent from consumer
+/// apps. Duration is the number everyone optimises; timing consistency is the
+/// one that moves the needle and nobody shows you.
 ///
 /// The computation needs the actual asleep intervals, not just totals, which is
 /// why this lives alongside `StageSegment` rather than in the score file.
