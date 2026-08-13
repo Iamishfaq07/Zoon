@@ -23,9 +23,10 @@ struct HealthRadar: Codable, Hashable, Sendable {
         let direction: Direction
         /// Consecutive nights this signal has been drifting.
         let consecutiveNights: Int
-        /// Mean over the drift window.
+        /// Median over the drift window -- see `detect`'s doc comment for why
+        /// median/MAD replaced mean/SD here.
         let recentMean: Double
-        /// Long-run personal baseline.
+        /// Long-run personal baseline, also a median.
         let baseline: Double
 
         var id: String { kind.rawValue }
@@ -59,6 +60,16 @@ struct HealthRadar: Codable, Hashable, Sendable {
 
     // MARK: - Detection
 
+    /// Median/MAD, not mean/SD, for the baseline center and tolerance band.
+    ///
+    /// A single bad night sitting in the 30-night baseline window (the same
+    /// stomach bug or red-eye flight `Statistics`'s own doc comment warns
+    /// about) used to be able to drag `baseMean` toward itself and inflate
+    /// `sd`, which does two things wrong at once: it quietly redefines
+    /// "normal" to include the outlier, and it widens the tolerance band so
+    /// a real drift has to be even larger before it's noticed. A median
+    /// barely moves for one outlier night, and MAD-derived tolerance doesn't
+    /// balloon from it either.
     static func detect(nights: [SleepNightFeatures]) -> HealthRadar {
         let sorted = nights.sorted { $0.date < $1.date }
         guard sorted.count >= minimumBaselineNights else {
@@ -82,22 +93,31 @@ struct HealthRadar: Codable, Hashable, Sendable {
             guard baselineValues.count >= 8,
                   recentValues.count == recentWindow.count else { continue }
 
-            let baseMean = mean(baselineValues)
-            let sd = standardDeviation(baselineValues, mean: baseMean)
-            let tolerance = max(sd * driftSigma, kind.minimumTolerance)
+            let baseMedian = Statistics.median(baselineValues) ?? mean(baselineValues)
+            // MAD scaled by 0.6745 lands on the same scale as a standard
+            // deviation under a normal distribution -- see `Statistics.robustZ`
+            // for the same convention. Falls back to plain SD only when MAD is
+            // degenerate (near-zero, e.g. a metric that's been nearly
+            // identical every baseline night), the same fallback shape
+            // `robustZ` uses, rather than letting a near-zero MAD make the
+            // tolerance band collapse to nothing.
+            let mad = Statistics.medianAbsoluteDeviation(baselineValues, median: baseMedian)
+            let robustSD = (mad.map { $0 / 0.6745 }).flatMap { $0 > 0.01 ? $0 : nil }
+                ?? standardDeviation(baselineValues, mean: baseMedian)
+            let tolerance = max(robustSD * driftSigma, kind.minimumTolerance)
 
             // Every night in the window must be on the same side of the band —
             // one big night surrounded by normal ones is not a drift.
-            let allElevated = recentValues.allSatisfy { $0 > baseMean + tolerance }
-            let allSuppressed = recentValues.allSatisfy { $0 < baseMean - tolerance }
+            let allElevated = recentValues.allSatisfy { $0 > baseMedian + tolerance }
+            let allSuppressed = recentValues.allSatisfy { $0 < baseMedian - tolerance }
             guard allElevated || allSuppressed else { continue }
 
             detected.append(Signal(
                 kind: kind,
                 direction: allElevated ? .elevated : .suppressed,
                 consecutiveNights: recentWindow.count,
-                recentMean: mean(recentValues),
-                baseline: baseMean
+                recentMean: Statistics.median(recentValues) ?? mean(recentValues),
+                baseline: baseMedian
             ))
         }
 
