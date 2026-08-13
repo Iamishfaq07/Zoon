@@ -87,9 +87,22 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     /// and clearly-erroneous outliers (4-12h), not a narrow "expected"
     /// window -- narrowing it further would just reproduce whatever
     /// assumption seeded the filter, defeating the point of learning it.
+    ///
+    /// Deliberately does **not** require `hasStageBreakdown`. This used to,
+    /// which meant an iPhone-only or third-party-tracker user -- anyone
+    /// whose source writes only `asleepUnspecified`, never a
+    /// core/deep/REM split -- could never accumulate a single qualifying
+    /// night, no matter how many efficient, unfragmented, well-measured
+    /// nights they had: `learnedMinutes` stayed permanently `nil` and the
+    /// baseline stayed the raw Settings goal forever. Staging granularity
+    /// has nothing to do with whether a night's *total duration* is
+    /// trustworthy -- `unspecifiedAsleepMinutes` is a first-class, measured
+    /// asleep total in its own right (see `SleepNightFeatures`'s doc
+    /// comment on that field), not a placeholder. The efficiency, wake-count
+    /// and duration bounds below are the real quality floor; they apply
+    /// identically regardless of source.
     private static func isHighQuality(_ night: SleepNightFeatures) -> Bool {
-        night.hasStageBreakdown
-            && night.sleepEfficiencyPercent >= 85
+        night.sleepEfficiencyPercent >= 85
             && night.wakeCount <= 4
             && night.timeAsleepMinutes >= 240
             && night.timeAsleepMinutes <= 720

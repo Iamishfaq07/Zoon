@@ -58,4 +58,55 @@ final class LearnedSleepNeedTests: XCTestCase {
         XCTAssertEqual(result.qualifyingNightCount, 0)
         XCTAssertEqual(result.confidence, .insufficient)
     }
+
+    /// Builds a night with no stage breakdown at all -- everything asleep is
+    /// `unspecifiedAsleepMinutes`, the shape an iPhone-only or third-party
+    /// source produces. `Fixture.night` always stages its minutes, so this
+    /// constructs one directly.
+    private func unstagedNight(daysAgo: Int, timeAsleepMinutes: Double) -> SleepNightFeatures {
+        let staged = Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: timeAsleepMinutes)
+        return SleepNightFeatures(
+            date: staged.date,
+            bedtime: staged.bedtime,
+            wakeTime: staged.wakeTime,
+            timeInBedMinutes: staged.timeInBedMinutes,
+            timeAsleepMinutes: staged.timeAsleepMinutes,
+            sleepEfficiencyPercent: staged.sleepEfficiencyPercent,
+            coreMinutes: 0,
+            deepMinutes: 0,
+            remMinutes: 0,
+            unspecifiedAsleepMinutes: timeAsleepMinutes,
+            awakeMinutes: staged.awakeMinutes,
+            wakeCount: staged.wakeCount,
+            sleepLatencyMinutes: nil,
+            avgHeartRate: nil,
+            minHeartRate: nil,
+            avgHRV: nil,
+            avgRespiratoryRate: nil,
+            avgSpO2: nil,
+            wristTempDeltaC: nil,
+            hrv7DayAvg: nil,
+            sleepDebtMinutes: nil,
+            lastWorkoutHoursBeforeBed: nil,
+            exerciseMinutesPreviousDay: nil,
+            sourceName: "iPhone"
+        )
+    }
+
+    /// The bug finding #22 (ZOON V4 Release 1) describes: an iPhone-only or
+    /// third-party-tracker user, whose source never writes a core/deep/REM
+    /// split, used to be permanently excluded from ever earning a learned
+    /// baseline -- no matter how many efficient, well-measured nights they
+    /// had -- because `isHighQuality` required `hasStageBreakdown`. Staging
+    /// granularity has nothing to do with whether total duration is
+    /// trustworthy, so it's no longer part of the quality gate.
+    func testUnstagedButOtherwiseHighQualityNightsCanQualify() {
+        let history = (0..<LearnedSleepNeed.minimumQualifyingNights).map {
+            unstagedNight(daysAgo: $0, timeAsleepMinutes: 450)
+        }
+        let result = LearnedSleepNeed.compute(goalMinutes: 480, history: history)
+
+        XCTAssertEqual(result.qualifyingNightCount, LearnedSleepNeed.minimumQualifyingNights)
+        XCTAssertNotNil(result.learnedMinutes)
+    }
 }
