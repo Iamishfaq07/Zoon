@@ -20,6 +20,8 @@ final class UserPreferences {
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
         static let appearance = "zoon.pref.appearance"
         static let recoveryModeDate = "zoon.pref.recoveryModeDate"
+        static let experimentTag = "zoon.pref.experimentTag"
+        static let experimentStartDate = "zoon.pref.experimentStartDate"
     }
 
     private let defaults: UserDefaults
@@ -117,6 +119,45 @@ final class UserPreferences {
         recoveryModeDate = enabled ? .now : nil
     }
 
+    /// The behaviour a Guided Experiment is currently tracking, if any --
+    /// see `GuidedExperiment`. Only one at a time: running several at once
+    /// would make it unclear which behaviour a result actually belongs to,
+    /// since the matched-pair comparison already runs across the same
+    /// shared journal history regardless of what's "active".
+    private(set) var activeExperimentTag: BehaviorTag? {
+        didSet {
+            if let activeExperimentTag {
+                defaults.set(activeExperimentTag.rawValue, forKey: Key.experimentTag)
+            } else {
+                defaults.removeObject(forKey: Key.experimentTag)
+            }
+        }
+    }
+
+    /// When the active experiment was started. Not currently used to gate
+    /// anything (the matched-pair engine already looks at the tag's full
+    /// history, not just nights since this date) -- kept for display, so
+    /// the user can see how long they've been tracking it.
+    private(set) var experimentStartDate: Date? {
+        didSet {
+            if let experimentStartDate {
+                defaults.set(experimentStartDate, forKey: Key.experimentStartDate)
+            } else {
+                defaults.removeObject(forKey: Key.experimentStartDate)
+            }
+        }
+    }
+
+    func startExperiment(_ tag: BehaviorTag) {
+        activeExperimentTag = tag
+        experimentStartDate = .now
+    }
+
+    func endExperiment() {
+        activeExperimentTag = nil
+        experimentStartDate = nil
+    }
+
     /// Which insight engine to use. The LLM option is present but stubbed —
     /// see `LocalLLMInsightEngine`.
     var preferredEngine: EngineChoice {
@@ -168,6 +209,8 @@ final class UserPreferences {
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
         ) ?? .ruleBased
         self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
+        self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
+        self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
     }
 
     var sleepGoalDisplay: String {
@@ -188,6 +231,8 @@ final class UserPreferences {
         age = nil
         preferredEngine = .ruleBased
         recoveryModeDate = nil
+        activeExperimentTag = nil
+        experimentStartDate = nil
 
         let keys = [
             Key.sleepGoalMinutes,
@@ -199,6 +244,8 @@ final class UserPreferences {
             Key.smartWakeEnabled,
             Key.appearance,
             Key.recoveryModeDate,
+            Key.experimentTag,
+            Key.experimentStartDate,
         ]
         for key in keys { defaults.removeObject(forKey: key) }
     }
