@@ -25,9 +25,15 @@ final class CoachChat {
 
     struct Message: Identifiable, Sendable {
         enum Role { case user, assistant }
-        let id = UUID()
+        let id: UUID
         let role: Role
-        let text: String
+        var text: String
+
+        init(id: UUID = UUID(), role: Role, text: String) {
+            self.id = id
+            self.role = role
+            self.text = text
+        }
     }
 
     private(set) var messages: [Message] = []
@@ -87,11 +93,28 @@ final class CoachChat {
             messages.append(Message(role: .assistant, text: unavailabilityReason ?? "Not available."))
             return
         }
+
+        // Streamed rather than a single `respond(to:)` await: a Foundation
+        // Models generation can take a few seconds, and a bubble that fills
+        // in as it's written reads as "thinking out loud" the way the other
+        // on-device coaches in this category do, instead of a long pause
+        // followed by a paragraph appearing all at once. The bubble is only
+        // added to `messages` once the first token arrives, so `isResponding`
+        // (and the "Thinking…" row it drives in CoachChatView) still owns the
+        // gap before generation starts producing anything.
+        var assistantIndex: Int?
         do {
-            let response = try await session.respond(
-                to: trimmed,
-                options: GenerationOptions(temperature: 0.4)
-            )
+            let stream = session.streamResponse(to: trimmed, options: GenerationOptions(temperature: 0.4))
+            for try await partial in stream {
+                let content = partial.content
+                if let index = assistantIndex {
+                    messages[index].text = content
+                } else if !content.isEmpty {
+                    messages.append(Message(role: .assistant, text: content))
+                    assistantIndex = messages.count - 1
+                }
+            }
+
             // Same backstop FoundationModelInsightEngine applies to the
             // nightly insight: the instructions forbid diagnostic language,
             // but that's a request the model may not honour on every turn,
@@ -99,22 +122,27 @@ final class CoachChat {
             // to get it wrong on. A failed check here can't fall back to a
             // rules engine the way the nightly insight can -- there's no
             // rule-based conversation to hand off to -- so it shows a plain
-            // refusal instead of the raw response.
-            if DiagnosticLanguageGuard.rejects(response.content) {
+            // refusal instead of the raw response. Checked once, on the
+            // final accumulated text, rather than on every partial snapshot:
+            // a half-generated sentence can trip the guard on words it would
+            // never end up containing once complete.
+            if let index = assistantIndex, DiagnosticLanguageGuard.rejects(messages[index].text) {
                 logger.notice("Chat response failed the diagnostic-language check; not shown")
+                messages[index].text = "I can't help with that one -- ask me something about tonight's numbers instead."
+            } else if assistantIndex == nil {
                 messages.append(Message(
                     role: .assistant,
-                    text: "I can't help with that one -- ask me something about tonight's numbers instead."
+                    text: "Couldn't generate a response just then. Try asking again."
                 ))
-            } else {
-                messages.append(Message(role: .assistant, text: response.content))
             }
         } catch {
             logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
-            messages.append(Message(
-                role: .assistant,
-                text: "Couldn't generate a response just then. Try asking again."
-            ))
+            let failureText = "Couldn't generate a response just then. Try asking again."
+            if let index = assistantIndex {
+                messages[index].text = failureText
+            } else {
+                messages.append(Message(role: .assistant, text: failureText))
+            }
         }
         #else
         messages.append(Message(role: .assistant, text: unavailabilityReason ?? "Not available."))
