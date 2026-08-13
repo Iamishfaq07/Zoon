@@ -326,18 +326,44 @@ final class SleepDataCoordinator {
         let extractor = FeatureExtractor(healthKit: healthKit)
         let goal = preferences.sleepGoalMinutes
 
+        // Sleep-need baseline as of just before this batch, kept updated as
+        // this pass's own earlier nights land -- see the loop below. Nights
+        // this batch is about to reprocess are excluded up front so a
+        // same-night re-sync can't appear twice in "nights before" for a
+        // later night in the same pass.
+        let batchDates = Set(mainSleepPerDate.map(\.wakeDate))
+        let priorFeaturesBeforeBatch = store.allNights()
+            .filter { !batchDates.contains($0.date) }
+            .sorted { $0.date < $1.date }
+            .map { $0.features() }
+        var thisBatchFeaturesOldestFirst: [SleepNightFeatures] = []
+
         // Oldest first: each night's baseline is drawn from the nights before
-        // it, so they must land in the store in chronological order.
+        // it, so they must land in the store in chronological order. This
+        // also matters for sleepNeedBaselineMinutes below, which needs the
+        // same chronological guarantee.
         for session in mainSleepPerDate {
             let nightDate = session.wakeDate
             let baseline = store.baseline(for: nightDate, goalMinutes: goal)
             let result = await extractor.extract(from: session, baseline: baseline)
+            var features = result.features
+
+            // Frozen at first insert only (see SleepNightRecord.update's doc
+            // comment) -- computed here regardless, since store.upsert below
+            // simply ignores it on the re-sync path.
+            let priorBeforeThisNight = priorFeaturesBeforeBatch.filter { $0.date < nightDate } + thisBatchFeaturesOldestFirst
+            features.sleepNeedBaselineMinutes = LearnedSleepNeed.compute(
+                goalMinutes: goal,
+                history: priorBeforeThisNight
+            ).minutes
+
             store.upsert(
-                result.features,
+                features,
                 absoluteWristTempC: result.absoluteWristTempC,
                 confirmedAbsent: result.confirmedAbsent,
                 nightKey: session.nightKey
             )
+            thisBatchFeaturesOldestFirst.append(features)
         }
 
         let validEpisodeIDs = persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)

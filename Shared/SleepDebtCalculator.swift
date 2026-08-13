@@ -33,6 +33,18 @@ enum SleepDebtCalculator {
         return debtSeries(timeAsleepMinutesOldestFirst: nights.reversed(), goalMinutes: goalMinutes).last
     }
 
+    /// Same as `debt(timeAsleepMinutesNewestFirst:goalMinutes:)`, but each
+    /// night is judged against its own goal rather than one shared value —
+    /// see `debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`.
+    /// - Parameter goalMinutesNewestFirst: same count and order as `nights`.
+    static func debt(timeAsleepMinutesNewestFirst nights: [Double], goalMinutesNewestFirst goals: [Double]) -> Double? {
+        guard !nights.isEmpty, nights.count == goals.count else { return nil }
+        return debtSeries(
+            timeAsleepMinutesOldestFirst: Array(nights.reversed()),
+            goalMinutesOldestFirst: Array(goals.reversed())
+        ).last
+    }
+
     /// The debt figure as of *each* night, not just the final one — what a
     /// chart plotting debt over time needs.
     ///
@@ -55,10 +67,39 @@ enum SleepDebtCalculator {
         timeAsleepMinutesOldestFirst nights: S,
         goalMinutes: Double
     ) -> [Double] where S.Element == Double {
+        let nights = Array(nights)
+        return debtSeries(
+            timeAsleepMinutesOldestFirst: nights,
+            goalMinutesOldestFirst: Array(repeating: goalMinutes, count: nights.count)
+        )
+    }
+
+    /// The core recurrence every other overload in this file is defined in
+    /// terms of. Each night is judged against *its own* goal rather than one
+    /// value applied uniformly across the whole window.
+    ///
+    /// This matters once a night's goal can be a *learned* figure rather
+    /// than a stable, user-set one (see
+    /// `SleepNightRecord.sleepNeedBaselineMinutesAtProcessing`): a learned
+    /// baseline shifts as more qualifying nights accumulate, and if every
+    /// past night's shortfall were recomputed against today's latest
+    /// learned figure, all of history's debt numbers would quietly change
+    /// every time the model updates -- flickering for reasons a user has no
+    /// way to see. Each night keeps whatever goal was authoritative when it
+    /// was actually processed, frozen forever after, the same way
+    /// `timeZoneIdentifier` freezes a night's own recorded timezone instead
+    /// of reading the device's current one.
+    ///
+    /// - Parameter goalMinutesOldestFirst: same count and order as `nights`.
+    /// - Returns: debt after each night, same order and count as the input.
+    static func debtSeries(
+        timeAsleepMinutesOldestFirst nights: [Double],
+        goalMinutesOldestFirst goals: [Double]
+    ) -> [Double] {
         var debt = 0.0
         var series: [Double] = []
-        for minutes in nights {
-            debt = debt * decayPerNight + max(0, goalMinutes - minutes)
+        for (minutes, goal) in zip(nights, goals) {
+            debt = debt * decayPerNight + max(0, goal - minutes)
             series.append(debt)
         }
         return series

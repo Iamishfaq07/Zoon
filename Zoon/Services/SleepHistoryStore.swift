@@ -450,12 +450,20 @@ final class SleepHistoryStore {
     /// followed by a compensating nap previously still counted as the full
     /// shortfall every time debt was recomputed, because
     /// `secondaryEpisodeAsleepMinutes` was never consulted here.
+    ///
+    /// Each night is also judged against *its own* frozen
+    /// `sleepNeedBaselineMinutesAtProcessing` when one exists, not against
+    /// `goalMinutes` uniformly -- `goalMinutes` is only the fallback for
+    /// nights stored before that column existed. See
+    /// `SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`
+    /// for why a single shared value can't be used once a night's target can
+    /// be a learned figure rather than a stable one.
     private func sleepDebt(nights: [SleepNightRecord], goalMinutes: Double) -> Double? {
         SleepDebtCalculator.debt(
             timeAsleepMinutesNewestFirst: nights.map {
                 $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(forNightKey: $0.nightKey ?? "")
             },
-            goalMinutes: goalMinutes
+            goalMinutesNewestFirst: nights.map { $0.sleepNeedBaselineMinutesAtProcessing ?? goalMinutes }
         )
     }
 
