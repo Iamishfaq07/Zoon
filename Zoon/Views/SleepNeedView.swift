@@ -84,15 +84,31 @@ struct SleepNeedView: View {
         let nights = Array(coordinator.recentNights.suffix(30))
         if nights.count >= 3 {
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "Actual sleep vs. goal", systemImage: "chart.bar")
+                SectionHeader(title: "Actual sleep vs. learned need", systemImage: "chart.bar")
                 Chart {
                     ForEach(nights) { night in
                         BarMark(
                             x: .value("Date", night.date, unit: .day),
-                            y: .value("Hours", night.timeAsleepMinutes / 60)
+                            y: .value("Hours", night.total24hAsleepMinutes / 60)
                         )
                         .foregroundStyle(Theme.Metric.sleep.opacity(0.85))
                         .cornerRadius(2)
+                    }
+
+                    // The screen is titled and explained entirely in terms of
+                    // the learned/blended need baseline (see `hero` and
+                    // `learnedExplanationText`) -- the chart previously showed
+                    // bars with no reference line at all despite being titled
+                    // "vs. goal", so there was nothing on screen to actually
+                    // compare a night against. `learned.minutes` is always
+                    // populated (it falls back to the Settings goal itself
+                    // below `minimumQualifyingNights`), so this line is never
+                    // absent, and it tracks whichever baseline the rest of
+                    // the screen is already describing.
+                    if let learnedMinutes = learned?.minutes {
+                        RuleMark(y: .value("Need", learnedMinutes / 60))
+                            .foregroundStyle(Theme.Metric.sleep)
+                            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
                     }
 
                     if let selectedDate, let night = nights.nearest(toDay: selectedDate) {
