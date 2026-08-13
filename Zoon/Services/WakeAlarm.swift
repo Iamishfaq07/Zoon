@@ -110,9 +110,17 @@ final class WakeAlarm {
                 )
             )
 
+            // AlarmButton is a value describing a button's label, not an
+            // enum with pre-built cases -- "stop" is a role every alarm's
+            // presentation constructs by hand.
+            let stopButton = AlarmButton(
+                text: "Stop",
+                textColor: .white,
+                systemImageName: "stop.fill"
+            )
             let alert = AlarmPresentation.Alert(
                 title: "Wake window",
-                stopButton: .stopButton
+                stopButton: stopButton
             )
 
             let attributes = AlarmAttributes<EmptyAlarmMetadata>(
@@ -120,7 +128,10 @@ final class WakeAlarm {
                 tintColor: .indigo
             )
 
-            let configuration = AlarmConfiguration<EmptyAlarmMetadata>(
+            // Nested under AlarmManager, not a top-level type -- this is what
+            // "cannot find 'AlarmConfiguration' in scope" meant on the first
+            // compile.
+            let configuration = AlarmManager.AlarmConfiguration<EmptyAlarmMetadata>(
                 schedule: schedule,
                 attributes: attributes
             )
