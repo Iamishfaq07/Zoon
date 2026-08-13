@@ -54,9 +54,14 @@ struct FeatureExtractor {
         async let minHRTask = measuredMinimum(.heartRate, unit: .beatsPerMinute, in: intervals)
         // Resting HR is a once-daily value that can arrive after wake. Bound the
         // query to the wake date so a missing reading cannot silently reuse an
-        // arbitrarily old sample or reach into the following day.
-        let wakeDayStart = Calendar.current.startOfDay(for: session.end)
-        let wakeDayEnd = Calendar.current.date(
+        // arbitrarily old sample or reach into the following day. Uses the
+        // session's own recorded timezone (`wakeDate`), not the device's
+        // current one -- a traveler re-syncing a historical night from a new
+        // timezone must still get that night's own wake day, not today's.
+        var wakeCalendar = Calendar(identifier: .gregorian)
+        wakeCalendar.timeZone = TimeZone(identifier: session.timeZoneIdentifier) ?? .current
+        let wakeDayStart = session.wakeDate
+        let wakeDayEnd = wakeCalendar.date(
             byAdding: .day,
             value: 1,
             to: wakeDayStart
@@ -86,7 +91,7 @@ struct FeatureExtractor {
         let breathingOutcome = await breathingTask.map { $0 * 100 }
 
         let workoutHours = await lastWorkoutContext(before: session.start)
-        let exercisePrevious = await exerciseMinutes(onDayOf: session.start)
+        let exercisePrevious = await exerciseMinutes(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
 
         let wristTemp = wristTempOutcome.value
 
@@ -236,9 +241,13 @@ struct FeatureExtractor {
     }
 
     /// Apple Exercise minutes accumulated on the day the user went to bed,
-    /// up to bedtime.
-    private func exerciseMinutes(onDayOf bedtime: Date) async -> Double? {
-        let dayStart = Calendar.current.startOfDay(for: bedtime)
+    /// up to bedtime. Uses the session's own recorded timezone rather than
+    /// the device's current one, so re-syncing a historical night after
+    /// traveling still resolves "the day of" against that night's own zone.
+    private func exerciseMinutes(onDayOf bedtime: Date, timeZoneIdentifier: String) async -> Double? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        let dayStart = calendar.startOfDay(for: bedtime)
         guard dayStart < bedtime else { return nil }
         let interval = DateInterval(start: dayStart, end: bedtime)
         return try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)
