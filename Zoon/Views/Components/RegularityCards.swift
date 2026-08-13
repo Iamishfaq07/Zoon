@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Sleep Regularity Index, social jetlag, and the consistency dial.
+/// Sleep timing regularity, social jetlag, and the consistency dial.
 ///
 /// Given prominence on purpose. Duration is the number every app optimises;
 /// regularity is the one the evidence favours and almost nobody surfaces, so
@@ -35,7 +35,7 @@ struct RegularityCard: View {
                     symbol: "repeat",
                     tint: tint,
                     explanation: [
-                        "The Sleep Regularity Index measures how consistent your sleep and wake times are night to night, on a 0-100 scale -- it's about rhythm, not duration.",
+                        "Measures how consistent your sleep and wake times are night to night, on a 0-100 scale -- it's about rhythm, not duration. This approximates the academic Sleep Regularity Index but only samples the hours around your actual sleep, not a full 24-hour day, so it isn't presented as that exact metric.",
                         "Social jetlag is the gap between your work-day and free-day sleep midpoints. A large gap behaves physiologically a lot like crossing time zones, even without travelling."
                     ],
                     relatedArticleID: "sleep-consistency"
@@ -112,13 +112,13 @@ struct RegularityCard: View {
                     .font(Theme.numeral(24))
                     .monospacedDigit()
                     .foregroundStyle(tint)
-                Text("SRI")
+                Text("TIMING")
                     .font(Theme.text(8, weight: .bold))
                     .foregroundStyle(.tertiary)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Sleep regularity index")
+        .accessibilityLabel("Sleep timing regularity")
         .accessibilityValue("\(Int(regularity.index)) out of 100, \(regularity.band.label)")
     }
 
