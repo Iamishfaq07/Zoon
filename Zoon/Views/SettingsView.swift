@@ -8,6 +8,11 @@ struct SettingsView: View {
     @Environment(NapStore.self) private var naps
     @Environment(BedtimeReminder.self) private var reminders
 
+    /// Its own instance rather than one shared with `RootView`: `WakeAlarm`
+    /// keeps no state of its own -- AlarmKit is the store of record for
+    /// what's scheduled -- so two instances cannot disagree.
+    @State private var wakeAlarm = WakeAlarm()
+
     @State private var showingDeleteConfirmation = false
     @State private var showingDeleteFailure = false
 
@@ -164,6 +169,35 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            // Nested under the wake window because it's a property *of* it --
+            // the alarm rings at the end of the same window the notification
+            // opens -- and hidden entirely when the window is off, where it
+            // would have nothing to attach to.
+            if preferences.smartWakeEnabled {
+                Toggle(isOn: Binding(
+                    get: { preferences.wakeAlarmEnabled },
+                    set: { wantsOn in
+                        Task {
+                            if wantsOn {
+                                preferences.wakeAlarmEnabled = await wakeAlarm.requestAuthorization()
+                            } else {
+                                preferences.wakeAlarmEnabled = false
+                                wakeAlarm.cancel()
+                            }
+                        }
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Ring an alarm")
+                        Text(wakeAlarm.unavailabilityReason
+                             ?? "Sounds at the end of the window, through Silent mode and Sleep Focus.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(!wakeAlarm.isAvailable)
             }
 
             if reminders.authorization == .denied {

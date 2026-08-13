@@ -520,6 +520,13 @@ HEALTH_UPDATE_DESC = ("Zoon never writes anything to Health -- it only reads you
 MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
             "patterns. Audio is processed in short bursts and never saved or sent "
             "anywhere -- only a minutes-snoring count is kept.")
+# AlarmKit (iOS 26+) refuses to schedule without this string. Only requested
+# when the wake alarm is switched on -- see WakeAlarm and UserPreferences
+# .wakeAlarmEnabled, which is off by default precisely because an alarm rings
+# through Silent mode.
+ALARM_DESC = ("Used only if you turn on the wake alarm, so Zoon can ring at the end of "
+              "your wake window even in Silent mode or a Sleep Focus. Scheduled on this "
+              "device; nothing about your sleep leaves the phone.")
 
 PROJ_COMMON = """				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -586,6 +593,7 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
+				INFOPLIST_KEY_NSAlarmKitUsageDescription = "{ALARM_DESC}";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
