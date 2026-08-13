@@ -51,6 +51,20 @@ struct TodayView: View {
             } else {
                 morningBrief(context).entrance(0)
             }
+            if let mode = RecoveryMode.evaluate(
+                band: context.recovery.band,
+                manuallyEnabledToday: preferences.isRecoveryModeManuallyEnabledToday
+            ) {
+                RecoveryModeCard(mode: mode) {
+                    preferences.setRecoveryModeEnabledToday(false)
+                }
+                .entrance(1)
+            } else {
+                RecoveryModeEnableLink {
+                    preferences.setRecoveryModeEnabledToday(true)
+                }
+                .entrance(1)
+            }
             if let stress = coordinator.todayStress {
                 StressCard(stress: stress, todayStrain: context.strain.value).entrance(1)
             }
