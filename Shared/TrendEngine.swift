@@ -76,12 +76,15 @@ enum TrendEngine {
 
         fileprivate func value(from night: SleepNightFeatures) -> Double? {
             switch self {
-            case .duration: night.timeAsleepMinutes
-            case .bedtime: Statistics.circularMinutesFromMidnight(night.bedtime)
-            case .hrv: night.avgHRV
-            case .restingHeartRate: night.restingHeartRate
-            case .efficiency: night.sleepEfficiencyPercent
-            case .sleepDebt: night.sleepDebtMinutes
+            case .duration: return night.timeAsleepMinutes
+            case .bedtime:
+                var calendar = Calendar.current
+                calendar.timeZone = night.timeZone
+                return Statistics.circularMinutesFromMidnight(night.bedtime, calendar: calendar)
+            case .hrv: return night.avgHRV
+            case .restingHeartRate: return night.restingHeartRate
+            case .efficiency: return night.sleepEfficiencyPercent
+            case .sleepDebt: return night.sleepDebtMinutes
             }
         }
     }

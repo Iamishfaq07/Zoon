@@ -119,12 +119,17 @@ struct BodyClock: Codable, Hashable, Sendable {
         var sumSin = 0.0
         var sumCos = 0.0
         var durations: [Double] = []
+        var localCalendar = calendar
 
         for night in nights {
             let midpoint = night.bedtime.addingTimeInterval(
                 night.wakeTime.timeIntervalSince(night.bedtime) / 2
             )
-            let components = calendar.dateComponents([.hour, .minute], from: midpoint)
+            // Each night's own timezone, not the caller's -- same reasoning
+            // as SleepRegularity.midpoints: a historical bedtime's wall-clock
+            // hour doesn't change because the user has since traveled.
+            localCalendar.timeZone = night.timeZone
+            let components = localCalendar.dateComponents([.hour, .minute], from: midpoint)
             let hours = Double(components.hour ?? 0) + Double(components.minute ?? 0) / 60
 
             let angle = hours / 24 * 2 * .pi

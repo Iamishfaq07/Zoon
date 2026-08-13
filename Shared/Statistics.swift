@@ -98,6 +98,12 @@ enum Statistics {
     /// calculation in this app already shares (see
     /// `DayContextBuilder.shiftedBedtimeHour`), restated here in minutes for
     /// the statistics that want finer resolution than a fractional hour.
+    ///
+    /// - Parameter calendar: pass one with its `timeZone` set to the night's
+    ///   own timezone (`SleepNightFeatures.timeZone`) when `date` is a
+    ///   historical bedtime/wake time -- the default `.current` is only
+    ///   correct for "right now" values, since a past wall-clock hour
+    ///   doesn't change because the device has since changed timezone.
     static func circularMinutesFromMidnight(_ date: Date, calendar: Calendar = .current) -> Double {
         let components = calendar.dateComponents([.hour, .minute], from: date)
         let minutes = Double((components.hour ?? 0) * 60 + (components.minute ?? 0))

@@ -326,7 +326,9 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     }
 
     private static func midpointHours(_ night: SleepNightFeatures) -> Double {
-        let onset = Statistics.circularMinutesFromMidnight(night.bedtime) / 60
+        var calendar = Calendar.current
+        calendar.timeZone = night.timeZone
+        let onset = Statistics.circularMinutesFromMidnight(night.bedtime, calendar: calendar) / 60
         let span = night.wakeTime.timeIntervalSince(night.bedtime) / 3600
         return onset + span / 2
     }
