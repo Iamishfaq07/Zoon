@@ -123,7 +123,7 @@ struct DayContextBuilder {
         // --- Chronotype ---------------------------------------------------
         let allNights = history + [night]
         let chronotype = Chronotype.infer(
-            bedtimeHours: allNights.map { Self.shiftedBedtimeHour($0.bedtime) },
+            bedtimeHours: allNights.map { Self.shiftedBedtimeHour($0.bedtime, timeZone: $0.timeZone) },
             durations: allNights.map(\.timeAsleepMinutes),
             consistencyMinutes: inputs.bedtimeConsistencyMinutes
         )
@@ -182,8 +182,15 @@ struct DayContextBuilder {
     ///
     /// Same convention the consistency chart uses. Without the shift, a steady
     /// 23:50 sleeper and a steady 00:10 sleeper look 23 hours apart.
-    static func shiftedBedtimeHour(_ date: Date) -> Double {
-        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+    ///
+    /// - Parameter timeZone: the night's own timezone, not the device's
+    ///   current one -- a historical bedtime's wall-clock hour doesn't change
+    ///   because the user has since traveled. Defaults to `.current` only for
+    ///   call sites with no per-night timezone available (mock data).
+    static func shiftedBedtimeHour(_ date: Date, timeZone: TimeZone = .current) -> Double {
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.hour, .minute], from: date)
         let hour = Double(components.hour ?? 0) + Double(components.minute ?? 0) / 60
         return hour >= 18 ? hour - 24 : hour
     }

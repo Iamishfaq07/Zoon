@@ -146,6 +146,17 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// site. Empty is a legitimate value — sources without staging produce no
     /// segments, and the hypnogram hides itself rather than drawing a flat line.
     var stageSegments: [StageSegment] = []
+
+    /// Timezone the HealthKit samples were recorded in, not the device's
+    /// current one -- see `SleepSession.timeZoneIdentifier`. Anything that
+    /// extracts a wall-clock hour or a weekday from `bedtime`/`wakeTime` for
+    /// a *historical* night (chronotype, regularity's midpoints) must use
+    /// this, not `Calendar.current`, or a traveler's past nights silently
+    /// reclassify themselves every time the device's timezone changes.
+    /// Declared with a default so it stays optional at every existing call
+    /// site; defaults to the device's timezone at construction time, which is
+    /// only wrong for mock/test data that doesn't care.
+    var timeZoneIdentifier: String = TimeZone.current.identifier
 }
 
 // MARK: - Derived values
@@ -182,6 +193,10 @@ extension SleepNightFeatures {
         let total = max(0, Int(minutes.rounded()))
         return "\(total / 60)h \(total % 60)m"
     }
+
+    /// `timeZoneIdentifier` resolved, falling back to the device's current
+    /// timezone for an unresolvable or pre-migration identifier.
+    var timeZone: TimeZone { TimeZone(identifier: timeZoneIdentifier) ?? .current }
 }
 
 // MARK: - LLM prompt payload
