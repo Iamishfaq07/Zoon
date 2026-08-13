@@ -98,34 +98,44 @@ enum Theme {
         endPoint: .bottom
     )
 
-    /// A hardcoded white overlay reads as a hairline in Dark and is nearly
-    /// invisible against a light card in Light -- glass needs a dark edge to
-    /// read as glass once the surface behind it is pale rather than black.
-    /// Light also needs *more* contrast than Dark to read as a distinct
-    /// surface at all: the ground is a pale lavender, not near-black, so the
-    /// same low opacity that separates a card from Dark's ground all but
-    /// vanishes against Light's -- alpha is split per-appearance below for
-    /// exactly that reason, not just the hue.
-    ///
-    /// Built as its own `UIColor(dynamicProvider:)` rather than composed from
-    /// `adaptive(...).opacity(...)`, because `Color.opacity` takes a plain
-    /// `Double` fixed at call time -- it can't itself vary per trait, only
-    /// the colour it's applied to can. Baking the alpha into the same
-    /// per-trait closure `adaptive` already uses is what lets this resolve
-    /// correctly at render time for whichever trait environment the view is
-    /// actually in (System, or an explicit override), the same as every
-    /// other adaptive token in this file.
-    static var cardStroke: Color { cardTint(darkAlpha: 0.08, lightAlpha: 0.16) }
-    static var cardFill: Color { cardTint(darkAlpha: 0.05, lightAlpha: 0.10) }
+    /// A hairline edge. Needs a dark edge to read as glass once the surface
+    /// behind it is pale rather than black, and needs *more* contrast than
+    /// Dark to read at all: the ground is a pale lavender, not near-black,
+    /// so the same low opacity that separates a card from Dark's ground all
+    /// but vanishes against Light's.
+    static var cardStroke: Color { cardTint(dark: (1, 1, 1, 0.08), light: (0, 0, 0, 0.16)) }
 
-    private static func cardTint(darkAlpha: Double, lightAlpha: Double) -> Color {
+    /// The tint that sits between the blurred material and the stroke.
+    ///
+    /// Dark and Light are solving different problems here, not the same
+    /// problem at different strengths -- that's why they're opposite
+    /// *hues*, not just opposite alphas. In Dark, `.ultraThinMaterial`
+    /// already reads as glass against the near-black ground; a faint white
+    /// tint only needs to lift it slightly. In Light, a dark tint over the
+    /// material would just desaturate the blur toward grey -- it was tried
+    /// first and still looked cheap, because darkening translucency doesn't
+    /// make it solid. What actually reads as a real card (compare this
+    /// file's Settings screen, which uses opaque system-background rows and
+    /// looks crisp for free) is pushing the material toward *opaque white*,
+    /// which is a light tint at high alpha, not a dark one at low alpha.
+    static var cardFill: Color { cardTint(dark: (1, 1, 1, 0.05), light: (1, 1, 1, 0.65)) }
+
+    /// Builds a colour whose RGB *and* alpha both depend on the trait
+    /// environment, via the same `UIColor(dynamicProvider:)` mechanism
+    /// `adaptive(dark:light:)` uses for RGB alone -- needed here because
+    /// `Color.opacity` takes a plain `Double` fixed at call time, so it
+    /// can't itself vary per trait; only the colour it's applied to can.
+    private static func cardTint(
+        dark: (Double, Double, Double, Double),
+        light: (Double, Double, Double, Double)
+    ) -> Color {
         #if os(watchOS)
-        return Color.white.opacity(darkAlpha)
+        let (r, g, b, a) = dark
+        return Color(red: r, green: g, blue: b, opacity: a)
         #else
         return Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1, alpha: darkAlpha)
-                : UIColor(white: 0, alpha: lightAlpha)
+            let (r, g, b, a) = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: r, green: g, blue: b, alpha: a)
         })
         #endif
     }
