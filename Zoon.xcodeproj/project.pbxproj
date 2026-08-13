@@ -18,6 +18,7 @@
 		035399DC9B7B9ACE19D72706 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
 		03E7869606F5553CA5B649F2 /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
 		03EBF055E8DAC3970890E5FF /* SoundEventClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6304DF11AEA03F4B1B314387 /* SoundEventClassifier.swift */; };
+		03F34FAD9EAD00165CF4EEC6 /* WakeAlarm.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32F7CEA939645724CB03401 /* WakeAlarm.swift */; };
 		04318CE0CEDDDA3D0C9BB115 /* BreathingHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44CDDE704425E14E8BE8AC0C /* BreathingHealthView.swift */; };
 		0535EE578DDA779EBAFE742F /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
 		06CC92A4FE5BAE616FAF69C1 /* StressScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BFFA2C02EE15C5E13B57E9B /* StressScore.swift */; };
@@ -554,6 +555,7 @@
 		ECE30B82E446955CA1BDB5BB /* SleepIntelligenceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepIntelligenceCard.swift"; sourceTree = "<group>"; };
 		EF14B47CE493455F452C408F /* FoundationModelInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FoundationModelInsightEngine.swift"; sourceTree = "<group>"; };
 		F22352B1B6ACE1C047925BE1 /* SleepRegularityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepRegularityTests.swift"; sourceTree = "<group>"; };
+		F32F7CEA939645724CB03401 /* WakeAlarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WakeAlarm.swift"; sourceTree = "<group>"; };
 		F381FE30E3EFE052D944E960 /* DiagnosticLanguageGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DiagnosticLanguageGuardTests.swift"; sourceTree = "<group>"; };
 		F39A93CBDC0796684C98A6E4 /* WeeklyWrappedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyWrappedCard.swift"; sourceTree = "<group>"; };
 		F4977AA8C1CBFC108D7F5ACA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
@@ -677,6 +679,7 @@
 				6304DF11AEA03F4B1B314387,
 				50CF9DD82140B1DCFD4BCC5B,
 				710B9A0DBC682D2A2A6A1F4E,
+				F32F7CEA939645724CB03401,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1161,6 +1164,7 @@
 				03EBF055E8DAC3970890E5FF,
 				91F21B4426BE45CB5A46D94E,
 				63F21DE5FD17061A3D6B660F,
+				03F34FAD9EAD00165CF4EEC6,
 				1C9C1B3034C0D104BD6704D3,
 				A4B7411879E841FB3F1FB605,
 				9AA5CD9B20F3F55A2D0EBBEE,
@@ -1519,6 +1523,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon never writes anything to Health -- it only reads your sleep and vitals. This permission is requested only because the app's HealthKit entitlement requires it; no data is ever saved back.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
+				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -1703,6 +1708,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon never writes anything to Health -- it only reads your sleep and vitals. This permission is requested only because the app's HealthKit entitlement requires it; no data is ever saved back.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
+				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

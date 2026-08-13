@@ -13,6 +13,10 @@ struct RootView: View {
                                             ?? LaunchOptions.initialTab) ?? .today
     /// Set when a Control Center button asked for a specific screen.
     @State private var sleepPath = NavigationPath()
+    /// Owned here rather than injected: this is the only place that re-arms
+    /// the wake schedule, and `WakeAlarm` holds no state worth sharing --
+    /// AlarmKit itself is the store of record for what's scheduled.
+    @State private var wakeAlarm = WakeAlarm()
 
     /// Today, Sleep, Insights, Coach — Journal and Settings/More moved off
     /// the tab bar entirely (see `GlobalPresentation`), which is what frees
@@ -126,10 +130,25 @@ struct RootView: View {
         guard preferences.smartWakeEnabled,
               let wakeTime = coordinator.state.context?.bodyClock?.window(for: .now)?.end
         else {
-            if !preferences.smartWakeEnabled { reminders.cancelWakeWindow() }
+            if !preferences.smartWakeEnabled {
+                reminders.cancelWakeWindow()
+                wakeAlarm.cancel()
+            }
             return
         }
         await reminders.scheduleWakeWindow(wakeTime: wakeTime, leadMinutes: Self.wakeWindowLeadMinutes)
+
+        // The notification and the alarm are two halves of one idea, not
+        // duplicates: the notification fires at the *start* of the window as a
+        // silent nudge that catches someone already stirring, and the alarm
+        // rings at the *end* of it as the backstop that actually wakes anyone
+        // still asleep. Scheduling the alarm at the window's start instead
+        // would just be an alarm 20 minutes early.
+        if preferences.wakeAlarmEnabled {
+            await wakeAlarm.schedule(at: wakeTime)
+        } else {
+            wakeAlarm.cancel()
+        }
     }
 
     /// How early the wake-window notification can fire relative to the usual

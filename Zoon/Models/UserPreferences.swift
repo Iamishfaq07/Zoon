@@ -18,6 +18,7 @@ final class UserPreferences {
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
+        static let wakeAlarmEnabled = "zoon.pref.wakeAlarmEnabled"
         static let appearance = "zoon.pref.appearance"
         static let recoveryModeDate = "zoon.pref.recoveryModeDate"
         static let experimentTag = "zoon.pref.experimentTag"
@@ -53,6 +54,19 @@ final class UserPreferences {
     /// Wake-window notification — see `BedtimeReminder.scheduleWakeWindow`.
     var smartWakeEnabled: Bool {
         didSet { defaults.set(smartWakeEnabled, forKey: Key.smartWakeEnabled) }
+    }
+
+    /// A real alarm at the end of the wake window — see `WakeAlarm`.
+    ///
+    /// Its own toggle rather than riding on `smartWakeEnabled`, and off by
+    /// default, for one reason: the wake window has always been a *silent*
+    /// notification, and an alarm rings through Silent mode and a Sleep
+    /// Focus. Turning it on for everyone who already enabled the notification
+    /// would mean an OS update silently converting something that has never
+    /// made a sound into something that blasts them awake. Nobody should be
+    /// woken by an app because they updated it.
+    var wakeAlarmEnabled: Bool {
+        didSet { defaults.set(wakeAlarmEnabled, forKey: Key.wakeAlarmEnabled) }
     }
 
     /// System / Dark / Light. Defaults to Dark, not System: the palette was
@@ -200,6 +214,7 @@ final class UserPreferences {
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
         self.cycleTrackingEnabled = defaults.bool(forKey: Key.cycleTrackingEnabled)
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
+        self.wakeAlarmEnabled = defaults.bool(forKey: Key.wakeAlarmEnabled)
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: Key.appearance) ?? ""
         ) ?? .dark
@@ -227,6 +242,7 @@ final class UserPreferences {
         bedtimeRemindersEnabled = false
         cycleTrackingEnabled = false
         smartWakeEnabled = false
+        wakeAlarmEnabled = false
         appearance = .dark
         age = nil
         preferredEngine = .ruleBased
@@ -242,6 +258,7 @@ final class UserPreferences {
             Key.bedtimeRemindersEnabled,
             Key.cycleTrackingEnabled,
             Key.smartWakeEnabled,
+            Key.wakeAlarmEnabled,
             Key.appearance,
             Key.recoveryModeDate,
             Key.experimentTag,
