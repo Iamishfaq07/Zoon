@@ -135,6 +135,42 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// A quick subjective read on how the morning feels, logged separately from
+/// any measured score.
+///
+/// Deliberately not fed into `RecoveryScore`, `SleepIntelligenceScore`, or any
+/// other computed metric: those are built specifically to be measured rather
+/// than self-reported, and blending a five-point mood scale into a number
+/// built from HRV and sleep staging would muddy what that number means
+/// without making it more accurate. This exists for the user's own record,
+/// and as a future confounder `JournalCorrelator` could match on -- not
+/// (yet) as scoring input.
+enum MorningFeeling: Int, Codable, CaseIterable, Identifiable, Sendable {
+    case terrible = 1, poor, okay, good, great
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .terrible: "Terrible"
+        case .poor: "Poor"
+        case .okay: "Okay"
+        case .good: "Good"
+        case .great: "Great"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .terrible: "face.dashed"
+        case .poor: "cloud.rain"
+        case .okay: "minus.circle"
+        case .good: "sun.min"
+        case .great: "sun.max"
+        }
+    }
+}
+
 /// One day's tagged behaviours, keyed to the night they preceded.
 @Model
 final class JournalEntry {
@@ -152,6 +188,12 @@ final class JournalEntry {
     /// the user's own recall.
     var note: String?
 
+    /// This morning's self-reported feeling, if logged. Optional so existing
+    /// stores migrate without assigning every historical row a value nobody
+    /// actually reported -- same backfill-safe pattern used for
+    /// `SleepNightRecord.nightKey` and `.timeZoneIdentifier`.
+    var feelingRaw: Int?
+
     var updatedAt: Date
 
     init(date: Date, tags: [BehaviorTag] = [], note: String? = nil) {
@@ -159,6 +201,14 @@ final class JournalEntry {
         self.tagIdentifiers = tags.map(\.rawValue)
         self.note = note
         self.updatedAt = .now
+    }
+
+    var feeling: MorningFeeling? {
+        get { feelingRaw.flatMap(MorningFeeling.init(rawValue:)) }
+        set {
+            feelingRaw = newValue?.rawValue
+            updatedAt = .now
+        }
     }
 
     var tags: [BehaviorTag] {
