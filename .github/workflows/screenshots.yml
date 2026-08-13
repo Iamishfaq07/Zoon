@@ -12,7 +12,9 @@ name: Screenshots
 #
 # Deliberately not on every push: booting a simulator is slow, and macOS
 # minutes bill at 10x on private repos. This comment-only edit exists to
-# retrigger a capture after the seven-feature batch landed. Two ways to run it:
+# retrigger a capture after the Liquid Glass sheen change (Theme.GlassCard)
+# landed, to check it visually rather than merging a design change blind.
+# Two ways to run it:
 #
 #   - **Actions tab → Screenshots → Run workflow.** Note that GitHub only
 #     offers that button for workflows present on the *default* branch, so
