@@ -182,9 +182,18 @@ jobs:
             # --terminate-running-process so each tab gets a clean launch;
             # the tab is chosen at launch (see LaunchOptions) rather than by
             # driving the tab bar, which would need a UI-test target.
+            #
+            # `${appearance_args[@]+"${appearance_args[@]}"}`, not a plain
+            # `"${appearance_args[@]}"`: /bin/bash on macOS is 3.2 (Apple
+            # freezes it there for licensing reasons), and bash 3.2 treats
+            # expanding an *empty* array under `set -u` as an unbound
+            # variable -- a real bug, fixed upstream in bash 4.4, that fired
+            # on every dark-appearance shot (the common case, since
+            # appearance_args only gets populated for light) and aborted the
+            # whole capture before a single screenshot was taken.
             xcrun simctl launch --terminate-running-process "$UDID" \
               "$BUNDLE_ID" -zoonDemo YES -zoonTab "$tab" \
-              "${appearance_args[@]}" > /dev/null
+              ${appearance_args[@]+"${appearance_args[@]}"} > /dev/null
 
             # SwiftUI needs a moment to lay out and run its entry animations.
             # Polling for "the view is ready" isn't possible from outside the
