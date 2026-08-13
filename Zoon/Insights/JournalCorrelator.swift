@@ -230,6 +230,34 @@ struct JournalCorrelator {
         }
     }
 
+    /// Behaviours that actually got a fair test -- enough comparable nights
+    /// existed to run at least one matched-pair comparison -- but no metric
+    /// cleared the effect-size bar. This is a third, distinct answer from
+    /// `stillLearning`: those tags never had enough data to compare at all;
+    /// these did, and "no clear pattern found" is itself real information
+    /// worth showing, not silence that reads the same as "not enough data
+    /// yet" to someone who has diligently logged a behaviour for weeks.
+    ///
+    /// Not exhaustive: a tag can in principle clear `minimumMatchedPairs` on
+    /// raw exposed-night count yet still fail to produce that many *matched*
+    /// pairs for every metric (the weekend/weekday hard constraint or the
+    /// distance cutoff in `bestMatch` can exhaust the comparison pool). That
+    /// residual case is rare enough in practice, and correctly falls back to
+    /// simply not appearing in any tab, matching this method's prior
+    /// (unhandled) behaviour rather than a regression.
+    func testedNoEffect(from observations: [Observation]) -> [BehaviorTag] {
+        let foundTags = Set(findings(from: observations).map(\.tag))
+        let learningTags = Set(stillLearning(from: observations).map(\.tag))
+
+        return BehaviorTag.allCases.filter { tag in
+            guard !foundTags.contains(tag), !learningTags.contains(tag) else { return false }
+            return Metric.allCases.contains { metric in
+                (matchedPairs(tag: tag, metric: metric, observations: observations)?.count ?? 0)
+                    >= Self.minimumMatchedPairs
+            }
+        }
+    }
+
     // MARK: - Matching
 
     private struct MatchedPair {
