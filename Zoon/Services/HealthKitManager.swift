@@ -515,6 +515,29 @@ final class HealthKitManager {
             store.execute(query)
         }
     }
+
+    /// Every workout overlapping `interval` -- used to exclude exercise
+    /// windows from the Stress Score's daytime HR/HRV average, since a hard
+    /// workout legitimately elevates both and isn't autonomic stress.
+    func workouts(in interval: DateInterval) async throws -> [HKWorkout] {
+        let predicate = HKQuery.predicateForSamples(withStart: interval.start, end: interval.end)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: (samples as? [HKWorkout]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
 }
 
 // MARK: - Supporting types

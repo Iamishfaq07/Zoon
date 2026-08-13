@@ -611,6 +611,12 @@ final class SleepDataCoordinator {
     /// pipeline: it has nothing to do with sessions or SwiftData, and running
     /// it independently means a HealthKit hiccup here can never block the
     /// night's real data from landing.
+    ///
+    /// Workout windows are excluded from the average before it's computed --
+    /// a hard run legitimately elevates HR and suppresses HRV, and neither is
+    /// autonomic stress. Without this, going for a run reads as "Elevated" or
+    /// "High" stress, which is backwards: it's normal, healthy exertion, not
+    /// the sustained-load pattern this score exists to flag.
     private func refreshTodayStress() async {
         guard DataEnvironment.current.isLive else {
             todayStress = AppMockData.stress
@@ -624,9 +630,14 @@ final class SleepDataCoordinator {
         guard samplingStart < now else { return }
         let interval = DateInterval(start: samplingStart, end: now)
 
-        async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: [interval])
+        let workouts = (try? await healthKit.workouts(in: interval)) ?? []
+        let workoutIntervals = workouts.map { DateInterval(start: $0.startDate, end: $0.endDate) }
+        let samplingIntervals = DateInterval.subtracting(workoutIntervals, from: interval)
+        guard !samplingIntervals.isEmpty else { return }
+
+        async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: samplingIntervals)
         async let hrvTask = try? healthKit.average(
-            .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: [interval]
+            .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: samplingIntervals
         )
         let avgHR = await hrTask ?? nil
         let avgHRV = await hrvTask ?? nil
@@ -638,7 +649,7 @@ final class SleepDataCoordinator {
             avgHRV: avgHRV,
             hrBaseline: baseline.restingHeartRate7DayAvg,
             hrvBaseline: baseline.hrv7DayAvg,
-            sampledMinutes: now.timeIntervalSince(samplingStart) / 60,
+            sampledMinutes: samplingIntervals.reduce(0) { $0 + $1.duration } / 60,
             baselineNightCount: baseline.sampleCount
         )
     }
