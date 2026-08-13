@@ -212,10 +212,23 @@ final class SleepDataCoordinator {
     }
 
     /// Full pass: fetch, extract, persist, derive metrics, publish to widget.
+    ///
+    /// The `isRefreshing` guard is the very first thing that runs, ahead of
+    /// even `refreshTodayStress`/`refreshCycleData`. It used to sit after
+    /// them, which meant every overlapping call -- a foreground activation
+    /// landing while an observer-triggered refresh was still mid-flight,
+    /// say -- redundantly re-ran both before finding out a full refresh was
+    /// already in progress and bailing. `@MainActor` isolation already
+    /// makes checking and setting `isRefreshing` here race-free; the bug was
+    /// purely about what ran before that check, not about the flag itself.
     func refresh() async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
         await refreshTodayStress()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
-        guard !isRefreshing else { return }
+
         // Also guarded here: `refresh()` runs again on every foreground, and a
         // demo session that quietly swapped to live data on the second
         // activation would be worse than one that never started.
@@ -223,9 +236,6 @@ final class SleepDataCoordinator {
             loadMockData()
             return
         }
-
-        isRefreshing = true
-        defer { isRefreshing = false }
 
         if case .idle = state { state = .loading }
 
