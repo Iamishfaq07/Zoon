@@ -4,16 +4,20 @@ import SwiftUI
 /// generic sleep-hygiene advice.
 ///
 /// A dedicated screen for what used to be a handful of rows buried at the
-/// bottom of the Journal tab. Three tabs, matching the spec this implements:
-/// behaviours with a strong enough matched-pair signal to call "helps" or
-/// "hurts", and behaviours logged too few times yet to say anything about --
-/// shown honestly as still learning rather than silently absent.
+/// bottom of the Journal tab. Four tabs, one per exposure state a logged
+/// behaviour can honestly be in: a strong enough matched-pair signal to call
+/// "helps" or "hurts"; tested with enough comparable nights but no effect
+/// found; or logged too few times yet to say anything about at all. All
+/// three non-obvious states are shown explicitly rather than left silently
+/// absent -- "no effect" and "still learning" look identical from the
+/// outside (both mean "nothing in Helps/Hurts") unless the app says which
+/// one it actually is.
 struct CauseFinderView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case helps = "Helps", hurts = "Hurts", learning = "Still Learning"
+        case helps = "Helps", hurts = "Hurts", noEffect = "No Effect", learning = "Still Learning"
         var id: String { rawValue }
     }
 
@@ -31,6 +35,9 @@ struct CauseFinderView: View {
     private var harmful: [JournalCorrelator.Finding] { findings.filter { !$0.isImprovement } }
     private var learning: [JournalCorrelator.LearningTag] {
         JournalCorrelator().stillLearning(from: observations)
+    }
+    private var noEffect: [BehaviorTag] {
+        JournalCorrelator().testedNoEffect(from: observations)
     }
 
     var body: some View {
@@ -76,6 +83,12 @@ struct CauseFinderView: View {
                 emptyState("Nothing clears the bar yet. That's a genuinely good sign, not a data gap.")
             } else {
                 ForEach(harmful) { CauseFinderRow(finding: $0) }
+            }
+        case .noEffect:
+            if noEffect.isEmpty {
+                emptyState("Nothing here yet. Behaviours land in this tab once there's enough logged data to test them, whether or not a pattern turns up.")
+            } else {
+                ForEach(noEffect) { NoEffectRow(tag: $0) }
             }
         case .learning:
             if learning.isEmpty {
@@ -180,6 +193,28 @@ private struct LearningRow: View {
             Text("Needs about \(tag.remainingNights) more comparable night\(tag.remainingNights == 1 ? "" : "s") before Zoon will call anything a pattern.")
                 .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
+        }
+        .glassCard()
+    }
+}
+
+private struct NoEffectRow: View {
+    let tag: BehaviorTag
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: tag.symbol)
+                .foregroundStyle(.secondary)
+                .frame(width: 24, height: 24)
+                .background(Theme.neutral(0.06), in: Circle())
+            VStack(alignment: .leading, spacing: 1) {
+                Text(tag.label)
+                    .font(Theme.label(14, weight: .semibold))
+                Text("No meaningful difference found in your data so far.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
         }
         .glassCard()
     }
