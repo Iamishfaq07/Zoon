@@ -151,8 +151,29 @@ enum Theme {
     /// A neutral overlay with caller-controlled strength. This is for rings,
     /// ticks and empty chart cells where a literal white works in Dark but
     /// disappears on the dawn palette in Light.
+    ///
+    /// Light doubles the caller's opacity, not just flips the hue: these
+    /// tracks and ticks sit directly on a surface (a card's now-opaque fill,
+    /// or the page background) rather than behind blurred material, so
+    /// unlike `cardFill` this doesn't need a hue change to read -- black-on-
+    /// light is already the right direction. But the same absolute opacity
+    /// that separates from Dark's near-black ground is still too faint
+    /// against Light's pale ground, the same gap `cardStroke` had before it
+    /// was split per-appearance. `MetricRing`'s track (the ring around
+    /// "Stress today" on the Today screen) is the one call site verified by
+    /// screenshot; the doubling is applied uniformly to the other ~15
+    /// call sites (progress tracks, unselected pills, empty ring segments)
+    /// by the same reasoning, not independently re-verified per screen.
     static func neutral(_ opacity: Double) -> Color {
-        adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(opacity)
+        #if os(watchOS)
+        return Color.white.opacity(opacity)
+        #else
+        return Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(white: 1, alpha: opacity)
+                : UIColor(white: 0, alpha: min(opacity * 2, 1))
+        })
+        #endif
     }
 
     /// A glass card's specular highlight -- the soft sheen a curved glass
