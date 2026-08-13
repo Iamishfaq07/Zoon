@@ -7,6 +7,7 @@ struct SnoreCheckView: View {
 
     @State private var detector = SnoreDetector()
     @State private var store = SnoreStore()
+    @State private var eventStore = SoundEventStore()
     @State private var permissionDenied = false
 
     var body: some View {
@@ -17,6 +18,10 @@ struct SnoreCheckView: View {
                 runningCard
             } else if let last = store.mostRecent {
                 lastNightCard(last)
+            }
+
+            if !detector.isRunning && !eventStore.recentEvents.isEmpty {
+                eventsCard
             }
 
             Spacer(minLength: 0)
@@ -86,6 +91,35 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    /// A timestamped list, not just a count -- "3am, a cough; 4:20am,
+    /// snoring" is something to actually look at, where a second aggregate
+    /// number next to the existing snore percentage would only compete with
+    /// it for attention.
+    private var eventsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Events", systemImage: "list.bullet.clipboard")
+            ForEach(eventStore.recentEvents) { event in
+                HStack(spacing: 10) {
+                    Image(systemName: event.symbol)
+                        .font(Theme.text(13))
+                        .foregroundStyle(Theme.Metric.sleep)
+                        .frame(width: 20)
+                    Text(event.label)
+                        .font(Theme.text(13))
+                    Spacer()
+                    Text(event.date, style: .time)
+                        .font(Theme.text(12))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                if event.id != eventStore.recentEvents.last?.id {
+                    Divider().overlay(Theme.cardStroke)
+                }
+            }
+        }
+        .glassCard()
+    }
+
     private var actionButton: some View {
         Button {
             Haptics.tap()
@@ -115,8 +149,10 @@ struct SnoreCheckView: View {
 
     private func toggle() async {
         if detector.isRunning {
+            let recognizedEvents = detector.recentEvents
             if let summary = detector.stop() {
                 store.record(summary)
+                eventStore.record(recognizedEvents)
             }
             return
         }

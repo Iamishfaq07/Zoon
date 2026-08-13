@@ -762,6 +762,7 @@ final class SleepDataCoordinator {
         let journalDeleted = journal.deleteAll()
         naps.deleteAll()
         SnoreStore.erasePersistedData()
+        SoundEventStore.erasePersistedData()
         let snapshotDeleted = SnapshotStore.clear()
         let legacyStoreDeleted = PersistentStore.eraseLegacyStoreFiles()
         let temporaryExportsDeleted = DataExporter.clearTemporaryExports()
