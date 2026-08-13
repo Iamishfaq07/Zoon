@@ -98,7 +98,7 @@ final class SleepDataCoordinator {
     /// Pushes the snapshot to a paired Apple Watch. Owned here because this is
     /// the one place a finished snapshot exists.
     private let watchLink = WatchLink()
-    private let sessionBuilder = SleepSessionBuilder()
+    private var sessionBuilder = SleepSessionBuilder()
     private let contextBuilder = DayContextBuilder()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Coordinator")
 
@@ -307,6 +307,7 @@ final class SleepDataCoordinator {
     @discardableResult
     private func processSessions(from samples: [HKCategorySample], window: DateInterval) async -> Bool {
         store.beginTrackingWrites()
+        sessionBuilder.preferredSourceName = preferences.preferredSleepSourceName
         let sessions = sessionBuilder.buildSessions(from: samples)
 
         // `SleepNightRecord` is one row per wake date, so a main sleep and a
@@ -709,6 +710,12 @@ final class SleepDataCoordinator {
         case .localLLM:
             LocalLLMInsightEngine(fallback: RuleBasedInsightEngine())
         }
+    }
+
+    /// Source names available to pick from in Settings -- see
+    /// `UserPreferences.preferredSleepSourceName`.
+    func knownSleepSourceNames() -> [String] {
+        store.knownSourceNames()
     }
 
     func setEngine(_ choice: UserPreferences.EngineChoice) {

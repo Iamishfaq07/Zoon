@@ -23,6 +23,7 @@ final class UserPreferences {
         static let recoveryModeDate = "zoon.pref.recoveryModeDate"
         static let experimentTag = "zoon.pref.experimentTag"
         static let experimentStartDate = "zoon.pref.experimentStartDate"
+        static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
     }
 
     private let defaults: UserDefaults
@@ -178,6 +179,25 @@ final class UserPreferences {
         didSet { defaults.set(preferredEngine.rawValue, forKey: Key.preferredEngine) }
     }
 
+    /// The HealthKit source name to prefer when more than one source writes
+    /// sleep for the same cluster of samples -- e.g. an Apple Watch and a
+    /// third-party tracker both reporting the same night. `nil` (the
+    /// default) means automatic: `SleepSessionBuilder` picks whichever
+    /// source has the richest staged coverage, same as before this setting
+    /// existed. When set, a cluster whose sources include this name uses it
+    /// outright; a cluster that doesn't (this source simply didn't write
+    /// anything that night) still falls back to automatic picking rather
+    /// than silently discarding the night.
+    var preferredSleepSourceName: String? {
+        didSet {
+            if let preferredSleepSourceName {
+                defaults.set(preferredSleepSourceName, forKey: Key.preferredSleepSourceName)
+            } else {
+                defaults.removeObject(forKey: Key.preferredSleepSourceName)
+            }
+        }
+    }
+
     enum EngineChoice: String, CaseIterable, Identifiable {
         case ruleBased
         case appleIntelligence
@@ -226,6 +246,7 @@ final class UserPreferences {
         self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
         self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
+        self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
     }
 
     var sleepGoalDisplay: String {
@@ -249,6 +270,7 @@ final class UserPreferences {
         recoveryModeDate = nil
         activeExperimentTag = nil
         experimentStartDate = nil
+        preferredSleepSourceName = nil
 
         let keys = [
             Key.sleepGoalMinutes,
@@ -262,6 +284,7 @@ final class UserPreferences {
             Key.appearance,
             Key.recoveryModeDate,
             Key.experimentTag,
+            Key.preferredSleepSourceName,
             Key.experimentStartDate,
         ]
         for key in keys { defaults.removeObject(forKey: key) }

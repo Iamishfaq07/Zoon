@@ -68,6 +68,18 @@ final class SleepHistoryStore {
         (try? context.fetchCount(FetchDescriptor<SleepNightRecord>())) ?? 0 == 0
     }
 
+    /// Distinct HealthKit source names seen across every stored night and
+    /// episode, sorted alphabetically -- the choices for the "Preferred
+    /// source" setting. Built from what's already on disk rather than a
+    /// fresh HealthKit source query: nothing new to ask permission for, and
+    /// it naturally only lists sources that have actually written sleep for
+    /// this person, not every source HealthKit happens to know about.
+    func knownSourceNames() -> [String] {
+        let nightSources = allNights().compactMap(\.sourceName)
+        let episodeSources = (try? context.fetch(FetchDescriptor<SleepEpisodeRecord>()))?.compactMap(\.sourceName) ?? []
+        return Set(nightSources + episodeSources).sorted()
+    }
+
     /// Every stored night, oldest first, rebuilt with the rolling context that
     /// existed immediately before that night.
     ///
