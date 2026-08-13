@@ -30,12 +30,37 @@ enum SleepDebtCalculator {
     ///   (unworn watch, etc.) simply aren't in this array.
     static func debt(timeAsleepMinutesNewestFirst nights: [Double], goalMinutes: Double) -> Double? {
         guard !nights.isEmpty else { return nil }
-        // Walk oldest-to-newest so the decay compounds forward in time,
-        // ending on the most recent night.
+        return debtSeries(timeAsleepMinutesOldestFirst: nights.reversed(), goalMinutes: goalMinutes).last
+    }
+
+    /// The debt figure as of *each* night, not just the final one — what a
+    /// chart plotting debt over time needs.
+    ///
+    /// This exists because a chart is the one caller that can't just ask for
+    /// "the current number": it needs a value at every point along the way,
+    /// and that series has to be produced by this exact recurrence or it
+    /// stops being the same metric. Before this existed, `TrendsView`'s debt
+    /// chart independently reimplemented a *different* running total (a
+    /// flat, non-decaying cumulative shortfall) rather than reusing this
+    /// type at all — the two could and did disagree on the same nights.
+    /// `debt(timeAsleepMinutesNewestFirst:goalMinutes:)` above is now just
+    /// this series' last element, so the scalar and the series can never
+    /// drift apart again.
+    ///
+    /// - Parameter timeAsleepMinutesOldestFirst: minutes asleep per night,
+    ///   ordered oldest first (the reverse of `debt`'s parameter — a series
+    ///   is naturally produced walking forward in time).
+    /// - Returns: debt after each night, same order and count as the input.
+    static func debtSeries<S: Sequence>(
+        timeAsleepMinutesOldestFirst nights: S,
+        goalMinutes: Double
+    ) -> [Double] where S.Element == Double {
         var debt = 0.0
-        for minutes in nights.reversed() {
+        var series: [Double] = []
+        for minutes in nights {
             debt = debt * decayPerNight + max(0, goalMinutes - minutes)
+            series.append(debt)
         }
-        return debt
+        return series
     }
 }
