@@ -176,6 +176,23 @@ final class SleepDataCoordinator {
         }
     }
 
+    /// Starts the pipeline: observers plus an initial refresh. Does **not**
+    /// request HealthKit authorization — that is `requestHealthAccess()`'s
+    /// job alone, called from onboarding at the moment the user has just
+    /// been told what it's for.
+    ///
+    /// This used to also call `healthKit.requestAuthorization()` directly,
+    /// which was a silent duplicate of onboarding's call: `RootView` (the
+    /// only caller of `start()`) is shown only once `hasCompletedOnboarding`
+    /// is true, so by the time this runs, onboarding's `requestHealthAccess()`
+    /// has always already run first. The duplicate was harmless *today*
+    /// only because HealthKit doesn't reprompt for a type it has already
+    /// answered — but that protection silently disappears the moment
+    /// `readTypes` ever gains a new type: every returning user's very next
+    /// cold launch would then trigger a brand-new system permission sheet,
+    /// unexplained, on `start()`, with no onboarding context and no Settings
+    /// visit involved. Removing the call here closes that gap without
+    /// changing anything about the request onboarding already makes.
     func start() async {
         // Screenshot/demo runs take no permission sheet, run no queries, and
         // wait for nothing; the Simulator and any device without Health go
@@ -190,14 +207,6 @@ final class SleepDataCoordinator {
             }
             loadMockData()
             return
-        }
-
-        do {
-            try await healthKit.requestAuthorization()
-        } catch {
-            // A thrown error here is a real failure (Health unavailable,
-            // entitlement missing) — user denial does NOT throw.
-            logger.error("Authorization request failed: \(error.localizedDescription, privacy: .public)")
         }
 
         healthKit.startObservingSleep { [weak self] in
