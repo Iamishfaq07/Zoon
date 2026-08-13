@@ -305,6 +305,27 @@ final class SleepHistoryStore {
         return episodes.reduce(0) { $0 + $1.asleepMinutes }
     }
 
+    /// HealthKit-auto-detected naps whose start falls within `dayInterval`,
+    /// as their asleep spans -- used to dedupe against manually-logged naps
+    /// covering the same time (see `DateInterval.merging`) before crediting
+    /// `SleepNeed`'s nap offset, so a nap caught by both a manual log and
+    /// HealthKit doesn't count twice.
+    func autoDetectedNapIntervals(in dayInterval: DateInterval) -> [DateInterval] {
+        let start = dayInterval.start
+        let end = dayInterval.end
+        let napRaw = SleepEpisodeType.nap.rawValue
+        let descriptor = FetchDescriptor<SleepEpisodeRecord>(
+            predicate: #Predicate { $0.episodeTypeRaw == napRaw && $0.startDate >= start && $0.startDate < end }
+        )
+        let episodes = (try? context.fetch(descriptor)) ?? []
+        // The episode's own asleep span isn't separately stored -- startDate
+        // and endDate bound the whole session (asleep + any inBed/awake
+        // padding), which is the right width to protect against
+        // double-crediting: a manual log's start/end is also the whole
+        // session as the user experienced it, not just the asleep portion.
+        return episodes.map { DateInterval(start: $0.startDate, end: $0.endDate) }
+    }
+
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
     /// user a one-tap way to destroy everything it holds.
     @discardableResult
