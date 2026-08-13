@@ -81,10 +81,15 @@ struct StressScore: Codable, Hashable, Sendable {
             points.append(clamp01(0.5 - deviation / 0.35))
         }
 
-        // With neither baseline available yet, fall back to a flat middle
-        // reading rather than nothing — "calm" by default, revised the
-        // moment history exists.
-        let normalized = points.isEmpty ? 0.5 : points.reduce(0, +) / Double(points.count)
+        // Neither baseline is available yet: there is nothing to compare
+        // today's reading against, so there is no stress score to report.
+        // This used to fall back to a flat 0.5 -- which lands as 50,
+        // "Elevated" -- presenting a real-looking result for a comparison
+        // that never happened. `todayStress` is optional precisely so the
+        // UI can show "Building baseline" instead of a card, the same way
+        // it already does when there's no live HR/HRV sample at all.
+        guard !points.isEmpty else { return nil }
+        let normalized = points.reduce(0, +) / Double(points.count)
         let value = Int((normalized * 100).rounded())
 
         let band: Band = switch value {
