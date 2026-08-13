@@ -105,9 +105,13 @@ struct HRVStatus: Codable, Hashable, Sendable {
 
 /// Sleep chronotype, inferred from habitual timing.
 ///
-/// Fitbit's "sleep animal", which is a genuinely good idea dressed up in a fun
-/// name: the actionable part isn't the label, it's that consistency against
-/// *your* natural window beats forcing yourself onto someone else's schedule.
+/// The underlying idea is Fitbit's "sleep animal" (lion/bear/wolf/dolphin,
+/// still the internal case names below) -- a genuinely good idea, but the
+/// animal framing reads as playful consumer branding, not something to
+/// present as a clinical category. User-facing text uses plain timing
+/// labels instead (see `Kind.label`); the actionable part was never the
+/// label anyway, it's that consistency against *your* natural window beats
+/// forcing yourself onto someone else's schedule.
 struct Chronotype: Codable, Hashable, Sendable {
 
     let kind: Kind
@@ -125,12 +129,16 @@ struct Chronotype: Codable, Hashable, Sendable {
         case dolphin    // short, light, irregular sleeper
         case unknown
 
+        /// Deliberately not an animal name (Fitbit's original framing, and
+        /// this type's own case names internally) -- those read as playful
+        /// consumer branding, not something a serious health product should
+        /// present as if it were a clinical chronotype category.
         var label: String {
             switch self {
-            case .lion: "Lion"
-            case .bear: "Bear"
-            case .wolf: "Wolf"
-            case .dolphin: "Dolphin"
+            case .lion: "Earlier timing"
+            case .bear: "Typical timing"
+            case .wolf: "Later timing"
+            case .dolphin: "Irregular timing"
             case .unknown: "Learning"
             }
         }
