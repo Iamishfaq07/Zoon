@@ -435,9 +435,15 @@ final class SleepHistoryStore {
     /// look maximally inconsistent.
     private func bedtimeStandardDeviation(_ nights: [SleepNightRecord]) -> Double? {
         guard nights.count >= 3 else { return nil }
-        let calendar = Calendar.current
 
+        // Each night's clock-time-of-day is read in *that night's own*
+        // recorded timezone, not the device's current one -- a night's
+        // bedtime should read as "11pm" every time it's revisited, even if
+        // the device has since traveled, or bedtime consistency looks like
+        // it swings every time the user crosses a timezone.
         let angles: [Double] = nights.map { night in
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = night.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current
             let components = calendar.dateComponents([.hour, .minute], from: night.bedtime)
             let minutes = Double((components.hour ?? 0) * 60 + (components.minute ?? 0))
             return minutes / (24 * 60) * 2 * .pi
