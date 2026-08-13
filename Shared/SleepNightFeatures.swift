@@ -129,6 +129,16 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// Total Apple Exercise minutes on the calendar day before this night.
     let exerciseMinutesPreviousDay: Double?
 
+    /// Minutes asleep across secondary episodes tied to this night -- naps
+    /// and split-sleep blocks that `timeAsleepMinutes` (the main sleep
+    /// session alone) doesn't include. See
+    /// `SleepHistoryStore.secondaryEpisodeAsleepMinutes`. Declared with a
+    /// default so it stays optional at every existing call site; 0 for mock
+    /// data and any night built without a secondary-episode lookup, which
+    /// just means that night's debt/need math sees main sleep only, same as
+    /// before this field existed.
+    var secondaryAsleepMinutes: Double = 0
+
     // MARK: - Provenance
 
     /// Which HealthKit source the stage data came from, e.g. "Ishfaq's Apple Watch".
@@ -166,6 +176,15 @@ extension SleepNightFeatures {
     /// Total staged sleep, i.e. everything except awake time.
     var stagedAsleepMinutes: Double {
         coreMinutes + deepMinutes + remMinutes + unspecifiedAsleepMinutes
+    }
+
+    /// The day's true 24-hour asleep total: main sleep plus every secondary
+    /// episode (naps, split-sleep blocks) tied to this night. Sleep debt and
+    /// need are computed against this, not against `timeAsleepMinutes` alone
+    /// -- a short main-sleep night followed by a compensating nap should not
+    /// still read as a full night's shortfall.
+    var total24hAsleepMinutes: Double {
+        timeAsleepMinutes + secondaryAsleepMinutes
     }
 
     /// True when the source gave us a real stage breakdown. When false, the UI

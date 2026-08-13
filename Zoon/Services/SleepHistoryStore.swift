@@ -86,7 +86,10 @@ final class SleepHistoryStore {
                 priorNightsNewestFirst: priorNewestFirst,
                 goalMinutes: goalMinutes
             )
-            features.append(record.features(baseline: rolling))
+            features.append(record.features(
+                baseline: rolling,
+                secondaryAsleepMinutes: secondaryEpisodeAsleepMinutes(forNightKey: record.nightKey ?? "")
+            ))
 
             priorNewestFirst.insert(record, at: 0)
             if priorNewestFirst.count > 60 {
@@ -428,9 +431,18 @@ final class SleepHistoryStore {
     /// See `SleepDebtCalculator` for the model and why it decays rather than
     /// using a hard window cutoff. `nights` arrives newest-first, matching
     /// what that function expects.
+    ///
+    /// Each night's shortfall is measured against its full 24-hour asleep
+    /// total -- main sleep plus any naps/secondary episodes tied to that
+    /// night's key -- not main sleep alone. A short main-sleep night
+    /// followed by a compensating nap previously still counted as the full
+    /// shortfall every time debt was recomputed, because
+    /// `secondaryEpisodeAsleepMinutes` was never consulted here.
     private func sleepDebt(nights: [SleepNightRecord], goalMinutes: Double) -> Double? {
         SleepDebtCalculator.debt(
-            timeAsleepMinutesNewestFirst: nights.map(\.timeAsleepMinutes),
+            timeAsleepMinutesNewestFirst: nights.map {
+                $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(forNightKey: $0.nightKey ?? "")
+            },
             goalMinutes: goalMinutes
         )
     }
