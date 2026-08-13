@@ -84,9 +84,11 @@ struct OnboardingView: View {
                 Zoon reads from Health and never writes to it. Everything — every \
                 score, every insight, every sound — is computed on this device.
 
-                Next, iOS will list what Zoon may read, each with its own switch. \
-                Leave every switch on, especially Sleep — Zoon cannot function \
-                without it, and cannot tell afterward if one got turned off.
+                Next, iOS will ask twice: first for Sleep, which Zoon cannot \
+                function without at all, then for heart rate, HRV, breathing and \
+                the rest, which sharpen Recovery, Body Signals and the other \
+                scores but aren't required to get started. Leave everything on if \
+                you can — Zoon cannot tell afterward if a switch got turned off.
                 """
         )
     }

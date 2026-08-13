@@ -37,11 +37,20 @@ final class HealthKitManager {
 
     // MARK: - Types
 
-    /// Everything the app reads. Zoon requests **read access only** — the
-    /// `toShare` set is empty, so it can never write to Health.
-    private var readTypes: Set<HKObjectType> {
+    /// The one type Zoon cannot function without at all -- everything else
+    /// is an enhancement to a score or insight, but a night with no sleep
+    /// data isn't a degraded night, it's an empty screen.
+    private var coreReadTypes: Set<HKObjectType> {
+        [HKCategoryType(.sleepAnalysis)]
+    }
+
+    /// Everything else Zoon reads -- richer scores and insights (Recovery,
+    /// Body Signals, Daily Load, breathing), but the app is still basically
+    /// usable without any single one of these, unlike `coreReadTypes`.
+    /// Requested read access only — the `toShare` set is empty, so Zoon can
+    /// never write to Health.
+    private var enhancementReadTypes: Set<HKObjectType> {
         var types: Set<HKObjectType> = [
-            HKCategoryType(.sleepAnalysis),
             HKQuantityType(.heartRate),
             // Apple's own once-a-day resting heart rate, computed from a
             // rolling window of low-activity readings -- distinct from, and
@@ -69,19 +78,35 @@ final class HealthKitManager {
 
     // MARK: - Authorization
 
+    /// Two separate system sheets, not one blanket ask for everything.
+    ///
+    /// A single `requestAuthorization(read:)` call with ten types produces
+    /// one iOS sheet listing all ten as individual switches with no
+    /// indication of which ones the app actually needs versus which merely
+    /// improve it -- someone cautious about heart-rate data has no way to
+    /// grant Sleep (the one thing Zoon cannot work without at all) while
+    /// declining the rest without first understanding which switch is which,
+    /// mid-sheet, with no in-app context. Splitting into
+    /// `coreReadTypes` (just Sleep) first, then `enhancementReadTypes`,
+    /// lets the surrounding onboarding copy explain each ask on its own
+    /// terms before its own system sheet, and lets someone grant the
+    /// essential type while still being able to decline the rest with a
+    /// clear head.
     func requestAuthorization() async throws {
         guard Self.isHealthDataAvailable else {
             throw HealthKitError.unavailable
         }
         // Empty `toShare`: read-only by construction, not by convention.
-        try await store.requestAuthorization(toShare: [], read: readTypes)
+        try await store.requestAuthorization(toShare: [], read: coreReadTypes)
+        try await store.requestAuthorization(toShare: [], read: enhancementReadTypes)
     }
 
     /// Requests menstrual flow separately from the main authorization pass.
     ///
-    /// Not in `readTypes`: that set is requested on every launch, for every
-    /// user, and reproductive health data is not something to prompt for by
-    /// default just because it happens to be readable. This is called only
+    /// Not in `coreReadTypes`/`enhancementReadTypes`: those are requested on
+    /// every launch, for every user, and reproductive health data is not
+    /// something to prompt for by default just because it happens to be
+    /// readable. This is called only
     /// when someone turns the Settings toggle on, so the permission sheet
     /// appears exactly once, for exactly the people who asked for the feature.
     func requestCycleTrackingAuthorization() async throws {
