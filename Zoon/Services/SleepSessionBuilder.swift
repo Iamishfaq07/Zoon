@@ -138,8 +138,9 @@ struct SleepSessionBuilder {
     ///
     /// Preference order: `preferredSourceName` wins outright when present in
     /// this cluster (a user's explicit choice beats a heuristic); otherwise
-    /// most staged samples wins (an Apple Watch will always beat an iPhone
-    /// here), ties broken by total sample count.
+    /// `sourceQualityTier` (Apple Watch beats iPhone beats a third-party app,
+    /// regardless of which one happened to write more samples), ties broken
+    /// by staged-sample count, then by total sample count.
     private func preferredSourceSamples(from samples: [HKCategorySample]) -> [HKCategorySample] {
         let grouped = Dictionary(grouping: samples) { $0.sourceRevision.source.bundleIdentifier }
         guard grouped.count > 1 else { return samples }
@@ -150,12 +151,35 @@ struct SleepSessionBuilder {
         }
 
         let best = grouped.max { lhs, rhs in
+            let lhsTier = sourceQualityTier(for: lhs.value)
+            let rhsTier = sourceQualityTier(for: rhs.value)
+            if lhsTier != rhsTier { return lhsTier < rhsTier }
             let lhsStaged = lhs.value.filter(\.isStagedAsleep).count
             let rhsStaged = rhs.value.filter(\.isStagedAsleep).count
             if lhsStaged != rhsStaged { return lhsStaged < rhsStaged }
             return lhs.value.count < rhs.value.count
         }
         return best?.value ?? samples
+    }
+
+    /// How much to trust a source's sleep data, independent of how many
+    /// samples it happens to have written.
+    ///
+    /// Raw sample/staged counts alone can be misleading: a chatty
+    /// third-party app that writes a sample every few seconds can out-count
+    /// an Apple Watch night that (correctly) wrote far fewer, coarser-grained
+    /// stage transitions -- and would previously have won the tiebreak for
+    /// exactly the wrong reason. Apple Watch sleep staging is measured
+    /// on-device from motion and heart rate; most third-party trackers and
+    /// the iPhone-only Sleep Schedule are not.
+    private func sourceQualityTier(for samples: [HKCategorySample]) -> Int {
+        guard let sample = samples.first else { return 0 }
+        // `productType` is only ever populated for a sample written by a
+        // paired Apple Watch (e.g. "Watch7,4"); every other source, Apple's
+        // own iPhone Sleep Schedule included, leaves it nil.
+        if sample.sourceRevision.productType != nil { return 2 }
+        if sample.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple.health") { return 1 }
+        return 0
     }
 
     // MARK: - Session assembly
