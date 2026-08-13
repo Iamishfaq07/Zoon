@@ -289,7 +289,15 @@ struct TodayView: View {
     private func footer(_ context: DayContext) -> some View {
         VStack(spacing: 3) {
             if let source = context.night.sourceName {
-                Text("Source: \(source)")
+                // "Sleep source", not "Source": this names which HealthKit
+                // source the sleep-*stage* samples came from (see
+                // SleepNightFeatures.sourceName), not a claim that every
+                // vital on screen came from the same device -- HR, HRV, RHR,
+                // etc. are queried across whatever sources HealthKit has for
+                // that time window, independent of which source won the
+                // stage data. A bare "Source: X" here read as broader
+                // provenance than the app actually tracks.
+                Text("Sleep source: \(source)")
             }
             if let last = coordinator.lastRefresh {
                 Text("Updated \(last, format: .dateTime.hour().minute())")
