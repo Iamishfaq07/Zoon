@@ -15,6 +15,7 @@ import SwiftUI
 struct CauseFinderView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
 
     private enum Tab: String, CaseIterable, Identifiable {
         case helps = "Helps", hurts = "Hurts", noEffect = "No Effect", learning = "Still Learning"
@@ -22,6 +23,7 @@ struct CauseFinderView: View {
     }
 
     @State private var tab: Tab = .helps
+    @State private var showingExperimentPicker = false
 
     private var observations: [JournalCorrelator.Observation] {
         coordinator.journalObservations()
@@ -44,6 +46,7 @@ struct CauseFinderView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
+                experimentSection
 
                 Picker("", selection: $tab) {
                     ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
@@ -57,6 +60,37 @@ struct CauseFinderView: View {
         .nightBackground()
         .navigationTitle("Cause Finder")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingExperimentPicker) {
+            ExperimentPickerSheet { tag in
+                preferences.startExperiment(tag)
+                showingExperimentPicker = false
+            }
+        }
+    }
+
+    /// Active Guided Experiment, or a prompt to start one. See
+    /// `GuidedExperiment` -- this doesn't run any statistics of its own,
+    /// just reads the same findings/stillLearning/testedNoEffect results
+    /// the tabs below already compute, filtered to one tracked tag.
+    @ViewBuilder
+    private var experimentSection: some View {
+        if let tag = preferences.activeExperimentTag {
+            GuidedExperimentCard(
+                tag: tag,
+                startDate: preferences.experimentStartDate,
+                status: GuidedExperiment.status(for: tag, observations: observations),
+                onEnd: { preferences.endExperiment() }
+            )
+        } else {
+            Button {
+                showingExperimentPicker = true
+            } label: {
+                Label("Start a guided experiment", systemImage: "flask")
+                    .font(Theme.text(12, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var header: some View {
@@ -217,6 +251,103 @@ private struct NoEffectRow: View {
             Spacer()
         }
         .glassCard()
+    }
+}
+
+private struct GuidedExperimentCard: View {
+    let tag: BehaviorTag
+    let startDate: Date?
+    let status: GuidedExperiment.Status
+    let onEnd: () -> Void
+
+    private var daysTracking: Int? {
+        guard let startDate else { return nil }
+        return max(0, Calendar.current.dateComponents([.day], from: startDate, to: .now).day ?? 0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "flask.fill")
+                    .foregroundStyle(Theme.Metric.sleep)
+                    .frame(width: 24, height: 24)
+                    .background(Theme.Metric.sleep.opacity(0.15), in: Circle())
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Experiment: \(tag.label)")
+                        .font(Theme.label(14, weight: .semibold))
+                    if let daysTracking {
+                        Text("Tracking for \(daysTracking) day\(daysTracking == 1 ? "" : "s")")
+                            .font(Theme.text(11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+
+            switch status {
+            case .learning(let learning):
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.neutral(0.08))
+                        Capsule()
+                            .fill(Theme.Metric.sleep)
+                            .frame(width: geo.size.width * learning.progress)
+                    }
+                }
+                .frame(height: 5)
+                Text("Needs about \(learning.remainingNights) more comparable night\(learning.remainingNights == 1 ? "" : "s") before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")
+                    .font(Theme.text(10))
+                    .foregroundStyle(.tertiary)
+
+            case .result(let helpful, let harmful):
+                ForEach(helpful + harmful) { finding in
+                    Text(finding.headline)
+                        .font(Theme.text(11, weight: .semibold))
+                        .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
+                }
+
+            case .noEffect:
+                Text("No meaningful difference found in your data so far.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Button("End experiment", action: onEnd)
+                .font(Theme.text(11, weight: .semibold))
+                .foregroundStyle(.secondary)
+        }
+        .glassCard()
+    }
+}
+
+private struct ExperimentPickerSheet: View {
+    let onSelect: (BehaviorTag) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(BehaviorTag.Category.allCases) { category in
+                    Section(category.label) {
+                        ForEach(category.tags) { tag in
+                            Button {
+                                onSelect(tag)
+                            } label: {
+                                Label(tag.label, systemImage: tag.symbol)
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Track a behaviour")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
     }
 }
 
