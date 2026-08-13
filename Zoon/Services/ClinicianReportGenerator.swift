@@ -121,8 +121,19 @@ enum ClinicianReportGenerator {
     ) {
         switch section {
         case .sleepTiming:
-            let bedtimes = nights.map { Statistics.circularMinutesFromMidnight($0.bedtime) }
-            let wakeTimes = nights.map { Statistics.circularMinutesFromMidnight($0.wakeTime) }
+            // Each night's own timezone, not the device's current one -- a
+            // clinician report drawn after the user has traveled shouldn't
+            // silently recompute historical bedtimes in the wrong zone.
+            let bedtimes = nights.map { night -> Double in
+                var calendar = Calendar.current
+                calendar.timeZone = night.timeZone
+                return Statistics.circularMinutesFromMidnight(night.bedtime, calendar: calendar)
+            }
+            let wakeTimes = nights.map { night -> Double in
+                var calendar = Calendar.current
+                calendar.timeZone = night.timeZone
+                return Statistics.circularMinutesFromMidnight(night.wakeTime, calendar: calendar)
+            }
             drawRow("Median bedtime", clockLabel(Statistics.median(bedtimes) ?? 0))
             drawRow("Median wake time", clockLabel(Statistics.median(wakeTimes) ?? 0))
             drawRow("Bedtime variability (SD)", minutesLabel(Statistics.standardDeviation(bedtimes) ?? 0))
