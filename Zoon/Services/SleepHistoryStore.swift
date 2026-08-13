@@ -248,10 +248,18 @@ final class SleepHistoryStore {
     }
 
     /// Counterpart to `prune(window:keeping:)` for episodes: removes stored
-    /// episodes whose `nightKey` wasn't reconfirmed by this pass's full
-    /// re-fetch of `window` -- a nap deleted or corrected away in the Health
-    /// app should disappear from Zoon the same way a deleted main night does.
-    func pruneEpisodes(window: DateInterval, keeping validNightKeys: Set<String>) {
+    /// episodes whose `id` wasn't reconfirmed by this pass's full re-fetch of
+    /// `window` -- a nap deleted or corrected away in the Health app should
+    /// disappear from Zoon the same way a deleted main night does.
+    ///
+    /// Matches by episode `id`, not by the parent night's `nightKey`. A
+    /// nightKey stays valid as long as *some* main sleep still exists for
+    /// that wake date, so matching against it only ever caught the case
+    /// where the whole night vanished -- a specific nap being deleted, or a
+    /// nap's boundary being corrected in Health (which changes its `id`,
+    /// since that's derived from the start time), left the old episode row
+    /// behind forever because its nightKey was still perfectly valid.
+    func pruneEpisodes(window: DateInterval, keeping validEpisodeIDs: Set<String>) {
         let start = window.start
         let end = window.end
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(
@@ -264,7 +272,7 @@ final class SleepHistoryStore {
             logger.error("Episode prune fetch failed: \(error.localizedDescription, privacy: .public)")
             return
         }
-        let stale = inWindow.filter { !validNightKeys.contains($0.nightKey) }
+        let stale = inWindow.filter { !validEpisodeIDs.contains($0.id) }
         guard !stale.isEmpty else { return }
         for episode in stale { context.delete(episode) }
         save()
