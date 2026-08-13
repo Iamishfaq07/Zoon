@@ -139,6 +139,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// before this field existed.
     var secondaryAsleepMinutes: Double = 0
 
+    /// The sleep-need baseline that was authoritative when this night was
+    /// processed, frozen forever after -- see
+    /// `SleepNightRecord.sleepNeedBaselineMinutesAtProcessing`'s doc comment
+    /// for why. `nil` for nights stored before this field existed; consumers
+    /// fall back to the current Settings goal. Declared with a default so it
+    /// stays optional at every existing call site.
+    var sleepNeedBaselineMinutes: Double? = nil
+
     // MARK: - Provenance
 
     /// Which HealthKit source the stage data came from, e.g. "Ishfaq's Apple Watch".

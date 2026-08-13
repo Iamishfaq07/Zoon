@@ -101,4 +101,53 @@ final class SleepDebtCalculatorTests: XCTestCase {
             []
         )
     }
+
+    // MARK: - Per-night goals (ZOON V4 Release 1, finding #17)
+
+    /// A uniform goal array must reproduce the exact scalar-goal series --
+    /// the per-night-goal overload is the core recurrence everything else is
+    /// defined in terms of, so this is the seam where a regression would show.
+    func testUniformPerNightGoalsMatchScalarGoal() {
+        let oldestFirst: [Double] = [480, 420, 390, 500, 460, 300, 480]
+        let uniform = SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst: oldestFirst, goalMinutes: 480)
+        let perNight = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: oldestFirst,
+            goalMinutesOldestFirst: Array(repeating: 480, count: oldestFirst.count)
+        )
+        XCTAssertEqual(uniform, perNight)
+    }
+
+    /// The actual point of the per-night overload: a night judged against a
+    /// *lower* personal goal than a later night's shows less debt for the
+    /// same shortfall, and that earlier judgment never changes even though
+    /// later nights use a different goal.
+    func testEachNightIsJudgedAgainstItsOwnGoal() {
+        // Night 1: slept 400 against a learned goal of 420 (shortfall 20).
+        // Night 2: slept 400 against the Settings goal of 480 (shortfall 80).
+        let series = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: [400, 400],
+            goalMinutesOldestFirst: [420, 480]
+        )
+        XCTAssertEqual(series[0], 20, accuracy: 0.01)
+        XCTAssertEqual(series[1], 20 * SleepDebtCalculator.decayPerNight + 80, accuracy: 0.01)
+    }
+
+    func testDebtWithPerNightGoalsMatchesSeriesLastElement() {
+        let newestFirst: [Double] = [480, 300, 460, 500, 390, 420, 480]
+        let goalsNewestFirst: [Double] = [480, 450, 450, 500, 500, 480, 480]
+
+        let scalar = SleepDebtCalculator.debt(
+            timeAsleepMinutesNewestFirst: newestFirst,
+            goalMinutesNewestFirst: goalsNewestFirst
+        )
+        let series = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: Array(newestFirst.reversed()),
+            goalMinutesOldestFirst: Array(goalsNewestFirst.reversed())
+        )
+        XCTAssertEqual(scalar, series.last)
+    }
+
+    func testDebtWithMismatchedCountsReturnsNil() {
+        XCTAssertNil(SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: [480, 420], goalMinutesNewestFirst: [480]))
+    }
 }

@@ -31,6 +31,20 @@ final class SleepNightRecord {
     /// the next re-sync rather than migrated to a guessed value.
     var timeZoneIdentifier: String?
 
+    /// The sleep-need baseline (see `LearnedSleepNeed`) that was
+    /// authoritative *at the moment this night was processed*, frozen
+    /// forever after -- never recomputed against a later, more-informed
+    /// learned figure. See `SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`'s
+    /// doc comment for why: without this, sleep debt would either use a
+    /// single value across all of history (unable to reflect a personal
+    /// learned need at all, only ever the raw Settings goal) or recompute
+    /// every past night against today's latest learned figure, silently
+    /// rewriting historical debt every time the model updates. Optional for
+    /// the same reason as `nightKey`/`timeZoneIdentifier`: existing rows
+    /// predate this column and fall back to the current Settings goal at
+    /// read time rather than being migrated to a guessed value.
+    var sleepNeedBaselineMinutesAtProcessing: Double?
+
     var bedtime: Date
     var wakeTime: Date
 
@@ -93,6 +107,10 @@ final class SleepNightRecord {
         self.date = features.date
         self.nightKey = nightKey
         self.timeZoneIdentifier = features.timeZoneIdentifier
+        // Stamped once, here, on first insert only -- update(from:) below
+        // deliberately never touches this, so a re-sync of the same night
+        // (HealthKit revising it hours later) can never shift it.
+        self.sleepNeedBaselineMinutesAtProcessing = features.sleepNeedBaselineMinutes
         self.bedtime = features.bedtime
         self.wakeTime = features.wakeTime
         self.timeInBedMinutes = features.timeInBedMinutes
@@ -138,6 +156,11 @@ final class SleepNightRecord {
     ///   resting HR, temperature and breathing disturbances preserved
     ///   unconditionally (a reading deleted in Health lived on in Zoon
     ///   forever). Both are now correct. See `MeasurementOutcome`.
+    ///
+    /// Deliberately does **not** touch `sleepNeedBaselineMinutesAtProcessing`
+    /// -- unlike `timeZoneIdentifier` and everything else here, that field
+    /// is meant to freeze at first insert and never move again, even across
+    /// a same-night re-sync. See its own doc comment.
     func update(
         from features: SleepNightFeatures,
         absoluteWristTempC: Double?,
@@ -240,6 +263,7 @@ extension SleepNightRecord {
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             secondaryAsleepMinutes: secondaryAsleepMinutes,
+            sleepNeedBaselineMinutes: sleepNeedBaselineMinutesAtProcessing,
             sourceName: sourceName,
             isMock: false,
             stageSegments: [StageSegment].decode(stageSegmentsData),

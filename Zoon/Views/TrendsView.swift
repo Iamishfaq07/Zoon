@@ -30,13 +30,14 @@ struct TrendsView: View {
     /// sliced `nights` -- see `SleepDebtChartCard`'s doc comment for why a
     /// night's debt needs decayed context from before the display window.
     private var debtMinutesForDisplayedNights: [Double] {
-        // total24hAsleepMinutes, not timeAsleepMinutes alone, so this matches
-        // the same 24h-total accounting SleepHistoryStore uses to compute
-        // the live sleepDebtMinutes shown elsewhere -- see that property's
-        // doc comment.
+        // total24hAsleepMinutes, not timeAsleepMinutes alone, and each
+        // night's own frozen sleepNeedBaselineMinutes, not the current
+        // Settings goal uniformly -- both so this matches the exact
+        // accounting SleepHistoryStore uses to compute the live
+        // sleepDebtMinutes shown elsewhere. See that property's doc comment.
         let fullSeries = SleepDebtCalculator.debtSeries(
             timeAsleepMinutesOldestFirst: coordinator.recentNights.map(\.total24hAsleepMinutes),
-            goalMinutes: preferences.sleepGoalMinutes
+            goalMinutesOldestFirst: coordinator.recentNights.map { $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes }
         )
         return Array(fullSeries.suffix(window.days))
     }
