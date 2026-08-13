@@ -135,7 +135,7 @@ final class SleepDataCoordinator {
     /// loads what's there. Call only from the Settings toggle — see
     /// `UserPreferences.cycleTrackingEnabled`.
     func enableCycleTracking() async {
-        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else {
+        guard DataEnvironment.current.isLive else {
             cyclePeriodStarts = AppMockData.cyclePeriodStarts
             return
         }
@@ -168,7 +168,7 @@ final class SleepDataCoordinator {
     /// reveals a read denial. An app that could tell would be able to infer
     /// that you have data worth hiding.
     func requestHealthAccess() async {
-        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else { return }
+        guard DataEnvironment.current.isLive else { return }
         do {
             try await healthKit.requestAuthorization()
         } catch {
@@ -177,21 +177,17 @@ final class SleepDataCoordinator {
     }
 
     func start() async {
-        // Screenshot/demo runs: no permission sheet, no queries, no waiting.
-        // Checked before availability because the Simulator *does* have a
-        // Health store, so the guard below wouldn't catch it.
-        guard !LaunchOptions.isDemo else {
-            logger.info("Demo launch argument — using mock data")
-            loadMockData()
-            return
-        }
-
-        // Simulator and any device without Health: go straight to mock data so
-        // the whole UI is explorable. This is the difference between a project
-        // you can develop on a laptop and one that requires a phone for every
-        // pixel change.
-        guard HealthKitManager.isHealthDataAvailable else {
-            logger.info("HealthKit unavailable — using mock data")
+        // Screenshot/demo runs take no permission sheet, run no queries, and
+        // wait for nothing; the Simulator and any device without Health go
+        // straight to mock data so the whole UI stays explorable, which is the
+        // difference between a project you can develop on a laptop and one
+        // that needs a phone for every pixel change. `DataEnvironment` decides
+        // which of those applies (and in which order — see its note).
+        let environment = DataEnvironment.current
+        if environment.isSample {
+            if let message = environment.fallbackLogMessage {
+                logger.info("\(message, privacy: .public)")
+            }
             loadMockData()
             return
         }
@@ -232,7 +228,7 @@ final class SleepDataCoordinator {
         // Also guarded here: `refresh()` runs again on every foreground, and a
         // demo session that quietly swapped to live data on the second
         // activation would be worse than one that never started.
-        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else {
+        guard DataEnvironment.current.isLive else {
             loadMockData()
             return
         }
@@ -595,7 +591,7 @@ final class SleepDataCoordinator {
     /// it independently means a HealthKit hiccup here can never block the
     /// night's real data from landing.
     private func refreshTodayStress() async {
-        guard !LaunchOptions.isDemo, HealthKitManager.isHealthDataAvailable else {
+        guard DataEnvironment.current.isLive else {
             todayStress = AppMockData.stress
             return
         }
@@ -692,7 +688,12 @@ final class SleepDataCoordinator {
     /// Recomputes everything after a settings change that affects derived
     /// values (the sleep goal feeds score, sleep need, and debt).
     func recomputeDerivedValues() async {
-        if state.isMock || !HealthKitManager.isHealthDataAvailable {
+        // Two questions, not one: `state.isMock` asks what's currently on
+        // screen (a live session that fell back for want of data stays on
+        // mock rather than flipping mid-session), while the environment asks
+        // what this process is allowed to read at all. Either being true
+        // means recomputing from the sample set.
+        if state.isMock || DataEnvironment.current.isSample {
             loadMockData()
         } else {
             await publishLatest()
