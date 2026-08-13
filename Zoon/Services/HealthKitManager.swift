@@ -250,7 +250,9 @@ final class HealthKitManager {
 
     // MARK: - Quantity statistics
 
-    /// Average of a quantity type over an interval.
+    /// Average of a quantity type over a set of intervals (typically the
+    /// night's actual asleep intervals, not the whole in-bed envelope — see
+    /// `FeatureExtractor`).
     ///
     /// The predicate deliberately omits `.strictStartDate`/`.strictEndDate`: an
     /// HRV reading that began a minute before sleep onset is still an overnight
@@ -258,9 +260,9 @@ final class HealthKitManager {
     func average(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        in interval: DateInterval
+        in intervals: [DateInterval]
     ) async throws -> Double? {
-        try await statistic(identifier, unit: unit, in: interval, options: .discreteAverage) {
+        try await statistic(identifier, unit: unit, in: intervals, options: .discreteAverage) {
             $0.averageQuantity()
         }
     }
@@ -268,9 +270,9 @@ final class HealthKitManager {
     func minimum(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        in interval: DateInterval
+        in intervals: [DateInterval]
     ) async throws -> Double? {
-        try await statistic(identifier, unit: unit, in: interval, options: .discreteMin) {
+        try await statistic(identifier, unit: unit, in: intervals, options: .discreteMin) {
             $0.minimumQuantity()
         }
     }
@@ -280,20 +282,29 @@ final class HealthKitManager {
         unit: HKUnit,
         in interval: DateInterval
     ) async throws -> Double? {
-        try await statistic(identifier, unit: unit, in: interval, options: .cumulativeSum) {
+        try await statistic(identifier, unit: unit, in: [interval], options: .cumulativeSum) {
             $0.sumQuantity()
         }
     }
 
+    /// - Parameter intervals: OR'd together into one predicate. Empty yields
+    ///   `nil` without querying — a session with no asleep time at all has
+    ///   nothing meaningful to average.
     private func statistic(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        in interval: DateInterval,
+        in intervals: [DateInterval],
         options: HKStatisticsOptions,
         extract: @escaping @Sendable (HKStatistics) -> HKQuantity?
     ) async throws -> Double? {
+        guard !intervals.isEmpty else { return nil }
         let type = HKQuantityType(identifier)
-        let predicate = HKQuery.predicateForSamples(withStart: interval.start, end: interval.end)
+        let subpredicates = intervals.map {
+            HKQuery.predicateForSamples(withStart: $0.start, end: $0.end)
+        }
+        let predicate = subpredicates.count == 1
+            ? subpredicates[0]
+            : NSCompoundPredicate(orPredicateWithSubpredicates: subpredicates)
 
         return try await withCheckedThrowingContinuation { continuation in
             let query = HKStatisticsQuery(

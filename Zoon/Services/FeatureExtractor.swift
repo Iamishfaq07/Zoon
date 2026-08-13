@@ -39,13 +39,19 @@ struct FeatureExtractor {
     ///   yields a record with no comparative fields — valid, just less useful,
     ///   which is exactly what the first few nights look like.
     func extract(from session: SleepSession, baseline: RollingBaseline?) async -> Result {
-        let interval = DateInterval(start: session.start, end: session.end)
+        // Scoped to the night's actual asleep intervals, not the in-bed
+        // envelope (session.start...session.end): a session with 20 minutes
+        // awake at the start would otherwise fold pre-sleep HR into "average
+        // overnight heart rate", which is a different, less useful number.
+        // `asleepIntervals` is never empty here — the builder only keeps
+        // sessions with totalAsleepMinutes > 0.
+        let intervals = session.asleepIntervals
 
         // Vitals are queried concurrently — six sequential round trips to the
         // health store is a visible pause on a cold refresh. Each returns nil on
         // failure: one missing signal should degrade the record, not fail it.
-        async let avgHRTask = measuredAverage(.heartRate, unit: .beatsPerMinute, in: interval)
-        async let minHRTask = measuredMinimum(.heartRate, unit: .beatsPerMinute, in: interval)
+        async let avgHRTask = measuredAverage(.heartRate, unit: .beatsPerMinute, in: intervals)
+        async let minHRTask = measuredMinimum(.heartRate, unit: .beatsPerMinute, in: intervals)
         // Resting HR is a once-daily value that can arrive after wake. Bound the
         // query to the wake date so a missing reading cannot silently reuse an
         // arbitrarily old sample or reach into the following day.
@@ -60,11 +66,11 @@ struct FeatureExtractor {
             unit: .beatsPerMinute,
             in: DateInterval(start: wakeDayStart, end: wakeDayEnd)
         )
-        async let hrvTask = measuredAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval)
-        async let respiratoryTask = measuredAverage(.respiratoryRate, unit: .breathsPerMinute, in: interval)
-        async let spo2Task = measuredAverage(.oxygenSaturation, unit: .percent(), in: interval)
-        async let wristTempTask = measuredAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: interval)
-        async let breathingTask = measuredAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: interval)
+        async let hrvTask = measuredAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: intervals)
+        async let respiratoryTask = measuredAverage(.respiratoryRate, unit: .breathsPerMinute, in: intervals)
+        async let spo2Task = measuredAverage(.oxygenSaturation, unit: .percent(), in: intervals)
+        async let wristTempTask = measuredAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: intervals)
+        async let breathingTask = measuredAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: intervals)
 
         let avgHROutcome = await avgHRTask
         let minHROutcome = await minHRTask
@@ -169,10 +175,10 @@ struct FeatureExtractor {
     private func measuredAverage(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        in interval: DateInterval
+        in intervals: [DateInterval]
     ) async -> MeasurementOutcome {
         do {
-            guard let value = try await healthKit.average(identifier, unit: unit, in: interval) else {
+            guard let value = try await healthKit.average(identifier, unit: unit, in: intervals) else {
                 return .noData
             }
             return .measured(value)
@@ -184,10 +190,10 @@ struct FeatureExtractor {
     private func measuredMinimum(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        in interval: DateInterval
+        in intervals: [DateInterval]
     ) async -> MeasurementOutcome {
         do {
-            guard let value = try await healthKit.minimum(identifier, unit: unit, in: interval) else {
+            guard let value = try await healthKit.minimum(identifier, unit: unit, in: intervals) else {
                 return .noData
             }
             return .measured(value)

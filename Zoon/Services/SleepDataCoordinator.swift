@@ -607,9 +607,9 @@ final class SleepDataCoordinator {
         guard samplingStart < now else { return }
         let interval = DateInterval(start: samplingStart, end: now)
 
-        async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: interval)
+        async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: [interval])
         async let hrvTask = try? healthKit.average(
-            .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: interval
+            .heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: [interval]
         )
         let avgHR = await hrTask ?? nil
         let avgHRV = await hrvTask ?? nil
