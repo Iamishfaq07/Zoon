@@ -55,6 +55,15 @@ enum DataEnvironment: Equatable {
     /// Resolves the environment from the current process.
     ///
     /// The demo check comes first deliberately; see the type's note on ordering.
+    ///
+    /// `@MainActor` because `HealthKitManager` is, and reading its
+    /// `isHealthDataAvailable` from a nonisolated context is a compile error
+    /// under strict concurrency. Isolating this one property rather than the
+    /// whole enum keeps the cases and their computed properties usable from
+    /// anywhere -- including a test target that never touches HealthKit.
+    /// Every caller is already on the main actor (`SleepDataCoordinator` is
+    /// `@MainActor` in its entirety), so this costs nothing at the call sites.
+    @MainActor
     static var current: DataEnvironment {
         if LaunchOptions.isDemo { return .sample(.demoLaunchArgument) }
         if !HealthKitManager.isHealthDataAvailable { return .sample(.healthDataUnavailable) }
