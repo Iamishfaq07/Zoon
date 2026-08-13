@@ -81,6 +81,12 @@ struct TodayView: View {
                 sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
                 windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
             )).entrance(5)
+            if let lightGuidance = LightCoach.guidance(
+                wakeTime: context.night.wakeTime,
+                onsetHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
+            ) {
+                LightCoachCard(guidance: lightGuidance).entrance(5)
+            }
             BodyBatteryCard(battery: context.bodyBattery).entrance(5)
             // Radar first among the diagnostics: a sustained multi-signal drift
             // is the rarest and most consequential thing on this screen, and it
