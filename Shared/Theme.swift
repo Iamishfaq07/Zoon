@@ -101,8 +101,34 @@ enum Theme {
     /// A hardcoded white overlay reads as a hairline in Dark and is nearly
     /// invisible against a light card in Light -- glass needs a dark edge to
     /// read as glass once the surface behind it is pale rather than black.
-    static var cardStroke: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.08) }
-    static var cardFill: Color { adaptive(dark: (1, 1, 1), light: (0, 0, 0)).opacity(0.05) }
+    /// Light also needs *more* contrast than Dark to read as a distinct
+    /// surface at all: the ground is a pale lavender, not near-black, so the
+    /// same low opacity that separates a card from Dark's ground all but
+    /// vanishes against Light's -- alpha is split per-appearance below for
+    /// exactly that reason, not just the hue.
+    ///
+    /// Built as its own `UIColor(dynamicProvider:)` rather than composed from
+    /// `adaptive(...).opacity(...)`, because `Color.opacity` takes a plain
+    /// `Double` fixed at call time -- it can't itself vary per trait, only
+    /// the colour it's applied to can. Baking the alpha into the same
+    /// per-trait closure `adaptive` already uses is what lets this resolve
+    /// correctly at render time for whichever trait environment the view is
+    /// actually in (System, or an explicit override), the same as every
+    /// other adaptive token in this file.
+    static var cardStroke: Color { cardTint(darkAlpha: 0.08, lightAlpha: 0.16) }
+    static var cardFill: Color { cardTint(darkAlpha: 0.05, lightAlpha: 0.10) }
+
+    private static func cardTint(darkAlpha: Double, lightAlpha: Double) -> Color {
+        #if os(watchOS)
+        return Color.white.opacity(darkAlpha)
+        #else
+        return Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(white: 1, alpha: darkAlpha)
+                : UIColor(white: 0, alpha: lightAlpha)
+        })
+        #endif
+    }
 
     /// A card's drop shadow. Black at a fixed low opacity works in both
     /// appearances without branching: it's imperceptible against Dark's
@@ -260,8 +286,14 @@ enum Theme {
 // MARK: - Card
 
 /// Glass card over the night gradient.
+///
+/// This view is instantiated over a hundred times across the app (every
+/// card on every screen), so per-instance rendering cost multiplies fast --
+/// worth being deliberate about below.
 struct GlassCard: ViewModifier {
     var padding: CGFloat = Theme.cardPadding
+
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         content
@@ -269,7 +301,13 @@ struct GlassCard: ViewModifier {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    // .ultraThinMaterial reads as glass against Dark's near-black
+                    // ground, but against Light's pale lavender it barely differs
+                    // from the background it's supposed to separate from -- the
+                    // "cheap, washed-out card" look. .regularMaterial is denser
+                    // and holds its own shape against a pale ground the way
+                    // ultraThin does against a dark one.
+                    .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial))
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(Theme.cardFill)
@@ -277,10 +315,17 @@ struct GlassCard: ViewModifier {
                     .overlay {
                         // Liquid Glass sheen: a soft highlight that fades from
                         // the top edge toward the middle, the way light catches
-                        // the curved top of a real glass surface. Additive on
-                        // top of the material rather than a stroke, so it reads
-                        // as a reflection rather than an outline -- this is what
-                        // separates "blurred rectangle" from "glass" at a glance.
+                        // the curved top of a real glass surface.
+                        //
+                        // Plain alpha overlay, not `.blendMode(.plusLighter)`:
+                        // a blend mode forces this layer into its own offscreen
+                        // render pass, and at ~0.10 peak opacity over Dark's
+                        // near-black ground, additive and normal alpha blending
+                        // are visually indistinguishable -- so the extra
+                        // compositing pass was pure cost. With 100+ of these on
+                        // screen across the app, that cost was the whole app
+                        // measurably laggier, which is what an ordinary overlay
+                        // fixes without giving up the highlight.
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(
                                 LinearGradient(
@@ -289,7 +334,6 @@ struct GlassCard: ViewModifier {
                                     endPoint: UnitPoint(x: 0.5, y: 0.45)
                                 )
                             )
-                            .blendMode(.plusLighter)
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
