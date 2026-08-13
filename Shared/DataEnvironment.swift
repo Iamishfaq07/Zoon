@@ -37,6 +37,21 @@ import Foundation
 /// risky change bought for no capability the app doesn't already have. The app
 /// *already* has a working sample-data path (`loadMockData`); what it lacked was
 /// a single place that decides when to take it. That gap is this type.
+///
+/// ## Why `current` isn't declared here
+///
+/// This file lives in `Shared/` — compiled into the app, the widget, the
+/// watch app, and `ZoonTests` alike — and is deliberately just the pure
+/// enum: cases, equality, and computed properties with no dependency beyond
+/// Foundation. The actual resolution logic (`DataEnvironment.current`, in
+/// `Zoon/Services/DataEnvironment+Live.swift`) reads `HealthKitManager` and
+/// `LaunchOptions`, both app-only types the test target never compiles.
+/// Declaring `current` here would make the whole file fail to compile for
+/// `ZoonTests` — not because the tests exercise it, but because Swift
+/// requires every symbol a file references to resolve, whether or not a
+/// given target's tests call that particular property. Splitting the
+/// dependency out, rather than only the parts that use it, is what keeps
+/// this type honestly testable.
 enum DataEnvironment: Equatable {
 
     /// Read the wearer's real Health data.
@@ -50,24 +65,6 @@ enum DataEnvironment: Equatable {
         case demoLaunchArgument
         /// No Health store on this device at all.
         case healthDataUnavailable
-    }
-
-    /// Resolves the environment from the current process.
-    ///
-    /// The demo check comes first deliberately; see the type's note on ordering.
-    ///
-    /// `@MainActor` because `HealthKitManager` is, and reading its
-    /// `isHealthDataAvailable` from a nonisolated context is a compile error
-    /// under strict concurrency. Isolating this one property rather than the
-    /// whole enum keeps the cases and their computed properties usable from
-    /// anywhere -- including a test target that never touches HealthKit.
-    /// Every caller is already on the main actor (`SleepDataCoordinator` is
-    /// `@MainActor` in its entirety), so this costs nothing at the call sites.
-    @MainActor
-    static var current: DataEnvironment {
-        if LaunchOptions.isDemo { return .sample(.demoLaunchArgument) }
-        if !HealthKitManager.isHealthDataAvailable { return .sample(.healthDataUnavailable) }
-        return .live
     }
 
     var isSample: Bool {
