@@ -11,6 +11,12 @@ struct TodayView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
 
+    // Owned locally rather than read fresh from `coordinator.journal` on
+    // every render: a tap saved through the store and re-fetched wouldn't
+    // reliably trigger a SwiftUI update on its own -- same reasoning as
+    // JournalView's `selectedTagIdentifiers`, see that type's doc comment.
+    @State private var checkInFeeling: MorningFeeling?
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -50,6 +56,14 @@ struct TodayView: View {
                 FirstNightCard(night: context.night).entrance(0)
             } else {
                 morningBrief(context).entrance(0)
+            }
+            MorningCheckInCard(selected: checkInFeeling) { feeling in
+                checkInFeeling = feeling
+                coordinator.journal.setFeeling(feeling, on: context.night.date)
+            }
+            .entrance(1)
+            .task(id: context.night.date) {
+                checkInFeeling = coordinator.journal.entry(for: context.night.date)?.feeling
             }
             if let mode = RecoveryMode.evaluate(
                 band: context.recovery.band,

@@ -38,6 +38,9 @@ enum DataExporter {
             let date: Date
             let tags: [String]
             let note: String?
+            /// `MorningFeeling.rawValue`. Optional key -- a format-2 backup
+            /// exported before this field existed simply decodes it as `nil`.
+            let feeling: Int?
         }
 
         struct PreferencesRecord: Codable {
@@ -81,7 +84,7 @@ enum DataExporter {
             goalMinutes: goalMinutes,
             nights: nights,
             journal: journal.map {
-                Archive.JournalRecord(date: $0.date, tags: $0.tagIdentifiers, note: $0.note)
+                Archive.JournalRecord(date: $0.date, tags: $0.tagIdentifiers, note: $0.note, feeling: $0.feelingRaw)
             },
             naps: naps,
             preferences: Archive.PreferencesRecord(
