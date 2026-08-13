@@ -13,6 +13,8 @@ struct ChartSelectionBadge: View {
     let title: String
     let lines: [(label: String, value: String, tint: Color)]
 
+    @Environment(\.colorScheme) private var colorScheme
+
     init(title: String, lines: [(label: String, value: String, tint: Color)]) {
         self.title = title
         self.lines = lines
@@ -37,7 +39,20 @@ struct ChartSelectionBadge: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background {
+            // Same fix as GlassCard (Theme.swift): a bare .ultraThinMaterial
+            // with no fill on top of it reads as glass in Dark but washes
+            // out to near-invisible against Light's pale ground. This badge
+            // predates that fix and was missed because it doesn't route
+            // through .glassCard() -- it needs its own copy of the same
+            // colorScheme-aware material + cardFill combination.
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Theme.cardFill)
+                }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(Theme.cardStroke, lineWidth: 1)
