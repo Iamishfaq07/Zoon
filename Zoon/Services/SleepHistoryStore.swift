@@ -391,22 +391,28 @@ final class SleepHistoryStore {
         let tempWindow = Array(priorNights.prefix(21))
 
         return RollingBaseline(
-            hrv7DayAvg: mean(last7.compactMap(\.avgHRV)),
+            hrv7DayAvg: gatedMean(last7.compactMap(\.avgHRV)),
             sleepDebtMinutes: sleepDebt(nights: debtWindow, goalMinutes: goalMinutes),
             deep7DayAvg: mean(last7.filter { $0.deepMinutes > 0 }.map(\.deepMinutes)),
             duration7DayAvg: mean(last7.map(\.timeAsleepMinutes)),
             efficiency7DayAvg: mean(last7.map(\.sleepEfficiencyPercent)),
-            minHeartRate7DayAvg: mean(last7.compactMap(\.minHeartRate)),
-            restingHeartRate7DayAvg: mean(last7.compactMap(\.restingHeartRate)),
-            wristTempBaselineC: tempWindow.count >= 7 ? mean(tempWindow.compactMap(\.wristTempAbsoluteC)) : nil,
+            minHeartRate7DayAvg: gatedMean(last7.compactMap(\.minHeartRate)),
+            restingHeartRate7DayAvg: gatedMean(last7.compactMap(\.restingHeartRate)),
+            wristTempBaselineC: gatedMean(tempWindow.compactMap(\.wristTempAbsoluteC), minimumSamples: 7),
             bedtimeConsistencyMinutes: bedtimeStandardDeviation(last7),
             sampleCount: last7.count
         )
     }
 
     /// Baseline for tonight, i.e. drawn from everything stored.
+    ///
+    /// `Calendar.current.date(byAdding: .day, value: 1, to: .now)`, not
+    /// `.now.addingTimeInterval(86_400)` -- a fixed 24-hour offset is wrong
+    /// on any day that crosses a DST transition (23 or 25 real hours), and
+    /// "tomorrow" is a calendar concept, not a duration.
     func currentBaseline(goalMinutes: Double) -> RollingBaseline {
-        baseline(for: .now.addingTimeInterval(86_400), goalMinutes: goalMinutes)
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now.addingTimeInterval(86_400)
+        return baseline(for: tomorrow, goalMinutes: goalMinutes)
     }
 
     // MARK: - Statistics
@@ -450,5 +456,24 @@ final class SleepHistoryStore {
     private func mean(_ values: [Double]) -> Double? {
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
+    }
+
+    /// Same as `mean(_:)`, but requires a minimum number of *actual
+    /// measurements* rather than trusting the caller's window size.
+    ///
+    /// The bug this fixes: `wristTempBaselineC` used to gate on
+    /// `tempWindow.count >= 7` -- the number of *nights* in a 21-night
+    /// window -- then compute the mean over `tempWindow.compactMap(...)`,
+    /// a completely different, potentially much smaller set. 21 nights in
+    /// the window with only 1 of them carrying a temperature reading still
+    /// satisfied `count >= 7` and produced a "baseline" from a single
+    /// sample. `hrv7DayAvg`, `minHeartRate7DayAvg`, and
+    /// `restingHeartRate7DayAvg` had the same shape of bug, just silent --
+    /// no threshold at all, so even one HRV reading in 7 nights produced a
+    /// confident-looking 7-day average. Each metric now owns its own
+    /// eligibility, checked against its own compacted sample count.
+    private func gatedMean(_ values: [Double], minimumSamples: Int = 3) -> Double? {
+        guard values.count >= minimumSamples else { return nil }
+        return mean(values)
     }
 }
