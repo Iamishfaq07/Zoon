@@ -253,11 +253,16 @@ jobs:
                      report settings badges; do
             shoot "$tab" || FAILED=1
           done
-          # The app is dark-first, but Light is a real preference. Keep two
+          # The app is dark-first, but Light is a real preference. Keep
           # representative screens in the visual regression set so neutral
-          # strokes and secondary text cannot silently disappear on pale cards.
+          # strokes and secondary text cannot silently disappear on pale
+          # cards. Journal added alongside today/settings because it's the
+          # heaviest user of Theme.neutral() (segmented pill, selection
+          # capsule, dividers) of any screen -- a Light regression there
+          # went unverified by screenshot until now.
           shoot today light || FAILED=1
           shoot settings light || FAILED=1
+          shoot journal light || FAILED=1
           exit $FAILED
 
       - name: Summarise
