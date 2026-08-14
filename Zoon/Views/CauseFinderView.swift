@@ -202,6 +202,10 @@ private struct CauseFinderRow: View {
             .buttonStyle(.plain)
 
             if expanded {
+                if let lower = finding.confidenceIntervalLower, let upper = finding.confidenceIntervalUpper {
+                    ConfidenceIntervalBar(median: finding.delta, lower: lower, upper: upper, tint: tint)
+                        .transition(.opacity)
+                }
                 Text(finding.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
