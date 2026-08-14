@@ -15,6 +15,13 @@ enum ZoonIcon {
     /// Sleep Intelligence: a segmented orbit ring around a solid core --
     /// echoes the seven-arc orb hero on Today without duplicating its full
     /// interactive complexity at icon scale.
+    ///
+    /// Tuned against a rendered capture rather than guessed: the first pass
+    /// used eight segments at 0.09 x 0.14 of the side, which at the 13pt the
+    /// Insights hero draws it works out to roughly 1.2 x 1.8pt per segment.
+    /// That collapsed into an indistinct smudge -- the ring read as noise
+    /// beside the crisp SF Symbols in the rows below it. Six chunkier
+    /// segments hold their shape down to about 14pt.
     struct SleepIntelligence: View {
         var tint: Color = Theme.Metric.sleep
 
@@ -24,13 +31,13 @@ enum ZoonIcon {
                 ZStack {
                     Circle()
                         .fill(tint)
-                        .frame(width: side * 0.44, height: side * 0.44)
-                    ForEach(0..<8, id: \.self) { segment in
+                        .frame(width: side * 0.40, height: side * 0.40)
+                    ForEach(0..<6, id: \.self) { segment in
                         Capsule()
-                            .fill(tint.opacity(0.7))
-                            .frame(width: side * 0.09, height: side * 0.14)
-                            .offset(y: -side * 0.42)
-                            .rotationEffect(.degrees(Double(segment) / 8 * 360))
+                            .fill(tint.opacity(0.85))
+                            .frame(width: side * 0.15, height: side * 0.24)
+                            .offset(y: -side * 0.38)
+                            .rotationEffect(.degrees(Double(segment) / 6 * 360))
                     }
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)

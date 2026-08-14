@@ -44,8 +44,11 @@ struct InsightsHero: View {
         } label: {
             VStack(spacing: 8) {
                 HStack(spacing: 5) {
+                    // 16, not 13: a detailed vector mark needs a little more
+                    // room than the cap-height of the label beside it before
+                    // its parts resolve. See ZoonIcon.SleepIntelligence.
                     ZoonIcon.SleepIntelligence(tint: Theme.Metric.sleep)
-                        .frame(width: 13, height: 13)
+                        .frame(width: 16, height: 16)
                     Text("Sleep Health")
                         .font(Theme.label(13))
                         .foregroundStyle(.secondary)
