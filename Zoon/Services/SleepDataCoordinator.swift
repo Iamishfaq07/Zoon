@@ -867,9 +867,13 @@ final class SleepDataCoordinator {
             preferences.cycleTrackingEnabled = restored.cycleTrackingEnabled
             preferences.lifestyleInsightsEnabled = restored.lifestyleInsightsEnabled ?? false
             preferences.smartWakeEnabled = restored.smartWakeEnabled
-            preferences.preferredEngine = UserPreferences.EngineChoice(
+            // Same coercion as `UserPreferences.init`: a backup taken before
+            // "Bundled model" became unselectable, or from a build where it
+            // shipped, must not restore a choice this build can't honour.
+            let restoredEngine = UserPreferences.EngineChoice(
                 rawValue: restored.preferredEngine
             ) ?? .ruleBased
+            preferences.preferredEngine = restoredEngine.isInstalled ? restoredEngine : .ruleBased
             engine = Self.makeEngine(for: preferences.preferredEngine)
         }
 

@@ -333,13 +333,30 @@ struct SettingsView: View {
                     set: { coordinator.setEngine($0) }
                 )
             ) {
-                ForEach(UserPreferences.EngineChoice.allCases) { choice in
+                ForEach(UserPreferences.EngineChoice.installedCases) { choice in
                     Text(choice.displayName).tag(choice)
                 }
             }
             Text(preferences.preferredEngine.detail)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            // Engines that don't ship are listed but not selectable. Dropping
+            // them from the UI entirely would hide a real roadmap item;
+            // leaving them pickable would offer a control that changes
+            // nothing. "Not installed" is the honest third option, and it
+            // reads as a status rather than a disabled button nobody can
+            // explain.
+            ForEach(
+                UserPreferences.EngineChoice.allCases.filter { !$0.isInstalled }
+            ) { choice in
+                LabeledContent(choice.displayName) {
+                    Text("Not installed")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption)
+                .accessibilityHint("This engine does not ship in the current build.")
+            }
 
             // Apple Intelligence can be selected, report itself `.available`,
             // and still fall back silently every single night if generation

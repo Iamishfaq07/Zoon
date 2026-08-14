@@ -250,6 +250,33 @@ final class UserPreferences {
                 "Reserved for a bundled MLX or Core ML model. None ships today, so this falls back to rules."
             }
         }
+
+        /// Whether an engine backing this choice actually ships.
+        ///
+        /// `localLLM` does not: `LocalLLMInsightEngine` is a stub that
+        /// delegates straight to the rule-based fallback. Describing that
+        /// honestly in `detail` isn't enough on its own -- a picker that lets
+        /// you land on an option which changes nothing is still a control that
+        /// doesn't work, and the setting then misreports what produced every
+        /// insight thereafter. Selecting it is what's blocked; the option
+        /// stays visible as a "Not installed" row so the capability is still
+        /// discoverable.
+        var isInstalled: Bool {
+            switch self {
+            case .ruleBased, .appleIntelligence: true
+            case .localLLM: false
+            }
+        }
+
+        /// The choices a user can actually pick.
+        ///
+        /// `appleIntelligence` stays in here even when the device can't run
+        /// it: that is a runtime capability that varies by hardware and
+        /// Settings state, it reports its own reason through
+        /// `FoundationModelDiagnostics`, and it becomes real the moment the
+        /// device supports it. A stub that ships in no build is a different
+        /// thing from a model this phone happens not to have.
+        static var installedCases: [EngineChoice] { allCases.filter(\.isInstalled) }
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -268,9 +295,15 @@ final class UserPreferences {
         ) ?? .dark
         let storedAge = defaults.integer(forKey: Key.age)
         self.age = storedAge > 0 ? storedAge : nil
-        self.preferredEngine = EngineChoice(
+        // Coerce an uninstalled engine back to rules on load. Builds before
+        // `isInstalled` existed let "Bundled model" be selected and persisted;
+        // leaving that value in place would bind a Picker to a selection no
+        // longer among its options, which renders blank. It also already
+        // behaved as rules -- this makes the stored setting say so.
+        let storedEngine = EngineChoice(
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
         ) ?? .ruleBased
+        self.preferredEngine = storedEngine.isInstalled ? storedEngine : .ruleBased
         self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
         self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
