@@ -27,7 +27,10 @@ struct BodyClockCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "Body Clock", systemImage: "circle.dotted")
+            SectionHeader(
+                title: "Body Clock",
+                icon: AnyView(ZoonIcon.BodyClock(tint: Theme.Metric.battery))
+            )
 
             HStack(alignment: .center, spacing: 18) {
                 dial
