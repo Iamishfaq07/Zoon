@@ -36,7 +36,14 @@ enum Theme {
     static var background: LinearGradient {
         LinearGradient(
             colors: [
-                adaptive(dark: (0.024, 0.031, 0.078), light: (0.902, 0.914, 0.965)),
+                // Light's top stop is warm pearl, not another cool tone --
+                // previously all three light stops were blue/lavender-leaning
+                // (B channel highest throughout), which reads as "faded Dark
+                // Mode" rather than its own identity. A warm anchor at the
+                // top settling into the existing cool silver/lavender/blue
+                // stops below is the "Lunar Dawn" progression: warm pearl →
+                // cool silver → lavender-grey → soft blue.
+                adaptive(dark: (0.024, 0.031, 0.078), light: (0.976, 0.965, 0.945)),
                 adaptive(dark: (0.051, 0.063, 0.141), light: (0.925, 0.925, 0.976)),
                 adaptive(dark: (0.078, 0.063, 0.200), light: (0.949, 0.925, 0.976))
             ],
