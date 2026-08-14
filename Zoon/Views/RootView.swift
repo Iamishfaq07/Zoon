@@ -187,77 +187,13 @@ struct SleepTabView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
+                // Last Night leads -- the redesign spec's reversal of the old
+                // order, where five tool rows sat between opening the tab and
+                // seeing anything about how you actually slept. Tools move to
+                // a horizontal strip below, still one tap away, not first.
                 VStack(spacing: Theme.stackSpacing) {
-                    BedtimeCountdownCard().entrance(0)
-
-                    NavigationLink {
-                        SoundscapeView()
-                    } label: {
-                        toolRow(
-                            "Sleep Sounds",
-                            detail: "Generated on device — rain, waves, noise",
-                            symbol: "waveform",
-                            tint: Theme.Metric.battery
-                        )
-                    }
-                    .buttonStyle(PressableStyle())
-                    .entrance(1)
-
-                    NavigationLink {
-                        NapView()
-                    } label: {
-                        toolRow(
-                            "Nap",
-                            detail: "Track a nap and credit it against tonight's need",
-                            symbol: "powersleep",
-                            tint: Theme.Metric.strain
-                        )
-                    }
-                    .buttonStyle(PressableStyle())
-                    .entrance(2)
-
-                    NavigationLink {
-                        BreathingView()
-                    } label: {
-                        toolRow(
-                            "Wind Down",
-                            detail: "Narrated 4-7-8 breathing, on device",
-                            symbol: "wind",
-                            tint: Theme.Metric.recoveryHigh
-                        )
-                    }
-                    .buttonStyle(PressableStyle())
-                    .entrance(3)
-
-                    NavigationLink {
-                        SnoreCheckView()
-                    } label: {
-                        toolRow(
-                            "Snore Check",
-                            detail: "Estimate, on device — mic used only while running",
-                            symbol: "waveform.and.mic",
-                            tint: Theme.Metric.hrv
-                        )
-                    }
-                    .buttonStyle(PressableStyle())
-                    .entrance(4)
-
-                    NavigationLink {
-                        BreathingHealthView()
-                    } label: {
-                        toolRow(
-                            "Breathing",
-                            detail: "Respiratory rate, disturbances, oxygen, snoring",
-                            symbol: "lungs.fill",
-                            tint: Theme.Metric.sleep
-                        )
-                    }
-                    .buttonStyle(PressableStyle())
-                    .entrance(4)
-
                     if let context = coordinator.state.context {
-                        Divider().overlay(Theme.cardStroke).padding(.vertical, 4)
-                        SleepNeedCard(need: context.sleepNeed).entrance(3)
+                        SleepNeedCard(need: context.sleepNeed).entrance(0)
                         NavigationLink {
                             SleepDetailView(context: context)
                         } label: {
@@ -269,7 +205,7 @@ struct SleepTabView: View {
                             )
                         }
                         .buttonStyle(PressableStyle())
-                        .entrance(4)
+                        .entrance(1)
                         NavigationLink {
                             NightHistoryView()
                         } label: {
@@ -283,16 +219,19 @@ struct SleepTabView: View {
                             )
                         }
                         .buttonStyle(PressableStyle())
-                        .entrance(4)
-                        ChronotypeCard(chronotype: context.chronotype).entrance(5)
+                        .entrance(1)
+                        ChronotypeCard(chronotype: context.chronotype).entrance(2)
                         if let clock = context.bodyClock {
                             BodyClockCard(
                                 bodyClock: clock,
                                 plannedBedtime: context.targetBedtime()
                             )
-                            .entrance(6)
+                            .entrance(3)
                         }
                     }
+
+                    BedtimeCountdownCard().entrance(4)
+                    SleepToolsStrip().entrance(5)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
