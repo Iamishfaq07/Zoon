@@ -79,6 +79,7 @@ struct TrendsView: View {
                     if nights.count < 2 {
                         notEnoughData
                     } else {
+                        windowPicker
                         DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
                         HRVChartCard(nights: nights)
                         SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
@@ -92,16 +93,26 @@ struct TrendsView: View {
             }
             .nightBackground()
             .navigationTitle("Insights")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Picker("Window", selection: $window) {
-                        ForEach(Window.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                }
-            }
             .zoonGlobalToolbar()
         }
+    }
+
+    /// The 7/30-day scope, sitting directly above the charts it scopes.
+    ///
+    /// It used to be a `.topBarTrailing` toolbar item, which put a full
+    /// segmented control in the navigation bar alongside the two global
+    /// buttons (Log, More) that every tab carries -- three trailing items
+    /// crowded into one bar, visibly cramped in a rendered capture and the
+    /// only tab where the bar looked different from the other three.
+    ///
+    /// Inline is also the more honest placement: the window scopes the chart
+    /// section only. The hero and hub above it have their own fixed windows,
+    /// so a control in the navigation bar overstated what it changed.
+    private var windowPicker: some View {
+        Picker("Window", selection: $window) {
+            ForEach(Window.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
     }
 
     private var insightsHub: some View {
