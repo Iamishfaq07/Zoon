@@ -79,6 +79,13 @@ struct HealthRadarView: View {
                 }
             }
 
+            BaselineLaneView(
+                value: metric.value,
+                baseline: metric.baseline,
+                tolerance: metric.tolerance,
+                tint: drift != nil ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh
+            )
+
             if let range = metric.formattedRange {
                 Text("Your typical range: \(range)")
                     .font(Theme.text(10))
