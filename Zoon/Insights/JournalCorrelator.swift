@@ -80,14 +80,30 @@ struct JournalCorrelator {
         /// `exposureState` can't and doesn't try to tell them apart either.
         let alcoholicBeverages: Double?
         let lateCaffeineMg: Double?
+        /// Whether this night's recorded timezone differs from the
+        /// previous stored night's -- Travel Mode groundwork (finding
+        /// #55/#56): a night that starts in a new timezone is measured
+        /// evidence of travel independent of whether the user remembered
+        /// to tag it, the same "measured closes gaps manual tagging
+        /// leaves open" idea finding #49 already established for
+        /// alcohol/caffeine. Full Travel Mode itself -- trip detection,
+        /// adjusted targets, jet-lag-aware coaching -- is out of scope
+        /// here; this is only the underlying signal.
+        let measuredTimeZoneShift: Bool
 
-        /// `.yes` if tagged *or* HealthKit measured the behaviour directly;
-        /// `.no` if the night was journaled and it wasn't tagged, or if
-        /// HealthKit measured a definite zero; `.unknown` otherwise. Measured
-        /// data can resolve a night manual tagging left `.unknown` -- the
-        /// whole point of finding #49 is that a night the user never opened
-        /// the Journal on can still honestly answer "did you drink" if
-        /// HealthKit already knows.
+        /// `.yes` if tagged, or if HealthKit/the timezone check measured
+        /// the behaviour directly; `.no` if the night was journaled and it
+        /// wasn't tagged, or if HealthKit measured a definite zero (for
+        /// alcohol/caffeine); `.unknown` otherwise. Measured data can only
+        /// ever *upgrade* an unknown to yes here, never assert a confident
+        /// no on its own for travel specifically -- a same-timezone trip
+        /// is real travel this heuristic simply can't see, so its absence
+        /// isn't evidence of anything.
+        ///
+        /// Measured data resolving a night manual tagging left `.unknown`
+        /// is the whole point of finding #49 (and, for travel, #55/#56):
+        /// a night the user never opened the Journal on can still
+        /// honestly answer "did this happen" if Zoon already knows.
         func exposureState(for tag: BehaviorTag) -> ExposureState {
             if tags.contains(tag) { return .yes }
             switch tag {
@@ -95,6 +111,8 @@ struct JournalCorrelator {
                 if let alcoholicBeverages { return alcoholicBeverages > 0 ? .yes : .no }
             case .caffeineLate:
                 if let lateCaffeineMg { return lateCaffeineMg > 0 ? .yes : .no }
+            case .travelled:
+                if measuredTimeZoneShift { return .yes }
             default:
                 break
             }
@@ -104,7 +122,7 @@ struct JournalCorrelator {
         /// Travel and illness are themselves loggable confounders (finding
         /// #45): a hard hotel bed or a cold plausibly explains a bad night on
         /// its own, independent of whatever else got tagged that day.
-        var isTravelDay: Bool { tags.contains(.travelled) }
+        var isTravelDay: Bool { tags.contains(.travelled) || measuredTimeZoneShift }
         var isSickDay: Bool { tags.contains(.sick) }
     }
 
