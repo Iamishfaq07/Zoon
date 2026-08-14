@@ -73,6 +73,7 @@ struct TrendsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
+                    InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
                     insightsHub
 
                     if nights.count < 2 {
@@ -105,7 +106,6 @@ struct TrendsView: View {
 
     private var insightsHub: some View {
         VStack(spacing: 8) {
-            hubRow("Sleep Health", "waveform.path.ecg", Theme.Metric.recoveryHigh) { SleepHealthView() }
             hubRow("Sleep Need", "target", Theme.Metric.sleep) { SleepNeedView() }
             hubRow("Sleep Debt", "chart.line.downtrend.xyaxis", Theme.Metric.temperature) { SleepDebtView() }
             hubRow("Body Clock", "clock", Theme.Metric.battery) { BodyClockView() }
