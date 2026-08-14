@@ -175,7 +175,12 @@ struct TodayView: View {
                         .font(Theme.label(18, weight: .semibold))
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("\(context.sleepIntelligence.confidence.label) confidence · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
+                    // `MetricConfidence.label` already reads "Moderate
+                    // confidence" / "High confidence" -- appending the word
+                    // again rendered "Moderate confidence confidence" in the
+                    // hero card, and "Insufficient data confidence" for the
+                    // no-data case.
+                    Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
