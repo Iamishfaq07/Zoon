@@ -57,6 +57,11 @@ struct TodayView: View {
                 FirstNightCard(night: context.night).entrance(0)
             } else {
                 morningBrief(context).entrance(0)
+                FloatingMetricCluster(
+                    timeAsleepMinutes: context.night.timeAsleepMinutes,
+                    needMinutes: context.sleepNeed.totalNeedMinutes,
+                    debtMinutes: context.night.sleepDebtMinutes ?? 0
+                ).entrance(1)
             }
             MorningCheckInCard(
                 selected: checkInFeeling,
