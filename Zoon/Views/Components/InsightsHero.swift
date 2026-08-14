@@ -43,9 +43,13 @@ struct InsightsHero: View {
             SleepHealthView()
         } label: {
             VStack(spacing: 8) {
-                Text("Sleep Health")
-                    .font(Theme.label(13))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 5) {
+                    ZoonIcon.SleepIntelligence(tint: Theme.Metric.sleep)
+                        .frame(width: 13, height: 13)
+                    Text("Sleep Health")
+                        .font(Theme.label(13))
+                        .foregroundStyle(.secondary)
+                }
 
                 if let score = current.score {
                     Text(String(format: "%.0f", score))
