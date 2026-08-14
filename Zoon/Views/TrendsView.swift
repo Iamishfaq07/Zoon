@@ -111,6 +111,7 @@ struct TrendsView: View {
             hubRow("Body Clock", "clock", Theme.Metric.battery) { BodyClockView() }
             hubRow("Body Signals", "dot.radiowaves.left.and.right", Theme.Metric.recoveryMid) { HealthRadarView() }
             hubRow("Cause Finder", "sparkle.magnifyingglass", Theme.Metric.hrv) { CauseFinderView() }
+            hubRow("Sleep Story", "clock.arrow.circlepath", Theme.Metric.sleep) { SleepStoryView() }
             hubRow("Year in Sleep", "square.grid.3x3.fill", Theme.Metric.recoveryHigh) { YearHeatmapView() }
             hubRow("Labs", "flask", .secondary) { LabsView() }
         }
