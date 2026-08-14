@@ -19,7 +19,7 @@ struct SleepScoreWidget: Widget {
         }
         .configurationDisplayName("Last Night")
         .description("Your sleep score and how the night went.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }
 
@@ -33,8 +33,67 @@ struct SleepScoreWidgetView: View {
         switch family {
         case .accessoryRectangular: rectangular
         case .systemMedium: medium
+        case .systemLarge: large
         default: small
         }
+    }
+
+    /// "Large: Morning Brief" -- the redesign spec's largest widget size,
+    /// built entirely from fields `SleepSnapshot` already carries (score,
+    /// insight text, sleep intelligence, recovery, energy). The spec also
+    /// pairs this with a "Tonight Plan" (caffeine cutoff, wind-down, target
+    /// bedtime) -- there's no such data on `SleepSnapshot` yet, and
+    /// inventing placeholder values for a widget would be worse than not
+    /// having the section, so this is the morning-brief half only.
+    private var large: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(snapshot.score)")
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(scoreColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(snapshot.scoreBand)
+                        .font(.subheadline.weight(.semibold))
+                    Text("Last Night")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text(snapshot.insightSummary)
+                .font(.footnote.weight(.medium))
+                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(3)
+
+            Divider()
+
+            HStack(spacing: 18) {
+                stat("Asleep", SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
+                stat("Debt", snapshot.balanceLabel)
+                stat("Recovery", "\(snapshot.recoveryPercent)")
+                stat("Energy", "\(snapshot.bodyBattery)")
+                if !snapshot.sleepIntelligenceBand.isEmpty {
+                    stat("Sleep Intel", "\(snapshot.sleepIntelligencePercent)")
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            if entry.isPlaceholder {
+                Text("Sample data")
+                    .font(Theme.text(9))
+                    .foregroundStyle(.tertiary)
+            } else {
+                Button(intent: OpenJournalIntent()) {
+                    Label("Log a habit", systemImage: "square.and.pencil")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.Metric.sleep)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var small: some View {
@@ -161,6 +220,13 @@ struct SleepScoreWidgetView: View {
 }
 
 #Preview("Medium", as: .systemMedium) {
+    SleepScoreWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.poorSnapshot, isPlaceholder: true)
+}
+
+#Preview("Large", as: .systemLarge) {
     SleepScoreWidget()
 } timeline: {
     SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
