@@ -383,12 +383,18 @@ extension View {
     /// Caps Dynamic Type growth to a size the card layouts survive.
     ///
     /// Applied once per screen alongside the background, rather than per view.
-    /// `.accessibility1` is roughly 150% of default — a genuine improvement for
-    /// anyone who needs it, and the point at which the fixed-height rows in
-    /// this app begin to clip rather than reflow. Removing those fixed heights
-    /// would let the cap go higher, and is the honest next step.
+    /// Raised from `.accessibility1` to `.accessibility3` (~215% of default):
+    /// the app has no on-device or screenshot-based visual verification in
+    /// this CI-only environment, so removing the cap entirely is not something
+    /// that can be honestly claimed as verified here. `.accessibility3` is a
+    /// real, substantial increase for anyone who needs it while staying inside
+    /// a range where `.fixedSize(horizontal:false, vertical:true)` and
+    /// scrolling containers (already used throughout) still hold up against
+    /// the fixed-height stat rows that clip first. Fully removing the cap is
+    /// the honest next step, gated on either a visual-regression harness or
+    /// a real-device pass — see task tracking `accessibility5`.
     func zoonTypography() -> some View {
-        dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        dynamicTypeSize(...DynamicTypeSize.accessibility3)
     }
 
     /// Applies the app's night background behind a scrolling screen.
@@ -405,6 +411,31 @@ extension View {
                 Theme.heroGlow
             }
             .ignoresSafeArea()
+        }
+    }
+}
+
+/// A stack that lays out horizontally until the reader's Dynamic Type size
+/// gets big enough that side-by-side content would get cramped or truncated,
+/// then reflows to vertical -- the pattern that breaks first once Dynamic
+/// Type is allowed past `.accessibility1` (see `zoonTypography()` above).
+///
+/// Built on `AnyLayout` rather than a fixed-width breakpoint, so it responds
+/// to the thing that's actually growing rather than approximating it via
+/// screen size.
+struct AdaptiveStack<Content: View>: View {
+    var spacing: CGFloat?
+    var alignment: HorizontalAlignment = .leading
+    @ViewBuilder var content: Content
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        let layout: AnyLayout = dynamicTypeSize >= .accessibility1
+            ? AnyLayout(VStackLayout(alignment: alignment, spacing: spacing))
+            : AnyLayout(HStackLayout(spacing: spacing))
+        layout {
+            content
         }
     }
 }
