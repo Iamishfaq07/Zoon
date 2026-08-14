@@ -52,6 +52,53 @@ enum Theme {
         )
     }
 
+    /// Morning ground: midnight fading toward a subtle dawn, per the
+    /// redesign spec's Dynamic Background System. Used by
+    /// `ZoonAmbientBackground` rather than replacing `background` outright --
+    /// swapping the ground under every existing screen without any visual
+    /// verification capability in this environment would be a real
+    /// regression risk, so this is opt-in infrastructure for screens (the
+    /// Today hero in particular) that adopt it deliberately.
+    static var morningBackground: LinearGradient {
+        LinearGradient(
+            colors: [
+                adaptive(dark: (0.086, 0.078, 0.161), light: (0.996, 0.925, 0.878)),
+                adaptive(dark: (0.067, 0.071, 0.157), light: (0.976, 0.929, 0.902)),
+                adaptive(dark: (0.051, 0.063, 0.141), light: (0.949, 0.925, 0.976))
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    /// Day ground: cool blue-violet depth, still dark-first per the app's
+    /// OLED-friendly default -- this isn't a light "daytime" background, it's
+    /// the calmer, less nocturnal end of the same dark palette.
+    static var dayBackground: LinearGradient {
+        LinearGradient(
+            colors: [
+                adaptive(dark: (0.043, 0.063, 0.129), light: (0.918, 0.929, 0.976)),
+                adaptive(dark: (0.055, 0.071, 0.161), light: (0.929, 0.925, 0.976)),
+                adaptive(dark: (0.063, 0.055, 0.161), light: (0.945, 0.925, 0.973))
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    /// Evening ground: deeper indigo, the wind-down half of the day.
+    static var eveningBackground: LinearGradient {
+        LinearGradient(
+            colors: [
+                adaptive(dark: (0.035, 0.039, 0.098), light: (0.882, 0.867, 0.945)),
+                adaptive(dark: (0.055, 0.051, 0.145), light: (0.906, 0.878, 0.949)),
+                adaptive(dark: (0.086, 0.055, 0.184), light: (0.925, 0.878, 0.945))
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     /// Subtle top-glow used behind hero content.
     static var heroGlow: RadialGradient {
         RadialGradient(
@@ -419,6 +466,61 @@ extension View {
             }
             .ignoresSafeArea()
         }
+    }
+
+    /// Time-of-day-aware ground, for screens (the Today hero in particular)
+    /// that want the redesign spec's "Dynamic Background System" instead of
+    /// the flat `nightBackground()`. Also applies the Dynamic Type cap for
+    /// the same reason `nightBackground()` does.
+    func ambientBackground() -> some View {
+        zoonTypography()
+        .background { ZoonAmbientBackground() }
+    }
+}
+
+/// Picks the ground from `Theme.morningBackground`/`dayBackground`/
+/// `eveningBackground`/`background` (night) by wall-clock hour.
+///
+/// Deliberately *not* a continuously-animating gradient -- the spec warns
+/// against exactly that, and an unbounded animation behind a screen used a
+/// hundred times across the app would be a real, measurable battery cost for
+/// a change nobody asked to see moving. The band is read once per appearance
+/// (covers app launch and returning from background overnight) rather than
+/// on a running timer, so there is nothing to disable for Reduce Motion --
+/// there's no motion to begin with, only a value that can differ next time
+/// the view appears.
+struct ZoonAmbientBackground: View {
+    @State private var band = Band.current()
+
+    enum Band {
+        case morning, day, evening, night
+
+        static func current(now: Date = .now, calendar: Calendar = .current) -> Band {
+            switch calendar.component(.hour, from: now) {
+            case 5..<9: .morning
+            case 9..<17: .day
+            case 17..<21: .evening
+            default: .night
+            }
+        }
+    }
+
+    private var gradient: LinearGradient {
+        switch band {
+        case .morning: Theme.morningBackground
+        case .day: Theme.dayBackground
+        case .evening: Theme.eveningBackground
+        case .night: Theme.background
+        }
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            gradient
+            Theme.heroGlow
+        }
+        .ignoresSafeArea()
+        .onAppear { band = .current() }
     }
 }
 
