@@ -99,16 +99,26 @@ final class WakeAlarm {
         #if canImport(AlarmKit)
         guard #available(iOS 26.0, *) else { return false }
 
-        let components = Calendar.current.dateComponents([.hour, .minute], from: wakeTime)
-        guard let hour = components.hour, let minute = components.minute else { return false }
+        // One-time, at an absolute instant -- deliberately not a weekly
+        // recurrence across all seven days, which is what this used to do.
+        // Zoon's wake time is *derived*, not configured: it comes from
+        // `BodyClock.window(for:).end` and moves as the body-clock model
+        // learns. A repeating alarm pinned to today's hour:minute keeps
+        // ringing that same time forever, so anyone who stopped opening the
+        // app for a week would be woken by a time their own data no longer
+        // supports -- and the further the model drifted, the wronger it got.
+        // A fixed alarm expires on its own after it fires, and the next
+        // `schedule(at:)` reuses `alarmID` to replace it with the newly
+        // computed time. Missing an alarm because the app wasn't opened is a
+        // recoverable disappointment; being woken at a stale time indefinitely
+        // is the failure people uninstall over.
+        guard let target = WakeAlarmSchedule.nextFutureOccurrence(of: wakeTime) else {
+            logger.error("Could not resolve a future wake instant; leaving the notification as the only backstop")
+            return false
+        }
 
         do {
-            let schedule = Alarm.Schedule.relative(
-                .init(
-                    time: .init(hour: hour, minute: minute),
-                    repeats: .weekly([.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday])
-                )
-            )
+            let schedule = Alarm.Schedule.fixed(target)
 
             // AlarmButton is a value describing a button's label, not an
             // enum with pre-built cases -- "stop" is a role every alarm's
@@ -137,7 +147,7 @@ final class WakeAlarm {
             )
 
             _ = try await AlarmManager.shared.schedule(id: Self.alarmID, configuration: configuration)
-            logger.info("Wake alarm scheduled for \(hour):\(minute)")
+            logger.info("Wake alarm scheduled for \(target, privacy: .public)")
             return true
         } catch {
             logger.error("Could not schedule wake alarm: \(error.localizedDescription, privacy: .public)")
