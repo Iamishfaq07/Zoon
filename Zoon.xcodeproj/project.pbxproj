@@ -301,6 +301,7 @@
 		CE6A395E3F53BF5632DD4C4D /* SleepPlaybook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B52306F9315392857B399E7 /* SleepPlaybook.swift */; };
 		CF172F688E6D427E01763C3E /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 		D0079B2C352ACA706E9E0B4E /* LifestyleInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E0BB7B287F3739433EC5B8 /* LifestyleInsights.swift */; };
+		D0D98A5190EC12C683DB882C /* WhyScoreWaterfall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213D22A6A83EC98AD923972A /* WhyScoreWaterfall.swift */; };
 		D16936FC59B87D97DE8C244A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */; };
 		D2A02A8E3F206303EB92549B /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		D397403DABFEACAA41DB8475 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
@@ -471,6 +472,7 @@
 		1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapLiveActivity.swift"; sourceTree = "<group>"; };
 		1D9AD348AE1F4F51BE719271 /* SleepHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepHealthView.swift"; sourceTree = "<group>"; };
 		213BE1CB4CA529DD53B50FD5 /* MetricRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricRing.swift"; sourceTree = "<group>"; };
+		213D22A6A83EC98AD923972A /* WhyScoreWaterfall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WhyScoreWaterfall.swift"; sourceTree = "<group>"; };
 		22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthKitManager.swift"; sourceTree = "<group>"; };
 		22DD2766CEDC92E27B8248C9 /* ZoonWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWatchApp.swift"; sourceTree = "<group>"; };
 		234D49A75ED10560B53A2024 /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UserPreferences.swift"; sourceTree = "<group>"; };
@@ -703,6 +705,7 @@
 				423CBBEE5037B19C59780D54,
 				66E3F1F807708E82035C5C98,
 				F39A93CBDC0796684C98A6E4,
+				213D22A6A83EC98AD923972A,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1291,6 +1294,7 @@
 				21C99678C209300372D988F8,
 				54E28A0193AEAEE3A2B8AE50,
 				136B301DD045AB52B80281FC,
+				D0D98A5190EC12C683DB882C,
 				87C21FC8660D20B3AF622E69,
 				0102704614FA1A59431C3D1C,
 				47EF1E15A3967BBBDDE1EAAF,

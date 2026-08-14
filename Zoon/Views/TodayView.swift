@@ -184,28 +184,9 @@ struct TodayView: View {
                     .foregroundStyle(.secondary)
             }
 
-            let drivers = topDrivers(context.sleepIntelligence)
-            if !drivers.isEmpty {
+            if !context.sleepIntelligence.components.isEmpty {
                 Divider().overlay(Theme.cardStroke)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("What moved it")
-                        .font(Theme.label(12, weight: .bold))
-                        .foregroundStyle(.tertiary)
-                    ForEach(drivers) { driver in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Image(systemName: driver.pointContribution >= 0 ? "arrow.up.right" : "arrow.down.right")
-                                .font(Theme.text(10, weight: .bold))
-                                .foregroundStyle(driver.pointContribution >= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
-                                .frame(width: 14)
-                            Text(driver.label)
-                                .font(Theme.label(12, weight: .semibold))
-                            Text(driver.detail)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer(minLength: 4)
-                        }
-                    }
-                }
+                WhyScoreWaterfall(components: context.sleepIntelligence.components)
             }
 
             Divider().overlay(Theme.cardStroke)
@@ -219,12 +200,6 @@ struct TodayView: View {
             }
         }
         .glassCard()
-    }
-
-    private func topDrivers(
-        _ score: SleepIntelligenceScore
-    ) -> [SleepIntelligenceScore.Component] {
-        Array((score.negativeContributors + score.positiveContributors).prefix(3))
     }
 
     // MARK: - Rings
