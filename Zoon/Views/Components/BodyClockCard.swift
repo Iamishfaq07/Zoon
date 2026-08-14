@@ -10,6 +10,13 @@ struct BodyClockCard: View {
     let bodyClock: BodyClock
     /// Tonight's plan, so the card can show the gap between intention and rhythm.
     var plannedBedtime: Date?
+    /// Last night's actual sleep interval, drawn as a second arc alongside
+    /// the habitual window -- the redesign spec's "actual sleep arc" next to
+    /// the "preferred sleep arc". `nil` keeps the dial exactly as it was
+    /// (habitual window only), which is what every existing call site still
+    /// gets unless it opts in.
+    var actualBedtime: Date?
+    var actualWakeTime: Date?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var sweep: Double = 0
@@ -81,6 +88,17 @@ struct BodyClockCard: View {
                 .stroke(Theme.neutral(0.07), lineWidth: 10)
                 .frame(width: 92, height: 92)
 
+            if let actualArc {
+                // Last night's actual interval, drawn first (and thinner)
+                // so the habitual-window arc stays the dial's dominant
+                // shape -- this is the comparison, not a replacement.
+                Circle()
+                    .trim(from: 0, to: max(0, min(1, actualArc.length * sweep)))
+                    .stroke(Theme.neutral(0.35), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .frame(width: 78, height: 78)
+                    .rotationEffect(.degrees(-90 + actualArc.start * 360))
+            }
+
             // The window itself.
             Circle()
                 .trim(from: 0, to: max(0, min(1, arcLength * sweep)))
@@ -117,6 +135,26 @@ struct BodyClockCard: View {
 
     private var arcLength: Double {
         (bodyClock.typicalDurationMinutes / 60) / 24
+    }
+
+    /// Last night's actual interval as a (start fraction, length fraction)
+    /// pair on the same 24-hour dial the habitual window uses.
+    private var actualArc: (start: Double, length: Double)? {
+        guard let actualBedtime, let actualWakeTime, actualWakeTime > actualBedtime else { return nil }
+        var onset = Self.signedHour(for: actualBedtime)
+        if onset < 0 { onset += 24 }
+        let durationHours = actualWakeTime.timeIntervalSince(actualBedtime) / 3600
+        return (start: onset / 24, length: durationHours / 24)
+    }
+
+    /// Wall-clock hour, folded onto the same signed scale `BodyClock.compute`
+    /// uses for its midpoint (evening hours negative) so an actual bedtime
+    /// lines up with the habitual window's arc positioning convention.
+    private static func signedHour(for date: Date, calendar: Calendar = .current) -> Double {
+        let components = calendar.dateComponents([.hour, .minute], from: date)
+        var hours = Double(components.hour ?? 0) + Double(components.minute ?? 0) / 60
+        if hours > 12 { hours -= 24 }
+        return hours
     }
 
     // MARK: - Rows
