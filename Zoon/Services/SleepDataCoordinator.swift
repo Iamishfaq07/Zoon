@@ -95,6 +95,11 @@ final class SleepDataCoordinator {
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
     let journal: JournalStore
+    /// History of completed Guided Experiments. Default-constructed rather
+    /// than injected -- unlike `journal`/`naps` it has no HealthKit
+    /// dependency and no test needs a distinct instance, so the extra
+    /// wiring at both `SleepDataCoordinator` call sites would buy nothing.
+    let experiments = SleepExperimentStore()
     private let naps: NapStore
     private let preferences: UserPreferences
     private let reminders: BedtimeReminder
@@ -892,6 +897,7 @@ final class SleepDataCoordinator {
         let nightsDeleted = store.deleteAll()
         let journalDeleted = journal.deleteAll()
         naps.deleteAll()
+        experiments.deleteAll()
         SnoreStore.erasePersistedData()
         SoundEventStore.erasePersistedData()
         let snapshotDeleted = SnapshotStore.clear()
@@ -973,6 +979,25 @@ final class SleepDataCoordinator {
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime, timeZone: night.timeZone)
             )
         }
+    }
+
+    /// Ends the active Guided Experiment, snapshotting a baseline-vs-trial
+    /// comparison into `experiments` first if there's enough data on both
+    /// sides -- see `GuidedExperiment.summarize`. Call only from the Cause
+    /// Finder "End experiment" action.
+    func endActiveExperiment() {
+        if let tag = preferences.activeExperimentTag, let startDate = preferences.experimentStartDate {
+            if let outcome = GuidedExperiment.summarize(
+                tag: tag,
+                hypothesis: preferences.experimentHypothesis,
+                startDate: startDate,
+                endDate: .now,
+                observations: journalObservations()
+            ) {
+                experiments.record(outcome)
+            }
+        }
+        preferences.endExperiment()
     }
 
     /// This week vs last week.

@@ -24,6 +24,7 @@ final class UserPreferences {
         static let recoveryModeDate = "zoon.pref.recoveryModeDate"
         static let experimentTag = "zoon.pref.experimentTag"
         static let experimentStartDate = "zoon.pref.experimentStartDate"
+        static let experimentHypothesis = "zoon.pref.experimentHypothesis"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
     }
 
@@ -173,14 +174,30 @@ final class UserPreferences {
         }
     }
 
-    func startExperiment(_ tag: BehaviorTag) {
+    /// What the user expects to find, in their own words -- optional, shown
+    /// alongside the eventual result but never fed into the statistics
+    /// themselves. Purely for the user's own record of what they were
+    /// testing, same non-scoring role as `JournalEntry.note`.
+    private(set) var experimentHypothesis: String? {
+        didSet {
+            if let experimentHypothesis {
+                defaults.set(experimentHypothesis, forKey: Key.experimentHypothesis)
+            } else {
+                defaults.removeObject(forKey: Key.experimentHypothesis)
+            }
+        }
+    }
+
+    func startExperiment(_ tag: BehaviorTag, hypothesis: String? = nil) {
         activeExperimentTag = tag
         experimentStartDate = .now
+        experimentHypothesis = (hypothesis?.isEmpty ?? true) ? nil : hypothesis
     }
 
     func endExperiment() {
         activeExperimentTag = nil
         experimentStartDate = nil
+        experimentHypothesis = nil
     }
 
     /// Which insight engine to use. The LLM option is present but stubbed —
@@ -257,6 +274,7 @@ final class UserPreferences {
         self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
         self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
+        self.experimentHypothesis = defaults.string(forKey: Key.experimentHypothesis)
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
     }
 
@@ -282,6 +300,7 @@ final class UserPreferences {
         recoveryModeDate = nil
         activeExperimentTag = nil
         experimentStartDate = nil
+        experimentHypothesis = nil
         preferredSleepSourceName = nil
 
         let keys = [
@@ -299,6 +318,7 @@ final class UserPreferences {
             Key.experimentTag,
             Key.preferredSleepSourceName,
             Key.experimentStartDate,
+            Key.experimentHypothesis,
         ]
         for key in keys { defaults.removeObject(forKey: key) }
     }

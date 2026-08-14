@@ -70,4 +70,66 @@ enum GuidedExperiment {
         // than leaving the screen blank.
         return .learning(JournalCorrelator.LearningTag(tag: tag, loggedNights: 0))
     }
+
+    /// Nights required in both the baseline and trial windows before
+    /// `summarize` will produce an outcome at all -- a before/after
+    /// comparison built from one or two nights on either side is noise, not
+    /// a finding, same "minimum sample size" principle `JournalCorrelator`
+    /// applies to its own matched pairs.
+    static let minimumPeriodNights = 3
+
+    /// A simple before/after comparison for one completed experiment:
+    /// median outcome in the `baselineDays` immediately before `startDate`,
+    /// versus median outcome from `startDate` through `endDate`.
+    ///
+    /// Deliberately not matched-pair like `JournalCorrelator`'s own findings
+    /// -- this answers a different, more literal question ("did my nights
+    /// actually change once I started paying attention to this"), and
+    /// matching would need a control group this single-tag, single-window
+    /// comparison doesn't have. Both are shown as what they are: a
+    /// before/after average, not a controlled comparison.
+    ///
+    /// Picks whichever metric moved the most between the two periods as the
+    /// headline outcome -- across six metrics, showing all of them for a
+    /// single experiment would bury the one that actually changed.
+    static func summarize(
+        tag: BehaviorTag,
+        hypothesis: String?,
+        startDate: Date,
+        endDate: Date,
+        baselineDays: Int = 14,
+        observations: [JournalCorrelator.Observation],
+        calendar: Calendar = .current
+    ) -> SleepExperimentStore.Outcome? {
+        let baselineStart = calendar.date(byAdding: .day, value: -baselineDays, to: startDate) ?? startDate
+        let baseline = observations.filter { $0.date >= baselineStart && $0.date < startDate }
+        let trial = observations.filter { $0.date >= startDate && $0.date <= endDate }
+        guard baseline.count >= minimumPeriodNights, trial.count >= minimumPeriodNights else { return nil }
+
+        var strongest: (metric: JournalCorrelator.Metric, baselineMedian: Double, trialMedian: Double)?
+        for metric in JournalCorrelator.Metric.allCases {
+            guard let baselineMedian = Statistics.median(baseline.compactMap(metric.value(from:))),
+                  let trialMedian = Statistics.median(trial.compactMap(metric.value(from:))) else { continue }
+            let delta = abs(trialMedian - baselineMedian)
+            let strongestDelta = strongest.map { abs($0.trialMedian - $0.baselineMedian) } ?? -1
+            if delta > strongestDelta {
+                strongest = (metric, baselineMedian, trialMedian)
+            }
+        }
+        guard let strongest else { return nil }
+
+        return SleepExperimentStore.Outcome(
+            id: UUID(),
+            tag: tag.rawValue,
+            hypothesis: hypothesis,
+            startDate: startDate,
+            endDate: endDate,
+            metricLabel: strongest.metric.shortLabel,
+            baselineMedian: strongest.baselineMedian,
+            trialMedian: strongest.trialMedian,
+            baselineNightCount: baseline.count,
+            trialNightCount: trial.count,
+            higherIsBetter: strongest.metric.higherIsBetter
+        )
+    }
 }

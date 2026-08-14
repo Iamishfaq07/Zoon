@@ -47,6 +47,7 @@ struct CauseFinderView: View {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
                 experimentSection
+                pastExperimentsSection
 
                 Picker("", selection: $tab) {
                     ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
@@ -61,8 +62,8 @@ struct CauseFinderView: View {
         .navigationTitle("Cause Finder")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingExperimentPicker) {
-            ExperimentPickerSheet { tag in
-                preferences.startExperiment(tag)
+            ExperimentPickerSheet { tag, hypothesis in
+                preferences.startExperiment(tag, hypothesis: hypothesis)
                 showingExperimentPicker = false
             }
         }
@@ -79,7 +80,7 @@ struct CauseFinderView: View {
                 tag: tag,
                 startDate: preferences.experimentStartDate,
                 status: GuidedExperiment.status(for: tag, observations: observations, since: preferences.experimentStartDate),
-                onEnd: { preferences.endExperiment() }
+                onEnd: { coordinator.endActiveExperiment() }
             )
         } else {
             Button {
@@ -90,6 +91,23 @@ struct CauseFinderView: View {
                     .foregroundStyle(Theme.Metric.sleep)
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    /// Completed experiments, most recent first -- a before/after snapshot
+    /// taken at the moment each one ended (see `GuidedExperiment.summarize`).
+    /// Hidden entirely once there's nothing to show, same as every other
+    /// optional section on this screen.
+    @ViewBuilder
+    private var pastExperimentsSection: some View {
+        if !coordinator.experiments.outcomes.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader(title: "Past experiments", systemImage: "clock.arrow.circlepath")
+                ForEach(coordinator.experiments.outcomes) { outcome in
+                    PastExperimentRow(outcome: outcome)
+                }
+            }
+            .glassCard()
         }
     }
 
@@ -321,17 +339,24 @@ private struct GuidedExperimentCard: View {
 }
 
 private struct ExperimentPickerSheet: View {
-    let onSelect: (BehaviorTag) -> Void
+    let onSelect: (BehaviorTag, String?) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var hypothesis: String = ""
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    TextField("What do you expect to find? (optional)", text: $hypothesis, axis: .vertical)
+                        .lineLimit(1...3)
+                } footer: {
+                    Text("Your own note, shown alongside the result -- never fed into the comparison itself.")
+                }
                 ForEach(BehaviorTag.Category.allCases) { category in
                     Section(category.label) {
                         ForEach(category.tags) { tag in
                             Button {
-                                onSelect(tag)
+                                onSelect(tag, hypothesis)
                             } label: {
                                 Label(tag.label, systemImage: tag.symbol)
                                     .foregroundStyle(.primary)
@@ -346,6 +371,69 @@ private struct ExperimentPickerSheet: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }
                 }
+            }
+        }
+    }
+}
+
+private struct PastExperimentRow: View {
+    let outcome: SleepExperimentStore.Outcome
+    @State private var expanded = false
+
+    private var tag: BehaviorTag? { BehaviorTag(rawValue: outcome.tag) }
+
+    private var tint: Color {
+        outcome.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.snappy(duration: 0.2)) { expanded.toggle() }
+            } label: {
+                HStack(spacing: 10) {
+                    if let tag {
+                        Image(systemName: tag.symbol)
+                            .foregroundStyle(tint)
+                            .frame(width: 22, height: 22)
+                            .background(tint.opacity(0.15), in: Circle())
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(tag?.label ?? outcome.tag)
+                            .font(Theme.label(13, weight: .semibold))
+                        Text(outcome.startDate, format: .dateTime.month(.abbreviated).day())
+                            + Text(" – ")
+                            + Text(outcome.endDate, format: .dateTime.month(.abbreviated).day())
+                    }
+                    .font(Theme.text(10))
+                    .foregroundStyle(.secondary)
+                    Spacer()
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(Theme.text(10, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 4) {
+                    if let hypothesis = outcome.hypothesis, !hypothesis.isEmpty {
+                        Text("Hypothesis: \(hypothesis)")
+                            .font(Theme.text(11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("""
+                        Comparing \(outcome.baselineNightCount) nights before the trial against \
+                        \(outcome.trialNightCount) nights during it, \(outcome.metricLabel) went from a \
+                        typical \(String(format: "%.0f", outcome.baselineMedian)) to \
+                        \(String(format: "%.0f", outcome.trialMedian)). A before/after comparison, not a \
+                        controlled one -- other things could have changed too.
+                        """)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .transition(.opacity)
             }
         }
     }
