@@ -75,6 +75,9 @@ enum AppMockData {
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
+                // Sample data simulates a fully-reviewed history, not a real
+                // gappy one -- every night here should count as journaled.
+                isJournaled: true,
                 recoveryPercent: (night.avgHRV ?? 55) * penalty,
                 sleepPerformance: min(100, night.timeAsleepMinutes / 480 * 100) * penalty,
                 deepMinutes: night.deepMinutes * penalty,

@@ -920,6 +920,7 @@ final class SleepDataCoordinator {
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
+                isJournaled: !tags.isEmpty,
                 recoveryPercent: recoveryHistory[night.date].map(Double.init),
                 sleepPerformance: min(100, night.timeAsleepMinutes / max(goal, 1) * 100),
                 deepMinutes: night.hasStageBreakdown ? night.deepMinutes : nil,

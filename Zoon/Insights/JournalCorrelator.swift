@@ -34,11 +34,33 @@ struct JournalCorrelator {
     /// Matched pairs required before a behaviour is eligible at all.
     static let minimumMatchedPairs = 8
 
+    /// Whether a given behaviour happened, didn't happen, or simply wasn't
+    /// reviewed on a given night.
+    ///
+    /// The distinction that used to be missing: a tag's absence from
+    /// `Observation.tags` doesn't mean "didn't happen" unless the user
+    /// actually looked at the tag list that night. Someone who tagged
+    /// `alcohol` on a handful of nights and never opened the Journal on the
+    /// rest has told Zoon nothing about caffeine, training, or travel on
+    /// those other nights -- treating their silence as a confident "no"
+    /// quietly recruited every un-journaled night into the control group for
+    /// every behaviour, which is exactly the confounding this engine exists
+    /// to avoid.
+    enum ExposureState: Equatable {
+        case yes, no, unknown
+    }
+
     /// One night's outcomes joined to its tags, plus the confounders used to
     /// find a comparable match.
     struct Observation {
         let date: Date
         let tags: Set<BehaviorTag>
+        /// Whether the user tagged *anything* this night, i.e. actually
+        /// looked at the full behaviour list (every tag lives on one
+        /// unpaginated screen in the Journal, so ticking any box implies
+        /// visual exposure to the rest). Without this, a tag's absence can't
+        /// be told apart from the night never having been reviewed at all.
+        let isJournaled: Bool
         let recoveryPercent: Double?
         let sleepPerformance: Double?
         let deepMinutes: Double?
@@ -50,6 +72,19 @@ struct JournalCorrelator {
         let isWeekend: Bool
         let sleepDebtMinutes: Double?
         let bedtimeHour: Double?
+
+        /// `.yes` if tagged, `.no` if the night was journaled and it wasn't,
+        /// `.unknown` if the night was never journaled at all.
+        func exposureState(for tag: BehaviorTag) -> ExposureState {
+            if tags.contains(tag) { return .yes }
+            return isJournaled ? .no : .unknown
+        }
+
+        /// Travel and illness are themselves loggable confounders (finding
+        /// #45): a hard hotel bed or a cold plausibly explains a bad night on
+        /// its own, independent of whatever else got tagged that day.
+        var isTravelDay: Bool { tags.contains(.travelled) }
+        var isSickDay: Bool { tags.contains(.sick) }
     }
 
     struct Finding: Identifiable, Hashable {
@@ -302,15 +337,18 @@ struct JournalCorrelator {
     /// matches; a night more than a fairly loose tolerance away is treated
     /// as no match at all rather than forced into a bad pair.
     private func matchedPairs(tag: BehaviorTag, metric: Metric, observations: [Observation]) -> [MatchedPair]? {
-        let exposed = observations.filter { $0.tags.contains(tag) }
+        let exposed = observations.filter { $0.exposureState(for: tag) == .yes }
         guard exposed.count >= Self.minimumMatchedPairs else { return nil }
 
-        var pool = observations.filter { !$0.tags.contains(tag) }
+        // `.no` only, never `.unknown` -- an un-journaled night has told
+        // Zoon nothing about whether this tag applied, so it can't stand in
+        // as a confident comparison night. See `ExposureState`'s doc comment.
+        var pool = observations.filter { $0.exposureState(for: tag) == .no }
         var pairs: [MatchedPair] = []
 
         for night in exposed.sorted(by: { $0.date < $1.date }) {
             guard let exposedValue = metric.value(from: night) else { continue }
-            guard let (index, distance) = bestMatch(for: night, in: pool) else { continue }
+            guard let (index, distance) = bestMatch(for: night, in: pool, confounderTag: tag) else { continue }
             guard distance < 3.0 else { continue }
             let candidate = pool[index]
             guard let candidateValue = metric.value(from: candidate) else { continue }
@@ -322,12 +360,30 @@ struct JournalCorrelator {
         return pairs
     }
 
-    private func bestMatch(for night: Observation, in pool: [Observation]) -> (index: Int, distance: Double)? {
+    /// `confounderTag` is the behaviour being tested -- travel/illness are
+    /// skipped as hard constraints when *they're* the tag under test,
+    /// otherwise every exposed night (travel = true) could only ever match
+    /// against pool nights that are by definition travel = false, producing
+    /// zero matches for those two tags specifically.
+    private func bestMatch(
+        for night: Observation,
+        in pool: [Observation],
+        confounderTag: BehaviorTag
+    ) -> (index: Int, distance: Double)? {
         var best: (index: Int, distance: Double)?
 
         for (index, candidate) in pool.enumerated() {
-            // Hard constraint: only compare weekend-to-weekend, weekday-to-weekday.
+            // Hard constraints: only compare weekend-to-weekend/weekday-to-weekday,
+            // travel-to-travel, and illness-to-illness (finding #45) -- each is
+            // plausibly enough on its own to explain a bad night regardless of
+            // whatever else got tagged.
             guard night.isWeekend == candidate.isWeekend else { continue }
+            if confounderTag != .travelled {
+                guard night.isTravelDay == candidate.isTravelDay else { continue }
+            }
+            if confounderTag != .sick {
+                guard night.isSickDay == candidate.isSickDay else { continue }
+            }
 
             var distance = 0.0
             if let a = night.sleepDebtMinutes, let b = candidate.sleepDebtMinutes {
