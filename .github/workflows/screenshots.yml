@@ -247,8 +247,13 @@ jobs:
           # the More screen where the report should have been. And the
           # hypnogram's axis labels, which wrapped once the type started
           # scaling — fixed-width columns holding no-longer-fixed-size text.
+          # "coach" was missing here -- the tab bar moved to Today/Sleep/
+          # Insights/Coach a while back (RootView.Tab), but this list still
+          # only shot the first three real tabs plus the journal/more
+          # sheets. Added alongside trends/coach so the walkthrough covers
+          # every tab, not three of the current four.
           FAILED=0
-          for tab in onboarding today sleep trends journal more \
+          for tab in onboarding today sleep trends coach journal more \
                      sleepDetail soundscapes nap breathing snoreCheck \
                      report settings badges; do
             shoot "$tab" || FAILED=1
