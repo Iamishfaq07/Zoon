@@ -53,6 +53,14 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     var nextBadgeTitle: String = ""
     var nextBadgeProgress: Double = 0
 
+    /// `HealthRadar.Severity.label` as of the last publish -- "Nothing
+    /// unusual", "Worth watching", or "Several signals moving". Defaulted
+    /// for the same reason every other field added after the first release
+    /// is: an older snapshot on disk still decodes, and the Watch app
+    /// treats the default the same as a genuinely clear reading rather than
+    /// failing to render.
+    var bodySignalsLabel: String = "Nothing unusual"
+
     /// Sleep debt expressed in hours, which is how the widget phrases it.
     var sleepDebtHours: Double { sleepDebtMinutes / 60 }
 
