@@ -70,15 +70,19 @@ struct CoachTabView: View {
 
     /// Data-driven prompts rather than a fixed list — a night with low HRV
     /// surfaces a question about HRV, a night with a debt spike surfaces a
-    /// question about debt. Each one is exactly the question the screen it
-    /// links to already knows how to answer, so tapping one never leads to a
-    /// dead end.
+    /// question about debt.
+    ///
+    /// Each one is passed to `CoachChatView` as `initialPrompt` and sent
+    /// automatically once the chat starts -- previously the question text
+    /// went nowhere: the link opened a blank composer with nothing typed
+    /// or sent, so tapping a suggestion looked identical to tapping "Start a
+    /// conversation".
     private func suggestedQuestions(_ night: SleepNightFeatures) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Based on last night", systemImage: "wand.and.sparkles")
             ForEach(suggestions(for: night), id: \.self) { question in
                 NavigationLink {
-                    CoachChatView(night: night)
+                    CoachChatView(night: night, initialPrompt: question)
                 } label: {
                     HStack {
                         Text(question)
