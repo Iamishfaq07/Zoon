@@ -464,7 +464,7 @@ struct StatusPill: View {
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(tint.opacity(0.18), in: Capsule())
+        .zoonGlassPill(tint: tint)
         .foregroundStyle(tint)
     }
 }
