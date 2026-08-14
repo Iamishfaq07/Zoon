@@ -33,6 +33,10 @@ final class HealthKitManager {
     /// redundant refresh.
     private var activeObservers: [HKObserverQuery] = []
 
+    /// Batches observer callbacks so one watch sync produces one refresh
+    /// rather than one per type. Created in `startObservingSleep`.
+    private var coalescer: HealthRefreshCoalescer?
+
     static var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
     // MARK: - Types
@@ -74,6 +78,35 @@ final class HealthKitManager {
         // return nothing, which the extractor handles as `nil`.
         types.insert(HKQuantityType(.appleSleepingWristTemperature))
         return types
+    }
+
+    /// Types whose *late* arrival changes an already-persisted night.
+    ///
+    /// Observing only `sleepAnalysis` leaves a real staleness hole. When a
+    /// watch syncs, the stages generally land first and the physiological
+    /// types follow -- resting heart rate, HRV, respiration, wrist
+    /// temperature, breathing disturbances. The night gets written from
+    /// whatever existed at that moment, and if no *further* sleep sample ever
+    /// arrives, no observer fires again: Recovery, Body Signals and the
+    /// vitals rows keep showing the values that were readable seconds after
+    /// the sleep samples appeared, until something drags the app into a
+    /// foreground refresh.
+    ///
+    /// Deliberately a subset of `enhancementReadTypes`. `heartRate`,
+    /// `activeEnergyBurned` and `appleExerciseTime` are all excluded: they
+    /// accumulate samples continuously all day, so observing them would mean
+    /// near-permanent churn for data that does not revise last night's
+    /// summary. These six are overnight-scoped or once-daily, so a callback
+    /// genuinely means "a night's numbers may have changed".
+    private var overnightPhysiologyObservedTypes: [HKSampleType] {
+        [
+            HKQuantityType(.restingHeartRate),
+            HKQuantityType(.heartRateVariabilitySDNN),
+            HKQuantityType(.respiratoryRate),
+            HKQuantityType(.oxygenSaturation),
+            HKQuantityType(.appleSleepingWristTemperature),
+            HKQuantityType(.appleSleepingBreathingDisturbances)
+        ]
     }
 
     // MARK: - Authorization
@@ -233,20 +266,39 @@ final class HealthKitManager {
         guard Self.isHealthDataAvailable else { return }
         stopObserving()
 
-        let sleepType = HKCategoryType(.sleepAnalysis)
+        // Every observer feeds one coalescer instead of calling `onChange`
+        // directly. A single watch sync fires sleep plus up to six
+        // physiological observers within a few seconds of each other, and one
+        // full refresh per callback would mean repeating the whole night's
+        // physiological query set six times over for one sync.
+        let coalescer = HealthRefreshCoalescer(refresh: onChange)
+        self.coalescer = coalescer
+
+        observe(HKCategoryType(.sleepAnalysis), label: "sleepAnalysis", into: coalescer)
+        for type in overnightPhysiologyObservedTypes {
+            observe(type, label: type.identifier, into: coalescer)
+        }
+    }
+
+    /// Registers one observer query plus background delivery for `type`.
+    private func observe(
+        _ type: HKSampleType,
+        label: String,
+        into coalescer: HealthRefreshCoalescer
+    ) {
         // Note on captures: the query handler holds `self` weakly, so inside it
         // `self` is already Optional. The nested Task captures that Optional
         // directly — writing `[weak self]` a second time would be applying
         // `weak` to an already-optional binding.
-        let observer = HKObserverQuery(sampleType: sleepType, predicate: nil) { [weak self] _, completionHandler, error in
+        let observer = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completionHandler, error in
             if let error {
                 // Logged, not surfaced: an observer hiccup shouldn't put a red
                 // banner in front of the user.
                 Task { @MainActor in
-                    self?.logger.error("Observer query error: \(error.localizedDescription, privacy: .public)")
+                    self?.logger.error("Observer query error for \(label, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             } else {
-                Task { await onChange() }
+                Task { @MainActor in coalescer.trigger() }
             }
             // MUST be called, even on error. HealthKit will stop delivering
             // updates to an observer that doesn't acknowledge them.
@@ -256,18 +308,22 @@ final class HealthKitManager {
         store.execute(observer)
         activeObservers.append(observer)
 
-        store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { [weak self] success, error in
+        store.enableBackgroundDelivery(for: type, frequency: .hourly) { [weak self] success, error in
             Task { @MainActor in
                 if let error {
+                    // `.notice`, not `.error`: a device that never records
+                    // wrist temperature or breathing disturbances is the
+                    // ordinary case for most hardware, not a fault.
                     self?.logger.notice(
                         """
-                        Background delivery unavailable: \(error.localizedDescription, privacy: .public). \
+                        Background delivery unavailable for \(label, privacy: .public): \
+                        \(error.localizedDescription, privacy: .public). \
                         The app still refreshes on foreground; add the HealthKit background delivery \
                         capability to enable automatic morning updates.
                         """
                     )
                 } else if success {
-                    self?.logger.info("Background delivery enabled for sleepAnalysis")
+                    self?.logger.info("Background delivery enabled for \(label, privacy: .public)")
                 }
             }
         }
@@ -276,6 +332,8 @@ final class HealthKitManager {
     func stopObserving() {
         for observer in activeObservers { store.stop(observer) }
         activeObservers.removeAll()
+        coalescer?.cancel()
+        coalescer = nil
     }
 
     // MARK: - Sleep samples
