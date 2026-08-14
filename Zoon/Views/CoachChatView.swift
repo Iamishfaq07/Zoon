@@ -69,20 +69,36 @@ struct CoachChatView: View {
         }
     }
 
+    /// User turns stay a bubble -- that's the normal, expected shape for your
+    /// own typed input. Zoon's answers deliberately aren't: the redesign spec
+    /// singles out "Coach should not look like generic iMessage/ChatGPT
+    /// bubbles" specifically for the app's *responses*, so those render as an
+    /// editorial block (a small attribution label, plain text, no bubble
+    /// shape) instead of a mirrored bubble on the opposite side.
+    @ViewBuilder
     private func bubble(_ message: CoachChat.Message) -> some View {
-        HStack {
-            if message.role == .assistant { Spacer(minLength: 40) }
-            Text(message.text)
-                .font(Theme.text(14))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    message.role == .user ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.06),
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                )
-            if message.role == .user { Spacer(minLength: 40) }
+        switch message.role {
+        case .user:
+            HStack {
+                Spacer(minLength: 40)
+                Text(message.text)
+                    .font(Theme.text(14))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Theme.Metric.sleep.opacity(0.25), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        case .assistant:
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Zoon", systemImage: "sparkles")
+                    .font(Theme.label(11, weight: .bold))
+                    .foregroundStyle(Theme.Metric.sleep)
+                Text(message.text)
+                    .font(Theme.text(14))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
     }
 
     private var composer: some View {
