@@ -224,7 +224,9 @@ struct SleepTabView: View {
                         if let clock = context.bodyClock {
                             BodyClockCard(
                                 bodyClock: clock,
-                                plannedBedtime: context.targetBedtime()
+                                plannedBedtime: context.targetBedtime(),
+                                actualBedtime: context.night.bedtime,
+                                actualWakeTime: context.night.wakeTime
                             )
                             .entrance(3)
                         }
