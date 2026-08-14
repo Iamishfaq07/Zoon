@@ -78,7 +78,7 @@ struct CauseFinderView: View {
             GuidedExperimentCard(
                 tag: tag,
                 startDate: preferences.experimentStartDate,
-                status: GuidedExperiment.status(for: tag, observations: observations),
+                status: GuidedExperiment.status(for: tag, observations: observations, since: preferences.experimentStartDate),
                 onEnd: { preferences.endExperiment() }
             )
         } else {

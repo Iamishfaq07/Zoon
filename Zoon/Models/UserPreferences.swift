@@ -149,10 +149,11 @@ final class UserPreferences {
         }
     }
 
-    /// When the active experiment was started. Not currently used to gate
-    /// anything (the matched-pair engine already looks at the tag's full
-    /// history, not just nights since this date) -- kept for display, so
-    /// the user can see how long they've been tracking it.
+    /// When the active experiment was started. Passed to
+    /// `GuidedExperiment.status(for:observations:since:)` to gate the
+    /// matched-pair comparison to nights on or after this date, and also
+    /// used for display so the user can see how long they've been tracking
+    /// it.
     private(set) var experimentStartDate: Date? {
         didSet {
             if let experimentStartDate {
