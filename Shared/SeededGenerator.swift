@@ -19,4 +19,15 @@ struct SeededGenerator: RandomNumberGenerator {
         z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
         return z ^ (z >> 31)
     }
+
+    /// Uniform double in `range`.
+    ///
+    /// Computed directly from `next()` rather than via
+    /// `Double.random(in:using: &self)` — passing `&self` from inside a mutating
+    /// method is an overlapping-access violation.
+    mutating func nextDouble(in range: ClosedRange<Double>) -> Double {
+        // Top 53 bits give a uniform value in [0, 1).
+        let unit = Double(next() >> 11) * (1.0 / 9_007_199_254_740_992.0)
+        return range.lowerBound + unit * (range.upperBound - range.lowerBound)
+    }
 }

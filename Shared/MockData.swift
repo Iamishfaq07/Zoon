@@ -271,30 +271,6 @@ private extension SleepNightFeatures {
     }
 }
 
-/// Tiny deterministic PRNG (SplitMix64) so mock history is identical on every
-/// launch. `SystemRandomNumberGenerator` would reshuffle the charts on each
-/// preview rebuild.
-private struct SeededGenerator: RandomNumberGenerator {
-    private var state: UInt64
-
-    init(seed: UInt64) { self.state = seed }
-
-    mutating func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z >> 31)
-    }
-
-    /// Uniform double in `range`.
-    ///
-    /// Computed directly from `next()` rather than via
-    /// `Double.random(in:using: &self)` — passing `&self` from inside a mutating
-    /// method is an overlapping-access violation.
-    mutating func nextDouble(in range: ClosedRange<Double>) -> Double {
-        // Top 53 bits give a uniform value in [0, 1).
-        let unit = Double(next() >> 11) * (1.0 / 9_007_199_254_740_992.0)
-        return range.lowerBound + unit * (range.upperBound - range.lowerBound)
-    }
-}
+// `SeededGenerator` (SplitMix64) lives in Shared/SeededGenerator.swift --
+// shared with `Statistics.pairedBootstrapCI` so there's one canonical
+// deterministic PRNG rather than two copies drifting apart.
