@@ -49,7 +49,16 @@ struct SleepToolsStrip: View {
                     NavigationLink {
                         BreathingHealthView()
                     } label: {
-                        tile("Breathing", symbol: "lungs.fill", tint: Theme.Metric.sleep)
+                        // First real call site for the custom `ZoonIcon`
+                        // family (task: Custom icon family) -- Breathing's
+                        // wave mark reads better at this scale than the
+                        // generic "lungs.fill" system glyph shared with the
+                        // Health app.
+                        customTile(
+                            "Breathing",
+                            icon: ZoonIcon.Breathing(tint: Theme.Metric.sleep),
+                            tint: Theme.Metric.sleep
+                        )
                     }
                     .buttonStyle(PressableStyle())
                 }
@@ -58,10 +67,18 @@ struct SleepToolsStrip: View {
     }
 
     private func tile(_ title: String, symbol: String, tint: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: symbol)
+        customTile(
+            title,
+            icon: Image(systemName: symbol)
                 .font(Theme.text(20))
-                .foregroundStyle(tint)
+                .foregroundStyle(tint),
+            tint: tint
+        )
+    }
+
+    private func customTile(_ title: String, icon: some View, tint: Color) -> some View {
+        VStack(spacing: 8) {
+            icon
                 .frame(width: 44, height: 44)
                 .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
