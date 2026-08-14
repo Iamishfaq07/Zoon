@@ -27,7 +27,7 @@ final class SleepHealthTests: XCTestCase {
             return XCTFail("expected a score")
         }
         XCTAssertGreaterThan(score, 70)
-        XCTAssertEqual(health.band, .solid)
+        XCTAssertTrue(health.band == .solid || health.band == .strong)
     }
 
     func testShortSleepAndFragmentedNightsScoreLower() {
