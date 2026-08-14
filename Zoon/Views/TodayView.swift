@@ -110,7 +110,9 @@ struct TodayView: View {
             )).entrance(5)
             if let lightGuidance = LightCoach.guidance(
                 wakeTime: context.night.wakeTime,
-                onsetHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
+                onsetHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil,
+                todayDaylightMinutes: preferences.lifestyleInsightsEnabled
+                    ? coordinator.todayLifestyleInsights?.daylightMinutes : nil
             ) {
                 LightCoachCard(guidance: lightGuidance).entrance(5)
             }

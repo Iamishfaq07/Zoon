@@ -26,18 +26,38 @@ enum LightCoach {
         let symbol: String
     }
 
+    /// Measured minutes of Time in Daylight (see `LifestyleInsights`) below
+    /// which the morning window still reads as "hasn't gotten light yet" --
+    /// a few minutes walking to the car isn't the same as a real outdoor
+    /// stretch, but this is deliberately low: any acknowledgement of real
+    /// measured progress beats generic advice that ignores it.
+    static let meaningfulDaylightMinutes = 15.0
+
     /// - Parameters:
     ///   - wakeTime: this morning's actual wake time.
     ///   - onsetHour: `BodyClock.onsetHour` when a usual-bedtime estimate
     ///     exists. `nil` disables the evening window rather than guessing.
+    ///   - todayDaylightMinutes: measured Time in Daylight so far today, from
+    ///     `LifestyleInsights` when Lifestyle Insights is enabled. `nil` when
+    ///     the feature is off or HealthKit has no reading yet -- guidance
+    ///     falls back to the generic, unpersonalized copy either way, since
+    ///     Zoon has no ambient light sensor of its own to fall back on.
     static func guidance(
         wakeTime: Date,
         onsetHour: Double?,
+        todayDaylightMinutes: Double? = nil,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> Guidance? {
         let minutesSinceWake = now.timeIntervalSince(wakeTime) / 60
         if minutesSinceWake >= 0, minutesSinceWake <= 90 {
+            if let todayDaylightMinutes, todayDaylightMinutes >= meaningfulDaylightMinutes {
+                return Guidance(
+                    headline: "You've already gotten some daylight",
+                    detail: "Health measured about \(Int(todayDaylightMinutes.rounded())) minutes outside so far this morning -- associated with an easier time falling asleep on schedule tonight. No need to force more; keep it up if you're headed out anyway.",
+                    symbol: "sun.max"
+                )
+            }
             return Guidance(
                 headline: "Get outside if you can",
                 detail: "Bright light in the hour or so after waking is the strongest single cue for your body clock -- stronger than caffeine for feeling alert, and it helps tonight's bedtime arrive on schedule. Even an overcast sky is far brighter than indoor lighting.",
