@@ -88,7 +88,8 @@ enum AppMockData {
                 sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime),
                 alcoholicBeverages: nil,
-                lateCaffeineMg: nil
+                lateCaffeineMg: nil,
+                measuredTimeZoneShift: false
             )
         }
     }

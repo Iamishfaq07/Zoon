@@ -949,6 +949,16 @@ final class SleepDataCoordinator {
         let goal = preferences.sleepGoalMinutes
         var calendar = Calendar.current
 
+        // Travel Mode groundwork (finding #55/#56): each night's timezone
+        // against the *chronologically previous stored night's* -- not
+        // just the adjacent array element, in case history ever has gaps
+        // or arrives out of order.
+        let sortedByDate = recentNights.sorted { $0.date < $1.date }
+        var previousTimeZoneByDate: [Date: String] = [:]
+        for (previous, current) in zip(sortedByDate, sortedByDate.dropFirst()) {
+            previousTimeZoneByDate[current.date] = previous.timeZoneIdentifier
+        }
+
         return recentNights.compactMap { night -> JournalCorrelator.Observation? in
             guard let tags = tagsByDate[night.date] else { return nil }
             // Each night's own timezone, not the device's current one -- see
@@ -978,7 +988,8 @@ final class SleepDataCoordinator {
                 sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime, timeZone: night.timeZone),
                 alcoholicBeverages: night.alcoholicBeverages,
-                lateCaffeineMg: night.lateCaffeineMg
+                lateCaffeineMg: night.lateCaffeineMg,
+                measuredTimeZoneShift: previousTimeZoneByDate[night.date].map { $0 != night.timeZoneIdentifier } ?? false
             )
         }
     }
