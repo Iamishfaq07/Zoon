@@ -232,16 +232,16 @@ SwiftData store, and draws. No Mac and no Apple account needed; see
 |---|---|
 | ![Today](docs/screenshots/today.jpg) | ![Sleep](docs/screenshots/sleep.jpg) |
 | Today | Sleep |
+| ![Insights](docs/screenshots/trends.jpg) | ![Coach](docs/screenshots/coach.jpg) |
+| Insights | Coach |
 
 Captured by CI on an iPhone 17 Pro simulator, with the mock dataset — hence the
 **Sample data** badge. They are regenerated on demand, so a layout regression
-shows up as an image diff.
-
-The tab bar has since moved from Today/Sleep/Trends/Journal/More to
-Today/Sleep/Insights/Coach (Journal is a sheet, not a tab). The `trends.jpg`
-and `more.jpg` captures above predate that change and are pending a re-run of
-the Screenshots workflow against the current tabs rather than being shown
-here under new labels.
+shows up as an image diff. The tab bar is Today/Sleep/Insights/Coach — Journal
+and Settings/More live behind sheets rather than tabs, so they aren't part of
+this table (see `docs/screenshots/journal.jpg`/`more.jpg` if you want those).
+The Insights capture is still named `trends.jpg` on disk, a holdover from
+before the tab was renamed; the image itself is current.
 
 Still unverified, because CI can screenshot but can't tap, and because nobody
 has run this against a real Health store:
