@@ -664,6 +664,9 @@ final class SleepDataCoordinator {
             sleepIntelligencePercent: context.sleepIntelligence.percent,
             sleepIntelligenceBand: context.sleepIntelligence.band.label
         )
+        snapshot.bodySignalsLabel = context.healthRadar.isActive
+            ? context.healthRadar.severity.label
+            : "Nothing unusual"
 
         // Badges are evaluated here rather than in the extension: the engine
         // needs the whole night history and the journal, and the widget

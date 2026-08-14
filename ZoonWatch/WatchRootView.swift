@@ -25,6 +25,7 @@ struct WatchRootView: View {
                 RecoveryPage(snapshot: snapshot)
                 SleepPage(snapshot: snapshot)
                 BatteryPage(snapshot: snapshot)
+                BodySignalsPage(snapshot: snapshot)
                 BadgePage(snapshot: snapshot)
             } else {
                 WaitingPage(isActivated: link.isActivated)
@@ -257,6 +258,40 @@ struct BatteryPage: View {
     }
 }
 
+/// Body Signals: whether anything is drifting from your own baseline,
+/// distilled to one word for the wrist -- `HealthRadar`'s full breakdown
+/// (which signals, how much, how long) stays a phone-only detail; the watch
+/// only needs to answer "should I look closer".
+struct BodySignalsPage: View {
+
+    let snapshot: SleepSnapshot
+
+    private var isNormal: Bool { snapshot.bodySignalsLabel == "Nothing unusual" }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right")
+                .font(Theme.text(30, weight: .medium))
+                .foregroundStyle(isNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+
+            Text("Body Signals")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+
+            Text(snapshot.bodySignalsLabel)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+
+            if snapshot.isMock {
+                Text("Sample data")
+                    .font(Theme.text(9))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 10)
+    }
+}
+
 /// Badges, so the wrist carries the reward too.
 struct BadgePage: View {
 
@@ -340,6 +375,10 @@ struct WaitingPage: View {
 
 #Preview("Battery") {
     BatteryPage(snapshot: MockData.snapshotWithBadges)
+}
+
+#Preview("Body Signals") {
+    BodySignalsPage(snapshot: MockData.snapshotWithBadges)
 }
 
 #Preview("Badges") {
