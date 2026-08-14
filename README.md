@@ -71,16 +71,27 @@ all of them locally.
 - **Chronotype** (Fitbit-style) — lion, bear, wolf, or dolphin from habitual
   timing.
 
-### Trends & Journal
+### Insights
 - 7/30-day charts for duration, HRV, accumulated debt, and schedule consistency
   (bedtimes plotted with circular statistics, so 23:50 and 00:10 sit next to each
   other rather than a day apart).
+- **Sleep Health** — a slow-moving 14/30/90-day read on how sleep has actually
+  been going, separate from any single night's score.
+- **Cause Finder** — Helps / Hurts / No Effect / Still Learning, built on
+  matched-pair comparisons and a paired bootstrap confidence interval, not a
+  simple tagged-vs-untagged average.
 - **Journal** (Whoop-style) — 23 tagged behaviours across four categories, and a
   correlation engine that reports what actually tracks with better nights. It
   refuses to call anything a pattern without enough tagged *and* untagged nights,
-  and it says "pattern", never "cause".
+  and it says "pattern", never "cause". Reached from a sheet rather than its own
+  tab.
 - **Weekly report** (Whoop/Garmin-style) — averages, week-over-week trends,
   narrative highlights, best and worst night.
+
+### Coach
+- **Ask Zoon** — suggested, data-driven questions about last night that
+  actually submit when tapped, plus a free-form chat, both running on Apple's
+  on-device Foundation Models.
 
 ### Everything else
 - Lock-screen, home-screen, and **watch-face** widgets, plus a companion Apple
@@ -92,8 +103,6 @@ all of them locally.
 - **Cycle tracking**, opt-in and off by default, correlating recovery and
   sleep against cycle phase — a normal luteal shift and an illness-drift
   pattern can look identical without it
-- **Ask Zoon** — a conversational follow-up on tonight's numbers via Apple's
-  on-device model, alongside the one-shot nightly insight
 - **Wind Down** — a narrated 4-7-8 breathing exercise, spoken on-device with
   no bundled audio
 - **Snore Check** — an on-device estimate from the microphone, run manually;
@@ -219,14 +228,20 @@ when the shutter fires, so a green run is proof the app launches, opens its
 SwiftData store, and draws. No Mac and no Apple account needed; see
 [BUILDING-WITHOUT-A-MAC.md](BUILDING-WITHOUT-A-MAC.md).
 
-| | | | | |
-|---|---|---|---|---|
-| ![Today](docs/screenshots/today.jpg) | ![Sleep](docs/screenshots/sleep.jpg) | ![Trends](docs/screenshots/trends.jpg) | ![Journal](docs/screenshots/journal.jpg) | ![More](docs/screenshots/more.jpg) |
-| Today | Sleep | Trends | Journal | More |
+| | |
+|---|---|
+| ![Today](docs/screenshots/today.jpg) | ![Sleep](docs/screenshots/sleep.jpg) |
+| Today | Sleep |
 
 Captured by CI on an iPhone 17 Pro simulator, with the mock dataset — hence the
 **Sample data** badge. They are regenerated on demand, so a layout regression
 shows up as an image diff.
+
+The tab bar has since moved from Today/Sleep/Trends/Journal/More to
+Today/Sleep/Insights/Coach (Journal is a sheet, not a tab). The `trends.jpg`
+and `more.jpg` captures above predate that change and are pending a re-run of
+the Screenshots workflow against the current tabs rather than being shown
+here under new labels.
 
 Still unverified, because CI can screenshot but can't tap, and because nobody
 has run this against a real Health store:
