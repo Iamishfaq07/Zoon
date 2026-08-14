@@ -576,11 +576,19 @@ struct SectionHeader: View {
     let title: String
     var subtitle: String?
     var systemImage: String?
+    /// A custom `ZoonIcon` mark in place of an SF Symbol, for sections whose
+    /// concept has its own icon. Takes priority over `systemImage` when both
+    /// are set; existing call sites pass only `systemImage` and are
+    /// unaffected.
+    var icon: AnyView?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
-                if let systemImage {
+                if let icon {
+                    icon
+                        .frame(width: 13, height: 13)
+                } else if let systemImage {
                     Image(systemName: systemImage)
                         .font(Theme.text(12, weight: .semibold))
                         .foregroundStyle(.secondary)
