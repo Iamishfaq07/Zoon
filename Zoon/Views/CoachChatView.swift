@@ -7,10 +7,18 @@ import SwiftUI
 struct CoachChatView: View {
 
     let night: SleepNightFeatures
+    /// A suggested question tapped from `CoachTabView`, sent automatically
+    /// once the chat starts. `nil` for the plain "Start a conversation"
+    /// entry point, which opens to an empty composer as before.
+    var initialPrompt: String? = nil
 
     @State private var chat = CoachChat()
     @State private var input = ""
     @FocusState private var inputFocused: Bool
+    /// Guards against re-sending `initialPrompt` if `.task` reruns on this
+    /// same view instance (e.g. a state change that re-triggers it) --
+    /// without this, a tapped suggestion could submit itself twice.
+    @State private var hasSubmittedInitialPrompt = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,7 +32,12 @@ struct CoachChatView: View {
         .nightBackground()
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
-        .task { chat.start(nightSummary: night.summaryForLLM) }
+        .task {
+            chat.start(nightSummary: night.summaryForLLM)
+            guard let initialPrompt, !hasSubmittedInitialPrompt else { return }
+            hasSubmittedInitialPrompt = true
+            await chat.send(initialPrompt)
+        }
     }
 
     private var transcript: some View {
