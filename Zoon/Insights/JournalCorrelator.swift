@@ -55,20 +55,34 @@ struct JournalCorrelator {
     struct Finding: Identifiable, Hashable {
         let tag: BehaviorTag
         let metric: Metric
-        /// Median outcome on the tagged nights actually used in a match.
+        /// Median outcome on the tagged nights actually used in a match, for
+        /// display context only -- `delta` below is not derived from this.
         let taggedMedian: Double
-        /// Median outcome on their matched comparison nights.
+        /// Median outcome on their matched comparison nights, for display
+        /// context only -- `delta` below is not derived from this.
         let matchedMedian: Double
+        /// Median of each pair's own (exposed − matched) difference. Kept
+        /// distinct from `taggedMedian - matchedMedian`: that
+        /// difference-of-medians is computed across two groups separately and
+        /// can mask pairs that move in opposite directions cancelling out in
+        /// aggregate, while this reflects what the typical *pair* itself
+        /// showed.
+        let pairDeltaMedian: Double
+        /// 95% bootstrap confidence interval on `pairDeltaMedian`. Nil when
+        /// there weren't enough pairs to bootstrap (see
+        /// `Statistics.pairedBootstrapCI`).
+        let confidenceIntervalLower: Double?
+        let confidenceIntervalUpper: Double?
         let matchedPairCount: Int
         let confidence: Confidence
 
         var id: String { "\(tag.rawValue)-\(metric.rawValue)" }
 
-        var delta: Double { taggedMedian - matchedMedian }
+        var delta: Double { pairDeltaMedian }
 
         var percentChange: Double {
             guard matchedMedian != 0 else { return 0 }
-            return (taggedMedian - matchedMedian) / abs(matchedMedian) * 100
+            return pairDeltaMedian / abs(matchedMedian) * 100
         }
 
         var isImprovement: Bool {
@@ -82,11 +96,15 @@ struct JournalCorrelator {
         }
 
         var detail: String {
-            """
+            var rangeClause = ""
+            if let lower = confidenceIntervalLower, let upper = confidenceIntervalUpper {
+                rangeClause = " 95% range: \(metric.format(lower)) to \(metric.format(upper))."
+            }
+            return """
             Across \(matchedPairCount) nights you logged \(tag.label.lowercased()), matched against \
             comparable nights without it (similar weekday/weekend, sleep debt, and bedtime), \
-            \(metric.shortLabel) differed by \(metric.format(delta)). \(confidence.label). \
-            An association in your data, not proof of cause.
+            \(metric.shortLabel) differed by \(metric.format(delta)) on the typical matched pair.\(rangeClause) \
+            \(confidence.label). An association in your data, not proof of cause.
             """
         }
     }
@@ -174,20 +192,27 @@ struct JournalCorrelator {
 
                 let taggedValues = pairs.map(\.exposedValue)
                 let matchedValues = pairs.map(\.matchedValue)
+                let pairDeltas = pairs.map(\.delta)
                 guard let taggedMedian = Statistics.median(taggedValues),
                       let matchedMedian = Statistics.median(matchedValues),
+                      let pairDeltaMedian = Statistics.median(pairDeltas),
                       matchedMedian != 0 else { continue }
 
-                let percentChange = abs((taggedMedian - matchedMedian) / abs(matchedMedian) * 100)
+                let percentChange = abs(pairDeltaMedian / abs(matchedMedian) * 100)
                 guard percentChange >= metric.minimumEffectPercent else { continue }
+
+                let ci = Statistics.pairedBootstrapCI(deltas: pairDeltas)
 
                 results.append(Finding(
                     tag: tag,
                     metric: metric,
                     taggedMedian: taggedMedian,
                     matchedMedian: matchedMedian,
+                    pairDeltaMedian: pairDeltaMedian,
+                    confidenceIntervalLower: ci?.lower,
+                    confidenceIntervalUpper: ci?.upper,
                     matchedPairCount: pairs.count,
-                    confidence: confidence(for: pairs)
+                    confidence: confidence(forPairCount: pairDeltas.count, ci: ci)
                 ))
             }
         }
@@ -264,6 +289,7 @@ struct JournalCorrelator {
         let exposedDate: Date
         let exposedValue: Double
         let matchedValue: Double
+        var delta: Double { exposedValue - matchedValue }
     }
 
     /// Greedy nearest-neighbour matching, without replacement: each untagged
@@ -319,33 +345,20 @@ struct JournalCorrelator {
     }
 
     /// Sample count alone doesn't earn High confidence -- the spec this
-    /// implements is explicit about that. A cheap, deterministic stand-in
-    /// for a full bootstrap confidence interval: split the matched pairs
-    /// chronologically in half and check the effect points the same
-    /// direction in both halves. An effect that flips sign between the
-    /// first and second half of the data isn't a stable pattern yet,
-    /// however many pairs produced it.
-    private func confidence(for pairs: [MatchedPair]) -> Confidence {
-        let sorted = pairs.sorted { $0.exposedDate < $1.exposedDate }
-        let mid = sorted.count / 2
-        let firstHalf = Array(sorted.prefix(mid))
-        let secondHalf = Array(sorted.suffix(sorted.count - mid))
+    /// implements is explicit about that. Driven by a real deterministic
+    /// paired-bootstrap confidence interval (`Statistics.pairedBootstrapCI`)
+    /// on the pair deltas: a finding only reaches Moderate/High once enough
+    /// pairs exist *and* the 95% interval for the typical pair difference
+    /// excludes zero, i.e. resampling the same data consistently points the
+    /// same direction rather than merely having produced enough of it to
+    /// run the test once.
+    private func confidence(forPairCount count: Int, ci: (lower: Double, upper: Double)?) -> Confidence {
+        let excludesZero = ci.map { ($0.lower > 0 && $0.upper > 0) || ($0.lower < 0 && $0.upper < 0) } ?? false
 
-        let firstDiff = medianDifference(firstHalf)
-        let secondDiff = medianDifference(secondHalf)
-        let isStable = firstHalf.count >= 3 && secondHalf.count >= 3
-            && (firstDiff == 0 || secondDiff == 0 || (firstDiff > 0) == (secondDiff > 0))
-
-        switch pairs.count {
+        switch count {
         case ..<16: return .low
-        case 16..<30: return isStable ? .moderate : .low
-        default: return isStable ? .high : .moderate
+        case 16..<30: return excludesZero ? .moderate : .low
+        default: return excludesZero ? .high : .moderate
         }
-    }
-
-    private func medianDifference(_ pairs: [MatchedPair]) -> Double {
-        let exposed = Statistics.median(pairs.map(\.exposedValue)) ?? 0
-        let matched = Statistics.median(pairs.map(\.matchedValue)) ?? 0
-        return exposed - matched
     }
 }

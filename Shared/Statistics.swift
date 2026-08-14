@@ -109,4 +109,42 @@ enum Statistics {
         let minutes = Double((components.hour ?? 0) * 60 + (components.minute ?? 0))
         return minutes >= 18 * 60 ? minutes - 24 * 60 : minutes
     }
+
+    /// Percentile-bootstrap 95% confidence interval for the median of
+    /// `deltas` (e.g. paired exposed-minus-matched differences): resamples
+    /// `deltas` with replacement `iterations` times, takes the median of
+    /// each resample, and returns the 2.5th/97.5th percentile of that
+    /// resampled-median distribution.
+    ///
+    /// Deterministic via `SeededGenerator` -- the same `deltas` and `seed`
+    /// always produce the same interval, unlike a bootstrap seeded from
+    /// system randomness, which would make a finding's stated confidence
+    /// silently reshuffle between one visit to the screen and the next.
+    static func pairedBootstrapCI(
+        deltas: [Double],
+        iterations: Int = 2000,
+        seed: UInt64 = 0x5A0E_1DA7_5EED_0001
+    ) -> (lower: Double, upper: Double)? {
+        guard deltas.count >= 3 else { return nil }
+
+        var generator = SeededGenerator(seed: seed)
+        var resampledMedians: [Double] = []
+        resampledMedians.reserveCapacity(iterations)
+
+        for _ in 0..<iterations {
+            var resample: [Double] = []
+            resample.reserveCapacity(deltas.count)
+            for _ in 0..<deltas.count {
+                let index = Int.random(in: 0..<deltas.count, using: &generator)
+                resample.append(deltas[index])
+            }
+            if let m = median(resample) {
+                resampledMedians.append(m)
+            }
+        }
+
+        guard let lower = percentile(resampledMedians, 2.5),
+              let upper = percentile(resampledMedians, 97.5) else { return nil }
+        return (lower, upper)
+    }
 }
