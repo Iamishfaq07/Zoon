@@ -56,6 +56,9 @@ enum DataExporter {
             let bedtimeRemindersEnabled: Bool
             let cycleTrackingEnabled: Bool
             let smartWakeEnabled: Bool
+            /// Optional key -- a backup exported before Lifestyle Insights
+            /// existed simply decodes it as `nil`, treated as off.
+            let lifestyleInsightsEnabled: Bool?
         }
 
         struct WristTemperatureRecord: Codable {
@@ -102,7 +105,8 @@ enum DataExporter {
                 appearance: preferences.appearance.rawValue,
                 bedtimeRemindersEnabled: preferences.bedtimeRemindersEnabled,
                 cycleTrackingEnabled: preferences.cycleTrackingEnabled,
-                smartWakeEnabled: preferences.smartWakeEnabled
+                smartWakeEnabled: preferences.smartWakeEnabled,
+                lifestyleInsightsEnabled: preferences.lifestyleInsightsEnabled
             ),
             snoreSummaries: snoreSummaries,
             wristTemperatures: wristTemperatures.map {

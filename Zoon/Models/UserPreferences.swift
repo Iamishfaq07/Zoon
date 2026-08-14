@@ -17,6 +17,7 @@ final class UserPreferences {
         static let age = "zoon.pref.age"
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
+        static let lifestyleInsightsEnabled = "zoon.pref.lifestyleInsightsEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
         static let wakeAlarmEnabled = "zoon.pref.wakeAlarmEnabled"
         static let appearance = "zoon.pref.appearance"
@@ -50,6 +51,14 @@ final class UserPreferences {
     /// — rather than reading reproductive health data for everyone by default.
     var cycleTrackingEnabled: Bool {
         didSet { defaults.set(cycleTrackingEnabled, forKey: Key.cycleTrackingEnabled) }
+    }
+
+    /// Off by default. Turning it on triggers a *separate* HealthKit
+    /// authorization request for caffeine, alcohol, daylight, and
+    /// mindfulness — see `HealthKitManager.requestLifestyleInsightsAuthorization`
+    /// — rather than reading those by default alongside everything else.
+    var lifestyleInsightsEnabled: Bool {
+        didSet { defaults.set(lifestyleInsightsEnabled, forKey: Key.lifestyleInsightsEnabled) }
     }
 
     /// Wake-window notification — see `BedtimeReminder.scheduleWakeWindow`.
@@ -234,6 +243,7 @@ final class UserPreferences {
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
         self.cycleTrackingEnabled = defaults.bool(forKey: Key.cycleTrackingEnabled)
+        self.lifestyleInsightsEnabled = defaults.bool(forKey: Key.lifestyleInsightsEnabled)
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
         self.wakeAlarmEnabled = defaults.bool(forKey: Key.wakeAlarmEnabled)
         self.appearance = AppearancePreference(
@@ -263,6 +273,7 @@ final class UserPreferences {
         hasCompletedOnboarding = false
         bedtimeRemindersEnabled = false
         cycleTrackingEnabled = false
+        lifestyleInsightsEnabled = false
         smartWakeEnabled = false
         wakeAlarmEnabled = false
         appearance = .dark
@@ -280,6 +291,7 @@ final class UserPreferences {
             Key.age,
             Key.bedtimeRemindersEnabled,
             Key.cycleTrackingEnabled,
+            Key.lifestyleInsightsEnabled,
             Key.smartWakeEnabled,
             Key.wakeAlarmEnabled,
             Key.appearance,

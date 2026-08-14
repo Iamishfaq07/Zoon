@@ -86,6 +86,9 @@ final class SleepDataCoordinator {
     /// Populated only when cycle tracking is on. Empty otherwise, including
     /// on every code path that never asks HealthKit for it.
     private(set) var cyclePeriodStarts: [Date] = []
+    /// Populated only when Lifestyle Insights is on. `nil` otherwise,
+    /// including on every code path that never asks HealthKit for it.
+    private(set) var todayLifestyleInsights: LifestyleInsights?
 
     // MARK: - Dependencies
 
@@ -149,6 +152,33 @@ final class SleepDataCoordinator {
 
     func disableCycleTracking() {
         cyclePeriodStarts = []
+    }
+
+    /// Requests the separate Lifestyle Insights authorization and, if
+    /// granted, loads today's values. Call only from the Settings toggle —
+    /// see `UserPreferences.lifestyleInsightsEnabled`.
+    func enableLifestyleInsights() async {
+        guard DataEnvironment.current.isLive else {
+            todayLifestyleInsights = LifestyleInsights(
+                caffeineMg: 140, alcoholicBeverages: nil, daylightMinutes: 38, mindfulMinutes: 10
+            )
+            return
+        }
+        do {
+            try await healthKit.requestLifestyleInsightsAuthorization()
+            await refreshLifestyleInsights()
+        } catch {
+            logger.error("Lifestyle Insights authorization failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    func disableLifestyleInsights() {
+        todayLifestyleInsights = nil
+    }
+
+    private func refreshLifestyleInsights() async {
+        let today = DateInterval(start: Calendar.current.startOfDay(for: .now), end: .now)
+        todayLifestyleInsights = await healthKit.lifestyleInsights(for: today)
     }
 
     private func refreshCycleData() async {
@@ -233,6 +263,7 @@ final class SleepDataCoordinator {
 
         await refreshTodayStress()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
+        if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
 
         // Also guarded here: `refresh()` runs again on every foreground, and a
         // demo session that quietly swapped to live data on the second
@@ -826,6 +857,7 @@ final class SleepDataCoordinator {
             ) ?? .dark
             preferences.bedtimeRemindersEnabled = restored.bedtimeRemindersEnabled
             preferences.cycleTrackingEnabled = restored.cycleTrackingEnabled
+            preferences.lifestyleInsightsEnabled = restored.lifestyleInsightsEnabled ?? false
             preferences.smartWakeEnabled = restored.smartWakeEnabled
             preferences.preferredEngine = UserPreferences.EngineChoice(
                 rawValue: restored.preferredEngine
@@ -879,6 +911,7 @@ final class SleepDataCoordinator {
         recoveryHistory = [:]
         todayStress = nil
         cyclePeriodStarts = []
+        todayLifestyleInsights = nil
         lastRefresh = nil
         WidgetCenter.shared.reloadAllTimelines()
 
