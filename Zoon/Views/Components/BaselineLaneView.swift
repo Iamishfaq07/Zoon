@@ -28,7 +28,7 @@ struct BaselineLaneView: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.neutral(0.08))
 
-                if let baseline, let tolerance, tolerance > 0 {
+                if let tolerance, tolerance > 0 {
                     let bandWidth = width / windowInTolerances
                     Capsule()
                         .fill(tint.opacity(0.28))
