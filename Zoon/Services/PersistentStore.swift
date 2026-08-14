@@ -81,6 +81,10 @@ enum PersistentStore {
                 copy.tagIdentifiers = entry.tagIdentifiers
                 copy.note = entry.note
                 copy.feelingRaw = entry.feelingRaw
+                copy.restedRaw = entry.restedRaw
+                copy.energyRaw = entry.energyRaw
+                copy.sleepinessRaw = entry.sleepinessRaw
+                copy.moodRaw = entry.moodRaw
                 copy.updatedAt = entry.updatedAt
                 destinationContext.insert(copy)
             }

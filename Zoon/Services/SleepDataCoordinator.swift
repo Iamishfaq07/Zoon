@@ -802,7 +802,12 @@ final class SleepDataCoordinator {
             absoluteTemperatures: archive.wristTemperaturesByDate
         )
         let entries = journal.importEntries(
-            archive.journal.map { (date: $0.date, tags: $0.tags, note: $0.note, feelingRaw: $0.feeling) }
+            archive.journal.map {
+                (
+                    date: $0.date, tags: $0.tags, note: $0.note, feelingRaw: $0.feeling,
+                    restedRaw: $0.rested, energyRaw: $0.energy, sleepinessRaw: $0.sleepiness, moodRaw: $0.mood
+                )
+            }
         )
         let restoredNaps = naps.importNaps(archive.naps)
         let restoredSnore = SnoreStore().importSummaries(archive.snoreSummaries ?? [])

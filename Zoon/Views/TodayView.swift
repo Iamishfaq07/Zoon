@@ -16,6 +16,7 @@ struct TodayView: View {
     // reliably trigger a SwiftUI update on its own -- same reasoning as
     // JournalView's `selectedTagIdentifiers`, see that type's doc comment.
     @State private var checkInFeeling: MorningFeeling?
+    @State private var checkInDetails: [CheckInDimension: Int] = [:]
 
     var body: some View {
         NavigationStack {
@@ -57,13 +58,25 @@ struct TodayView: View {
             } else {
                 morningBrief(context).entrance(0)
             }
-            MorningCheckInCard(selected: checkInFeeling) { feeling in
-                checkInFeeling = feeling
-                coordinator.journal.setFeeling(feeling, on: context.night.date)
-            }
+            MorningCheckInCard(
+                selected: checkInFeeling,
+                details: checkInDetails,
+                onSelectFeeling: { feeling in
+                    checkInFeeling = feeling
+                    coordinator.journal.setFeeling(feeling, on: context.night.date)
+                },
+                onSelectDetail: { dimension, value in
+                    checkInDetails[dimension] = value
+                    coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date)
+                }
+            )
             .entrance(1)
             .task(id: context.night.date) {
-                checkInFeeling = coordinator.journal.entry(for: context.night.date)?.feeling
+                let entry = coordinator.journal.entry(for: context.night.date)
+                checkInFeeling = entry?.feeling
+                checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
+                    result[dimension] = entry?.value(for: dimension)
+                }
             }
             if let mode = RecoveryMode.evaluate(
                 band: context.recovery.band,

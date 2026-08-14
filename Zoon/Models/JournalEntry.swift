@@ -171,6 +171,52 @@ enum MorningFeeling: Int, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// A single 1–5 self-report dimension, collected optionally alongside the
+/// overall `MorningFeeling` tap.
+///
+/// Kept separate from `MorningFeeling` (rather than replacing it) because the
+/// single-tap feeling is the compact default -- most mornings, most users
+/// tap once and move on. These four are the "tell us more" expansion: rested,
+/// energy, sleepiness and mood are distinct enough subjectively (someone can
+/// feel rested but low-energy, or alert but in a bad mood) that collapsing
+/// them into one number would lose exactly the signal that makes them useful
+/// to `JournalCorrelator` as confounders and to Sleep Need validation later.
+///
+/// Same non-scoring rule as `MorningFeeling`: never blended into `RecoveryScore`,
+/// `SleepIntelligenceScore`, or any other measured metric.
+enum CheckInDimension: String, CaseIterable, Identifiable, Sendable {
+    case rested, energy, sleepiness, mood
+
+    var id: String { rawValue }
+
+    var question: String {
+        switch self {
+        case .rested: "How rested do you feel?"
+        case .energy: "Energy level?"
+        case .sleepiness: "How alert are you?"
+        case .mood: "Mood this morning?"
+        }
+    }
+
+    var lowLabel: String {
+        switch self {
+        case .rested: "Not rested"
+        case .energy: "Drained"
+        case .sleepiness: "Very sleepy"
+        case .mood: "Low"
+        }
+    }
+
+    var highLabel: String {
+        switch self {
+        case .rested: "Fully rested"
+        case .energy: "Energized"
+        case .sleepiness: "Fully alert"
+        case .mood: "Great"
+        }
+    }
+}
+
 /// One day's tagged behaviours, keyed to the night they preceded.
 @Model
 final class JournalEntry {
@@ -194,6 +240,15 @@ final class JournalEntry {
     /// `SleepNightRecord.nightKey` and `.timeZoneIdentifier`.
     var feelingRaw: Int?
 
+    /// The four Morning Check-In V2 dimensions, 1...5. Optional both because
+    /// existing rows migrate without them and because each is its own
+    /// separately-skippable question -- someone might log rested and energy
+    /// but not mood.
+    var restedRaw: Int?
+    var energyRaw: Int?
+    var sleepinessRaw: Int?
+    var moodRaw: Int?
+
     var updatedAt: Date
 
     init(date: Date, tags: [BehaviorTag] = [], note: String? = nil) {
@@ -208,6 +263,44 @@ final class JournalEntry {
         set {
             feelingRaw = newValue?.rawValue
             updatedAt = .now
+        }
+    }
+
+    var rested: Int? {
+        get { restedRaw }
+        set { restedRaw = newValue.map { min(5, max(1, $0)) }; updatedAt = .now }
+    }
+
+    var energy: Int? {
+        get { energyRaw }
+        set { energyRaw = newValue.map { min(5, max(1, $0)) }; updatedAt = .now }
+    }
+
+    var sleepiness: Int? {
+        get { sleepinessRaw }
+        set { sleepinessRaw = newValue.map { min(5, max(1, $0)) }; updatedAt = .now }
+    }
+
+    var mood: Int? {
+        get { moodRaw }
+        set { moodRaw = newValue.map { min(5, max(1, $0)) }; updatedAt = .now }
+    }
+
+    func value(for dimension: CheckInDimension) -> Int? {
+        switch dimension {
+        case .rested: rested
+        case .energy: energy
+        case .sleepiness: sleepiness
+        case .mood: mood
+        }
+    }
+
+    func setValue(_ value: Int?, for dimension: CheckInDimension) {
+        switch dimension {
+        case .rested: rested = value
+        case .energy: energy = value
+        case .sleepiness: sleepiness = value
+        case .mood: mood = value
         }
     }
 
