@@ -379,32 +379,6 @@ extension View {
     func glassCard(padding: CGFloat = Theme.cardPadding) -> some View {
         modifier(GlassCard(padding: padding))
     }
-}
-
-/// A stack that lays out horizontally until the reader's Dynamic Type size
-/// gets big enough that side-by-side content would get cramped or truncated,
-/// then reflows to vertical -- the pattern that breaks first once Dynamic
-/// Type is allowed past `.accessibility1` (see `Theme.zoonTypography()`).
-///
-/// Built on `AnyLayout` rather than a fixed-width breakpoint, so it responds
-/// to the thing that's actually growing rather than approximating it via
-/// screen size.
-struct AdaptiveStack<Content: View>: View {
-    var spacing: CGFloat?
-    var alignment: HorizontalAlignment = .leading
-    @ViewBuilder var content: Content
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        let layout: AnyLayout = dynamicTypeSize >= .accessibility1
-            ? AnyLayout(VStackLayout(alignment: alignment, spacing: spacing))
-            : AnyLayout(HStackLayout(spacing: spacing))
-        layout {
-            content
-        }
-    }
-}
 
     /// Caps Dynamic Type growth to a size the card layouts survive.
     ///
@@ -437,6 +411,31 @@ struct AdaptiveStack<Content: View>: View {
                 Theme.heroGlow
             }
             .ignoresSafeArea()
+        }
+    }
+}
+
+/// A stack that lays out horizontally until the reader's Dynamic Type size
+/// gets big enough that side-by-side content would get cramped or truncated,
+/// then reflows to vertical -- the pattern that breaks first once Dynamic
+/// Type is allowed past `.accessibility1` (see `zoonTypography()` above).
+///
+/// Built on `AnyLayout` rather than a fixed-width breakpoint, so it responds
+/// to the thing that's actually growing rather than approximating it via
+/// screen size.
+struct AdaptiveStack<Content: View>: View {
+    var spacing: CGFloat?
+    var alignment: HorizontalAlignment = .leading
+    @ViewBuilder var content: Content
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        let layout: AnyLayout = dynamicTypeSize >= .accessibility1
+            ? AnyLayout(VStackLayout(alignment: alignment, spacing: spacing))
+            : AnyLayout(HStackLayout(spacing: spacing))
+        layout {
+            content
         }
     }
 }
