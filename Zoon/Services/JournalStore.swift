@@ -67,6 +67,14 @@ final class JournalStore {
         save()
     }
 
+    /// Sets one Morning Check-In V2 dimension (rested/energy/sleepiness/mood).
+    /// Each dimension saves independently so a partial check-in still persists.
+    func setCheckIn(_ dimension: CheckInDimension, value: Int?, on date: Date) {
+        let entry = entryOrCreate(for: date)
+        entry.setValue(value, for: dimension)
+        save()
+    }
+
     /// Days that have at least one tag — for the journal's history list.
     func taggedDays() -> [JournalEntry] {
         allEntries().filter { !$0.tagIdentifiers.isEmpty }
@@ -78,7 +86,12 @@ final class JournalStore {
     /// trustworthy than one from an older archive.
     /// - Returns: how many entries were created.
     @discardableResult
-    func importEntries(_ records: [(date: Date, tags: [String], note: String?, feelingRaw: Int?)]) -> Int {
+    func importEntries(
+        _ records: [(
+            date: Date, tags: [String], note: String?, feelingRaw: Int?,
+            restedRaw: Int?, energyRaw: Int?, sleepinessRaw: Int?, moodRaw: Int?
+        )]
+    ) -> Int {
         var created = 0
         for record in records {
             let day = Calendar.current.startOfDay(for: record.date)
@@ -87,6 +100,10 @@ final class JournalStore {
             entry.tagIdentifiers = record.tags
             entry.note = record.note
             entry.feelingRaw = record.feelingRaw
+            entry.restedRaw = record.restedRaw
+            entry.energyRaw = record.energyRaw
+            entry.sleepinessRaw = record.sleepinessRaw
+            entry.moodRaw = record.moodRaw
             context.insert(entry)
             created += 1
         }
