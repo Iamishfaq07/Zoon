@@ -60,8 +60,14 @@ final class SleepPlaybookTests: XCTestCase {
         for i in 0..<40 {
             let isTopQuarter = i < 10
             outcomes.append(isTopQuarter ? 95 : Double(40 + i))
-            strongPresence.append(isTopQuarter ? true : false)
-            weakPresence.append(isTopQuarter ? (i % 2 == 0) : (i % 3 == 0))
+            // Strong: present on all 10 best nights, only 2 of the other
+            // 30 -- bestRate 1.0, typicalRate (10 + 2) / 40 = 0.3, a 0.7 gap.
+            strongPresence.append(isTopQuarter ? true : (i < 12))
+            // Weak: present on 7 of 10 best nights, only 3 of the other
+            // 30 -- bestRate 0.7, typicalRate (7 + 3) / 40 = 0.25, a 0.45
+            // gap. Clears the 0.2 floor but is clearly smaller than
+            // "strong"'s.
+            weakPresence.append(isTopQuarter ? (i < 7) : (i < 13))
         }
         let inputs = [
             SleepPlaybook.FactorInput(id: "weak", label: "Weak", presencePerNight: weakPresence),
