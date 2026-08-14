@@ -230,7 +230,7 @@ struct TodayView: View {
     // MARK: - Rings
 
     private func ringsCard(_ context: DayContext) -> some View {
-        HStack(spacing: 16) {
+        AdaptiveStack(spacing: 16) {
             TripleRing(arcs: [
                 .init(
                     fraction: context.strain.value / StrainScore.maxValue,
@@ -391,7 +391,7 @@ struct BodyBatteryCard: View {
 
             BodyBatteryChart(battery: battery)
 
-            HStack(spacing: 14) {
+            AdaptiveStack(spacing: 14) {
                 stat("Woke at", "\(battery.morningPeak)")
                 stat("Spent", "\(battery.spentToday)")
                 stat("Low", "\(battery.dayLow)")
