@@ -9,6 +9,7 @@ import SwiftData
 struct JournalView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
@@ -33,6 +34,7 @@ struct JournalView: View {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
                     dayPicker
+                    lifestyleInsightsCard
                     tagSections
                     noteCard
                     correlationsSection
@@ -123,6 +125,58 @@ struct JournalView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Lifestyle Insights
+
+    /// Today's measured caffeine/alcohol/daylight/mindfulness, shown as
+    /// reference alongside manual tagging -- not a substitute for it, and
+    /// not shown for past days: the coordinator only ever holds *today's*
+    /// figures (see `SleepDataCoordinator.todayLifestyleInsights`), so
+    /// showing it while looking at another day would silently mislabel
+    /// today's numbers as that day's.
+    @ViewBuilder
+    private var lifestyleInsightsCard: some View {
+        if preferences.lifestyleInsightsEnabled,
+           Calendar.current.isDateInToday(selectedDate),
+           let insights = coordinator.todayLifestyleInsights,
+           !insights.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader(
+                    title: "Measured today",
+                    subtitle: "From Health, not the Journal -- reference alongside your tags.",
+                    systemImage: "heart.text.square"
+                )
+                FlowLayout(spacing: 8) {
+                    if let mg = insights.caffeineMg {
+                        insightChip(symbol: "cup.and.saucer", text: "\(Int(mg.rounded())) mg caffeine")
+                    }
+                    if let drinks = insights.alcoholicBeverages, drinks > 0 {
+                        insightChip(symbol: "wineglass", text: "\(String(format: "%.1f", drinks)) drinks")
+                    }
+                    if let minutes = insights.daylightMinutes {
+                        insightChip(symbol: "sun.max", text: "\(Int(minutes.rounded())) min daylight")
+                    }
+                    if let minutes = insights.mindfulMinutes {
+                        insightChip(symbol: "brain.head.profile", text: "\(Int(minutes.rounded())) min mindful")
+                    }
+                }
+            }
+            .glassCard()
+        }
+    }
+
+    private func insightChip(symbol: String, text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(Theme.text(11, weight: .medium))
+            Text(text)
+                .font(Theme.label(12, weight: .medium))
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .background(Theme.neutral(0.06), in: Capsule())
+        .foregroundStyle(.secondary)
     }
 
     // MARK: - Tags

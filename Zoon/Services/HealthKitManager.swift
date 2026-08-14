@@ -142,6 +142,77 @@ final class HealthKitManager {
         }
     }
 
+    /// The four measured signals behind Lifestyle Insights (findings #48/#49):
+    /// caffeine, alcohol, and daylight are quantity types; mindful sessions
+    /// are category (start/end) samples like sleep or menstrual flow.
+    private var lifestyleInsightsReadTypes: Set<HKObjectType> {
+        [
+            HKQuantityType(.dietaryCaffeine),
+            HKQuantityType(.numberOfAlcoholicBeverages),
+            HKQuantityType(.timeInDaylight),
+            HKCategoryType(.mindfulSession)
+        ]
+    }
+
+    /// Requests Lifestyle Insights separately from the main authorization
+    /// pass, same reasoning as `requestCycleTrackingAuthorization`: caffeine,
+    /// alcohol, daylight, and mindfulness are readable, but not something to
+    /// prompt for by default just because they're technically available.
+    /// Called only when someone turns the Settings toggle on.
+    func requestLifestyleInsightsAuthorization() async throws {
+        guard Self.isHealthDataAvailable else {
+            throw HealthKitError.unavailable
+        }
+        try await store.requestAuthorization(toShare: [], read: lifestyleInsightsReadTypes)
+    }
+
+    /// Measured lifestyle signals for one calendar day. Each field resolves
+    /// independently and stays `nil` on its own if that type has no samples
+    /// or wasn't granted -- one missing type shouldn't blank out the other
+    /// three.
+    func lifestyleInsights(for day: DateInterval) async -> LifestyleInsights {
+        async let caffeine = try? sum(.dietaryCaffeine, unit: .gramUnit(with: .milli), in: day)
+        async let alcohol = try? sum(.numberOfAlcoholicBeverages, unit: .count(), in: day)
+        async let daylight = try? sum(.timeInDaylight, unit: .minute(), in: day)
+        async let mindful = try? mindfulMinutes(in: day)
+        return await LifestyleInsights(
+            caffeineMg: caffeine,
+            alcoholicBeverages: alcohol,
+            daylightMinutes: daylight,
+            mindfulMinutes: mindful
+        )
+    }
+
+    /// Total minutes across every Mindfulness session in `window`. A
+    /// category type rather than a quantity type -- HealthKit records each
+    /// session as a start/end interval, not a running sum, so the minutes
+    /// have to be totalled from the samples directly.
+    private func mindfulMinutes(in window: DateInterval) async throws -> Double? {
+        let type = HKCategoryType(.mindfulSession)
+        let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end)
+        let samples: [HKCategorySample] = try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+                if let error {
+                    if (error as? HKError)?.code == .errorNoData {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    continuation.resume(returning: (samples as? [HKCategorySample]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+        guard !samples.isEmpty else { return nil }
+        return samples.reduce(0) { $0 + $1.endDate.timeIntervalSince($1.startDate) / 60 }
+    }
+
     // MARK: - Background delivery
 
     /// Registers an observer so new sleep data is picked up without polling.

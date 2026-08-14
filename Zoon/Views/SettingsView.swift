@@ -24,6 +24,7 @@ struct SettingsView: View {
             appearanceSection
             remindersSection
             cycleSection
+            lifestyleInsightsSection
             profileSection
             engineSection
             sourceSection
@@ -252,6 +253,46 @@ struct SettingsView: View {
                 reads. Useful because a normal luteal-phase shift in HRV and resting \
                 heart rate can otherwise look identical to the illness-drift pattern \
                 Body Signals watches for.
+                """)
+        }
+    }
+
+    /// Off by default, and asks for its own separate HealthKit permission the
+    /// moment it's turned on — see
+    /// `HealthKitManager.requestLifestyleInsightsAuthorization`. Caffeine,
+    /// alcohol, daylight, and mindfulness are measured signals the Journal
+    /// currently only has manual tags for; this reads them directly when
+    /// available, alongside (not instead of) manual tagging.
+    private var lifestyleInsightsSection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { preferences.lifestyleInsightsEnabled },
+                set: { wantsOn in
+                    preferences.lifestyleInsightsEnabled = wantsOn
+                    Task {
+                        if wantsOn {
+                            await coordinator.enableLifestyleInsights()
+                        } else {
+                            coordinator.disableLifestyleInsights()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Lifestyle Insights")
+                    Text("Reads measured caffeine, alcohol, daylight, and mindfulness from Health.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Lifestyle Insights")
+        } footer: {
+            Text("""
+                Off by default. Turning this on asks Health for caffeine, alcohol, \
+                time in daylight, and Mindfulness sessions — a separate permission \
+                from everything else Zoon reads. Shown alongside your Journal tags \
+                as measured reference, not a replacement for them.
                 """)
         }
     }
