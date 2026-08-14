@@ -15,7 +15,7 @@ final class SleepStoryTests: XCTestCase {
     private func nightWithStaging() -> SleepNightFeatures {
         let bedtime = date(23)
         let onset = date(23, 12)
-        let briefWake = date(2)
+        let briefWake = date(2, dayOffset: 1)
         let wakeTime = date(7, dayOffset: 1)
 
         var night = SleepNightFeatures(
