@@ -36,6 +36,39 @@ enum Motion {
     /// rather than accumulating — otherwise a long scroll view spends over a
     /// second animating content the user has already scrolled past.
     static let maxStaggerSteps = 8
+
+    // MARK: - Named tiers
+    //
+    // The redesign spec asks for a centralized "ZoonMotion" with four named
+    // tiers: micro, standard, hero, navigation. Two of those are exactly
+    // `tap` and `value` above under a different name -- rather than
+    // duplicate or rename them (renaming would touch every existing call
+    // site for no behavioural change), `micro` and `standard` are aliases.
+    // `hero` and `heroTransition` are genuinely new: nothing in the app
+    // before this needed a slower, more expressive curve for a big single
+    // reveal (a score settling into place, an orb morphing between states)
+    // or a push/pop-style navigation feel distinct from either.
+
+    /// Smallest interactions: toggles, checkbox flourishes, a value ticking
+    /// up by one. Alias for `tap` -- same feel, named for where the spec's
+    /// tier list expects it.
+    static let micro = tap
+
+    /// Everyday content transitions: cards settling, values updating,
+    /// picker selections. Alias for `value`.
+    static let standard = value
+
+    /// A single, large, attention-owning reveal -- a hero score settling
+    /// into place, an orb morphing between summary and detail. Slower and
+    /// more expressive than `entrance`: this fires once, not stacked eight
+    /// times down a scroll view, so it can afford to take a beat longer.
+    static let hero = Animation.spring(response: 0.75, dampingFraction: 0.82)
+
+    /// Push/pop-style navigation and matched-geometry transitions between
+    /// screens -- deliberately quicker and less springy than `hero`, since
+    /// a screen transition that overshoots reads as sluggish rather than
+    /// alive.
+    static let navigation = Animation.smooth(duration: 0.4)
 }
 
 /// Fades and lifts a view into place on first appearance.
