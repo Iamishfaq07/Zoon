@@ -80,6 +80,9 @@ final class SleepNightRecord {
 
     var lastWorkoutHoursBeforeBed: Double?
     var exerciseMinutesPreviousDay: Double?
+    /// See `SleepNightFeatures.alcoholicBeverages`/`.lateCaffeineMg`.
+    var alcoholicBeverages: Double?
+    var lateCaffeineMg: Double?
 
     var sourceName: String?
 
@@ -134,6 +137,8 @@ final class SleepNightRecord {
         self.breathingDisturbances = features.breathingDisturbances
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
+        self.alcoholicBeverages = features.alcoholicBeverages
+        self.lateCaffeineMg = features.lateCaffeineMg
         self.sourceName = features.sourceName
         self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
@@ -204,6 +209,8 @@ final class SleepNightRecord {
         apply(features.breathingDisturbances, .breathingDisturbances, to: \.breathingDisturbances)
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
+        alcoholicBeverages = features.alcoholicBeverages
+        lateCaffeineMg = features.lateCaffeineMg
         sourceName = features.sourceName
         // Only overwrite when the fresh extraction actually has a timeline —
         // a re-sync that lost staging shouldn't erase a good hypnogram.
@@ -264,6 +271,8 @@ extension SleepNightRecord {
             exerciseMinutesPreviousDay: exerciseMinutesPreviousDay,
             secondaryAsleepMinutes: secondaryAsleepMinutes,
             sleepNeedBaselineMinutes: sleepNeedBaselineMinutesAtProcessing,
+            alcoholicBeverages: alcoholicBeverages,
+            lateCaffeineMg: lateCaffeineMg,
             sourceName: sourceName,
             isMock: false,
             stageSegments: [StageSegment].decode(stageSegmentsData),

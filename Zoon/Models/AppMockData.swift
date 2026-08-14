@@ -86,7 +86,9 @@ enum AppMockData {
                 wakeCount: Double(night.wakeCount) * (drank ? 1.6 : 1.0),
                 isWeekend: weekday == 1 || weekday == 7,
                 sleepDebtMinutes: night.sleepDebtMinutes,
-                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime)
+                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime),
+                alcoholicBeverages: nil,
+                lateCaffeineMg: nil
             )
         }
     }

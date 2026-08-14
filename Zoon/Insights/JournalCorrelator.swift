@@ -72,11 +72,32 @@ struct JournalCorrelator {
         let isWeekend: Bool
         let sleepDebtMinutes: Double?
         let bedtimeHour: Double?
+        /// Measured directly from HealthKit (finding #49), independent of
+        /// whether the user tagged anything that night -- see
+        /// `SleepNightFeatures.alcoholicBeverages`/`.lateCaffeineMg`. `nil`
+        /// when Lifestyle Insights was never granted or nothing was logged;
+        /// the two look identical to a HealthKit query by design, so
+        /// `exposureState` can't and doesn't try to tell them apart either.
+        let alcoholicBeverages: Double?
+        let lateCaffeineMg: Double?
 
-        /// `.yes` if tagged, `.no` if the night was journaled and it wasn't,
-        /// `.unknown` if the night was never journaled at all.
+        /// `.yes` if tagged *or* HealthKit measured the behaviour directly;
+        /// `.no` if the night was journaled and it wasn't tagged, or if
+        /// HealthKit measured a definite zero; `.unknown` otherwise. Measured
+        /// data can resolve a night manual tagging left `.unknown` -- the
+        /// whole point of finding #49 is that a night the user never opened
+        /// the Journal on can still honestly answer "did you drink" if
+        /// HealthKit already knows.
         func exposureState(for tag: BehaviorTag) -> ExposureState {
             if tags.contains(tag) { return .yes }
+            switch tag {
+            case .alcohol:
+                if let alcoholicBeverages { return alcoholicBeverages > 0 ? .yes : .no }
+            case .caffeineLate:
+                if let lateCaffeineMg { return lateCaffeineMg > 0 ? .yes : .no }
+            default:
+                break
+            }
             return isJournaled ? .no : .unknown
         }
 

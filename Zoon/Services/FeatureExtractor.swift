@@ -92,6 +92,8 @@ struct FeatureExtractor {
 
         let workoutHours = await lastWorkoutContext(before: session.start)
         let exercisePrevious = await exerciseMinutes(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
+        let measuredAlcoholicBeverages = await alcoholicBeverages(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
+        let measuredLateCaffeineMg = await lateCaffeineMg(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
 
         let wristTemp = wristTempOutcome.value
 
@@ -156,6 +158,8 @@ struct FeatureExtractor {
             sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercisePrevious,
+            alcoholicBeverages: measuredAlcoholicBeverages,
+            lateCaffeineMg: measuredLateCaffeineMg,
             sourceName: session.sourceName,
             isMock: false,
             stageSegments: session.segments,
@@ -251,6 +255,33 @@ struct FeatureExtractor {
         guard dayStart < bedtime else { return nil }
         let interval = DateInterval(start: dayStart, end: bedtime)
         return try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)
+    }
+
+    /// Alcoholic beverages logged on the day of bedtime, up to bedtime --
+    /// same day-boundary convention as `exerciseMinutes`. Nil whether
+    /// nothing was logged or the Lifestyle Insights type was never
+    /// authorized; both look identical to a query, by HealthKit's design
+    /// (see `HealthKitManager`'s own doc comment on read-permission
+    /// opacity), so this can't and doesn't try to tell them apart.
+    private func alcoholicBeverages(onDayOf bedtime: Date, timeZoneIdentifier: String) async -> Double? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        let dayStart = calendar.startOfDay(for: bedtime)
+        guard dayStart < bedtime else { return nil }
+        let interval = DateInterval(start: dayStart, end: bedtime)
+        return try? await healthKit.sum(.numberOfAlcoholicBeverages, unit: .count(), in: interval)
+    }
+
+    /// Caffeine logged after 4pm on the day of bedtime, up to bedtime --
+    /// "late" is the behaviourally relevant window for sleep (matches
+    /// `BehaviorTag.caffeineLate`'s own framing), not the day's total intake.
+    private func lateCaffeineMg(onDayOf bedtime: Date, timeZoneIdentifier: String) async -> Double? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        guard let afternoon = calendar.date(bySettingHour: 16, minute: 0, second: 0, of: bedtime),
+              afternoon < bedtime else { return nil }
+        let interval = DateInterval(start: afternoon, end: bedtime)
+        return try? await healthKit.sum(.dietaryCaffeine, unit: .gramUnit(with: .milli), in: interval)
     }
 }
 

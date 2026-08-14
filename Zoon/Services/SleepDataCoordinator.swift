@@ -976,7 +976,9 @@ final class SleepDataCoordinator {
                 // schedule type, which is feature work, not a bug fix.
                 isWeekend: calendar.isDateInWeekend(night.date),
                 sleepDebtMinutes: night.sleepDebtMinutes,
-                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime, timeZone: night.timeZone)
+                bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime, timeZone: night.timeZone),
+                alcoholicBeverages: night.alcoholicBeverages,
+                lateCaffeineMg: night.lateCaffeineMg
             )
         }
     }

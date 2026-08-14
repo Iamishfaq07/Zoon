@@ -147,6 +147,17 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// stays optional at every existing call site.
     var sleepNeedBaselineMinutes: Double? = nil
 
+    /// Alcoholic beverages logged the day of bedtime, up to bedtime -- and
+    /// caffeine logged after 4pm that same day. Measured directly from
+    /// HealthKit (`.numberOfAlcoholicBeverages`, `.dietaryCaffeine`)
+    /// regardless of whether the Lifestyle Insights permission group was
+    /// ever granted -- an unauthorized read type simply returns no data, so
+    /// these stay `nil` for anyone who hasn't logged either in Health, same
+    /// as every other optional HealthKit-derived field here. Declared with a
+    /// default so both stay optional at every existing call site.
+    var alcoholicBeverages: Double? = nil
+    var lateCaffeineMg: Double? = nil
+
     // MARK: - Provenance
 
     /// Which HealthKit source the stage data came from, e.g. "Ishfaq's Apple Watch".
