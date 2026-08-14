@@ -30,7 +30,21 @@ enum GuidedExperiment {
         }
     }
 
-    static func status(for tag: BehaviorTag, observations: [JournalCorrelator.Observation]) -> Status {
+    /// - Parameter since: the experiment's start date, if one is active. When
+    ///   set, only nights on or after it feed the comparison -- an
+    ///   experiment answers "since I started deliberately tracking this, has
+    ///   it made a difference", not "across my whole history including
+    ///   before I started paying attention to it". `nil` (no active
+    ///   experiment, or a caller that just wants the tag's all-time picture)
+    ///   falls back to the full history, matching the previous behaviour.
+    static func status(
+        for tag: BehaviorTag,
+        observations: [JournalCorrelator.Observation],
+        since: Date? = nil
+    ) -> Status {
+        let observations = since.map { start in
+            observations.filter { $0.date >= start }
+        } ?? observations
         let correlator = JournalCorrelator()
 
         if let learning = correlator.stillLearning(from: observations).first(where: { $0.tag == tag }) {
