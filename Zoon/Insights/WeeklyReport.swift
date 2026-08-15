@@ -138,17 +138,25 @@ struct WeeklyReport {
 
         if nightCount > 0 {
             let ratio = Double(goalHitCount) / Double(nightCount)
+            // "nights", unconditionally, read as "1 of 1 nights" on a
+            // single-night week.
+            let nightWord = nightCount == 1 ? "night" : "nights"
             if ratio >= 0.85 {
                 items.append(Highlight(
                     symbol: "checkmark.seal.fill",
-                    title: "Hit your goal \(goalHitCount) of \(nightCount) nights",
+                    title: "Hit your goal \(goalHitCount) of \(nightCount) \(nightWord)",
                     detail: "Consistently meeting your sleep need is the foundation everything else sits on.",
                     tone: .positive
                 ))
             } else if ratio <= 0.4 {
                 items.append(Highlight(
                     symbol: "exclamationmark.circle",
-                    title: "Goal met only \(goalHitCount) of \(nightCount) nights",
+                    // "only 0 of 7" isn't English -- and zero is the most
+                    // common way to land in this branch, so it was also the
+                    // most likely phrasing to be seen.
+                    title: goalHitCount == 0
+                        ? "Goal missed every night"
+                        : "Goal met only \(goalHitCount) of \(nightCount) \(nightWord)",
                     detail: "You're accumulating debt faster than you're repaying it. Move bedtime earlier rather than sleeping in.",
                     tone: .caution
                 ))
