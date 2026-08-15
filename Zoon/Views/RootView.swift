@@ -116,10 +116,17 @@ struct RootView: View {
     /// ago would be firing at last week's bedtime.
     private func refreshReminders() async {
         await reminders.refreshAuthorization()
+        // `focusSilencesBedtimeNudges` is checked here as well as in the
+        // filter itself: without it, opening the app during a Focus would
+        // re-arm the very notifications the Focus just cancelled, and the
+        // setting would appear to do nothing.
         guard preferences.bedtimeRemindersEnabled,
+              !preferences.focusSilencesBedtimeNudges,
               let bedtime = coordinator.state.context?.targetBedtime()
         else {
-            if !preferences.bedtimeRemindersEnabled { reminders.cancel() }
+            if !preferences.bedtimeRemindersEnabled || preferences.focusSilencesBedtimeNudges {
+                reminders.cancel()
+            }
             return
         }
         await reminders.schedule(bedtime: bedtime)

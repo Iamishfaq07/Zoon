@@ -16,6 +16,7 @@ final class UserPreferences {
         static let preferredEngine = "zoon.pref.preferredEngine"
         static let age = "zoon.pref.age"
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
+        static let focusSilencesBedtimeNudges = "zoon.pref.focusSilencesBedtimeNudges"
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
         static let lifestyleInsightsEnabled = "zoon.pref.lifestyleInsightsEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
@@ -45,6 +46,17 @@ final class UserPreferences {
     /// `BedtimeReminder.requestAuthorization`.
     var bedtimeRemindersEnabled: Bool {
         didSet { defaults.set(bedtimeRemindersEnabled, forKey: Key.bedtimeRemindersEnabled) }
+    }
+
+    /// Set by `SleepFocusFilter` while a Focus carrying Zoon's filter is on.
+    ///
+    /// Separate from `bedtimeRemindersEnabled` rather than folded into it: one
+    /// is the user's standing preference, the other is a temporary system
+    /// state. Collapsing them would mean a Focus turning on looked identical
+    /// to the user switching reminders off in Settings, and the toggle would
+    /// appear to flip by itself.
+    var focusSilencesBedtimeNudges: Bool {
+        didSet { defaults.set(focusSilencesBedtimeNudges, forKey: Key.focusSilencesBedtimeNudges) }
     }
 
     /// Off by default. Turning it on triggers a *separate* HealthKit
@@ -259,6 +271,7 @@ final class UserPreferences {
         self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : 480
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
+        self.focusSilencesBedtimeNudges = defaults.bool(forKey: Key.focusSilencesBedtimeNudges)
         self.cycleTrackingEnabled = defaults.bool(forKey: Key.cycleTrackingEnabled)
         self.lifestyleInsightsEnabled = defaults.bool(forKey: Key.lifestyleInsightsEnabled)
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
@@ -290,6 +303,7 @@ final class UserPreferences {
         sleepGoalMinutes = 480
         hasCompletedOnboarding = false
         bedtimeRemindersEnabled = false
+        focusSilencesBedtimeNudges = false
         cycleTrackingEnabled = false
         lifestyleInsightsEnabled = false
         smartWakeEnabled = false
@@ -309,6 +323,7 @@ final class UserPreferences {
             Key.preferredEngine,
             Key.age,
             Key.bedtimeRemindersEnabled,
+            Key.focusSilencesBedtimeNudges,
             Key.cycleTrackingEnabled,
             Key.lifestyleInsightsEnabled,
             Key.smartWakeEnabled,
