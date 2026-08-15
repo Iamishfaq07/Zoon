@@ -70,6 +70,10 @@ TESTS_SRC = swift_files("ZoonTests")
 TESTS_EXTRA_APP_FILES = [
     "Zoon/Services/SleepSessionBuilder.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
+    # Pure logic over SleepNightFeatures (which is already in SHARED), so it
+    # brings no app-only dependencies into the test target. Needed because
+    # its highlight strings had two copy defects worth asserting on.
+    "Zoon/Insights/WeeklyReport.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"
