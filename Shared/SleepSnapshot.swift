@@ -19,9 +19,14 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     let insightSummary: String
     let generatedAt: Date
 
-    /// Added after the first release. Defaulted so a snapshot written by an
-    /// older build still decodes — the widget must never fail to render because
-    /// the app hasn't been relaunched since an update.
+    /// Added after the first release, so a snapshot written by an older build
+    /// must still decode — the widget must never fail to render because the
+    /// app hasn't been relaunched since an update.
+    ///
+    /// The default alone does **not** achieve that: Swift's synthesized
+    /// `Decodable` throws on a missing key regardless of the default. The
+    /// custom `init(from:)` below is what makes it true, and every field
+    /// added here needs a matching `decodeIfPresent` line there.
     var recoveryPercent: Int = 0
     var bodyBattery: Int = 0
     var strain: Double = 0
@@ -78,6 +83,57 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
 }
 
 extension SleepSnapshot {
+
+    /// Decoding that actually honours the defaults above.
+    ///
+    /// Swift's *synthesized* `Decodable` ignores property default values: a
+    /// missing key throws `keyNotFound` whether or not the property has a
+    /// default, because defaults feed the memberwise initializer, not
+    /// `init(from:)`. So every "defaulted so an older payload still decodes"
+    /// comment on this type described behaviour it did not have -- an older
+    /// snapshot threw, `SnapshotStore.read()` swallowed it with `try?`, and
+    /// every widget on the home screen quietly fell back to sample data until
+    /// the app was next launched and rewrote the file. Exactly the failure
+    /// the defaults were there to prevent.
+    ///
+    /// `decodeIfPresent` for each post-release field is what makes the
+    /// contract real. New fields must be added here too, which the
+    /// compatibility tests enforce.
+    ///
+    /// Declared in an extension, not the struct body: an initializer in the
+    /// body would suppress the memberwise initializer that the rest of the
+    /// codebase (and the tests) construct snapshots with.
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Present since the first release; a payload without these is not a
+        // Zoon snapshot at all, so these stay strict.
+        date = try container.decode(Date.self, forKey: .date)
+        score = try container.decode(Int.self, forKey: .score)
+        scoreBand = try container.decode(String.self, forKey: .scoreBand)
+        timeAsleepMinutes = try container.decode(Double.self, forKey: .timeAsleepMinutes)
+        sleepDebtMinutes = try container.decode(Double.self, forKey: .sleepDebtMinutes)
+        goalMinutes = try container.decode(Double.self, forKey: .goalMinutes)
+        insightSummary = try container.decode(String.self, forKey: .insightSummary)
+        generatedAt = try container.decode(Date.self, forKey: .generatedAt)
+
+        // Added later. Each falls back to the same default declared above.
+        recoveryPercent = try container.decodeIfPresent(Int.self, forKey: .recoveryPercent) ?? 0
+        bodyBattery = try container.decodeIfPresent(Int.self, forKey: .bodyBattery) ?? 0
+        strain = try container.decodeIfPresent(Double.self, forKey: .strain) ?? 0
+        sleepPerformance = try container.decodeIfPresent(Double.self, forKey: .sleepPerformance) ?? 0
+        sleepIntelligencePercent = try container.decodeIfPresent(Int.self, forKey: .sleepIntelligencePercent) ?? 0
+        sleepIntelligenceBand = try container.decodeIfPresent(String.self, forKey: .sleepIntelligenceBand) ?? ""
+        isMock = try container.decodeIfPresent(Bool.self, forKey: .isMock) ?? false
+        badgeTitle = try container.decodeIfPresent(String.self, forKey: .badgeTitle) ?? ""
+        badgeSymbol = try container.decodeIfPresent(String.self, forKey: .badgeSymbol) ?? "hexagon.fill"
+        badgeTier = try container.decodeIfPresent(Int.self, forKey: .badgeTier) ?? 0
+        badgesUnlocked = try container.decodeIfPresent(Int.self, forKey: .badgesUnlocked) ?? 0
+        badgesTotal = try container.decodeIfPresent(Int.self, forKey: .badgesTotal) ?? 0
+        nextBadgeTitle = try container.decodeIfPresent(String.self, forKey: .nextBadgeTitle) ?? ""
+        nextBadgeProgress = try container.decodeIfPresent(Double.self, forKey: .nextBadgeProgress) ?? 0
+        bodySignalsLabel = try container.decodeIfPresent(String.self, forKey: .bodySignalsLabel) ?? "Nothing unusual"
+    }
 
     init(
         features: SleepNightFeatures,
