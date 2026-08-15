@@ -69,6 +69,34 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         XCTAssertFalse(snapshot.isMock)
     }
 
+    /// The realistic upgrade path: a payload from an *intermediate* build,
+    /// carrying some later fields but not the newest ones. Guards the case
+    /// where someone adds a field and forgets its `decodeIfPresent` line.
+    func testIntermediatePayloadDecodesWithPartialFields() throws {
+        let payload = """
+        {
+          "date": "2026-08-15T00:00:00Z",
+          "score": 81,
+          "scoreBand": "Good",
+          "timeAsleepMinutes": 452,
+          "sleepDebtMinutes": 95,
+          "goalMinutes": 480,
+          "insightSummary": "A solid night.",
+          "generatedAt": "2026-08-15T07:30:00Z",
+          "recoveryPercent": 68,
+          "bodyBattery": 74
+        }
+        """
+
+        let snapshot = try decoder().decode(SleepSnapshot.self, from: Data(payload.utf8))
+
+        XCTAssertEqual(snapshot.recoveryPercent, 68)
+        XCTAssertEqual(snapshot.bodyBattery, 74)
+        // Newer than that build: still defaults.
+        XCTAssertEqual(snapshot.bodySignalsLabel, "Nothing unusual")
+        XCTAssertEqual(snapshot.badgeSymbol, "hexagon.fill")
+    }
+
     func testRoundTripPreservesLaterFields() throws {
         var original = try decoder().decode(SleepSnapshot.self, from: Data(legacyPayload.utf8))
         original.recoveryPercent = 72
