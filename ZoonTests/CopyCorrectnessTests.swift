@@ -82,8 +82,8 @@ final class CopyCorrectnessTests: XCTestCase {
     func testGoalHighlightKeepsOnlyPhrasingAboveZero() {
         // `consecutiveNights` hands the template `count - offset`, so these
         // run 7 days ago through 1. Exactly one clears the 480-minute goal.
-        let nights = Fixtures.consecutiveNights(7) { daysAgo in
-            Fixtures.night(daysAgo: daysAgo, timeAsleepMinutes: daysAgo == 1 ? 500 : 300)
+        let nights = Fixture.consecutiveNights(7) { daysAgo in
+            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: daysAgo == 1 ? 500 : 300)
         }
 
         let title = goalHighlightTitle(in: weeklyReport(from: nights))
@@ -94,8 +94,8 @@ final class CopyCorrectnessTests: XCTestCase {
 
     private func weeklyReport(nightCount: Int, timeAsleepMinutes: Double) -> WeeklyReport {
         weeklyReport(
-            from: Fixtures.consecutiveNights(nightCount) { index in
-                Fixtures.night(daysAgo: index, timeAsleepMinutes: timeAsleepMinutes)
+            from: Fixture.consecutiveNights(nightCount) { index in
+                Fixture.night(daysAgo: index, timeAsleepMinutes: timeAsleepMinutes)
             }
         )
     }
