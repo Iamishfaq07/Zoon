@@ -885,7 +885,10 @@ final class SleepDataCoordinator {
             }
         }
 
-        return "Restored \(nights) nights, \(entries) journal entries, \(restoredNaps) naps and \(restoredSnore) snore summaries."
+        // Four counts, four chances to read "1 naps". Restoring a backup with
+        // exactly one nap or one snore summary is ordinary, not an edge case.
+        return "Restored \(nights.pluralized("night")), \(entries.pluralized("journal entry", "journal entries")), "
+            + "\(restoredNaps.pluralized("nap")) and \(restoredSnore.pluralized("snore summary", "snore summaries"))."
     }
 
     func absoluteWristTemperaturesForExport() -> [(date: Date, absoluteCelsius: Double)] {
