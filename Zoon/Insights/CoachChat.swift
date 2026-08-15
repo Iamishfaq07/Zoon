@@ -52,7 +52,15 @@ final class CoachChat {
     private var session: Any?
     #endif
 
-    var unavailabilityReason: String? {
+    /// Why the coach can't answer, or `nil` when it can.
+    ///
+    /// Static because it reads no instance state, and because the Coach
+    /// landing screen needs the answer *before* anyone opens a chat -- it
+    /// warns up front rather than letting someone tap a question and land on
+    /// a dead-end screen. Constructing a `CoachChat` just to ask would mean
+    /// allocating a session holder per render for a question that doesn't
+    /// need one.
+    static var unavailabilityReason: String? {
         #if canImport(FoundationModels)
         guard #available(iOS 26.0, *) else { return "Needs iOS 26 or later." }
         switch SystemLanguageModel.default.availability {
@@ -66,6 +74,8 @@ final class CoachChat {
         return "This build was compiled without the Foundation Models framework."
         #endif
     }
+
+    var unavailabilityReason: String? { Self.unavailabilityReason }
 
     var isAvailable: Bool { unavailabilityReason == nil }
 

@@ -52,8 +52,67 @@ struct CoachTabView: View {
                 .buttonStyle(PressableStyle())
 
                 suggestedQuestions(night)
+                capabilityCard
             }
             .padding()
+        }
+    }
+
+    /// What the coach can actually see, and whether it can answer at all.
+    ///
+    /// Two things this screen didn't say before. First, availability: the
+    /// on-device model needs iOS 26, an eligible device, and Apple
+    /// Intelligence switched on, and when any of those is missing the only
+    /// way to find out was to tap a question and land on a dead-end screen.
+    /// Saying so up front costs one card and saves that round trip.
+    ///
+    /// Second, context. "Ask anything about last night" is vague about what
+    /// "anything" is grounded in, and a coach that quietly knows 30 nights of
+    /// history reads very differently from one that knows one. Both counts
+    /// come from data already loaded for this screen.
+    private var capabilityCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "What Zoon can see", systemImage: "eye")
+
+            if let reason = CoachChat.unavailabilityReason {
+                Label(reason, systemImage: "exclamationmark.triangle.fill")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.Metric.recoveryMid)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Label("Answered on this device. Nothing leaves your phone.", systemImage: "lock.fill")
+                    .font(Theme.text(12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider().overlay(Theme.cardStroke)
+
+            contextRow(
+                "\(coordinator.recentNights.count) night\(coordinator.recentNights.count == 1 ? "" : "s") of history",
+                symbol: "bed.double.fill"
+            )
+            contextRow(
+                "\(journalEntryCount) journal entr\(journalEntryCount == 1 ? "y" : "ies")",
+                symbol: "square.and.pencil"
+            )
+        }
+        .glassCard()
+    }
+
+    private var journalEntryCount: Int {
+        coordinator.journal.allEntries().count
+    }
+
+    private func contextRow(_ text: String, symbol: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.Metric.sleep)
+                .frame(width: 16)
+            Text(text)
+                .font(Theme.text(12))
+                .foregroundStyle(.secondary)
         }
     }
 
