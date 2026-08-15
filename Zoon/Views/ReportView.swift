@@ -56,7 +56,9 @@ struct ReportView: View {
                     .font(Theme.numeral(50))
                     .monospacedDigit()
                     .foregroundStyle(Theme.recoveryColor(recovery))
-                Text("average recovery across \(report.nightCount) nights")
+                // WeeklyReport only guards `nightCount > 0`, so a one-night
+                // week is reachable and read "across 1 nights".
+                Text("average recovery across \(report.nightCount.pluralized("night"))")
                     .font(Theme.label(12))
                     .foregroundStyle(.secondary)
             }
