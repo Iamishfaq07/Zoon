@@ -13,6 +13,7 @@
 		01BF80DA7FEED1F542E212EA /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D25F2515856E1F2C18D447 /* WatchRootView.swift */; };
 		01EFEFCF5155499408B014B0 /* SleepSnapshotCompatibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834993D3DFFF430EB3AE89C6 /* SleepSnapshotCompatibilityTests.swift */; };
 		028124ABCC4FE69A8EB4FA50 /* LightCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 114E81F4B55221C012C41429 /* LightCoach.swift */; };
+		029E9FE1F49891915607D833 /* SleepFocusFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EB230A0227CB13495CEA75 /* SleepFocusFilter.swift */; };
 		02A58EF630D6157B6BE412EE /* HealthRadar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03508B538C62AC65FD8AD914 /* HealthRadar.swift */; };
 		02D9E671716C7D9592B8303C /* BedtimeReminder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86C4ACEFFCA801C62DFFCF6 /* BedtimeReminder.swift */; };
 		032C6B14D3F96F99ED9344B4 /* EnergyForecastCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B1CA5190E455E50384AA62 /* EnergyForecastCard.swift */; };
@@ -569,6 +570,7 @@
 		7DB8CF64188C5B14F8A35B76 /* GlobalPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlobalPresentation.swift"; sourceTree = "<group>"; };
 		7EC392B5759BE3200B53F48D /* VitalsStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VitalsStatus.swift"; sourceTree = "<group>"; };
 		8066889AE0CD6E1DB059BF18 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE"; sourceTree = "<group>"; };
+		80EB230A0227CB13495CEA75 /* SleepFocusFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFocusFilter.swift"; sourceTree = "<group>"; };
 		834993D3DFFF430EB3AE89C6 /* SleepSnapshotCompatibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSnapshotCompatibilityTests.swift"; sourceTree = "<group>"; };
 		84337AD8D27FCD69AF2C4FC2 /* Zoon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zoon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		844B434C335D18DD6B927A95 /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Fixtures.swift"; sourceTree = "<group>"; };
@@ -904,6 +906,7 @@
 		A486469D116EFE6D8531B0F6 /* AppIntents */ = {
 			isa = PBXGroup;
 			children = (
+				80EB230A0227CB13495CEA75,
 				BADFBFF192F82BF1AF28487A,
 			);
 			path = AppIntents;
@@ -1261,6 +1264,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				029E9FE1F49891915607D833,
 				1108CAF7451794712C1E8EBB,
 				5E4DDA74EC47B99CD053766B,
 				77DB90244BE02A48D458878F,
