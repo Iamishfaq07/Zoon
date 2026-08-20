@@ -20,11 +20,13 @@ Zoon can store extracted nightly sleep features, journal tags and notes, naps, d
 
 When App Groups and Watch connectivity are configured, derived snapshots are shared only among Zoon's own app extensions and the user's paired Watch through Apple's system frameworks.
 
+Zoon adds its own screen names to the device's Spotlight search index so features such as the nap timer and sleep sounds can be opened from system search. Only screen names, descriptions, and search keywords are indexed. No sleep, health, journal, or profile data is placed in the Spotlight index.
+
 ## Retention, export, and deletion
 
 Data remains on the user's devices until it is replaced by newer rolling data, deleted through Zoon, or removed by uninstalling the application. Zoon provides a local export feature for supported history.
 
-Delete Everything removes Zoon's local sleep and journal database rows, preferences, naps, snore summaries, widget snapshot files, pending deep links, on-device insight cache, temporary export artefacts, reminders, live activities, and the latest Watch snapshot context. It does not delete the original data in Apple Health.
+Delete Everything removes Zoon's local sleep and journal database rows, preferences, naps, snore summaries, widget snapshot files, pending deep links, Spotlight search entries, on-device insight cache, temporary export artefacts, reminders, live activities, and the latest Watch snapshot context. It does not delete the original data in Apple Health.
 
 ## Tracking and collection
 

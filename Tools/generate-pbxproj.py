@@ -74,6 +74,9 @@ TESTS_EXTRA_APP_FILES = [
     # brings no app-only dependencies into the test target. Needed because
     # its highlight strings had two copy defects worth asserting on.
     "Zoon/Insights/WeeklyReport.swift",
+    # Its identifier round-trip decides which screen a Spotlight tap
+    # opens, and a silent mismatch would route to the wrong one.
+    "Zoon/Services/SpotlightIndexer.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"

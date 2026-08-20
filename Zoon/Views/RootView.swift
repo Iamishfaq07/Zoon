@@ -1,3 +1,4 @@
+import CoreSpotlight
 import SwiftUI
 
 /// Tab shell.
@@ -93,6 +94,19 @@ struct RootView: View {
                 presentation.presentMore()
             }
             consumeDeepLink()
+            SpotlightIndexer.indexDestinations()
+        }
+        // Pushed directly rather than routed through `DeepLink.pending`: that
+        // store exists for cross-process hand-off from an extension, and a
+        // Spotlight tap is delivered straight to this process. Writing it
+        // there would risk the pending value outliving the launch that asked
+        // for it.
+        .onContinueUserActivity(CSSearchableItemActionType) { activity in
+            guard
+                let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                let destination = SpotlightIndexer.destination(forSearchableItemIdentifier: identifier)
+            else { return }
+            push(destination)
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }

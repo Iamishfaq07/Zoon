@@ -912,6 +912,10 @@ final class SleepDataCoordinator {
         watchLink.clearSnapshot()
         InsightCache.shared.clear()
         DeepLink.clear()
+        // The Spotlight index lives outside the app container, so uninstalling
+        // clears it but erasing from inside the app would not -- and this
+        // action promises to leave nothing behind.
+        SpotlightIndexer.removeAll()
         AnchorStore.clear()
         reminders.cancel()
         reminders.cancelWakeWindow()
