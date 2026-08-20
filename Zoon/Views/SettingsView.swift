@@ -151,6 +151,39 @@ struct SettingsView: View {
                 }
             }
 
+            // `SleepFocusFilter` is only reachable through Settings → Focus →
+            // (a Focus) → Add Filter, which almost nobody goes looking for. A
+            // feature nobody can find may as well not exist, so it's named
+            // here, beside the reminders it silences -- which is where someone
+            // annoyed by a nudge during Sleep Focus would actually look.
+            //
+            // Shows live state rather than just advertising the capability,
+            // because "why did my reminders stop?" is the other question this
+            // section has to be able to answer.
+            if preferences.bedtimeRemindersEnabled {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(
+                        preferences.focusSilencesBedtimeNudges
+                            ? "Silenced by a Focus right now"
+                            : "Works with Focus",
+                        systemImage: preferences.focusSilencesBedtimeNudges
+                            ? "moon.fill"
+                            : "moon"
+                    )
+                    .font(Theme.label(13))
+                    .foregroundStyle(
+                        preferences.focusSilencesBedtimeNudges
+                            ? Theme.Metric.sleep
+                            : .primary
+                    )
+
+                    Text("Add Zoon as a filter to any Focus (Settings → Focus → Add Filter) and these nudges pause while it's on. Your wake alarm still sounds.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             Toggle(isOn: Binding(
                 get: { preferences.smartWakeEnabled },
                 set: { wantsOn in
