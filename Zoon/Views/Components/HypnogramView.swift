@@ -43,6 +43,17 @@ struct HypnogramView: View {
                 chart
             }
             if showsAxis { axis }
+            // The chart has always supported drag-to-inspect -- the gesture
+            // above is unconditional -- but nothing on screen said so, on
+            // any of its three call sites, so the feature was invisible.
+            // Gated on `showsAxis` (true only where there's room to spare a
+            // line): Today's compact strip stays exactly as dense as it was.
+            if showsAxis && selectedFraction == nil {
+                Text("Drag to see stage and time")
+                    .font(Theme.text(9))
+                    .foregroundStyle(.quaternary)
+                    .padding(.leading, 42)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sleep stages through the night")
