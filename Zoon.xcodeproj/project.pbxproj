@@ -225,6 +225,7 @@
 		89A3007BBE6330EA925E1EFD /* BreathingHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA66C12A65CB79C420569CF /* BreathingHealth.swift */; };
 		89A5D27A2AFF76E37F2C4E32 /* DataEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C458C7D6817D45BFD7B0E390 /* DataEnvironment.swift */; };
 		89BDA372138A6E2C7F6E15FD /* TrendEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1083224E0CD6417FD16C4075 /* TrendEngine.swift */; };
+		8AB927207BE8600B778534C8 /* TonightTimelineCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011868DA12535FA43F1A467E /* TonightTimelineCard.swift */; };
 		8AEC1C0C5B405DF30754F84A /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		8B35F5EF125312CC8435A46E /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
 		8B7038ED93B97636A1357706 /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
@@ -468,6 +469,7 @@
 /* Begin PBXFileReference section */
 		0056BFA9411ACE233F7DC0D1 /* ChartInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChartInteraction.swift"; sourceTree = "<group>"; };
 		010D79DAE1D4D7B54F7147DA /* SleepStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStage.swift"; sourceTree = "<group>"; };
+		011868DA12535FA43F1A467E /* TonightTimelineCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TonightTimelineCard.swift"; sourceTree = "<group>"; };
 		02032F4DEAB22D8D55BEC054 /* SleepSessionBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSessionBuilderTests.swift"; sourceTree = "<group>"; };
 		02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWidgetBundle.swift"; sourceTree = "<group>"; };
 		03508B538C62AC65FD8AD914 /* HealthRadar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadar.swift"; sourceTree = "<group>"; };
@@ -749,6 +751,7 @@
 				423CBBEE5037B19C59780D54,
 				B9148AC5FFBB89875A4B656E,
 				66E3F1F807708E82035C5C98,
+				011868DA12535FA43F1A467E,
 				F39A93CBDC0796684C98A6E4,
 				213D22A6A83EC98AD923972A,
 			);
@@ -1356,6 +1359,7 @@
 				21C99678C209300372D988F8,
 				C2BDF540A9833E65B04430BC,
 				54E28A0193AEAEE3A2B8AE50,
+				8AB927207BE8600B778534C8,
 				136B301DD045AB52B80281FC,
 				D0D98A5190EC12C683DB882C,
 				87C21FC8660D20B3AF622E69,
