@@ -77,6 +77,13 @@ TESTS_EXTRA_APP_FILES = [
     # Its identifier round-trip decides which screen a Spotlight tap
     # opens, and a silent mismatch would route to the wrong one.
     "Zoon/Services/SpotlightIndexer.swift",
+    # Foundation/SwiftData only, no UIKit/SwiftUI dependency -- BehaviorTag
+    # and JournalEntry, needed by JournalCorrelatorTests below.
+    "Zoon/Models/JournalEntry.swift",
+    # Pure logic over Observation/BehaviorTag plus Statistics (already
+    # Shared) -- the matched-pair engine behind Cause Finder, and exactly
+    # the exposure-state semantics JournalCorrelatorTests exists to pin down.
+    "Zoon/Insights/JournalCorrelator.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"

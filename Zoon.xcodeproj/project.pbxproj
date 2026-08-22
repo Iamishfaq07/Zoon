@@ -102,6 +102,7 @@
 		2EB77683B3C27D55FD33D0B2 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
 		2F84511FA3AF3BAA1C4DC443 /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
 		2FA404B23DBAAB638380A2C4 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
+		2FFF20E0F22093891AC50EE5 /* JournalCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3143BC9E915F4D207693A /* JournalCorrelator.swift */; };
 		30D02782ED1C19CF13EB68F2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A642BBA44A200DA78DC8E341 /* Assets.xcassets */; };
 		30FF7946056827D5365A7ECF /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D709620B56B9CA53E54024C /* Article.swift */; };
 		318F2D3EAEE2B49A3F03B7E2 /* NapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF28EA3935C59AD80111D89 /* NapView.swift */; };
@@ -168,6 +169,7 @@
 		62BE9440E1AFA7ECC4F6DBBB /* StatisticsBootstrapCITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0F64610736F9E59D4939B3 /* StatisticsBootstrapCITests.swift */; };
 		63C0C306002158B02EA497E5 /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
 		63CDD25F11C4BC5543DCBFB9 /* SnoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED7225BE24ECD0414B324C9 /* SnoreStore.swift */; };
+		63E5D4209DB615B5CDCBE371 /* JournalEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4244633C56362A14F2ABE898 /* JournalEntry.swift */; };
 		63EACBCDD07E27FB51CFE8A1 /* RegularityCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = C674514EF3C9937365A3C45F /* RegularityCards.swift */; };
 		63F21DE5FD17061A3D6B660F /* SoundscapeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 710B9A0DBC682D2A2A6A1F4E /* SoundscapeEngine.swift */; };
 		64E9256D78C078DFDEA7A33C /* BodyBattery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B144AF3807FA6DAA668EFE /* BodyBattery.swift */; };
@@ -315,6 +317,7 @@
 		CAC9F28EC06FB166BA29BC05 /* SeededGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD50E712746E68436F3A59B /* SeededGenerator.swift */; };
 		CB596B85702EBCC52D273243 /* ClinicianReportGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DEF6DFC0E15EBCAB541C39 /* ClinicianReportGenerator.swift */; };
 		CB885B593532FC11B3595942 /* BodyClockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6FD7CE0766096CAE5D60F2 /* BodyClockView.swift */; };
+		CBBF746DD5E11C79D4C9ADCB /* JournalCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5916908C5ABDE5191F03FFF2 /* JournalCorrelatorTests.swift */; };
 		CBF4C5675222715388957BB3 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
 		CE0253756CA59F5F3974A284 /* CoachChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6E77709F64DFE35BE1B8ED /* CoachChatView.swift */; };
 		CE4694EE40E55959DB6EEB17 /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */; };
@@ -542,6 +545,7 @@
 		54305AA7DFBC8E20A175DAE7 /* GuidedExperiment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GuidedExperiment.swift"; sourceTree = "<group>"; };
 		580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CardiovascularAge.swift"; sourceTree = "<group>"; };
 		58E8B4D93DD23601661ABF27 /* ZoonIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonIcons.swift"; sourceTree = "<group>"; };
+		5916908C5ABDE5191F03FFF2 /* JournalCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalCorrelatorTests.swift"; sourceTree = "<group>"; };
 		597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalLLMInsightEngine.swift"; sourceTree = "<group>"; };
 		5BFFA2C02EE15C5E13B57E9B /* StressScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StressScore.swift"; sourceTree = "<group>"; };
 		5C432B8295F6810E7F975CEE /* DayContextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DayContextBuilder.swift"; sourceTree = "<group>"; };
@@ -885,6 +889,7 @@
 				F381FE30E3EFE052D944E960,
 				844B434C335D18DD6B927A95,
 				FE1407BF1441EF6FE38A66DA,
+				5916908C5ABDE5191F03FFF2,
 				0E46E316C65A5379A85FC2C3,
 				2F5DD7E52B2623F0A7D68849,
 				6D31C7DE63B4080D06AF6341,
@@ -1511,6 +1516,7 @@
 				B279C694B155187C534FB73C,
 				5C04B1B5AB2945E5CDFB21A5,
 				0F9D0C7482C6B0EDFFB7D2C7,
+				CBBF746DD5E11C79D4C9ADCB,
 				934405094CF2483A4F0844B8,
 				8BC21D127DE84C05356C6EF6,
 				E13D865C46A69974CCCAA22C,
@@ -1582,6 +1588,8 @@
 				2A3319A5E611E223907FA02B,
 				E7513DC8D0F08944E871CF4A,
 				85BFC5F54D68B3EEC76F0672,
+				63E5D4209DB615B5CDCBE371,
+				2FFF20E0F22093891AC50EE5,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

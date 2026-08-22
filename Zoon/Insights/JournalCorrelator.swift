@@ -55,11 +55,14 @@ struct JournalCorrelator {
     struct Observation {
         let date: Date
         let tags: Set<BehaviorTag>
-        /// Whether the user tagged *anything* this night, i.e. actually
-        /// looked at the full behaviour list (every tag lives on one
-        /// unpaginated screen in the Journal, so ticking any box implies
-        /// visual exposure to the rest). Without this, a tag's absence can't
-        /// be told apart from the night never having been reviewed at all.
+        /// Whether the user actually opened the Journal's tag screen for
+        /// this night, i.e. had a real opportunity to see the full
+        /// behaviour list -- not whether they tagged anything on it. A
+        /// night the user genuinely reviewed and had nothing to tag is
+        /// just as reviewed as one where they tagged three things; without
+        /// this distinction (see the call site building `Observation`), a
+        /// tag's absence can't be told apart from the night never having
+        /// been reviewed at all.
         let isJournaled: Bool
         let recoveryPercent: Double?
         let sleepPerformance: Double?
@@ -203,6 +206,11 @@ struct JournalCorrelator {
 
     enum Metric: String, CaseIterable, Hashable {
         case recovery
+        /// 24-hour sleep (main sleep plus naps) against each night's own
+        /// historical need, not main sleep alone against one current
+        /// Settings goal applied uniformly to every night -- see
+        /// `SleepDataCoordinator.journalObservations()`, where
+        /// `Observation.sleepPerformance` is actually built.
         case sleepPerformance
         case deepSleep
         case remSleep
@@ -212,7 +220,7 @@ struct JournalCorrelator {
         var shortLabel: String {
             switch self {
             case .recovery: "recovery"
-            case .sleepPerformance: "sleep performance"
+            case .sleepPerformance: "sleep sufficiency"
             case .deepSleep: "deep sleep"
             case .remSleep: "REM sleep"
             case .efficiency: "sleep efficiency"
