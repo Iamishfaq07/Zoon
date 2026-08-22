@@ -7,14 +7,20 @@ struct SleepPlaybookView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
 
     private var playbook: SleepPlaybook? {
-        let observations = coordinator.journalObservations()
-        let outcomes = observations.map { $0.sleepPerformance ?? 0 }
+        // Nights with no known sleep sufficiency are excluded entirely,
+        // rather than defaulting the outcome to 0 -- a data gap is not
+        // evidence of a bad night, and letting it stand in as one would
+        // corrupt the best-quarter ranking with nights that never happened.
+        let known = coordinator.journalObservations().enumerated().compactMap { _, observation in
+            observation.sleepPerformance.map { (observation: observation, outcome: $0) }
+        }
+        let outcomes = known.map(\.outcome)
         let inputs = BehaviorTag.allCases.map { tag in
             SleepPlaybook.FactorInput(
                 id: tag.rawValue,
                 label: tag.label,
-                presencePerNight: observations.map { observation in
-                    switch observation.exposureState(for: tag) {
+                presencePerNight: known.map { entry in
+                    switch entry.observation.exposureState(for: tag) {
                     case .yes: true
                     case .no: false
                     case .unknown: nil
@@ -85,7 +91,7 @@ private struct FactorRow: View {
                 Spacer()
             }
 
-            Text("Present on \(Int((factor.bestNightsRate * 100).rounded()))% of your best nights, vs \(Int((factor.typicalRate * 100).rounded()))% typically -- \(factor.sampleSize) best nights with a known answer.")
+            Text("Present on \(Int((factor.bestNightsRate * 100).rounded()))% of your best nights, vs \(Int((factor.otherNightsRate * 100).rounded()))% on the rest -- \(factor.sampleSize) best nights with a known answer, \(factor.confidence.label.lowercased()).")
                 .font(Theme.text(11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

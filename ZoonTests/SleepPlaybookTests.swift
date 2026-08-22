@@ -24,7 +24,36 @@ final class SleepPlaybookTests: XCTestCase {
         }
         XCTAssertTrue(playbook.factors.contains { $0.id == "test" })
         let factor = playbook.factors.first { $0.id == "test" }
-        XCTAssertGreaterThan(factor?.bestNightsRate ?? 0, factor?.typicalRate ?? 1)
+        XCTAssertGreaterThan(factor?.bestNightsRate ?? 0, factor?.otherNightsRate ?? 1)
+    }
+
+    /// The actual bug: `typicalRate` used to be computed over *all* known
+    /// nights, including the best-quarter nights themselves, so a factor
+    /// present on every best night still dragged its own "typical" rate up
+    /// -- comparing best-vs-all-including-best instead of best-vs-rest.
+    func testOtherNightsRateExcludesBestNightsThemselves() {
+        // 32 nights, so the top quarter is exactly 8 nights (32 / 4) with
+        // no tie at the boundary -- distinct outcomes throughout so which
+        // 8 land in "best" is unambiguous. Factor present on every best
+        // night, and on none of the rest -- a perfectly clean signal that
+        // a best-vs-all computation would still understate.
+        var outcomes: [Double] = []
+        var presence: [Bool?] = []
+        for i in 0..<32 {
+            let isTopQuarter = i < 8
+            outcomes.append(isTopQuarter ? Double(90 + i) : Double(20 + i))
+            presence.append(isTopQuarter)
+        }
+        let input = SleepPlaybook.FactorInput(id: "clean", label: "Clean factor", presencePerNight: presence)
+        guard let playbook = SleepPlaybook.build(outcomePerNight: outcomes, factorInputs: [input]),
+              let factor = playbook.factors.first(where: { $0.id == "clean" }) else {
+            return XCTFail("expected the factor to clear the bar")
+        }
+        XCTAssertEqual(factor.bestNightsRate, 1.0, accuracy: 0.001)
+        // If the old bug were present, typicalRate would be 8/32 = 0.25
+        // (the best nights folded into the "typical" pool). Excluding them
+        // correctly, the other-nights rate is 0/24 = 0.
+        XCTAssertEqual(factor.otherNightsRate, 0.0, accuracy: 0.001)
     }
 
     func testFactorWithNoRealDifferenceIsExcluded() {
@@ -78,5 +107,31 @@ final class SleepPlaybookTests: XCTestCase {
             return XCTFail("expected both factors to clear the bar")
         }
         XCTAssertEqual(playbook.factors.first?.id, "strong")
+    }
+
+    func testConfidenceReflectsSampleSizeAndEffectGap() {
+        var outcomes: [Double] = []
+        var strongPresence: [Bool?] = []
+        var weakPresence: [Bool?] = []
+        for i in 0..<40 {
+            let isTopQuarter = i < 10
+            outcomes.append(isTopQuarter ? 95 : Double(40 + i))
+            // Strong: bestRate 1.0, otherRate 2/30 -- wide gap, full sample.
+            strongPresence.append(isTopQuarter ? true : (i < 12))
+            // Weak: bestRate 0.4 (4 of 10), otherRate 0.1 (3 of 30) -- a
+            // 0.3 gap, clears the 0.2 floor but far thinner than "strong".
+            weakPresence.append(isTopQuarter ? (i < 4) : (i < 13))
+        }
+        let inputs = [
+            SleepPlaybook.FactorInput(id: "weak", label: "Weak", presencePerNight: weakPresence),
+            SleepPlaybook.FactorInput(id: "strong", label: "Strong", presencePerNight: strongPresence)
+        ]
+        guard let playbook = SleepPlaybook.build(outcomePerNight: outcomes, factorInputs: inputs) else {
+            return XCTFail("expected both factors to clear the bar")
+        }
+        let strong = playbook.factors.first { $0.id == "strong" }
+        let weak = playbook.factors.first { $0.id == "weak" }
+        XCTAssertEqual(strong?.confidence, .high)
+        XCTAssertNotEqual(weak?.confidence, .high)
     }
 }
