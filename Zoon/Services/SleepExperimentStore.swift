@@ -29,9 +29,22 @@ final class SleepExperimentStore {
         let baselineNightCount: Int
         let trialNightCount: Int
         let higherIsBetter: Bool
+        /// How many of the trial nights had a known yes/no for the tracked
+        /// behaviour, out of `trialNightCount`. `nil` for outcomes recorded
+        /// before this field existed -- there's no way to reconstruct it
+        /// after the fact, so those just don't show an adherence figure.
+        var trialKnownNightCount: Int?
 
         var delta: Double { trialMedian - baselineMedian }
         var isImprovement: Bool { higherIsBetter ? delta > 0 : delta < 0 }
+        /// Fraction (0...1) of trial nights that had a known yes/no for the
+        /// tracked behaviour -- how consistently it actually got logged
+        /// once the experiment started, not just how many nights had any
+        /// journal entry at all.
+        var adherenceRate: Double? {
+            guard let trialKnownNightCount, trialNightCount > 0 else { return nil }
+            return Double(trialKnownNightCount) / Double(trialNightCount)
+        }
     }
 
     private enum Key {

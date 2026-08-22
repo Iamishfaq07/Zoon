@@ -62,8 +62,8 @@ struct CauseFinderView: View {
         .navigationTitle("Cause Finder")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingExperimentPicker) {
-            ExperimentPickerSheet { tag, hypothesis in
-                preferences.startExperiment(tag, hypothesis: hypothesis)
+            ExperimentPickerSheet { tag, hypothesis, primaryMetric in
+                preferences.startExperiment(tag, hypothesis: hypothesis, primaryMetric: primaryMetric)
                 showingExperimentPicker = false
             }
         }
@@ -343,9 +343,10 @@ private struct GuidedExperimentCard: View {
 }
 
 private struct ExperimentPickerSheet: View {
-    let onSelect: (BehaviorTag, String?) -> Void
+    let onSelect: (BehaviorTag, String?, JournalCorrelator.Metric) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var hypothesis: String = ""
+    @State private var primaryMetric: JournalCorrelator.Metric = .sleepPerformance
 
     var body: some View {
         NavigationStack {
@@ -356,11 +357,20 @@ private struct ExperimentPickerSheet: View {
                 } footer: {
                     Text("Your own note, shown alongside the result -- never fed into the comparison itself.")
                 }
+                Section {
+                    Picker("Judge the result on", selection: $primaryMetric) {
+                        ForEach(JournalCorrelator.Metric.allCases, id: \.self) { metric in
+                            Text(metric.shortLabel.capitalized).tag(metric)
+                        }
+                    }
+                } footer: {
+                    Text("Chosen now, before there's any data to look at -- picking whichever metric moved the most afterward would just be noise dressed up as a finding.")
+                }
                 ForEach(BehaviorTag.Category.allCases) { category in
                     Section(category.label) {
                         ForEach(category.tags) { tag in
                             Button {
-                                onSelect(tag, hypothesis)
+                                onSelect(tag, hypothesis, primaryMetric)
                             } label: {
                                 Label(tag.label, systemImage: tag.symbol)
                                     .foregroundStyle(.primary)
@@ -436,6 +446,12 @@ private struct PastExperimentRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let known = outcome.trialKnownNightCount {
+                        Text("Logged \(known) of \(outcome.trialNightCount) trial nights either way -- the rest never got tagged, so the result rests on the ones that did.")
+                            .font(Theme.text(10))
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .transition(.opacity)
             }

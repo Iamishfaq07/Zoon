@@ -1039,6 +1039,7 @@ final class SleepDataCoordinator {
             if let outcome = GuidedExperiment.summarize(
                 tag: tag,
                 hypothesis: preferences.experimentHypothesis,
+                primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
                 startDate: startDate,
                 endDate: .now,
                 observations: journalObservations()

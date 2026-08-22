@@ -26,6 +26,7 @@ final class UserPreferences {
         static let experimentTag = "zoon.pref.experimentTag"
         static let experimentStartDate = "zoon.pref.experimentStartDate"
         static let experimentHypothesis = "zoon.pref.experimentHypothesis"
+        static let experimentPrimaryMetric = "zoon.pref.experimentPrimaryMetric"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
     }
 
@@ -200,16 +201,36 @@ final class UserPreferences {
         }
     }
 
-    func startExperiment(_ tag: BehaviorTag, hypothesis: String? = nil) {
+    /// Which outcome metric the eventual result is judged on -- chosen when
+    /// the experiment starts, not after seeing the data. Scanning every
+    /// metric after the fact and reporting whichever moved the most is a
+    /// classic multiple-comparisons trap: with six metrics in play, *some*
+    /// of them will drift by chance even with no real effect, and picking
+    /// the biggest post-hoc dresses that noise up as a finding. Locking the
+    /// metric in at the start is what makes the eventual before/after
+    /// comparison mean anything.
+    private(set) var experimentPrimaryMetric: JournalCorrelator.Metric? {
+        didSet {
+            if let experimentPrimaryMetric {
+                defaults.set(experimentPrimaryMetric.rawValue, forKey: Key.experimentPrimaryMetric)
+            } else {
+                defaults.removeObject(forKey: Key.experimentPrimaryMetric)
+            }
+        }
+    }
+
+    func startExperiment(_ tag: BehaviorTag, hypothesis: String? = nil, primaryMetric: JournalCorrelator.Metric = .sleepPerformance) {
         activeExperimentTag = tag
         experimentStartDate = .now
         experimentHypothesis = (hypothesis?.isEmpty ?? true) ? nil : hypothesis
+        experimentPrimaryMetric = primaryMetric
     }
 
     func endExperiment() {
         activeExperimentTag = nil
         experimentStartDate = nil
         experimentHypothesis = nil
+        experimentPrimaryMetric = nil
     }
 
     /// Which insight engine to use. The LLM option is present but stubbed —
@@ -288,6 +309,7 @@ final class UserPreferences {
         self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
         self.experimentHypothesis = defaults.string(forKey: Key.experimentHypothesis)
+        self.experimentPrimaryMetric = (defaults.string(forKey: Key.experimentPrimaryMetric)).flatMap(JournalCorrelator.Metric.init(rawValue:))
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
     }
 
@@ -315,6 +337,7 @@ final class UserPreferences {
         activeExperimentTag = nil
         experimentStartDate = nil
         experimentHypothesis = nil
+        experimentPrimaryMetric = nil
         preferredSleepSourceName = nil
 
         let keys = [
@@ -334,6 +357,7 @@ final class UserPreferences {
             Key.preferredSleepSourceName,
             Key.experimentStartDate,
             Key.experimentHypothesis,
+            Key.experimentPrimaryMetric,
         ]
         for key in keys { defaults.removeObject(forKey: key) }
     }
