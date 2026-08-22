@@ -983,9 +983,31 @@ final class SleepDataCoordinator {
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
-                isJournaled: !tags.isEmpty,
+                // `tagsByDate[night.date]` above already gates this whole
+                // branch on a JournalEntry existing for the night -- and
+                // `JournalStore.entryOrCreate` persists one the moment
+                // JournalView renders that day's tag screen, whether or not
+                // the user taps anything. That's the actual "did the user
+                // see the tag list" signal; requiring `!tags.isEmpty` on
+                // top of it double-gated on tag presence and, per that
+                // stricter reading, treated a night the user genuinely
+                // reviewed and had nothing to tag as unreviewed -- which is
+                // also the wrong direction from the opposite failure mode
+                // (tagging one behaviour reads as a confirmed "no" for
+                // every other one): `exposureState(for:)` still resolves
+                // per-tag from `tags.contains(tag)` first, so a real "no"
+                // here only ever applies to tags this reviewed night didn't
+                // have on it, not to nights the user never opened at all.
+                isJournaled: true,
                 recoveryPercent: recoveryHistory[night.date].map(Double.init),
-                sleepPerformance: min(100, night.timeAsleepMinutes / max(goal, 1) * 100),
+                // 24-hour sleep (main sleep plus naps) against this night's
+                // own historical need, not main sleep alone against one
+                // current Settings goal applied uniformly to every night --
+                // see JournalCorrelator.Metric.sleepPerformance's doc
+                // comment.
+                sleepPerformance: min(
+                    100, night.total24hAsleepMinutes / max(night.sleepNeedBaselineMinutes ?? goal, 1) * 100
+                ),
                 deepMinutes: night.hasStageBreakdown ? night.deepMinutes : nil,
                 remMinutes: night.hasStageBreakdown ? night.remMinutes : nil,
                 efficiency: night.sleepEfficiencyPercent,
