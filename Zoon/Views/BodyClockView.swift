@@ -60,6 +60,16 @@ struct BodyClockView: View {
                 arc(from: actualStart, to: actualEnd, lineWidth: 16)
                     .stroke(Theme.Metric.battery, style: StrokeStyle(lineWidth: 4, lineCap: .round))
 
+                // Where "now" sits on the dial -- the live position against
+                // the fixed shape of the day, same marker as the Body Clock
+                // card on the Sleep tab.
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: .white.opacity(0.7), radius: 4)
+                    .offset(y: -100)
+                    .rotationEffect(.degrees(wallClockFraction(hourOfDay(.now)) * 360))
+
                 VStack(spacing: 2) {
                     Text(BodyClock.formatted(hour: bodyClock.onsetHour))
                         .font(Theme.label(15, weight: .bold))
