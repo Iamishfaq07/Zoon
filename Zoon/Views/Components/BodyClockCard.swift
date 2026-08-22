@@ -118,6 +118,17 @@ struct BodyClockCard: View {
                 .rotationEffect(.degrees(-90 + arcStart * 360))
                 .shadow(color: Theme.Metric.sleep.opacity(0.5), radius: 8)
 
+            // Where "now" sits on the dial -- without this, the card is a
+            // static comparison of two arcs; this is what makes it read as
+            // an orbit, a live position against the fixed shape of the day,
+            // rather than a chart of two intervals.
+            Circle()
+                .fill(Color.white)
+                .frame(width: 6, height: 6)
+                .shadow(color: .white.opacity(0.7), radius: 3)
+                .offset(y: -46)
+                .rotationEffect(.degrees(nowFraction * 360 * sweep))
+
             VStack(spacing: 0) {
                 Text("MID")
                     .font(Theme.text(8, weight: .bold))
@@ -138,6 +149,16 @@ struct BodyClockCard: View {
 
     private var arcLength: Double {
         (bodyClock.typicalDurationMinutes / 60) / 24
+    }
+
+    /// Current wall-clock time as a 0...1 fraction of the day, on the same
+    /// midnight-at-top, hour/24 convention the tick marks use (not the -90
+    /// shifted convention the arcs use, which exists only to compensate for
+    /// `trim`'s 3-o'clock origin).
+    private var nowFraction: Double {
+        let components = Calendar.current.dateComponents([.hour, .minute], from: .now)
+        let hour = Double(components.hour ?? 0) + Double(components.minute ?? 0) / 60
+        return hour / 24
     }
 
     /// Last night's actual interval as a (start fraction, length fraction)
