@@ -74,6 +74,8 @@ struct TrendsView: View {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
+                    WhatChangedCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
+                    DiscoveriesCard(findings: JournalCorrelator().findings(from: coordinator.journalObservations()))
                     insightsHub
 
                     if nights.count < 2 {

@@ -324,6 +324,7 @@
 		D16936FC59B87D97DE8C244A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */; };
 		D2A02A8E3F206303EB92549B /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		D397403DABFEACAA41DB8475 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
+		D3B728E1CEEFC7AF4FDE89D9 /* InsightsDigestCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49024A9138A57C2C104AFE9B /* InsightsDigestCards.swift */; };
 		D3FFCF8C78027D3A0CBA4340 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */; };
 		D54AF07DE7CEE3CF700AE908 /* HealthPulseStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE48A5D44EF4E0599DDBA08C /* HealthPulseStrip.swift */; };
 		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
@@ -525,6 +526,7 @@
 		44CDDE704425E14E8BE8AC0C /* BreathingHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingHealthView.swift"; sourceTree = "<group>"; };
 		45237B7D4C6548BAEC55290F /* InsightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightCard.swift"; sourceTree = "<group>"; };
 		47010EC420AEBC0B23F7F476 /* SoundEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundEvent.swift"; sourceTree = "<group>"; };
+		49024A9138A57C2C104AFE9B /* InsightsDigestCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightsDigestCards.swift"; sourceTree = "<group>"; };
 		49631B20B1506B60BDEB8FC7 /* LaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchOptions.swift"; sourceTree = "<group>"; };
 		4980E3BEBDBC7753D6697D62 /* NapCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapCoach.swift"; sourceTree = "<group>"; };
 		4CE26528CE71795A222831C3 /* FeatureExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FeatureExtractor.swift"; sourceTree = "<group>"; };
@@ -734,6 +736,7 @@
 				AE48A5D44EF4E0599DDBA08C,
 				12AB23E8C636FD67F0EFBBA9,
 				45237B7D4C6548BAEC55290F,
+				49024A9138A57C2C104AFE9B,
 				53636D4BAAB21D53B0232B06,
 				2CEEC938F70D39622049AB5E,
 				7CF38D0E51C20F2A8477C0F5,
@@ -1340,6 +1343,7 @@
 				D54AF07DE7CEE3CF700AE908,
 				8508204FEC412F59D8F3D82F,
 				E7E68658D923ECD0BD14401E,
+				D3B728E1CEEFC7AF4FDE89D9,
 				677698CE93C3E4DF75B50AA1,
 				76A38D2DC300EAB2473D2A6A,
 				33439A6340A0128408653E51,
