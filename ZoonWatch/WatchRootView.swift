@@ -1,6 +1,14 @@
 import SwiftUI
 
-/// Three pages, swiped horizontally.
+/// Four pages, swiped horizontally -- the redesign spec's "glanceable"
+/// count for the watch. This used to run to six: Sleep Intelligence,
+/// Recovery, Sleep, a standalone Battery ring, Body Signals, and Badges.
+/// Six full-bleed swipes is a lot to page through on a wrist, and two of
+/// those six were already redundant or low-priority enough to fold in
+/// rather than earn their own screen: Body Battery already appears as a
+/// mini-stat on the Recovery page, and Body Signals plus Badges are both
+/// "check occasionally," not "check every glance" information, so they now
+/// share one combined page instead of two.
 ///
 /// A `TabView` in page style rather than a list: on a watch, swiping between
 /// full-bleed screens is faster than scrolling a list and tapping into detail,
@@ -24,9 +32,7 @@ struct WatchRootView: View {
                 }
                 RecoveryPage(snapshot: snapshot)
                 SleepPage(snapshot: snapshot)
-                BatteryPage(snapshot: snapshot)
-                BodySignalsPage(snapshot: snapshot)
-                BadgePage(snapshot: snapshot)
+                MorePage(snapshot: snapshot)
             } else {
                 WaitingPage(isActivated: link.isActivated)
             }
@@ -211,76 +217,48 @@ struct SleepPage: View {
     }
 }
 
-/// Body Battery on its own page — it was previously only a mini-stat on the
-/// Recovery page, too small to read the exact number without stopping to
-/// squint. A dedicated ring gives it the same legibility as Recovery gets.
-struct BatteryPage: View {
-
-    let snapshot: SleepSnapshot
-
-    private var tint: Color {
-        switch snapshot.bodyBattery {
-        case 60...: Theme.Metric.recoveryHigh
-        case 30..<60: Theme.Metric.battery
-        default: Theme.Metric.recoveryLow
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 9)
-                Circle()
-                    .trim(from: 0, to: Double(snapshot.bodyBattery) / 100)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: tint.opacity(0.5), radius: 5)
-
-                VStack(spacing: -3) {
-                    Text("\(snapshot.bodyBattery)")
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                    Text("ENERGY")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxHeight: .infinity)
-
-            if snapshot.isMock {
-                Text("Sample data")
-                    .font(Theme.text(9))
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 6)
-    }
-}
-
-/// Body Signals: whether anything is drifting from your own baseline,
-/// distilled to one word for the wrist -- `HealthRadar`'s full breakdown
-/// (which signals, how much, how long) stays a phone-only detail; the watch
-/// only needs to answer "should I look closer".
-struct BodySignalsPage: View {
+/// Body Signals and Badges, stacked on one page rather than two -- both are
+/// "check occasionally" information (whether anything is drifting from
+/// baseline; how the reward progress is going), not "check every glance"
+/// like the three pages before it, so they share a swipe instead of each
+/// claiming a full screen. Body Battery itself doesn't need a page here:
+/// it's already legible as a mini-stat on the Recovery page.
+struct MorePage: View {
 
     let snapshot: SleepSnapshot
 
     private var isNormal: Bool { snapshot.bodySignalsLabel == "Nothing unusual" }
+    private var hasBadge: Bool { !snapshot.badgeTitle.isEmpty }
 
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right")
-                .font(Theme.text(30, weight: .medium))
-                .foregroundStyle(isNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+        VStack(spacing: 10) {
+            VStack(spacing: 4) {
+                Image(systemName: isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right")
+                    .font(Theme.text(20, weight: .medium))
+                    .foregroundStyle(isNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+                Text(snapshot.bodySignalsLabel)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+            }
 
-            Text("Body Signals")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(.secondary)
+            Divider().overlay(Color.white.opacity(0.15))
 
-            Text(snapshot.bodySignalsLabel)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .multilineTextAlignment(.center)
+            VStack(spacing: 4) {
+                Image(systemName: hasBadge ? snapshot.badgeSymbol : "hexagon")
+                    .font(Theme.text(20, weight: .medium))
+                    .foregroundStyle(hasBadge ? Theme.Metric.recoveryMid : .secondary)
+                Text(hasBadge ? snapshot.badgeTitle : "No badges yet")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Text("\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal)")
+                    .font(.system(size: 10, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
 
             if snapshot.isMock {
                 Text("Sample data")
@@ -289,45 +267,6 @@ struct BodySignalsPage: View {
             }
         }
         .padding(.horizontal, 10)
-    }
-}
-
-/// Badges, so the wrist carries the reward too.
-struct BadgePage: View {
-
-    let snapshot: SleepSnapshot
-
-    private var hasBadge: Bool { !snapshot.badgeTitle.isEmpty }
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: hasBadge ? snapshot.badgeSymbol : "hexagon")
-                .font(Theme.text(30, weight: .medium))
-                .foregroundStyle(hasBadge ? Theme.Metric.recoveryMid : .secondary)
-
-            Text(hasBadge ? snapshot.badgeTitle : "No badges yet")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-
-            Text("\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal)")
-                .font(.system(size: 11, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-
-            if !snapshot.nextBadgeTitle.isEmpty {
-                Divider().overlay(Color.white.opacity(0.15))
-                VStack(spacing: 3) {
-                    Text("Next: \(snapshot.nextBadgeTitle)")
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    ProgressView(value: snapshot.nextBadgeProgress)
-                        .tint(Theme.Metric.recoveryMid)
-                }
-            }
-        }
-        .padding(.horizontal, 8)
     }
 }
 
@@ -373,16 +312,8 @@ struct WaitingPage: View {
     SleepPage(snapshot: MockData.snapshotWithBadges)
 }
 
-#Preview("Battery") {
-    BatteryPage(snapshot: MockData.snapshotWithBadges)
-}
-
-#Preview("Body Signals") {
-    BodySignalsPage(snapshot: MockData.snapshotWithBadges)
-}
-
-#Preview("Badges") {
-    BadgePage(snapshot: MockData.snapshotWithBadges)
+#Preview("More") {
+    MorePage(snapshot: MockData.snapshotWithBadges)
 }
 
 #Preview("Waiting") {
