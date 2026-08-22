@@ -32,14 +32,16 @@ final class SleepPlaybookTests: XCTestCase {
     /// present on every best night still dragged its own "typical" rate up
     /// -- comparing best-vs-all-including-best instead of best-vs-rest.
     func testOtherNightsRateExcludesBestNightsThemselves() {
-        // 30 nights, top quarter (8 nights) all best. Factor present on
-        // every best night, and on none of the rest -- a perfectly clean
-        // signal that a best-vs-all computation would still understate.
+        // 32 nights, so the top quarter is exactly 8 nights (32 / 4) with
+        // no tie at the boundary -- distinct outcomes throughout so which
+        // 8 land in "best" is unambiguous. Factor present on every best
+        // night, and on none of the rest -- a perfectly clean signal that
+        // a best-vs-all computation would still understate.
         var outcomes: [Double] = []
         var presence: [Bool?] = []
-        for i in 0..<30 {
+        for i in 0..<32 {
             let isTopQuarter = i < 8
-            outcomes.append(isTopQuarter ? 95 : Double(50 + i))
+            outcomes.append(isTopQuarter ? Double(90 + i) : Double(20 + i))
             presence.append(isTopQuarter)
         }
         let input = SleepPlaybook.FactorInput(id: "clean", label: "Clean factor", presencePerNight: presence)
@@ -48,9 +50,9 @@ final class SleepPlaybookTests: XCTestCase {
             return XCTFail("expected the factor to clear the bar")
         }
         XCTAssertEqual(factor.bestNightsRate, 1.0, accuracy: 0.001)
-        // If the old bug were present, typicalRate would be 8/30 = 0.267
+        // If the old bug were present, typicalRate would be 8/32 = 0.25
         // (the best nights folded into the "typical" pool). Excluding them
-        // correctly, the other-nights rate is 0/22 = 0.
+        // correctly, the other-nights rate is 0/24 = 0.
         XCTAssertEqual(factor.otherNightsRate, 0.0, accuracy: 0.001)
     }
 
