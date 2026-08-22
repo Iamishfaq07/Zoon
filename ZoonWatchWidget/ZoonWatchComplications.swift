@@ -35,6 +35,18 @@ struct WatchComplicationEntry: TimelineEntry {
     let date: Date
     let snapshot: SleepSnapshot
     let isPlaceholder: Bool
+
+    /// Same reasoning as `SleepEntry.relevance` on the phone side: high for
+    /// a few hours after the snapshot was generated (closest available
+    /// proxy for "just after waking up"), low otherwise, so watchOS's own
+    /// Smart Stack has a signal for *when* this complication matters
+    /// instead of a flat score.
+    var relevance: TimelineEntryRelevance? {
+        guard !isPlaceholder else { return TimelineEntryRelevance(score: 10) }
+        let hoursSinceGenerated = date.timeIntervalSince(snapshot.generatedAt) / 3600
+        let recentlyRefreshed = hoursSinceGenerated >= 0 && hoursSinceGenerated < 4
+        return TimelineEntryRelevance(score: recentlyRefreshed ? 80 : 20, duration: 4 * 3600)
+    }
 }
 
 struct WatchComplicationProvider: TimelineProvider {

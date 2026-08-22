@@ -9,6 +9,26 @@ struct SleepEntry: TimelineEntry {
     /// The widget marks these so a home screen never displays invented health
     /// numbers as if they were measured.
     let isPlaceholder: Bool
+
+    /// How much iOS should favour this entry when picking what to surface in
+    /// the Smart Stack -- the platform gap named in the Release 4 audit
+    /// ("widget relevance") that every other one already had an answer for.
+    ///
+    /// There's no measured wake time on `SleepSnapshot` to anchor against,
+    /// but `generatedAt` is a close proxy: the app writes a fresh snapshot
+    /// once it finishes processing a night, which happens close to when the
+    /// watch syncs after waking up. Scored high for the few hours right
+    /// after that -- when someone is actually likely to check "how did I
+    /// sleep" -- and low the rest of the day, rather than a flat score that
+    /// gives the Smart Stack no signal about *when* this widget matters.
+    /// Placeholder/mock entries stay at the low score: sample data
+    /// shouldn't compete for a prominent slot.
+    var relevance: TimelineEntryRelevance? {
+        guard !isPlaceholder else { return TimelineEntryRelevance(score: 10) }
+        let hoursSinceGenerated = date.timeIntervalSince(snapshot.generatedAt) / 3600
+        let recentlyRefreshed = hoursSinceGenerated >= 0 && hoursSinceGenerated < 4
+        return TimelineEntryRelevance(score: recentlyRefreshed ? 80 : 20, duration: 4 * 3600)
+    }
 }
 
 /// Supplies entries from the snapshot the app writes.
