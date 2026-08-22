@@ -253,8 +253,12 @@ struct SleepTabView: View {
                         }
                     }
 
-                    BedtimeCountdownCard().entrance(4)
-                    SleepToolsStrip().entrance(5)
+                    // BedtimeCountdownCard moved to Today: showing the exact
+                    // same card on both tabs was redundant rather than
+                    // reinforcing, and Sleep's job here is "how did I sleep"
+                    // and "what tools do I have," not "when should I go to
+                    // bed" -- that's a today/planning question.
+                    SleepToolsStrip().entrance(4)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
