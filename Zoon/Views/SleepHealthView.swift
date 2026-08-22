@@ -12,14 +12,14 @@ struct SleepHealthView: View {
     @State private var window: SleepHealth.Window = .month
 
     private var health: SleepHealth {
-        let feelings = coordinator.journal.allEntries()
-            .compactMap(\.feeling)
-            .map(\.rawValue)
+        let checkIns = coordinator.journal.allEntries().map {
+            SleepHealth.DatedMorningCheckIn(date: $0.date, feeling: $0.feeling?.rawValue)
+        }
         return SleepHealth.compute(
             window: window,
             goalMinutes: preferences.sleepGoalMinutes,
             nights: coordinator.recentNights,
-            morningFeelingRawValues: feelings
+            morningCheckIns: checkIns
         )
     }
 

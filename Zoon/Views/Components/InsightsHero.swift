@@ -14,14 +14,19 @@ struct InsightsHero: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     let goalMinutes: Double
 
-    private var feelings: [Int] {
-        coordinator.journal.allEntries().compactMap(\.feeling).map(\.rawValue)
+    /// Dated so `compute` can scope each call to its own window -- both
+    /// calls below used to receive the exact same undated feelings array
+    /// regardless of which period each was supposedly scoring.
+    private var checkIns: [SleepHealth.DatedMorningCheckIn] {
+        coordinator.journal.allEntries().map {
+            SleepHealth.DatedMorningCheckIn(date: $0.date, feeling: $0.feeling?.rawValue)
+        }
     }
 
     private var current: SleepHealth {
         SleepHealth.compute(
             window: .month, goalMinutes: goalMinutes,
-            nights: coordinator.recentNights, morningFeelingRawValues: feelings
+            nights: coordinator.recentNights, morningCheckIns: checkIns
         )
     }
 
@@ -29,7 +34,7 @@ struct InsightsHero: View {
         let cutoff = Calendar.current.date(byAdding: .day, value: -SleepHealth.Window.month.rawValue, to: .now) ?? .distantPast
         return SleepHealth.compute(
             window: .month, goalMinutes: goalMinutes,
-            nights: coordinator.recentNights, morningFeelingRawValues: feelings, now: cutoff
+            nights: coordinator.recentNights, morningCheckIns: checkIns, now: cutoff
         )
     }
 
