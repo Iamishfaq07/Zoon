@@ -28,11 +28,18 @@ final class CoachChat {
         let id: UUID
         let role: Role
         var text: String
+        /// The specific number(s) from tonight's data an assistant answer is
+        /// grounded in -- e.g. "HRV 42ms vs your 7-day average of 58ms" --
+        /// shown as its own element below the answer rather than folded into
+        /// the prose. `nil` for user turns, and for an assistant answer that
+        /// isn't tied to one specific figure.
+        var groundedIn: String?
 
-        init(id: UUID = UUID(), role: Role, text: String) {
+        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil) {
             self.id = id
             self.role = role
             self.text = text
+            self.groundedIn = groundedIn
         }
     }
 
@@ -50,6 +57,20 @@ final class CoachChat {
     // availability annotation; the cast at each use site is where the real
     // `#available` check still lives.
     private var session: Any?
+
+    /// The shape a chat answer is constrained to produce -- see
+    /// `FoundationModelInsightEngine.GeneratedInsight` for the same pattern
+    /// applied to the nightly insight. `@Guide` descriptions carry real
+    /// weight here since they're part of the prompt the framework builds.
+    @available(iOS 26.0, *)
+    @Generable
+    struct ChatAnswer {
+        @Guide(description: "The answer itself, two to three sentences, plain language, answered only from tonight's data.")
+        var answer: String
+
+        @Guide(description: "The specific number(s) from tonight's data this answer is grounded in, written as a short fragment like 'HRV 42ms vs your 7-day average of 58ms'. Empty string if the answer isn't tied to one specific figure.")
+        var groundedIn: String
+    }
     #endif
 
     /// Why the coach can't answer, or `nil` when it can.
@@ -104,26 +125,24 @@ final class CoachChat {
             return
         }
 
-        // Streamed rather than a single `respond(to:)` await: a Foundation
-        // Models generation can take a few seconds, and a bubble that fills
-        // in as it's written reads as "thinking out loud" the way the other
-        // on-device coaches in this category do, instead of a long pause
-        // followed by a paragraph appearing all at once. The bubble is only
-        // added to `messages` once the first token arrives, so `isResponding`
-        // (and the "Thinking…" row it drives in CoachChatView) still owns the
-        // gap before generation starts producing anything.
-        var assistantIndex: Int?
+        // Structured generation rather than raw streamed text: the redesign
+        // spec calls for the coach's answers to have real shape on screen,
+        // not a wall of prose in a bubble. `ChatAnswer` separates the
+        // sentence itself from the number it's grounded in, the same
+        // `@Generable`/`respond(to:generating:)` pattern
+        // `FoundationModelInsightEngine` already uses for the nightly
+        // insight -- this trades the previous token-by-token "thinking out
+        // loud" streaming for an answer CoachChatView can render as an
+        // editorial block with a distinct citation, rather than one
+        // undifferentiated paragraph.
         do {
-            let stream = session.streamResponse(to: trimmed, options: GenerationOptions(temperature: 0.4))
-            for try await partial in stream {
-                let content = partial.content
-                if let index = assistantIndex {
-                    messages[index].text = content
-                } else if !content.isEmpty {
-                    messages.append(Message(role: .assistant, text: content))
-                    assistantIndex = messages.count - 1
-                }
-            }
+            let response = try await session.respond(
+                to: trimmed,
+                generating: ChatAnswer.self,
+                options: GenerationOptions(temperature: 0.4)
+            )
+            let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+            let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
 
             // Same backstop FoundationModelInsightEngine applies to the
             // nightly insight: the instructions forbid diagnostic language,
@@ -132,27 +151,27 @@ final class CoachChat {
             // to get it wrong on. A failed check here can't fall back to a
             // rules engine the way the nightly insight can -- there's no
             // rule-based conversation to hand off to -- so it shows a plain
-            // refusal instead of the raw response. Checked once, on the
-            // final accumulated text, rather than on every partial snapshot:
-            // a half-generated sentence can trip the guard on words it would
-            // never end up containing once complete.
-            if let index = assistantIndex, DiagnosticLanguageGuard.rejects(messages[index].text) {
-                logger.notice("Chat response failed the diagnostic-language check; not shown")
-                messages[index].text = "I can't help with that one -- ask me something about tonight's numbers instead."
-            } else if assistantIndex == nil {
+            // refusal instead of the raw response.
+            guard !answer.isEmpty, !DiagnosticLanguageGuard.rejects("\(answer) \(grounding)") else {
+                logger.notice("Chat response was empty or failed the diagnostic-language check; not shown")
                 messages.append(Message(
                     role: .assistant,
-                    text: "Couldn't generate a response just then. Try asking again."
+                    text: "I can't help with that one -- ask me something about tonight's numbers instead."
                 ))
+                return
             }
+
+            messages.append(Message(
+                role: .assistant,
+                text: answer,
+                groundedIn: grounding.isEmpty || grounding.lowercased() == "null" ? nil : grounding
+            ))
         } catch {
             logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
-            let failureText = "Couldn't generate a response just then. Try asking again."
-            if let index = assistantIndex {
-                messages[index].text = failureText
-            } else {
-                messages.append(Message(role: .assistant, text: failureText))
-            }
+            messages.append(Message(
+                role: .assistant,
+                text: "Couldn't generate a response just then. Try asking again."
+            ))
         }
         #else
         messages.append(Message(role: .assistant, text: unavailabilityReason ?? "Not available."))
