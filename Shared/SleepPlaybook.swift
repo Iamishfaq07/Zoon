@@ -24,10 +24,18 @@ struct SleepPlaybook: Sendable {
         let label: String
         /// Fraction of best nights (0...1) this factor was present for.
         let bestNightsRate: Double
-        /// Fraction of all known nights (0...1) it was present for --
-        /// the baseline `bestNightsRate` is compared against.
-        let typicalRate: Double
+        /// Fraction of *non-best* known nights (0...1) it was present for --
+        /// the baseline `bestNightsRate` is compared against. Deliberately
+        /// excludes the best nights themselves, otherwise a factor present
+        /// on every best night still shows a "typical" rate inflated by
+        /// those same nights, understating the real gap.
+        let otherNightsRate: Double
         let sampleSize: Int
+        /// How much to trust this factor's rates, from its best-nights
+        /// sample size and how wide the gap is -- a factor that only just
+        /// clears the floors is real but thin, not the same confidence as
+        /// one with a big sample and a wide gap.
+        let confidence: MetricConfidence
     }
 
     /// One candidate condition to test against the best-nights split.
@@ -80,21 +88,32 @@ struct SleepPlaybook: Sendable {
             guard known.count >= minimumKnownNights else { continue }
 
             let bestKnown = known.filter { bestIndices.contains($0.index) }
-            guard bestKnown.count >= minimumBestNightsSample else { continue }
+            let otherKnown = known.filter { !bestIndices.contains($0.index) }
+            guard bestKnown.count >= minimumBestNightsSample, !otherKnown.isEmpty else { continue }
 
             let bestRate = Double(bestKnown.filter(\.present).count) / Double(bestKnown.count)
-            let typicalRate = Double(known.filter(\.present).count) / Double(known.count)
-            guard abs(bestRate - typicalRate) >= minimumEffectGap else { continue }
+            let otherRate = Double(otherKnown.filter(\.present).count) / Double(otherKnown.count)
+            let gap = abs(bestRate - otherRate)
+            guard gap >= minimumEffectGap else { continue }
+
+            let confidence: MetricConfidence
+            if bestKnown.count >= 8, gap >= 0.35 {
+                confidence = .high
+            } else if bestKnown.count >= 5, gap >= 0.25 {
+                confidence = .moderate
+            } else {
+                confidence = .low
+            }
 
             factors.append(Factor(
                 id: input.id, label: input.label,
-                bestNightsRate: bestRate, typicalRate: typicalRate,
-                sampleSize: bestKnown.count
+                bestNightsRate: bestRate, otherNightsRate: otherRate,
+                sampleSize: bestKnown.count, confidence: confidence
             ))
         }
 
         return SleepPlaybook(
-            factors: factors.sorted { abs($0.bestNightsRate - $0.typicalRate) > abs($1.bestNightsRate - $1.typicalRate) }
+            factors: factors.sorted { abs($0.bestNightsRate - $0.otherNightsRate) > abs($1.bestNightsRate - $1.otherNightsRate) }
         )
     }
 }
