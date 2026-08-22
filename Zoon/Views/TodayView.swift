@@ -101,7 +101,14 @@ struct TodayView: View {
                 StressCard(stress: stress, todayStrain: context.strain.value).entrance(1)
             }
             ringsCard(context).entrance(2)
+            HealthPulseStrip(vitals: context.vitals).entrance(2)
             SleepSummaryStrip(context: context).entrance(3)
+            // Tonight's countdown used to live only on the Sleep tab, so the
+            // morning screen said nothing about the night still ahead. It's
+            // read-only here -- the toggle to turn reminders on lives in
+            // Settings, not duplicated onto a card that would need its own
+            // permission-request path to make a toggle here mean anything.
+            BedtimeCountdownCard().entrance(3)
             if coordinator.recentNights.count < 30 {
                 PersonalizationProgressCard(
                     nightsTracked: coordinator.recentNights.count,
