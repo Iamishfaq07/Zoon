@@ -109,6 +109,13 @@ struct TodayView: View {
             // Settings, not duplicated onto a card that would need its own
             // permission-request path to make a toggle here mean anything.
             BedtimeCountdownCard().entrance(3)
+            if let bedtime = context.targetBedtime() {
+                TonightTimelineCard(
+                    windDown: bedtime.addingTimeInterval(-Double(BedtimeReminder.windDownLeadMinutes) * 60),
+                    bedtime: bedtime,
+                    wake: context.bodyClock?.window(for: .now)?.end
+                ).entrance(3)
+            }
             if coordinator.recentNights.count < 30 {
                 PersonalizationProgressCard(
                     nightsTracked: coordinator.recentNights.count,
