@@ -149,6 +149,12 @@ struct JournalCorrelator {
         let confidenceIntervalUpper: Double?
         let matchedPairCount: Int
         let confidence: Confidence
+        /// Each matched pair's own (exposed − matched) delta, same units as
+        /// `metric`. Kept alongside the summary stats above so a result row
+        /// can plot the actual matched pairs -- the redesign spec's
+        /// "paired-dot plot" -- rather than only the median and interval
+        /// derived from them.
+        let pairDeltas: [Double]
 
         var id: String { "\(tag.rawValue)-\(metric.rawValue)" }
 
@@ -286,7 +292,8 @@ struct JournalCorrelator {
                     confidenceIntervalLower: ci?.lower,
                     confidenceIntervalUpper: ci?.upper,
                     matchedPairCount: pairs.count,
-                    confidence: confidence(forPairCount: pairDeltas.count, ci: ci)
+                    confidence: confidence(forPairCount: pairDeltas.count, ci: ci),
+                    pairDeltas: pairDeltas
                 ))
             }
         }

@@ -202,8 +202,8 @@ private struct CauseFinderRow: View {
             .buttonStyle(.plain)
 
             if expanded {
-                if let lower = finding.confidenceIntervalLower, let upper = finding.confidenceIntervalUpper {
-                    ConfidenceIntervalBar(median: finding.delta, lower: lower, upper: upper, tint: tint)
+                if finding.pairDeltas.count >= 2 {
+                    PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
                         .transition(.opacity)
                 }
                 Text(finding.detail)
