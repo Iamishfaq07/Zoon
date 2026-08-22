@@ -88,7 +88,7 @@ struct CoachChatView: View {
                     .background(Theme.Metric.sleep.opacity(0.25), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         case .assistant:
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Label("Zoon", systemImage: "sparkles")
                     .font(Theme.label(11, weight: .bold))
                     .foregroundStyle(Theme.Metric.sleep)
@@ -96,6 +96,19 @@ struct CoachChatView: View {
                     .font(Theme.text(14))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
+                // The structured half of the answer: which number in
+                // tonight's data it's actually grounded in, set apart from
+                // the sentence itself rather than folded into the prose --
+                // the redesign spec's ask for a coach that shows its work,
+                // not just a paragraph.
+                if let groundedIn = message.groundedIn, !groundedIn.isEmpty {
+                    Label(groundedIn, systemImage: "number")
+                        .font(Theme.text(11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.neutral(0.06), in: Capsule())
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
