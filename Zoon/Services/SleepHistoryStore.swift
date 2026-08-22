@@ -88,7 +88,7 @@ final class SleepHistoryStore {
     /// in particular is a date-derived value consumed by charts, achievements,
     /// and journal correlations. This bounded chronological pass fetches once
     /// and retains only the longest rolling window used by any baseline field.
-    func historicalFeatures(goalMinutes: Double) -> [SleepNightFeatures] {
+    func historicalFeatures(goalMinutes: Double, manualNaps: [NapStore.Nap] = []) -> [SleepNightFeatures] {
         let chronological = allNights().reversed()
         var priorNewestFirst: [SleepNightRecord] = []
         var features: [SleepNightFeatures] = []
@@ -96,11 +96,14 @@ final class SleepHistoryStore {
         for record in chronological {
             let rolling = makeBaseline(
                 priorNightsNewestFirst: priorNewestFirst,
-                goalMinutes: goalMinutes
+                goalMinutes: goalMinutes,
+                manualNaps: manualNaps
             )
             features.append(record.features(
                 baseline: rolling,
-                secondaryAsleepMinutes: secondaryEpisodeAsleepMinutes(forNightKey: record.nightKey ?? "")
+                secondaryAsleepMinutes: secondaryEpisodeAsleepMinutes(
+                    forNightKey: record.nightKey ?? "", wakeDate: record.date, manualNaps: manualNaps
+                )
             ))
 
             priorNewestFirst.insert(record, at: 0)
@@ -295,22 +298,53 @@ final class SleepHistoryStore {
 
     /// Total minutes asleep across every stored secondary episode tied to a
     /// given night's key -- naps and split-sleep blocks the main night's own
-    /// `timeAsleepMinutes` doesn't include. Used to build a day's true
-    /// 24-hour asleep total alongside the main sleep figure.
-    func secondaryEpisodeAsleepMinutes(forNightKey nightKey: String) -> Double {
+    /// `timeAsleepMinutes` doesn't include -- plus any manually-logged naps
+    /// for the same day, deduped against the auto-detected ones through
+    /// `SleepDaySummary` so a nap caught by both sources is credited once.
+    /// Manual naps previously never reached this calculation at all, so a
+    /// nap only a Zoon timer caught (HealthKit "rarely" detects a short
+    /// daytime nap -- see `NapStore`'s own doc comment) silently vanished
+    /// from historical debt. Used to build a day's true 24-hour asleep
+    /// total alongside the main sleep figure.
+    func secondaryEpisodeAsleepMinutes(
+        forNightKey nightKey: String,
+        wakeDate: Date,
+        manualNaps: [NapStore.Nap] = []
+    ) -> Double {
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(
             predicate: #Predicate { $0.nightKey == nightKey }
         )
         let episodes = (try? context.fetch(descriptor)) ?? []
-        return episodes.reduce(0) { $0 + $1.asleepMinutes }
+        let autoEpisodes = episodes.map {
+            SleepDaySummary.AutoEpisode(
+                isNap: $0.episodeType == .nap,
+                interval: DateInterval(start: $0.startDate, end: $0.endDate),
+                asleepMinutes: $0.asleepMinutes
+            )
+        }
+
+        // Manual naps are attributed to the day before the night they
+        // credit -- the same convention `NapStore.minutesBefore(night:)`
+        // and `SleepDataCoordinator.deduplicatedNapMinutes` already use.
+        let calendar = Calendar.current
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: wakeDate) ?? wakeDate
+        let manualEpisodes = manualNaps
+            .filter { calendar.isDate($0.start, inSameDayAs: previousDay) }
+            .map { SleepDaySummary.ManualNap(interval: DateInterval(start: $0.start, end: $0.end), minutes: $0.minutes) }
+
+        return SleepDaySummary.compute(
+            mainSleepMinutes: 0, autoEpisodes: autoEpisodes, manualNaps: manualEpisodes
+        ).total24HourSleepMinutes
     }
 
     /// HealthKit-auto-detected naps whose start falls within `dayInterval`,
-    /// as their asleep spans -- used to dedupe against manually-logged naps
-    /// covering the same time (see `DateInterval.merging`) before crediting
-    /// `SleepNeed`'s nap offset, so a nap caught by both a manual log and
-    /// HealthKit doesn't count twice.
-    func autoDetectedNapIntervals(in dayInterval: DateInterval) -> [DateInterval] {
+    /// as `SleepDaySummary` episodes -- used to dedupe against manually-
+    /// logged naps covering the same time before crediting `SleepNeed`'s
+    /// nap offset, so a nap caught by both a manual log and HealthKit
+    /// doesn't count twice, and is credited by its measured asleep time
+    /// rather than its full session span (which can include in-bed-but-
+    /// awake padding).
+    func autoDetectedNaps(in dayInterval: DateInterval) -> [SleepDaySummary.AutoEpisode] {
         let start = dayInterval.start
         let end = dayInterval.end
         let napRaw = SleepEpisodeType.nap.rawValue
@@ -318,12 +352,13 @@ final class SleepHistoryStore {
             predicate: #Predicate { $0.episodeTypeRaw == napRaw && $0.startDate >= start && $0.startDate < end }
         )
         let episodes = (try? context.fetch(descriptor)) ?? []
-        // The episode's own asleep span isn't separately stored -- startDate
-        // and endDate bound the whole session (asleep + any inBed/awake
-        // padding), which is the right width to protect against
-        // double-crediting: a manual log's start/end is also the whole
-        // session as the user experienced it, not just the asleep portion.
-        return episodes.map { DateInterval(start: $0.startDate, end: $0.endDate) }
+        return episodes.map {
+            SleepDaySummary.AutoEpisode(
+                isNap: true,
+                interval: DateInterval(start: $0.startDate, end: $0.endDate),
+                asleepMinutes: $0.asleepMinutes
+            )
+        }
     }
 
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
@@ -409,19 +444,21 @@ final class SleepHistoryStore {
     ///     toward the value being tested and mutes exactly the deviations we
     ///     want to catch.
     ///   - goalMinutes: the user's nightly sleep goal, for sleep debt.
-    func baseline(for date: Date, goalMinutes: Double) -> RollingBaseline {
+    func baseline(for date: Date, goalMinutes: Double, manualNaps: [NapStore.Nap] = []) -> RollingBaseline {
         let history = allNights()
         let priorNights = history.filter { $0.date < date }
 
         return makeBaseline(
             priorNightsNewestFirst: priorNights,
-            goalMinutes: goalMinutes
+            goalMinutes: goalMinutes,
+            manualNaps: manualNaps
         )
     }
 
     private func makeBaseline(
         priorNightsNewestFirst priorNights: [SleepNightRecord],
-        goalMinutes: Double
+        goalMinutes: Double,
+        manualNaps: [NapStore.Nap] = []
     ) -> RollingBaseline {
 
         let last7 = Array(priorNights.prefix(7))
@@ -436,7 +473,7 @@ final class SleepHistoryStore {
 
         return RollingBaseline(
             hrv7DayAvg: gatedMean(last7.compactMap(\.avgHRV)),
-            sleepDebtMinutes: sleepDebt(nights: debtWindow, goalMinutes: goalMinutes),
+            sleepDebtMinutes: sleepDebt(nights: debtWindow, goalMinutes: goalMinutes, manualNaps: manualNaps),
             deep7DayAvg: mean(last7.filter { $0.deepMinutes > 0 }.map(\.deepMinutes)),
             duration7DayAvg: mean(last7.map(\.timeAsleepMinutes)),
             efficiency7DayAvg: mean(last7.map(\.sleepEfficiencyPercent)),
@@ -454,9 +491,9 @@ final class SleepHistoryStore {
     /// `.now.addingTimeInterval(86_400)` -- a fixed 24-hour offset is wrong
     /// on any day that crosses a DST transition (23 or 25 real hours), and
     /// "tomorrow" is a calendar concept, not a duration.
-    func currentBaseline(goalMinutes: Double) -> RollingBaseline {
+    func currentBaseline(goalMinutes: Double, manualNaps: [NapStore.Nap] = []) -> RollingBaseline {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now.addingTimeInterval(86_400)
-        return baseline(for: tomorrow, goalMinutes: goalMinutes)
+        return baseline(for: tomorrow, goalMinutes: goalMinutes, manualNaps: manualNaps)
     }
 
     // MARK: - Statistics
@@ -479,10 +516,14 @@ final class SleepHistoryStore {
     /// `SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`
     /// for why a single shared value can't be used once a night's target can
     /// be a learned figure rather than a stable one.
-    private func sleepDebt(nights: [SleepNightRecord], goalMinutes: Double) -> Double? {
+    private func sleepDebt(
+        nights: [SleepNightRecord], goalMinutes: Double, manualNaps: [NapStore.Nap] = []
+    ) -> Double? {
         SleepDebtCalculator.debt(
             timeAsleepMinutesNewestFirst: nights.map {
-                $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(forNightKey: $0.nightKey ?? "")
+                $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(
+                    forNightKey: $0.nightKey ?? "", wakeDate: $0.date, manualNaps: manualNaps
+                )
             },
             goalMinutesNewestFirst: nights.map { $0.sleepNeedBaselineMinutesAtProcessing ?? goalMinutes }
         )
