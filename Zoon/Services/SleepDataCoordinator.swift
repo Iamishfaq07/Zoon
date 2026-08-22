@@ -380,7 +380,7 @@ final class SleepDataCoordinator {
         // same chronological guarantee.
         for session in mainSleepPerDate {
             let nightDate = session.wakeDate
-            let baseline = store.baseline(for: nightDate, goalMinutes: goal)
+            let baseline = store.baseline(for: nightDate, goalMinutes: goal, manualNaps: naps.naps)
             let result = await extractor.extract(from: session, baseline: baseline)
             var features = result.features
 
@@ -489,10 +489,12 @@ final class SleepDataCoordinator {
             return
         }
 
-        let baseline = store.baseline(for: record.date, goalMinutes: goal)
+        let baseline = store.baseline(for: record.date, goalMinutes: goal, manualNaps: naps.naps)
         let night = record.features(
             baseline: baseline,
-            secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(forNightKey: record.nightKey ?? "")
+            secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(
+                forNightKey: record.nightKey ?? "", wakeDate: record.date, manualNaps: naps.naps
+            )
         )
         // Foundation Models inference is async and the engine protocol is not,
         // so generation is primed here and read back synchronously below.
@@ -507,7 +509,7 @@ final class SleepDataCoordinator {
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
-        let history = store.historicalFeatures(goalMinutes: goal)
+        let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
             .filter { $0.date < night.date }
 
         let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
@@ -553,10 +555,12 @@ final class SleepDataCoordinator {
     /// (see its own doc comment: HealthKit "rarely" catches a short daytime
     /// nap, which is why manual logging exists at all) -- auto-detected naps
     /// contributed nothing to it, even though they're already persisted as
-    /// `SleepEpisodeRecord`s. Simply summing both sources would double-count
-    /// the rare case where a nap genuinely was caught by both, so intervals
-    /// from the two sources are merged first (`DateInterval.merging`) and
-    /// only the union's total duration counted.
+    /// `SleepEpisodeRecord`s. Routed through `SleepDaySummary`'s
+    /// overlap-aware dedupe: a nap caught by both sources is credited once,
+    /// using whichever source's own asleep-time estimate is larger, rather
+    /// than summing both sources' full session durations (which used to
+    /// credit any in-bed-but-awake padding a HealthKit session included as
+    /// sleep).
     private func deduplicatedNapMinutes(before night: Date) -> Double {
         let calendar = Calendar.current
         let previousDay = calendar.date(byAdding: .day, value: -1, to: night) ?? night
@@ -564,13 +568,13 @@ final class SleepDataCoordinator {
             return naps.minutesBefore(night: night)
         }
 
-        let manualIntervals = naps.naps
+        let manualNaps = naps.naps
             .filter { calendar.isDate($0.start, inSameDayAs: previousDay) }
-            .map { DateInterval(start: $0.start, end: $0.end) }
-        let autoIntervals = store.autoDetectedNapIntervals(in: dayInterval)
+            .map { SleepDaySummary.ManualNap(interval: DateInterval(start: $0.start, end: $0.end), minutes: $0.minutes) }
+        let autoEpisodes = store.autoDetectedNaps(in: dayInterval)
 
-        let merged = DateInterval.merging(manualIntervals + autoIntervals)
-        return merged.reduce(0) { $0 + $1.duration } / 60
+        let summary = SleepDaySummary.compute(mainSleepMinutes: 0, autoEpisodes: autoEpisodes, manualNaps: manualNaps)
+        return summary.automaticNapAsleepMinutes + summary.manualNapMinutes
     }
 
     /// Today's and yesterday's strain plus today's hourly heart rate.
