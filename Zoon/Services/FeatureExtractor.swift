@@ -96,10 +96,12 @@ struct FeatureExtractor {
         // app inventing its own cutoff. `nil` when there was no measured
         // value, or when HealthKit's own classifier declines to classify
         // it -- `BreathingHealth.isElevated` falls back to an in-app
-        // threshold either way, so this never blocks the feature.
+        // threshold either way, so this never blocks the feature. The
+        // Swift-refined label is `classifying:`, not `for:` -- confirmed
+        // against the real SDK by CI after an initial guess was wrong.
         let breathingClassification: BreathingDisturbanceClassification? = breathingRaw.value.flatMap { fraction in
             let quantity = HKQuantity(unit: .percent(), doubleValue: fraction)
-            guard let raw = HKAppleSleepingBreathingDisturbancesClassification(for: quantity) else { return nil }
+            guard let raw = HKAppleSleepingBreathingDisturbancesClassification(classifying: quantity) else { return nil }
             switch raw {
             case .notElevated: return .notElevated
             case .elevated: return .elevated
