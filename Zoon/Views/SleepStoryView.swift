@@ -6,6 +6,10 @@ import SwiftUI
 struct SleepStoryView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    // Not environment-injected -- `SnoreCheckView` follows the same pattern,
+    // each view constructing its own instance backed by the same persisted
+    // `UserDefaults` storage rather than one shared app-wide object.
+    @State private var soundEventStore = SoundEventStore()
 
     @State private var selectedDate: Date?
 
@@ -21,7 +25,12 @@ struct SleepStoryView: View {
     private var story: SleepStory? {
         guard let night = selectedNight else { return nil }
         let tagLabels = coordinator.journal.entry(for: night.date)?.tags.map(\.label) ?? []
-        return SleepStory.build(night: night, tagLabels: tagLabels)
+        return SleepStory.build(
+            night: night,
+            tagLabels: tagLabels,
+            napIntervals: coordinator.napIntervals(before: night.date),
+            soundEvents: soundEventStore.recentEvents
+        )
     }
 
     var body: some View {
