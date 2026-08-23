@@ -84,6 +84,14 @@ TESTS_EXTRA_APP_FILES = [
     # Shared) -- the matched-pair engine behind Cause Finder, and exactly
     # the exposure-state semantics JournalCorrelatorTests exists to pin down.
     "Zoon/Insights/JournalCorrelator.swift",
+    # Foundation only (the @Observable macro needs the system Observation
+    # framework, not SwiftUI) -- the Outcome record GuidedExperiment.summarize
+    # builds and GuidedExperimentTests asserts on.
+    "Zoon/Services/SleepExperimentStore.swift",
+    # Pure before/after comparison over Observation/BehaviorTag plus
+    # SleepExperimentStore.Outcome above -- the pre-specified-metric and
+    # adherence-tracking logic GuidedExperimentTests exists to pin down.
+    "Zoon/Insights/GuidedExperiment.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"

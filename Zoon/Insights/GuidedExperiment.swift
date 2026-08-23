@@ -75,12 +75,16 @@ enum GuidedExperiment {
     /// `summarize` will produce an outcome at all -- a before/after
     /// comparison built from one or two nights on either side is noise, not
     /// a finding, same "minimum sample size" principle `JournalCorrelator`
-    /// applies to its own matched pairs.
-    static let minimumPeriodNights = 3
+    /// applies to its own matched pairs. Higher than that floor's own 3:
+    /// this comparison is a plain before/after median, not matched pairs,
+    /// so it has no other defense against a couple of unusually good or bad
+    /// nights swinging the whole result.
+    static let minimumPeriodNights = 7
 
     /// A simple before/after comparison for one completed experiment:
     /// median outcome in the `baselineDays` immediately before `startDate`,
-    /// versus median outcome from `startDate` through `endDate`.
+    /// versus median outcome from `startDate` through `endDate`, on
+    /// whichever `primaryMetric` was chosen when the experiment started.
     ///
     /// Deliberately not matched-pair like `JournalCorrelator`'s own findings
     /// -- this answers a different, more literal question ("did my nights
@@ -89,12 +93,18 @@ enum GuidedExperiment {
     /// comparison doesn't have. Both are shown as what they are: a
     /// before/after average, not a controlled comparison.
     ///
-    /// Picks whichever metric moved the most between the two periods as the
-    /// headline outcome -- across six metrics, showing all of them for a
-    /// single experiment would bury the one that actually changed.
+    /// `primaryMetric` is fixed by the caller, not chosen here from
+    /// whichever metric happened to move the most -- scanning every metric
+    /// after the fact and reporting the biggest mover is a multiple-
+    /// comparisons trap: some of six metrics will drift by chance even with
+    /// no real effect, and picking the winner post-hoc dresses that noise
+    /// up as a finding. If the pre-specified metric itself has no data on
+    /// one side, this returns `nil` rather than silently substituting
+    /// another metric.
     static func summarize(
         tag: BehaviorTag,
         hypothesis: String?,
+        primaryMetric: JournalCorrelator.Metric,
         startDate: Date,
         endDate: Date,
         baselineDays: Int = 14,
@@ -105,18 +115,15 @@ enum GuidedExperiment {
         let baseline = observations.filter { $0.date >= baselineStart && $0.date < startDate }
         let trial = observations.filter { $0.date >= startDate && $0.date <= endDate }
         guard baseline.count >= minimumPeriodNights, trial.count >= minimumPeriodNights else { return nil }
+        guard let baselineMedian = Statistics.median(baseline.compactMap(primaryMetric.value(from:))),
+              let trialMedian = Statistics.median(trial.compactMap(primaryMetric.value(from:))) else { return nil }
 
-        var strongest: (metric: JournalCorrelator.Metric, baselineMedian: Double, trialMedian: Double)?
-        for metric in JournalCorrelator.Metric.allCases {
-            guard let baselineMedian = Statistics.median(baseline.compactMap(metric.value(from:))),
-                  let trialMedian = Statistics.median(trial.compactMap(metric.value(from:))) else { continue }
-            let delta = abs(trialMedian - baselineMedian)
-            let strongestDelta = strongest.map { abs($0.trialMedian - $0.baselineMedian) } ?? -1
-            if delta > strongestDelta {
-                strongest = (metric, baselineMedian, trialMedian)
-            }
-        }
-        guard let strongest else { return nil }
+        // How many trial nights actually had a known yes/no for this tag --
+        // i.e. how consistently the behaviour itself kept getting logged
+        // once the experiment was under way, not just how many nights had
+        // *any* journal entry. A trial where half the nights never got
+        // tagged either way is a trial the result can't really speak for.
+        let trialKnownNightCount = trial.filter { $0.exposureState(for: tag) != .unknown }.count
 
         return SleepExperimentStore.Outcome(
             id: UUID(),
@@ -124,12 +131,13 @@ enum GuidedExperiment {
             hypothesis: hypothesis,
             startDate: startDate,
             endDate: endDate,
-            metricLabel: strongest.metric.shortLabel,
-            baselineMedian: strongest.baselineMedian,
-            trialMedian: strongest.trialMedian,
+            metricLabel: primaryMetric.shortLabel,
+            baselineMedian: baselineMedian,
+            trialMedian: trialMedian,
             baselineNightCount: baseline.count,
             trialNightCount: trial.count,
-            higherIsBetter: strongest.metric.higherIsBetter
+            higherIsBetter: primaryMetric.higherIsBetter,
+            trialKnownNightCount: trialKnownNightCount
         )
     }
 }
