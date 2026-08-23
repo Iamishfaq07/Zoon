@@ -12,6 +12,7 @@ struct CoachChatView: View {
     /// entry point, which opens to an empty composer as before.
     var initialPrompt: String? = nil
 
+    @Environment(SleepDataCoordinator.self) private var coordinator
     @State private var chat = CoachChat()
     @State private var input = ""
     @FocusState private var inputFocused: Bool
@@ -33,7 +34,7 @@ struct CoachChatView: View {
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            chat.start(nightSummary: night.summaryForLLM)
+            chat.start(nightSummary: night.summaryForLLM, contextDigest: coordinator.coachContextDigest())
             guard let initialPrompt, !hasSubmittedInitialPrompt else { return }
             hasSubmittedInitialPrompt = true
             await chat.send(initialPrompt)
@@ -157,4 +158,5 @@ struct CoachChatView: View {
 
 #Preview("Coach Chat") {
     NavigationStack { CoachChatView(night: MockData.goodNight) }
+        .zoonPreviewEnvironment()
 }

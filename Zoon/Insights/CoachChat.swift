@@ -100,13 +100,17 @@ final class CoachChat {
 
     var isAvailable: Bool { unavailabilityReason == nil }
 
-    /// Starts a new session with tonight's numbers as context the model
-    /// already has, so the first question doesn't have to restate them.
-    func start(nightSummary: String) {
+    /// Starts a new session with tonight's numbers -- and, when there's
+    /// enough history for one, `SleepDataCoordinator.coachContextDigest()`'s
+    /// standing-pattern summary -- as context the model already has, so the
+    /// first question doesn't have to restate them.
+    func start(nightSummary: String, contextDigest: String? = nil) {
         messages = []
         #if canImport(FoundationModels)
         if #available(iOS 26.0, *) {
-            session = LanguageModelSession(instructions: Self.instructions(nightSummary: nightSummary))
+            session = LanguageModelSession(
+                instructions: Self.instructions(nightSummary: nightSummary, contextDigest: contextDigest)
+            )
         }
         #endif
     }
@@ -180,22 +184,42 @@ final class CoachChat {
 
     /// Same behavioural contract as `FoundationModelInsightEngine.instructions`
     /// — no invented causes, no diagnosis — extended to hold across a whole
-    /// conversation rather than one generation.
-    private static func instructions(nightSummary: String) -> String {
-        """
+    /// conversation rather than one generation, and now over two data
+    /// sources rather than one: tonight's own numbers, and (when there's
+    /// enough history to build one) `contextDigest`'s standing patterns --
+    /// this week vs last, the current regularity read, whatever Cause Finder
+    /// has actually found. Without the digest, "has my recovery been
+    /// improving?" had no honest answer available at all; the instructions
+    /// below tell the model which questions each source can and can't settle.
+    private static func instructions(nightSummary: String, contextDigest: String?) -> String {
+        let digestSection = contextDigest.map {
+            """
+
+
+            Standing patterns across recent nights -- use this for questions
+            about trends, habits, or "usually"/"lately"; tonight's data above
+            is still the only source for anything about last night
+            specifically:
+            \($0)
+            """
+        } ?? ""
+
+        return """
         You are a sleep coach. The user is asking about one specific night,
-        summarised below. Answer only from this data — never invent a number,
-        a cause, or a comparison you weren't given.
+        summarised below, and possibly about recent patterns too. Answer only
+        from this data — never invent a number, a cause, or a comparison you
+        weren't given. If a question needs a source you don't have here
+        (nothing older than what's shown, nothing about a specific tag with
+        no finding listed), say so plainly rather than guessing.
 
         Never diagnose a medical condition. Never mention sleep apnea, insomnia,
-        or any other diagnosis by name. If asked something the data can't
-        answer, say so plainly rather than guessing.
+        or any other diagnosis by name.
 
         Keep answers to two or three sentences. This is a quick check-in, not
         an essay.
 
         Tonight's data:
-        \(nightSummary)
+        \(nightSummary)\(digestSection)
         """
     }
 }
