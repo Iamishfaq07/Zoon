@@ -45,6 +45,10 @@ struct DayContextBuilder {
         let bedtimeConsistencyMinutes: Double?
         /// For cardiovascular age. Nil disables that card rather than guessing.
         let age: Int?
+        /// `Calendar.component(.weekday:)` values counted as obligation days,
+        /// for `SleepRegularity`'s work/free split -- see
+        /// `UserPreferences.obligationWeekdays`.
+        var obligationWeekdays: Set<Int> = SleepRegularity.defaultObligationWeekdays
     }
 
     func build(_ inputs: Inputs) -> DayContext {
@@ -137,7 +141,7 @@ struct DayContextBuilder {
         let fullHistory = history + [night]
         let habitWindow = Array(fullHistory.suffix(Self.habitWindow))
 
-        let regularity = SleepRegularity.compute(nights: habitWindow)
+        let regularity = SleepRegularity.compute(nights: habitWindow, obligationWeekdays: inputs.obligationWeekdays)
         let bodyClock = BodyClock.compute(nights: habitWindow)
 
         let sleepIntelligence = SleepIntelligenceScore.compute(.init(

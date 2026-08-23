@@ -12,6 +12,7 @@ import SwiftUI
 /// before it.
 struct InsightsHero: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
     let goalMinutes: Double
 
     /// Dated so `compute` can scope each call to its own window -- both
@@ -26,7 +27,8 @@ struct InsightsHero: View {
     private var current: SleepHealth {
         SleepHealth.compute(
             window: .month, goalMinutes: goalMinutes,
-            nights: coordinator.recentNights, morningCheckIns: checkIns
+            nights: coordinator.recentNights, morningCheckIns: checkIns,
+            obligationWeekdays: preferences.obligationWeekdays
         )
     }
 
@@ -34,7 +36,8 @@ struct InsightsHero: View {
         let cutoff = Calendar.current.date(byAdding: .day, value: -SleepHealth.Window.month.rawValue, to: .now) ?? .distantPast
         return SleepHealth.compute(
             window: .month, goalMinutes: goalMinutes,
-            nights: coordinator.recentNights, morningCheckIns: checkIns, now: cutoff
+            nights: coordinator.recentNights, morningCheckIns: checkIns,
+            obligationWeekdays: preferences.obligationWeekdays, now: cutoff
         )
     }
 

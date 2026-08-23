@@ -21,6 +21,18 @@ import Foundation
 /// apps. Duration is the number everyone optimises; timing consistency is the
 /// one that moves the needle and nobody shows you.
 ///
+/// Widening the sampled window to a genuine full calendar day was
+/// considered and deliberately not done: without real daytime activity data
+/// (Zoon has no accelerometer-based wake/movement signal, only known sleep
+/// intervals), every extra daytime hour would just be scored "awake" for
+/// both nights being compared, and most people are awake most of the day
+/// every day -- so it would inflate and flatten every score toward the top
+/// of the range rather than add real information, diluting exactly the
+/// night-to-night signal this metric exists to surface. That's a
+/// correctness regression dressed up as a completeness improvement, not a
+/// genuine one. The honest path (never presenting this as the real metric)
+/// stays the fix.
+///
 /// The computation needs the actual asleep intervals, not just totals, which is
 /// why this lives alongside `StageSegment` rather than in the score file.
 struct SleepRegularity: Codable, Hashable, Sendable {
@@ -59,7 +71,21 @@ struct SleepRegularity: Codable, Hashable, Sendable {
     /// spanning each pair's union. Same quantity, small fraction of the work,
     /// and the resolution is far finer than the underlying data justifies
     /// anyway — HealthKit stage samples are rarely shorter than a few minutes.
-    static func compute(nights: [SleepNightFeatures], calendar: Calendar = .current) -> SleepRegularity {
+    /// Default `Calendar.component(.weekday:)` values (1 = Sunday ... 7 =
+    /// Saturday) counted as obligation days -- the standard Mon-Fri workweek.
+    /// `UserPreferences.obligationWeekdays` overrides this when a caller has
+    /// access to it (this file is `Shared`, compiled into the Watch and
+    /// widget targets too, so it can't depend on that app-only type); every
+    /// existing caller that doesn't pass one keeps today's calendar-weekend
+    /// behavior exactly.
+    static let defaultObligationWeekdays: Set<Int> = [2, 3, 4, 5, 6]
+
+    /// - Parameter obligationWeekdays: see `defaultObligationWeekdays`.
+    static func compute(
+        nights: [SleepNightFeatures],
+        obligationWeekdays: Set<Int> = defaultObligationWeekdays,
+        calendar: Calendar = .current
+    ) -> SleepRegularity {
         let sorted = nights.sorted { $0.bedtime < $1.bedtime }
 
         guard sorted.count >= minimumNights else {
@@ -116,7 +142,7 @@ struct SleepRegularity: Codable, Hashable, Sendable {
             index = 0
         }
 
-        let (weekday, weekend) = midpoints(nights: sorted, calendar: calendar)
+        let (weekday, weekend) = midpoints(nights: sorted, obligationWeekdays: obligationWeekdays, calendar: calendar)
 
         return SleepRegularity(
             index: index,
@@ -128,20 +154,21 @@ struct SleepRegularity: Codable, Hashable, Sendable {
 
     /// Median sleep midpoint for work days and free days.
     ///
-    /// Free days are Saturday and Sunday mornings, which is a simplification —
-    /// shift workers and anyone on a four-day week will be mislabelled. It's the
-    /// same simplification the published social-jetlag questionnaire makes, and
-    /// the alternative is asking the user to configure a work schedule, which
-    /// almost nobody will do.
+    /// Free days are whichever `obligationWeekdays` doesn't cover -- by
+    /// default the calendar weekend, but configurable in Settings for
+    /// anyone whose schedule doesn't match a standard Mon-Fri job (a
+    /// four-day week, weekend retail shifts, and so on). This used to be a
+    /// hardcoded Saturday/Sunday check with no way to correct it.
     ///
     /// Each night's wall-clock hour and weekday are read using *that night's
     /// own* timezone (`night.timeZoneIdentifier`), not the caller's `calendar`
     /// -- a night recorded in Tokyo doesn't change which local hour someone
     /// went to bed just because they've since flown to New York. `calendar`
-    /// only supplies the locale/weekend-definition behavior, its timeZone is
-    /// overridden per night.
+    /// only supplies the locale behavior, its timeZone is overridden per
+    /// night.
     private static func midpoints(
         nights: [SleepNightFeatures],
+        obligationWeekdays: Set<Int>,
         calendar: Calendar
     ) -> (weekday: Double?, weekend: Double?) {
 
@@ -160,10 +187,11 @@ struct SleepRegularity: Codable, Hashable, Sendable {
             // isn't torn apart by the midnight wrap.
             if hour >= 18 { hour -= 24 }
 
-            if localCalendar.isDateInWeekend(night.date) {
-                free.append(hour)
-            } else {
+            let weekday = localCalendar.component(.weekday, from: night.date)
+            if obligationWeekdays.contains(weekday) {
                 work.append(hour)
+            } else {
+                free.append(hour)
             }
         }
 
