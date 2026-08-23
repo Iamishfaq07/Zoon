@@ -214,7 +214,7 @@ enum Theme {
     /// that separates from Dark's near-black ground is still too faint
     /// against Light's pale ground, the same gap `cardStroke` had before it
     /// was split per-appearance. `MetricRing`'s track (the ring around
-    /// "Stress today" on the Today screen) is the one call site verified by
+    /// "Load today" on the Today screen) is the one call site verified by
     /// screenshot; the doubling is applied uniformly to the other ~15
     /// call sites (progress tracks, unselected pills, empty ring segments)
     /// by the same reasoning, not independently re-verified per screen.
