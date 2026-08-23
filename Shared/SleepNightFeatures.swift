@@ -115,6 +115,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// enabled; `nil` on everything else.
     var breathingDisturbances: Double? = nil
 
+    /// Apple's own elevated/not-elevated classification of the value above,
+    /// from `HKAppleSleepingBreathingDisturbancesClassification(for:)` (iOS
+    /// 18+) -- see `BreathingDisturbanceClassification`'s doc comment.
+    /// Declared with a default for the same reason `breathingDisturbances`
+    /// is: `nil` on any night extracted before this existed, or wherever
+    /// HealthKit didn't provide a classification for the measured value.
+    var breathingDisturbancesClassification: BreathingDisturbanceClassification? = nil
+
     // MARK: - Context (needs history, not just this night)
 
     /// Mean overnight HRV across the previous 7 nights, excluding this one.

@@ -102,7 +102,7 @@ struct BreathingHealthView: View {
                             x: .value("Date", point.date, unit: .day),
                             y: .value("Percent", point.value)
                         )
-                        .foregroundStyle(point.value >= 5 ? Theme.Metric.recoveryMid : Theme.Metric.sleep)
+                        .foregroundStyle(point.isElevated ? Theme.Metric.recoveryMid : Theme.Metric.sleep)
                         .cornerRadius(2)
                     }
                     if let selectedDate,

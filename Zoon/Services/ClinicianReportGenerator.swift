@@ -193,13 +193,18 @@ enum ClinicianReportGenerator {
             }
 
         case .breathingDisturbances:
-            let values = nights.compactMap(\.breathingDisturbances)
-            if values.isEmpty {
+            let measuredNights = nights.filter { $0.breathingDisturbances != nil }
+            if measuredNights.isEmpty {
                 drawRow("Breathing disturbances", "Not available on this device/range")
             } else {
-                let elevated = values.filter { $0 >= 5 }.count
+                let values = measuredNights.compactMap(\.breathingDisturbances)
+                // Apple's own classification where HealthKit provided one,
+                // the same in-app threshold `BreathingHealth` falls back to
+                // otherwise -- see `BreathingHealth.isElevated`, the single
+                // place this "elevated" call is made.
+                let elevated = measuredNights.filter(BreathingHealth.isElevated).count
                 drawRow("Median, % of night", String(format: "%.1f%%", Statistics.median(values) ?? 0))
-                drawRow("Nights at or above 5%", "\(elevated) of \(values.count)")
+                drawRow("Nights classified elevated", "\(elevated) of \(values.count)")
             }
 
         case .spO2:
