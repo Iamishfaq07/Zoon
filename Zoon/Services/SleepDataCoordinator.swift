@@ -612,6 +612,34 @@ final class SleepDataCoordinator {
         return summary.automaticNapAsleepMinutes + summary.manualNapMinutes
     }
 
+    /// Every nap before `night`, as literal intervals for `SleepStory`'s
+    /// chronological account -- `deduplicatedNapMinutes` above already
+    /// covers the case that just needs a total.
+    ///
+    /// A lighter dedupe than `SleepDaySummary`'s full overlap clustering:
+    /// an auto-detected episode is dropped only when it overlaps a manual
+    /// log, keeping the manual interval (the user's own start/stop, more
+    /// authoritative than a HealthKit guess) rather than showing the same
+    /// nap as two timeline events. Doesn't handle a cluster of more than
+    /// two overlapping records the way the full dedupe does -- naps rarely
+    /// produce that, and Sleep Story is an illustrative account, not a
+    /// total that needs to be exactly right.
+    func napIntervals(before night: Date) -> [DateInterval] {
+        let calendar = Calendar.current
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: night) ?? night
+        guard let dayInterval = calendar.dateInterval(of: .day, for: previousDay) else { return [] }
+
+        let manualIntervals = naps.naps
+            .filter { calendar.isDate($0.start, inSameDayAs: previousDay) }
+            .map { DateInterval(start: $0.start, end: $0.end) }
+        let autoIntervals = store.autoDetectedNaps(in: dayInterval).map(\.interval)
+        let unmatchedAuto = autoIntervals.filter { auto in
+            !manualIntervals.contains { $0.intersects(auto) }
+        }
+
+        return (manualIntervals + unmatchedAuto).sorted { $0.start < $1.start }
+    }
+
     /// Today's and yesterday's strain plus today's hourly heart rate.
     ///
     /// Failures degrade to zero rather than propagating: a missing activity

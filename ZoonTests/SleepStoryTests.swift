@@ -106,4 +106,46 @@ final class SleepStoryTests: XCTestCase {
         XCTAssertTrue(story.events.contains { $0.title == "Woke for the day" })
         XCTAssertFalse(story.events.contains { $0.title == "Fell asleep" })
     }
+
+    func testSoundEventOutsideSleepWindowIsExcluded() {
+        let night = nightWithStaging()
+        let event = SoundEvent(date: date(20), identifier: "snoring", confidence: 0.9)
+        let story = SleepStory.build(night: night, soundEvents: [event])
+        XCTAssertFalse(story.events.contains { $0.title == "Snoring" })
+    }
+
+    func testCloseSoundEventsOfSameCategoryAreGrouped() {
+        let night = nightWithStaging()
+        let start = date(1, dayOffset: 1)
+        let events = [
+            SoundEvent(date: start, identifier: "snoring", confidence: 0.9),
+            SoundEvent(date: start.addingTimeInterval(120), identifier: "snoring", confidence: 0.9),
+            SoundEvent(date: start.addingTimeInterval(240), identifier: "snoring", confidence: 0.9)
+        ]
+        let story = SleepStory.build(night: night, soundEvents: events)
+        let snoreEvents = story.events.filter { $0.title == "Snoring" }
+        XCTAssertEqual(snoreEvents.count, 1)
+        XCTAssertEqual(snoreEvents.first?.detail, "3 times over 0h 4m")
+    }
+
+    func testDistantSoundEventsOfSameCategoryAreNotGrouped() {
+        let night = nightWithStaging()
+        let events = [
+            SoundEvent(date: date(1, dayOffset: 1), identifier: "snoring", confidence: 0.9),
+            SoundEvent(date: date(4, dayOffset: 1), identifier: "snoring", confidence: 0.9)
+        ]
+        let story = SleepStory.build(night: night, soundEvents: events)
+        XCTAssertEqual(story.events.filter { $0.title == "Snoring" }.count, 2)
+    }
+
+    func testSoundEventNearAwakeningMentionsItWithoutClaimingCausation() {
+        let night = nightWithStaging()
+        // The fixture's brief awakening starts at 2:00am on day+1.
+        let event = SoundEvent(date: date(2, 1, dayOffset: 1), identifier: "cough", confidence: 0.8)
+        let story = SleepStory.build(night: night, soundEvents: [event], minimumAwakeMinutes: 3)
+        let coughEvent = story.events.first { $0.title == "Coughing" }
+        XCTAssertEqual(coughEvent?.detail, "occurred near a brief awakening")
+        XCTAssertFalse((coughEvent?.detail ?? "").lowercased().contains("caused"))
+        XCTAssertFalse((coughEvent?.detail ?? "").lowercased().contains("woke"))
+    }
 }
