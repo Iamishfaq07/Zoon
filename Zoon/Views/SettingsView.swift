@@ -26,6 +26,7 @@ struct SettingsView: View {
             goalSection
             appearanceSection
             remindersSection
+            obligationDaysSection
             cycleSection
             lifestyleInsightsSection
             profileSection
@@ -271,6 +272,61 @@ struct SettingsView: View {
                 moves with your sleep debt, so it is re-armed each time you open the app.
                 """)
         }
+    }
+
+    /// Which days count as "obligation" days -- work, school, or any other
+    /// fixed commitment -- for Sleep Regularity's work/free split and Cause
+    /// Finder's weekend/weekday matched-pair constraint. Defaults to the
+    /// standard Mon-Fri workweek; anyone on a different schedule (a
+    /// four-day week, weekend shifts) can correct it here instead of both
+    /// features silently assuming Saturday and Sunday are free.
+    private var obligationDaysSection: some View {
+        Section {
+            HStack(spacing: 6) {
+                ForEach(1...7, id: \.self) { weekday in
+                    dayToggle(weekday)
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Obligation days")
+        } footer: {
+            Text("The days you have a fixed commitment on. Everything else is treated as a free day when Zoon looks at your schedule's regularity.")
+        }
+    }
+
+    private func dayToggle(_ weekday: Int) -> some View {
+        let calendar = Calendar.current
+        let symbol = calendar.veryShortWeekdaySymbols[weekday - 1]
+        let isObligation = preferences.obligationWeekdays.contains(weekday)
+        return Button {
+            var updated = preferences.obligationWeekdays
+            if isObligation {
+                updated.remove(weekday)
+            } else {
+                updated.insert(weekday)
+            }
+            // Never allow every day to become a free day -- Social jetlag
+            // and the work/free split both need at least one of each to
+            // mean anything, and an accidental empty selection would
+            // silently disable them rather than error.
+            guard !updated.isEmpty, updated.count < 7 else { return }
+            preferences.obligationWeekdays = updated
+        } label: {
+            Text(symbol)
+                .font(Theme.label(13, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    isObligation ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.06),
+                    in: RoundedRectangle(cornerRadius: 8)
+                )
+                .foregroundStyle(isObligation ? Theme.Metric.sleep : .secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(calendar.weekdaySymbols[weekday - 1])
+        .accessibilityValue(isObligation ? "Obligation day" : "Free day")
+        .accessibilityAddTraits(isObligation ? [.isSelected] : [])
     }
 
     /// Off by default, and asks for its own separate HealthKit permission the

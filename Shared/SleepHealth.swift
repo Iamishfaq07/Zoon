@@ -101,6 +101,7 @@ struct SleepHealth: Sendable {
         nights: [SleepNightFeatures],
         morningCheckIns: [DatedMorningCheckIn] = [],
         configuration: Configuration = .current,
+        obligationWeekdays: Set<Int> = SleepRegularity.defaultObligationWeekdays,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> SleepHealth {
@@ -149,7 +150,9 @@ struct SleepHealth: Sendable {
         // Regularity: SleepRegularity's own index, unmodified -- it's
         // already a 0...100 "higher is more regular" score built for
         // exactly this kind of window.
-        let regularity = SleepRegularity.compute(nights: windowNights, calendar: calendar)
+        let regularity = SleepRegularity.compute(
+            nights: windowNights, obligationWeekdays: obligationWeekdays, calendar: calendar
+        )
         if regularity.hasEnoughData {
             components.append(Component(id: "regularity", label: "Regularity", score: regularity.index))
         }

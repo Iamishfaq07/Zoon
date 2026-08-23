@@ -19,7 +19,8 @@ struct SleepHealthView: View {
             window: window,
             goalMinutes: preferences.sleepGoalMinutes,
             nights: coordinator.recentNights,
-            morningCheckIns: checkIns
+            morningCheckIns: checkIns,
+            obligationWeekdays: preferences.obligationWeekdays
         )
     }
 

@@ -27,6 +27,7 @@ final class UserPreferences {
         static let experimentStartDate = "zoon.pref.experimentStartDate"
         static let experimentHypothesis = "zoon.pref.experimentHypothesis"
         static let experimentPrimaryMetric = "zoon.pref.experimentPrimaryMetric"
+        static let obligationWeekdays = "zoon.pref.obligationWeekdays"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
     }
 
@@ -41,6 +42,25 @@ final class UserPreferences {
 
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
+    }
+
+    /// `Calendar.component(.weekday:)` values (1 = Sunday ... 7 = Saturday)
+    /// the user has a fixed obligation on -- work, school, or any other
+    /// standing commitment. Free days are the complement. Feeds Sleep
+    /// Regularity's work/free split and Cause Finder's weekend/weekday
+    /// matched-pair constraint, both of which used to hardcode the calendar
+    /// weekend -- correct for a standard Mon-Fri job, wrong for anyone on a
+    /// different schedule (a four-day week, weekend retail shifts, and so
+    /// on). Defaults to the standard workweek so nothing changes for anyone
+    /// who's never touched the setting.
+    var obligationWeekdays: Set<Int> {
+        didSet { defaults.set(Array(obligationWeekdays), forKey: Key.obligationWeekdays) }
+    }
+
+    static let defaultObligationWeekdays = SleepRegularity.defaultObligationWeekdays
+
+    func isFreeDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+        !obligationWeekdays.contains(calendar.component(.weekday, from: date))
     }
 
     /// Wind-down and bedtime notifications. Off until asked for — see
@@ -311,6 +331,8 @@ final class UserPreferences {
         self.experimentHypothesis = defaults.string(forKey: Key.experimentHypothesis)
         self.experimentPrimaryMetric = (defaults.string(forKey: Key.experimentPrimaryMetric)).flatMap(JournalCorrelator.Metric.init(rawValue:))
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
+        self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
+            ?? Self.defaultObligationWeekdays
     }
 
     var sleepGoalDisplay: String {
@@ -339,6 +361,7 @@ final class UserPreferences {
         experimentHypothesis = nil
         experimentPrimaryMetric = nil
         preferredSleepSourceName = nil
+        obligationWeekdays = Self.defaultObligationWeekdays
 
         let keys = [
             Key.sleepGoalMinutes,
@@ -358,6 +381,7 @@ final class UserPreferences {
             Key.experimentStartDate,
             Key.experimentHypothesis,
             Key.experimentPrimaryMetric,
+            Key.obligationWeekdays,
         ]
         for key in keys { defaults.removeObject(forKey: key) }
     }

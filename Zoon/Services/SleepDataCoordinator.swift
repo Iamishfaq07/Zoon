@@ -572,7 +572,8 @@ final class SleepDataCoordinator {
             maxHeartRate: maxHR,
             napMinutes: deduplicatedNapMinutes(before: night.date),
             bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes,
-            age: preferences.age
+            age: preferences.age,
+            obligationWeekdays: preferences.obligationWeekdays
         ))
 
         state = .loaded(context)
@@ -818,7 +819,8 @@ final class SleepDataCoordinator {
             maxHeartRate: 185,
             napMinutes: 0,
             bedtimeConsistencyMinutes: 38,
-            age: preferences.age ?? 34
+            age: preferences.age ?? 34,
+            obligationWeekdays: preferences.obligationWeekdays
         ))
 
         state = .mock(context)
@@ -1067,15 +1069,14 @@ final class SleepDataCoordinator {
                 remMinutes: night.hasStageBreakdown ? night.remMinutes : nil,
                 efficiency: night.sleepEfficiencyPercent,
                 wakeCount: Double(night.wakeCount),
-                // Same locale-aware check SleepRegularity's social-jetlag
-                // split uses, not a hardcoded weekday==1||weekday==7 -- two
-                // different weekend definitions in the same codebase is its
-                // own bug even before either one gets a real shift-work
-                // setting. Still the documented Sat/Sun simplification, not
-                // a user-configured work schedule (see SleepRegularity's
-                // `midpoints` doc comment); a genuine fix needs a Settings
-                // schedule type, which is feature work, not a bug fix.
-                isWeekend: calendar.isDateInWeekend(night.date),
+                // Same `UserPreferences.obligationWeekdays`-driven split
+                // SleepRegularity's social-jetlag classification uses --
+                // previously a hardcoded calendar-weekend check here while
+                // SleepRegularity had its own identical hardcoding, two
+                // separate copies of the same simplification that could
+                // never be corrected together. Now both read the one
+                // user-configurable setting.
+                isWeekend: preferences.isFreeDay(night.date, calendar: calendar),
                 sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime, timeZone: night.timeZone),
                 alcoholicBeverages: night.alcoholicBeverages,

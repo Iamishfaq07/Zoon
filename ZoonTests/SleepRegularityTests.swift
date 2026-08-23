@@ -48,6 +48,69 @@ final class SleepRegularityTests: XCTestCase {
         let regularity = SleepRegularity.compute(nights: nights)
         XCTAssertGreaterThan(regularity.index, 80, "A single gap shouldn't collapse an otherwise consistent record")
     }
+
+    // MARK: - obligationWeekdays
+
+    /// The actual fix: which nights count as "work" vs. "free" for the
+    /// weekday/weekend midpoint split (and social jetlag) used to hardcode
+    /// the calendar weekend with no way to correct it. Two weeks of nights
+    /// with a clearly later bedtime on Saturday/Sunday than every other
+    /// day -- with the default Mon-Fri obligation set that split reads as a
+    /// real social-jetlag pattern; reconfigured so Saturday/Sunday count as
+    /// obligation days instead, the same two days move into the "work"
+    /// bucket and the split should read the other way.
+    func testObligationWeekdaysControlsWorkFreeMidpointSplit() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        // 2024-01-01 was a Monday.
+        let mondayJan1 = calendar.date(from: DateComponents(year: 2024, month: 1, day: 1))!
+
+        func night(dayOffset: Int) -> SleepNightFeatures {
+            let wakeDate = calendar.date(byAdding: .day, value: dayOffset, to: mondayJan1)!
+            let weekday = calendar.component(.weekday, from: wakeDate)
+            let isSaturdayOrSunday = weekday == 1 || weekday == 7
+            let wakeTime = calendar.date(bySettingHour: 7, minute: 0, second: 0, of: wakeDate)!
+            // Saturday/Sunday nights run two hours later at both ends --
+            // a clear, unambiguous midpoint shift versus every other day.
+            let bedtime = wakeTime.addingTimeInterval(-(isSaturdayOrSunday ? 6 : 8) * 3600)
+            return SleepNightFeatures(
+                date: wakeDate, bedtime: bedtime, wakeTime: wakeTime,
+                timeInBedMinutes: wakeTime.timeIntervalSince(bedtime) / 60,
+                timeAsleepMinutes: wakeTime.timeIntervalSince(bedtime) / 60 - 10,
+                sleepEfficiencyPercent: 95,
+                coreMinutes: 200, deepMinutes: 80, remMinutes: 90,
+                unspecifiedAsleepMinutes: 0, awakeMinutes: 10, wakeCount: 1,
+                sleepLatencyMinutes: 10,
+                avgHeartRate: 60, minHeartRate: 50, restingHeartRate: 52,
+                avgHRV: 50, avgRespiratoryRate: 14, avgSpO2: 97,
+                wristTempDeltaC: 0, breathingDisturbances: 1,
+                hrv7DayAvg: 50, sleepDebtMinutes: 0,
+                lastWorkoutHoursBeforeBed: nil, exerciseMinutesPreviousDay: nil,
+                sourceName: "Fixture", isMock: true
+            )
+        }
+
+        let nights = (0..<14).map(night)
+
+        let defaultSplit = SleepRegularity.compute(nights: nights, calendar: calendar)
+        guard let defaultWeekday = defaultSplit.weekdayMidpoint, let defaultWeekend = defaultSplit.weekendMidpoint else {
+            return XCTFail("expected both midpoints with two full weeks of nights")
+        }
+        // Saturday/Sunday's later bedtime means a later (more positive, or
+        // less negative) midpoint than the rest of the week.
+        XCTAssertGreaterThan(defaultWeekend, defaultWeekday)
+
+        let invertedSplit = SleepRegularity.compute(
+            nights: nights, obligationWeekdays: [1, 7], calendar: calendar
+        )
+        guard let invertedWeekday = invertedSplit.weekdayMidpoint, let invertedWeekend = invertedSplit.weekendMidpoint else {
+            return XCTFail("expected both midpoints with two full weeks of nights")
+        }
+        // With Saturday/Sunday reconfigured as the obligation days, the
+        // later-bedtime nights are now in the "weekday" (obligation)
+        // bucket, so the relationship flips.
+        XCTAssertGreaterThan(invertedWeekday, invertedWeekend)
+    }
 }
 
 private extension SleepNightFeatures {
