@@ -77,6 +77,15 @@ final class SleepNightRecord {
     var wristTempAbsoluteC: Double?
     /// Overnight breathing disturbances, percent of night. iOS 18+, newer watches only.
     var breathingDisturbances: Double?
+    /// Apple's own elevated/not-elevated classification of the value above,
+    /// stored as its raw string -- same pattern as
+    /// `SleepEpisodeRecord.episodeTypeRaw` -- with `breathingDisturbancesClassification`
+    /// below as the typed accessor.
+    var breathingDisturbancesClassificationRaw: String?
+    var breathingDisturbancesClassification: BreathingDisturbanceClassification? {
+        get { breathingDisturbancesClassificationRaw.flatMap(BreathingDisturbanceClassification.init(rawValue:)) }
+        set { breathingDisturbancesClassificationRaw = newValue?.rawValue }
+    }
 
     var lastWorkoutHoursBeforeBed: Double?
     var exerciseMinutesPreviousDay: Double?
@@ -135,6 +144,11 @@ final class SleepNightRecord {
         self.avgSpO2 = features.avgSpO2
         self.wristTempAbsoluteC = absoluteWristTempC
         self.breathingDisturbances = features.breathingDisturbances
+        // Assigns the backing stored property directly, not the computed
+        // `breathingDisturbancesClassification` -- a class's designated
+        // init can't go through a computed property's setter until every
+        // stored property has a value, and this line runs before that.
+        self.breathingDisturbancesClassificationRaw = features.breathingDisturbancesClassification?.rawValue
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         self.alcoholicBeverages = features.alcoholicBeverages
@@ -207,6 +221,15 @@ final class SleepNightRecord {
         apply(features.avgSpO2, .oxygenSaturation, to: \.avgSpO2)
         apply(absoluteWristTempC, .wristTemperature, to: \.wristTempAbsoluteC)
         apply(features.breathingDisturbances, .breathingDisturbances, to: \.breathingDisturbances)
+        // Not routed through `apply` -- that helper is `Double?`-keyed only --
+        // but follows the exact same confirmed-absence rule as the value it's
+        // derived from: a fresh classification lands whenever a fresh value
+        // does, and only a *confirmed* absence of the value clears it.
+        if features.breathingDisturbances != nil {
+            breathingDisturbancesClassification = features.breathingDisturbancesClassification
+        } else if confirmedAbsent.contains(.breathingDisturbances) {
+            breathingDisturbancesClassification = nil
+        }
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         alcoholicBeverages = features.alcoholicBeverages
@@ -265,6 +288,7 @@ extension SleepNightRecord {
             avgSpO2: avgSpO2,
             wristTempDeltaC: wristTempDelta(against: baseline),
             breathingDisturbances: breathingDisturbances,
+            breathingDisturbancesClassification: breathingDisturbancesClassification,
             hrv7DayAvg: baseline?.hrv7DayAvg,
             sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,

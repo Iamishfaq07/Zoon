@@ -86,9 +86,28 @@ struct FeatureExtractor {
         // how you end up displaying "0.97% blood oxygen".
         let spo2Outcome = await spo2Task.map { $0 * 100 }
         let wristTempOutcome = await wristTempTask
+        let breathingRaw = await breathingTask
         // Breathing disturbances also arrive as a 0-1 fraction under
         // HKUnit.percent(), same trap as SpO2.
-        let breathingOutcome = await breathingTask.map { $0 * 100 }
+        let breathingOutcome = breathingRaw.map { $0 * 100 }
+        // Apple's own elevated/not-elevated call on the same measured
+        // fraction (pre-percent-conversion -- the classifier expects the
+        // same 0-1 HKQuantity HealthKit itself reports), rather than this
+        // app inventing its own cutoff. `nil` when there was no measured
+        // value, or when HealthKit's own classifier declines to classify
+        // it -- `BreathingHealth.isElevated` falls back to an in-app
+        // threshold either way, so this never blocks the feature. The
+        // Swift-refined label is `classifying:`, not `for:` -- confirmed
+        // against the real SDK by CI after an initial guess was wrong.
+        let breathingClassification: BreathingDisturbanceClassification? = breathingRaw.value.flatMap { fraction in
+            let quantity = HKQuantity(unit: .percent(), doubleValue: fraction)
+            guard let raw = HKAppleSleepingBreathingDisturbancesClassification(classifying: quantity) else { return nil }
+            switch raw {
+            case .notElevated: return .notElevated
+            case .elevated: return .elevated
+            @unknown default: return nil
+            }
+        }
 
         let workoutHours = await lastWorkoutContext(before: session.start)
         let exercisePrevious = await exerciseMinutes(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
@@ -154,6 +173,7 @@ struct FeatureExtractor {
             avgSpO2: spo2Outcome.value,
             wristTempDeltaC: tempDelta,
             breathingDisturbances: breathingOutcome.value,
+            breathingDisturbancesClassification: breathingClassification,
             hrv7DayAvg: baseline?.hrv7DayAvg,
             sleepDebtMinutes: baseline?.sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: workoutHours,
