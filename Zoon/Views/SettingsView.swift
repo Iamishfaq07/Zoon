@@ -444,7 +444,7 @@ struct SettingsView: View {
                     set: { coordinator.setEngine($0) }
                 )
             ) {
-                ForEach(UserPreferences.EngineChoice.allCases) { choice in
+                ForEach(UserPreferences.EngineChoice.shippingCases) { choice in
                     Text(choice.displayName).tag(choice)
                 }
             }
@@ -464,12 +464,28 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.Metric.recoveryLow)
             }
 
+            // Not a third picker option -- see `EngineChoice.shippingCases`.
+            // `LocalLLMInsightEngine` always falls back to rules today, so
+            // letting it sit in the same list as two real choices would read
+            // as a real one. This row says plainly what it is instead of
+            // hiding it entirely.
+            HStack {
+                Label("Bundled on-device model", systemImage: "flask")
+                Spacer()
+                Text("Labs").font(.caption).foregroundStyle(.secondary)
+            }
+            .foregroundStyle(.secondary)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Bundled on-device model, in Labs, not yet available")
+
             NavigationLink("How your Sleep Intelligence score works") {
                 AlgorithmTransparencyView()
             }
             .font(.caption)
         } header: {
             Text("Insights")
+        } footer: {
+            Text("A bundled on-device model is still in Labs -- no model ships yet, so it isn't offered as a selectable engine.")
         }
     }
 

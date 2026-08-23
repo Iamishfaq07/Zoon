@@ -34,12 +34,33 @@ final class CoachChat {
         /// the prose. `nil` for user turns, and for an assistant answer that
         /// isn't tied to one specific figure.
         var groundedIn: String?
+        /// One concrete next step the answer supports -- e.g. "Consider an
+        /// earlier bedtime tonight." `nil` for user turns and for an answer
+        /// that didn't call for one (most factual questions don't).
+        var bestAction: String?
 
-        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil) {
+        /// Whether this answer is tied to a specific number from the user's
+        /// own data, or is a general statement. Deliberately **not** the
+        /// model's own self-assessment -- `FoundationModelInsightEngine`
+        /// already establishes why a generated confidence claim can't be
+        /// trusted (see its `validate(_:)`: "Generated text never claims
+        /// high confidence. The rules can prove their claims; a model
+        /// cannot."). This is the same principle applied to chat: computed
+        /// structurally from whether `groundedIn` is actually present,
+        /// never asked of the model.
+        enum Confidence { case grounded, general }
+
+        var confidence: Confidence? {
+            guard role == .assistant else { return nil }
+            return (groundedIn?.isEmpty == false) ? .grounded : .general
+        }
+
+        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil, bestAction: String? = nil) {
             self.id = id
             self.role = role
             self.text = text
             self.groundedIn = groundedIn
+            self.bestAction = bestAction
         }
     }
 
@@ -65,11 +86,14 @@ final class CoachChat {
     @available(iOS 26.0, *)
     @Generable
     struct ChatAnswer {
-        @Guide(description: "The answer itself, two to three sentences, plain language, answered only from tonight's data.")
+        @Guide(description: "The direct answer itself, two to three sentences, plain language, answered only from the data given.")
         var answer: String
 
-        @Guide(description: "The specific number(s) from tonight's data this answer is grounded in, written as a short fragment like 'HRV 42ms vs your 7-day average of 58ms'. Empty string if the answer isn't tied to one specific figure.")
+        @Guide(description: "The specific number(s) this answer is grounded in, written as a short fragment like 'HRV 42ms vs your 7-day average of 58ms'. Empty string if the answer isn't tied to one specific figure.")
         var groundedIn: String
+
+        @Guide(description: "One concrete next step the user could take, only if the answer actually supports one -- e.g. 'Consider an earlier bedtime tonight.' Empty string if the answer doesn't call for an action (most factual questions don't).")
+        var bestAction: String
     }
     #endif
 
@@ -131,14 +155,17 @@ final class CoachChat {
 
         // Structured generation rather than raw streamed text: the redesign
         // spec calls for the coach's answers to have real shape on screen,
-        // not a wall of prose in a bubble. `ChatAnswer` separates the
-        // sentence itself from the number it's grounded in, the same
-        // `@Generable`/`respond(to:generating:)` pattern
+        // not a wall of prose in a bubble. `ChatAnswer` separates the direct
+        // answer from the number it's grounded in and the concrete action it
+        // supports, the same `@Generable`/`respond(to:generating:)` pattern
         // `FoundationModelInsightEngine` already uses for the nightly
         // insight -- this trades the previous token-by-token "thinking out
         // loud" streaming for an answer CoachChatView can render as an
-        // editorial block with a distinct citation, rather than one
-        // undifferentiated paragraph.
+        // editorial block with a distinct citation and action, rather than
+        // one undifferentiated paragraph. Confidence is the third of the
+        // redesign spec's four structured elements; `Message.confidence`
+        // computes it structurally instead of asking the model to
+        // self-report it.
         do {
             let response = try await session.respond(
                 to: trimmed,
@@ -147,6 +174,7 @@ final class CoachChat {
             )
             let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
             let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
+            let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
 
             // Same backstop FoundationModelInsightEngine applies to the
             // nightly insight: the instructions forbid diagnostic language,
@@ -156,7 +184,7 @@ final class CoachChat {
             // rules engine the way the nightly insight can -- there's no
             // rule-based conversation to hand off to -- so it shows a plain
             // refusal instead of the raw response.
-            guard !answer.isEmpty, !DiagnosticLanguageGuard.rejects("\(answer) \(grounding)") else {
+            guard !answer.isEmpty, !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
                 logger.notice("Chat response was empty or failed the diagnostic-language check; not shown")
                 messages.append(Message(
                     role: .assistant,
@@ -168,7 +196,8 @@ final class CoachChat {
             messages.append(Message(
                 role: .assistant,
                 text: answer,
-                groundedIn: grounding.isEmpty || grounding.lowercased() == "null" ? nil : grounding
+                groundedIn: grounding.isEmpty || grounding.lowercased() == "null" ? nil : grounding,
+                bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction
             ))
         } catch {
             logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")

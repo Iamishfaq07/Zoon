@@ -283,6 +283,17 @@ final class UserPreferences {
         case appleIntelligence
         case localLLM
 
+        /// Engines actually worth choosing between today -- `.localLLM` is
+        /// deliberately excluded (see `SettingsView.engineSection`'s Labs
+        /// row): `LocalLLMInsightEngine` is a stub that always falls back to
+        /// rules (`isModelAvailable` is hard-coded `false`), so offering it
+        /// in the same picker as two real choices reads as a third real
+        /// choice with no way to tell it apart. `allCases` (from
+        /// `CaseIterable`) still lists all three -- persistence and the
+        /// `localLLM` case itself are unaffected, this only narrows what's
+        /// user-selectable.
+        static var shippingCases: [EngineChoice] { [.ruleBased, .appleIntelligence] }
+
         var id: String { rawValue }
 
         var displayName: String {

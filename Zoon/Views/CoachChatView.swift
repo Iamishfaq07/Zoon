@@ -20,6 +20,9 @@ struct CoachChatView: View {
     /// same view instance (e.g. a state change that re-triggers it) --
     /// without this, a tapped suggestion could submit itself twice.
     @State private var hasSubmittedInitialPrompt = false
+    /// Which assistant messages currently have their evidence chip expanded
+    /// -- see `evidenceChip(_:messageID:)`.
+    @State private var expandedEvidenceIDs: Set<UUID> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -90,29 +93,91 @@ struct CoachChatView: View {
             }
         case .assistant:
             VStack(alignment: .leading, spacing: 8) {
-                Label("Zoon", systemImage: "sparkles")
-                    .font(Theme.label(11, weight: .bold))
-                    .foregroundStyle(Theme.Metric.sleep)
+                HStack(spacing: 6) {
+                    Label("Zoon", systemImage: "sparkles")
+                        .font(Theme.label(11, weight: .bold))
+                        .foregroundStyle(Theme.Metric.sleep)
+                    // Confidence, the third of the redesign spec's four
+                    // structured elements -- computed by CoachChat.Message,
+                    // not self-reported by the model
+                    // (see its doc comment for why). "Grounded" vs "General"
+                    // rather than a numeric score: the only thing this can
+                    // honestly claim to know is whether the answer is tied
+                    // to one of your own numbers, not how right it is.
+                    if let confidence = message.confidence {
+                        StatusPill(
+                            text: confidence == .grounded ? "Grounded" : "General",
+                            tint: confidence == .grounded ? Theme.Metric.sleep : .secondary
+                        )
+                    }
+                }
+                // Direct Answer.
                 Text(message.text)
                     .font(Theme.text(14))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
-                // The structured half of the answer: which number in
-                // tonight's data it's actually grounded in, set apart from
-                // the sentence itself rather than folded into the prose --
-                // the redesign spec's ask for a coach that shows its work,
-                // not just a paragraph.
+                // Evidence: which number in tonight's data (or the standing-
+                // pattern digest) the answer is actually grounded in, set
+                // apart from the sentence itself rather than folded into the
+                // prose -- the redesign spec's ask for a coach that shows
+                // its work. Tappable: reveals what "grounded" means here,
+                // since the chip alone doesn't say why that number is the
+                // evidence for this answer.
                 if let groundedIn = message.groundedIn, !groundedIn.isEmpty {
-                    Label(groundedIn, systemImage: "number")
-                        .font(Theme.text(11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Theme.neutral(0.06), in: Capsule())
+                    evidenceChip(groundedIn, messageID: message.id)
+                }
+                // Best Action, the fourth structured field -- only shown
+                // when the model actually produced one; most factual
+                // questions ("why was my HRV low?") don't call for an
+                // action, and an invented one would be worse than none.
+                if let bestAction = message.bestAction, !bestAction.isEmpty {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "arrow.turn.down.right")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.Metric.sleep)
+                        Text(bestAction)
+                            .font(Theme.text(12, weight: .medium))
+                            .foregroundStyle(.primary)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    /// A tappable evidence chip -- toggles a one-line explanation of what
+    /// "grounded" means for this answer, per message so two answers in the
+    /// same transcript can be expanded independently.
+    private func evidenceChip(_ text: String, messageID: UUID) -> some View {
+        let isExpanded = expandedEvidenceIDs.contains(messageID)
+        return VStack(alignment: .leading, spacing: 4) {
+            Button {
+                Haptics.tap()
+                if isExpanded {
+                    expandedEvidenceIDs.remove(messageID)
+                } else {
+                    expandedEvidenceIDs.insert(messageID)
+                }
+            } label: {
+                Label(text, systemImage: "number")
+                    .font(Theme.text(11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Theme.neutral(0.06), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows what this evidence means")
+
+            if isExpanded {
+                Text("The number above is the specific figure this answer is based on -- not a general statement.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 8)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: isExpanded)
     }
 
     private var composer: some View {
