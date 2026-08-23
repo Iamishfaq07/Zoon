@@ -144,7 +144,11 @@ final class SleepNightRecord {
         self.avgSpO2 = features.avgSpO2
         self.wristTempAbsoluteC = absoluteWristTempC
         self.breathingDisturbances = features.breathingDisturbances
-        self.breathingDisturbancesClassification = features.breathingDisturbancesClassification
+        // Assigns the backing stored property directly, not the computed
+        // `breathingDisturbancesClassification` -- a class's designated
+        // init can't go through a computed property's setter until every
+        // stored property has a value, and this line runs before that.
+        self.breathingDisturbancesClassificationRaw = features.breathingDisturbancesClassification?.rawValue
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         self.alcoholicBeverages = features.alcoholicBeverages
