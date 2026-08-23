@@ -39,6 +39,20 @@ final class SoundEventStore {
         defaults.removeObject(forKey: Self.key)
     }
 
+    /// Restores sound events from a backup.
+    ///
+    /// Only adopted when there's nothing more recent already stored --
+    /// unlike `SnoreStore`/`NapStore`, this holds one session's worth of
+    /// events, not a history to merge into, so a backup restore shouldn't
+    /// overwrite whatever the device already captured since.
+    /// - Returns: how many events were adopted.
+    @discardableResult
+    func importEvents(_ imported: [SoundEvent]) -> Int {
+        guard recentEvents.isEmpty, !imported.isEmpty else { return 0 }
+        record(imported)
+        return imported.count
+    }
+
     /// Used by the centralized data lifecycle even when no snore screen (and
     /// therefore no `SoundEventStore` instance) currently exists.
     static func erasePersistedData(defaults: UserDefaults = .standard) {

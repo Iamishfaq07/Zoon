@@ -70,6 +70,24 @@ final class SleepExperimentStore {
         persist()
     }
 
+    /// Restores completed experiments from a backup.
+    ///
+    /// Merges by `id` rather than replacing, same reasoning as
+    /// `NapStore.importNaps`/`SnoreStore.importSummaries`: a device that's
+    /// kept running its own experiments since the backup was taken
+    /// shouldn't lose them.
+    /// - Returns: how many were actually added.
+    @discardableResult
+    func importOutcomes(_ imported: [Outcome]) -> Int {
+        let existingIDs = Set(outcomes.map(\.id))
+        let fresh = imported.filter { !existingIDs.contains($0.id) }
+        guard !fresh.isEmpty else { return 0 }
+        outcomes.append(contentsOf: fresh)
+        outcomes.sort { $0.startDate > $1.startDate }
+        persist()
+        return fresh.count
+    }
+
     private func load() {
         guard let data = defaults.data(forKey: Key.outcomes),
               let decoded = try? JSONDecoder().decode([Outcome].self, from: data) else { return }

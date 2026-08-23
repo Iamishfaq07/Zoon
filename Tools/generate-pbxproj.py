@@ -92,6 +92,19 @@ TESTS_EXTRA_APP_FILES = [
     # SleepExperimentStore.Outcome above -- the pre-specified-metric and
     # adherence-tracking logic GuidedExperimentTests exists to pin down.
     "Zoon/Insights/GuidedExperiment.swift",
+    # Foundation only -- the preference scalars DataExporter.Archive
+    # snapshots and restores, needed to compile the Archive type below.
+    "Zoon/Models/UserPreferences.swift",
+    # Foundation (+ ActivityKit, guarded by #if canImport) -- NapStore.Nap
+    # is one of Archive's stored record types.
+    "Zoon/Services/NapStore.swift",
+    # Foundation only -- SnoreStore.NightSummary is one of Archive's stored
+    # record types.
+    "Zoon/Services/SnoreStore.swift",
+    # Foundation + SwiftUI's FileDocument protocol (no view rendering, so
+    # no UIKit runtime dependency) -- the backup Archive format itself,
+    # exactly what DataExporterTests exists to round-trip.
+    "Zoon/Services/DataExporter.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"
