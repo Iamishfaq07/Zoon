@@ -20,7 +20,16 @@ enum DataExporter {
 
     /// Version stamped into every export so a future importer can migrate
     /// older files instead of rejecting them.
-    static let formatVersion = 2
+    ///
+    /// V3 adds secondary sleep episodes (naps/secondary-sleep HealthKit
+    /// auto-detected but never selected as a night's main sleep), completed
+    /// Guided Experiment outcomes, overnight sound-event metadata, and a
+    /// few preference fields V2 never carried. Every new field is Optional
+    /// on `Archive` and `PreferencesRecord`, so a V1/V2 file (missing all of
+    /// them) still decodes cleanly -- see `JournalRecord`'s own doc comment
+    /// for why that's the load-bearing compatibility mechanism here rather
+    /// than a hand-written migration.
+    static let formatVersion = 3
 
     struct Archive: Codable {
         let formatVersion: Int
@@ -33,6 +42,29 @@ enum DataExporter {
         let preferences: PreferencesRecord?
         let snoreSummaries: [SnoreStore.NightSummary]?
         let wristTemperatures: [WristTemperatureRecord]?
+        /// Secondary sleep episodes (naps, secondary-sleep blocks) --
+        /// `nil` for any export made before format 3.
+        let episodes: [EpisodeRecord]?
+        /// Completed Guided Experiment outcomes -- `nil` before format 3.
+        let experiments: [SleepExperimentStore.Outcome]?
+        /// Most recent overnight sound-event session -- `nil` before
+        /// format 3.
+        let soundEvents: [SoundEvent]?
+
+        struct EpisodeRecord: Codable {
+            let id: String
+            let nightKey: String
+            let startDate: Date
+            let endDate: Date
+            let timezoneIdentifier: String
+            /// `SleepEpisodeType.rawValue` -- stored raw rather than as the
+            /// enum itself so an episode type added after this backup was
+            /// taken still round-trips instead of failing to decode.
+            let episodeType: String
+            let asleepMinutes: Double
+            let timeInBedMinutes: Double
+            let sourceName: String?
+        }
 
         struct JournalRecord: Codable {
             let date: Date
@@ -59,6 +91,11 @@ enum DataExporter {
             /// Optional key -- a backup exported before Lifestyle Insights
             /// existed simply decodes it as `nil`, treated as off.
             let lifestyleInsightsEnabled: Bool?
+            /// Optional keys -- all three added in format 3, decode as
+            /// `nil`/off/automatic on any older backup.
+            let wakeAlarmEnabled: Bool?
+            let focusSilencesBedtimeNudges: Bool?
+            let preferredSleepSourceName: String?
         }
 
         struct WristTemperatureRecord: Codable {
@@ -85,7 +122,10 @@ enum DataExporter {
         goalMinutes: Double,
         preferences: UserPreferences,
         snoreSummaries: [SnoreStore.NightSummary],
-        wristTemperatures: [(date: Date, absoluteCelsius: Double)]
+        wristTemperatures: [(date: Date, absoluteCelsius: Double)],
+        episodes: [Archive.EpisodeRecord] = [],
+        experiments: [SleepExperimentStore.Outcome] = [],
+        soundEvents: [SoundEvent] = []
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -106,7 +146,10 @@ enum DataExporter {
                 bedtimeRemindersEnabled: preferences.bedtimeRemindersEnabled,
                 cycleTrackingEnabled: preferences.cycleTrackingEnabled,
                 smartWakeEnabled: preferences.smartWakeEnabled,
-                lifestyleInsightsEnabled: preferences.lifestyleInsightsEnabled
+                lifestyleInsightsEnabled: preferences.lifestyleInsightsEnabled,
+                wakeAlarmEnabled: preferences.wakeAlarmEnabled,
+                focusSilencesBedtimeNudges: preferences.focusSilencesBedtimeNudges,
+                preferredSleepSourceName: preferences.preferredSleepSourceName
             ),
             snoreSummaries: snoreSummaries,
             wristTemperatures: wristTemperatures.map {
@@ -114,7 +157,10 @@ enum DataExporter {
                     date: $0.date,
                     absoluteCelsius: $0.absoluteCelsius
                 )
-            }
+            },
+            episodes: episodes,
+            experiments: experiments,
+            soundEvents: soundEvents
         )
     }
 

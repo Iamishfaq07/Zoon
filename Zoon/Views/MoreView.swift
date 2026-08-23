@@ -181,7 +181,10 @@ struct MoreView: View {
                     goalMinutes: preferences.sleepGoalMinutes,
                     preferences: preferences,
                     snoreSummaries: SnoreStore().nights,
-                    wristTemperatures: coordinator.absoluteWristTemperaturesForExport()
+                    wristTemperatures: coordinator.absoluteWristTemperaturesForExport(),
+                    episodes: coordinator.episodesForExport(),
+                    experiments: coordinator.experiments.outcomes,
+                    soundEvents: SoundEventStore().recentEvents
                 )
                 url = try DataExporter.writeTemporary(
                     try DataExporter.jsonData(archive),

@@ -854,6 +854,9 @@ final class SleepDataCoordinator {
         )
         let restoredNaps = naps.importNaps(archive.naps)
         let restoredSnore = SnoreStore().importSummaries(archive.snoreSummaries ?? [])
+        let restoredEpisodes = store.importEpisodes(archive.episodes ?? [])
+        let restoredExperiments = experiments.importOutcomes(archive.experiments ?? [])
+        let restoredSoundEvents = SoundEventStore().importEvents(archive.soundEvents ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -871,6 +874,9 @@ final class SleepDataCoordinator {
             preferences.cycleTrackingEnabled = restored.cycleTrackingEnabled
             preferences.lifestyleInsightsEnabled = restored.lifestyleInsightsEnabled ?? false
             preferences.smartWakeEnabled = restored.smartWakeEnabled
+            preferences.wakeAlarmEnabled = restored.wakeAlarmEnabled ?? false
+            preferences.focusSilencesBedtimeNudges = restored.focusSilencesBedtimeNudges ?? false
+            preferences.preferredSleepSourceName = restored.preferredSleepSourceName
             preferences.preferredEngine = UserPreferences.EngineChoice(
                 rawValue: restored.preferredEngine
             ) ?? .ruleBased
@@ -889,14 +895,29 @@ final class SleepDataCoordinator {
             }
         }
 
-        // Four counts, four chances to read "1 naps". Restoring a backup with
+        // Every count, every chance to read "1 naps". Restoring a backup with
         // exactly one nap or one snore summary is ordinary, not an edge case.
-        return "Restored \(nights.pluralized("night")), \(entries.pluralized("journal entry", "journal entries")), "
+        var summary = "Restored \(nights.pluralized("night")), \(entries.pluralized("journal entry", "journal entries")), "
             + "\(restoredNaps.pluralized("nap")) and \(restoredSnore.pluralized("snore summary", "snore summaries"))."
+        // Episodes/experiments/sound events are all format-3 additions --
+        // omitted entirely for a pre-3 backup rather than always printing
+        // "0 experiments" and making every older restore look incomplete.
+        var extras: [String] = []
+        if restoredEpisodes > 0 { extras.append(restoredEpisodes.pluralized("secondary sleep episode")) }
+        if restoredExperiments > 0 { extras.append(restoredExperiments.pluralized("experiment")) }
+        if restoredSoundEvents > 0 { extras.append(restoredSoundEvents.pluralized("sound event")) }
+        if !extras.isEmpty {
+            summary += " Also restored \(extras.joined(separator: ", "))."
+        }
+        return summary
     }
 
     func absoluteWristTemperaturesForExport() -> [(date: Date, absoluteCelsius: Double)] {
         store.absoluteWristTemperaturesForExport()
+    }
+
+    func episodesForExport() -> [DataExporter.Archive.EpisodeRecord] {
+        store.episodesForExport()
     }
 
     /// Erases every Zoon-owned representation of the user's data, including

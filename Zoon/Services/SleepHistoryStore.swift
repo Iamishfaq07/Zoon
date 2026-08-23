@@ -361,6 +361,42 @@ final class SleepHistoryStore {
         }
     }
 
+    /// Every stored secondary episode, as export DTOs -- backup archives
+    /// carry these too now, since without them a restored device has no way
+    /// to reconstruct historical naps/secondary-sleep credit that isn't
+    /// re-derivable from a fresh HealthKit anchor sync alone (a resync
+    /// starts from "now," not from a backup's own history).
+    func episodesForExport() -> [DataExporter.Archive.EpisodeRecord] {
+        let episodes = (try? context.fetch(FetchDescriptor<SleepEpisodeRecord>())) ?? []
+        return episodes.map {
+            DataExporter.Archive.EpisodeRecord(
+                id: $0.id, nightKey: $0.nightKey, startDate: $0.startDate, endDate: $0.endDate,
+                timezoneIdentifier: $0.timezoneIdentifier, episodeType: $0.episodeTypeRaw,
+                asleepMinutes: $0.asleepMinutes, timeInBedMinutes: $0.timeInBedMinutes,
+                sourceName: $0.sourceName
+            )
+        }
+    }
+
+    /// Restores secondary episodes from a backup, upserting by `id` same as
+    /// a live HealthKit sync does -- a restore onto a device that's kept
+    /// recording since shouldn't discard or duplicate its own episodes.
+    /// - Returns: how many rows were written.
+    @discardableResult
+    func importEpisodes(_ episodes: [DataExporter.Archive.EpisodeRecord]) -> Int {
+        for episode in episodes {
+            upsertEpisode(
+                id: episode.id, nightKey: episode.nightKey,
+                startDate: episode.startDate, endDate: episode.endDate,
+                timezoneIdentifier: episode.timezoneIdentifier,
+                episodeType: SleepEpisodeType(rawValue: episode.episodeType) ?? .unknown,
+                asleepMinutes: episode.asleepMinutes, timeInBedMinutes: episode.timeInBedMinutes,
+                sourceName: episode.sourceName
+            )
+        }
+        return episodes.count
+    }
+
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
     /// user a one-tap way to destroy everything it holds.
     @discardableResult
