@@ -23,6 +23,9 @@ struct CoachChatView: View {
     /// Which assistant messages currently have their evidence chip expanded
     /// -- see `evidenceChip(_:messageID:)`.
     @State private var expandedEvidenceIDs: Set<UUID> = []
+    /// Bumped to force a fresh read of `chat.unavailabilityReason` -- see
+    /// the polling `.task(id:)` below.
+    @State private var availabilityPollTick = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,6 +44,22 @@ struct CoachChatView: View {
             guard let initialPrompt, !hasSubmittedInitialPrompt else { return }
             hasSubmittedInitialPrompt = true
             await chat.send(initialPrompt)
+        }
+        // A real report: this screen could show "the on-device model is
+        // still downloading" and stay stuck on that message indefinitely --
+        // `unavailabilityReason` reads live system state, not anything
+        // `@Observable`-tracked, so nothing told this view to redraw once
+        // the download actually finished. Polling only while the reason is
+        // specifically the transient one (see `isTransientlyUnavailable`)
+        // means a genuinely ineligible device or Apple Intelligence being
+        // off doesn't spin forever for no reason -- it naturally stops
+        // re-arming once the state resolves to something else or to
+        // available.
+        .task(id: availabilityPollTick) {
+            guard chat.unavailabilityReason != nil, chat.isTransientlyUnavailable else { return }
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            availabilityPollTick += 1
         }
     }
 
@@ -206,7 +225,7 @@ struct CoachChatView: View {
     }
 
     private func unavailable(_ reason: String) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             Spacer()
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 34))
@@ -216,6 +235,22 @@ struct CoachChatView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
+            // Only when waiting might actually help (see
+            // `isTransientlyUnavailable`) -- a button that can't change
+            // anything (device ineligible, Apple Intelligence off) would be
+            // worse than none, since tapping it would look like it does
+            // something and never does.
+            if chat.isTransientlyUnavailable {
+                Button {
+                    Haptics.tap()
+                    availabilityPollTick += 1
+                } label: {
+                    Label("Check again", systemImage: "arrow.clockwise")
+                        .font(Theme.label(13, weight: .semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.Metric.sleep)
+            }
             Spacer()
         }
     }
