@@ -98,6 +98,19 @@ final class HealthKitManager {
         }
         // Empty `toShare`: read-only by construction, not by convention.
         try await store.requestAuthorization(toShare: [], read: coreReadTypes)
+        // A real-device bug this gap fixes: issuing the second
+        // `requestAuthorization` call the instant the first one's completion
+        // handler fires can race the first system sheet's own dismissal
+        // animation. When it loses that race, the second sheet silently
+        // never presents at all -- HealthKit's completion handler for it
+        // then never fires either, so the `await` on this whole function
+        // hangs forever with only the Sleep sheet ever having appeared,
+        // which is exactly what was reported from a TestFlight build:
+        // onboarding stuck on "Connect Health" until the user granted
+        // access manually in Settings and relaunched. Half a second is long
+        // enough for the sheet's dismissal transition to finish before the
+        // next one is requested.
+        try? await Task.sleep(nanoseconds: 500_000_000)
         try await store.requestAuthorization(toShare: [], read: enhancementReadTypes)
     }
 

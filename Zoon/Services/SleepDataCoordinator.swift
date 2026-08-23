@@ -213,12 +213,52 @@ final class SleepDataCoordinator {
     /// **not** once permission is granted, because HealthKit deliberately never
     /// reveals a read denial. An app that could tell would be able to infer
     /// that you have data worth hiding.
+    ///
+    /// Time-boxed at 20 seconds. `OnboardingView` awaits this and only then
+    /// advances past its "Connect Health" page -- a real TestFlight report
+    /// found that page permanently stuck showing only the Sleep sheet, with
+    /// no way forward short of granting access from Settings and relaunching.
+    /// `HealthKitManager.requestAuthorization()`'s own fix addresses the
+    /// most likely cause (a sheet-presentation race between its two system
+    /// prompts), but HealthKit's completion handler is outside this app's
+    /// control and has no OS-level timeout guarantee of its own -- this is
+    /// the backstop that makes onboarding unable to hang forever regardless
+    /// of why a given device's HealthKit call never completes. 20 seconds is
+    /// well past how long even both system sheets, answered promptly, should
+    /// ever take.
     func requestHealthAccess() async {
         guard DataEnvironment.current.isLive else { return }
         do {
-            try await healthKit.requestAuthorization()
+            try await Self.withTimeout(seconds: 20) { [healthKit] in
+                try await healthKit.requestAuthorization()
+            }
+        } catch is TimeoutError {
+            logger.error("Authorization request timed out after 20s; proceeding without waiting further")
         } catch {
             logger.error("Authorization request failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private struct TimeoutError: Error {}
+
+    /// Races `operation` against a deadline. If the deadline wins, `operation`
+    /// is left to finish on its own (its `Task` is cancelled, but a
+    /// completion-handler-backed call like HealthKit's can't actually be
+    /// interrupted mid-flight) and this throws `TimeoutError` so the caller
+    /// can stop waiting rather than hang indefinitely.
+    private static func withTimeout<T: Sendable>(
+        seconds: UInt64,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
+                throw TimeoutError()
+            }
+            defer { group.cancelAll() }
+            guard let result = try await group.next() else { throw TimeoutError() }
+            return result
         }
     }
 
