@@ -26,6 +26,13 @@ struct CoachChatView: View {
     /// Bumped to force a fresh read of `chat.unavailabilityReason` -- see
     /// the polling `.task(id:)` below.
     @State private var availabilityPollTick = 0
+    /// True for a moment right after "Check again" is tapped. The check
+    /// itself is a live property read, effectively instant -- with no state
+    /// change to watch for, a report came back that tapping the button
+    /// looked like it did nothing at all when the answer was still the same
+    /// "still downloading." This gives the tap itself a visible response,
+    /// independent of whatever the fresh answer turns out to be.
+    @State private var isCheckingNow = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -241,15 +248,37 @@ struct CoachChatView: View {
             // worse than none, since tapping it would look like it does
             // something and never does.
             if chat.isTransientlyUnavailable {
+                // Apple Intelligence's on-device model download is a
+                // multi-gigabyte OS-level process this app has no visibility
+                // into or control over -- it can genuinely take a long time,
+                // especially on cellular or a first-time setup. Saying so
+                // plainly is more honest than a bare "Try again" that implies
+                // the app itself might be able to resolve it faster.
+                Text("This can take a while depending on your connection. Zoon checks automatically every few seconds.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+
                 Button {
                     Haptics.tap()
+                    isCheckingNow = true
                     availabilityPollTick += 1
+                    Task {
+                        try? await Task.sleep(nanoseconds: 600_000_000)
+                        isCheckingNow = false
+                    }
                 } label: {
-                    Label("Check again", systemImage: "arrow.clockwise")
-                        .font(Theme.label(13, weight: .semibold))
+                    if isCheckingNow {
+                        Label("Checking…", systemImage: "arrow.clockwise")
+                    } else {
+                        Label("Check again", systemImage: "arrow.clockwise")
+                    }
                 }
+                .font(Theme.label(13, weight: .semibold))
                 .buttonStyle(.bordered)
                 .tint(Theme.Metric.sleep)
+                .disabled(isCheckingNow)
             }
             Spacer()
         }
