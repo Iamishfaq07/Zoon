@@ -1,7 +1,11 @@
 import Foundation
 
 /// A live, daytime read on autonomic load — Garmin's Stress Score and Whoop's
-/// intraday strain signal, reimplemented.
+/// intraday strain signal, reimplemented. Presented to the user as
+/// "Physiological Load", not "Stress" -- see `StressCard`'s doc comment for
+/// why. The Swift type name is unchanged (a rename here would be a large,
+/// purely cosmetic diff across every call site for no behavior change); only
+/// the user-facing label moved.
 ///
 /// Every other score in Zoon looks backward at a finished night. This is the
 /// one exception: it compares *right now* against your rolling baseline, so
@@ -17,6 +21,21 @@ import Foundation
 /// could sample every few seconds; a phone reading HealthKit after the fact
 /// gets whatever discrete samples happened to land. Good enough to say
 /// "elevated today", not good enough to say "elevated at 2:14pm".
+///
+/// ## Why "Experimental"
+///
+/// Excluding workouts, the minutes after them, and high-movement hours (see
+/// `SleepDataCoordinator.refreshTodayStress`) removes the worst source of
+/// false "elevated" readings, but doesn't close the deeper gap: the rolling
+/// baseline this compares against is built from *overnight* resting
+/// physiology (`RollingBaseline.restingHeartRate7DayAvg`/`hrv7DayAvg`), and
+/// autonomic tone during sleep is not the same physiological state as calm
+/// wakefulness. A perfectly relaxed waking hour can still read as
+/// "Elevated" simply because waking and sleeping HR/HRV don't live on the
+/// same scale. A genuine fix needs a real activity-and-time-of-day-aware
+/// daytime baseline built from historical daytime samples, which is
+/// materially larger than this pass -- until then, the honest label is
+/// "Physiological Load — Experimental," not a confident "Stress" number.
 struct StressScore: Codable, Hashable, Sendable {
 
     /// 0–100. Higher means further from baseline in the stressed direction.

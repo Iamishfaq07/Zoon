@@ -5,6 +5,13 @@ import SwiftUI
 /// Positioned to read as a status line, not a headline — recovery is still
 /// the verdict for the day; this is a same-day correction to it, the kind of
 /// thing that says "you were recovered this morning, but today has been a lot".
+///
+/// Labeled "Physiological Load — Experimental" in the UI, not "Stress" --
+/// the underlying `StressScore` type name is unchanged, but the user-facing
+/// framing shouldn't imply a measurement of psychological stress this
+/// signal was never built to make, and "Experimental" is honest about the
+/// baseline mismatch `StressScore`'s own doc comment explains. See that
+/// type's "Why Experimental" section for the full reasoning.
 struct StressCard: View {
 
     let stress: StressScore
@@ -18,18 +25,17 @@ struct StressCard: View {
     /// was a hard enough day to raise tonight's requirement."
     private static let meaningfulActivityThreshold = 8.0
 
-    /// True when today's elevated HR/HRV reading plausibly reflects exercise
-    /// rather than psychological load.
+    /// True when today's elevated HR/HRV reading plausibly still reflects
+    /// exercise rather than autonomic load.
     ///
-    /// `StressScore` averages heart rate and HRV across the whole elapsed
-    /// day against an *overnight* baseline, with no filtering for activity --
-    /// a run or a hard gym session reads exactly like autonomic stress to
-    /// this math, because physiologically an elevated heart rate looks the
-    /// same either way. Excluding active periods from the average would be
-    /// the more correct fix, but isn't implemented; this is the honest
-    /// stopgap the card can offer today: when Strain says the day included
-    /// real exertion, say so, rather than leaving an elevated reading to be
-    /// read as pure psychological stress.
+    /// `StressScore` now excludes workouts, the minutes right after them,
+    /// and unlogged high-movement hours before averaging (see
+    /// `SleepDataCoordinator.refreshTodayStress`), which removes most of
+    /// this -- but the exclusion is hour-grained and buffer-limited, so a
+    /// day with a lot of exertion right at the edges of those windows can
+    /// still leak through. When today's Strain says the day included real
+    /// exertion, this says so as a caveat, rather than leaving an elevated
+    /// reading to be read as pure autonomic load.
     private var mayReflectActivity: Bool {
         stress.band != .calm && (todayStrain ?? 0) >= Self.meaningfulActivityThreshold
     }
@@ -58,13 +64,14 @@ struct StressCard: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("Stress today")
+                    Text("Load today")
                         .font(Theme.label(13, weight: .semibold))
+                    StatusPill(text: "Experimental", tint: .secondary)
                     if stress.isEstimate {
                         StatusPill(text: "Estimate", tint: .secondary)
                     }
                 }
-                Text(mayReflectActivity ? "Today includes real exertion -- this may reflect exercise, not stress." : stress.band.detail)
+                Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.band.detail)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -73,13 +80,13 @@ struct StressCard: View {
             Spacer(minLength: 0)
 
             MetricInfoButton(
-                title: "Stress Today",
+                title: "Physiological Load — Experimental",
                 symbol: "waveform.path.ecg",
                 tint: tint,
                 explanation: [
-                    "Compares your heart rate and HRV so far today against your own rolling baseline -- a live, same-day reading rather than a look back at last night.",
-                    "This averages the whole elapsed day without separating out exercise: a run or a hard workout raises heart rate the same way psychological stress does, physiologically, so an elevated reading on an active day often reflects exertion rather than autonomic load. Check today's Daily Load if this reads high and you know you've been active.",
-                    "Resolution is limited by however much of the day has elapsed: an early reading is a smaller sample than one taken in the evening, which is why it's shown as an estimate until there's enough baseline history."
+                    "Compares your heart rate and HRV so far today against your own rolling baseline -- a live, same-day reading rather than a look back at last night. Not a measure of psychological stress.",
+                    "Workouts, the minutes right after them, and unlogged high-movement hours are excluded before averaging, so ordinary exertion doesn't read as elevated load. That exclusion is hour-grained, not perfect -- check today's Daily Load if this reads high and you know you've been active.",
+                    "Marked Experimental because the baseline it compares against is built from overnight resting physiology, and even a genuinely calm waking hour doesn't sit on the same scale sleep does. Resolution is also limited by however much of the day has elapsed, which is why it's additionally shown as an estimate until there's enough baseline history."
                 ]
             )
         }
@@ -88,7 +95,7 @@ struct StressCard: View {
         // today" matters more than the exact minute count, and clock text
         // this small competes with the number for attention.
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Stress today, \(stress.band.label), \(stress.percent) percent")
+        .accessibilityLabel("Physiological load today, experimental, \(stress.band.label), \(stress.percent) percent")
     }
 }
 

@@ -745,11 +745,27 @@ final class SleepDataCoordinator {
     /// it independently means a HealthKit hiccup here can never block the
     /// night's real data from landing.
     ///
-    /// Workout windows are excluded from the average before it's computed --
-    /// a hard run legitimately elevates HR and suppresses HRV, and neither is
-    /// autonomic stress. Without this, going for a run reads as "Elevated" or
-    /// "High" stress, which is backwards: it's normal, healthy exertion, not
-    /// the sustained-load pattern this score exists to flag.
+    /// How long after a workout ends its elevated HR/HRV are still treated
+    /// as exertion rather than autonomic load, for `refreshTodayStress`.
+    private static let postWorkoutBufferMinutes: TimeInterval = 30
+    /// Active-energy-per-hour above which an unlogged hour is treated as
+    /// genuinely active rather than sedentary. A resting hour is typically
+    /// well under this; a brisk walk or light chores can approach it, a
+    /// real workout clears it easily.
+    private static let highMovementKcalPerHour = 150.0
+
+    /// Three kinds of exertion are excluded from the average before it's
+    /// computed, since none of them are autonomic stress and averaging them
+    /// in reads exercise as if it were psychological load, which is
+    /// backwards: workouts, the minutes right after a workout ends (HR/HRV
+    /// don't snap back to resting instantly), and hours with high active
+    /// energy that were never logged as a formal workout at all (a brisk
+    /// errand, chores). None of this closes the deeper gap this score still
+    /// has -- the baseline it compares against is built from *overnight*
+    /// resting physiology, and even a genuinely calm waking hour reads
+    /// differently from sleep does -- which is why this presents as
+    /// "Physiological Load — Experimental" rather than a confident clinical-
+    /// sounding "Stress" number. See `StressCard`'s own doc comment.
     private func refreshTodayStress() async {
         guard DataEnvironment.current.isLive else {
             todayStress = AppMockData.stress
@@ -764,8 +780,27 @@ final class SleepDataCoordinator {
         let interval = DateInterval(start: samplingStart, end: now)
 
         let workouts = (try? await healthKit.workouts(in: interval)) ?? []
-        let workoutIntervals = workouts.map { DateInterval(start: $0.startDate, end: $0.endDate) }
-        let samplingIntervals = DateInterval.subtracting(workoutIntervals, from: interval)
+        // Extended past the workout's own end: heart rate and HRV don't snap
+        // back to a resting state the instant a session stops, so the
+        // minutes right after a hard effort still read as exertion, not
+        // autonomic load, even though no workout is technically running.
+        let workoutIntervals = workouts.map {
+            DateInterval(start: $0.startDate, end: $0.endDate.addingTimeInterval(Self.postWorkoutBufferMinutes * 60))
+        }
+
+        // Movement that was never logged as a formal workout -- a brisk
+        // errand, chores, an unlogged walk -- still isn't autonomic stress,
+        // and without this the average kept treating it as one. Reuses the
+        // same active-energy series `Daily Load`'s own strain fallback
+        // already queries, at hourly resolution -- fine-grained enough to
+        // isolate genuinely active hours without a second new HealthKit
+        // permission.
+        let hourlyEnergy = (try? await healthKit.hourlyActiveEnergy(in: interval)) ?? []
+        let highMovementIntervals = hourlyEnergy
+            .filter { $0.bpm >= Self.highMovementKcalPerHour }
+            .map { DateInterval(start: $0.date, duration: 3600) }
+
+        let samplingIntervals = DateInterval.subtracting(workoutIntervals + highMovementIntervals, from: interval)
         guard !samplingIntervals.isEmpty else { return }
 
         async let hrTask = try? healthKit.average(.heartRate, unit: .beatsPerMinute, in: samplingIntervals)

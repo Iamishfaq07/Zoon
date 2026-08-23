@@ -483,37 +483,57 @@ final class HealthKitManager {
     /// charger is not a resting hour, and Body Battery would happily "charge"
     /// through it if we pretended otherwise.
     func hourlyHeartRate(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
-        try await hourlySeries(
+        try await binnedSeries(
             .heartRate,
             unit: .beatsPerMinute,
             options: .discreteAverage,
-            interval: interval
+            interval: interval,
+            binMinutes: 60
         ) { $0.averageQuantity() }
     }
 
-    /// Active energy burned per hour, for the strain estimate fallback.
+    /// Active energy burned per hour, for the strain estimate fallback and
+    /// for excluding high-movement (but not formally logged as a workout)
+    /// stretches from the Physiological Load average -- see
+    /// `SleepDataCoordinator.refreshTodayStress`.
     func hourlyActiveEnergy(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
-        try await hourlySeries(
+        try await binnedSeries(
             .activeEnergyBurned,
             unit: .kilocalorie(),
             options: .cumulativeSum,
-            interval: interval
+            interval: interval,
+            binMinutes: 60
         ) { $0.sumQuantity() }
     }
 
-    private func hourlySeries(
+    /// Same average heart rate series `hourlyHeartRate` returns, at a finer
+    /// bin size -- used for `heartRateZones` below. See that function's doc
+    /// comment for why 60-minute bins were never fine enough.
+    func binnedHeartRate(in interval: DateInterval, binMinutes: Int) async throws -> [(date: Date, bpm: Double)] {
+        try await binnedSeries(
+            .heartRate,
+            unit: .beatsPerMinute,
+            options: .discreteAverage,
+            interval: interval,
+            binMinutes: binMinutes
+        ) { $0.averageQuantity() }
+    }
+
+    private func binnedSeries(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         options: HKStatisticsOptions,
         interval: DateInterval,
+        binMinutes: Int,
         extract: @escaping @Sendable (HKStatistics) -> HKQuantity?
     ) async throws -> [(date: Date, bpm: Double)] {
 
         let type = HKQuantityType(identifier)
         let predicate = HKQuery.predicateForSamples(withStart: interval.start, end: interval.end)
 
-        // Anchor on the hour so buckets line up with wall-clock hours rather
-        // than with whatever minute the query happened to run.
+        // Anchor on the hour so buckets line up with wall-clock hours (or
+        // clean sub-hour marks) rather than with whatever minute the query
+        // happened to run.
         let anchorDate = Calendar.current.dateInterval(of: .hour, for: interval.start)?.start ?? interval.start
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -522,7 +542,7 @@ final class HealthKitManager {
                 quantitySamplePredicate: predicate,
                 options: options,
                 anchorDate: anchorDate,
-                intervalComponents: DateComponents(hour: 1)
+                intervalComponents: DateComponents(minute: binMinutes)
             )
 
             query.initialResultsHandler = { _, collection, error in
@@ -552,6 +572,10 @@ final class HealthKitManager {
         }
     }
 
+    /// Bin width `heartRateZones` below buckets heart rate into before
+    /// assigning zone minutes -- see that function's doc comment.
+    static let zoneBinMinutes = 10
+
     /// Minutes spent in each heart-rate zone across an interval.
     ///
     /// Zones are defined on **heart-rate reserve** (Karvonen) rather than raw
@@ -559,33 +583,38 @@ final class HealthKitManager {
     /// Two people with the same max but a 20bpm difference in resting HR are not
     /// working equally hard at 140bpm, and a %max model says they are.
     ///
-    /// Built from hourly means, so it's an approximation: an hour containing a
-    /// 20-minute interval session averages out to something moderate. It's
-    /// directionally right and it's what's cheaply available; the UI flags
-    /// strain as an estimate whenever coverage is thin.
+    /// Built from means over `zoneBinMinutes`-wide bins, so it's still an
+    /// approximation -- a bin containing a shorter interval session averages
+    /// out to something moderate -- but a 10-minute bin is a fraction of the
+    /// distortion a 60-minute one was: the old hourly version could credit
+    /// an entire hour to one zone off a single mean that blended twenty
+    /// minutes of hard effort into forty minutes sitting still. It's
+    /// directionally right and it's what's cheaply available from
+    /// `HKStatisticsCollectionQuery`'s own bucketing; the UI flags strain as
+    /// an estimate whenever coverage is thin.
     func heartRateZones(
         in interval: DateInterval,
         restingHeartRate: Double,
         maxHeartRate: Double
     ) async throws -> (zones: [StrainScore.Zone: Double], coverage: Double) {
 
-        let hourly = try await hourlyHeartRate(in: interval)
-        guard !hourly.isEmpty else { return ([:], 0) }
+        let binned = try await binnedHeartRate(in: interval, binMinutes: Self.zoneBinMinutes)
+        guard !binned.isEmpty else { return ([:], 0) }
 
         let reserve = max(20, maxHeartRate - restingHeartRate)
         var zones: [StrainScore.Zone: Double] = [:]
 
-        for sample in hourly {
+        for sample in binned {
             let hrr = (sample.bpm - restingHeartRate) / reserve
             // Highest zone whose lower bound is cleared.
             guard let zone = StrainScore.Zone.allCases
                 .filter({ hrr >= $0.lowerBoundHRR })
                 .max(by: { $0.lowerBoundHRR < $1.lowerBoundHRR }) else { continue }
-            zones[zone, default: 0] += 60
+            zones[zone, default: 0] += Double(Self.zoneBinMinutes)
         }
 
-        let expectedHours = max(1, interval.duration / 3600)
-        return (zones, min(1, Double(hourly.count) / expectedHours))
+        let expectedBins = max(1, interval.duration / Double(Self.zoneBinMinutes * 60))
+        return (zones, min(1, Double(binned.count) / expectedBins))
     }
 
     // MARK: - Workouts
