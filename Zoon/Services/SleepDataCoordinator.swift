@@ -78,7 +78,18 @@ final class SleepDataCoordinator {
     /// Recovery percent per night, for trends and the weekly report.
     private(set) var recoveryHistory: [Date: Int] = [:]
     private(set) var lastRefresh: Date?
-    private(set) var isRefreshing = false
+    /// `.idle` -- nothing running. `.refreshing` -- one pass in flight.
+    /// `.refreshingWithPending` -- a pass is in flight *and* something else
+    /// asked for another one while it ran. That third state is the fix: the
+    /// old code was a plain `guard !isRefreshing else { return }`, which
+    /// silently dropped an overlapping call entirely rather than queuing it.
+    /// A foreground activation landing mid-refresh could ask for fresher
+    /// data than the in-flight pass was already fetching (new HealthKit
+    /// samples, a changed goal) and never get it until the *next*
+    /// independent trigger happened to come along.
+    private enum RefreshState { case idle, refreshing, refreshingWithPending }
+    private var refreshState: RefreshState = .idle
+    var isRefreshing: Bool { refreshState != .idle }
     /// Live daytime read, refreshed alongside everything else. `nil` until the
     /// first successful sample — a phone that's never queried HealthKit today
     /// has nothing honest to report yet.
@@ -253,19 +264,42 @@ final class SleepDataCoordinator {
 
     /// Full pass: fetch, extract, persist, derive metrics, publish to widget.
     ///
-    /// The `isRefreshing` guard is the very first thing that runs, ahead of
-    /// even `refreshTodayStress`/`refreshCycleData`. It used to sit after
-    /// them, which meant every overlapping call -- a foreground activation
+    /// The state check is the very first thing that runs, ahead of even
+    /// `refreshTodayStress`/`refreshCycleData`. It used to sit after them,
+    /// which meant every overlapping call -- a foreground activation
     /// landing while an observer-triggered refresh was still mid-flight,
     /// say -- redundantly re-ran both before finding out a full refresh was
     /// already in progress and bailing. `@MainActor` isolation already
-    /// makes checking and setting `isRefreshing` here race-free; the bug was
-    /// purely about what ran before that check, not about the flag itself.
+    /// makes checking and setting `refreshState` here race-free.
+    ///
+    /// A call that lands while another is already running doesn't bail
+    /// outright the way the old `guard !isRefreshing` did -- it marks
+    /// `.refreshingWithPending` and returns immediately (never blocking the
+    /// caller), and the in-flight pass runs itself again once before going
+    /// idle. That second pass picks up whatever the second caller wanted
+    /// fresher (new HealthKit samples an observer just reported, a goal
+    /// change) instead of that request being silently dropped until some
+    /// unrelated later trigger happened to come along.
     func refresh() async {
-        guard !isRefreshing else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
+        switch refreshState {
+        case .idle:
+            refreshState = .refreshing
+        case .refreshing:
+            refreshState = .refreshingWithPending
+            return
+        case .refreshingWithPending:
+            return
+        }
 
+        await performRefresh()
+        while refreshState == .refreshingWithPending {
+            refreshState = .refreshing
+            await performRefresh()
+        }
+        refreshState = .idle
+    }
+
+    private func performRefresh() async {
         await refreshTodayStress()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
         if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }

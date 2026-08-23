@@ -8,9 +8,12 @@ struct SettingsView: View {
     @Environment(NapStore.self) private var naps
     @Environment(BedtimeReminder.self) private var reminders
 
-    /// Its own instance rather than one shared with `RootView`: `WakeAlarm`
-    /// keeps no state of its own -- AlarmKit is the store of record for
-    /// what's scheduled -- so two instances cannot disagree.
+    /// Its own instance rather than one shared with `RootView`: AlarmKit is
+    /// still the real store of record for what's scheduled, and the one bit
+    /// of derived state `WakeAlarm` does keep (`scheduledWakeTime`, for
+    /// `alarmStatusDescription` below) is mirrored through `UserDefaults`,
+    /// so a second instance here reads the same answer `RootView`'s last
+    /// successful schedule wrote rather than disagreeing with it.
     @State private var wakeAlarm = WakeAlarm()
 
     @State private var showingDeleteConfirmation = false
@@ -113,6 +116,26 @@ struct SettingsView: View {
     /// The toggle requests permission on the way *on*, which is the only
     /// moment the request has context — an app that asks at launch, before
     /// showing what the notification is for, mostly gets denied permanently.
+    /// What to say under the "Ring an alarm" toggle -- the actual next
+    /// scheduled time when there is one, not just a generic description of
+    /// what the feature does regardless of whether anything is currently
+    /// armed. `wakeAlarm.scheduledWakeTime` reflects the wake time
+    /// `RootView`'s last successful `schedule(at:)` call actually set (see
+    /// `WakeAlarm`'s doc comment), so this can go stale between opens the
+    /// same way the real alarm can -- but it's a real reflection of what
+    /// AlarmKit was last told, not a static string that never disagreed
+    /// with reality because it never claimed anything about it.
+    private var alarmStatusDescription: String {
+        if let unavailabilityReason = wakeAlarm.unavailabilityReason {
+            return unavailabilityReason
+        }
+        if preferences.wakeAlarmEnabled, let scheduledWakeTime = wakeAlarm.scheduledWakeTime {
+            return "Rings around \(scheduledWakeTime.formatted(.dateTime.hour().minute())), "
+                + "through Silent mode and Sleep Focus."
+        }
+        return "Sounds at the end of the window, through Silent mode and Sleep Focus."
+    }
+
     private var remindersSection: some View {
         Section {
             Toggle(isOn: Binding(
@@ -226,8 +249,7 @@ struct SettingsView: View {
                 )) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Ring an alarm")
-                        Text(wakeAlarm.unavailabilityReason
-                             ?? "Sounds at the end of the window, through Silent mode and Sleep Focus.")
+                        Text(alarmStatusDescription)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
