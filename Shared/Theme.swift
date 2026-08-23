@@ -242,22 +242,51 @@ enum Theme {
 
     // MARK: - Metric hues
 
+    /// Derives a Light-appearance variant of a hue tuned for Dark.
+    ///
+    /// These hues were picked to pop against Dark's near-black ground, and
+    /// every one of them was, until this, a flat `Color(red:green:blue:)`
+    /// with no Light counterpart at all -- unlike every surface token above
+    /// (`cardFill`, `cardStroke`, `neutral`), which already went through a
+    /// Dark/Light split. The gap this closes: a hue tuned to pop against
+    /// near-black reads as neon/candy-colored transplanted unmodified onto
+    /// Light's pale pastel ground, which is what a real-device report
+    /// described as the Light theme "still feeling cheap" after cardFill/
+    /// cardStroke/materials had already each had their own pass (see their
+    /// doc comments above) -- the surfaces were never the actual gap.
+    ///
+    /// Darkened ~18% for the contrast a pale background needs, then pulled
+    /// 10% toward the darkened colour's own gray so the hue calms rather
+    /// than just dims -- same hue family, so metric identity (a red
+    /// Recovery reads as red in both appearances) is unchanged, only the
+    /// vividness that reads as "toy-like" against white is toned down.
+    private static func adaptiveMetric(_ dark: (Double, Double, Double)) -> Color {
+        let dimmed = (dark.0 * 0.82, dark.1 * 0.82, dark.2 * 0.82)
+        let gray = (dimmed.0 + dimmed.1 + dimmed.2) / 3
+        let light = (
+            dimmed.0 * 0.90 + gray * 0.10,
+            dimmed.1 * 0.90 + gray * 0.10,
+            dimmed.2 * 0.90 + gray * 0.10
+        )
+        return adaptive(dark: dark, light: light)
+    }
+
     enum Metric {
         /// Recovery bands. Green / amber / red, the convention every recovery
         /// product shares — breaking it would cost more in comprehension than
         /// any originality gains.
-        static let recoveryHigh = Color(red: 0.00, green: 0.878, blue: 0.561)
-        static let recoveryMid = Color(red: 1.00, green: 0.761, blue: 0.294)
-        static let recoveryLow = Color(red: 1.00, green: 0.302, blue: 0.427)
+        static let recoveryHigh = Theme.adaptiveMetric((0.00, 0.878, 0.561))
+        static let recoveryMid = Theme.adaptiveMetric((1.00, 0.761, 0.294))
+        static let recoveryLow = Theme.adaptiveMetric((1.00, 0.302, 0.427))
 
-        static let strain = Color(red: 0.290, green: 0.659, blue: 1.00)
-        static let sleep = Color(red: 0.482, green: 0.380, blue: 1.00)
-        static let battery = Color(red: 0.153, green: 0.851, blue: 0.753)
-        static let hrv = Color(red: 1.00, green: 0.435, blue: 0.780)
-        static let heart = Color(red: 1.00, green: 0.365, blue: 0.365)
-        static let respiratory = Color(red: 0.478, green: 0.827, blue: 1.00)
-        static let temperature = Color(red: 1.00, green: 0.600, blue: 0.310)
-        static let oxygen = Color(red: 0.400, green: 0.780, blue: 1.00)
+        static let strain = Theme.adaptiveMetric((0.290, 0.659, 1.00))
+        static let sleep = Theme.adaptiveMetric((0.482, 0.380, 1.00))
+        static let battery = Theme.adaptiveMetric((0.153, 0.851, 0.753))
+        static let hrv = Theme.adaptiveMetric((1.00, 0.435, 0.780))
+        static let heart = Theme.adaptiveMetric((1.00, 0.365, 0.365))
+        static let respiratory = Theme.adaptiveMetric((0.478, 0.827, 1.00))
+        static let temperature = Theme.adaptiveMetric((1.00, 0.600, 0.310))
+        static let oxygen = Theme.adaptiveMetric((0.400, 0.780, 1.00))
     }
 
     /// Sleep stage colours, dark → light, matching the depth they represent.
@@ -425,6 +454,16 @@ struct GlassCard: ViewModifier {
                             .strokeBorder(Theme.cardStroke, lineWidth: 1)
                     }
             }
+            // Flattens the padded content + four stacked background layers
+            // into one rasterized layer before the shadow below is computed.
+            // Without this, `.shadow` has to derive a shadow from every
+            // sublayer independently -- the material fill, each overlay
+            // shape, and every glyph/icon in the card's own content -- which
+            // is real, compounding cost multiplied by the 100+ cards on
+            // screen across the app, and the actual cause a real-device
+            // report traced to laggy scrolling. One flattened shadow reads
+            // identically and costs a small fraction as much.
+            .compositingGroup()
             .shadow(color: Theme.cardShadow, radius: 16, x: 0, y: 8)
     }
 }
