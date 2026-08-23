@@ -101,7 +101,7 @@ struct TodayView: View {
                 StressCard(stress: stress, todayStrain: context.strain.value).entrance(1)
             }
             ringsCard(context).entrance(2)
-            HealthPulseStrip(vitals: context.vitals).entrance(2)
+            HealthPulseStrip(context: context, recentNights: coordinator.recentNights).entrance(2)
             SleepSummaryStrip(context: context).entrance(3)
             // Tonight's countdown used to live only on the Sleep tab, so the
             // morning screen said nothing about the night still ahead. It's
@@ -140,10 +140,14 @@ struct TodayView: View {
             // is the rarest and most consequential thing on this screen, and it
             // renders as nothing at all when there's nothing to say.
             HealthRadarCard(radar: context.healthRadar).entrance(6)
-            RecoveryBreakdownCard(recovery: context.recovery).entrance(7)
-            VitalsCard(vitals: context.vitals).entrance(8)
-            HRVStatusCard(status: context.hrvStatus).entrance(8)
-            RegularityCard(regularity: context.regularity).entrance(8)
+            // Recovery Breakdown, Vitals, HRV Status, and Regularity used to
+            // render their full detail directly here -- four diagnostic
+            // panels between the reader and the bottom of the screen. The
+            // Health Pulse strip above is their glance now; each one's full
+            // detail is a tap away (`RecoveryDetailView`, `HealthRadarView`,
+            // `RegularityDetailView`), which is what makes it possible to
+            // read Today's actual verdict in ten seconds instead of
+            // scrolling past a diagnostics panel every morning.
             // Cardiovascular Age deliberately isn't here: it's an
             // internally-invented formula, not a validated clinical measure,
             // and sitting beside baseline-derived cards like Recovery lent it
@@ -534,89 +538,6 @@ struct RecoveryBreakdownCard: View {
             }
         }
         .glassCard()
-    }
-}
-
-/// Apple-Health-style vitals panel: typical vs outlier.
-struct VitalsCard: View {
-    let vitals: VitalsStatus
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                SectionHeader(title: "Vitals", subtitle: vitals.detail, systemImage: "waveform.path.ecg")
-                Spacer(minLength: 8)
-                MetricInfoButton(
-                    title: "Vitals",
-                    symbol: "waveform.path.ecg",
-                    tint: Theme.Metric.recoveryHigh,
-                    explanation: [
-                        "Each row compares last night's reading against the typical range Zoon has built from your own recent history -- not a clinical or population range.",
-                        "A single reading outside the typical range is common and usually not meaningful on its own. It's worth attention mainly if several nights in a row land outside it."
-                    ]
-                )
-                StatusPill(
-                    text: vitals.outliers.isEmpty ? "Typical" : "\(vitals.outliers.count)",
-                    systemImage: vitals.outliers.isEmpty ? "checkmark" : "exclamationmark",
-                    tint: vitals.outliers.isEmpty ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
-                )
-            }
-
-            ForEach(vitals.metrics) { metric in
-                VitalRow(metric: metric)
-            }
-
-            Text(SleepInsight.disclaimer)
-                .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .glassCard()
-    }
-}
-
-private struct VitalRow: View {
-    let metric: VitalsStatus.Metric
-
-    private var tint: Color {
-        switch metric.state {
-        case .typical: Theme.Metric.recoveryHigh
-        case .aboveTypical, .belowTypical: Theme.Metric.recoveryMid
-        case .unavailable: .secondary
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: metric.kind.symbol)
-                .font(Theme.text(12))
-                .foregroundStyle(tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(metric.kind.label)
-                    .font(Theme.label(12, weight: .medium))
-                if let range = metric.formattedRange {
-                    Text("Typical \(range)")
-                        .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-
-            Spacer()
-
-            Text(metric.formattedValue)
-                .font(Theme.label(13, weight: .semibold))
-                .monospacedDigit()
-
-            Image(systemName: metric.state.symbol)
-                .font(Theme.text(11))
-                .foregroundStyle(tint)
-                .frame(width: 16)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(metric.kind.label)
-        .accessibilityValue("\(metric.formattedValue), \(metric.state.label)")
     }
 }
 
