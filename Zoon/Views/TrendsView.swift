@@ -76,6 +76,9 @@ struct TrendsView: View {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
                     WhatChangedCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
                     DiscoveriesCard(findings: JournalCorrelator().findings(from: coordinator.journalObservations()))
+                    if let context = coordinator.state.context {
+                        CoreIntelligenceGrid(context: context)
+                    }
                     insightsHub
 
                     if nights.count < 2 {
@@ -119,10 +122,9 @@ struct TrendsView: View {
 
     private var insightsHub: some View {
         VStack(spacing: 8) {
-            hubRow("Sleep Need", "target", Theme.Metric.sleep) { SleepNeedView() }
-            hubRow("Sleep Debt", "chart.line.downtrend.xyaxis", Theme.Metric.temperature) { SleepDebtView() }
-            hubRow("Body Clock", "clock", Theme.Metric.battery) { BodyClockView() }
-            hubRow("Body Signals", "dot.radiowaves.left.and.right", Theme.Metric.recoveryMid) { HealthRadarView() }
+            // Sleep Need, Sleep Debt, Body Clock, and Body Signals moved to
+            // `CoreIntelligenceGrid` above -- a 2x2 grid of distinct visuals
+            // rather than four more identical rows here.
             hubRow("Cause Finder", "sparkle.magnifyingglass", Theme.Metric.hrv) { CauseFinderView() }
             hubRow("Sleep Story", "clock.arrow.circlepath", Theme.Metric.sleep) { SleepStoryView() }
             hubRow("Sleep Playbook", "checklist", Theme.Metric.recoveryHigh) { SleepPlaybookView() }
