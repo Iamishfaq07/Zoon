@@ -166,6 +166,7 @@
 		5C56F1983FA33C97F71D8767 /* DateInterval+Subtracting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E98EDB5E5022A03033E5A73 /* DateInterval+Subtracting.swift */; };
 		5E4DDA74EC47B99CD053766B /* CoachChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A6056F83CDEFE5D5D1B851 /* CoachChat.swift */; };
 		5EA91DA4CE2DC82C8268D79F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D31EF0E61E462C6DAC9C5 /* RootView.swift */; };
+		5EDFF7056555887B3CCBEEB5 /* CoreIntelligenceGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3150FC3EEA03A2CC36022FA3 /* CoreIntelligenceGrid.swift */; };
 		5F8ECDD151305F9B5B01837C /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		5FB61CABFDDAD8B9CCC67C46 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
 		5FD7E940C881946CF2A5EF92 /* BodyClockCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B202E4810C0F1C50E34E2DC3 /* BodyClockCard.swift */; };
@@ -532,6 +533,7 @@
 		2F5DD7E52B2623F0A7D68849 /* LightCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachTests.swift"; sourceTree = "<group>"; };
 		2F7C368630DDEC4A2AA747A1 /* DayContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DayContext.swift"; sourceTree = "<group>"; };
 		2FB1A978A10EA12B9D48DB4D /* SoundscapeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundscapeControl.swift"; sourceTree = "<group>"; };
+		3150FC3EEA03A2CC36022FA3 /* CoreIntelligenceGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreIntelligenceGrid.swift"; sourceTree = "<group>"; };
 		32B703D845C762279417E217 /* WeeklyReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyReport.swift"; sourceTree = "<group>"; };
 		32DF84481F1211BF95927815 /* SleepDaySummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDaySummaryTests.swift"; sourceTree = "<group>"; };
 		359A6C66E7D3A1CF1406C6C6 /* DataPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataPrivacyView.swift"; sourceTree = "<group>"; };
@@ -757,6 +759,7 @@
 				B04DB48634B9461AF67635F9,
 				B202E4810C0F1C50E34E2DC3,
 				0056BFA9411ACE233F7DC0D1,
+				3150FC3EEA03A2CC36022FA3,
 				F87DDDFB40C40EF1EEA472F0,
 				13B1CA5190E455E50384AA62,
 				9B0270263CE62B9C1BB2D468,
@@ -1374,6 +1377,7 @@
 				0A7C54E3814C703015DAABFB,
 				5FD7E940C881946CF2A5EF92,
 				F60C9D12E6B768F3CB1F1C06,
+				5EDFF7056555887B3CCBEEB5,
 				E2035CEA799143574AC638C0,
 				032C6B14D3F96F99ED9344B4,
 				D92C20AD9E19D6322BE37D32,
