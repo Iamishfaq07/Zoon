@@ -87,8 +87,38 @@ final class WakeAlarm {
         #endif
     }
 
+    /// Restores across separate `WakeAlarm` instances (`RootView` and
+    /// `SettingsView` each own one -- see this type's doc comment) so
+    /// Settings can show what the alarm is actually set for without
+    /// querying AlarmKit's own store directly. Set on every successful
+    /// `schedule(at:)`, cleared on `cancel()`.
+    private static let scheduledWakeTimeKey = "zoon.wakeAlarm.scheduledWakeTime"
+
+    private(set) var scheduledWakeTime: Date? {
+        didSet {
+            if let scheduledWakeTime {
+                UserDefaults.standard.set(scheduledWakeTime, forKey: Self.scheduledWakeTimeKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.scheduledWakeTimeKey)
+            }
+        }
+    }
+
+    init() {
+        scheduledWakeTime = UserDefaults.standard.object(forKey: Self.scheduledWakeTimeKey) as? Date
+    }
+
     /// Schedules the wake alarm for `wakeTime`, replacing any previously
     /// scheduled one.
+    ///
+    /// A one-shot alarm at this exact moment (`.fixed`), not a repeating
+    /// one. `wakeTime` is this specific night's personalized wake time and
+    /// is recomputed and rescheduled on every foreground activation (see
+    /// `RootView.refreshReminders`) -- a *repeating* weekly alarm at
+    /// whatever hour/minute happened to be current the last time the app
+    /// was opened would keep ringing at that stale time every day the app
+    /// stayed closed, which is a real alarm going off at the wrong time
+    /// rather than merely a missed update.
     ///
     /// - Returns: `true` when a real alarm is now set. `false` means the
     ///   caller should keep relying on the notification — this must never
@@ -99,16 +129,8 @@ final class WakeAlarm {
         #if canImport(AlarmKit)
         guard #available(iOS 26.0, *) else { return false }
 
-        let components = Calendar.current.dateComponents([.hour, .minute], from: wakeTime)
-        guard let hour = components.hour, let minute = components.minute else { return false }
-
         do {
-            let schedule = Alarm.Schedule.relative(
-                .init(
-                    time: .init(hour: hour, minute: minute),
-                    repeats: .weekly([.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday])
-                )
-            )
+            let schedule = Alarm.Schedule.fixed(wakeTime)
 
             // AlarmButton is a value describing a button's label, not an
             // enum with pre-built cases -- "stop" is a role every alarm's
@@ -137,7 +159,8 @@ final class WakeAlarm {
             )
 
             _ = try await AlarmManager.shared.schedule(id: Self.alarmID, configuration: configuration)
-            logger.info("Wake alarm scheduled for \(hour):\(minute)")
+            logger.info("Wake alarm scheduled for \(wakeTime.formatted(.dateTime.hour().minute()))")
+            scheduledWakeTime = wakeTime
             return true
         } catch {
             logger.error("Could not schedule wake alarm: \(error.localizedDescription, privacy: .public)")
@@ -149,6 +172,7 @@ final class WakeAlarm {
     }
 
     func cancel() {
+        scheduledWakeTime = nil
         #if canImport(AlarmKit)
         guard #available(iOS 26.0, *) else { return }
         do {
