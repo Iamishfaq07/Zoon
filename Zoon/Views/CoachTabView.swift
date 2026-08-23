@@ -11,6 +11,12 @@ import SwiftUI
 struct CoachTabView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    /// Bumped to force a fresh read of `CoachChat.unavailabilityReason` in
+    /// `capabilityCard` -- see the polling `.task(id:)` below. Same fix as
+    /// `CoachChatView`'s: that reason reads live system state, not anything
+    /// `@Observable`-tracked, so without this the banner could keep saying
+    /// "the on-device model is still downloading" long after it finished.
+    @State private var availabilityPollTick = 0
 
     var body: some View {
         NavigationStack {
@@ -29,6 +35,12 @@ struct CoachTabView: View {
             .navigationTitle("Coach")
             .navigationBarTitleDisplayMode(.inline)
             .zoonGlobalToolbar()
+            .task(id: availabilityPollTick) {
+                guard CoachChat.unavailabilityReason != nil, CoachChat.isTransientlyUnavailable else { return }
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                guard !Task.isCancelled else { return }
+                availabilityPollTick += 1
+            }
         }
     }
 

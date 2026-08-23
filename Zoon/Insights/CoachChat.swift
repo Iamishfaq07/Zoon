@@ -124,6 +124,25 @@ final class CoachChat {
 
     var isAvailable: Bool { unavailabilityReason == nil }
 
+    /// Whether the current unavailability might resolve on its own without
+    /// the user leaving this screen -- the on-device model finishing a
+    /// download in the background -- as opposed to device ineligibility or
+    /// Apple Intelligence being off, which need the user to act elsewhere
+    /// (a different device, or the Settings app) before anything changes.
+    /// `CoachChatView` uses this to decide whether polling for a status
+    /// change is worth doing at all.
+    static var isTransientlyUnavailable: Bool {
+        #if canImport(FoundationModels)
+        guard #available(iOS 26.0, *) else { return false }
+        if case .unavailable(.modelNotReady) = SystemLanguageModel.default.availability { return true }
+        return false
+        #else
+        return false
+        #endif
+    }
+
+    var isTransientlyUnavailable: Bool { Self.isTransientlyUnavailable }
+
     /// Starts a new session with tonight's numbers -- and, when there's
     /// enough history for one, `SleepDataCoordinator.coachContextDigest()`'s
     /// standing-pattern summary -- as context the model already has, so the
