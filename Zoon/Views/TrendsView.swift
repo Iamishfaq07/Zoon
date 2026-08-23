@@ -228,7 +228,33 @@ struct DurationChartCard: View {
             }
             .chartYAxisLabel("hours")
             .chartXSelection(value: $selectedDate)
+            // Chart-level summary plus per-mark elements still reachable by
+            // swiping in (`.contain`, not `.combine`) -- the redesign spec's
+            // "VoiceOver summary" and "selected-point description" for every
+            // chart, previously none of them had either.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibilitySummary)
+            .accessibilityValue(selectedPointDescription ?? "")
         }
+    }
+
+    private var accessibilitySummary: String {
+        guard !nights.isEmpty else { return "Sleep duration chart. No nights in this period." }
+        let avgMinutes = nights.reduce(0.0) { $0 + $1.timeAsleepMinutes } / Double(nights.count)
+        let metGoal = nights.filter { $0.timeAsleepMinutes >= goalMinutes }.count
+        return """
+        Sleep duration chart. \(nights.count) nights, averaging \
+        \(SleepNightFeatures.formatMinutes(avgMinutes)) against a \
+        \(SleepNightFeatures.formatMinutes(goalMinutes)) goal. \
+        \(metGoal) of \(nights.count) nights met the goal.
+        """
+    }
+
+    private var selectedPointDescription: String? {
+        guard let selectedDate, let night = nights.nearest(toDay: selectedDate) else { return nil }
+        let date = night.date.formatted(.dateTime.weekday(.wide).month().day())
+        let met = night.timeAsleepMinutes >= goalMinutes ? "met the goal" : "below the goal"
+        return "Selected: \(date), \(night.formattedTimeAsleep) asleep, \(met)."
     }
 
     /// Sparse by design -- only nights with a journal entry get a second
@@ -309,6 +335,9 @@ struct HRVChartCard: View {
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartYAxisLabel("ms")
                 .chartXSelection(value: $selectedDate)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(accessibilitySummary)
+                .accessibilityValue(selectedPointDescription ?? "")
             }
         }
     }
@@ -317,6 +346,24 @@ struct HRVChartCard: View {
         let values = points.compactMap(\.avgHRV)
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
+    }
+
+    private var accessibilitySummary: String {
+        guard let mean, let minValue = points.compactMap(\.avgHRV).min(),
+              let maxValue = points.compactMap(\.avgHRV).max() else {
+            return "Heart rate variability chart. No readings in this period."
+        }
+        return """
+        Heart rate variability chart. \(points.count) nights, averaging \
+        \(Int(mean.rounded())) milliseconds, ranging from \(Int(minValue.rounded())) \
+        to \(Int(maxValue.rounded())) milliseconds.
+        """
+    }
+
+    private var selectedPointDescription: String? {
+        guard let selectedDate, let night = points.nearest(toDay: selectedDate), let hrv = night.avgHRV else { return nil }
+        let date = night.date.formatted(.dateTime.weekday(.wide).month().day())
+        return "Selected: \(date), \(Int(hrv.rounded())) milliseconds."
     }
 
     private var unavailable: some View {
@@ -407,7 +454,26 @@ struct SleepDebtChartCard: View {
             }
             .chartYAxisLabel("hours owed")
             .chartXSelection(value: $selectedDate)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibilitySummary)
+            .accessibilityValue(selectedPointDescription ?? "")
         }
+    }
+
+    private var accessibilitySummary: String {
+        guard let latest = points.last else { return "Accumulated sleep debt chart. No data in this period." }
+        let peak = points.map(\.hours).max() ?? latest.hours
+        return """
+        Accumulated sleep debt chart. Currently \(String(format: "%.1f", latest.hours)) \
+        hours owed, peaking at \(String(format: "%.1f", peak)) hours across this period.
+        """
+    }
+
+    private var selectedPointDescription: String? {
+        guard let selectedDate,
+              let point = points.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) else { return nil }
+        let date = point.date.formatted(.dateTime.weekday(.wide).month().day())
+        return "Selected: \(date), \(String(format: "%.1f", point.hours)) hours owed."
     }
 }
 
@@ -510,12 +576,27 @@ struct ConsistencyChartCard: View {
                 }
             }
             .chartXSelection(value: $selectedDate)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibilitySummary)
+            .accessibilityValue(selectedPointDescription ?? "")
         }
     }
 
     private static func clockLabel(_ shiftedHour: Double) -> String {
         let hour = Int((shiftedHour < 0 ? shiftedHour + 24 : shiftedHour).rounded())
         return String(format: "%02d:00", hour % 24)
+    }
+
+    private var accessibilitySummary: String {
+        guard !points.isEmpty else { return "Schedule consistency chart. No nights in this period." }
+        return "Schedule consistency chart, showing bedtime to wake time for \(points.count) nights."
+    }
+
+    private var selectedPointDescription: String? {
+        guard let selectedDate,
+              let point = points.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) else { return nil }
+        let date = point.date.formatted(.dateTime.weekday(.wide).month().day())
+        return "Selected: \(date), bed \(Self.clockLabel(point.bedHour)), wake \(Self.clockLabel(point.wakeHour))."
     }
 }
 

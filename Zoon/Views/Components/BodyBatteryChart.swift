@@ -103,6 +103,9 @@ struct BodyBatteryChart: View {
         }
         .frame(height: height)
         .chartXSelection(value: $selectedDate)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilitySummary)
+        .accessibilityValue(selectedPointDescription ?? "")
     }
 
     /// Points are timestamped continuously through the day, not bucketed —
@@ -111,6 +114,16 @@ struct BodyBatteryChart: View {
     /// once-per-night charts use.
     private func nearestPoint(to date: Date) -> BodyBattery.Point? {
         battery.points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+    }
+
+    private var accessibilitySummary: String {
+        "Body battery chart. Peaked at \(battery.morningPeak) this morning, now at \(battery.current)."
+    }
+
+    private var selectedPointDescription: String? {
+        guard let selectedDate, let point = nearestPoint(to: selectedDate) else { return nil }
+        let time = point.date.formatted(.dateTime.hour().minute())
+        return "\(time): \(Int(point.level.rounded()))"
     }
 
     private var emptyState: some View {
