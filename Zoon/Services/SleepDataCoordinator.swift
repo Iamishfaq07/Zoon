@@ -1141,6 +1141,98 @@ final class SleepDataCoordinator {
         preferences.endExperiment()
     }
 
+    // MARK: - Coach longitudinal context
+
+    /// Compact JSON summary of standing patterns -- this week vs last, the
+    /// current regularity/sleep-need read, and whatever Cause Finder has
+    /// actually found -- fed to `CoachChat` alongside tonight's own numbers.
+    ///
+    /// Before this, Coach's only input was `SleepNightFeatures.summaryForLLM`
+    /// for the one night on screen: it could describe *tonight* but had no
+    /// way to say "your recovery has been climbing all week" or "you tested
+    /// worse after late caffeine" -- both already computed elsewhere in the
+    /// app (`weeklyReport()`, `JournalCorrelator`) and simply never handed to
+    /// the model. This closes that gap the same way `summaryForLLM` closes it
+    /// for one night: a flat, terse, `nil`-omitting JSON payload, not a
+    /// per-turn tool call -- `FoundationModels.Tool` would let the model ask
+    /// for exactly what a given question needs rather than reading a fixed
+    /// digest on every turn, but its exact protocol shape couldn't be
+    /// verified against Apple's actual SDK in this environment, and 14 wrong
+    /// tool conformances is a worse failure mode than an eagerly-built digest
+    /// that's merely more context than any single question needs. Live
+    /// tool-calling is a clearly scoped follow-up, not implemented here.
+    func coachContextDigest() -> String {
+        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations())
+            .sorted { abs($0.percentChange) > abs($1.percentChange) }
+            .prefix(5)
+
+        let report = weeklyReport()
+        let context = state.context
+
+        let payload = CoachContextDigest(
+            nightsLogged: recentNights.count,
+            weekAvgRecoveryPct: report?.averageRecovery?.rounded(to: 0),
+            weekAvgSleepPerformancePct: report?.averageSleepPerformance?.rounded(to: 0),
+            weekAvgHrvMs: report?.averageHRV?.rounded(to: 0),
+            weekAvgRestingHeartRate: report?.averageRestingHR?.rounded(to: 0),
+            recoveryTrendPct: report?.recoveryTrend?.rounded(to: 0),
+            sleepTrendPct: report?.sleepTrend?.rounded(to: 0),
+            hrvTrendPct: report?.hrvTrend?.rounded(to: 0),
+            goalHitNightsThisWeek: report?.goalHitCount,
+            currentRegularityIndex: context?.regularity.index.rounded(to: 0),
+            currentRegularityBand: context?.regularity.hasEnoughData == true ? context?.regularity.band.label : nil,
+            learnedSleepNeedMinutes: context?.learnedSleepNeed.minutes.rounded(to: 0),
+            sleepDebtMinutes: context?.sleepNeed.debtMinutes.rounded(to: 0),
+            activeExperimentTag: preferences.activeExperimentTag?.label,
+            causeFinderFindings: findings.map {
+                CoachContextDigest.CorrelatorFinding(
+                    behavior: $0.tag.label,
+                    metric: $0.metric.shortLabel,
+                    percentChange: Int($0.percentChange.rounded()),
+                    isImprovement: $0.isImprovement,
+                    confidence: $0.confidence.rawValue
+                )
+            }
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(payload),
+              let json = String(data: data, encoding: .utf8) else {
+            return "{}"
+        }
+        return json
+    }
+
+    /// Flat DTO mirroring `SleepNightFeatures.LLMPayload` -- `nil` fields
+    /// omitted rather than encoded as `null`, so a question the data can't
+    /// answer yet doesn't dress up as a measured zero.
+    private struct CoachContextDigest: Encodable {
+        let nightsLogged: Int
+        let weekAvgRecoveryPct: Double?
+        let weekAvgSleepPerformancePct: Double?
+        let weekAvgHrvMs: Double?
+        let weekAvgRestingHeartRate: Double?
+        let recoveryTrendPct: Double?
+        let sleepTrendPct: Double?
+        let hrvTrendPct: Double?
+        let goalHitNightsThisWeek: Int?
+        let currentRegularityIndex: Double?
+        let currentRegularityBand: String?
+        let learnedSleepNeedMinutes: Double?
+        let sleepDebtMinutes: Double?
+        let activeExperimentTag: String?
+        let causeFinderFindings: [CorrelatorFinding]
+
+        struct CorrelatorFinding: Encodable {
+            let behavior: String
+            let metric: String
+            let percentChange: Int
+            let isImprovement: Bool
+            let confidence: String
+        }
+    }
+
     /// This week vs last week.
     func weeklyReport() -> WeeklyReport? {
         guard recentNights.count >= 3 else { return nil }
