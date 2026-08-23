@@ -242,22 +242,23 @@ extension SleepRegularity {
         }
         switch band {
         case .exemplary:
-            return "Your sleep timing is remarkably consistent. Across the research, regularity predicts long-term health outcomes more strongly than duration does — this is the harder win and you already have it."
+            return "Your sleep timing is remarkably consistent. Population studies have associated steady sleep timing like this with better long-term health outcomes — this is a harder habit to build than logging hours, and you already have it."
         case .consistent:
-            return "Your schedule holds together well. Tightening the remaining drift is worth more than chasing an extra twenty minutes in bed."
+            return "Your schedule holds together well. Tightening the remaining drift is likely worth more than chasing an extra twenty minutes in bed."
         case .variable:
-            return "Your sleep timing moves around noticeably. Anchoring your wake time — even on free days — is the single most effective change available to you."
+            return "Your sleep timing moves around noticeably. Anchoring your wake time — even on free days — tends to steady it more than adjusting bedtime alone."
         case .erratic:
-            return "Your sleep timing varies enough that your body clock never fully settles. Pick one wake time and hold it for two weeks; everything else gets easier afterwards."
+            return "Your sleep timing varies enough that your body clock may not be settling into a steady rhythm. Picking one wake time and holding it for two weeks is a reasonable place to start."
         }
     }
 
     var socialJetlagDetail: String? {
         guard let jetlag = socialJetlagHours, jetlag >= 0.5 else { return nil }
         return String(
-            format: "Your body clock shifts about %.1fh between work days and free days — physiologically similar to flying %@ timezones every weekend and back again.",
+            format: "Your body clock shifts about %.1fh between work days and free days — a swing that size can feel a lot like crossing %@ time zone%@ every weekend, without the travel.",
             jetlag,
-            jetlag >= 1.5 ? "two" : "one"
+            jetlag >= 1.5 ? "two" : "one",
+            jetlag >= 1.5 ? "s" : ""
         )
     }
 }
