@@ -79,38 +79,48 @@ struct HealthRadarView: View {
     }
 
     private func baselineBarRow(_ metric: VitalsStatus.Metric, drift: HealthRadar.Signal?) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: metric.kind.symbol)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                Text(metric.kind.label)
-                    .font(Theme.label(13, weight: .semibold))
-                Spacer()
-                Text(metric.formattedValue)
-                    .font(Theme.label(14, weight: .bold))
-                    .monospacedDigit()
-                if let drift {
-                    Image(systemName: drift.direction.symbol)
-                        .font(Theme.text(11, weight: .bold))
-                        .foregroundStyle(Theme.Metric.recoveryMid)
+        // Tap → trend -- the redesign spec's ask for these rows, previously
+        // static (no `onTapGesture`/`NavigationLink` at all).
+        NavigationLink {
+            MetricTrendView(kind: metric.kind)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: metric.kind.symbol)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18)
+                    Text(metric.kind.label)
+                        .font(Theme.label(13, weight: .semibold))
+                    Spacer()
+                    Text(metric.formattedValue)
+                        .font(Theme.label(14, weight: .bold))
+                        .monospacedDigit()
+                    if let drift {
+                        Image(systemName: drift.direction.symbol)
+                            .font(Theme.text(11, weight: .bold))
+                            .foregroundStyle(Theme.Metric.recoveryMid)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(Theme.text(11, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+
+                BaselineLaneView(
+                    value: metric.value,
+                    baseline: metric.baseline,
+                    tolerance: metric.tolerance,
+                    tint: drift != nil ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh
+                )
+
+                if let range = metric.formattedRange {
+                    Text("Your typical range: \(range)")
+                        .font(Theme.text(10))
+                        .foregroundStyle(.tertiary)
                 }
             }
-
-            BaselineLaneView(
-                value: metric.value,
-                baseline: metric.baseline,
-                tolerance: metric.tolerance,
-                tint: drift != nil ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh
-            )
-
-            if let range = metric.formattedRange {
-                Text("Your typical range: \(range)")
-                    .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
-            }
+            .glassCard()
         }
-        .glassCard()
+        .buttonStyle(PressableStyle())
     }
 
     private func multiSignalNote(_ radar: HealthRadar) -> some View {
