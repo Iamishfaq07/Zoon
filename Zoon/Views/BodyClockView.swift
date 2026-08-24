@@ -36,12 +36,7 @@ struct BodyClockView: View {
         .nightBackground()
         .navigationTitle("Body Clock")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTransition(zoomTransition)
-    }
-
-    private var zoomTransition: NavigationTransition {
-        guard let zoomID, let zoomNamespace else { return .automatic }
-        return .zoom(sourceID: zoomID, in: zoomNamespace)
+        .navigationTransition(zoomNamespace == nil ? .automatic : .zoom(sourceID: zoomID ?? "", in: zoomNamespace!))
     }
 
     // MARK: - Ring
