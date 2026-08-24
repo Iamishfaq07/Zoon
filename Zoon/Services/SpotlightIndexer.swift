@@ -101,6 +101,12 @@ enum SpotlightIndexer {
                 subtitle: "Log what might affect tonight",
                 keywords: ["journal", "log", "habit", "caffeine", "alcohol", "tag"]
             )
+        case .bodyClock:
+            Entry(
+                title: "Body Clock",
+                subtitle: "Your preferred sleep window",
+                keywords: ["body clock", "circadian", "rhythm", "chronotype", "window", "alignment"]
+            )
         }
     }
 

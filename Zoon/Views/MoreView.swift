@@ -69,7 +69,7 @@ struct MoreView: View {
                 case .settings: SettingsView()
                 case .badges: AchievementsView()
                 // Owned by the Sleep tab.
-                case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck: EmptyView()
+                case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck, .bodyClock: EmptyView()
                 // Presented as its own sheet from GlobalPresentation, not
                 // reachable through this stack.
                 case .journal: EmptyView()

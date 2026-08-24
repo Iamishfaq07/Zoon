@@ -254,7 +254,7 @@ jobs:
           # every tab, not three of the current four.
           FAILED=0
           for tab in onboarding today sleep trends coach journal more \
-                     sleepDetail soundscapes nap breathing snoreCheck \
+                     sleepDetail bodyClock soundscapes nap breathing snoreCheck \
                      report settings badges; do
             shoot "$tab" || FAILED=1
           done

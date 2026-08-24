@@ -187,7 +187,7 @@ struct RootView: View {
     /// longer live on the tab bar.
     private func push(_ destination: DeepLink.Destination) {
         switch destination {
-        case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck:
+        case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck, .bodyClock:
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
@@ -269,6 +269,7 @@ struct SleepTabView: View {
                 case .nap: NapView()
                 case .breathing: BreathingView()
                 case .snoreCheck: SnoreCheckView()
+                case .bodyClock: BodyClockView()
                 case .sleepDetail:
                     if let context = coordinator.state.context {
                         SleepDetailView(context: context)
