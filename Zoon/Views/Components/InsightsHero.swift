@@ -15,6 +15,15 @@ struct InsightsHero: View {
     @Environment(UserPreferences.self) private var preferences
     let goalMinutes: Double
 
+    /// The redesign spec's hero is scoped to one fixed window ("+3 this
+    /// month"); this exposes the 14/30/90-day switch `SleepHealthView`
+    /// itself already offers, since the hero previously had none at all.
+    /// Kept outside the `NavigationLink` below rather than nested inside its
+    /// label -- a `Picker` embedded in a `NavigationLink`'s label doesn't
+    /// reliably get its own tap in SwiftUI, since the whole label is one tap
+    /// target.
+    @State private var window: SleepHealth.Window = .month
+
     /// Dated so `compute` can scope each call to its own window -- both
     /// calls below used to receive the exact same undated feelings array
     /// regardless of which period each was supposedly scoring.
@@ -26,16 +35,16 @@ struct InsightsHero: View {
 
     private var current: SleepHealth {
         SleepHealth.compute(
-            window: .month, goalMinutes: goalMinutes,
+            window: window, goalMinutes: goalMinutes,
             nights: coordinator.recentNights, morningCheckIns: checkIns,
             obligationWeekdays: preferences.obligationWeekdays
         )
     }
 
     private var previous: SleepHealth {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -SleepHealth.Window.month.rawValue, to: .now) ?? .distantPast
+        let cutoff = Calendar.current.date(byAdding: .day, value: -window.rawValue, to: .now) ?? .distantPast
         return SleepHealth.compute(
-            window: .month, goalMinutes: goalMinutes,
+            window: window, goalMinutes: goalMinutes,
             nights: coordinator.recentNights, morningCheckIns: checkIns,
             obligationWeekdays: preferences.obligationWeekdays, now: cutoff
         )
@@ -47,6 +56,20 @@ struct InsightsHero: View {
     }
 
     var body: some View {
+        VStack(spacing: 8) {
+            windowPicker
+            card
+        }
+    }
+
+    private var windowPicker: some View {
+        Picker("Window", selection: $window) {
+            ForEach(SleepHealth.Window.allCases) { Text($0.label).tag($0) }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var card: some View {
         NavigationLink {
             SleepHealthView()
         } label: {
@@ -73,7 +96,7 @@ struct InsightsHero: View {
                             StatusPill(text: band.label, tint: Theme.Metric.recoveryHigh)
                         }
                         if let trend, trend != 0 {
-                            Label("\(trend > 0 ? "+" : "")\(trend) this month", systemImage: trend > 0 ? "arrow.up.right" : "arrow.down.right")
+                            Label("\(trend > 0 ? "+" : "")\(trend) vs prior \(window.label.lowercased())", systemImage: trend > 0 ? "arrow.up.right" : "arrow.down.right")
                                 .font(Theme.text(11, weight: .semibold))
                                 .foregroundStyle(trend > 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
                         }

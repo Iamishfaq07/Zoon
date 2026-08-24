@@ -80,7 +80,12 @@ struct WhatChangedCard: View {
             ))
         }
 
-        return result
+        // Capped at 3 -- the redesign audit found this card could show 4
+        // rows (sleep time, HRV, bedtime steadiness, sleep debt) when the
+        // spec caps it at 3. Debt is the one most likely to drop off the
+        // end since it alone needs a full 14-night series where the other
+        // three don't.
+        return Array(result.prefix(3))
     }
 
     var body: some View {
