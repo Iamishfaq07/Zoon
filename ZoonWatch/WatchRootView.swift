@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 /// Four pages, swiped horizontally -- the redesign spec's "glanceable"
 /// count for the watch. This used to run to six: Sleep Intelligence,
@@ -16,6 +17,7 @@ import SwiftUI
 struct WatchRootView: View {
 
     @Environment(WatchLink.self) private var link
+    @State private var showsQuickLog = false
 
     var body: some View {
         TabView {
@@ -39,6 +41,112 @@ struct WatchRootView: View {
         }
         .tabViewStyle(.verticalPage)
         .containerBackground(Theme.watchBackground, for: .tabView)
+        // A long-press rather than a fifth page or a toolbar button: the four
+        // pages above are deliberately "check every glance" content (see the
+        // doc comment above), and logging is the opposite -- rare, deliberate,
+        // and not something that should cost a page in the every-glance swipe.
+        .onLongPressGesture {
+            WKInterfaceDevice.current().play(.click)
+            showsQuickLog = true
+        }
+        .sheet(isPresented: $showsQuickLog) {
+            QuickLogView()
+        }
+    }
+}
+
+/// Log from the wrist: the redesign spec's ask for Morning Check-In, Nap,
+/// Caffeine, and Alcohol quick actions, reached by a long-press from any
+/// page rather than their own dedicated swipe pages.
+///
+/// Sent over `WatchLink.sendQuickAction`, which queues via
+/// `transferUserInfo` -- delivery is not immediate or confirmed back to the
+/// watch, so every action here shows an optimistic local confirmation
+/// (checkmark + haptic) rather than waiting on a round trip the phone might
+/// not complete for hours if it's out of range.
+struct QuickLogView: View {
+
+    @Environment(WatchLink.self) private var link
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmedID: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Log") {
+                    logRow(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
+                        link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                    }
+                    logRow(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
+                        link.sendQuickAction(.behaviorTag(rawValue: "caffeineLate"))
+                    }
+                }
+
+                Section("Nap") {
+                    ForEach([10, 20, 30], id: \.self) { minutes in
+                        logRow(id: "nap\(minutes)", label: "\(minutes) min", symbol: "powersleep") {
+                            link.sendQuickAction(.nap(minutes: minutes))
+                        }
+                    }
+                }
+
+                Section("Morning check-in") {
+                    ForEach(1...5, id: \.self) { rawValue in
+                        logRow(
+                            id: "feeling\(rawValue)",
+                            label: Self.feelingLabel(rawValue),
+                            symbol: Self.feelingSymbol(rawValue)
+                        ) {
+                            link.sendQuickAction(.morningFeeling(rawValue: rawValue))
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Quick Log")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func logRow(id: String, label: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button {
+            WKInterfaceDevice.current().play(.success)
+            action()
+            confirmedID = id
+        } label: {
+            HStack {
+                Label(label, systemImage: symbol)
+                Spacer()
+                if confirmedID == id {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.Metric.recoveryHigh)
+                }
+            }
+        }
+    }
+
+    private static func feelingLabel(_ rawValue: Int) -> String {
+        switch rawValue {
+        case 1: "Terrible"
+        case 2: "Poor"
+        case 3: "Okay"
+        case 4: "Good"
+        default: "Great"
+        }
+    }
+
+    private static func feelingSymbol(_ rawValue: Int) -> String {
+        switch rawValue {
+        case 1: "face.dashed"
+        case 2: "cloud.rain"
+        case 3: "minus.circle"
+        case 4: "sun.min"
+        default: "sun.max"
+        }
     }
 }
 
@@ -318,4 +426,9 @@ struct WaitingPage: View {
 
 #Preview("Waiting") {
     WaitingPage(isActivated: true)
+}
+
+#Preview("Quick Log") {
+    QuickLogView()
+        .environment(WatchLink())
 }

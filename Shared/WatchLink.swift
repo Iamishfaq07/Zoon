@@ -60,6 +60,17 @@ final class WatchLink: NSObject {
     /// than silently losing the night's only phone-to-watch hand-off.
     private var pendingSnapshot: SleepSnapshot?
 
+    /// Key for a watch quick action in a `transferUserInfo` payload -- see
+    /// `sendQuickAction(_:)` below for why this is a different transport from
+    /// the snapshot's `updateApplicationContext`.
+    private static let quickActionKey = "quickAction"
+
+    /// Phone side only: set by whoever owns the journal/nap stores, to apply
+    /// an action the watch sent. `WatchLink` itself has no business touching
+    /// `JournalStore`/`NapStore` -- those are app-only types this file (built
+    /// into the watch and widget targets too) can't depend on.
+    var onQuickAction: ((WatchQuickAction) -> Void)?
+
     override init() {
         super.init()
     }
@@ -128,6 +139,29 @@ final class WatchLink: NSObject {
         #endif
     }
 
+    /// Watch side: log a quick action, to be applied on the phone next time
+    /// it's reachable.
+    ///
+    /// `transferUserInfo`, not `updateApplicationContext`: the snapshot is
+    /// "only the latest state ever matters", so overwriting is correct there.
+    /// A logged caffeine tap is the opposite -- every one of them matters, and
+    /// two taps a minute apart must arrive as two deliveries, not collapse
+    /// into whichever was still queued when the phone reconnects.
+    func sendQuickAction(_ action: WatchQuickAction) {
+        #if canImport(WatchConnectivity)
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+
+        do {
+            let data = try JSONEncoder().encode(action)
+            session.transferUserInfo([Self.quickActionKey: data])
+        } catch {
+            logger.error("Could not send quick action: \(error.localizedDescription, privacy: .public)")
+        }
+        #endif
+    }
+
     private func apply(_ context: [String: Any]) {
         if context[Self.deletionKey] as? Bool == true {
             snapshot = nil
@@ -188,6 +222,25 @@ extension WatchLink: WCSessionDelegate {
         }
     }
 
+    /// Phone side: a quick action queued by `transferUserInfo` arrived.
+    /// `transferUserInfo` delivers to whichever side didn't send it, so on
+    /// the watch (which has no `onQuickAction` handler) this is simply a
+    /// no-op fire.
+    nonisolated func session(
+        _ session: WCSession,
+        didReceiveUserInfo userInfo: [String: Any]
+    ) {
+        guard let data = userInfo[Self.quickActionKey] as? Data else { return }
+        Task { @MainActor in
+            do {
+                let action = try JSONDecoder().decode(WatchQuickAction.self, from: data)
+                onQuickAction?(action)
+            } catch {
+                logger.error("Could not decode quick action: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
     // Required on iOS only, and both are no-ops here: the session is
     // reactivated on the next launch anyway.
     #if os(iOS)
@@ -200,3 +253,24 @@ extension WatchLink: WCSessionDelegate {
     #endif
 }
 #endif
+
+/// A wrist-logged moment, sent watch → phone.
+///
+/// Raw identifiers rather than `BehaviorTag`/`MorningFeeling` themselves:
+/// both live in `Zoon/Models/JournalEntry.swift`, an app-only file this one
+/// (compiled into the watch and widget targets too) can't import. The phone
+/// side re-resolves the identifier against `BehaviorTag(rawValue:)` and
+/// drops anything it doesn't recognise -- the same "unknown decays to
+/// ignored, not to a crash" rule `JournalEntry.tagIdentifiers` already uses.
+enum WatchQuickAction: Codable, Sendable {
+    /// Toggle a behaviour tag on today's journal entry. `rawValue` matches
+    /// `BehaviorTag.rawValue` (e.g. "alcohol", "caffeineLate").
+    case behaviorTag(rawValue: String)
+    /// Set today's Morning Check-In feeling. `rawValue` matches
+    /// `MorningFeeling.rawValue` (1...5).
+    case morningFeeling(rawValue: Int)
+    /// A nap of this length, ending now -- the watch has no reliable way to
+    /// run a live countdown that also survives the app being backgrounded,
+    /// so this logs a completed nap retroactively rather than starting one.
+    case nap(minutes: Int)
+}
