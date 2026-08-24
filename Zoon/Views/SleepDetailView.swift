@@ -215,6 +215,14 @@ struct SleepDetailView: View {
                     "There's no universal 'normal' count; it's most useful compared against your own recent nights rather than a fixed target."
                 ]
             )
+            row(
+                "Time awake overnight", SleepNightFeatures.formatMinutes(context.night.awakeMinutes),
+                definitionTitle: "WASO", definitionSymbol: "moon.zzz",
+                definition: [
+                    "Wake After Sleep Onset -- the total time spent awake between falling asleep and your final wake-up, added across every awakening rather than just how many there were.",
+                    "Under about 20 minutes total is typical for an efficient night. This is the same time that's subtracted out of total sleep time and time in bed above."
+                ]
+            )
         }
         .glassCard()
     }
