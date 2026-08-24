@@ -58,6 +58,7 @@ struct TodayView: View {
             } else {
                 morningBrief(context).entrance(0)
                 FloatingMetricCluster(
+                    context: context,
                     timeAsleepMinutes: context.night.timeAsleepMinutes,
                     needMinutes: context.sleepNeed.totalNeedMinutes,
                     debtMinutes: context.night.sleepDebtMinutes ?? 0
