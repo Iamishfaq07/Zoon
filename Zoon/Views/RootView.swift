@@ -215,18 +215,14 @@ struct SleepTabView: View {
                 VStack(spacing: Theme.stackSpacing) {
                     if let context = coordinator.state.context {
                         SleepNeedCard(need: context.sleepNeed).entrance(0)
-                        NavigationLink {
-                            SleepDetailView(context: context)
-                        } label: {
-                            toolRow(
-                                "Last night in full",
-                                detail: context.night.formattedTimeAsleep,
-                                symbol: "chart.xyaxis.line",
-                                tint: Theme.Metric.sleep
-                            )
-                        }
-                        .buttonStyle(PressableStyle())
-                        .entrance(1)
+                        // A live hypnogram preview, not a generic icon+label
+                        // row -- the redesign spec's complaint was that this
+                        // tab's interactive content sat one tap behind a
+                        // list row indistinguishable from "Past Nights"
+                        // below it. Reuses `SleepSummaryStrip` as-is (already
+                        // doing exactly this on Today) rather than a second,
+                        // parallel implementation of the same preview.
+                        SleepSummaryStrip(context: context).entrance(1)
                         NavigationLink {
                             NightHistoryView()
                         } label: {
