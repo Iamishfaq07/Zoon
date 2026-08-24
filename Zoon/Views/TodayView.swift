@@ -174,6 +174,19 @@ struct TodayView: View {
     /// immediately below spells out what to actually do about it.
     private func morningBrief(_ context: DayContext) -> some View {
         VStack(alignment: .leading, spacing: 14) {
+            heroSection(context)
+            briefCard(context)
+        }
+    }
+
+    /// The orb itself, deliberately not inside `.glassCard()` -- the
+    /// redesign spec singles this hero out as the one thing on the screen
+    /// that shouldn't read as "a card among cards." "7h52 slept / 8h10
+    /// estimated need" sits right under it, the other half of the spec's ask
+    /// here (the headline text was Recovery-derived, not a slept/need
+    /// pairing, until now).
+    private func heroSection(_ context: DayContext) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             if context.isMock {
                 StatusPill(text: "Sample data", systemImage: "wand.and.stars", tint: Theme.Metric.sleep)
             }
@@ -194,6 +207,11 @@ struct TodayView: View {
                         .font(Theme.label(18, weight: .semibold))
                         .fixedSize(horizontal: false, vertical: true)
 
+                    Text("\(context.night.formattedTimeAsleep) slept · \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) estimated need")
+                        .font(Theme.text(12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     // `MetricConfidence.label` already reads "Moderate
                     // confidence" / "High confidence" -- appending the word
                     // again rendered "Moderate confidence confidence" in the
@@ -212,13 +230,16 @@ struct TodayView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
 
+    private func briefCard(_ context: DayContext) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
             if !context.sleepIntelligence.components.isEmpty {
-                Divider().overlay(Theme.cardStroke)
                 WhyScoreWaterfall(components: context.sleepIntelligence.components, context: context)
+                Divider().overlay(Theme.cardStroke)
             }
 
-            Divider().overlay(Theme.cardStroke)
             VStack(alignment: .leading, spacing: 5) {
                 Label("One action for tonight", systemImage: "checkmark.circle.fill")
                     .font(Theme.label(12, weight: .bold))
