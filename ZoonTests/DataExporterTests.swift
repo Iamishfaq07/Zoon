@@ -122,6 +122,69 @@ final class DataExporterTests: XCTestCase {
         XCTAssertNil(decoded.preferences?.preferredSleepSourceName)
     }
 
+    /// This is the gap the format-2 test above doesn't cover: an *old*
+    /// export with a populated `nights` array, where each night JSON object
+    /// itself predates fields like `isMock`, `stageSegments`,
+    /// `secondaryAsleepMinutes`, and `timeZoneIdentifier`. Those are
+    /// non-Optional properties with a declared default -- and Swift's
+    /// synthesized `Decodable` does not apply a property's default value for
+    /// a missing key, only `Optional`-typed properties get that leniency for
+    /// free. Before `SleepNightFeatures` grew its own `init(from:)`, a real
+    /// user's pre-format-3 backup with actual sleep history would fail this
+    /// decode entirely and surface as "That file isn't a Zoon export, or
+    /// it's damaged" -- a real backup misreported as corrupt.
+    func testOldNightJSONMissingNewerFieldsStillDecodes() throws {
+        let json = """
+        {
+            "formatVersion": 1,
+            "exportedAt": "2023-01-01T00:00:00Z",
+            "goalMinutes": 480,
+            "nights": [
+                {
+                    "date": "2023-01-01T07:00:00Z",
+                    "bedtime": "2023-01-01T00:00:00Z",
+                    "wakeTime": "2023-01-01T07:00:00Z",
+                    "timeInBedMinutes": 420,
+                    "timeAsleepMinutes": 400,
+                    "sleepEfficiencyPercent": 95.2,
+                    "coreMinutes": 200,
+                    "deepMinutes": 80,
+                    "remMinutes": 90,
+                    "unspecifiedAsleepMinutes": 30,
+                    "awakeMinutes": 20,
+                    "wakeCount": 3,
+                    "sleepLatencyMinutes": 10,
+                    "avgHeartRate": 58,
+                    "minHeartRate": 50,
+                    "avgHRV": 45,
+                    "avgRespiratoryRate": 14,
+                    "avgSpO2": 97,
+                    "wristTempDeltaC": null,
+                    "hrv7DayAvg": null,
+                    "sleepDebtMinutes": null,
+                    "lastWorkoutHoursBeforeBed": null,
+                    "exerciseMinutesPreviousDay": null,
+                    "sourceName": "Apple Watch"
+                }
+            ],
+            "journal": [],
+            "naps": [],
+            "preferences": null,
+            "snoreSummaries": [],
+            "wristTemperatures": []
+        }
+        """
+        let decoded = try DataExporter.decode(Data(json.utf8))
+        XCTAssertEqual(decoded.nights.count, 1)
+        let night = try XCTUnwrap(decoded.nights.first)
+        XCTAssertEqual(night.timeAsleepMinutes, 400, accuracy: 0.001)
+        XCTAssertFalse(night.isMock)
+        XCTAssertFalse(night.timeInBedIsEstimated)
+        XCTAssertEqual(night.secondaryAsleepMinutes, 0, accuracy: 0.001)
+        XCTAssertTrue(night.stageSegments.isEmpty)
+        XCTAssertEqual(night.timeZoneIdentifier, TimeZone.current.identifier)
+    }
+
     /// A file from a *future* Zoon version must still be rejected with a
     /// clear message rather than silently importing a partial, possibly
     /// misinterpreted subset of a format this version doesn't understand.
