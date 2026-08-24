@@ -34,6 +34,20 @@
                ReferencedContainer = "container:Zoon.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "678B4DE61235C519CC844609"
+               BuildableName = "ZoonUITests.xctest"
+               BlueprintName = "ZoonUITests"
+               ReferencedContainer = "container:Zoon.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -49,6 +63,16 @@
                BlueprintIdentifier = "A700229C3AC2DAE057FE5B27"
                BuildableName = "ZoonTests.xctest"
                BlueprintName = "ZoonTests"
+               ReferencedContainer = "container:Zoon.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "678B4DE61235C519CC844609"
+               BuildableName = "ZoonUITests.xctest"
+               BlueprintName = "ZoonUITests"
                ReferencedContainer = "container:Zoon.xcodeproj">
             </BuildableReference>
          </TestableReference>

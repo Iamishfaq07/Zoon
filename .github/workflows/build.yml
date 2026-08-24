@@ -117,6 +117,51 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Run ZoonUITests
+        id: uitest
+        # Non-blocking for now: this is the first CI run this target has ever
+        # had, and a black-box UI test on a shared macOS runner (simulator
+        # boot time, animation settling, first-launch timing) is a genuinely
+        # different reliability profile than ZoonTests' in-process logic
+        # tests. Flip to a hard failure once it's proven stable over a few
+        # real runs rather than gating every PR on an unproven step from day
+        # one.
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          UDID=$(xcrun simctl list devices available -j \
+            | python3 -c "import json,sys; data=json.load(sys.stdin)['devices']; \
+              print(next(d['udid'] for runtime in data.values() for d in runtime if d['name'].startswith('iPhone')))")
+          echo "Testing on simulator $UDID"
+          xcodebuild test \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -only-testing:ZoonUITests \
+            -destination "id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee uitest.log
+
+      - name: Summarise UI tests
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          {
+            echo "### ZoonUITests"
+            echo ""
+            if [ "${{ steps.uitest.outcome }}" = "success" ]; then
+              PASSED=$(grep -c "Test Case.*passed" uitest.log || true)
+              echo "${PASSED} test(s) passed."
+            else
+              echo "Failed (non-blocking). Relevant lines:"
+              echo ""
+              echo '```'
+              grep -E "error:|Test Case.*failed|fatal error" uitest.log | sort -u || true
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify every source compiled
         # A file dropped from a target, or excluded by a #if that quietly
         # evaluated false, produces a *successful* build with the feature
