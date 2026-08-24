@@ -26,6 +26,10 @@ struct DayContext: Equatable {
     let cardiovascularAge: CardiovascularAge?
     /// Habitual sleep window. Nil until there is any history at all.
     let bodyClock: BodyClock?
+    /// Hourly heart rate for today -- also drives the body battery curve.
+    /// Carried through so views (e.g. the hypnogram's HR overlay) can reuse
+    /// it rather than each running their own HealthKit query.
+    let hourlyHeartRate: [(date: Date, bpm: Double)]
 
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
@@ -53,7 +57,8 @@ struct DayContext: Equatable {
             regularity: regularity,
             healthRadar: healthRadar,
             cardiovascularAge: cardiovascularAge,
-            bodyClock: bodyClock
+            bodyClock: bodyClock,
+            hourlyHeartRate: hourlyHeartRate
         )
     }
 

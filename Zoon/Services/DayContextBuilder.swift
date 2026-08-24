@@ -178,7 +178,8 @@ struct DayContextBuilder {
             cardiovascularAge: CardiovascularAge.compute(
                 nights: fullHistory, chronologicalAge: inputs.age
             ),
-            bodyClock: bodyClock
+            bodyClock: bodyClock,
+            hourlyHeartRate: inputs.hourlyHeartRate
         )
     }
 
