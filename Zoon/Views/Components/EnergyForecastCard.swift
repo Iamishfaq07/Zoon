@@ -5,6 +5,9 @@ struct EnergyForecastCard: View {
     let forecast: EnergyForecast
 
     @State private var showingInfo = false
+    /// Drag position as a 0...1 fraction across the curve's width -- same
+    /// touch-to-time convention `HypnogramView` uses for its own scrubber.
+    @State private var selectedFraction: CGFloat?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -54,6 +57,11 @@ struct EnergyForecastCard: View {
     /// whole idea of "today's energy," with no line connecting them. This is
     /// the actual horizon graphic the spec asks for: a continuous shape from
     /// wake to wind-down, with a marker for where "now" sits on it.
+    ///
+    /// Also carries a drag-to-inspect scrubber, matching `HypnogramView`'s
+    /// own gesture -- the redesign audit found the curve shipped without one,
+    /// leaving "what's my energy at 3pm" answerable only by eyeballing the
+    /// line against the axis.
     private var horizon: some View {
         let samples = forecast.curveSamples(count: 40)
 
@@ -89,16 +97,49 @@ struct EnergyForecastCard: View {
                     .stroke(Theme.Metric.battery, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 }
 
-                if let now = nowPosition(samples: samples, width: geo.size.width, height: geo.size.height) {
+                if selectedFraction == nil, let now = nowPosition(samples: samples, width: geo.size.width, height: geo.size.height) {
                     Circle()
                         .fill(Theme.Metric.battery)
                         .frame(width: 6, height: 6)
                         .position(now)
                 }
+
+                if let selectedFraction {
+                    let x = geo.size.width * selectedFraction
+                    Path { path in
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: geo.size.height))
+                    }
+                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
+
+                    if let time = time(atFraction: selectedFraction, samples: samples) {
+                        let level = Self.interpolate(time, in: samples)
+                        ChartSelectionBadge(
+                            title: time.formatted(.dateTime.hour().minute()),
+                            lines: [("Energy", "\(Int((level * 100).rounded()))%", Theme.Metric.battery)]
+                        )
+                        .offset(x: min(max(0, x - 60), geo.size.width - 120), y: -6)
+                    }
+                }
             }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        selectedFraction = min(1, max(0, value.location.x / geo.size.width))
+                    }
+                    .onEnded { _ in selectedFraction = nil }
+            )
         }
         .frame(height: 44)
         .accessibilityHidden(true)
+    }
+
+    /// The wall-clock time a drag fraction corresponds to, in the same
+    /// span `nowPosition`/`interpolate` already use.
+    private func time(atFraction fraction: CGFloat, samples: [(time: Date, level: Double)]) -> Date? {
+        guard let first = samples.first?.time, let last = samples.last?.time, last > first else { return nil }
+        return first.addingTimeInterval(last.timeIntervalSince(first) * Double(fraction))
     }
 
     /// Where "now" falls along the curve, in the same coordinate space as
