@@ -128,6 +128,30 @@ final class SleepStoryTests: XCTestCase {
         XCTAssertEqual(snoreEvents.first?.detail, "3 times over 0h 4m")
     }
 
+    /// `Event.id` used to be the bare `Date`. A nap ending exactly one
+    /// second before bedtime shares its start instant with the "Logged for
+    /// the day" event, which is deliberately placed at
+    /// `bedtime.addingTimeInterval(-1)` -- two genuinely different events,
+    /// same timestamp. With a bare-Date id, `ForEach(events, id: \.id)`
+    /// would treat them as the same identity and drop one. The id is now a
+    /// composite of time, title, and symbol, so distinct events at the same
+    /// instant stay distinct.
+    func testEventsAtTheSameInstantHaveDistinctIDs() {
+        let night = nightWithStaging()
+        let nap = DateInterval(start: night.bedtime.addingTimeInterval(-1), duration: 20 * 60)
+        let story = SleepStory.build(night: night, tagLabels: ["Alcohol"], napIntervals: [nap])
+
+        let napped = story.events.first { $0.title == "Napped" }
+        let logged = story.events.first { $0.title == "Logged for the day" }
+        XCTAssertNotNil(napped)
+        XCTAssertNotNil(logged)
+        XCTAssertEqual(napped?.time, logged?.time, "the test setup should actually collide the timestamps")
+        XCTAssertNotEqual(napped?.id, logged?.id)
+
+        let ids = Set(story.events.map(\.id))
+        XCTAssertEqual(ids.count, story.events.count, "every event in the story must have a unique id")
+    }
+
     func testDistantSoundEventsOfSameCategoryAreNotGrouped() {
         let night = nightWithStaging()
         let events = [
