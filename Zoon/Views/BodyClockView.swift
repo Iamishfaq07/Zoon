@@ -32,7 +32,6 @@ struct BodyClockView: View {
             VStack(spacing: Theme.stackSpacing) {
                 if let bodyClock, let night {
                     ring(bodyClock: bodyClock, night: night)
-                    alignmentCard(bodyClock: bodyClock, night: night)
                     stabilityCard(bodyClock)
                     explanationCard
                 } else {
@@ -53,11 +52,34 @@ struct BodyClockView: View {
 
     // MARK: - Ring
 
+    /// One drag-to-inspect finger position, as a 0...1 fraction of the
+    /// 24-hour dial -- `nil` when nothing is currently touched, which is
+    /// when the ring shows the alignment score instead.
+    @State private var inspectedFraction: Double?
+
     private func ring(bodyClock: BodyClock, night: SleepNightFeatures) -> some View {
         let onset = wallClockFraction(bodyClock.onsetHour)
         let wake = wallClockFraction(bodyClock.wakeHour)
         let actualStart = wallClockFraction(hourOfDay(night.bedtime))
         let actualEnd = wallClockFraction(hourOfDay(night.wakeTime))
+        let driftMinutes = bodyClock.drift(of: night.bedtime) ?? 0
+        let alignment = alignmentScore(driftMinutes: driftMinutes)
+        let forecast = EnergyForecast.compute(
+            wakeTime: night.wakeTime,
+            sleepDebtMinutes: night.sleepDebtMinutes ?? 0,
+            windDownHour: bodyClock.isEstimate ? nil : bodyClock.onsetHour
+        )
+        // Peak, dip, and wind-down only -- the redesign spec's three named
+        // layers. Morning rise and second wind sit close enough to the
+        // window edges already on screen that marking them too would just
+        // be visual noise around the same arc.
+        let energyMarks = forecast.windows.filter {
+            $0.kind == .morningPeak || $0.kind == .afternoonDip || $0.kind == .windDown
+        }
+        let markers = inspectionMarkers(
+            onset: onset, wake: wake, actualStart: actualStart, actualEnd: actualEnd,
+            energyMarks: energyMarks
+        )
 
         return VStack(spacing: 14) {
             ZStack {
@@ -78,6 +100,14 @@ struct BodyClockView: View {
                 arc(from: actualStart, to: actualEnd, lineWidth: 16)
                     .stroke(Theme.Metric.battery, style: StrokeStyle(lineWidth: 4, lineCap: .round))
 
+                // Energy Horizon's peak/dip/wind-down carried onto the same
+                // dial, at the same wall-clock fractions `EnergyForecastCard`
+                // draws its curve from -- the two screens describe the same
+                // day, so their markers land at the same angle here.
+                ForEach(energyMarks) { mark in
+                    energyMarker(mark)
+                }
+
                 // Where "now" sits on the dial -- the live position against
                 // the fixed shape of the day, same marker as the Body Clock
                 // card on the Sleep tab.
@@ -88,26 +118,40 @@ struct BodyClockView: View {
                     .offset(y: -100)
                     .rotationEffect(.degrees(wallClockFraction(hourOfDay(.now)) * 360))
 
-                VStack(spacing: 2) {
-                    Text(BodyClock.formatted(hour: bodyClock.onsetHour))
-                        .font(Theme.label(15, weight: .bold))
-                    Text("to")
-                        .font(Theme.text(9))
-                        .foregroundStyle(.tertiary)
-                    Text(BodyClock.formatted(hour: bodyClock.wakeHour))
-                        .font(Theme.label(15, weight: .bold))
-                    Text("estimated window")
-                        .font(Theme.text(9))
-                        .foregroundStyle(.tertiary)
-                        .padding(.top, 2)
-                }
+                centerContent(
+                    alignment: alignment,
+                    inspected: inspectedFraction.map { fraction in nearestMarker(to: fraction, in: markers) }
+                )
             }
             .frame(width: 240, height: 240)
+            .contentShape(Circle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        inspectedFraction = dialFraction(for: value.location, in: CGSize(width: 240, height: 240))
+                    }
+                    .onEnded { _ in inspectedFraction = nil }
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Body clock dial")
+            .accessibilityValue(
+                "Estimated window \(BodyClock.formatted(hour: bodyClock.onsetHour)) to "
+                + "\(BodyClock.formatted(hour: bodyClock.wakeHour)). Actual sleep "
+                + "\(BodyClock.formatted(hour: hourOfDay(night.bedtime))) to "
+                + "\(BodyClock.formatted(hour: hourOfDay(night.wakeTime))). "
+                + "Circadian alignment \(Int(alignment)) out of 100."
+            )
 
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
                 legend(color: Theme.Metric.sleep, label: "Estimated window")
                 legend(color: Theme.Metric.battery, label: "Actual sleep")
+                legend(color: Theme.Metric.battery.opacity(0.7), label: "Energy")
             }
+
+            Text(alignmentSentence(driftMinutes: driftMinutes))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .glassCard()
@@ -118,6 +162,112 @@ struct BodyClockView: View {
             Circle().fill(color).frame(width: 7, height: 7)
             Text(label).font(Theme.text(10)).foregroundStyle(.secondary)
         }
+    }
+
+    /// A small dot and symbol for one Energy Horizon window, positioned on
+    /// the dial's outer edge at that window's wall-clock time.
+    private func energyMarker(_ window: EnergyForecast.Window) -> some View {
+        let fraction = wallClockFraction(hourOfDay(window.time))
+        return Image(systemName: window.kind.symbol)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(Theme.Metric.battery.opacity(0.85))
+            .frame(width: 16, height: 16)
+            .background(Theme.background.opacity(0.9), in: Circle())
+            .offset(y: -108)
+            .rotationEffect(.degrees(fraction * 360))
+    }
+
+    /// One point-of-interest on the dial, for drag-to-inspect to snap to and
+    /// label -- window edges and Energy Horizon marks, not the live "now"
+    /// dot, which needs no explanation once you're already touching it.
+    private struct InspectionMarker {
+        let fraction: Double
+        let label: String
+    }
+
+    private func inspectionMarkers(
+        onset: Double, wake: Double, actualStart: Double, actualEnd: Double,
+        energyMarks: [EnergyForecast.Window]
+    ) -> [InspectionMarker] {
+        var markers = [
+            InspectionMarker(fraction: onset, label: "Window starts"),
+            InspectionMarker(fraction: wake, label: "Window ends"),
+            InspectionMarker(fraction: actualStart, label: "Fell asleep"),
+            InspectionMarker(fraction: actualEnd, label: "Woke up")
+        ]
+        markers += energyMarks.map {
+            InspectionMarker(fraction: wallClockFraction(hourOfDay($0.time)), label: $0.kind.label)
+        }
+        return markers
+    }
+
+    /// The marker nearest a drag position, if it's close enough to count as
+    /// "pointing at" it (within 24 minutes either way) -- otherwise `nil`,
+    /// which leaves the center showing the plain time under the finger.
+    private func nearestMarker(to fraction: Double, in markers: [InspectionMarker]) -> String? {
+        let threshold = 0.017 // ~24 minutes of the 24-hour dial
+        let nearest = markers.min { lhs, rhs in
+            circularDistance(fraction, lhs.fraction) < circularDistance(fraction, rhs.fraction)
+        }
+        guard let nearest, circularDistance(fraction, nearest.fraction) <= threshold else { return nil }
+        return nearest.label
+    }
+
+    private func circularDistance(_ a: Double, _ b: Double) -> Double {
+        let diff = abs(a - b).truncatingRemainder(dividingBy: 1)
+        return min(diff, 1 - diff)
+    }
+
+    /// A drag location within the ring's own frame, converted to a 0...1
+    /// wall-clock fraction on the same midnight-at-top, clockwise
+    /// convention the tick marks and arcs use.
+    private func dialFraction(for location: CGPoint, in size: CGSize) -> Double {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let dx = location.x - center.x
+        let dy = location.y - center.y
+        var degrees = atan2(dx, -dy) * 180 / .pi
+        if degrees < 0 { degrees += 360 }
+        return degrees / 360
+    }
+
+    @ViewBuilder
+    private func centerContent(alignment: Double, inspected: String??) -> some View {
+        if let inspected {
+            // `inspected` is `String??`: outer optional is "not touching the
+            // dial", inner is "touching it, but not near a named marker".
+            VStack(spacing: 2) {
+                if let label = inspected {
+                    Text(label)
+                        .font(Theme.label(13, weight: .semibold))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(BodyClock.formatted(hour: hourOfDay(inspectedTime ?? .now)))
+                        .font(Theme.numeral(19))
+                }
+            }
+            .padding(.horizontal, 8)
+        } else {
+            VStack(spacing: 2) {
+                Text("\(Int(alignment))")
+                    .font(Theme.numeral(32))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.recoveryColor(alignment))
+                Text("alignment")
+                    .font(Theme.text(9))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    /// The wall-clock time the current drag position corresponds to, for the
+    /// center label when the finger isn't near a named marker. Recomputed
+    /// from `inspectedFraction` rather than carried as a second `@State`,
+    /// since the fraction is already the source of truth.
+    private var inspectedTime: Date? {
+        guard let inspectedFraction else { return nil }
+        let hours = inspectedFraction * 24
+        return Calendar.current.startOfDay(for: .now).addingTimeInterval(hours * 3600)
     }
 
     /// An arc shape between two 0...1 fractions of the 24-hour circle,
@@ -134,27 +284,6 @@ struct BodyClockView: View {
     }
 
     // MARK: - Alignment
-
-    private func alignmentCard(bodyClock: BodyClock, night: SleepNightFeatures) -> some View {
-        let driftMinutes = bodyClock.drift(of: night.bedtime) ?? 0
-        let alignment = alignmentScore(driftMinutes: driftMinutes)
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                SectionHeader(title: "Circadian Alignment", systemImage: "target")
-                Spacer()
-                Text("\(Int(alignment))/100")
-                    .font(Theme.numeral(20))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.recoveryColor(alignment))
-            }
-            Text(alignmentSentence(driftMinutes: driftMinutes))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .glassCard()
-    }
 
     private func alignmentScore(driftMinutes: Double) -> Double {
         Statistics.interpolate(abs(driftMinutes), anchors: [
