@@ -75,7 +75,16 @@ struct TrendsView: View {
                 VStack(spacing: Theme.stackSpacing) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
                     WhatChangedCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
-                    DiscoveriesCard(findings: JournalCorrelator().findings(from: coordinator.journalObservations()))
+                    DiscoveriesCard(
+                        findings: JournalCorrelator().findings(from: coordinator.journalObservations()),
+                        activeExperiment: preferences.activeExperimentTag.map { tag in
+                            (tag, GuidedExperiment.status(
+                                for: tag,
+                                observations: coordinator.journalObservations(),
+                                since: preferences.experimentStartDate
+                            ))
+                        }
+                    )
                     if let context = coordinator.state.context {
                         CoreIntelligenceGrid(context: context)
                     }

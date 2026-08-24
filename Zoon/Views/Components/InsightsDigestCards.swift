@@ -156,6 +156,12 @@ struct WhatChangedCard: View {
 /// in full; this is a preview of that screen, not a second opinion.
 struct DiscoveriesCard: View {
     let findings: [JournalCorrelator.Finding]
+    /// The behaviour currently under a Guided Experiment, and where it
+    /// stands -- `nil` when no experiment is active. Surfaced here too, not
+    /// just inside Cause Finder, since a resolved experiment ("Alcohol
+    /// costs you 12min of deep sleep") is exactly the kind of thing this
+    /// card exists to surface rather than leave waiting behind a tap.
+    var activeExperiment: (tag: BehaviorTag, status: GuidedExperiment.Status)? = nil
 
     private var top: [JournalCorrelator.Finding] {
         Array(
@@ -168,8 +174,23 @@ struct DiscoveriesCard: View {
         )
     }
 
+    private var experimentHeadline: (text: String, isImprovement: Bool?)? {
+        guard let activeExperiment else { return nil }
+        switch activeExperiment.status {
+        case .learning:
+            return ("Experiment: \(activeExperiment.tag.label) -- still learning", nil)
+        case .result(let helpful, let harmful):
+            if let strongest = (helpful + harmful).first {
+                return (strongest.headline, strongest.isImprovement)
+            }
+            return nil
+        case .noEffect:
+            return ("Experiment: \(activeExperiment.tag.label) -- no meaningful difference found so far", nil)
+        }
+    }
+
     var body: some View {
-        if !top.isEmpty {
+        if !top.isEmpty || experimentHeadline != nil {
             NavigationLink {
                 CauseFinderView()
             } label: {
@@ -182,6 +203,22 @@ struct DiscoveriesCard: View {
                                 .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
                                 .frame(width: 20)
                             Text(finding.headline)
+                                .font(Theme.text(12, weight: .medium))
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    if let experimentHeadline {
+                        HStack(spacing: 10) {
+                            Image(systemName: "flask.fill")
+                                .font(Theme.text(13))
+                                .foregroundStyle(
+                                    experimentHeadline.isImprovement.map { $0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow }
+                                        ?? Theme.Metric.sleep
+                                )
+                                .frame(width: 20)
+                            Text(experimentHeadline.text)
                                 .font(Theme.text(12, weight: .medium))
                                 .foregroundStyle(.primary)
                                 .lineLimit(2)
