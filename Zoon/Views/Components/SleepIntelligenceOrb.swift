@@ -129,13 +129,13 @@ struct SleepIntelligenceOrb: View {
                 animatedProgress = 1
                 return
             }
-            withAnimation(.spring(response: 1.1, dampingFraction: 0.85)) {
+            withAnimation(Motion.hero) {
                 animatedProgress = 1
             }
         }
         .onChange(of: score.percent) { _, _ in
             animatedProgress = 0
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+            withAnimation(Motion.hero) {
                 animatedProgress = 1
             }
         }

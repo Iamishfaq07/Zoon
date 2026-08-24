@@ -16,6 +16,8 @@ struct BaselineLaneView: View {
     let tolerance: Double?
     let tint: Color
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// How many tolerances wide the visible lane is, centred on baseline.
     /// Wider than the shaded band itself (2 tolerances across) so a value at
     /// the edge of "typical" still has room to sit inside the band rather
@@ -44,6 +46,11 @@ struct BaselineLaneView: View {
                         .fill(tint)
                         .frame(width: 9, height: 9)
                         .offset(x: width * clamped - 4.5)
+                        // Item #61/#80: the dot used to jump straight to its
+                        // new position on every refresh -- unremarkable for a
+                        // single lane, but jarring across a whole Body
+                        // Signals screen of them updating at once.
+                        .animation(reduceMotion ? nil : Motion.value, value: value)
                 }
             }
         }
