@@ -13,7 +13,16 @@ import Foundation
 struct SleepStory: Sendable {
 
     struct Event: Identifiable, Sendable {
-        let id: Date
+        /// Composite of timestamp, title, and symbol -- not the bare `Date`
+        /// this used to be. Two distinct events can share an exact instant
+        /// (duplicate or merged-source HealthKit segments produce this in
+        /// practice, not just in theory -- see the source-merging notes in
+        /// `HealthKitManager`), and `ForEach(story.events, id: \.id)` with a
+        /// colliding key silently drops or misrenders one of them. Two
+        /// genuinely different events sharing timestamp *and* title *and*
+        /// symbol is not a case this needs to distinguish -- at that point
+        /// they're indistinguishable in the UI anyway.
+        var id: String { "\(symbol)|\(Int(time.timeIntervalSince1970))|\(title)" }
         let time: Date
         let title: String
         let detail: String?
@@ -59,7 +68,6 @@ struct SleepStory: Sendable {
 
         for nap in napIntervals.sorted(by: { $0.start < $1.start }) where nap.start < night.bedtime {
             events.append(Event(
-                id: nap.start,
                 time: nap.start,
                 title: "Napped",
                 detail: "\(SleepNightFeatures.formatMinutes(nap.duration / 60)) before bedtime",
@@ -69,7 +77,6 @@ struct SleepStory: Sendable {
 
         if !tagLabels.isEmpty {
             events.append(Event(
-                id: night.bedtime.addingTimeInterval(-1),
                 time: night.bedtime.addingTimeInterval(-1),
                 title: "Logged for the day",
                 detail: tagLabels.sorted().joined(separator: ", "),
@@ -78,7 +85,6 @@ struct SleepStory: Sendable {
         }
 
         events.append(Event(
-            id: night.bedtime,
             time: night.bedtime,
             title: "Went to bed",
             detail: nil,
@@ -93,7 +99,6 @@ struct SleepStory: Sendable {
                 "\(SleepNightFeatures.formatMinutes($0)) after getting into bed"
             }
             events.append(Event(
-                id: onset,
                 time: onset,
                 title: "Fell asleep",
                 detail: detail,
@@ -112,7 +117,6 @@ struct SleepStory: Sendable {
             }
             for awakening in midNightAwakenings {
                 events.append(Event(
-                    id: awakening.start,
                     time: awakening.start,
                     title: "Woke briefly",
                     detail: SleepNightFeatures.formatMinutes(awakening.minutes),
@@ -122,7 +126,6 @@ struct SleepStory: Sendable {
         }
 
         events.append(Event(
-            id: night.wakeTime,
             time: night.wakeTime,
             title: "Woke for the day",
             detail: nil,
@@ -163,7 +166,7 @@ struct SleepStory: Sendable {
                 detail = "\(prefix)occurred near a brief awakening"
             }
 
-            events.append(Event(id: first.date, time: first.date, title: first.label, detail: detail, symbol: first.symbol))
+            events.append(Event(time: first.date, title: first.label, detail: detail, symbol: first.symbol))
         }
 
         return SleepStory(events: events.sorted { $0.time < $1.time })
