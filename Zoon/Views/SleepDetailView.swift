@@ -5,12 +5,29 @@ struct SleepDetailView: View {
 
     let context: DayContext
 
+    @Environment(SleepDataCoordinator.self) private var coordinator
+    // Same pattern as `SleepStoryView`: each view constructing its own
+    // instance backed by the same persisted `UserDefaults` storage, rather
+    // than one shared app-wide object.
+    @State private var soundEventStore = SoundEventStore()
+
+    private var story: SleepStory {
+        let tagLabels = coordinator.journal.entry(for: context.night.date)?.tags.map(\.label) ?? []
+        return SleepStory.build(
+            night: context.night,
+            tagLabels: tagLabels,
+            napIntervals: coordinator.napIntervals(before: context.night.date),
+            soundEvents: soundEventStore.recentEvents
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 headline
                 SleepNeedCard(need: context.sleepNeed)
                 hypnogramCard
+                storyPreviewCard
                 stagesCard
                 timingCard
                 ChronotypeCard(chronotype: context.chronotype)
@@ -71,6 +88,60 @@ struct SleepDetailView: View {
                     systemImage: "chart.xyaxis.line"
                 )
                 HypnogramView(segments: context.night.stageSegments)
+            }
+            .glassCard()
+        }
+    }
+
+    /// Up to 4 of the night's story events, right on this screen -- the
+    /// redesign spec's ask, previously reachable only via a hub row into the
+    /// full multi-night `SleepStoryView` (item #65: "nothing renders 2-4
+    /// inline events below the hypnogram").
+    @ViewBuilder
+    private var storyPreviewCard: some View {
+        let events = Array(story.events.prefix(4))
+        if !events.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(title: "What happened", systemImage: "clock.arrow.circlepath")
+
+                ForEach(events) { event in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: event.symbol)
+                            .font(Theme.text(11, weight: .medium))
+                            .foregroundStyle(Theme.Metric.sleep)
+                            .frame(width: 22, height: 22)
+                            .background(Theme.Metric.sleep.opacity(0.15), in: Circle())
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(event.title)
+                                .font(Theme.label(12, weight: .semibold))
+                            if let detail = event.detail {
+                                Text(detail)
+                                    .font(Theme.text(10))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        Text(event.time, format: .dateTime.hour().minute())
+                            .font(Theme.text(10))
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+                }
+
+                if story.events.count > events.count {
+                    NavigationLink {
+                        SleepStoryView()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("See full story")
+                            Image(systemName: "chevron.right")
+                        }
+                        .font(Theme.label(11, weight: .semibold))
+                        .foregroundStyle(Theme.Metric.sleep)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                }
             }
             .glassCard()
         }
@@ -351,6 +422,7 @@ struct ChronotypeCard: View {
         SleepDetailView(context: withSegments(AppMockData.dayContext()))
     }
     .preferredColorScheme(.dark)
+    .zoonPreviewEnvironment()
 }
 
 #Preview("Sleep need only") {
