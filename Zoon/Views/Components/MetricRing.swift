@@ -55,12 +55,12 @@ struct RecoveryRing: View {
                 animatedFraction = fraction
                 return
             }
-            withAnimation(.spring(response: 1.1, dampingFraction: 0.85)) {
+            withAnimation(Motion.hero) {
                 animatedFraction = fraction
             }
         }
         .onChange(of: recovery.percent) { _, _ in
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.85)) {
+            withAnimation(Motion.hero) {
                 animatedFraction = fraction
             }
         }
@@ -139,7 +139,7 @@ struct TripleRing: View {
             if reduceMotion {
                 animated = true
             } else {
-                withAnimation(.spring(response: 1.0, dampingFraction: 0.8).delay(0.1)) {
+                withAnimation(Motion.hero.delay(0.1)) {
                     animated = true
                 }
             }
