@@ -16,6 +16,19 @@ struct SleepNeedView: View {
     private var learned: LearnedSleepNeed? { coordinator.state.context?.learnedSleepNeed }
 
     var body: some View {
+        // `.zoom(...)` and `.automatic` are different concrete types
+        // conforming to `NavigationTransition`, so branching the transition
+        // value itself (e.g. via a ternary) doesn't type-check -- branching
+        // the view instead lets each branch's `.navigationTransition(_:)`
+        // call resolve its own concrete opaque type independently.
+        if let zoomNamespace, let zoomID {
+            content.navigationTransition(.zoom(sourceID: zoomID, in: zoomNamespace))
+        } else {
+            content.navigationTransition(.automatic)
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 if let need {
@@ -33,7 +46,6 @@ struct SleepNeedView: View {
         .nightBackground()
         .navigationTitle("Sleep Need")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTransition(zoomNamespace == nil ? .automatic : .zoom(sourceID: zoomID ?? "", in: zoomNamespace!))
     }
 
     private func hero(_ need: SleepNeed) -> some View {

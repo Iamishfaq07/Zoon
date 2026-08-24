@@ -15,6 +15,19 @@ struct BodyClockView: View {
     private var night: SleepNightFeatures? { coordinator.state.context?.night }
 
     var body: some View {
+        // `.zoom(...)` and `.automatic` are different concrete types
+        // conforming to `NavigationTransition`, so branching the transition
+        // value itself (e.g. via a ternary) doesn't type-check -- branching
+        // the view instead lets each branch's `.navigationTransition(_:)`
+        // call resolve its own concrete opaque type independently.
+        if let zoomNamespace, let zoomID {
+            content.navigationTransition(.zoom(sourceID: zoomID, in: zoomNamespace))
+        } else {
+            content.navigationTransition(.automatic)
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 if let bodyClock, let night {
@@ -36,7 +49,6 @@ struct BodyClockView: View {
         .nightBackground()
         .navigationTitle("Body Clock")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTransition(zoomNamespace == nil ? .automatic : .zoom(sourceID: zoomID ?? "", in: zoomNamespace!))
     }
 
     // MARK: - Ring

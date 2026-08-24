@@ -24,6 +24,19 @@ struct SleepDebtView: View {
     }
 
     var body: some View {
+        // `.zoom(...)` and `.automatic` are different concrete types
+        // conforming to `NavigationTransition`, so branching the transition
+        // value itself (e.g. via a ternary) doesn't type-check -- branching
+        // the view instead lets each branch's `.navigationTransition(_:)`
+        // call resolve its own concrete opaque type independently.
+        if let zoomNamespace, let zoomID {
+            content.navigationTransition(.zoom(sourceID: zoomID, in: zoomNamespace))
+        } else {
+            content.navigationTransition(.automatic)
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 hero
@@ -36,7 +49,6 @@ struct SleepDebtView: View {
         .nightBackground()
         .navigationTitle("Sleep Debt")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationTransition(zoomNamespace == nil ? .automatic : .zoom(sourceID: zoomID ?? "", in: zoomNamespace!))
     }
 
     private var hero: some View {
