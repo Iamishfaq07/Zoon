@@ -25,28 +25,26 @@ struct CauseFinderView: View {
     @State private var tab: Tab = .helps
     @State private var showingExperimentPicker = false
 
-    private var observations: [JournalCorrelator.Observation] {
+    /// Computed once per `body` evaluation and threaded through, rather than
+    /// each of `experimentSection`/`content` independently re-deriving it --
+    /// this used to be a plain computed property both read separately,
+    /// running `coordinator.journalObservations()` twice (and, depending on
+    /// which tab was active, a full `JournalCorrelator` matched-pair pass
+    /// alongside it) for the same render.
+    private func observations() -> [JournalCorrelator.Observation] {
         coordinator.journalObservations()
     }
 
-    private var findings: [JournalCorrelator.Finding] {
+    private func findings(from observations: [JournalCorrelator.Observation]) -> [JournalCorrelator.Finding] {
         JournalCorrelator().findings(from: observations)
     }
 
-    private var helpful: [JournalCorrelator.Finding] { findings.filter(\.isImprovement) }
-    private var harmful: [JournalCorrelator.Finding] { findings.filter { !$0.isImprovement } }
-    private var learning: [JournalCorrelator.LearningTag] {
-        JournalCorrelator().stillLearning(from: observations)
-    }
-    private var noEffect: [BehaviorTag] {
-        JournalCorrelator().testedNoEffect(from: observations)
-    }
-
     var body: some View {
-        ScrollView {
+        let observations = observations()
+        return ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
-                experimentSection
+                experimentSection(observations)
                 pastExperimentsSection
 
                 Picker("", selection: $tab) {
@@ -54,7 +52,7 @@ struct CauseFinderView: View {
                 }
                 .pickerStyle(.segmented)
 
-                content
+                content(observations)
             }
             .padding()
         }
@@ -74,7 +72,7 @@ struct CauseFinderView: View {
     /// just reads the same findings/stillLearning/testedNoEffect results
     /// the tabs below already compute, filtered to one tracked tag.
     @ViewBuilder
-    private var experimentSection: some View {
+    private func experimentSection(_ observations: [JournalCorrelator.Observation]) -> some View {
         if let tag = preferences.activeExperimentTag {
             GuidedExperimentCard(
                 tag: tag,
@@ -124,27 +122,31 @@ struct CauseFinderView: View {
     }
 
     @ViewBuilder
-    private var content: some View {
+    private func content(_ observations: [JournalCorrelator.Observation]) -> some View {
         switch tab {
         case .helps:
+            let helpful = findings(from: observations).filter(\.isImprovement)
             if helpful.isEmpty {
                 emptyState("Nothing clears the bar yet. Keep logging -- a real helpful pattern will show up here once there's enough matched data.")
             } else {
                 ForEach(helpful) { CauseFinderRow(finding: $0) }
             }
         case .hurts:
+            let harmful = findings(from: observations).filter { !$0.isImprovement }
             if harmful.isEmpty {
                 emptyState("Nothing clears the bar yet. That's a genuinely good sign, not a data gap.")
             } else {
                 ForEach(harmful) { CauseFinderRow(finding: $0) }
             }
         case .noEffect:
+            let noEffect = JournalCorrelator().testedNoEffect(from: observations)
             if noEffect.isEmpty {
                 emptyState("Nothing here yet. Behaviours land in this tab once there's enough logged data to test them, whether or not a pattern turns up.")
             } else {
                 ForEach(noEffect) { NoEffectRow(tag: $0) }
             }
         case .learning:
+            let learning = JournalCorrelator().stillLearning(from: observations)
             if learning.isEmpty {
                 emptyState("Tag a behaviour in the Journal on a few nights and it'll show up here while Zoon builds enough comparable nights to say anything about it.")
             } else {
