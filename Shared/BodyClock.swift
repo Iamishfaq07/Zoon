@@ -93,12 +93,23 @@ struct BodyClock: Codable, Hashable, Sendable {
     /// Returns the onset and wake `Date`s for the night beginning on the
     /// evening of `date`.
     func window(for date: Date, calendar: Calendar = .current) -> DateInterval? {
-        guard let midnight = calendar.date(
+        guard let startOfDay = calendar.date(
             bySettingHour: 0, minute: 0, second: 0, of: date
         ) else { return nil }
 
-        let onset = midnight.addingTimeInterval(onsetHour * 3600)
-        let wake = midnight.addingTimeInterval(wakeHour * 3600)
+        // `onsetHour`/`wakeHour` use the signed convention `midpoint` does
+        // (evening hours negative, 23:30 is -0.5): both are offsets from the
+        // midnight *between* onset and wake, not from `date`'s own midnight.
+        // A typical evening onset (the overwhelming common case) is negative,
+        // so anchoring it to `startOfDay` directly -- as this function used
+        // to -- lands it on the *previous* day's evening instead of `date`'s
+        // own, contradicting the contract stated above. Anchoring both terms
+        // to the following midnight fixes it: for an evening onset, that's
+        // the midnight the onset sits just before; for wake, the midnight
+        // it sits just after.
+        let midSleepMidnight = startOfDay.addingTimeInterval(24 * 3600)
+        let onset = midSleepMidnight.addingTimeInterval(onsetHour * 3600)
+        let wake = midSleepMidnight.addingTimeInterval(wakeHour * 3600)
         guard wake > onset else { return nil }
         return DateInterval(start: onset, end: wake)
     }
