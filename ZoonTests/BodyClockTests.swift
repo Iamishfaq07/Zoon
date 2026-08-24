@@ -28,7 +28,7 @@ final class BodyClockTests: XCTestCase {
     /// window a full day before the actual bedtime it was being compared
     /// against.
     func testWindowBeginsOnTheEveningOfTheGivenDate() throws {
-        let window = typical.window(for: date(2026, 3, 10, hour: 15))
+        let window = typical.window(for: date(2026, 3, 10, 15))
         let onset = try XCTUnwrap(window?.start)
         let wake = try XCTUnwrap(window?.end)
 
@@ -44,7 +44,7 @@ final class BodyClockTests: XCTestCase {
     /// A bedtime right in the middle of the estimated window must read as
     /// (near) zero drift -- the case the 1407-minute bug got wildly wrong.
     func testDriftOfAnOrdinaryOnTimeBedtimeIsSmall() throws {
-        let bedtime = date(2026, 3, 10, hour: 19, 50) // 5 minutes after the 19:45 onset
+        let bedtime = date(2026, 3, 10, 19, 50) // 5 minutes after the 19:45 onset
         let drift = try XCTUnwrap(typical.drift(of: bedtime))
         XCTAssertEqual(drift, 5, accuracy: 1)
     }
@@ -52,7 +52,7 @@ final class BodyClockTests: XCTestCase {
     /// A bedtime a real hour later than usual should read as a real hour of
     /// drift -- not off by a day's worth of minutes.
     func testDriftOfALateBedtimeIsPlausible() throws {
-        let bedtime = date(2026, 3, 10, hour: 20, 45) // one hour after the 19:45 onset
+        let bedtime = date(2026, 3, 10, 20, 45) // one hour after the 19:45 onset
         let drift = try XCTUnwrap(typical.drift(of: bedtime))
         XCTAssertEqual(drift, 60, accuracy: 1)
     }
@@ -63,7 +63,7 @@ final class BodyClockTests: XCTestCase {
     func testWindowHandlesAnOnsetThatFallsAfterMidnight() throws {
         // Midpoint 05:00 (+5), 8-hour duration: onsetHour +1 (01:00), wakeHour +9 (09:00).
         let nightOwl = BodyClock(midpoint: 5, spreadHours: 0.3, nightCount: 21, typicalDurationMinutes: 480)
-        let window = nightOwl.window(for: date(2026, 3, 10, hour: 15))
+        let window = nightOwl.window(for: date(2026, 3, 10, 15))
         let onset = try XCTUnwrap(window?.start)
         let wake = try XCTUnwrap(window?.end)
 
