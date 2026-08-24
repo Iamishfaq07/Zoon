@@ -215,7 +215,7 @@ struct TodayView: View {
 
             if !context.sleepIntelligence.components.isEmpty {
                 Divider().overlay(Theme.cardStroke)
-                WhyScoreWaterfall(components: context.sleepIntelligence.components)
+                WhyScoreWaterfall(components: context.sleepIntelligence.components, context: context)
             }
 
             Divider().overlay(Theme.cardStroke)
