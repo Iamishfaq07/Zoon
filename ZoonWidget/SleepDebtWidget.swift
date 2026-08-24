@@ -128,6 +128,15 @@ struct SleepDebtWidgetView: View {
     // treatment and discards colour, so these rely on layout and symbols to
     // carry meaning rather than on the red/green the home-screen views use.
 
+    // `.privacySensitive()` throughout below -- the score and debt figures
+    // are exactly the kind of health signal the redesign audit found
+    // showing unconditionally on the Lock Screen with no way to hide them
+    // there independent of the device's own passcode. This opts each
+    // data-bearing line into the system's own Lock Screen privacy
+    // redaction (Settings > Notifications > Show Previews), the same
+    // mechanism first-party widgets use -- labels/icons stay visible so the
+    // widget is still identifiable at a glance.
+
     private var circular: some View {
         Gauge(value: min(Double(snapshot.score), 100), in: 0...100) {
             Image(systemName: "moon.zzz.fill")
@@ -136,6 +145,7 @@ struct SleepDebtWidgetView: View {
                 .font(.system(.body, design: .rounded).weight(.semibold))
         }
         .gaugeStyle(.accessoryCircular)
+        .privacySensitive()
     }
 
     private var inline: some View {
@@ -143,6 +153,7 @@ struct SleepDebtWidgetView: View {
             "\(snapshot.balanceLabel) sleep · \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))",
             systemImage: "moon.zzz.fill"
         )
+        .privacySensitive()
     }
 
     private var rectangular: some View {
@@ -152,9 +163,11 @@ struct SleepDebtWidgetView: View {
                 .widgetAccentable()
             Text(snapshot.balanceLabel)
                 .font(.system(.title2, design: .rounded).weight(.bold))
+                .privacySensitive()
             Text("Last night \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.score)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .privacySensitive()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
