@@ -37,7 +37,11 @@ struct CoreIntelligenceGrid: View {
         let achieved = context.night.total24hAsleepMinutes
         let fraction = min(1, achieved / need)
 
-        return module(title: "Sleep Need", symbol: "target", tint: Theme.Metric.sleep, zoomID: "sleepNeed") {
+        return module(
+            title: "Sleep Need",
+            icon: AnyView(ZoonIcon.SleepNeed(tint: Theme.Metric.sleep, fraction: fraction)),
+            tint: Theme.Metric.sleep, zoomID: "sleepNeed"
+        ) {
             SleepNeedView(zoomNamespace: zoom, zoomID: "sleepNeed")
         } visual: {
             ZStack(alignment: .leading) {
@@ -63,7 +67,11 @@ struct CoreIntelligenceGrid: View {
         // and the number below the gauge still carries it precisely.
         let fraction = min(1, debt / 300)
 
-        return module(title: "Sleep Debt", symbol: "chart.line.downtrend.xyaxis", tint: Theme.Metric.temperature, zoomID: "sleepDebt") {
+        return module(
+            title: "Sleep Debt",
+            icon: AnyView(ZoonIcon.SleepDebt(tint: Theme.Metric.temperature, deficit: fraction)),
+            tint: Theme.Metric.temperature, zoomID: "sleepDebt"
+        ) {
             SleepDebtView(zoomNamespace: zoom, zoomID: "sleepDebt")
         } visual: {
             ZStack {
@@ -95,7 +103,11 @@ struct CoreIntelligenceGrid: View {
             return hourOfDay / 24 * 360 - 90
         }()
 
-        return module(title: "Body Clock", symbol: "clock", tint: Theme.Metric.battery, zoomID: "bodyClock") {
+        return module(
+            title: "Body Clock",
+            icon: AnyView(ZoonIcon.BodyClock(tint: Theme.Metric.battery)),
+            tint: Theme.Metric.battery, zoomID: "bodyClock"
+        ) {
             BodyClockView(zoomNamespace: zoom, zoomID: "bodyClock")
         } visual: {
             ZStack {
@@ -120,7 +132,11 @@ struct CoreIntelligenceGrid: View {
             ? (radar.severity == .notable ? Theme.Metric.recoveryLow : Theme.Metric.recoveryMid)
             : Theme.Metric.recoveryHigh
 
-        return module(title: "Body Signals", symbol: "dot.radiowaves.left.and.right", tint: Theme.Metric.recoveryMid, zoomID: "bodySignals") {
+        return module(
+            title: "Body Signals",
+            icon: AnyView(ZoonIcon.BodySignals(tint: Theme.Metric.recoveryMid)),
+            tint: Theme.Metric.recoveryMid, zoomID: "bodySignals"
+        ) {
             HealthRadarView(zoomNamespace: zoom, zoomID: "bodySignals")
         } visual: {
             HStack(spacing: 3) {
@@ -140,7 +156,7 @@ struct CoreIntelligenceGrid: View {
 
     private func module<Destination: View, Visual: View>(
         title: String,
-        symbol: String,
+        icon: AnyView,
         tint: Color,
         zoomID: String,
         @ViewBuilder destination: @escaping () -> Destination,
@@ -150,9 +166,8 @@ struct CoreIntelligenceGrid: View {
         NavigationLink(destination: destination) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 6) {
-                    Image(systemName: symbol)
-                        .font(Theme.text(12, weight: .medium))
-                        .foregroundStyle(tint)
+                    icon
+                        .frame(width: 13, height: 13)
                     Text(title)
                         .font(Theme.label(12, weight: .semibold))
                     Spacer(minLength: 0)
