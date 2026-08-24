@@ -134,7 +134,7 @@ struct TrendsView: View {
             // Sleep Need, Sleep Debt, Body Clock, and Body Signals moved to
             // `CoreIntelligenceGrid` above -- a 2x2 grid of distinct visuals
             // rather than four more identical rows here.
-            hubRow("Cause Finder", "sparkle.magnifyingglass", Theme.Metric.hrv) { CauseFinderView() }
+            hubRow("Cause Finder", icon: AnyView(ZoonIcon.CauseFinder(tint: Theme.Metric.hrv)), Theme.Metric.hrv) { CauseFinderView() }
             hubRow("Sleep Story", "clock.arrow.circlepath", Theme.Metric.sleep) { SleepStoryView() }
             hubRow("Sleep Playbook", "checklist", Theme.Metric.recoveryHigh) { SleepPlaybookView() }
             hubRow("Year in Sleep", "square.grid.3x3.fill", Theme.Metric.recoveryHigh) { YearHeatmapView() }
@@ -146,10 +146,19 @@ struct TrendsView: View {
         _ title: String, _ symbol: String, _ tint: Color,
         @ViewBuilder destination: @escaping () -> Destination
     ) -> some View {
+        hubRow(title, icon: AnyView(Image(systemName: symbol).font(Theme.text(15))), tint, destination: destination)
+    }
+
+    /// Overload for rows whose concept has its own `ZoonIcon` mark instead
+    /// of a generic SF Symbol -- currently only Cause Finder, one of the
+    /// redesign spec's named custom-icon concepts.
+    private func hubRow<Destination: View>(
+        _ title: String, icon: AnyView, _ tint: Color,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
         NavigationLink(destination: destination) {
             HStack(spacing: 12) {
-                Image(systemName: symbol)
-                    .font(Theme.text(15))
+                icon
                     .foregroundStyle(tint)
                     .frame(width: 34, height: 34)
                     .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))

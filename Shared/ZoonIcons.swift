@@ -88,6 +88,100 @@ enum ZoonIcon {
         }
     }
 
+    /// Sleep Need: a capsule track with a partial fill, echoing
+    /// `CoreIntelligenceGrid`'s own Sleep Need tile visual (a horizontal
+    /// achieved-vs-need bar) rather than the generic "target" SF Symbol it
+    /// used before this existed.
+    struct SleepNeed: View {
+        var tint: Color = Theme.Metric.sleep
+        /// Fraction of the need achieved, 0...1.
+        var fraction: Double = 0.8
+
+        var body: some View {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                let height = geometry.size.height
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(tint.opacity(0.25))
+                        .frame(width: width, height: height * 0.32)
+                    Capsule()
+                        .fill(tint)
+                        .frame(width: width * max(0.18, min(1, fraction)), height: height * 0.32)
+                }
+            }
+        }
+    }
+
+    /// Body Signals: a small cluster of dots at varying opacity, echoing
+    /// `CoreIntelligenceGrid`'s own Body Signals tile (one dot per drifting
+    /// vital) rather than the generic "dot.radiowaves" SF Symbol.
+    struct BodySignals: View {
+        var tint: Color = Theme.Metric.recoveryMid
+
+        var body: some View {
+            GeometryReader { geometry in
+                let side = min(geometry.size.width, geometry.size.height)
+                HStack(spacing: side * 0.14) {
+                    ForEach(0..<4, id: \.self) { index in
+                        Circle()
+                            .fill(tint.opacity(index == 1 ? 1 : 0.4))
+                            .frame(width: side * 0.16, height: side * 0.16)
+                            .offset(y: index % 2 == 0 ? -side * 0.08 : side * 0.08)
+                    }
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            }
+        }
+    }
+
+    /// Cause Finder: two dots joined by a connecting line -- a matched pair,
+    /// the statistical unit `JournalCorrelator`/`PairedDotPlot` actually
+    /// compare, rather than the generic "sparkle.magnifyingglass" SF Symbol.
+    struct CauseFinder: View {
+        var tint: Color = Theme.Metric.hrv
+
+        var body: some View {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                let height = geometry.size.height
+                ZStack {
+                    Rectangle()
+                        .fill(tint.opacity(0.5))
+                        .frame(width: width * 0.5, height: 1.4)
+                    Circle()
+                        .stroke(tint, lineWidth: 1.6)
+                        .frame(width: width * 0.34, height: width * 0.34)
+                        .offset(x: -width * 0.24)
+                    Circle()
+                        .fill(tint)
+                        .frame(width: width * 0.34, height: width * 0.34)
+                        .offset(x: width * 0.24)
+                }
+                .frame(width: width, height: height)
+            }
+        }
+    }
+
+    /// Recovery: a mostly-filled ring, echoing `RecoveryRing`'s own filled
+    /// arc-gauge language rather than a generic heart or battery SF Symbol.
+    struct Recovery: View {
+        var tint: Color = Theme.Metric.recoveryHigh
+        /// Fraction of the ring filled, 0...1.
+        var fraction: Double = 0.78
+
+        var body: some View {
+            ZStack {
+                Circle()
+                    .stroke(tint.opacity(0.2), lineWidth: 2.2)
+                Circle()
+                    .trim(from: 0, to: max(0.06, min(1, fraction)))
+                    .stroke(tint, style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+        }
+    }
+
     /// Breathing: two offset wave arcs, echoing an inhale/exhale pair rather
     /// than a single literal waveform.
     struct Breathing: View {
@@ -122,8 +216,12 @@ enum ZoonIcon {
 #Preview("Zoon Icons") {
     HStack(spacing: 20) {
         ZoonIcon.SleepIntelligence().frame(width: 28, height: 28)
+        ZoonIcon.SleepNeed().frame(width: 28, height: 28)
         ZoonIcon.SleepDebt().frame(width: 28, height: 28)
         ZoonIcon.BodyClock().frame(width: 28, height: 28)
+        ZoonIcon.BodySignals().frame(width: 28, height: 28)
+        ZoonIcon.CauseFinder().frame(width: 28, height: 28)
+        ZoonIcon.Recovery().frame(width: 28, height: 28)
         ZoonIcon.Breathing().frame(width: 28, height: 28)
     }
     .padding()
