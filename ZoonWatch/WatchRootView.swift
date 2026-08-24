@@ -178,17 +178,17 @@ struct SleepIntelligencePage: View {
 
                 VStack(spacing: -3) {
                     Text("\(snapshot.sleepIntelligencePercent)")
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .font(Theme.numeral(34))
                         .monospacedDigit()
                     Text("SLEEP")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .font(Theme.label(9, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
             }
             .frame(maxHeight: .infinity)
 
             Text(snapshot.sleepIntelligenceBand)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(Theme.label(13, weight: .semibold))
                 .foregroundStyle(.secondary)
 
             if snapshot.isMock {
@@ -227,10 +227,10 @@ struct RecoveryPage: View {
 
                 VStack(spacing: -3) {
                     Text("\(snapshot.recoveryPercent)")
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .font(Theme.numeral(34))
                         .monospacedDigit()
                     Text("RECOVERY")
-                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .font(Theme.label(9, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -253,7 +253,7 @@ struct RecoveryPage: View {
     private func miniStat(_ value: String, _ label: String, _ colour: Color) -> some View {
         VStack(spacing: -1) {
             Text(value)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .font(Theme.label(15, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(colour)
             Text(label)
@@ -276,11 +276,11 @@ struct SleepPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Last night", systemImage: "moon.stars.fill")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.Metric.sleep)
 
             Text(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(Theme.numeral(30))
                 .monospacedDigit()
 
             // The score as a bar rather than a second big number: two large
@@ -291,7 +291,7 @@ struct SleepPage: View {
                     Spacer()
                     Text("\(snapshot.score)").monospacedDigit()
                 }
-                .font(.system(size: 11, design: .rounded))
+                .font(Theme.label(11, weight: .regular))
                 .foregroundStyle(.secondary)
 
                 GeometryReader { geometry in
@@ -309,11 +309,11 @@ struct SleepPage: View {
 
             HStack {
                 Text("Sleep bank")
-                    .font(.system(size: 11, design: .rounded))
+                    .font(Theme.label(11, weight: .regular))
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(snapshot.balanceLabel)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(Theme.label(13, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(debtTint)
             }
@@ -345,7 +345,7 @@ struct MorePage: View {
                     .font(Theme.text(20, weight: .medium))
                     .foregroundStyle(isNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
                 Text(snapshot.bodySignalsLabel)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(Theme.label(13, weight: .semibold))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
@@ -358,12 +358,12 @@ struct MorePage: View {
                     .font(Theme.text(20, weight: .medium))
                     .foregroundStyle(hasBadge ? Theme.Metric.recoveryMid : .secondary)
                 Text(hasBadge ? snapshot.badgeTitle : "No badges yet")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(Theme.label(13, weight: .semibold))
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 Text("\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal)")
-                    .font(.system(size: 10, design: .rounded))
+                    .font(Theme.label(10, weight: .regular))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -394,7 +394,7 @@ struct WaitingPage: View {
                 .foregroundStyle(Theme.Metric.sleep)
 
             Text("Waiting for your phone")
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .font(Theme.label(13, weight: .semibold))
                 .multilineTextAlignment(.center)
 
             Text(isActivated
