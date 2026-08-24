@@ -80,6 +80,8 @@ struct CauseFinderView: View {
                 tag: tag,
                 startDate: preferences.experimentStartDate,
                 status: GuidedExperiment.status(for: tag, observations: observations, since: preferences.experimentStartDate),
+                observations: observations,
+                primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
                 onEnd: { coordinator.endActiveExperiment() }
             )
         } else {
@@ -280,11 +282,29 @@ private struct GuidedExperimentCard: View {
     let tag: BehaviorTag
     let startDate: Date?
     let status: GuidedExperiment.Status
+    /// So the card can show adherence (how many elapsed days actually got a
+    /// known yes/no for `tag`, not just how many calendar days have passed)
+    /// and the primary outcome it's being judged on -- both named in the
+    /// redesign audit's "trial progress" ask, neither previously shown here.
+    let observations: [JournalCorrelator.Observation]
+    let primaryMetric: JournalCorrelator.Metric
     let onEnd: () -> Void
 
     private var daysTracking: Int? {
         guard let startDate else { return nil }
         return max(0, Calendar.current.dateComponents([.day], from: startDate, to: .now).day ?? 0)
+    }
+
+    /// (known, elapsed) -- elapsed days since the experiment started that
+    /// have a journal observation at all, and of those, how many actually
+    /// resolved to a known yes/no for `tag` rather than staying unlogged.
+    /// `nil` before the experiment has any elapsed days to judge yet.
+    private var adherence: (known: Int, elapsed: Int)? {
+        guard let startDate else { return nil }
+        let elapsed = observations.filter { $0.date >= startDate }
+        guard !elapsed.isEmpty else { return nil }
+        let known = elapsed.filter { $0.exposureState(for: tag) != .unknown }.count
+        return (known, elapsed.count)
     }
 
     var body: some View {
@@ -298,9 +318,14 @@ private struct GuidedExperimentCard: View {
                     Text("Experiment: \(tag.label)")
                         .font(Theme.label(14, weight: .semibold))
                     if let daysTracking {
-                        Text("Tracking for \(daysTracking) day\(daysTracking == 1 ? "" : "s")")
+                        Text("Tracking for \(daysTracking) day\(daysTracking == 1 ? "" : "s") · judged on \(primaryMetric.shortLabel)")
                             .font(Theme.text(11))
                             .foregroundStyle(.secondary)
+                    }
+                    if let adherence {
+                        Text("Logged \(adherence.known) of \(adherence.elapsed) day\(adherence.elapsed == 1 ? "" : "s") so far")
+                            .font(Theme.text(10))
+                            .foregroundStyle(.tertiary)
                     }
                 }
                 Spacer()
