@@ -101,7 +101,7 @@ struct TodayView: View {
             if let stress = coordinator.todayStress {
                 StressCard(stress: stress, todayStrain: context.strain.value).entrance(1)
             }
-            ringsCard(context).entrance(2)
+            dailyLoadRow(context).entrance(2)
             HealthPulseStrip(context: context, recentNights: coordinator.recentNights).entrance(2)
             SleepSummaryStrip(context: context).entrance(3)
             // Tonight's countdown used to live only on the Sleep tab, so the
@@ -252,81 +252,34 @@ struct TodayView: View {
         .glassCard()
     }
 
-    // MARK: - Rings
+    // MARK: - Daily Load
 
-    private func ringsCard(_ context: DayContext) -> some View {
-        AdaptiveStack(spacing: 16) {
-            TripleRing(arcs: [
-                .init(
-                    fraction: context.strain.value / StrainScore.maxValue,
-                    color: Theme.Metric.strain,
-                    label: "Load", value: context.strain.displayValue
-                ),
-                .init(
-                    fraction: context.sleepNeed.performancePercent / 100,
-                    color: Theme.Metric.sleep,
-                    label: "Sleep", value: "\(Int(context.sleepNeed.performancePercent))%"
-                ),
-                .init(
-                    fraction: Double(context.bodyBattery.current) / 100,
-                    color: Theme.Metric.battery,
-                    label: "Energy", value: "\(context.bodyBattery.current)"
-                )
-            ])
-
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    metricRow(
-                        "Load", context.strain.displayValue,
-                        detail: context.strain.band, color: Theme.Metric.strain,
-                        caveat: context.strain.isEstimate ? "estimated" : nil
-                    )
-                    Spacer(minLength: 4)
-                    MetricInfoButton(
-                        title: "Daily Load",
-                        symbol: "flame.fill",
-                        tint: Theme.Metric.strain,
-                        explanation: [
-                            "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
-                            "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
-                        ]
-                    )
-                }
-
-                NavigationLink {
-                    SleepDetailView(context: context)
-                } label: {
-                    HStack(spacing: 8) {
-                        metricRow(
-                            "Sleep", "\(Int(context.sleepNeed.performancePercent))%",
-                            detail: context.sleepNeed.performanceBand, color: Theme.Metric.sleep
-                        )
-                        Spacer(minLength: 4)
-                        Image(systemName: "chevron.right")
-                            .font(Theme.text(11, weight: .semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                HStack(spacing: 8) {
-                    metricRow(
-                        "Energy", "\(context.bodyBattery.current)",
-                        detail: context.bodyBattery.band, color: Theme.Metric.battery
-                    )
-                    Spacer(minLength: 4)
-                    MetricInfoButton(
-                        title: "Energy Reserve",
-                        symbol: "bolt.fill",
-                        tint: Theme.Metric.battery,
-                        explanation: [
-                            "Energy Reserve models how much you have left through the day: it fills overnight based on how restorative your sleep was, then drains with activity and stress signals as the day goes on.",
-                            "It's a same-day curve, not a rolling average -- see the full shape of today in the Energy Reserve card below."
-                        ]
-                    )
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+    /// Item #88 (card-count reduction): this used to be a full card -- a
+    /// `TripleRing` graphic plus three detail rows for Load, Sleep, and
+    /// Energy. Sleep% and Energy are both duplicated elsewhere on this same
+    /// screen with a richer presentation (the hero/floating cluster/sleep
+    /// summary for Sleep%, `BodyBatteryCard`'s full chart for Energy), so
+    /// showing them a third time here was exactly the "too much content"
+    /// the redesign spec calls out. Load is the one number with nowhere
+    /// else to live -- `context.strain` isn't read anywhere outside this
+    /// file -- so it's kept, shrunk to the single row it actually needs.
+    private func dailyLoadRow(_ context: DayContext) -> some View {
+        HStack(spacing: 8) {
+            metricRow(
+                "Load", context.strain.displayValue,
+                detail: context.strain.band, color: Theme.Metric.strain,
+                caveat: context.strain.isEstimate ? "estimated" : nil
+            )
+            Spacer(minLength: 4)
+            MetricInfoButton(
+                title: "Daily Load",
+                symbol: "flame.fill",
+                tint: Theme.Metric.strain,
+                explanation: [
+                    "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
+                    "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
+                ]
+            )
         }
         .glassCard()
     }
