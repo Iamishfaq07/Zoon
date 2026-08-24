@@ -181,12 +181,21 @@ struct SleepScoreWidgetView: View {
             Label("Last Night", systemImage: "bed.double.fill")
                 .font(.caption2)
                 .widgetAccentable()
+            // `.privacySensitive()` -- the score and its interpretation are
+            // exactly the kind of health signal the redesign audit found
+            // showing unconditionally on the Lock Screen, with no way to
+            // hide it there independent of the device's own passcode. This
+            // opts these two lines into the system's own Lock Screen
+            // privacy redaction (Settings > Notifications > Show Previews),
+            // the same mechanism first-party widgets use.
             Text("\(snapshot.score) · \(snapshot.scoreBand)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
+                .privacySensitive()
             Text(snapshot.insightSummary)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .privacySensitive()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
