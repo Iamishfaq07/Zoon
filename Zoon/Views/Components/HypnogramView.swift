@@ -17,6 +17,14 @@ struct HypnogramView: View {
     let segments: [StageSegment]
     var height: CGFloat = 150
     var showsAxis: Bool = true
+    /// Optional heart-rate overlay, drawn as a thin line across the full
+    /// chart height on its own min/max scale. Empty by default -- the three
+    /// existing call sites that don't have this data (Today's compact strip,
+    /// `PastNightDetailView`) render exactly as before.
+    var heartRateSamples: [(date: Date, bpm: Double)] = []
+    /// Optional sound-event markers (snoring, coughing, etc.), drawn as small
+    /// dots along the top edge at the moment each was detected.
+    var soundEvents: [SoundEvent] = []
 
     /// Stage rows, top to bottom. Awake at the top so the trace descends into
     /// deep sleep — the convention people already know how to read.
@@ -34,6 +42,17 @@ struct HypnogramView: View {
         let time = span.start.addingTimeInterval(span.duration * Double(selectedFraction))
         return segments.first { $0.start <= time && time < $0.start.addingTimeInterval($0.duration) }
             ?? segments.min { abs($0.start.timeIntervalSince(time)) < abs($1.start.timeIntervalSince(time)) }
+    }
+
+    /// Nearest sound event to the drag position, within two minutes -- close
+    /// enough that surfacing it in the badge reads as "this is what happened
+    /// here," not a coincidental nearby moment.
+    private var selectedSoundEvent: SoundEvent? {
+        guard let span, span.duration > 0, let selectedFraction else { return nil }
+        let time = span.start.addingTimeInterval(span.duration * Double(selectedFraction))
+        return soundEvents
+            .filter { abs($0.date.timeIntervalSince(time)) <= 120 }
+            .min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }
     }
 
     var body: some View {
@@ -131,6 +150,41 @@ struct HypnogramView: View {
                         ))
                     }
 
+                    if heartRateSamples.count >= 2 {
+                        let bpms = heartRateSamples.map(\.bpm)
+                        let minBPM = bpms.min() ?? 0
+                        let maxBPM = bpms.max() ?? 1
+                        let bpmRange = max(1, maxBPM - minBPM)
+
+                        func point(for sample: (date: Date, bpm: Double)) -> CGPoint? {
+                            guard sample.date >= span.start, sample.date <= span.end else { return nil }
+                            let x = (sample.date.timeIntervalSince(span.start) / total) * size.width
+                            // Confined to the top 55% of the chart so the
+                            // line reads as an overlay riding above the
+                            // stage blocks rather than competing with them.
+                            let y = (1 - (sample.bpm - minBPM) / bpmRange) * size.height * 0.55
+                            return CGPoint(x: x, y: y)
+                        }
+
+                        let path = Path { p in
+                            var started = false
+                            for sample in heartRateSamples.sorted(by: { $0.date < $1.date }) {
+                                guard let point = point(for: sample) else { continue }
+                                if started { p.addLine(to: point) } else { p.move(to: point); started = true }
+                            }
+                        }
+                        context.stroke(path, with: .color(Theme.Metric.heart.opacity(0.7)), lineWidth: 1.5)
+                    }
+
+                    if !soundEvents.isEmpty {
+                        for event in soundEvents {
+                            guard event.date >= span.start, event.date <= span.end else { continue }
+                            let x = (event.date.timeIntervalSince(span.start) / total) * size.width
+                            let dot = Path(ellipseIn: CGRect(x: x - 2.5, y: 2, width: 5, height: 5))
+                            context.fill(dot, with: .color(Theme.Metric.respiratory.opacity(0.85)))
+                        }
+                    }
+
                     if let selectedFraction {
                         let x = size.width * selectedFraction
                         let path = Path { p in
@@ -154,11 +208,7 @@ struct HypnogramView: View {
                     let x = geo.size.width * selectedFraction
                     ChartSelectionBadge(
                         title: selectedSegment.start.formatted(.dateTime.hour().minute()),
-                        lines: [(
-                            "Stage",
-                            normalized(selectedSegment.stage).displayName,
-                            Theme.Stage.color(for: normalized(selectedSegment.stage))
-                        )]
+                        lines: badgeLines(for: selectedSegment)
                     )
                     .offset(x: min(max(0, x - 60), geo.size.width - 120), y: -6)
                 }
@@ -186,6 +236,25 @@ struct HypnogramView: View {
     /// so the chart still has a shape rather than an empty band.
     private func normalized(_ stage: SleepStage) -> SleepStage {
         stage == .unspecified ? .core : (stage == .inBed ? .awake : stage)
+    }
+
+    private func badgeLines(for segment: StageSegment) -> [(label: String, value: String, tint: Color)] {
+        var lines: [(label: String, value: String, tint: Color)] = [(
+            "Stage",
+            normalized(segment.stage).displayName,
+            Theme.Stage.color(for: normalized(segment.stage))
+        )]
+        if let nearestHR = nearestHeartRate(to: segment.start) {
+            lines.append(("Heart rate", "\(Int(nearestHR.rounded())) bpm", Theme.Metric.heart))
+        }
+        if let event = selectedSoundEvent {
+            lines.append((event.label, event.date.formatted(.dateTime.hour().minute()), Theme.Metric.respiratory))
+        }
+        return lines
+    }
+
+    private func nearestHeartRate(to time: Date) -> Double? {
+        heartRateSamples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }?.bpm
     }
 
     private func midpointLabel(_ span: DateInterval) -> String {
