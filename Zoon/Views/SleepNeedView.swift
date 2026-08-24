@@ -6,6 +6,12 @@ struct SleepNeedView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
+    /// Set only when pushed from `CoreIntelligenceGrid`'s tile, so the push
+    /// animation zooms outward from the tile instead of the generic
+    /// slide-in -- `nil` for other entry points (e.g. the Insights hub row).
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
     private var need: SleepNeed? { coordinator.state.context?.sleepNeed }
     private var learned: LearnedSleepNeed? { coordinator.state.context?.learnedSleepNeed }
 
@@ -27,6 +33,12 @@ struct SleepNeedView: View {
         .nightBackground()
         .navigationTitle("Sleep Need")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTransition(zoomTransition)
+    }
+
+    private var zoomTransition: NavigationTransition {
+        guard let zoomID, let zoomNamespace else { return .automatic }
+        return .zoom(sourceID: zoomID, in: zoomNamespace)
     }
 
     private func hero(_ need: SleepNeed) -> some View {

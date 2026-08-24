@@ -7,6 +7,11 @@ struct SleepDebtView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
+    /// Set only when pushed from `CoreIntelligenceGrid`'s tile -- see
+    /// `SleepNeedView`'s doc comment on the same pair of properties.
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
     private var currentDebt: Double { coordinator.state.context?.night.sleepDebtMinutes ?? 0 }
 
     private var band: (label: String, tint: Color) {
@@ -31,6 +36,12 @@ struct SleepDebtView: View {
         .nightBackground()
         .navigationTitle("Sleep Debt")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTransition(zoomTransition)
+    }
+
+    private var zoomTransition: NavigationTransition {
+        guard let zoomID, let zoomNamespace else { return .automatic }
+        return .zoom(sourceID: zoomID, in: zoomNamespace)
     }
 
     private var hero: some View {

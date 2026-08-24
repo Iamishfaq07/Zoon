@@ -6,6 +6,11 @@ struct BodyClockView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
+    /// Set only when pushed from `CoreIntelligenceGrid`'s tile -- see
+    /// `SleepNeedView`'s doc comment on the same pair of properties.
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
     private var bodyClock: BodyClock? { coordinator.state.context?.bodyClock }
     private var night: SleepNightFeatures? { coordinator.state.context?.night }
 
@@ -31,6 +36,12 @@ struct BodyClockView: View {
         .nightBackground()
         .navigationTitle("Body Clock")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationTransition(zoomTransition)
+    }
+
+    private var zoomTransition: NavigationTransition {
+        guard let zoomID, let zoomNamespace else { return .automatic }
+        return .zoom(sourceID: zoomID, in: zoomNamespace)
     }
 
     // MARK: - Ring
