@@ -279,6 +279,7 @@
 		9FA907C5D339677F4C2F2251 /* ZoonIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8B4D93DD23601661ABF27 /* ZoonIcons.swift */; };
 		A07568B105991435631F37A1 /* YearHeatmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A266B25D9732E28AB9C8A587 /* YearHeatmapView.swift */; };
 		A07966C48A95AB39CD472179 /* SleepStory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7060DA0F52BD67E4086F62D /* SleepStory.swift */; };
+		A1C1F4423BCFEC81936F62E0 /* ZoonUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96CE93F98BD1B309DFF4A17D /* ZoonUITests.swift */; };
 		A1E3EE2060208B1676A63154 /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */; };
 		A3D820675575D8846DBF7418 /* ZoonIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8B4D93DD23601661ABF27 /* ZoonIcons.swift */; };
 		A45CDD950681787A91BF5B5D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F4977AA8C1CBFC108D7F5ACA /* PrivacyInfo.xcprivacy */; };
@@ -442,6 +443,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 3B349027366F684A61204B00;
 			remoteInfo = ZoonWidgetExtension;
+		};
+		74FC7C536795609A8C25D6E6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E3435DDA2687639586BF0B70;
+			remoteInfo = Zoon;
 		};
 		834E3385130B4715C02CD058 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -622,6 +630,7 @@
 		90AD8CB0B86EA29FC8EBEF2B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
 		93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RuleBasedInsightEngine.swift"; sourceTree = "<group>"; };
 		946EC8BD6FCE36FDD451672B /* DateIntervalMergingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateIntervalMergingTests.swift"; sourceTree = "<group>"; };
+		96CE93F98BD1B309DFF4A17D /* ZoonUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonUITests.swift"; sourceTree = "<group>"; };
 		97851BDC0CB8EE6780A3E49D /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MoreView.swift"; sourceTree = "<group>"; };
 		979012F3570B3E81F02B236E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 		9B0270263CE62B9C1BB2D468 /* FirstNightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FirstNightCard.swift"; sourceTree = "<group>"; };
@@ -655,6 +664,7 @@
 		B96C01BFB4A1B54D4ABEEE07 /* SnoreSignalAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreSignalAnalyzer.swift"; sourceTree = "<group>"; };
 		BADFBFF192F82BF1AF28487A /* ZoonIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonIntents.swift"; sourceTree = "<group>"; };
 		BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataExporter.swift"; sourceTree = "<group>"; };
+		BCEE5B7C1B654D90B6BEE36F /* ZoonUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZoonUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BE323A154A812CF844797F4A /* BaselineLaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BaselineLaneView.swift"; sourceTree = "<group>"; };
 		BFB3C23F8240B4F9AD67AE02 /* FloatingMetricCluster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FloatingMetricCluster.swift"; sourceTree = "<group>"; };
 		C04C95F7B4CAD642DA384A03 /* SleepDebtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtView.swift"; sourceTree = "<group>"; };
@@ -735,6 +745,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CF44C6A1646E4AE7DF21FBF7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DB575B01C9EDB90A46216F71 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -789,6 +807,14 @@
 				213D22A6A83EC98AD923972A,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		069916A6F83DBB3A516F1194 /* ZoonUITests */ = {
+			isa = PBXGroup;
+			children = (
+				96CE93F98BD1B309DFF4A17D,
+			);
+			path = ZoonUITests;
 			sourceTree = "<group>";
 		};
 		1E9E5DCC18BB7937F8B24A56 /* Insights */ = {
@@ -875,6 +901,7 @@
 				748B285E7BBE42DF4EEF9437,
 				CAA0D036D33429D4ED9208FE,
 				6FB87E114CAD421491A849AE,
+				069916A6F83DBB3A516F1194,
 				3B534EC61D756F8D2311F047,
 				547D009064F7C3F13BEF3460,
 			);
@@ -904,6 +931,7 @@
 				03944FB4BD4F601B7757F914,
 				139E753E421138D60AC160E7,
 				DFDED23FA58339F9273F6C84,
+				BCEE5B7C1B654D90B6BEE36F,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1130,6 +1158,23 @@
 			productReference = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		678B4DE61235C519CC844609 /* ZoonUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FAE6690EA02E2507A57DFB5C /* Build configuration list for PBXNativeTarget "ZoonUITests" */;
+			buildPhases = (
+				001C4057F79ED886753FF386 /* Sources */,
+				CF44C6A1646E4AE7DF21FBF7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				103B7FFCD4C1D25A61371B2A /* PBXTargetDependency */,
+			);
+			name = ZoonUITests;
+			productName = ZoonUITests;
+			productReference = BCEE5B7C1B654D90B6BEE36F /* ZoonUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		A700229C3AC2DAE057FE5B27 /* ZoonTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9B28569972ABC6047BF58B22 /* Build configuration list for PBXNativeTarget "ZoonTests" */;
@@ -1199,6 +1244,10 @@
 					09548E47F9D3F622CA83E0F9 = {CreatedOnToolsVersion = 15.2; };
 					E10EF4728A4794C3BF27FE7B = {CreatedOnToolsVersion = 15.2; };
 					A700229C3AC2DAE057FE5B27 = {CreatedOnToolsVersion = 15.2; };
+					678B4DE61235C519CC844609 = {
+						CreatedOnToolsVersion = 15.2;
+						TestTargetID = E3435DDA2687639586BF0B70;
+					};
 				};
 			};
 			buildConfigurationList = 7EF2517A8FE63F4681EC5EEA /* Build configuration list for PBXProject "Zoon" */;
@@ -1219,6 +1268,7 @@
 				09548E47F9D3F622CA83E0F9 /* ZoonWatch */,
 				E10EF4728A4794C3BF27FE7B /* ZoonWatchWidgetExtension */,
 				A700229C3AC2DAE057FE5B27 /* ZoonTests */,
+				678B4DE61235C519CC844609 /* ZoonUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -1262,6 +1312,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		001C4057F79ED886753FF386 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1C1F4423BCFEC81936F62E0,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		19E775F33F63D750030A1A6E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1714,6 +1772,11 @@
 			target = 09548E47F9D3F622CA83E0F9 /* ZoonWatch */;
 			targetProxy = 30B83BA5BA9280D4379AEEF3 /* PBXContainerItemProxy */;
 		};
+		103B7FFCD4C1D25A61371B2A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E3435DDA2687639586BF0B70 /* Zoon */;
+			targetProxy = 74FC7C536795609A8C25D6E6 /* PBXContainerItemProxy */;
+		};
 		57606DD5C9F3ADF6B83BB765 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E10EF4728A4794C3BF27FE7B /* ZoonWatchWidgetExtension */;
@@ -1842,6 +1905,21 @@
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Debug;
+		};
+		760445127ABCB7BEC0B3CF25 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonUITests;
+				TEST_TARGET_NAME = Zoon;
+			};
+			name = Release;
 		};
 		7E3B7AEEBF5BFFC2BAF4F768 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -2007,6 +2085,21 @@
 			};
 			name = Debug;
 		};
+		D00062DCF91EC7918D8B5C21 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonUITests;
+				TEST_TARGET_NAME = Zoon;
+			};
+			name = Debug;
+		};
 		D96168B4C6D45B127EA13BB4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -2081,6 +2174,15 @@
 			buildConfigurations = (
 				6E891864204D362BDAEF8C08 /* Debug */,
 				D96168B4C6D45B127EA13BB4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FAE6690EA02E2507A57DFB5C /* Build configuration list for PBXNativeTarget "ZoonUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00062DCF91EC7918D8B5C21 /* Debug */,
+				760445127ABCB7BEC0B3CF25 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

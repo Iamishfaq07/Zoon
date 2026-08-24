@@ -16,6 +16,7 @@ EXT = "ZoonWidgetExtension"
 WATCH = "ZoonWatch"
 WATCH_EXT = "ZoonWatchWidgetExtension"
 TESTS = "ZoonTests"
+UITESTS = "ZoonUITests"
 
 _used = {}
 
@@ -49,6 +50,7 @@ EXT_SRC = swift_files("ZoonWidget")
 WATCH_SRC = swift_files("ZoonWatch")
 WATCH_EXT_SRC = swift_files("ZoonWatchWidget")
 TESTS_SRC = swift_files("ZoonTests")
+UITESTS_SRC = swift_files("ZoonUITests")
 # Not in Shared/ (it imports HealthKit), but it's pure logic over
 # HKCategorySample -- constructible off-device with no store access needed --
 # so it's worth compiling into the test target too rather than leaving its
@@ -149,7 +151,7 @@ def file_ref(path, ftype=None, name=None):
 
 
 refs = {}
-for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + TESTS_SRC + [
+for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + TESTS_SRC + UITESTS_SRC + [
     APP_ASSETS, EXT_ASSETS, WATCH_ASSETS,
     APP_PRIVACY, EXT_PRIVACY, WATCH_PRIVACY, WATCH_EXT_PRIVACY,
 ] + DOCS:
@@ -185,6 +187,12 @@ emit("PBXFileReference",
      f'explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = {TESTS}.xctest; '
      f'sourceTree = BUILT_PRODUCTS_DIR; }};')
 
+UITESTS_PRODUCT = uid("product:uitests")
+emit("PBXFileReference",
+     f'\t\t{UITESTS_PRODUCT} /* {UITESTS}.xctest */ = {{isa = PBXFileReference; '
+     f'explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = {UITESTS}.xctest; '
+     f'sourceTree = BUILT_PRODUCTS_DIR; }};')
+
 
 # --- PBXBuildFile ---------------------------------------------------------
 def build_file(path, target):
@@ -208,6 +216,10 @@ watch_ext_sources = [build_file(p, WATCH_EXT) for p in WATCH_EXT_SRC + SHARED]
 # Zoon itself, so it builds and runs fast and can never accidentally reach
 # HealthKit or SwiftData.
 tests_sources = [build_file(p, TESTS) for p in TESTS_SRC + SHARED + TESTS_EXTRA_APP_FILES]
+# No app or Shared/ sources: a UI test target drives the real app process
+# black-box, through the accessibility tree via XCUIApplication -- it never
+# imports or links against app code directly.
+uitests_sources = [build_file(p, UITESTS) for p in UITESTS_SRC]
 
 
 def resource_file(path, target):
@@ -288,11 +300,12 @@ ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS], refs[EXT
 watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS], refs[WATCH_PRIVACY]])
 watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC, extra=[refs[WATCH_EXT_PRIVACY]])
 tests_group = tree_groups("ZoonTests", TESTS_SRC)
+uitests_group = tree_groups("ZoonUITests", UITESTS_SRC)
 docs_group = group("docs", "Documentation", [refs[d] for d in DOCS])
 products_group = group("products", "Products",
-                       [APP_PRODUCT, EXT_PRODUCT, WATCH_PRODUCT, WATCH_EXT_PRODUCT, TESTS_PRODUCT])
+                       [APP_PRODUCT, EXT_PRODUCT, WATCH_PRODUCT, WATCH_EXT_PRODUCT, TESTS_PRODUCT, UITESTS_PRODUCT])
 main_group = group("main", "", [shared_group, app_group, ext_group, watch_group,
-                                watch_ext_group, tests_group, docs_group, products_group])
+                                watch_ext_group, tests_group, uitests_group, docs_group, products_group])
 
 # --- Build phases ---------------------------------------------------------
 APP_SOURCES_PHASE = uid("phase:app:sources")
@@ -312,6 +325,8 @@ WATCH_EXT_RES_PHASE = uid("phase:watchext:res")
 EMBED_WATCH_EXT_PHASE = uid("phase:watch:embedext")
 TESTS_SOURCES_PHASE = uid("phase:tests:sources")
 TESTS_FW_PHASE = uid("phase:tests:fw")
+UITESTS_SOURCES_PHASE = uid("phase:uitests:sources")
+UITESTS_FW_PHASE = uid("phase:uitests:fw")
 
 
 def phase(pid, isa, name, files, extra=""):
@@ -351,6 +366,8 @@ phase(EMBED_WATCH_EXT_PHASE, "PBXCopyFilesBuildPhase", "Embed Foundation Extensi
       extra='\t\t\tdstPath = "";\n\t\t\tdstSubfolderSpec = 13;\n')
 phase(TESTS_SOURCES_PHASE, "PBXSourcesBuildPhase", "Sources", tests_sources)
 phase(TESTS_FW_PHASE, "PBXFrameworksBuildPhase", "Frameworks", [])
+phase(UITESTS_SOURCES_PHASE, "PBXSourcesBuildPhase", "Sources", uitests_sources)
+phase(UITESTS_FW_PHASE, "PBXFrameworksBuildPhase", "Frameworks", [])
 
 # --- Target dependency ----------------------------------------------------
 PROJECT = uid("project")
@@ -365,6 +382,9 @@ WATCH_EXT_TARGET = uid("target:watchext")
 WATCH_EXT_PROXY = uid("proxy:watchext")
 WATCH_EXT_DEP = uid("dep:watchext")
 TESTS_TARGET = uid("target:tests")
+UITESTS_TARGET = uid("target:uitests")
+UITESTS_PROXY = uid("proxy:uitests")
+UITESTS_DEP = uid("dep:uitests")
 
 emit("PBXContainerItemProxy",
      f'\t\t{PROXY} /* PBXContainerItemProxy */ = {{\n'
@@ -411,12 +431,28 @@ emit("PBXTargetDependency",
      f'\t\t\ttargetProxy = {WATCH_EXT_PROXY} /* PBXContainerItemProxy */;\n'
      f'\t\t}};')
 
+emit("PBXContainerItemProxy",
+     f'\t\t{UITESTS_PROXY} /* PBXContainerItemProxy */ = {{\n'
+     f'\t\t\tisa = PBXContainerItemProxy;\n'
+     f'\t\t\tcontainerPortal = {PROJECT} /* Project object */;\n'
+     f'\t\t\tproxyType = 1;\n'
+     f'\t\t\tremoteGlobalIDString = {APP_TARGET};\n'
+     f'\t\t\tremoteInfo = {APP};\n'
+     f'\t\t}};')
+emit("PBXTargetDependency",
+     f'\t\t{UITESTS_DEP} /* PBXTargetDependency */ = {{\n'
+     f'\t\t\tisa = PBXTargetDependency;\n'
+     f'\t\t\ttarget = {APP_TARGET} /* {APP} */;\n'
+     f'\t\t\ttargetProxy = {UITESTS_PROXY} /* PBXContainerItemProxy */;\n'
+     f'\t\t}};')
+
 # --- Targets --------------------------------------------------------------
 APP_CFG_LIST = uid("cfglist:app")
 EXT_CFG_LIST = uid("cfglist:ext")
 WATCH_CFG_LIST = uid("cfglist:watch")
 WATCH_EXT_CFG_LIST = uid("cfglist:watchext")
 TESTS_CFG_LIST = uid("cfglist:tests")
+UITESTS_CFG_LIST = uid("cfglist:uitests")
 PROJ_CFG_LIST = uid("cfglist:project")
 
 emit("PBXNativeTarget",
@@ -509,6 +545,22 @@ emit("PBXNativeTarget",
      f'\t\t\tproductType = "com.apple.product-type.bundle.unit-test";\n'
      f'\t\t}};')
 
+emit("PBXNativeTarget",
+     f'\t\t{UITESTS_TARGET} /* {UITESTS} */ = {{\n'
+     f'\t\t\tisa = PBXNativeTarget;\n'
+     f'\t\t\tbuildConfigurationList = {UITESTS_CFG_LIST} /* Build configuration list for PBXNativeTarget "{UITESTS}" */;\n'
+     f'\t\t\tbuildPhases = (\n'
+     f'\t\t\t\t{UITESTS_SOURCES_PHASE} /* Sources */,\n'
+     f'\t\t\t\t{UITESTS_FW_PHASE} /* Frameworks */,\n'
+     f'\t\t\t);\n'
+     f'\t\t\tbuildRules = (\n\t\t\t);\n'
+     f'\t\t\tdependencies = (\n\t\t\t\t{UITESTS_DEP} /* PBXTargetDependency */,\n\t\t\t);\n'
+     f'\t\t\tname = {UITESTS};\n'
+     f'\t\t\tproductName = {UITESTS};\n'
+     f'\t\t\tproductReference = {UITESTS_PRODUCT} /* {UITESTS}.xctest */;\n'
+     f'\t\t\tproductType = "com.apple.product-type.bundle.ui-testing";\n'
+     f'\t\t}};')
+
 emit("PBXProject",
      f'\t\t{PROJECT} /* Project object */ = {{\n'
      f'\t\t\tisa = PBXProject;\n'
@@ -522,6 +574,10 @@ emit("PBXProject",
      f'\t\t\t\t\t{WATCH_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
      f'\t\t\t\t\t{WATCH_EXT_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
      f'\t\t\t\t\t{TESTS_TARGET} = {{CreatedOnToolsVersion = 15.2; }};\n'
+     f'\t\t\t\t\t{UITESTS_TARGET} = {{\n'
+     f'\t\t\t\t\t\tCreatedOnToolsVersion = 15.2;\n'
+     f'\t\t\t\t\t\tTestTargetID = {APP_TARGET};\n'
+     f'\t\t\t\t\t}};\n'
      f'\t\t\t\t}};\n'
      f'\t\t\t}};\n'
      f'\t\t\tbuildConfigurationList = {PROJ_CFG_LIST} /* Build configuration list for PBXProject "{APP}" */;\n'
@@ -539,6 +595,7 @@ emit("PBXProject",
      f'\t\t\t\t{WATCH_TARGET} /* {WATCH} */,\n'
      f'\t\t\t\t{WATCH_EXT_TARGET} /* {WATCH_EXT} */,\n'
      f'\t\t\t\t{TESTS_TARGET} /* {TESTS} */,\n'
+     f'\t\t\t\t{UITESTS_TARGET} /* {UITESTS} */,\n'
      f'\t\t\t);\n'
      f'\t\t}};')
 
@@ -691,9 +748,18 @@ TESTS_SETTINGS = TARGET_COMMON + """				GENERATE_INFOPLIST_FILE = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonTests;
 """
 
+# TEST_TARGET_NAME, not TEST_HOST/BUNDLE_LOADER: that pair is the older
+# "linked" UI-testing style. TEST_TARGET_NAME is what a UI-testing product
+# type actually wants -- it drives the named app as a separate process via
+# the accessibility tree, rather than loading into it.
+UITESTS_SETTINGS = TARGET_COMMON + f"""				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zoon.sleep.ZoonUITests;
+				TEST_TARGET_NAME = {APP};
+"""
+
 for key, settings in (("app", APP_SETTINGS), ("ext", EXT_SETTINGS),
                       ("watch", WATCH_SETTINGS), ("watchext", WATCH_EXT_SETTINGS),
-                      ("tests", TESTS_SETTINGS)):
+                      ("tests", TESTS_SETTINGS), ("uitests", UITESTS_SETTINGS)):
     for cfg in ("Debug", "Release"):
         configs[uid(f"cfg:{key}:{cfg}")] = (cfg, settings)
 
@@ -731,6 +797,8 @@ cfg_list(WATCH_EXT_CFG_LIST, f'Build configuration list for PBXNativeTarget "{WA
          uid("cfg:watchext:Debug"), uid("cfg:watchext:Release"))
 cfg_list(TESTS_CFG_LIST, f'Build configuration list for PBXNativeTarget "{TESTS}"',
          uid("cfg:tests:Debug"), uid("cfg:tests:Release"))
+cfg_list(UITESTS_CFG_LIST, f'Build configuration list for PBXNativeTarget "{UITESTS}"',
+         uid("cfg:uitests:Debug"), uid("cfg:uitests:Release"))
 
 # ---------------------------------------------------------------- assemble
 ORDER = ["PBXBuildFile", "PBXContainerItemProxy", "PBXCopyFilesBuildPhase",
@@ -804,6 +872,20 @@ SCHEME = f"""<?xml version="1.0" encoding="UTF-8"?>
                ReferencedContainer = "container:Zoon.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{UITESTS_TARGET}"
+               BuildableName = "{UITESTS}.xctest"
+               BlueprintName = "{UITESTS}"
+               ReferencedContainer = "container:Zoon.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -819,6 +901,16 @@ SCHEME = f"""<?xml version="1.0" encoding="UTF-8"?>
                BlueprintIdentifier = "{TESTS_TARGET}"
                BuildableName = "{TESTS}.xctest"
                BlueprintName = "{TESTS}"
+               ReferencedContainer = "container:Zoon.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{UITESTS_TARGET}"
+               BuildableName = "{UITESTS}.xctest"
+               BlueprintName = "{UITESTS}"
                ReferencedContainer = "container:Zoon.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -888,4 +980,5 @@ print(f"  ext build files: {len(ext_sources)}")
 print(f"  watch build files: {len(watch_sources)}")
 print(f"  test sources   : {len(TESTS_SRC)}")
 print(f"  test build files: {len(tests_sources)}")
-print(f"  APP_TARGET={APP_TARGET}  EXT_TARGET={EXT_TARGET}  WATCH_TARGET={WATCH_TARGET}  TESTS_TARGET={TESTS_TARGET}")
+print(f"  ui test sources : {len(UITESTS_SRC)}")
+print(f"  APP_TARGET={APP_TARGET}  EXT_TARGET={EXT_TARGET}  WATCH_TARGET={WATCH_TARGET}  TESTS_TARGET={TESTS_TARGET}  UITESTS_TARGET={UITESTS_TARGET}")
