@@ -162,7 +162,10 @@ struct VitalsStatus: Codable, Hashable, Sendable {
         return VitalsStatus(metrics: metrics, hasBaseline: hasBaseline)
     }
 
-    private static func currentValue(_ kind: Kind, features: SleepNightFeatures) -> Double? {
+    /// Not `private` -- `MetricTrendView` reuses this same kind-to-field
+    /// mapping to plot a night-by-night history for whichever vital was
+    /// tapped, rather than duplicating the switch.
+    static func currentValue(_ kind: Kind, features: SleepNightFeatures) -> Double? {
         switch kind {
         case .restingHeartRate: features.restingHeartRate
         case .hrv: features.avgHRV
