@@ -109,6 +109,21 @@ struct SleepIntelligenceOrb: View {
             center
         }
         .frame(width: size, height: size)
+        // Drag-around-the-ring, not just discrete taps -- the redesign
+        // spec's ask for this orb specifically (item #54). `simultaneousGesture`
+        // rather than `.gesture` so this doesn't take over recognition from
+        // the existing per-segment/center `onTapGesture`s -- both run
+        // independently instead of one cancelling the other.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    guard let component = component(at: value.location) else { return }
+                    if selectedID != component.id {
+                        Haptics.tap()
+                        withAnimation(.snappy(duration: 0.15)) { selectedID = component.id }
+                    }
+                }
+        )
         .onAppear {
             guard !reduceMotion else {
                 animatedProgress = 1
@@ -131,6 +146,31 @@ struct SleepIntelligenceOrb: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sleep Intelligence")
         .accessibilityValue("\(score.percent), \(score.band.label)")
+    }
+
+    /// The component whose arc contains `point`, in the orb's own local
+    /// coordinate space (top-left origin, `size` × `size`) -- `nil` outside
+    /// the ring's stroke band, so a drag that wanders into the center or
+    /// past the outer edge doesn't keep re-selecting whatever arc it last
+    /// crossed.
+    private func component(at point: CGPoint) -> SleepIntelligenceScore.Component? {
+        let center = CGPoint(x: size / 2, y: size / 2)
+        let dx = point.x - center.x
+        let dy = point.y - center.y
+        let distance = (dx * dx + dy * dy).squareRoot()
+        let ringRadius = (size - lineWidth) / 2
+        guard abs(distance - ringRadius) < lineWidth * 1.5 else { return nil }
+
+        // atan2 in screen space (y grows downward) already increases
+        // clockwise from the 3 o'clock position -- the same convention
+        // `.rotationEffect(.degrees(segment.start * 360 - 90))` uses to
+        // place each arc, so this is the inverse of that rotation.
+        let angleDegrees = atan2(dy, dx) * 180 / .pi
+        var fraction = (angleDegrees + 90) / 360
+        if fraction < 0 { fraction += 1 }
+        if fraction >= 1 { fraction -= 1 }
+
+        return segments.first { fraction >= $0.start && fraction < $0.end }?.component
     }
 
     @ViewBuilder
