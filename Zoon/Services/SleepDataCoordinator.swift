@@ -146,6 +146,29 @@ final class SleepDataCoordinator {
         // engine doing the work cannot diverge after a relaunch.
         self.engine = Self.makeEngine(for: preferences.preferredEngine)
         watchLink.activate()
+        watchLink.onQuickAction = { [journal, naps] action in
+            Self.apply(action, journal: journal, naps: naps)
+        }
+    }
+
+    /// Applies a quick action logged from the watch. `static` and passed its
+    /// dependencies explicitly rather than a `self` method: the closure set
+    /// on `watchLink.onQuickAction` above is held by `WatchLink` for the
+    /// coordinator's whole lifetime, and capturing `self` there would be a
+    /// retain cycle (`watchLink` is itself a property of this coordinator).
+    private static func apply(_ action: WatchQuickAction, journal: JournalStore, naps: NapStore) {
+        switch action {
+        case .behaviorTag(let rawValue):
+            guard let tag = BehaviorTag(rawValue: rawValue) else { return }
+            journal.toggle(tag, on: .now)
+        case .morningFeeling(let rawValue):
+            guard let feeling = MorningFeeling(rawValue: rawValue) else { return }
+            journal.setFeeling(feeling, on: .now)
+        case .nap(let minutes):
+            guard minutes > 0 else { return }
+            let end = Date.now
+            naps.importNaps([NapStore.Nap(start: end.addingTimeInterval(-Double(minutes) * 60), end: end)])
+        }
     }
 
     // MARK: - Lifecycle
