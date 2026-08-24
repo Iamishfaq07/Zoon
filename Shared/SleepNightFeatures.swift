@@ -194,6 +194,146 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// site; defaults to the device's timezone at construction time, which is
     /// only wrong for mock/test data that doesn't care.
     var timeZoneIdentifier: String = TimeZone.current.identifier
+
+    // MARK: - Init
+
+    /// Restates the memberwise initializer the compiler would otherwise
+    /// synthesize. Required because providing a custom `init(from:)` below
+    /// (for backup-compatibility -- see its doc comment) suppresses that
+    /// synthesis entirely, and every construction call site across the app
+    /// depends on it, including omitting the fields that default here.
+    init(
+        date: Date,
+        bedtime: Date,
+        wakeTime: Date,
+        timeInBedMinutes: Double,
+        timeInBedIsEstimated: Bool = false,
+        timeAsleepMinutes: Double,
+        sleepEfficiencyPercent: Double,
+        coreMinutes: Double,
+        deepMinutes: Double,
+        remMinutes: Double,
+        unspecifiedAsleepMinutes: Double,
+        awakeMinutes: Double,
+        wakeCount: Int,
+        sleepLatencyMinutes: Double?,
+        avgHeartRate: Double?,
+        minHeartRate: Double?,
+        restingHeartRate: Double? = nil,
+        avgHRV: Double?,
+        avgRespiratoryRate: Double?,
+        avgSpO2: Double?,
+        wristTempDeltaC: Double?,
+        breathingDisturbances: Double? = nil,
+        breathingDisturbancesClassification: BreathingDisturbanceClassification? = nil,
+        hrv7DayAvg: Double?,
+        sleepDebtMinutes: Double?,
+        lastWorkoutHoursBeforeBed: Double?,
+        exerciseMinutesPreviousDay: Double?,
+        secondaryAsleepMinutes: Double = 0,
+        sleepNeedBaselineMinutes: Double? = nil,
+        alcoholicBeverages: Double? = nil,
+        lateCaffeineMg: Double? = nil,
+        sourceName: String?,
+        isMock: Bool = false,
+        stageSegments: [StageSegment] = [],
+        timeZoneIdentifier: String = TimeZone.current.identifier
+    ) {
+        self.date = date
+        self.bedtime = bedtime
+        self.wakeTime = wakeTime
+        self.timeInBedMinutes = timeInBedMinutes
+        self.timeInBedIsEstimated = timeInBedIsEstimated
+        self.timeAsleepMinutes = timeAsleepMinutes
+        self.sleepEfficiencyPercent = sleepEfficiencyPercent
+        self.coreMinutes = coreMinutes
+        self.deepMinutes = deepMinutes
+        self.remMinutes = remMinutes
+        self.unspecifiedAsleepMinutes = unspecifiedAsleepMinutes
+        self.awakeMinutes = awakeMinutes
+        self.wakeCount = wakeCount
+        self.sleepLatencyMinutes = sleepLatencyMinutes
+        self.avgHeartRate = avgHeartRate
+        self.minHeartRate = minHeartRate
+        self.restingHeartRate = restingHeartRate
+        self.avgHRV = avgHRV
+        self.avgRespiratoryRate = avgRespiratoryRate
+        self.avgSpO2 = avgSpO2
+        self.wristTempDeltaC = wristTempDeltaC
+        self.breathingDisturbances = breathingDisturbances
+        self.breathingDisturbancesClassification = breathingDisturbancesClassification
+        self.hrv7DayAvg = hrv7DayAvg
+        self.sleepDebtMinutes = sleepDebtMinutes
+        self.lastWorkoutHoursBeforeBed = lastWorkoutHoursBeforeBed
+        self.exerciseMinutesPreviousDay = exerciseMinutesPreviousDay
+        self.secondaryAsleepMinutes = secondaryAsleepMinutes
+        self.sleepNeedBaselineMinutes = sleepNeedBaselineMinutes
+        self.alcoholicBeverages = alcoholicBeverages
+        self.lateCaffeineMg = lateCaffeineMg
+        self.sourceName = sourceName
+        self.isMock = isMock
+        self.stageSegments = stageSegments
+        self.timeZoneIdentifier = timeZoneIdentifier
+    }
+
+    // MARK: - Decoding
+
+    /// Hand-written to close a real backward-compatibility gap: Swift's
+    /// *synthesized* `Decodable` conformance does **not** fall back to a
+    /// property's default value when its key is missing from the JSON --
+    /// that only happens for `Optional`-typed properties. A non-Optional
+    /// property declared `var x: T = default` (`timeInBedIsEstimated`,
+    /// `secondaryAsleepMinutes`, `isMock`, `stageSegments`,
+    /// `timeZoneIdentifier`) still throws `keyNotFound` on synthesized
+    /// decode if the key is absent, which is exactly what an older export
+    /// (format 1/2, or any format before the field existed) looks like.
+    /// `DataExporter.decode` turns that throw into a generic "damaged file"
+    /// error for the user -- a real backup, misreported as corrupt.
+    ///
+    /// Every field below is decoded with `decodeIfPresent(...) ?? default`,
+    /// using literally the same default the property declares, so this
+    /// matches what a reader would assume already happens.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(Date.self, forKey: .date)
+        bedtime = try c.decode(Date.self, forKey: .bedtime)
+        wakeTime = try c.decode(Date.self, forKey: .wakeTime)
+        timeInBedMinutes = try c.decode(Double.self, forKey: .timeInBedMinutes)
+        timeInBedIsEstimated = try c.decodeIfPresent(Bool.self, forKey: .timeInBedIsEstimated) ?? false
+        timeAsleepMinutes = try c.decode(Double.self, forKey: .timeAsleepMinutes)
+        sleepEfficiencyPercent = try c.decode(Double.self, forKey: .sleepEfficiencyPercent)
+        coreMinutes = try c.decode(Double.self, forKey: .coreMinutes)
+        deepMinutes = try c.decode(Double.self, forKey: .deepMinutes)
+        remMinutes = try c.decode(Double.self, forKey: .remMinutes)
+        unspecifiedAsleepMinutes = try c.decode(Double.self, forKey: .unspecifiedAsleepMinutes)
+        awakeMinutes = try c.decode(Double.self, forKey: .awakeMinutes)
+        wakeCount = try c.decode(Int.self, forKey: .wakeCount)
+        sleepLatencyMinutes = try c.decodeIfPresent(Double.self, forKey: .sleepLatencyMinutes)
+        avgHeartRate = try c.decodeIfPresent(Double.self, forKey: .avgHeartRate)
+        minHeartRate = try c.decodeIfPresent(Double.self, forKey: .minHeartRate)
+        restingHeartRate = try c.decodeIfPresent(Double.self, forKey: .restingHeartRate)
+        avgHRV = try c.decodeIfPresent(Double.self, forKey: .avgHRV)
+        avgRespiratoryRate = try c.decodeIfPresent(Double.self, forKey: .avgRespiratoryRate)
+        avgSpO2 = try c.decodeIfPresent(Double.self, forKey: .avgSpO2)
+        wristTempDeltaC = try c.decodeIfPresent(Double.self, forKey: .wristTempDeltaC)
+        breathingDisturbances = try c.decodeIfPresent(Double.self, forKey: .breathingDisturbances)
+        breathingDisturbancesClassification = try c.decodeIfPresent(
+            BreathingDisturbanceClassification.self, forKey: .breathingDisturbancesClassification
+        )
+        hrv7DayAvg = try c.decodeIfPresent(Double.self, forKey: .hrv7DayAvg)
+        sleepDebtMinutes = try c.decodeIfPresent(Double.self, forKey: .sleepDebtMinutes)
+        lastWorkoutHoursBeforeBed = try c.decodeIfPresent(Double.self, forKey: .lastWorkoutHoursBeforeBed)
+        exerciseMinutesPreviousDay = try c.decodeIfPresent(Double.self, forKey: .exerciseMinutesPreviousDay)
+        secondaryAsleepMinutes = try c.decodeIfPresent(Double.self, forKey: .secondaryAsleepMinutes) ?? 0
+        sleepNeedBaselineMinutes = try c.decodeIfPresent(Double.self, forKey: .sleepNeedBaselineMinutes)
+        alcoholicBeverages = try c.decodeIfPresent(Double.self, forKey: .alcoholicBeverages)
+        lateCaffeineMg = try c.decodeIfPresent(Double.self, forKey: .lateCaffeineMg)
+        sourceName = try c.decodeIfPresent(String.self, forKey: .sourceName)
+        isMock = try c.decodeIfPresent(Bool.self, forKey: .isMock) ?? false
+        stageSegments = try c.decodeIfPresent([StageSegment].self, forKey: .stageSegments) ?? []
+        timeZoneIdentifier = try c.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)
+            ?? TimeZone.current.identifier
+    }
 }
 
 // MARK: - Derived values
