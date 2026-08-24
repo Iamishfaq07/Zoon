@@ -26,6 +26,8 @@ struct EnergyForecastCard: View {
                 )
             }
 
+            horizon
+
             HStack(spacing: 0) {
                 ForEach(forecast.windows) { window in
                     VStack(spacing: 4) {
@@ -46,6 +48,84 @@ struct EnergyForecastCard: View {
             }
         }
         .glassCard()
+    }
+
+    /// The curve itself -- discrete icon columns previously stood in for the
+    /// whole idea of "today's energy," with no line connecting them. This is
+    /// the actual horizon graphic the spec asks for: a continuous shape from
+    /// wake to wind-down, with a marker for where "now" sits on it.
+    private var horizon: some View {
+        let samples = forecast.curveSamples(count: 40)
+
+        return GeometryReader { geo in
+            let points = samples.map { sample -> CGPoint in
+                let first = samples.first?.time ?? sample.time
+                let last = samples.last?.time ?? sample.time
+                let span = max(last.timeIntervalSince(first), 1)
+                let x = geo.size.width * CGFloat(sample.time.timeIntervalSince(first) / span)
+                let y = geo.size.height * (1 - CGFloat(sample.level))
+                return CGPoint(x: x, y: y)
+            }
+
+            ZStack {
+                if points.count > 1 {
+                    Path { path in
+                        path.move(to: CGPoint(x: points[0].x, y: geo.size.height))
+                        for point in points { path.addLine(to: point) }
+                        path.addLine(to: CGPoint(x: points[points.count - 1].x, y: geo.size.height))
+                        path.closeSubpath()
+                    }
+                    .fill(
+                        LinearGradient(
+                            colors: [Theme.Metric.battery.opacity(0.3), Theme.Metric.battery.opacity(0.02)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+
+                    Path { path in
+                        path.move(to: points[0])
+                        for point in points.dropFirst() { path.addLine(to: point) }
+                    }
+                    .stroke(Theme.Metric.battery, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                }
+
+                if let now = nowPosition(samples: samples, width: geo.size.width, height: geo.size.height) {
+                    Circle()
+                        .fill(Theme.Metric.battery)
+                        .frame(width: 6, height: 6)
+                        .position(now)
+                }
+            }
+        }
+        .frame(height: 44)
+        .accessibilityHidden(true)
+    }
+
+    /// Where "now" falls along the curve, in the same coordinate space as
+    /// `horizon`'s points -- `nil` outside the forecast's own span (before
+    /// wake or well after wind-down), so the marker doesn't appear stuck at
+    /// an edge when it isn't actually where "now" is.
+    private func nowPosition(samples: [(time: Date, level: Double)], width: CGFloat, height: CGFloat) -> CGPoint? {
+        guard let first = samples.first?.time, let last = samples.last?.time, last > first else { return nil }
+        let now = Date.now
+        guard now >= first, now <= last else { return nil }
+
+        let span = last.timeIntervalSince(first)
+        let x = width * CGFloat(now.timeIntervalSince(first) / span)
+        let level = Self.interpolate(now, in: samples)
+        return CGPoint(x: x, y: height * (1 - CGFloat(level)))
+    }
+
+    private static func interpolate(_ time: Date, in samples: [(time: Date, level: Double)]) -> Double {
+        guard let upperIndex = samples.firstIndex(where: { $0.time >= time }), upperIndex > 0 else {
+            return samples.last?.level ?? 0
+        }
+        let lower = samples[upperIndex - 1]
+        let upper = samples[upperIndex]
+        let span = upper.time.timeIntervalSince(lower.time)
+        guard span > 0 else { return lower.level }
+        let fraction = time.timeIntervalSince(lower.time) / span
+        return lower.level + (upper.level - lower.level) * fraction
     }
 
     private func tint(for kind: EnergyForecast.Window.Kind) -> Color {
