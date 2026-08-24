@@ -87,7 +87,11 @@ struct SleepDetailView: View {
                     subtitle: "Deep sleep clusters early; REM builds toward morning.",
                     systemImage: "chart.xyaxis.line"
                 )
-                HypnogramView(segments: context.night.stageSegments)
+                HypnogramView(
+                    segments: context.night.stageSegments,
+                    heartRateSamples: context.hourlyHeartRate,
+                    soundEvents: soundEventStore.recentEvents
+                )
             }
             .glassCard()
         }
