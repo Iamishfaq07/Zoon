@@ -230,8 +230,8 @@ extension WatchLink: WCSessionDelegate {
         _ session: WCSession,
         didReceiveUserInfo userInfo: [String: Any]
     ) {
-        guard let data = userInfo[Self.quickActionKey] as? Data else { return }
         Task { @MainActor in
+            guard let data = userInfo[Self.quickActionKey] as? Data else { return }
             do {
                 let action = try JSONDecoder().decode(WatchQuickAction.self, from: data)
                 onQuickAction?(action)
