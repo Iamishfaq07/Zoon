@@ -19,37 +19,40 @@ struct InsightCard: View {
     var night: SleepNightFeatures?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
+        // Deliberately not a `.glassCard()` -- the redesign spec singles this
+        // card out for an editorial layout, distinct from the boxed, bordered
+        // template every other card on the app uses. Headline, evidence, and
+        // action are three separated typographic blocks rather than a
+        // headline sitting on top of icon+text rows -- the same shape
+        // `CoachChatView`'s assistant answers use for the same reason (see
+        // its doc comment: "should not look like generic ... bubbles").
+        VStack(alignment: .leading, spacing: 14) {
+            kicker
 
             Text(insight.summary)
                 .font(.title3.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
 
             if let cause = insight.likelyCause, insight.confidence > .low {
-                Label {
-                    Text(cause)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "arrow.triangle.branch")
-                        .foregroundStyle(.tint)
-                }
-                .labelStyle(.topAligned)
+                Text(cause)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 10)
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(Theme.neutral(0.14)).frame(width: 2)
+                    }
             }
 
-            Divider()
-
-            Label {
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "arrow.turn.down.right")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.Metric.sleep)
                 Text(insight.actionableTip)
                     .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
-            } icon: {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundStyle(.yellow)
             }
-            .labelStyle(.topAligned)
 
             if let night {
                 NavigationLink {
@@ -68,15 +71,15 @@ struct InsightCard: View {
                 .buttonStyle(.plain)
             }
         }
-        .glassCard()
+        .padding(.vertical, 4)
     }
 
-    private var header: some View {
+    private var kicker: some View {
         HStack(spacing: 6) {
-            Image(systemName: "moon.stars.fill")
-                .foregroundStyle(.tint)
-            Text("Tonight's Read")
-                .font(.headline)
+            Text("TONIGHT'S READ")
+                .font(Theme.label(11, weight: .bold))
+                .tracking(0.6)
+                .foregroundStyle(.secondary)
             Spacer()
             if let engineName {
                 Text(engineName)
@@ -85,24 +88,6 @@ struct InsightCard: View {
             }
         }
     }
-}
-
-/// Label style that top-aligns the icon with multi-line text.
-///
-/// The default centres the icon vertically, which looks wrong against a
-/// four-line paragraph.
-struct TopAlignedLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            configuration.icon
-                .font(.subheadline)
-            configuration.title
-        }
-    }
-}
-
-extension LabelStyle where Self == TopAlignedLabelStyle {
-    static var topAligned: TopAlignedLabelStyle { TopAlignedLabelStyle() }
 }
 
 #Preview("With cause") {
