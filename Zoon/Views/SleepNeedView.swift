@@ -6,10 +6,29 @@ struct SleepNeedView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
+    /// Set only when pushed from `CoreIntelligenceGrid`'s tile, so the push
+    /// animation zooms outward from the tile instead of the generic
+    /// slide-in -- `nil` for other entry points (e.g. the Insights hub row).
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
     private var need: SleepNeed? { coordinator.state.context?.sleepNeed }
     private var learned: LearnedSleepNeed? { coordinator.state.context?.learnedSleepNeed }
 
     var body: some View {
+        // `.zoom(...)` and `.automatic` are different concrete types
+        // conforming to `NavigationTransition`, so branching the transition
+        // value itself (e.g. via a ternary) doesn't type-check -- branching
+        // the view instead lets each branch's `.navigationTransition(_:)`
+        // call resolve its own concrete opaque type independently.
+        if let zoomNamespace, let zoomID {
+            content.navigationTransition(.zoom(sourceID: zoomID, in: zoomNamespace))
+        } else {
+            content.navigationTransition(.automatic)
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 if let need {

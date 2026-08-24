@@ -6,9 +6,27 @@ struct HealthRadarView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
 
+    /// Set only when pushed from `CoreIntelligenceGrid`'s tile -- see
+    /// `SleepNeedView`'s doc comment on the same pair of properties.
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
     private var context: DayContext? { coordinator.state.context }
 
     var body: some View {
+        // `.zoom(...)` and `.automatic` are different concrete types
+        // conforming to `NavigationTransition`, so branching the transition
+        // value itself (e.g. via a ternary) doesn't type-check -- branching
+        // the view instead lets each branch's `.navigationTransition(_:)`
+        // call resolve its own concrete opaque type independently.
+        if let zoomNamespace, let zoomID {
+            content.navigationTransition(.zoom(sourceID: zoomID, in: zoomNamespace))
+        } else {
+            content.navigationTransition(.automatic)
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 if let context {

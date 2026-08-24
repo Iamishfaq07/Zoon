@@ -14,6 +14,11 @@ import SwiftUI
 struct CoreIntelligenceGrid: View {
     let context: DayContext
 
+    /// Shared with each tile's destination view so the push animation can
+    /// zoom outward from the tapped tile instead of the generic slide-in --
+    /// the redesign spec's ask for these four modules specifically.
+    @Namespace private var zoom
+
     private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
 
     var body: some View {
@@ -32,8 +37,8 @@ struct CoreIntelligenceGrid: View {
         let achieved = context.night.total24hAsleepMinutes
         let fraction = min(1, achieved / need)
 
-        return module(title: "Sleep Need", symbol: "target", tint: Theme.Metric.sleep) {
-            SleepNeedView()
+        return module(title: "Sleep Need", symbol: "target", tint: Theme.Metric.sleep, zoomID: "sleepNeed") {
+            SleepNeedView(zoomNamespace: zoom, zoomID: "sleepNeed")
         } visual: {
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.neutral(0.10)).frame(height: 6)
@@ -58,8 +63,8 @@ struct CoreIntelligenceGrid: View {
         // and the number below the gauge still carries it precisely.
         let fraction = min(1, debt / 300)
 
-        return module(title: "Sleep Debt", symbol: "chart.line.downtrend.xyaxis", tint: Theme.Metric.temperature) {
-            SleepDebtView()
+        return module(title: "Sleep Debt", symbol: "chart.line.downtrend.xyaxis", tint: Theme.Metric.temperature, zoomID: "sleepDebt") {
+            SleepDebtView(zoomNamespace: zoom, zoomID: "sleepDebt")
         } visual: {
             ZStack {
                 Circle()
@@ -90,8 +95,8 @@ struct CoreIntelligenceGrid: View {
             return hourOfDay / 24 * 360 - 90
         }()
 
-        return module(title: "Body Clock", symbol: "clock", tint: Theme.Metric.battery) {
-            BodyClockView()
+        return module(title: "Body Clock", symbol: "clock", tint: Theme.Metric.battery, zoomID: "bodyClock") {
+            BodyClockView(zoomNamespace: zoom, zoomID: "bodyClock")
         } visual: {
             ZStack {
                 Circle().stroke(Theme.neutral(0.10), lineWidth: 2)
@@ -115,8 +120,8 @@ struct CoreIntelligenceGrid: View {
             ? (radar.severity == .notable ? Theme.Metric.recoveryLow : Theme.Metric.recoveryMid)
             : Theme.Metric.recoveryHigh
 
-        return module(title: "Body Signals", symbol: "dot.radiowaves.left.and.right", tint: Theme.Metric.recoveryMid) {
-            HealthRadarView()
+        return module(title: "Body Signals", symbol: "dot.radiowaves.left.and.right", tint: Theme.Metric.recoveryMid, zoomID: "bodySignals") {
+            HealthRadarView(zoomNamespace: zoom, zoomID: "bodySignals")
         } visual: {
             HStack(spacing: 3) {
                 ForEach(0..<4, id: \.self) { index in
@@ -137,6 +142,7 @@ struct CoreIntelligenceGrid: View {
         title: String,
         symbol: String,
         tint: Color,
+        zoomID: String,
         @ViewBuilder destination: @escaping () -> Destination,
         @ViewBuilder visual: () -> Visual,
         stat: () -> String
@@ -163,6 +169,7 @@ struct CoreIntelligenceGrid: View {
             .glassCard(padding: 0)
         }
         .buttonStyle(PressableStyle())
+        .matchedTransitionSource(id: zoomID, in: zoom)
     }
 }
 
