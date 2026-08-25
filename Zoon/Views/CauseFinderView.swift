@@ -116,7 +116,7 @@ struct CauseFinderView: View {
             Text("What affects your sleep?")
                 .font(Theme.numeral(20))
             Text("Patterns found in your own sleep history -- an association, not proof of cause.")
-                .font(.caption)
+                .font(Theme.text(12))
                 .foregroundStyle(.secondary)
         }
     }
@@ -157,7 +157,7 @@ struct CauseFinderView: View {
 
     private func emptyState(_ text: String) -> some View {
         Text(text)
-            .font(.caption)
+            .font(Theme.text(12))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 12)
@@ -211,7 +211,7 @@ private struct CauseFinderRow: View {
                         .transition(.opacity)
                 }
                 Text(finding.detail)
-                    .font(.caption)
+                    .font(Theme.text(12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
@@ -470,7 +470,7 @@ private struct PastExperimentRow: View {
                         \(String(format: "%.0f", outcome.trialMedian)). A before/after comparison, not a \
                         controlled one -- other things could have changed too.
                         """)
-                        .font(.caption)
+                        .font(Theme.text(12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if let known = outcome.trialKnownNightCount {
