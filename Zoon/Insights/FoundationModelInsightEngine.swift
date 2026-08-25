@@ -308,14 +308,28 @@ final class FoundationModelDiagnostics: @unchecked Sendable {
 
     static let shared = FoundationModelDiagnostics()
 
-    private(set) var lastFailureReason: String?
+    /// Backing storage for `lastFailureReason` -- never read or written
+    /// without `lock` held. A `private(set) var` here would have looked
+    /// identical at every call site but silently dropped that guarantee:
+    /// Swift synthesizes a plain getter for it, not one that takes `lock`,
+    /// so a read from one thread (`SettingsView`, always @MainActor) could
+    /// race the locked write in `record(_:)` from another (wherever
+    /// generation actually runs) -- a real, unsynchronized data race that
+    /// `@unchecked Sendable` exists specifically to hide from the compiler.
+    private var _lastFailureReason: String?
     private let lock = NSLock()
 
     private init() {}
 
+    var lastFailureReason: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return _lastFailureReason
+    }
+
     func record(_ reason: String?) {
         lock.lock()
         defer { lock.unlock() }
-        lastFailureReason = reason
+        _lastFailureReason = reason
     }
 }
