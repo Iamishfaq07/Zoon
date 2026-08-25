@@ -139,7 +139,13 @@ enum ClinicianReportGenerator {
             drawRow("Bedtime variability (SD)", minutesLabel(Statistics.standardDeviation(bedtimes) ?? 0))
 
         case .sleepDuration:
-            let durations = nights.map(\.timeAsleepMinutes)
+            // `total24hAsleepMinutes` (main sleep plus naps/secondary
+            // episodes), not `timeAsleepMinutes` alone -- the row is
+            // labeled "total sleep time", and a clinician comparing this
+            // against a patient-reported "I also nap most afternoons"
+            // deserves a number that actually includes the nap rather than
+            // one that silently doesn't, despite the label's own claim.
+            let durations = nights.map(\.total24hAsleepMinutes)
             drawRow("Median total sleep time", minutesLabel(Statistics.median(durations) ?? 0))
             drawRow("Range", "\(minutesLabel(durations.min() ?? 0)) – \(minutesLabel(durations.max() ?? 0))")
             drawRow("Sleep goal", minutesLabel(goalMinutes))
