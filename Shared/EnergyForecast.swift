@@ -149,6 +149,12 @@ struct EnergyForecast: Codable, Hashable, Sendable {
         // identical fix for why a raw addingTimeInterval step is DST-unsafe here.
         let nextMidnight = calendar.date(byAdding: .day, value: 1, to: startOfDay)
             ?? startOfDay.addingTimeInterval(24 * 3600)
-        return nextMidnight.addingTimeInterval(hour * 3600)
+        // Same DST-safety fix `window(for:)` needed for its own onset/wake:
+        // `hour * 3600` seconds added to `nextMidnight` is just as unsafe as
+        // the day step above -- `.minute` calendar arithmetic absorbs a DST
+        // gap or overlap inside the span instead of ignoring it.
+        let minutes = Int((hour * 60).rounded())
+        return calendar.date(byAdding: .minute, value: minutes, to: nextMidnight)
+            ?? nextMidnight.addingTimeInterval(hour * 3600)
     }
 }

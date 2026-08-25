@@ -114,8 +114,20 @@ struct BodyClock: Codable, Hashable, Sendable {
         // day the clocks change.
         let midSleepMidnight = calendar.date(byAdding: .day, value: 1, to: startOfDay)
             ?? startOfDay.addingTimeInterval(24 * 3600)
-        let onset = midSleepMidnight.addingTimeInterval(onsetHour * 3600)
-        let wake = midSleepMidnight.addingTimeInterval(wakeHour * 3600)
+
+        // Same reasoning applies to onset/wake themselves: adding a flat
+        // `onsetHour * 3600` seconds to `midSleepMidnight` is exactly as
+        // DST-unsafe as the day step above was, just one level down --
+        // this was the actual bug a CI run caught (a spring-forward night's
+        // 03:45 wake landed at 04:45). `.minute`, like `.day`, is calendar
+        // arithmetic: it advances by wall-clock minutes in `calendar`'s time
+        // zone, correctly absorbing whatever DST gap or overlap falls inside
+        // the span, rather than a fixed count of elapsed seconds.
+        let onsetMinutes = Int((onsetHour * 60).rounded())
+        let wakeMinutes = Int((wakeHour * 60).rounded())
+        guard let onset = calendar.date(byAdding: .minute, value: onsetMinutes, to: midSleepMidnight),
+              let wake = calendar.date(byAdding: .minute, value: wakeMinutes, to: midSleepMidnight)
+        else { return nil }
         guard wake > onset else { return nil }
         return DateInterval(start: onset, end: wake)
     }
