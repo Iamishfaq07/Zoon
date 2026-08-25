@@ -55,6 +55,20 @@ struct BaselineLaneView: View {
             }
         }
         .frame(height: 14)
+        // The row's own text (`HealthRadarView.baselineBarRow`) already
+        // reads out the metric name, value, and typical range -- what it
+        // doesn't say is the one thing this visual actually shows: whether
+        // tonight's dot landed inside or outside that range. State that
+        // explicitly rather than leaving VoiceOver with nothing at all for a
+        // Capsule/Circle-drawn view.
+        .accessibilityElement(children: .ignore)
+        .accessibilityHidden(inRangeDescription == nil)
+        .accessibilityLabel(inRangeDescription ?? "")
+    }
+
+    private var inRangeDescription: String? {
+        guard let value, let baseline, let tolerance, tolerance > 0 else { return nil }
+        return abs(value - baseline) <= tolerance ? "Within your typical range" : "Outside your typical range"
     }
 }
 
