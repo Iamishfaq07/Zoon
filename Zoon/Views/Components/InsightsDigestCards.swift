@@ -140,8 +140,13 @@ struct WhatChangedCard: View {
     /// uses for its Y axis, recomputed here rather than shared because that
     /// helper is `private` to a view built around a very different shape.
     private func bedtimeStandardDeviationMinutes(_ week: [SleepNightFeatures]) -> Double {
-        let calendar = Calendar.current
+        var calendar = Calendar.current
         let minutesFromMidnight = week.map { night -> Double in
+            // Each night's own timezone, not the device's current one -- a
+            // historical bedtime's wall-clock hour doesn't change because
+            // the user has since traveled. Same reasoning as
+            // DayContextBuilder.shiftedBedtimeHour and BodyClock.compute.
+            calendar.timeZone = night.timeZone
             let components = calendar.dateComponents([.hour, .minute], from: night.bedtime)
             let minutes = Double(components.hour ?? 0) * 60 + Double(components.minute ?? 0)
             return minutes >= 18 * 60 ? minutes - 24 * 60 : minutes
