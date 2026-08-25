@@ -67,7 +67,7 @@ struct YearHeatmapView: View {
                 legendCard.entrance(2)
             }
             .padding()
-            .animation(Motion.value, value: selectedDate)
+            .animation(reduceMotion ? nil : Motion.value, value: selectedDate)
         }
         .nightBackground()
         .navigationTitle("Year in Sleep")
