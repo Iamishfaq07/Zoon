@@ -26,7 +26,20 @@ struct JournalView: View {
     @State private var selectedTagIdentifiers: Set<String> = []
 
     private var entry: JournalEntry {
-        coordinator.journal.entryOrCreate(for: selectedDate)
+        coordinator.journal.entryOrCreate(for: selectedDate, nightKey: selectedNightKey)
+    }
+
+    /// The stored night's own `nightKey` for whichever day the picker has
+    /// selected, when one exists -- `nil` for a day with no recorded night
+    /// yet (today, before it's slept, or a gap in history). See
+    /// `JournalEntry.nightKey`'s doc comment for why this is worth carrying
+    /// through at all: `selectedDate` alone is a `Calendar.current` day
+    /// picked on this device right now, which is exactly the value that can
+    /// drift from a night's own recorded timezone after travel.
+    private var selectedNightKey: String? {
+        coordinator.recentNights.first {
+            Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
+        }?.nightKey
     }
 
     var body: some View {
@@ -71,7 +84,7 @@ struct JournalView: View {
             }
             .onChange(of: noteFieldFocused) { wasFocused, isFocused in
                 if wasFocused, !isFocused {
-                    coordinator.journal.setNote(note, on: selectedDate)
+                    coordinator.journal.setNote(note, on: selectedDate, nightKey: selectedNightKey)
                 }
             }
         }
@@ -214,7 +227,7 @@ struct JournalView: View {
             } else {
                 selectedTagIdentifiers.insert(tag.rawValue)
             }
-            coordinator.journal.toggle(tag, on: selectedDate)
+            coordinator.journal.toggle(tag, on: selectedDate, nightKey: selectedNightKey)
             findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
             // Selection is a physical act here — the haptic confirms the toggle
             // landed without needing to look for a colour change.
@@ -258,7 +271,7 @@ struct JournalView: View {
                 .submitLabel(.done)
         }
         .glassCard()
-        .onDisappear { coordinator.journal.setNote(note, on: selectedDate) }
+        .onDisappear { coordinator.journal.setNote(note, on: selectedDate, nightKey: selectedNightKey) }
     }
 
     // MARK: - Correlations

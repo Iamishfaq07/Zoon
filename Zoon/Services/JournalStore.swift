@@ -39,38 +39,66 @@ final class JournalStore {
     /// Returning a live model object rather than a value type is deliberate: the
     /// journal screen toggles tags directly on it, and SwiftData's change
     /// tracking then drives the view update with no plumbing.
+    ///
+    /// - Parameter nightKey: The matching night's `SleepNightFeatures.nightKey`,
+    ///   when the caller has one (see `JournalEntry.nightKey`). Stamped onto a
+    ///   newly created entry, and backfilled onto an existing one that
+    ///   predates this field -- same progressive-backfill pattern
+    ///   `SleepHistoryStore.upsert` already uses for `SleepNightRecord.nightKey`.
+    ///   `nil` for callers with no specific night in view (a watch quick
+    ///   action logged against "today," a day the picker shows before any
+    ///   night exists for it yet); those entries keep matching by `date`
+    ///   alone until something does supply a key for them.
     @discardableResult
-    func entryOrCreate(for date: Date) -> JournalEntry {
-        if let existing = entry(for: date) { return existing }
-        let entry = JournalEntry(date: date)
+    func entryOrCreate(for date: Date, nightKey: String? = nil) -> JournalEntry {
+        if let existing = entry(for: date) {
+            if existing.nightKey == nil, let nightKey {
+                existing.nightKey = nightKey
+                save()
+            }
+            return existing
+        }
+        let entry = JournalEntry(date: date, nightKey: nightKey)
         context.insert(entry)
         save()
         return entry
     }
 
-    func toggle(_ tag: BehaviorTag, on date: Date) {
-        let entry = entryOrCreate(for: date)
+    /// Looks an entry up by the night it's actually about, falling back to
+    /// `date` for entries written before `nightKey` existed. See
+    /// `SleepDataCoordinator.journalObservations()` for why the fallback
+    /// matters: `date` alone can silently mismatch after the user travels.
+    func entry(forNightKey nightKey: String, fallbackDate date: Date) -> JournalEntry? {
+        let descriptor = FetchDescriptor<JournalEntry>(predicate: #Predicate { $0.nightKey == nightKey })
+        if let keyed = try? context.fetch(descriptor).first {
+            return keyed
+        }
+        return entry(for: date)
+    }
+
+    func toggle(_ tag: BehaviorTag, on date: Date, nightKey: String? = nil) {
+        let entry = entryOrCreate(for: date, nightKey: nightKey)
         entry.toggle(tag)
         save()
     }
 
-    func setNote(_ note: String?, on date: Date) {
-        let entry = entryOrCreate(for: date)
+    func setNote(_ note: String?, on date: Date, nightKey: String? = nil) {
+        let entry = entryOrCreate(for: date, nightKey: nightKey)
         entry.note = (note?.isEmpty ?? true) ? nil : note
         entry.updatedAt = .now
         save()
     }
 
-    func setFeeling(_ feeling: MorningFeeling?, on date: Date) {
-        let entry = entryOrCreate(for: date)
+    func setFeeling(_ feeling: MorningFeeling?, on date: Date, nightKey: String? = nil) {
+        let entry = entryOrCreate(for: date, nightKey: nightKey)
         entry.feeling = feeling
         save()
     }
 
     /// Sets one Morning Check-In V2 dimension (rested/energy/sleepiness/mood).
     /// Each dimension saves independently so a partial check-in still persists.
-    func setCheckIn(_ dimension: CheckInDimension, value: Int?, on date: Date) {
-        let entry = entryOrCreate(for: date)
+    func setCheckIn(_ dimension: CheckInDimension, value: Int?, on date: Date, nightKey: String? = nil) {
+        let entry = entryOrCreate(for: date, nightKey: nightKey)
         entry.setValue(value, for: dimension)
         save()
     }
