@@ -100,7 +100,14 @@ enum AchievementEngine {
     ) -> [Achievement] {
 
         let sorted = nights.sorted { $0.date < $1.date }
-        let atGoal = sorted.filter { $0.timeAsleepMinutes >= goalMinutes }
+        // `total24hAsleepMinutes` (main sleep plus naps/secondary episodes),
+        // not `timeAsleepMinutes` alone -- naps already earn their own
+        // separate badge category below (`napCount`), but a night where a
+        // nap made up for a short main sleep genuinely met the person's
+        // daily sleep goal, and denying it credit here would silently
+        // contradict how "achieved vs. need" is computed everywhere else in
+        // the app (Sleep Need, Today's Load row, the Clinician Report).
+        let atGoal = sorted.filter { $0.total24hAsleepMinutes >= goalMinutes }
 
         var out: [Achievement] = []
 
@@ -276,7 +283,8 @@ enum AchievementEngine {
         var previous: Date?
 
         for night in nights {
-            let metGoal = night.timeAsleepMinutes >= goalMinutes
+            // Same total24hAsleepMinutes convention as `atGoal` above.
+            let metGoal = night.total24hAsleepMinutes >= goalMinutes
             let isNextDay = previous.map {
                 calendar.dateComponents([.day], from: $0, to: night.date).day == 1
             } ?? false
