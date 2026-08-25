@@ -184,15 +184,23 @@ struct JournalView: View {
     private var tagSections: some View {
         VStack(spacing: Theme.stackSpacing) {
             ForEach(BehaviorTag.Category.allCases) { category in
-                VStack(alignment: .leading, spacing: 10) {
-                    SectionHeader(title: category.label)
-                    FlowLayout(spacing: 8) {
-                        ForEach(category.tags) { tag in
-                            tagChip(tag)
+                // Filtered to whatever the user has curated in Settings ->
+                // Tracked Behaviours -- `isTracked` defaults to true for
+                // everyone who's never touched that screen, so this changes
+                // nothing until someone opts in. A category with nothing
+                // tracked in it doesn't get an empty card.
+                let tags = category.tags.filter(preferences.isTracked)
+                if !tags.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SectionHeader(title: category.label)
+                        FlowLayout(spacing: 8) {
+                            ForEach(tags) { tag in
+                                tagChip(tag)
+                            }
                         }
                     }
+                    .glassCard()
                 }
-                .glassCard()
             }
         }
     }

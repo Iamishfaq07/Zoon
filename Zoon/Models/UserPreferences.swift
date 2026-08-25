@@ -30,6 +30,7 @@ final class UserPreferences {
         static let experimentDirection = "zoon.pref.experimentDirection"
         static let obligationWeekdays = "zoon.pref.obligationWeekdays"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
+        static let trackedBehaviorTagIdentifiers = "zoon.pref.trackedBehaviorTagIdentifiers"
     }
 
     private let defaults: UserDefaults
@@ -62,6 +63,51 @@ final class UserPreferences {
 
     func isFreeDay(_ date: Date, calendar: Calendar = .current) -> Bool {
         !obligationWeekdays.contains(calendar.component(.weekday, from: date))
+    }
+
+    /// Which behaviours the Journal's daily quick-confirm screen shows.
+    /// `nil` -- the default, and the state of every account created before
+    /// this existed -- means unrestricted: every `BehaviorTag` shows, same
+    /// as before this setting existed. Once the user curates a set (even
+    /// down to all of them, explicitly), this switches to that concrete
+    /// list; there is no separate "show everything" state once customized
+    /// other than re-selecting every tag.
+    var trackedBehaviorTagIdentifiers: Set<String>? {
+        didSet {
+            if let trackedBehaviorTagIdentifiers {
+                defaults.set(Array(trackedBehaviorTagIdentifiers), forKey: Key.trackedBehaviorTagIdentifiers)
+            } else {
+                defaults.removeObject(forKey: Key.trackedBehaviorTagIdentifiers)
+            }
+        }
+    }
+
+    /// Whether the Journal should offer `tag` today. Always true until the
+    /// user has customized the tracked set at all.
+    func isTracked(_ tag: BehaviorTag) -> Bool {
+        trackedBehaviorTagIdentifiers?.contains(tag.rawValue) ?? true
+    }
+
+    /// Turns behaviour tracking on/off for one tag. The first call after
+    /// the set has never been customized seeds it from every tag that
+    /// existed at that point (i.e. "everything, minus this one" or
+    /// "everything, confirmed"), not an empty set -- an empty starting
+    /// set would read as "track nothing" the instant the user touches any
+    /// single toggle, which isn't what tapping one row means.
+    func setTracked(_ tag: BehaviorTag, tracked: Bool) {
+        var current = trackedBehaviorTagIdentifiers ?? Set(BehaviorTag.allCases.map(\.rawValue))
+        if tracked {
+            current.insert(tag.rawValue)
+        } else {
+            current.remove(tag.rawValue)
+        }
+        trackedBehaviorTagIdentifiers = current
+    }
+
+    /// Returns to the unrestricted default -- every current and future tag
+    /// shown, with no stored customization at all.
+    func resetTrackedBehaviors() {
+        trackedBehaviorTagIdentifiers = nil
     }
 
     /// Wind-down and bedtime notifications. Off until asked for — see
@@ -367,6 +413,7 @@ final class UserPreferences {
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
         self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
             ?? Self.defaultObligationWeekdays
+        self.trackedBehaviorTagIdentifiers = (defaults.array(forKey: Key.trackedBehaviorTagIdentifiers) as? [String]).map(Set.init)
     }
 
     var sleepGoalDisplay: String {
@@ -397,6 +444,7 @@ final class UserPreferences {
         experimentDirection = nil
         preferredSleepSourceName = nil
         obligationWeekdays = Self.defaultObligationWeekdays
+        trackedBehaviorTagIdentifiers = nil
 
         let keys = [
             Key.sleepGoalMinutes,
@@ -418,6 +466,7 @@ final class UserPreferences {
             Key.experimentPrimaryMetric,
             Key.experimentDirection,
             Key.obligationWeekdays,
+            Key.trackedBehaviorTagIdentifiers,
         ]
         for key in keys { defaults.removeObject(forKey: key) }
     }
