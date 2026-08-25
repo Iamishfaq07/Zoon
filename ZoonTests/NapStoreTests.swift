@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class NapStoreTests: XCTestCase {
 
     private func makeStore() -> NapStore {
