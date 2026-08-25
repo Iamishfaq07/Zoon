@@ -45,6 +45,16 @@ final class BedtimeReminder {
     /// and because a warning that arrives five minutes before is useless.
     static let windDownLeadMinutes = 30
 
+    /// How many hours before target bedtime caffeine should stop, per the
+    /// general sleep-hygiene guideline this app already cites elsewhere --
+    /// see `Article.swift`'s "How Long Caffeine Actually Stays With You"
+    /// ("many sleep researchers suggest stopping caffeine 8 to 10 hours
+    /// before your intended bedtime") and `RuleBasedInsightEngine`'s own
+    /// "Set a caffeine cutoff 8h before bed" tip. A general guideline, not
+    /// personalized to this user's own caffeine sensitivity -- nothing in
+    /// the app currently measures that.
+    static let caffeineCutoffLeadHours = 8.0
+
     init(center: UNUserNotificationCenter = .current()) {
         self.center = center
     }
