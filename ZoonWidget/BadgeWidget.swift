@@ -141,6 +141,7 @@ struct BadgeWidgetView: View {
         } currentValueLabel: {
             Text("\(snapshot.badgesUnlocked)")
                 .monospacedDigit()
+                .privacySensitive()
         }
         .gaugeStyle(.accessoryCircular)
     }
@@ -150,6 +151,7 @@ struct BadgeWidgetView: View {
             Label(hasBadge ? snapshot.badgeTitle : "No badges yet", systemImage: "hexagon.fill")
                 .font(Theme.text(13, weight: .semibold))
                 .lineLimit(1)
+                .privacySensitive()
 
             Text(isPlaceholder
                  ? "Sample data"
@@ -157,12 +159,14 @@ struct BadgeWidgetView: View {
                 .font(Theme.text(12))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
+                .privacySensitive()
 
             if !snapshot.nextBadgeTitle.isEmpty {
                 Text("Next: \(snapshot.nextBadgeTitle)")
                     .font(Theme.text(11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .privacySensitive()
             }
         }
     }
