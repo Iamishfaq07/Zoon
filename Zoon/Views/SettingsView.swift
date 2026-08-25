@@ -509,13 +509,22 @@ struct SettingsView: View {
     /// one option (or none yet) has nothing to choose between.
     @ViewBuilder
     private var sourceSection: some View {
-        let sources = coordinator.knownSleepSourceNames()
+        let sources = coordinator.knownSleepSources()
         if sources.count > 1 {
             Section {
                 Picker("Preferred source", selection: Binding(
                     get: { preferences.preferredSleepSourceName ?? "" },
                     set: { newValue in
                         preferences.preferredSleepSourceName = newValue.isEmpty ? nil : newValue
+                        // Written alongside the name -- see
+                        // `SleepSessionBuilder.preferredSourceBundleIdentifier`'s
+                        // doc comment for why matching by this instead of
+                        // the name alone is worth doing. `nil` for a source
+                        // whose stored nights all predate the column; the
+                        // name-based fallback still makes the choice work
+                        // until a re-sync backfills it.
+                        preferences.preferredSleepSourceBundleIdentifier =
+                            sources.first { $0.name == newValue }?.bundleIdentifier
                         // The picked source only takes effect for nights
                         // processed from here on -- force a full re-sync so
                         // it also applies to what's already stored, the same
@@ -525,8 +534,8 @@ struct SettingsView: View {
                     }
                 )) {
                     Text("Automatic").tag("")
-                    ForEach(sources, id: \.self) { name in
-                        Text(name).tag(name)
+                    ForEach(sources, id: \.name) { source in
+                        Text(source.name).tag(source.name)
                     }
                 }
             } header: {

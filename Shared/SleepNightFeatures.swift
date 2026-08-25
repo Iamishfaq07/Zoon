@@ -172,6 +172,14 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// Shown in Settings so the user can see what's feeding the app.
     let sourceName: String?
 
+    /// `sourceRevision.source.bundleIdentifier` for the same source --
+    /// stable across a device rename or a display-language change, unlike
+    /// `sourceName`. See `SleepSessionBuilder.SleepSession.sourceBundleIdentifier`'s
+    /// doc comment; this is the same value carried one layer further so
+    /// Settings' "preferred source" picker can offer a stable identity to
+    /// match against instead of the display name alone.
+    let sourceBundleIdentifier: String?
+
     /// True when this record is synthetic sample data rather than real HealthKit
     /// output. Views badge these so a Simulator screenshot is never mistaken for
     /// a real night.
@@ -235,6 +243,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         alcoholicBeverages: Double? = nil,
         lateCaffeineMg: Double? = nil,
         sourceName: String?,
+        sourceBundleIdentifier: String? = nil,
         isMock: Bool = false,
         stageSegments: [StageSegment] = [],
         timeZoneIdentifier: String = TimeZone.current.identifier
@@ -271,6 +280,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         self.alcoholicBeverages = alcoholicBeverages
         self.lateCaffeineMg = lateCaffeineMg
         self.sourceName = sourceName
+        self.sourceBundleIdentifier = sourceBundleIdentifier
         self.isMock = isMock
         self.stageSegments = stageSegments
         self.timeZoneIdentifier = timeZoneIdentifier
@@ -329,6 +339,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         alcoholicBeverages = try c.decodeIfPresent(Double.self, forKey: .alcoholicBeverages)
         lateCaffeineMg = try c.decodeIfPresent(Double.self, forKey: .lateCaffeineMg)
         sourceName = try c.decodeIfPresent(String.self, forKey: .sourceName)
+        sourceBundleIdentifier = try c.decodeIfPresent(String.self, forKey: .sourceBundleIdentifier)
         isMock = try c.decodeIfPresent(Bool.self, forKey: .isMock) ?? false
         stageSegments = try c.decodeIfPresent([StageSegment].self, forKey: .stageSegments) ?? []
         timeZoneIdentifier = try c.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)

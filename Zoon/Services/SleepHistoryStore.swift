@@ -80,6 +80,31 @@ final class SleepHistoryStore {
         return Set(nightSources + episodeSources).sorted()
     }
 
+    /// Display name paired with the stable bundle identifier Settings'
+    /// "Preferred source" picker should actually store -- see
+    /// `SleepSessionBuilder.preferredSourceBundleIdentifier`'s doc comment
+    /// for why. Built from stored nights only, not episodes: a source that
+    /// only ever wrote secondary episodes and never a main night is a real
+    /// but narrow gap, not worth the extra column `SleepEpisodeRecord`
+    /// would need to close it here too.
+    ///
+    /// `bundleIdentifier` is `nil` for a source seen only in rows written
+    /// before that column existed -- the picker falls back to name-based
+    /// matching for those until a re-sync backfills it.
+    func knownSleepSources() -> [(name: String, bundleIdentifier: String?)] {
+        var byName: [String: String?] = [:]
+        for night in allNights() {
+            guard let name = night.sourceName else { continue }
+            // A later row's bundleIdentifier (if any) wins over an earlier
+            // nil -- the same "richer data supersedes" spirit as the rest
+            // of this file's backfill columns.
+            if byName[name, default: nil] == nil {
+                byName[name] = night.sourceBundleIdentifier
+            }
+        }
+        return byName.map { (name: $0.key, bundleIdentifier: $0.value) }.sorted { $0.name < $1.name }
+    }
+
     /// Every stored night, oldest first, rebuilt with the rolling context that
     /// existed immediately before that night.
     ///
