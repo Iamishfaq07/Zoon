@@ -32,18 +32,31 @@ final class SleepExperimentStore {
         /// How many of the trial nights had a known yes/no for the tracked
         /// behaviour, out of `trialNightCount`. `nil` for outcomes recorded
         /// before this field existed -- there's no way to reconstruct it
-        /// after the fact, so those just don't show an adherence figure.
+        /// after the fact, so those just don't show this figure.
         var trialKnownNightCount: Int?
+        /// Which side of the tag this experiment was testing for -- cutting
+        /// back on it, or doing more of it. `nil` for outcomes recorded
+        /// before this existed, in which case `adherenceRate` below can't be
+        /// computed and stays `nil` too.
+        var direction: GuidedExperiment.Direction?
+        /// How many trial nights actually landed on the compliant side of
+        /// `direction`, out of `trialNightCount`. This -- not
+        /// `trialKnownNightCount` -- is the real adherence figure: a night
+        /// that got tagged but went the wrong way is exactly as much a
+        /// non-compliant night as one that never got tagged at all.
+        var trialCompliantNightCount: Int?
 
         var delta: Double { trialMedian - baselineMedian }
         var isImprovement: Bool { higherIsBetter ? delta > 0 : delta < 0 }
-        /// Fraction (0...1) of trial nights that had a known yes/no for the
-        /// tracked behaviour -- how consistently it actually got logged
-        /// once the experiment started, not just how many nights had any
-        /// journal entry at all.
+        /// Fraction (0...1) of trial nights that were actually compliant
+        /// with what this experiment was testing -- out of *all* trial
+        /// nights, not just the ones that got logged either way. A trial
+        /// with 14 nights, 5 compliant and 9 not, all 14 known, is 36%
+        /// adherence: an unlogged night and a logged-but-noncompliant night
+        /// are both failures to demonstrate compliance.
         var adherenceRate: Double? {
-            guard let trialKnownNightCount, trialNightCount > 0 else { return nil }
-            return Double(trialKnownNightCount) / Double(trialNightCount)
+            guard let trialCompliantNightCount, trialNightCount > 0 else { return nil }
+            return Double(trialCompliantNightCount) / Double(trialNightCount)
         }
     }
 

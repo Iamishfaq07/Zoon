@@ -12,6 +12,38 @@ import Foundation
 /// come back to rather than hunting for it across three tabs.
 enum GuidedExperiment {
 
+    /// What the experiment is actually testing: whether *doing less* of the
+    /// tracked behaviour helps, or whether *doing more* of it does. Without
+    /// this, "compliant" has no meaning -- a night the user had a drink is
+    /// a broken trial for "cut back on alcohol" but a successful one for
+    /// "try adding an evening walk". Defaults to `.avoid`: the large
+    /// majority of tracked behaviours (alcohol, late caffeine, screens) are
+    /// things people are testing whether to cut back on, and it was the
+    /// only behaviour this app's adherence math implicitly assumed before
+    /// this type existed.
+    enum Direction: String, Codable, CaseIterable, Sendable {
+        case avoid
+        case pursue
+
+        var label: String {
+            switch self {
+            case .avoid: "Cutting back on it"
+            case .pursue: "Doing more of it"
+            }
+        }
+
+        /// The exposure state that counts as a compliant night under this
+        /// direction. `.unknown` is never compliant for either direction --
+        /// an unjournaled night hasn't demonstrated compliance, it's just
+        /// missing.
+        var compliantExposureState: JournalCorrelator.ExposureState {
+            switch self {
+            case .avoid: .no
+            case .pursue: .yes
+            }
+        }
+    }
+
     enum Status {
         /// Not yet enough matched-pair comparisons for any metric.
         case learning(JournalCorrelator.LearningTag)
@@ -105,6 +137,7 @@ enum GuidedExperiment {
         tag: BehaviorTag,
         hypothesis: String?,
         primaryMetric: JournalCorrelator.Metric,
+        direction: Direction = .avoid,
         startDate: Date,
         endDate: Date,
         baselineDays: Int = 14,
@@ -125,6 +158,19 @@ enum GuidedExperiment {
         // tagged either way is a trial the result can't really speak for.
         let trialKnownNightCount = trial.filter { $0.exposureState(for: tag) != .unknown }.count
 
+        // True adherence: nights that actually landed on the side of the
+        // tag this experiment is testing for, out of *all* trial nights --
+        // not out of only the ones that got logged either way. A trial with
+        // 14 nights, 5 of them compliant and 9 not (all 14 known), is 36%
+        // adherence, not 100%: an unlogged night and a logged-but-wrong-way
+        // night are both failures to demonstrate compliance, just for
+        // different reasons. `trialKnownNightCount` above still answers a
+        // real, different question -- how much of the trial got tagged at
+        // all -- and stays alongside this for that reason.
+        let trialCompliantNightCount = trial.filter {
+            $0.exposureState(for: tag) == direction.compliantExposureState
+        }.count
+
         return SleepExperimentStore.Outcome(
             id: UUID(),
             tag: tag.rawValue,
@@ -137,7 +183,9 @@ enum GuidedExperiment {
             baselineNightCount: baseline.count,
             trialNightCount: trial.count,
             higherIsBetter: primaryMetric.higherIsBetter,
-            trialKnownNightCount: trialKnownNightCount
+            trialKnownNightCount: trialKnownNightCount,
+            direction: direction,
+            trialCompliantNightCount: trialCompliantNightCount
         )
     }
 }
