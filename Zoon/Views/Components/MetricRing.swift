@@ -60,7 +60,7 @@ struct RecoveryRing: View {
             }
         }
         .onChange(of: recovery.percent) { _, _ in
-            withAnimation(Motion.hero) {
+            withAnimation(reduceMotion ? nil : Motion.hero) {
                 animatedFraction = fraction
             }
         }

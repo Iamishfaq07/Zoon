@@ -4,6 +4,7 @@ import SwiftUI
 struct SoundscapeView: View {
 
     @Environment(SoundscapeEngine.self) private var engine
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let timerOptions: [Int?] = [nil, 15, 30, 45, 60, 90]
 
@@ -128,7 +129,7 @@ struct SoundscapeView: View {
         .buttonStyle(PressableStyle())
         // Only the tile that is actually producing audio glows.
         .breathing(isActive, tint: Theme.Metric.battery)
-        .animation(Motion.tap, value: isActive)
+        .animation(reduceMotion ? nil : Motion.tap, value: isActive)
         .accessibilityAddTraits(isActive ? [.isSelected, .isButton] : .isButton)
     }
 

@@ -135,7 +135,7 @@ struct SleepIntelligenceOrb: View {
         }
         .onChange(of: score.percent) { _, _ in
             animatedProgress = 0
-            withAnimation(Motion.hero) {
+            withAnimation(reduceMotion ? nil : Motion.hero) {
                 animatedProgress = 1
             }
         }

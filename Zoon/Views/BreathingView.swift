@@ -20,7 +20,7 @@ struct BreathingView: View {
                 Text(instruction)
                     .font(Theme.numeral(26))
                     .contentTransition(.opacity)
-                    .animation(Motion.value, value: coach.phase)
+                    .animation(reduceMotion ? nil : Motion.value, value: coach.phase)
 
                 if isRunning {
                     Text("Cycle \(min(coach.cyclesCompleted + 1, coach.totalCycles)) of \(coach.totalCycles)")

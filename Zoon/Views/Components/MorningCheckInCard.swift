@@ -16,6 +16,7 @@ struct MorningCheckInCard: View {
     let onSelectDetail: (CheckInDimension, Int?) -> Void
 
     @State private var isExpanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -50,7 +51,7 @@ struct MorningCheckInCard: View {
             }
 
             Button {
-                withAnimation(Motion.tap) { isExpanded.toggle() }
+                withAnimation(reduceMotion ? nil : Motion.tap) { isExpanded.toggle() }
             } label: {
                 HStack(spacing: 4) {
                     Text(isExpanded ? "Less detail" : "More detail")

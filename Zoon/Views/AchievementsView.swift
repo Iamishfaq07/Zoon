@@ -10,6 +10,7 @@ struct AchievementsView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selected: Achievement?
 
@@ -75,7 +76,7 @@ struct AchievementsView: View {
                         style: StrokeStyle(lineWidth: 10, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
-                    .animation(Motion.value, value: unlockedCount)
+                    .animation(reduceMotion ? nil : Motion.value, value: unlockedCount)
 
                 VStack(spacing: -1) {
                     Text("\(unlockedCount)")
