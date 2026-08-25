@@ -201,13 +201,23 @@ struct SleepScoreWidgetView: View {
     }
 
     private func stat(_ label: String, _ value: String) -> some View {
+        // `large`/`medium` pack up to 5 of these into a fixed-width row with
+        // no wrapping fallback -- at the larger accessibility text sizes
+        // (which .caption/Theme.text both scale with, correctly) that row
+        // would otherwise overflow the widget's fixed width and clip off
+        // the edge rather than shrink. `minimumScaleFactor` gives it
+        // somewhere to go instead.
         VStack(alignment: .leading, spacing: 0) {
             Text(value)
                 .font(.caption.weight(.semibold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Text(label)
                 .font(Theme.text(9))
                 .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
     }
 

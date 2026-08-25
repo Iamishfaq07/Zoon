@@ -65,13 +65,13 @@ struct BadgeWidgetView: View {
             badgeMark(size: 46)
 
             Text(hasBadge ? snapshot.badgeTitle : "No badges yet")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(.caption, design: .rounded).weight(.semibold))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.8)
 
             Text(isPlaceholder ? "Sample" : "\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal)")
-                .font(.system(size: 10, design: .rounded))
+                .font(.system(.caption2, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         }
@@ -83,22 +83,26 @@ struct BadgeWidgetView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(hasBadge ? snapshot.badgeTitle : "No badges yet")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(.subheadline, design: .rounded).weight(.bold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Text(isPlaceholder
                      ? "Sample data — open Zoon to see yours"
                      : "\(snapshot.badgesUnlocked) of \(snapshot.badgesTotal) earned")
-                    .font(.system(size: 11, design: .rounded))
+                    .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 if !snapshot.nextBadgeTitle.isEmpty {
                     Divider().overlay(Color.white.opacity(0.12))
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Next: \(snapshot.nextBadgeTitle)")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .font(.system(.caption2, design: .rounded).weight(.semibold))
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         ProgressView(value: snapshot.nextBadgeProgress)
                             .tint(tint)
                     }
