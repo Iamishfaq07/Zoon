@@ -110,6 +110,7 @@ struct RecoveryComplicationView: View {
             // Inline is a single line of system-styled text; no layout of our
             // own survives here, so it says the least and says it plainly.
             Text("Recovery \(percent)%")
+                .privacySensitive()
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
@@ -118,26 +119,24 @@ struct RecoveryComplicationView: View {
                 Text("\(percent)%")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .privacySensitive()
                 Text(entry.isPlaceholder ? "Sample data" : entry.snapshot.scoreBand)
                     .font(Theme.text(11))
                     .foregroundStyle(.secondary)
+                    .privacySensitive()
             }
-
-        case .accessoryCorner:
-            Gauge(value: Double(percent), in: 0...100) {
-                Image(systemName: "bolt.heart.fill")
-            } currentValueLabel: {
-                Text("\(percent)").monospacedDigit()
-            }
-            .gaugeStyle(.accessoryCircular)
 
         default:
+            // Covers both `.accessoryCorner` and `.accessoryCircular` -- the
+            // two render identically here (a gauge has no room to say
+            // anything else), so there's no reason to case them separately.
             Gauge(value: Double(percent), in: 0...100) {
                 Image(systemName: "bolt.heart.fill")
             } currentValueLabel: {
                 Text("\(percent)").monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
+            .privacySensitive()
         }
     }
 }
@@ -165,6 +164,7 @@ struct SleepBankComplicationView: View {
         switch family {
         case .accessoryInline:
             Text("Slept \(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))")
+                .privacySensitive()
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
@@ -173,9 +173,11 @@ struct SleepBankComplicationView: View {
                 Text(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .privacySensitive()
                 Text(entry.isPlaceholder ? "Sample data" : "Bank \(entry.snapshot.balanceLabel)")
                     .font(Theme.text(11))
                     .foregroundStyle(.secondary)
+                    .privacySensitive()
             }
 
         default:
@@ -188,6 +190,7 @@ struct SleepBankComplicationView: View {
                 Text("\(entry.snapshot.score)").monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
+            .privacySensitive()
         }
     }
 }
@@ -217,15 +220,18 @@ struct BadgeComplicationView: View {
         switch family {
         case .accessoryInline:
             Text("\(entry.snapshot.badgesUnlocked) badges")
+                .privacySensitive()
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Label(hasBadge ? entry.snapshot.badgeTitle : "Badges", systemImage: "hexagon.fill")
                     .font(Theme.text(13, weight: .semibold))
                     .lineLimit(1)
+                    .privacySensitive()
                 Text("\(entry.snapshot.badgesUnlocked) of \(entry.snapshot.badgesTotal)")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .privacySensitive()
                 if entry.isPlaceholder {
                     Text("Sample data")
                         .font(Theme.text(11))
@@ -241,6 +247,7 @@ struct BadgeComplicationView: View {
                 Text("\(entry.snapshot.badgesUnlocked)").monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
+            .privacySensitive()
         }
     }
 }
