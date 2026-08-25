@@ -46,6 +46,12 @@ struct StressScore: Codable, Hashable, Sendable {
     let sampledMinutes: Double
     let avgHeartRate: Double?
     let avgHRV: Double?
+    /// The rolling overnight baselines today's readings were compared
+    /// against -- carried on the score itself (rather than left as `compute`
+    /// locals) so a detail screen can show "today vs your baseline" for each
+    /// signal, not just the blended percent.
+    let hrBaseline: Double?
+    let hrvBaseline: Double?
     /// False once there's baseline history to compare against honestly.
     let isEstimate: Bool
 
@@ -123,6 +129,8 @@ struct StressScore: Codable, Hashable, Sendable {
             sampledMinutes: sampledMinutes,
             avgHeartRate: avgHeartRate,
             avgHRV: avgHRV,
+            hrBaseline: hrBaseline,
+            hrvBaseline: hrvBaseline,
             isEstimate: baselineNightCount < minimumBaselineNights
         )
     }
