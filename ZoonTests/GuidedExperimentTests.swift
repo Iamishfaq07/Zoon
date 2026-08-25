@@ -112,12 +112,13 @@ final class GuidedExperimentTests: XCTestCase {
         XCTAssertNil(outcome)
     }
 
-    // MARK: - Adherence
+    // MARK: - Known vs. compliant trial nights
 
-    /// Adherence should count only trial nights with a known yes/no for the
-    /// tracked tag -- an unjournaled night is neither, and shouldn't be
-    /// silently folded into either bucket.
-    func testAdherenceCountsOnlyKnownTrialNights() {
+    /// `trialKnownNightCount` should count only trial nights with a known
+    /// yes/no for the tracked tag -- an unjournaled night is neither, and
+    /// shouldn't be silently folded into either bucket. This is a measure of
+    /// logging completeness, not adherence -- see the tests below for that.
+    func testKnownNightCountCountsOnlyLoggedTrialNights() {
         let baselineNights = (1...14).map { i in
             observation(date: dateOffset(-i, from: startDate))
         }
@@ -140,6 +141,66 @@ final class GuidedExperimentTests: XCTestCase {
         guard let outcome else { return XCTFail("expected an outcome") }
         XCTAssertEqual(outcome.trialNightCount, 10)
         XCTAssertEqual(outcome.trialKnownNightCount, 6)
-        XCTAssertEqual(outcome.adherenceRate ?? 0, 0.6, accuracy: 0.001)
+    }
+
+    /// The actual bug this fix addresses: adherence used to be
+    /// `trialKnownNightCount / trialNightCount` -- nights logged either way,
+    /// not nights of actual compliance. The spec's worked example: 14 trial
+    /// nights testing "cut back on alcohol", 5 of them genuinely alcohol-free
+    /// (compliant), 9 with alcohol tagged (noncompliant, but still known).
+    /// All 14 nights are known, so the old formula reported 100% adherence
+    /// for a trial that was 9/14 broken. True adherence is 5/14 ≈ 36%.
+    func testAdherenceCountsCompliantNightsNotJustKnownNights() {
+        let baselineNights = (1...14).map { i in
+            observation(date: dateOffset(-i, from: startDate))
+        }
+        var trialNights: [JournalCorrelator.Observation] = []
+        for i in 0..<5 {
+            // Compliant: journaled, no alcohol tag -- exposureState resolves to `.no`.
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true))
+        }
+        for i in 5..<14 {
+            // Known, but noncompliant: alcohol tagged.
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], isJournaled: true))
+        }
+        let endDate = dateOffset(13, from: startDate)
+
+        let outcome = GuidedExperiment.summarize(
+            tag: .alcohol, hypothesis: nil, primaryMetric: .sleepPerformance, direction: .avoid,
+            startDate: startDate, endDate: endDate,
+            observations: baselineNights + trialNights
+        )
+
+        guard let outcome else { return XCTFail("expected an outcome") }
+        XCTAssertEqual(outcome.trialNightCount, 14)
+        XCTAssertEqual(outcome.trialKnownNightCount, 14)
+        XCTAssertEqual(outcome.trialCompliantNightCount, 5)
+        XCTAssertEqual(outcome.adherenceRate ?? 0, 5.0 / 14.0, accuracy: 0.001)
+    }
+
+    /// For a `.pursue` direction ("do more of this"), compliance flips: a
+    /// night the tag was tagged "yes" is the compliant one.
+    func testPursueDirectionCountsYesNightsAsCompliant() {
+        let baselineNights = (1...14).map { i in
+            observation(date: dateOffset(-i, from: startDate))
+        }
+        var trialNights: [JournalCorrelator.Observation] = []
+        for i in 0..<8 {
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.hardTraining], isJournaled: true))
+        }
+        for i in 8..<10 {
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true))
+        }
+        let endDate = dateOffset(9, from: startDate)
+
+        let outcome = GuidedExperiment.summarize(
+            tag: .hardTraining, hypothesis: nil, primaryMetric: .sleepPerformance, direction: .pursue,
+            startDate: startDate, endDate: endDate,
+            observations: baselineNights + trialNights
+        )
+
+        guard let outcome else { return XCTFail("expected an outcome") }
+        XCTAssertEqual(outcome.trialCompliantNightCount, 8)
+        XCTAssertEqual(outcome.adherenceRate ?? 0, 0.8, accuracy: 0.001)
     }
 }

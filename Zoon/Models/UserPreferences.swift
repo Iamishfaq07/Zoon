@@ -27,6 +27,7 @@ final class UserPreferences {
         static let experimentStartDate = "zoon.pref.experimentStartDate"
         static let experimentHypothesis = "zoon.pref.experimentHypothesis"
         static let experimentPrimaryMetric = "zoon.pref.experimentPrimaryMetric"
+        static let experimentDirection = "zoon.pref.experimentDirection"
         static let obligationWeekdays = "zoon.pref.obligationWeekdays"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
     }
@@ -239,11 +240,31 @@ final class UserPreferences {
         }
     }
 
-    func startExperiment(_ tag: BehaviorTag, hypothesis: String? = nil, primaryMetric: JournalCorrelator.Metric = .sleepPerformance) {
+    /// Which side of the tag the active experiment is testing for --
+    /// cutting back on it, or doing more of it. This is what "compliant"
+    /// means for `GuidedExperiment.summarize`'s adherence figure; without
+    /// it there's no way to tell a broken trial from a successful one.
+    private(set) var experimentDirection: GuidedExperiment.Direction? {
+        didSet {
+            if let experimentDirection {
+                defaults.set(experimentDirection.rawValue, forKey: Key.experimentDirection)
+            } else {
+                defaults.removeObject(forKey: Key.experimentDirection)
+            }
+        }
+    }
+
+    func startExperiment(
+        _ tag: BehaviorTag,
+        hypothesis: String? = nil,
+        primaryMetric: JournalCorrelator.Metric = .sleepPerformance,
+        direction: GuidedExperiment.Direction = .avoid
+    ) {
         activeExperimentTag = tag
         experimentStartDate = .now
         experimentHypothesis = (hypothesis?.isEmpty ?? true) ? nil : hypothesis
         experimentPrimaryMetric = primaryMetric
+        experimentDirection = direction
     }
 
     func endExperiment() {
@@ -251,6 +272,7 @@ final class UserPreferences {
         experimentStartDate = nil
         experimentHypothesis = nil
         experimentPrimaryMetric = nil
+        experimentDirection = nil
     }
 
     /// Which insight engine to use. The LLM option is present but stubbed —
@@ -341,6 +363,7 @@ final class UserPreferences {
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
         self.experimentHypothesis = defaults.string(forKey: Key.experimentHypothesis)
         self.experimentPrimaryMetric = (defaults.string(forKey: Key.experimentPrimaryMetric)).flatMap(JournalCorrelator.Metric.init(rawValue:))
+        self.experimentDirection = (defaults.string(forKey: Key.experimentDirection)).flatMap(GuidedExperiment.Direction.init(rawValue:))
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
         self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
             ?? Self.defaultObligationWeekdays
@@ -371,6 +394,7 @@ final class UserPreferences {
         experimentStartDate = nil
         experimentHypothesis = nil
         experimentPrimaryMetric = nil
+        experimentDirection = nil
         preferredSleepSourceName = nil
         obligationWeekdays = Self.defaultObligationWeekdays
 
@@ -392,6 +416,7 @@ final class UserPreferences {
             Key.experimentStartDate,
             Key.experimentHypothesis,
             Key.experimentPrimaryMetric,
+            Key.experimentDirection,
             Key.obligationWeekdays,
         ]
         for key in keys { defaults.removeObject(forKey: key) }

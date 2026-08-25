@@ -1222,6 +1222,7 @@ final class SleepDataCoordinator {
                 tag: tag,
                 hypothesis: preferences.experimentHypothesis,
                 primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
+                direction: preferences.experimentDirection ?? .avoid,
                 startDate: startDate,
                 endDate: .now,
                 observations: journalObservations()

@@ -60,8 +60,8 @@ struct CauseFinderView: View {
         .navigationTitle("Cause Finder")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingExperimentPicker) {
-            ExperimentPickerSheet { tag, hypothesis, primaryMetric in
-                preferences.startExperiment(tag, hypothesis: hypothesis, primaryMetric: primaryMetric)
+            ExperimentPickerSheet { tag, hypothesis, primaryMetric, direction in
+                preferences.startExperiment(tag, hypothesis: hypothesis, primaryMetric: primaryMetric, direction: direction)
                 showingExperimentPicker = false
             }
         }
@@ -370,14 +370,25 @@ private struct GuidedExperimentCard: View {
 }
 
 private struct ExperimentPickerSheet: View {
-    let onSelect: (BehaviorTag, String?, JournalCorrelator.Metric) -> Void
+    let onSelect: (BehaviorTag, String?, JournalCorrelator.Metric, GuidedExperiment.Direction) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var hypothesis: String = ""
     @State private var primaryMetric: JournalCorrelator.Metric = .sleepPerformance
+    @State private var direction: GuidedExperiment.Direction = .avoid
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Picker("This experiment is about", selection: $direction) {
+                        ForEach(GuidedExperiment.Direction.allCases, id: \.self) { direction in
+                            Text(direction.label).tag(direction)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } footer: {
+                    Text("What counts as a compliant night depends on this -- a night you had a drink is a broken trial for cutting back, but a successful one for doing more of something.")
+                }
                 Section {
                     TextField("What do you expect to find? (optional)", text: $hypothesis, axis: .vertical)
                         .lineLimit(1...3)
@@ -397,7 +408,7 @@ private struct ExperimentPickerSheet: View {
                     Section(category.label) {
                         ForEach(category.tags) { tag in
                             Button {
-                                onSelect(tag, hypothesis, primaryMetric)
+                                onSelect(tag, hypothesis, primaryMetric, direction)
                             } label: {
                                 Label(tag.label, systemImage: tag.symbol)
                                     .foregroundStyle(.primary)
@@ -473,7 +484,11 @@ private struct PastExperimentRow: View {
                         .font(Theme.text(12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let known = outcome.trialKnownNightCount {
+                    if let adherenceRate = outcome.adherenceRate, let compliant = outcome.trialCompliantNightCount, let direction = outcome.direction {
+                        Text("\(direction == .avoid ? "Stuck to it" : "Followed through") \(compliant) of \(outcome.trialNightCount) trial nights (\(Int((adherenceRate * 100).rounded()))%) -- the rest either went the other way or never got logged.")
+                            .font(Theme.text(10))
+                            .foregroundStyle(.tertiary)
+                    } else if let known = outcome.trialKnownNightCount {
                         Text("Logged \(known) of \(outcome.trialNightCount) trial nights either way -- the rest never got tagged, so the result rests on the ones that did.")
                             .font(Theme.text(10))
                             .foregroundStyle(.tertiary)
