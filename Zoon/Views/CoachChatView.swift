@@ -13,6 +13,7 @@ struct CoachChatView: View {
     var initialPrompt: String? = nil
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var chat = CoachChat()
     @State private var input = ""
     @FocusState private var inputFocused: Bool
@@ -86,7 +87,7 @@ struct CoachChatView: View {
                     if chat.isResponding {
                         HStack(spacing: 6) {
                             ProgressView().tint(.secondary)
-                            Text("Thinking…").font(.caption).foregroundStyle(.secondary)
+                            Text("Thinking…").font(Theme.text(12)).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -94,7 +95,9 @@ struct CoachChatView: View {
             }
             .onChange(of: chat.messages.count) {
                 guard let last = chat.messages.last else { return }
-                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                withAnimation(reduceMotion ? nil : Motion.value) {
+                    proxy.scrollTo(last.id, anchor: .bottom)
+                }
             }
         }
     }
@@ -159,7 +162,7 @@ struct CoachChatView: View {
                 if let bestAction = message.bestAction, !bestAction.isEmpty {
                     HStack(alignment: .top, spacing: 6) {
                         Image(systemName: "arrow.turn.down.right")
-                            .font(.caption2)
+                            .font(Theme.text(11))
                             .foregroundStyle(Theme.Metric.sleep)
                         Text(bestAction)
                             .font(Theme.text(12, weight: .medium))
@@ -203,7 +206,7 @@ struct CoachChatView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.15), value: isExpanded)
+        .animation(reduceMotion ? nil : Motion.tap, value: isExpanded)
     }
 
     private var composer: some View {
