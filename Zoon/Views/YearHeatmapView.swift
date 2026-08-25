@@ -9,6 +9,7 @@ import SwiftUI
 struct YearHeatmapView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selectedDate: Date?
 
@@ -163,7 +164,7 @@ struct YearHeatmapView: View {
                         .strokeBorder(.white, lineWidth: 1.5)
                 }
             }
-            .animation(Motion.tap, value: isSelected)
+            .animation(reduceMotion ? nil : Motion.tap, value: isSelected)
             .onTapGesture {
                 guard !isFuture else { return }
                 Haptics.select()
