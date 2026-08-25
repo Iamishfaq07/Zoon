@@ -112,7 +112,7 @@ struct TodayView: View {
             BedtimeCountdownCard().entrance(3)
             if let bedtime = context.targetBedtime() {
                 TonightTimelineCard(
-                    caffeineCutoff: TonightTimelineCard.caffeineCutoff(bedtime: bedtime),
+                    caffeineCutoff: CaffeineCutoff.time(bedtime: bedtime),
                     windDown: bedtime.addingTimeInterval(-Double(BedtimeReminder.windDownLeadMinutes) * 60),
                     bedtime: bedtime,
                     wake: context.bodyClock?.window(for: .now)?.end

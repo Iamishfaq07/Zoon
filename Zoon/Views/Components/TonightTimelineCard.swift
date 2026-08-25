@@ -11,10 +11,8 @@ import SwiftUI
 /// window -- so this card can never show a different plan than the one the
 /// reminders are actually scheduled against.
 struct TonightTimelineCard: View {
-    /// General-guideline caffeine cutoff (`BedtimeReminder.caffeineCutoffLeadHours`
-    /// before `bedtime`). `nil` hides the node entirely rather than showing a
-    /// stale one -- the call site passes `nil` once the day's cutoff has
-    /// already long passed and showing it would just read as clutter.
+    /// General-guideline caffeine cutoff, from `CaffeineCutoff.time(bedtime:)`.
+    /// `nil` hides the node entirely rather than showing a stale one.
     let caffeineCutoff: Date?
     let windDown: Date
     let bedtime: Date
@@ -44,21 +42,6 @@ struct TonightTimelineCard: View {
             result.append(Node(id: "wake", symbol: "sunrise.fill", label: "Wake", time: wake, tint: Theme.Metric.battery))
         }
         return result
-    }
-
-    /// How long after its own cutoff time today still shows it -- long enough
-    /// to stay useful across an afternoon check-in, short enough that it's
-    /// gone by evening rather than reading as stale clutter next to a
-    /// bedtime that's actually approaching.
-    private static let staleCaffeineCutoffToleranceHours = 3.0
-
-    /// The general-guideline caffeine cutoff for a given target bedtime, or
-    /// `nil` once it's far enough in the past that showing it would be
-    /// clutter rather than guidance. Pure and `now`-parameterized so this is
-    /// unit-testable without going through the view itself.
-    static func caffeineCutoff(bedtime: Date, now: Date = .now) -> Date? {
-        let cutoff = bedtime.addingTimeInterval(-BedtimeReminder.caffeineCutoffLeadHours * 3600)
-        return cutoff > now.addingTimeInterval(-staleCaffeineCutoffToleranceHours * 3600) ? cutoff : nil
     }
 
     /// Height of the icon row above the time/label text -- the connecting
