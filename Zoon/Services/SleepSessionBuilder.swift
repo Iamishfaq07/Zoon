@@ -48,8 +48,24 @@ struct SleepSessionBuilder {
     var minimumSessionDuration: TimeInterval = 60 * 15
 
     /// Overrides automatic source selection when set -- see
-    /// `UserPreferences.preferredSleepSourceName`. `nil` (the default) keeps
-    /// the automatic richest-source pick.
+    /// `UserPreferences.preferredSleepSourceBundleIdentifier`. `nil` (the
+    /// default) keeps the automatic richest-source pick.
+    ///
+    /// Preferred over `preferredSourceName` below whenever both are set:
+    /// a bundle identifier is stable across a device rename, a display
+    /// language change, or Apple renaming a source in a future OS release,
+    /// none of which change a matched-by-name preference gracefully -- it
+    /// just silently stops matching and falls through to automatic
+    /// selection with no visible error.
+    var preferredSourceBundleIdentifier: String? = nil
+
+    /// Legacy display-name-based override, kept only for a preference
+    /// stored before `preferredSourceBundleIdentifier` existed. Settings
+    /// now writes both fields together (see `SettingsView.sourceSection`),
+    /// so this is purely a fallback for a preference set before that
+    /// change shipped -- it stays honored rather than silently dropped
+    /// until the user next opens Settings' source picker, which re-saves
+    /// it as a bundle identifier.
     var preferredSourceName: String? = nil
 
     // MARK: - Public API
@@ -145,7 +161,10 @@ struct SleepSessionBuilder {
         let grouped = Dictionary(grouping: samples) { $0.sourceRevision.source.bundleIdentifier }
         guard grouped.count > 1 else { return samples }
 
-        if let preferredSourceName,
+        if let preferredSourceBundleIdentifier, let match = grouped[preferredSourceBundleIdentifier] {
+            return match
+        }
+        if preferredSourceBundleIdentifier == nil, let preferredSourceName,
            let match = grouped.values.first(where: { $0.first?.sourceRevision.source.name == preferredSourceName }) {
             return match
         }
@@ -227,6 +246,7 @@ struct SleepSessionBuilder {
             awakeIntervals: merged[.awake] ?? [],
             segments: segments,
             sourceName: samples.first?.sourceRevision.source.name,
+            sourceBundleIdentifier: samples.first?.sourceRevision.source.bundleIdentifier,
             timeZoneIdentifier: samples.compactMap { sample in
                 guard let identifier = sample.metadata?[HKMetadataKeyTimeZone] as? String,
                       TimeZone(identifier: identifier) != nil else { return nil }
@@ -274,6 +294,13 @@ struct SleepSession {
     /// Chronological stage timeline, overlap already merged. Drives the hypnogram.
     let segments: [StageSegment]
     let sourceName: String?
+    /// `sourceRevision.source.bundleIdentifier` -- stable across a device
+    /// rename or a locale change, unlike `sourceName`. This is what an
+    /// explicit "preferred source" choice should actually be matched
+    /// against; `sourceName` stays around only for display and for
+    /// matching sources recorded before this field existed. See
+    /// `SleepSessionBuilder.preferredSourceSamples`'s doc comment.
+    let sourceBundleIdentifier: String?
     /// Timezone recorded with the HealthKit samples. This must travel with the
     /// episode: `Calendar.current` may be somewhere else when a traveler next
     /// refreshes the same historical night.

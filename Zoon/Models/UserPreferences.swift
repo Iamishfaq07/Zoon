@@ -30,6 +30,7 @@ final class UserPreferences {
         static let experimentDirection = "zoon.pref.experimentDirection"
         static let obligationWeekdays = "zoon.pref.obligationWeekdays"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
+        static let preferredSleepSourceBundleIdentifier = "zoon.pref.preferredSleepSourceBundleIdentifier"
         static let trackedBehaviorTagIdentifiers = "zoon.pref.trackedBehaviorTagIdentifiers"
     }
 
@@ -346,6 +347,26 @@ final class UserPreferences {
         }
     }
 
+    /// Stable identity for the same preference above -- see
+    /// `SleepSessionBuilder.preferredSourceBundleIdentifier`'s doc comment
+    /// for why matching by this instead of `preferredSleepSourceName` is
+    /// worth a second field rather than a plain rename: a rename in place
+    /// would silently stop matching every preference set before it shipped,
+    /// with no error and no visible sign why "Preferred source" quietly
+    /// stopped doing anything. Both are written together by
+    /// `SettingsView.sourceSection` now; this one is `nil` only for a
+    /// preference set before this field existed, at which point
+    /// `preferredSleepSourceName` alone still keeps it working.
+    var preferredSleepSourceBundleIdentifier: String? {
+        didSet {
+            if let preferredSleepSourceBundleIdentifier {
+                defaults.set(preferredSleepSourceBundleIdentifier, forKey: Key.preferredSleepSourceBundleIdentifier)
+            } else {
+                defaults.removeObject(forKey: Key.preferredSleepSourceBundleIdentifier)
+            }
+        }
+    }
+
     enum EngineChoice: String, CaseIterable, Identifiable {
         case ruleBased
         case appleIntelligence
@@ -411,6 +432,7 @@ final class UserPreferences {
         self.experimentPrimaryMetric = (defaults.string(forKey: Key.experimentPrimaryMetric)).flatMap(JournalCorrelator.Metric.init(rawValue:))
         self.experimentDirection = (defaults.string(forKey: Key.experimentDirection)).flatMap(GuidedExperiment.Direction.init(rawValue:))
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
+        self.preferredSleepSourceBundleIdentifier = defaults.string(forKey: Key.preferredSleepSourceBundleIdentifier)
         self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
             ?? Self.defaultObligationWeekdays
         self.trackedBehaviorTagIdentifiers = (defaults.array(forKey: Key.trackedBehaviorTagIdentifiers) as? [String]).map(Set.init)
@@ -443,6 +465,7 @@ final class UserPreferences {
         experimentPrimaryMetric = nil
         experimentDirection = nil
         preferredSleepSourceName = nil
+        preferredSleepSourceBundleIdentifier = nil
         obligationWeekdays = Self.defaultObligationWeekdays
         trackedBehaviorTagIdentifiers = nil
 
@@ -461,6 +484,7 @@ final class UserPreferences {
             Key.recoveryModeDate,
             Key.experimentTag,
             Key.preferredSleepSourceName,
+            Key.preferredSleepSourceBundleIdentifier,
             Key.experimentStartDate,
             Key.experimentHypothesis,
             Key.experimentPrimaryMetric,

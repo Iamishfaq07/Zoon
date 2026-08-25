@@ -94,6 +94,11 @@ final class SleepNightRecord {
     var lateCaffeineMg: Double?
 
     var sourceName: String?
+    /// See `SleepNightFeatures.sourceBundleIdentifier`. Optional and
+    /// backfill-safe, same pattern as `nightKey`/`timeZoneIdentifier`:
+    /// existing rows predate this column and fall back to `sourceName`
+    /// matching until the next re-sync fills it in.
+    var sourceBundleIdentifier: String?
 
     /// The night's stage timeline, JSON-encoded.
     ///
@@ -154,6 +159,7 @@ final class SleepNightRecord {
         self.alcoholicBeverages = features.alcoholicBeverages
         self.lateCaffeineMg = features.lateCaffeineMg
         self.sourceName = features.sourceName
+        self.sourceBundleIdentifier = features.sourceBundleIdentifier
         self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
         self.insightLikelyCause = insight?.likelyCause
@@ -235,6 +241,7 @@ final class SleepNightRecord {
         alcoholicBeverages = features.alcoholicBeverages
         lateCaffeineMg = features.lateCaffeineMg
         sourceName = features.sourceName
+        sourceBundleIdentifier = features.sourceBundleIdentifier
         // Only overwrite when the fresh extraction actually has a timeline —
         // a re-sync that lost staging shouldn't erase a good hypnogram.
         if !features.stageSegments.isEmpty {
@@ -298,6 +305,7 @@ extension SleepNightRecord {
             alcoholicBeverages: alcoholicBeverages,
             lateCaffeineMg: lateCaffeineMg,
             sourceName: sourceName,
+            sourceBundleIdentifier: sourceBundleIdentifier,
             isMock: false,
             stageSegments: [StageSegment].decode(stageSegmentsData),
             timeZoneIdentifier: timeZoneIdentifier ?? TimeZone.current.identifier

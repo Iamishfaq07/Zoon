@@ -440,6 +440,7 @@ final class SleepDataCoordinator {
     @discardableResult
     private func processSessions(from samples: [HKCategorySample], window: DateInterval) async -> Bool {
         store.beginTrackingWrites()
+        sessionBuilder.preferredSourceBundleIdentifier = preferences.preferredSleepSourceBundleIdentifier
         sessionBuilder.preferredSourceName = preferences.preferredSleepSourceName
         let sessions = sessionBuilder.buildSessions(from: samples)
 
@@ -992,6 +993,12 @@ final class SleepDataCoordinator {
     /// `UserPreferences.preferredSleepSourceName`.
     func knownSleepSourceNames() -> [String] {
         store.knownSourceNames()
+    }
+
+    /// Name paired with the stable bundle identifier to actually store as
+    /// the preference -- see `SleepHistoryStore.knownSleepSources()`.
+    func knownSleepSources() -> [(name: String, bundleIdentifier: String?)] {
+        store.knownSleepSources()
     }
 
     func setEngine(_ choice: UserPreferences.EngineChoice) {
