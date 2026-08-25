@@ -11,6 +11,9 @@ import SwiftUI
 /// window -- so this card can never show a different plan than the one the
 /// reminders are actually scheduled against.
 struct TonightTimelineCard: View {
+    /// General-guideline caffeine cutoff, from `CaffeineCutoff.time(bedtime:)`.
+    /// `nil` hides the node entirely rather than showing a stale one.
+    let caffeineCutoff: Date?
     let windDown: Date
     let bedtime: Date
     /// `nil` before enough nights exist for `BodyClock` to estimate a wake
@@ -27,10 +30,14 @@ struct TonightTimelineCard: View {
     }
 
     private var nodes: [Node] {
-        var result = [
+        var result: [Node] = []
+        if let caffeineCutoff {
+            result.append(Node(id: "caffeine", symbol: "cup.and.saucer.fill", label: "Caffeine cutoff", time: caffeineCutoff, tint: Theme.Metric.strain))
+        }
+        result.append(contentsOf: [
             Node(id: "windDown", symbol: "moon.haze.fill", label: "Wind down", time: windDown, tint: Theme.Metric.temperature),
             Node(id: "bedtime", symbol: "bed.double.fill", label: "Bedtime", time: bedtime, tint: Theme.Metric.sleep)
-        ]
+        ])
         if let wake {
             result.append(Node(id: "wake", symbol: "sunrise.fill", label: "Wake", time: wake, tint: Theme.Metric.battery))
         }
@@ -111,9 +118,24 @@ struct TonightTimelineCard: View {
 #Preview("Tonight Timeline") {
     ScrollView {
         TonightTimelineCard(
+            caffeineCutoff: Calendar.current.date(bySettingHour: 14, minute: 45, second: 0, of: .now) ?? .now,
             windDown: Calendar.current.date(bySettingHour: 22, minute: 15, second: 0, of: .now) ?? .now,
             bedtime: Calendar.current.date(bySettingHour: 22, minute: 45, second: 0, of: .now) ?? .now,
             wake: Calendar.current.date(bySettingHour: 6, minute: 45, second: 0, of: .now.addingTimeInterval(86400)) ?? .now
+        )
+        .padding()
+    }
+    .nightBackground()
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Tonight Timeline — no caffeine cutoff") {
+    ScrollView {
+        TonightTimelineCard(
+            caffeineCutoff: nil,
+            windDown: Calendar.current.date(bySettingHour: 22, minute: 15, second: 0, of: .now) ?? .now,
+            bedtime: Calendar.current.date(bySettingHour: 22, minute: 45, second: 0, of: .now) ?? .now,
+            wake: nil
         )
         .padding()
     }
