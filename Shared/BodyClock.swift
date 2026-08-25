@@ -117,16 +117,29 @@ struct BodyClock: Codable, Hashable, Sendable {
 
         // Same reasoning applies to onset/wake themselves: adding a flat
         // `onsetHour * 3600` seconds to `midSleepMidnight` is exactly as
-        // DST-unsafe as the day step above was, just one level down --
-        // this was the actual bug a CI run caught (a spring-forward night's
-        // 03:45 wake landed at 04:45). `.minute`, like `.day`, is calendar
-        // arithmetic: it advances by wall-clock minutes in `calendar`'s time
-        // zone, correctly absorbing whatever DST gap or overlap falls inside
-        // the span, rather than a fixed count of elapsed seconds.
+        // DST-unsafe as the day step above was, just one level down -- and
+        // so, it turns out, is `Calendar.date(byAdding: .minute, ...)`: a
+        // CI run caught both, the same spring-forward night's 03:45 wake
+        // landing at 04:45 either way. Calendar-unit *addition* only
+        // absorbs a DST gap reliably at the day granularity; hour/minute
+        // addition still walks forward in elapsed real time.
+        //
+        // What *is* DST-safe is building the target directly out of wall-clock
+        // components and letting `date(from:)` resolve them -- Foundation
+        // normalizes an out-of-range field (a `minute` of, say, 225) by
+        // carrying it into `hour`/`day` using the calendar's actual rules
+        // for that date, which is exactly where DST gets accounted for.
+        let midSleepDay = calendar.dateComponents([.year, .month, .day], from: midSleepMidnight)
         let onsetMinutes = Int((onsetHour * 60).rounded())
         let wakeMinutes = Int((wakeHour * 60).rounded())
-        guard let onset = calendar.date(byAdding: .minute, value: onsetMinutes, to: midSleepMidnight),
-              let wake = calendar.date(byAdding: .minute, value: wakeMinutes, to: midSleepMidnight)
+        var onsetComponents = midSleepDay
+        onsetComponents.hour = 0
+        onsetComponents.minute = onsetMinutes
+        var wakeComponents = midSleepDay
+        wakeComponents.hour = 0
+        wakeComponents.minute = wakeMinutes
+        guard let onset = calendar.date(from: onsetComponents),
+              let wake = calendar.date(from: wakeComponents)
         else { return nil }
         guard wake > onset else { return nil }
         return DateInterval(start: onset, end: wake)

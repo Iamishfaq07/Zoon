@@ -149,12 +149,17 @@ struct EnergyForecast: Codable, Hashable, Sendable {
         // identical fix for why a raw addingTimeInterval step is DST-unsafe here.
         let nextMidnight = calendar.date(byAdding: .day, value: 1, to: startOfDay)
             ?? startOfDay.addingTimeInterval(24 * 3600)
-        // Same DST-safety fix `window(for:)` needed for its own onset/wake:
-        // `hour * 3600` seconds added to `nextMidnight` is just as unsafe as
-        // the day step above -- `.minute` calendar arithmetic absorbs a DST
-        // gap or overlap inside the span instead of ignoring it.
-        let minutes = Int((hour * 60).rounded())
-        return calendar.date(byAdding: .minute, value: minutes, to: nextMidnight)
-            ?? nextMidnight.addingTimeInterval(hour * 3600)
+        // Same DST-safety fix `window(for:)` needed for its own onset/wake --
+        // including the same correction to that fix: `.minute` calendar
+        // *addition* turned out to still walk forward in elapsed real time
+        // across a DST gap, just like flat seconds. Building the target from
+        // wall-clock components and letting `date(from:)` resolve them is
+        // what's actually safe -- Foundation carries an out-of-range `minute`
+        // into `hour`/`day` using the calendar's real rules for that date.
+        let nextMidnightDay = calendar.dateComponents([.year, .month, .day], from: nextMidnight)
+        var components = nextMidnightDay
+        components.hour = 0
+        components.minute = Int((hour * 60).rounded())
+        return calendar.date(from: components) ?? nextMidnight.addingTimeInterval(hour * 3600)
     }
 }
