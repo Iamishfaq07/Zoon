@@ -107,7 +107,13 @@ struct BodyClock: Codable, Hashable, Sendable {
         // to the following midnight fixes it: for an evening onset, that's
         // the midnight the onset sits just before; for wake, the midnight
         // it sits just after.
-        let midSleepMidnight = startOfDay.addingTimeInterval(24 * 3600)
+        //
+        // Calendar arithmetic, not a flat 24h offset -- `startOfDay` came
+        // from calendar-aware `bySettingHour`, and a raw addingTimeInterval
+        // step back to seconds would land an hour off true midnight on a
+        // day the clocks change.
+        let midSleepMidnight = calendar.date(byAdding: .day, value: 1, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(24 * 3600)
         let onset = midSleepMidnight.addingTimeInterval(onsetHour * 3600)
         let wake = midSleepMidnight.addingTimeInterval(wakeHour * 3600)
         guard wake > onset else { return nil }

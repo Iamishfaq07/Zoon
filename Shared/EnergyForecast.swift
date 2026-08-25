@@ -144,7 +144,11 @@ struct EnergyForecast: Codable, Hashable, Sendable {
     /// `BodyClock`'s convention -- 23:30 is −0.5) onto the evening of the day
     /// `wakeTime` falls on, i.e. *tonight's* wind-down, not last night's.
     private static func resolve(hour: Double, near wakeTime: Date, calendar: Calendar) -> Date {
-        let nextMidnight = calendar.startOfDay(for: wakeTime).addingTimeInterval(24 * 3600)
+        let startOfDay = calendar.startOfDay(for: wakeTime)
+        // Calendar arithmetic, not a flat 24h offset -- see BodyClock.window(for:)'s
+        // identical fix for why a raw addingTimeInterval step is DST-unsafe here.
+        let nextMidnight = calendar.date(byAdding: .day, value: 1, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(24 * 3600)
         return nextMidnight.addingTimeInterval(hour * 3600)
     }
 }

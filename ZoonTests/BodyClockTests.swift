@@ -72,4 +72,39 @@ final class BodyClockTests: XCTestCase {
         XCTAssertEqual(calendar.component(.day, from: wake), 11)
         XCTAssertEqual(calendar.component(.hour, from: wake), 9)
     }
+
+    /// `window(for:)` anchors onset/wake to "the following midnight" via
+    /// `Calendar.date(byAdding: .day, value: 1, to:)` -- not a raw 24-hour
+    /// `addingTimeInterval`, which would land an hour off true wall-clock
+    /// midnight on the one day a year that isn't 24 hours long. March 8,
+    /// 2026 is a US spring-forward day (clocks jump 2am -> 3am, a 23-hour
+    /// day) in America/New_York, so a night spanning it is exactly the case
+    /// a flat-seconds bug would get wrong.
+    func testWindowIsDSTSafeAcrossASpringForwardNight() throws {
+        var dstCalendar = Calendar(identifier: .gregorian)
+        dstCalendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 3
+        components.day = 7 // the evening before the transition
+        components.hour = 15
+        let evening = try XCTUnwrap(dstCalendar.date(from: components))
+
+        let window = typical.window(for: evening, calendar: dstCalendar)
+        let onset = try XCTUnwrap(window?.start)
+        let wake = try XCTUnwrap(window?.end)
+
+        // Onset (19:45) falls before the 2am transition, on the 7th still.
+        XCTAssertEqual(dstCalendar.component(.day, from: onset), 7)
+        XCTAssertEqual(dstCalendar.component(.hour, from: onset), 19)
+        XCTAssertEqual(dstCalendar.component(.minute, from: onset), 45)
+
+        // Wake (03:45) falls after the 2am -> 3am jump, on the 8th -- wall
+        // clock time must still read 03:45, not 04:45 (the flat-24h bug's
+        // off-by-an-hour) or any other drift.
+        XCTAssertEqual(dstCalendar.component(.day, from: wake), 8)
+        XCTAssertEqual(dstCalendar.component(.hour, from: wake), 3)
+        XCTAssertEqual(dstCalendar.component(.minute, from: wake), 45)
+    }
 }
