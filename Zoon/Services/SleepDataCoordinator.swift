@@ -772,7 +772,17 @@ final class SleepDataCoordinator {
             // against a differently-built baseline than the Today screen —
             // which has happened here before.
             let baseline = RecoveryBaseline.from(nights: prior)
-            let performance = min(100, night.timeAsleepMinutes / max(goal, 1) * 100)
+            // total24hAsleepMinutes against this night's own learned need
+            // (falling back to the flat goal only for nights predating that
+            // column) -- the same sufficiency formula the live Today path
+            // (DayContextBuilder) and the Cause Finder observation builder
+            // below both use. Previously this scored main-sleep-only
+            // against the current flat goal, so a historical night's
+            // recovery score here could silently disagree with what the
+            // Today screen showed for that same night when it was live.
+            let performance = min(
+                100, night.total24hAsleepMinutes / max(night.sleepNeedBaselineMinutes ?? goal, 1) * 100
+            )
             result[night.date] = RecoveryScore.compute(
                 features: night, baseline: baseline, sleepPerformance: performance
             ).percent
