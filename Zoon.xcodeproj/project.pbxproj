@@ -350,6 +350,7 @@
 		CF172F688E6D427E01763C3E /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 		D0079B2C352ACA706E9E0B4E /* LifestyleInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E0BB7B287F3739433EC5B8 /* LifestyleInsights.swift */; };
 		D0D98A5190EC12C683DB882C /* WhyScoreWaterfall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213D22A6A83EC98AD923972A /* WhyScoreWaterfall.swift */; };
+		D119B6C17662ECC9ED92865A /* TrackedBehaviorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C85A84520EB4B642906419 /* TrackedBehaviorsView.swift */; };
 		D16936FC59B87D97DE8C244A /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */; };
 		D2A02A8E3F206303EB92549B /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		D397403DABFEACAA41DB8475 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
@@ -656,6 +657,7 @@
 		A7060DA0F52BD67E4086F62D /* SleepStory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStory.swift"; sourceTree = "<group>"; };
 		A7DD50B071385AA818850F2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 		A8F17EC9D5200DD54D789C6B /* SleepHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepHealthTests.swift"; sourceTree = "<group>"; };
+		A9C85A84520EB4B642906419 /* TrackedBehaviorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrackedBehaviorsView.swift"; sourceTree = "<group>"; };
 		A9F17278E812BF344A4F336E /* SleepTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepTimelineProvider.swift"; sourceTree = "<group>"; };
 		AB86D405417CEEDF41C16199 /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Achievement.swift"; sourceTree = "<group>"; };
 		ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiquidGlass.swift"; sourceTree = "<group>"; };
@@ -1135,6 +1137,7 @@
 				8FA2A39F223DD162F1139936,
 				988C7859742E07AD3373E321,
 				603206A2CDB9BC509E9EAD46,
+				A9C85A84520EB4B642906419,
 				6E73BF56BE184A76A17FDF61,
 				A266B25D9732E28AB9C8A587,
 			);
@@ -1513,6 +1516,7 @@
 				2CA9DF6A4727B3E86AE97048,
 				112F2AE90A83A00B85976AA3,
 				FEC6F3C8CE0738C45E564583,
+				D119B6C17662ECC9ED92865A,
 				341925CCB785A77216B06E8A,
 				A07568B105991435631F37A1,
 				0E21C726F36D1A9DA6147C69,

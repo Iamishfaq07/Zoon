@@ -29,6 +29,7 @@ struct SettingsView: View {
             obligationDaysSection
             cycleSection
             lifestyleInsightsSection
+            trackedBehaviorsSection
             profileSection
             engineSection
             sourceSection
@@ -405,6 +406,21 @@ struct SettingsView: View {
                 from everything else Zoon reads. Shown alongside your Journal tags \
                 as measured reference, not a replacement for them.
                 """)
+        }
+    }
+
+    /// A NavigationLink rather than an inline section: ~22 tags across four
+    /// categories doesn't fit a `Form` row without either overwhelming
+    /// Settings or being cut off, and this is a "set once, rarely revisit"
+    /// choice anyway -- the same reasoning `AlgorithmTransparencyView` gets
+    /// its own screen instead of an inline explainer.
+    private var trackedBehaviorsSection: some View {
+        Section {
+            NavigationLink("Tracked Behaviours") {
+                TrackedBehaviorsView()
+            }
+        } footer: {
+            Text("Choose which behaviours the Journal asks about each day. Everything is tracked until you narrow it down.")
         }
     }
 
