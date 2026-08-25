@@ -129,7 +129,7 @@ enum AppMockData {
     static var stress: StressScore {
         StressScore(
             percent: 34, band: .calm, sampledMinutes: 420,
-            avgHeartRate: 68, avgHRV: 52, isEstimate: false
+            avgHeartRate: 68, avgHRV: 52, hrBaseline: 64, hrvBaseline: 55, isEstimate: false
         )
     }
 

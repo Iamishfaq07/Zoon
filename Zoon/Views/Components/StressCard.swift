@@ -49,51 +49,51 @@ struct StressCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
-                Circle()
-                    .trim(from: 0, to: Double(stress.percent) / 100)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(stress.percent)")
-                    .font(Theme.numeral(15))
-                    .monospacedDigit()
-            }
-            .frame(width: 44, height: 44)
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text("Load today")
-                        .font(Theme.label(13, weight: .semibold))
-                    StatusPill(text: "Experimental", tint: .secondary)
-                    if stress.isEstimate {
-                        StatusPill(text: "Estimate", tint: .secondary)
-                    }
+        // A push rather than `MetricInfoButton`'s usual explanation sheet --
+        // unlike Daily Load (see `TodayView.dailyLoadRow`'s comment), Stress
+        // now has somewhere to live: `StressDetailView` shows today's HR and
+        // HRV each against their own baseline, not just the blended percent,
+        // which a single paragraph in a sheet can't.
+        NavigationLink {
+            StressDetailView(stress: stress, todayStrain: todayStrain)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
+                    Circle()
+                        .trim(from: 0, to: Double(stress.percent) / 100)
+                        .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(stress.percent)")
+                        .font(Theme.numeral(15))
+                        .monospacedDigit()
                 }
-                Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.band.detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("Load today")
+                            .font(Theme.label(13, weight: .semibold))
+                        StatusPill(text: "Experimental", tint: .secondary)
+                        if stress.isEstimate {
+                            StatusPill(text: "Estimate", tint: .secondary)
+                        }
+                    }
+                    Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.band.detail)
+                        .font(Theme.text(12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(12, weight: .semibold))
+                    .foregroundStyle(.tertiary)
             }
-
-            Spacer(minLength: 0)
-
-            MetricInfoButton(
-                title: "Physiological Load — Experimental",
-                symbol: "waveform.path.ecg",
-                tint: tint,
-                explanation: [
-                    "Compares your heart rate and HRV so far today against your own rolling baseline -- a live, same-day reading rather than a look back at last night. Not a measure of psychological stress.",
-                    "Workouts, the minutes right after them, and unlogged high-movement hours are excluded before averaging, so ordinary exertion doesn't read as elevated load. That exclusion is hour-grained, not perfect -- check today's Daily Load if this reads high and you know you've been active.",
-                    "Marked Experimental because the baseline it compares against is built from overnight resting physiology, and even a genuinely calm waking hour doesn't sit on the same scale sleep does. Resolution is also limited by however much of the day has elapsed, which is why it's additionally shown as an estimate until there's enough baseline history."
-                ]
-            )
+            .glassCard()
         }
-        .glassCard()
-        // Elapsed-day fraction as a subtitle rather than a clock — "so far
-        // today" matters more than the exact minute count, and clock text
-        // this small competes with the number for attention.
+        .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Physiological load today, experimental, \(stress.band.label), \(stress.percent) percent")
     }
@@ -101,11 +101,11 @@ struct StressCard: View {
 
 #Preview("Stress") {
     VStack(spacing: 12) {
-        StressCard(stress: StressScore(percent: 28, band: .calm, sampledMinutes: 200, avgHeartRate: 64, avgHRV: 58, isEstimate: false))
-        StressCard(stress: StressScore(percent: 58, band: .elevated, sampledMinutes: 400, avgHeartRate: 76, avgHRV: 41, isEstimate: false))
-        StressCard(stress: StressScore(percent: 84, band: .high, sampledMinutes: 600, avgHeartRate: 88, avgHRV: 29, isEstimate: true))
+        StressCard(stress: StressScore(percent: 28, band: .calm, sampledMinutes: 200, avgHeartRate: 64, avgHRV: 58, hrBaseline: 62, hrvBaseline: 55, isEstimate: false))
+        StressCard(stress: StressScore(percent: 58, band: .elevated, sampledMinutes: 400, avgHeartRate: 76, avgHRV: 41, hrBaseline: 62, hrvBaseline: 55, isEstimate: false))
+        StressCard(stress: StressScore(percent: 84, band: .high, sampledMinutes: 600, avgHeartRate: 88, avgHRV: 29, hrBaseline: 62, hrvBaseline: 55, isEstimate: true))
         StressCard(
-            stress: StressScore(percent: 72, band: .high, sampledMinutes: 500, avgHeartRate: 84, avgHRV: 33, isEstimate: false),
+            stress: StressScore(percent: 72, band: .high, sampledMinutes: 500, avgHeartRate: 84, avgHRV: 33, hrBaseline: 62, hrvBaseline: 55, isEstimate: false),
             todayStrain: 14
         )
     }
