@@ -12,11 +12,11 @@ struct SleepDetailView: View {
     @State private var soundEventStore = SoundEventStore()
 
     private var story: SleepStory {
-        let tagLabels = coordinator.journal.entry(for: context.night.date)?.tags.map(\.label) ?? []
+        let tagLabels = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)?.tags.map(\.label) ?? []
         return SleepStory.build(
             night: context.night,
             tagLabels: tagLabels,
-            napIntervals: coordinator.napIntervals(before: context.night.date),
+            napIntervals: coordinator.napIntervals(before: context.night.date, timeZone: context.night.timeZone),
             soundEvents: soundEventStore.recentEvents
         )
     }

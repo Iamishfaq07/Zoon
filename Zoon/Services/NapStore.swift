@@ -134,18 +134,31 @@ final class NapStore {
     }
 
     /// Total nap minutes on a given calendar day — what `SleepNeed` credits.
-    func minutes(on date: Date) -> Double {
-        let calendar = Calendar.current
+    ///
+    /// - Parameter timeZone: The timezone `date`'s calendar day should be
+    ///   read in. Defaults to the device's current one, which is correct
+    ///   for "today" but not for a historical night -- a caller matching
+    ///   naps against a specific stored night should pass that night's own
+    ///   `SleepNightFeatures.timeZone` instead, the same way
+    ///   `SleepDataCoordinator.deduplicatedNapMinutes`/`napIntervals(before:)`
+    ///   do, otherwise which calendar day a nap counts toward can shift by a
+    ///   day after the user travels.
+    func minutes(on date: Date, timeZone: TimeZone = .current) -> Double {
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
         return naps
             .filter { calendar.isDate($0.start, inSameDayAs: date) }
             .reduce(0) { $0 + $1.minutes }
     }
 
     /// Nap minutes on the day preceding a night, which is the credit that
-    /// applies to that night's need.
-    func minutesBefore(night: Date) -> Double {
-        let previousDay = Calendar.current.date(byAdding: .day, value: -1, to: night) ?? night
-        return minutes(on: previousDay)
+    /// applies to that night's need. See `minutes(on:timeZone:)` for why
+    /// `timeZone` matters.
+    func minutesBefore(night: Date, timeZone: TimeZone = .current) -> Double {
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
+        let previousDay = calendar.date(byAdding: .day, value: -1, to: night) ?? night
+        return minutes(on: previousDay, timeZone: timeZone)
     }
 
     func deleteAll() {

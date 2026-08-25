@@ -225,6 +225,21 @@ final class JournalEntry {
     /// `SleepNightRecord` uses, so the join is trivial.
     @Attribute(.unique) var date: Date
 
+    /// `SleepNightFeatures.nightKey` for the night this entry is actually
+    /// about, captured at write time. Optional and backfill-safe, same
+    /// pattern as `SleepNightRecord.nightKey`: existing rows predate this
+    /// column and fall back to `date`-based matching.
+    ///
+    /// `date` alone is unsafe as a night-matching key across a timezone
+    /// change: it's computed via `Calendar.current` *at whatever moment the
+    /// entry was written*, and a night's own `nightKey` is computed from the
+    /// timezone that night actually happened in. The two usually agree
+    /// (people journal from wherever they slept), but not on a travel day --
+    /// exactly when getting this right matters most, since a mismatch here
+    /// silently drops the entry from Cause Finder/Guided Experiment matching
+    /// rather than producing a visibly wrong answer.
+    var nightKey: String?
+
     /// Stored as raw strings rather than an array of enums: SwiftData persists
     /// `[String]` natively, and an unknown value from a future build then decays
     /// to "ignored" instead of failing to decode the whole row.
@@ -251,8 +266,9 @@ final class JournalEntry {
 
     var updatedAt: Date
 
-    init(date: Date, tags: [BehaviorTag] = [], note: String? = nil) {
+    init(date: Date, tags: [BehaviorTag] = [], note: String? = nil, nightKey: String? = nil) {
         self.date = Calendar.current.startOfDay(for: date)
+        self.nightKey = nightKey
         self.tagIdentifiers = tags.map(\.rawValue)
         self.note = note
         self.updatedAt = .now

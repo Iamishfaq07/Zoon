@@ -383,6 +383,33 @@ extension SleepNightFeatures {
     /// `timeZoneIdentifier` resolved, falling back to the device's current
     /// timezone for an unresolvable or pre-migration identifier.
     var timeZone: TimeZone { TimeZone(identifier: timeZoneIdentifier) ?? .current }
+
+    /// Stable local-date identity for this night, in the timezone it was
+    /// actually recorded in -- not the device's current one. Same format as
+    /// `SleepSession.nightKey` (the two describe the same night and are
+    /// built from the same wake instant + recorded timezone, so they agree
+    /// by construction), reproduced here as a computed value rather than a
+    /// stored one since `date`/`timeZoneIdentifier` already carry everything
+    /// needed to derive it.
+    ///
+    /// This is what contextual data -- Journal entries, naps, snore
+    /// summaries -- should match a night against instead of comparing `Date`
+    /// values under `Calendar.current`: two `Date`s that both look like
+    /// "the start of some day" can disagree about *which* day the instant
+    /// they wrap belongs to once the device's current timezone differs from
+    /// the timezone the night itself happened in, e.g. right after a flight.
+    var nightKey: String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(
+            format: "%04d-%02d-%02d@%@",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0,
+            calendar.timeZone.identifier
+        )
+    }
 }
 
 // MARK: - LLM prompt payload

@@ -24,11 +24,11 @@ struct SleepStoryView: View {
 
     private var story: SleepStory? {
         guard let night = selectedNight else { return nil }
-        let tagLabels = coordinator.journal.entry(for: night.date)?.tags.map(\.label) ?? []
+        let tagLabels = coordinator.journal.entry(forNightKey: night.nightKey, fallbackDate: night.date)?.tags.map(\.label) ?? []
         return SleepStory.build(
             night: night,
             tagLabels: tagLabels,
-            napIntervals: coordinator.napIntervals(before: night.date),
+            napIntervals: coordinator.napIntervals(before: night.date, timeZone: night.timeZone),
             soundEvents: soundEventStore.recentEvents
         )
     }

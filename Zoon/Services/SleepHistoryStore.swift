@@ -102,7 +102,9 @@ final class SleepHistoryStore {
             features.append(record.features(
                 baseline: rolling,
                 secondaryAsleepMinutes: secondaryEpisodeAsleepMinutes(
-                    forNightKey: record.nightKey ?? "", wakeDate: record.date, manualNaps: manualNaps
+                    forNightKey: record.nightKey ?? "", wakeDate: record.date,
+                    timeZone: record.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current,
+                    manualNaps: manualNaps
                 )
             ))
 
@@ -309,6 +311,7 @@ final class SleepHistoryStore {
     func secondaryEpisodeAsleepMinutes(
         forNightKey nightKey: String,
         wakeDate: Date,
+        timeZone: TimeZone = .current,
         manualNaps: [NapStore.Nap] = []
     ) -> Double {
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(
@@ -325,8 +328,12 @@ final class SleepHistoryStore {
 
         // Manual naps are attributed to the day before the night they
         // credit -- the same convention `NapStore.minutesBefore(night:)`
-        // and `SleepDataCoordinator.deduplicatedNapMinutes` already use.
-        let calendar = Calendar.current
+        // and `SleepDataCoordinator.deduplicatedNapMinutes` already use,
+        // now including their same `timeZone` parameter: the night's own
+        // recorded timezone, not the device's current one, so which
+        // calendar day a nap counts toward doesn't shift after travel.
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
         let previousDay = calendar.date(byAdding: .day, value: -1, to: wakeDate) ?? wakeDate
         let manualEpisodes = manualNaps
             .filter { calendar.isDate($0.start, inSameDayAs: previousDay) }
@@ -558,7 +565,9 @@ final class SleepHistoryStore {
         SleepDebtCalculator.debt(
             timeAsleepMinutesNewestFirst: nights.map {
                 $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(
-                    forNightKey: $0.nightKey ?? "", wakeDate: $0.date, manualNaps: manualNaps
+                    forNightKey: $0.nightKey ?? "", wakeDate: $0.date,
+                    timeZone: $0.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current,
+                    manualNaps: manualNaps
                 )
             },
             goalMinutesNewestFirst: nights.map { $0.sleepNeedBaselineMinutesAtProcessing ?? goalMinutes }

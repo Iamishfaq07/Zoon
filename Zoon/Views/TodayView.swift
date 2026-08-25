@@ -69,16 +69,16 @@ struct TodayView: View {
                 details: checkInDetails,
                 onSelectFeeling: { feeling in
                     checkInFeeling = feeling
-                    coordinator.journal.setFeeling(feeling, on: context.night.date)
+                    coordinator.journal.setFeeling(feeling, on: context.night.date, nightKey: context.night.nightKey)
                 },
                 onSelectDetail: { dimension, value in
                     checkInDetails[dimension] = value
-                    coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date)
+                    coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date, nightKey: context.night.nightKey)
                 }
             )
             .entrance(1)
             .task(id: context.night.date) {
-                let entry = coordinator.journal.entry(for: context.night.date)
+                let entry = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)
                 checkInFeeling = entry?.feeling
                 checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
                     result[dimension] = entry?.value(for: dimension)

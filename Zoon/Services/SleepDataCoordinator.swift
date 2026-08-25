@@ -590,7 +590,9 @@ final class SleepDataCoordinator {
         let night = record.features(
             baseline: baseline,
             secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(
-                forNightKey: record.nightKey ?? "", wakeDate: record.date, manualNaps: naps.naps
+                forNightKey: record.nightKey ?? "", wakeDate: record.date,
+                timeZone: record.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current,
+                manualNaps: naps.naps
             )
         )
         // Foundation Models inference is async and the engine protocol is not,
@@ -633,7 +635,7 @@ final class SleepDataCoordinator {
             todayStrain: todayStrain,
             hourlyHeartRate: hourly,
             maxHeartRate: maxHR,
-            napMinutes: deduplicatedNapMinutes(before: night.date),
+            napMinutes: deduplicatedNapMinutes(before: night.date, timeZone: night.timeZone),
             bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes,
             age: preferences.age,
             obligationWeekdays: preferences.obligationWeekdays
@@ -659,11 +661,15 @@ final class SleepDataCoordinator {
     /// than summing both sources' full session durations (which used to
     /// credit any in-bed-but-awake padding a HealthKit session included as
     /// sleep).
-    private func deduplicatedNapMinutes(before night: Date) -> Double {
-        let calendar = Calendar.current
+    private func deduplicatedNapMinutes(before night: Date, timeZone: TimeZone) -> Double {
+        // The night's own recorded timezone, not the device's current one --
+        // otherwise "the day before this night" can shift by a day for a
+        // night recorded while traveling and later revisited from home.
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
         let previousDay = calendar.date(byAdding: .day, value: -1, to: night) ?? night
         guard let dayInterval = calendar.dateInterval(of: .day, for: previousDay) else {
-            return naps.minutesBefore(night: night)
+            return naps.minutesBefore(night: night, timeZone: timeZone)
         }
 
         let manualNaps = naps.naps
@@ -687,8 +693,9 @@ final class SleepDataCoordinator {
     /// two overlapping records the way the full dedupe does -- naps rarely
     /// produce that, and Sleep Story is an illustrative account, not a
     /// total that needs to be exactly right.
-    func napIntervals(before night: Date) -> [DateInterval] {
-        let calendar = Calendar.current
+    func napIntervals(before night: Date, timeZone: TimeZone) -> [DateInterval] {
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
         let previousDay = calendar.date(byAdding: .day, value: -1, to: night) ?? night
         guard let dayInterval = calendar.dateInterval(of: .day, for: previousDay) else { return [] }
 
@@ -1153,6 +1160,26 @@ final class SleepDataCoordinator {
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
+        // Entries that carry a `nightKey` (see `JournalEntry.nightKey`) join
+        // against a night's own `nightKey` instead of its `date` -- safe
+        // across a timezone change between the night itself and whenever
+        // the entry actually got written, which the exact-`Date` join below
+        // isn't: both sides of that comparison are computed via whatever
+        // timezone was current *at the moment each was written*, and after
+        // travel those can silently disagree about which night a `Date`
+        // instant belongs to. Legacy entries with no `nightKey` yet fall
+        // back to `tagsByDate`. `uniquingKeysWith` rather than
+        // `uniqueKeysWithValues`: two entries collapsing to the same
+        // nightKey shouldn't be possible (`date` is unique and nightKey is
+        // derived per-date), but silently keeping one is safer than a crash
+        // if that assumption is ever wrong.
+        let tagsByNightKey = Dictionary(
+            entries.compactMap { entry -> (String, Set<BehaviorTag>)? in
+                guard let key = entry.nightKey else { return nil }
+                return (key, Set(entry.tags))
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
         let goal = preferences.sleepGoalMinutes
         var calendar = Calendar.current
 
@@ -1167,7 +1194,7 @@ final class SleepDataCoordinator {
         }
 
         return recentNights.compactMap { night -> JournalCorrelator.Observation? in
-            guard let tags = tagsByDate[night.date] else { return nil }
+            guard let tags = tagsByNightKey[night.nightKey] ?? tagsByDate[night.date] else { return nil }
             // Each night's own timezone, not the device's current one -- see
             // SleepNightFeatures.timeZoneIdentifier. Otherwise a night
             // recorded while traveling can flip which weekday it's classified
