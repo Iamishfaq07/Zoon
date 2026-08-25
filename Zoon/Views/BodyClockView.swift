@@ -149,7 +149,7 @@ struct BodyClockView: View {
             }
 
             Text(alignmentSentence(driftMinutes: driftMinutes))
-                .font(.caption)
+                .font(Theme.text(12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -309,7 +309,7 @@ struct BodyClockView: View {
                 StatusPill(text: bodyClock.stability.label, tint: stabilityTint(bodyClock.stability))
             }
             Text(bodyClock.stability.detail)
-                .font(.caption)
+                .font(Theme.text(12))
                 .foregroundStyle(.secondary)
         }
         .glassCard()

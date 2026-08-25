@@ -63,7 +63,7 @@ struct HealthRadarView: View {
                 .font(Theme.numeral(30))
                 .foregroundStyle(radar.isActive ? tint(for: radar.severity) : Theme.Metric.recoveryHigh)
             Text("Compared with your recent overnight baseline.")
-                .font(.caption)
+                .font(Theme.text(12))
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
@@ -129,7 +129,7 @@ struct HealthRadarView: View {
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(tint(for: radar.severity))
             Text(radar.detail)
-                .font(.caption)
+                .font(Theme.text(12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
