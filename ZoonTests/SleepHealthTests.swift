@@ -55,6 +55,43 @@ final class SleepHealthTests: XCTestCase {
         XCTAssertFalse(health.components.contains { $0.id == "breathing" })
     }
 
+    /// The breathing component must defer to Apple's own classification
+    /// when HealthKit provides one, not score directly off the raw
+    /// percentage -- a night Apple explicitly calls "not elevated" must not
+    /// get marked down just because its raw disturbance percentage happens
+    /// to be non-trivial, and vice versa. This is exactly the case the old
+    /// `100 - avgDisturbance * 10` formula got wrong: it never looked at
+    /// the classification at all.
+    func testBreathingComponentDefersToAppleClassificationOverRawPercentage() {
+        // High raw percentage, but Apple explicitly says not elevated:
+        // should score as if breathing were fine, not penalized.
+        let classifiedNotElevated = Fixture.consecutiveNights(14, template: { daysAgo in
+            Fixture.night(
+                daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 1,
+                breathingDisturbances: 12, breathingDisturbancesClassification: .notElevated
+            )
+        })
+        let goodHealth = SleepHealth.compute(window: .twoWeeks, goalMinutes: 480, nights: classifiedNotElevated)
+        let goodBreathing = goodHealth.components.first { $0.id == "breathing" }
+
+        // Low raw percentage, but Apple explicitly says elevated: should
+        // score as penalized, not waved through by a small raw number.
+        let classifiedElevated = Fixture.consecutiveNights(14, template: { daysAgo in
+            Fixture.night(
+                daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 1,
+                breathingDisturbances: 0.1, breathingDisturbancesClassification: .elevated
+            )
+        })
+        let poorHealth = SleepHealth.compute(window: .twoWeeks, goalMinutes: 480, nights: classifiedElevated)
+        let poorBreathing = poorHealth.components.first { $0.id == "breathing" }
+
+        guard let goodScore = goodBreathing?.score, let poorScore = poorBreathing?.score else {
+            return XCTFail("expected a breathing component in both cases")
+        }
+        XCTAssertEqual(goodScore, 100, "Apple's own 'not elevated' classification should score as fine regardless of the raw percentage")
+        XCTAssertEqual(poorScore, 0, "Apple's own 'elevated' classification should score as penalized regardless of the raw percentage")
+    }
+
     func testMorningFeelingAddsRestfulnessComponent() {
         let nights = Fixture.consecutiveNights(14)
         let withoutFeelings = SleepHealth.compute(window: .twoWeeks, goalMinutes: 480, nights: nights)
