@@ -629,9 +629,9 @@ struct ChartCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.headline)
+                .font(Theme.label(15, weight: .semibold))
             Text(subtitle)
-                .font(.caption)
+                .font(Theme.text(12))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
