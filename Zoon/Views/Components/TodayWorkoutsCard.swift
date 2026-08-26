@@ -32,10 +32,24 @@ struct TodayWorkoutsCard: View {
                                 .monospacedDigit()
                         }
                     }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(accessibilityLabel(for: workout))
                 }
             }
             .glassCard()
         }
+    }
+
+    /// Without this, VoiceOver reads each row as three or four disconnected
+    /// fragments (icon, label, duration, kcal) instead of one coherent
+    /// element -- the same combine-and-label pattern every other row in
+    /// `Zoon/Views/Components/` already uses.
+    private func accessibilityLabel(for workout: WorkoutSummary) -> String {
+        var label = "\(workout.activityLabel), \(Int(workout.durationMinutes.rounded())) minutes"
+        if let kcal = workout.activeEnergyKcal {
+            label += ", \(Int(kcal.rounded())) kilocalories"
+        }
+        return label
     }
 }
 
