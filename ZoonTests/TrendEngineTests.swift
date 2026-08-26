@@ -26,7 +26,7 @@ final class TrendEngineTests: XCTestCase {
         let results = TrendEngine.detect(nights: nights, windowNights: 14)
         let duration = results.first { $0.metric == .duration }
         XCTAssertNotNil(duration)
-        XCTAssertEqual(duration?.delta, 60, accuracy: 0.001)
+        XCTAssertEqual(duration?.delta ?? .nan, 60, accuracy: 0.001)
     }
 
     func testDetectSuppressesADurationShiftUnderThreshold() {

@@ -8,7 +8,7 @@ final class SleepScoreTests: XCTestCase {
             goalMinutes: 480
         )
         let duration = atGoal.components.first { $0.label == "Duration" }
-        XCTAssertEqual(duration?.normalized, 1.0, accuracy: 0.001)
+        XCTAssertEqual(duration?.normalized ?? .nan, 1.0, accuracy: 0.001)
     }
 
     func testDurationScalesLinearlyBelowGoal() {
@@ -17,7 +17,7 @@ final class SleepScoreTests: XCTestCase {
             goalMinutes: 480
         )
         let duration = score.components.first { $0.label == "Duration" }
-        XCTAssertEqual(duration?.normalized, 0.5, accuracy: 0.001)
+        XCTAssertEqual(duration?.normalized ?? .nan, 0.5, accuracy: 0.001)
     }
 
     func testEfficiencyThresholdBoundaries() {
@@ -27,25 +27,25 @@ final class SleepScoreTests: XCTestCase {
             for: Fixture.night(timeAsleepMinutes: 288, timeInBedMinutes: 480), // 60%
             goalMinutes: 480
         )
-        XCTAssertEqual(low.components.first { $0.label == "Efficiency" }?.normalized, 0, accuracy: 0.01)
+        XCTAssertEqual(low.components.first { $0.label == "Efficiency" }?.normalized ?? .nan, 0, accuracy: 0.01)
 
         let high = SleepScore.compute(
             for: Fixture.night(timeAsleepMinutes: 456, timeInBedMinutes: 480), // 95%
             goalMinutes: 480
         )
-        XCTAssertEqual(high.components.first { $0.label == "Efficiency" }?.normalized, 1, accuracy: 0.01)
+        XCTAssertEqual(high.components.first { $0.label == "Efficiency" }?.normalized ?? .nan, 1, accuracy: 0.01)
     }
 
     func testContinuityDecaysWithWakeCount() {
         let noWakes = SleepScore.compute(for: Fixture.night(wakeCount: 0), goalMinutes: 480)
         let eightWakes = SleepScore.compute(for: Fixture.night(wakeCount: 8), goalMinutes: 480)
-        XCTAssertEqual(noWakes.components.first { $0.label == "Continuity" }?.normalized, 1.0, accuracy: 0.001)
-        XCTAssertEqual(eightWakes.components.first { $0.label == "Continuity" }?.normalized, 0.0, accuracy: 0.001)
+        XCTAssertEqual(noWakes.components.first { $0.label == "Continuity" }?.normalized ?? .nan, 1.0, accuracy: 0.001)
+        XCTAssertEqual(eightWakes.components.first { $0.label == "Continuity" }?.normalized ?? .nan, 0.0, accuracy: 0.001)
     }
 
     func testContinuityNeverGoesNegativePastEightWakes() {
         let manyWakes = SleepScore.compute(for: Fixture.night(wakeCount: 20), goalMinutes: 480)
-        XCTAssertEqual(manyWakes.components.first { $0.label == "Continuity" }?.normalized, 0.0, accuracy: 0.001)
+        XCTAssertEqual(manyWakes.components.first { $0.label == "Continuity" }?.normalized ?? .nan, 0.0, accuracy: 0.001)
     }
 
     func testComponentWeightsSumToOne() {
