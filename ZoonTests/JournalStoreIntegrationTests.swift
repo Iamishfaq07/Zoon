@@ -10,6 +10,14 @@ import SwiftData
 /// creates a `JournalEntry` row, so nothing verified that an imported backup
 /// actually lands in the store with its fields intact -- including `nightKey`,
 /// whose whole purpose is to survive the trip.
+///
+/// Every test method here must be `async throws` even though nothing awaits:
+/// a synchronous test on a `@MainActor` XCTestCase goes through XCTest's
+/// non-async invocation path, which never actually enters the main actor,
+/// and the first isolated call into `JournalStore` then trips the runtime's
+/// executor assertion -- EXC_BREAKPOINT/SIGTRAP, no XCTest failure message,
+/// whole process dead. See `SleepHistoryStoreIntegrationTests`' header for
+/// the full two-bug history behind that.
 @MainActor
 final class JournalStoreIntegrationTests: XCTestCase {
 
@@ -45,7 +53,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
     /// matching and silently mismatched on a travel day. `DataExporterTests`
     /// proves the field survives `Codable`; only this proves it survives all
     /// the way into a real persisted row.
-    func testImportPreservesNightKeyOntoTheCreatedRow() throws {
+    func testImportPreservesNightKeyOntoTheCreatedRow() async throws {
         let store = try makeStore()
         let date = day(1)
 
@@ -63,7 +71,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
     /// as `nil` rather than being rejected or defaulted to a guessed value --
     /// a wrong key is worse than no key, since `entry(forNightKey:fallbackDate:)`
     /// can still fall back on `date` when it's absent.
-    func testImportWithoutNightKeyLeavesItNil() throws {
+    func testImportWithoutNightKeyLeavesItNil() async throws {
         let store = try makeStore()
         let date = day(2)
 
@@ -76,7 +84,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
 
     /// Documented merge rule: "Existing entries win on conflict -- a tag you set
     /// on this device is more trustworthy than one from an older archive."
-    func testImportDoesNotOverwriteAnExistingEntry() throws {
+    func testImportDoesNotOverwriteAnExistingEntry() async throws {
         let store = try makeStore()
         let date = day(3)
 
@@ -92,7 +100,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
 
     /// `entryOrCreate` backfills a key onto a row that predates the column,
     /// rather than leaving it permanently unmatched.
-    func testEntryOrCreateBackfillsNightKeyOntoAKeylessRow() throws {
+    func testEntryOrCreateBackfillsNightKeyOntoAKeylessRow() async throws {
         let store = try makeStore()
         let date = day(4)
 
@@ -107,7 +115,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
     /// Once a row carries a key, a later call with a *different* key must not
     /// silently re-stamp it -- that would let one night's entry be reassigned
     /// to another night.
-    func testEntryOrCreateDoesNotOverwriteAnExistingNightKey() throws {
+    func testEntryOrCreateDoesNotOverwriteAnExistingNightKey() async throws {
         let store = try makeStore()
         let date = day(5)
 
@@ -119,7 +127,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
 
     /// The join `SleepDataCoordinator.journalObservations()` relies on: match by
     /// key first, and only fall back to the date when no keyed row exists.
-    func testLookupPrefersNightKeyOverTheFallbackDate() throws {
+    func testLookupPrefersNightKeyOverTheFallbackDate() async throws {
         let store = try makeStore()
         let keyedDate = day(6)
         let otherDate = day(7)
@@ -131,7 +139,7 @@ final class JournalStoreIntegrationTests: XCTestCase {
         XCTAssertEqual(found?.date, keyedDate, "the keyed row should win over the fallback date")
     }
 
-    func testLookupFallsBackToDateWhenNoRowCarriesTheKey() throws {
+    func testLookupFallsBackToDateWhenNoRowCarriesTheKey() async throws {
         let store = try makeStore()
         let date = day(8)
 

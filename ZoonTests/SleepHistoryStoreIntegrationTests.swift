@@ -4,15 +4,26 @@ import SwiftData
 /// Restores the coverage dropped in "Drop SleepHistoryStorePruneTests -- crashes
 /// the test process, cause unknown".
 ///
-/// The cause is now known and fixed. It was never SwiftData: adding
-/// `SleepHistoryStore` to this target used to drag in `FeatureExtractor.swift`
-/// (for `RollingBaseline`) and `HealthKitManager.swift` (for `AnchorStore`),
-/// both of which `import HealthKit` -- and linking HealthKit into `ZoonTests`,
-/// an unhosted bundle with no Health entitlements or usage descriptions, is
-/// what killed the process before any assertion could run. `SwiftDataProbeTests`
-/// isolated that by proving a bare `ModelContainer` runs here fine; splitting
-/// `RollingBaseline` and `AnchorStore.clear()` into HealthKit-free files
-/// removed the dependency entirely.
+/// The cause turned out to be TWO independent bugs, which is why every
+/// single-fix attempt looked wrong while the other bug was still present:
+///
+/// 1. Adding `SleepHistoryStore` to this target used to drag in
+///    `FeatureExtractor.swift` (for `RollingBaseline`) and
+///    `HealthKitManager.swift` (for `AnchorStore`), both `import HealthKit`.
+///    Fixed by extracting those two types into HealthKit-free files.
+/// 2. A synchronous `throws` test method on a `@MainActor` XCTestCase is
+///    invoked through XCTest's non-async path, which never actually enters
+///    the main actor -- the compiler emits no hop (it trusts the annotation),
+///    and the first `@MainActor`-isolated call into the store trips the
+///    runtime's executor assertion: EXC_BREAKPOINT (SIGTRAP), captured in
+///    this repo's CI crash reports with `JournalEntry` metadata in the
+///    faulting frame. That kills the process with no XCTest failure message.
+///    Fixed by making every test method `async throws`, which uses the
+///    concurrency-aware invocation path that does hop -- `SwiftDataProbeTests`
+///    (async all along) passing in the same run these crashed as sync was
+///    the isolating evidence.
+///
+/// So every test here must stay `async throws` even though nothing awaits.
 ///
 /// `prune` is worth this trouble: it is the only thing that removes a stored
 /// night whose HealthKit sample was later deleted or corrected away, and
@@ -39,7 +50,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
 
     // MARK: - Prune
 
-    func testNightMissingFromAFreshFetchIsRemoved() throws {
+    func testNightMissingFromAFreshFetchIsRemoved() async throws {
         let store = try makeStore()
         let staleDate = insert(store, daysAgo: 3)
         XCTAssertNotNil(store.night(on: staleDate))
@@ -50,7 +61,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
         XCTAssertNil(store.night(on: staleDate))
     }
 
-    func testNightStillPresentInAFreshFetchSurvives() throws {
+    func testNightStillPresentInAFreshFetchSurvives() async throws {
         let store = try makeStore()
         let date = insert(store, daysAgo: 2)
 
@@ -64,7 +75,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
     /// re-checked against HealthKit, so it must survive even though it isn't in
     /// `keeping` -- otherwise every sync would eventually erase all history
     /// older than the rolling window.
-    func testNightOutsideTheWindowIsNeverTouched() throws {
+    func testNightOutsideTheWindowIsNeverTouched() async throws {
         let store = try makeStore()
         let oldDate = insert(store, daysAgo: 400)
 
@@ -74,7 +85,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
         XCTAssertNotNil(store.night(on: oldDate))
     }
 
-    func testPruneWithNothingKeptClearsEveryNightInTheWindow() throws {
+    func testPruneWithNothingKeptClearsEveryNightInTheWindow() async throws {
         let store = try makeStore()
         let recent = insert(store, daysAgo: 1)
         let older = insert(store, daysAgo: 2)
@@ -90,7 +101,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
 
     /// Upsert, not insert: HealthKit revises nights, and a re-sync of the same
     /// night must update the existing row rather than duplicate it.
-    func testUpsertingTheSameNightTwiceKeepsOneRow() throws {
+    func testUpsertingTheSameNightTwiceKeepsOneRow() async throws {
         let store = try makeStore()
         let date = insert(store, daysAgo: 1)
 
@@ -100,7 +111,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
         XCTAssertEqual(store.night(on: date)?.timeAsleepMinutes ?? -1, 400, accuracy: 0.001)
     }
 
-    func testUpsertStampsNightKeyWhenOneIsSupplied() throws {
+    func testUpsertStampsNightKeyWhenOneIsSupplied() async throws {
         let store = try makeStore()
         let features = Fixture.night(daysAgo: 1)
 
@@ -113,7 +124,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
 
     /// Restoring a backup merges into whatever the device has kept recording,
     /// rather than discarding it.
-    func testImportNightsMergesRatherThanReplacing() throws {
+    func testImportNightsMergesRatherThanReplacing() async throws {
         let store = try makeStore()
         insert(store, daysAgo: 1)
 

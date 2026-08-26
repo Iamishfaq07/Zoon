@@ -92,10 +92,10 @@ TESTS_EXTRA_APP_FILES = [
     "Zoon/Services/AnchorStore.swift",
     # Foundation/SwiftData/os only, now that RollingBaseline and AnchorStore.clear()
     # are reachable without HealthKit -- every other HealthKit mention in these two
-    # is a doc comment. This is what SwiftDataProbeTests established was safe:
-    # SwiftData itself runs fine in this unhosted bundle, and it was linking
-    # HealthKit (via RollingBaseline/AnchorStore living in HealthKit-importing
-    # files) that crashed the test process in August, not SwiftData.
+    # is a doc comment. Safe to test now that BOTH of the August crash's causes
+    # are fixed: the HealthKit linkage above, and sync-vs-async test invocation
+    # on a @MainActor XCTestCase -- see SleepHistoryStoreIntegrationTests'
+    # header for the full story.
     "Zoon/Services/SleepHistoryStore.swift",
     "Zoon/Services/JournalStore.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
