@@ -24,7 +24,7 @@ struct SleepEntry: TimelineEntry {
     /// Placeholder/mock entries stay at the low score: sample data
     /// shouldn't compete for a prominent slot.
     var relevance: TimelineEntryRelevance? {
-        let score = WidgetRelevance.score(isPlaceholder: isPlaceholder, now: date, generatedAt: snapshot.generatedAt)
+        let score = Float(WidgetRelevance.score(isPlaceholder: isPlaceholder, now: date, generatedAt: snapshot.generatedAt))
         return isPlaceholder
             ? TimelineEntryRelevance(score: score)
             : TimelineEntryRelevance(score: score, duration: 4 * 3600)
