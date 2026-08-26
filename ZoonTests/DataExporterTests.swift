@@ -8,7 +8,19 @@ final class DataExporterTests: XCTestCase {
             exportedAt: Date(timeIntervalSince1970: 1_700_000_000),
             goalMinutes: 480,
             nights: [],
-            journal: [],
+            journal: [
+                DataExporter.Archive.JournalRecord(
+                    date: Date(timeIntervalSince1970: 1_700_000_000),
+                    tags: ["alcohol"],
+                    note: "Had a drink",
+                    feeling: 3,
+                    rested: 4,
+                    energy: 3,
+                    sleepiness: 2,
+                    mood: 4,
+                    nightKey: "night1"
+                )
+            ],
             naps: [],
             preferences: DataExporter.Archive.PreferencesRecord(
                 age: 34,
@@ -20,7 +32,16 @@ final class DataExporterTests: XCTestCase {
                 lifestyleInsightsEnabled: true,
                 wakeAlarmEnabled: true,
                 focusSilencesBedtimeNudges: true,
-                preferredSleepSourceName: "Apple Watch"
+                preferredSleepSourceName: "Apple Watch",
+                preferredSleepSourceBundleIdentifier: "com.apple.health.watch",
+                obligationWeekdays: [2, 3, 4, 5, 6],
+                isShiftWorkModeEnabled: false,
+                trackedBehaviorTagIdentifiers: ["alcohol", "lateCaffeine"],
+                activeExperimentTag: "alcohol",
+                experimentStartDate: Date(timeIntervalSince1970: 1_699_000_000),
+                experimentHypothesis: "Skipping it helps",
+                experimentPrimaryMetric: "sleepPerformance",
+                experimentDirection: "avoid"
             ),
             snoreSummaries: [],
             wristTemperatures: [],
@@ -71,6 +92,17 @@ final class DataExporterTests: XCTestCase {
         XCTAssertEqual(decoded.preferences?.wakeAlarmEnabled, true)
         XCTAssertEqual(decoded.preferences?.focusSilencesBedtimeNudges, true)
         XCTAssertEqual(decoded.preferences?.preferredSleepSourceName, "Apple Watch")
+        XCTAssertEqual(decoded.preferences?.preferredSleepSourceBundleIdentifier, "com.apple.health.watch")
+        XCTAssertEqual(decoded.preferences?.obligationWeekdays, [2, 3, 4, 5, 6])
+        XCTAssertEqual(decoded.preferences?.isShiftWorkModeEnabled, false)
+        XCTAssertEqual(decoded.preferences?.trackedBehaviorTagIdentifiers, ["alcohol", "lateCaffeine"])
+        XCTAssertEqual(decoded.preferences?.activeExperimentTag, "alcohol")
+        XCTAssertEqual(decoded.preferences?.experimentHypothesis, "Skipping it helps")
+        XCTAssertEqual(decoded.preferences?.experimentPrimaryMetric, "sleepPerformance")
+        XCTAssertEqual(decoded.preferences?.experimentDirection, "avoid")
+
+        XCTAssertEqual(decoded.journal.count, 1)
+        XCTAssertEqual(decoded.journal.first?.nightKey, "night1")
 
         XCTAssertEqual(decoded.episodes?.count, 1)
         XCTAssertEqual(decoded.episodes?.first?.id, "night1@1700000000")
