@@ -765,12 +765,10 @@ enum HealthKitError: LocalizedError {
 
 // MARK: - Anchor persistence
 
-/// Persists the `HKQueryAnchor` between launches so incremental sync survives
-/// process death. `UserDefaults` is fine here — it's an opaque cursor, not
-/// health data.
-enum AnchorStore {
-
-    private static let key = "zoon.sleep.anchor"
+/// The `HKQueryAnchor`-typed half of `AnchorStore`. The enum itself, and its
+/// HealthKit-free `clear()`, live in `AnchorStore.swift` -- see that file for
+/// why the split exists.
+extension AnchorStore {
 
     static func load() -> HKQueryAnchor? {
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
@@ -783,9 +781,5 @@ enum AnchorStore {
             return
         }
         UserDefaults.standard.set(data, forKey: key)
-    }
-
-    static func clear() {
-        UserDefaults.standard.removeObject(forKey: key)
     }
 }

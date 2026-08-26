@@ -84,6 +84,20 @@ TESTS_EXTRA_APP_FILES = [
     # takes. Extracted out of FeatureExtractor.swift (which imports HealthKit)
     # specifically so it's compilable here without pulling HealthKit in too.
     "Zoon/Services/RollingBaseline.swift",
+    # Foundation/SwiftData only -- the second @Model SleepHistoryStore manages.
+    "Zoon/Models/SleepEpisodeRecord.swift",
+    # Foundation only -- the UserDefaults half of AnchorStore, split out of
+    # HealthKitManager.swift for exactly this reason (see AnchorStore.swift).
+    # SleepHistoryStore.importNights calls AnchorStore.clear() and nothing else.
+    "Zoon/Services/AnchorStore.swift",
+    # Foundation/SwiftData/os only, now that RollingBaseline and AnchorStore.clear()
+    # are reachable without HealthKit -- every other HealthKit mention in these two
+    # is a doc comment. This is what SwiftDataProbeTests established was safe:
+    # SwiftData itself runs fine in this unhosted bundle, and it was linking
+    # HealthKit (via RollingBaseline/AnchorStore living in HealthKit-importing
+    # files) that crashed the test process in August, not SwiftData.
+    "Zoon/Services/SleepHistoryStore.swift",
+    "Zoon/Services/JournalStore.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
     # Pure logic over SleepNightFeatures (which is already in SHARED), so it
     # brings no app-only dependencies into the test target. Needed because
