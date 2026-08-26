@@ -476,7 +476,8 @@ private struct PastExperimentRow: View {
                     }
                     Text("""
                         Comparing \(outcome.baselineNightCount) nights before the trial against \
-                        \(outcome.trialNightCount) nights during it, \(outcome.metricLabel) went from a \
+                        \(outcome.trialCompliantNightCount.map(String.init) ?? "\(outcome.trialNightCount)") \
+                        adherent nights during it, \(outcome.metricLabel) went from a \
                         typical \(String(format: "%.0f", outcome.baselineMedian)) to \
                         \(String(format: "%.0f", outcome.trialMedian)). A before/after comparison, not a \
                         controlled one -- other things could have changed too.
