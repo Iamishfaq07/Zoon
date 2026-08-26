@@ -29,6 +29,14 @@ struct SleepScoreWidgetView: View {
 
     private var snapshot: SleepSnapshot { entry.snapshot }
 
+    /// Mirrors the same "Last Night"/"Last Sleep" switch the app's own
+    /// Today/Settings views make on `isShiftWorkModeEnabled` -- carried on
+    /// the snapshot itself since the widget process never reads
+    /// `UserPreferences` directly (see `SleepSnapshot`'s doc comment).
+    private var lastNightLabel: String {
+        snapshot.isShiftWorkModeEnabled ? "Last Sleep" : "Last Night"
+    }
+
     var body: some View {
         switch family {
         case .accessoryRectangular: rectangular
@@ -55,7 +63,7 @@ struct SleepScoreWidgetView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(snapshot.scoreBand)
                         .font(.subheadline.weight(.semibold))
-                    Text("Last Night")
+                    Text(lastNightLabel)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -99,7 +107,7 @@ struct SleepScoreWidgetView: View {
     private var small: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Label("Last Night", systemImage: "bed.double.fill")
+                Label(lastNightLabel, systemImage: "bed.double.fill")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -178,7 +186,7 @@ struct SleepScoreWidgetView: View {
 
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label("Last Night", systemImage: "bed.double.fill")
+            Label(lastNightLabel, systemImage: "bed.double.fill")
                 .font(.caption2)
                 .widgetAccentable()
             // `.privacySensitive()` -- the score and its interpretation are
