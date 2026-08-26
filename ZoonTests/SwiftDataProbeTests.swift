@@ -41,4 +41,29 @@ final class SwiftDataProbeTests: XCTestCase {
         let fetched = try context.fetch(descriptor)
         XCTAssertEqual(fetched.count, 1)
     }
+
+    /// Narrows the surface one more notch. The test above (no predicate)
+    /// passes; every store method that crashed
+    /// (`JournalStore.entry(for:)`, `SleepHistoryStore.prune`, ...) fetches
+    /// through a `#Predicate` instead, which is the one SwiftData feature
+    /// the passing probe never touched. If this crashes and the one above
+    /// doesn't, `#Predicate` evaluation -- not SwiftData generally -- is
+    /// what this test bundle can't do, and the stores need predicate-free
+    /// fetch paths to be testable here.
+    func testInMemoryModelContainerCanFetchThroughAPredicate() async throws {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: SleepNightRecord.self, configurations: config)
+        let context = container.mainContext
+
+        let record = SleepNightRecord(features: Fixture.night())
+        let target = record.date
+        context.insert(record)
+        try context.save()
+
+        let descriptor = FetchDescriptor<SleepNightRecord>(
+            predicate: #Predicate { $0.date == target }
+        )
+        let fetched = try context.fetch(descriptor)
+        XCTAssertEqual(fetched.count, 1)
+    }
 }

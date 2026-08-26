@@ -114,6 +114,18 @@ jobs:
           cp ~/Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
           cp /Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
           echo "Collected $(ls crash-reports | wc -l | tr -d ' ') crash report(s)."
+          # Echo the Zoon-relevant reports into the job log as well as the
+          # artifact. The artifact is only reachable by someone who can
+          # download it; the log is readable through the API, which is the
+          # only channel some contributors (and CI tooling) actually have.
+          # Capped hard -- a full .ips carries every thread plus a binary
+          # image list, and the first screenful is where the signal is.
+          for f in crash-reports/*Zoon*.ips crash-reports/*xctest*.ips; do
+            [ -e "$f" ] || continue
+            echo "=================== $f ==================="
+            head -c 6000 "$f"
+            echo ""
+          done
 
       - name: Upload test log and crash reports
         if: always() && steps.build.outcome == 'success'
