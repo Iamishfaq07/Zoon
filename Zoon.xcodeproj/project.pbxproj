@@ -113,6 +113,7 @@
 		3153092B31B38B2F928CD363 /* RegularityDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63601E03B47D9BF517DC788D /* RegularityDetailView.swift */; };
 		318F2D3EAEE2B49A3F03B7E2 /* NapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF28EA3935C59AD80111D89 /* NapView.swift */; };
 		330E40DAB8FB5FD07EC5B462 /* SleepPlaybook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B52306F9315392857B399E7 /* SleepPlaybook.swift */; };
+		333487F4E5891E4B1EAF2685 /* TodayWorkoutsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E17912E5AD672AF7D6EBE711 /* TodayWorkoutsCard.swift */; };
 		33439A6340A0128408653E51 /* MetricInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CF38D0E51C20F2A8477C0F5 /* MetricInfoSheet.swift */; };
 		341925CCB785A77216B06E8A /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E73BF56BE184A76A17FDF61 /* TrendsView.swift */; };
 		342B5CD8E6E873E78B42501D /* JournalEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4244633C56362A14F2ABE898 /* JournalEntry.swift */; };
@@ -710,6 +711,7 @@
 		DF6BCFC8B0ACCBC5470DF3C4 /* SnoreSignalAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreSignalAnalyzerTests.swift"; sourceTree = "<group>"; };
 		DFDED23FA58339F9273F6C84 /* ZoonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZoonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E06932F33E82F37E1B73B42C /* SleepNeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepNeed.swift"; sourceTree = "<group>"; };
+		E17912E5AD672AF7D6EBE711 /* TodayWorkoutsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TodayWorkoutsCard.swift"; sourceTree = "<group>"; };
 		E366E59E9147223C8227B3A5 /* VitalMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VitalMetric.swift"; sourceTree = "<group>"; };
 		E37034BC992888E8D1BA676B /* SleepSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSnapshot.swift"; sourceTree = "<group>"; };
 		E5B8904E22CF71043BC097B5 /* ArticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArticlesView.swift"; sourceTree = "<group>"; };
@@ -822,6 +824,7 @@
 				423CBBEE5037B19C59780D54,
 				B9148AC5FFBB89875A4B656E,
 				66E3F1F807708E82035C5C98,
+				E17912E5AD672AF7D6EBE711,
 				011868DA12535FA43F1A467E,
 				F39A93CBDC0796684C98A6E4,
 				213D22A6A83EC98AD923972A,
@@ -1490,6 +1493,7 @@
 				21C99678C209300372D988F8,
 				C2BDF540A9833E65B04430BC,
 				54E28A0193AEAEE3A2B8AE50,
+				333487F4E5891E4B1EAF2685,
 				8AB927207BE8600B778534C8,
 				136B301DD045AB52B80281FC,
 				D0D98A5190EC12C683DB882C,
