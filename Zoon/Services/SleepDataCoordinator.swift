@@ -94,6 +94,11 @@ final class SleepDataCoordinator {
     /// first successful sample — a phone that's never queried HealthKit today
     /// has nothing honest to report yet.
     private(set) var todayStress: StressScore?
+    /// Today's logged workouts, oldest first -- refreshed alongside
+    /// `todayStress` since both come from the same `workouts(in:)` query.
+    /// Purely a display list; see `WorkoutSummary`'s doc comment for why
+    /// this doesn't feed `StrainScore` itself.
+    private(set) var todayWorkouts: [WorkoutSummary] = []
     /// Populated only when cycle tracking is on. Empty otherwise, including
     /// on every code path that never asks HealthKit for it.
     private(set) var cyclePeriodStarts: [Date] = []
@@ -889,6 +894,7 @@ final class SleepDataCoordinator {
         let interval = DateInterval(start: samplingStart, end: now)
 
         let workouts = (try? await healthKit.workouts(in: interval)) ?? []
+        todayWorkouts = workouts.map(WorkoutSummary.init).sorted { $0.start < $1.start }
         // Extended past the workout's own end: heart rate and HRV don't snap
         // back to a resting state the instant a session stops, so the
         // minutes right after a hard effort still read as exertion, not

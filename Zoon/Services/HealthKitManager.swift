@@ -686,6 +686,72 @@ struct SleepFetchResult {
     let anchor: HKQueryAnchor?
 }
 
+/// A HealthKit-independent summary of one logged workout -- `HKWorkout`
+/// itself never leaves `Services/`, same boundary `SleepSession` already
+/// keeps for `HKCategorySample`.
+///
+/// Purely additive display data: this does not feed `StrainScore.compute`,
+/// which still derives its zone-minutes from continuous heart-rate binning
+/// across the whole day (`HealthKitManager.heartRateZones`), not from
+/// discrete workout sessions. Showing today's actual logged workouts
+/// alongside that number is the real, low-risk half of "use workout data
+/// for Daily Load" -- attributing zone-minutes to individual sessions
+/// instead would change the Strain number itself for every user and needs
+/// real validation against historical data first, not a same-session
+/// addition.
+struct WorkoutSummary: Identifiable, Hashable, Sendable {
+    let id: UUID
+    let activityLabel: String
+    let symbol: String
+    let start: Date
+    let durationMinutes: Double
+    let activeEnergyKcal: Double?
+
+    init(workout: HKWorkout) {
+        self.id = workout.uuid
+        self.start = workout.startDate
+        self.durationMinutes = workout.duration / 60
+        self.activeEnergyKcal = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
+            .sumQuantity()?.doubleValue(for: .kilocalorie())
+        (self.activityLabel, self.symbol) = Self.describe(workout.workoutActivityType)
+    }
+
+    /// Direct construction for previews and tests, where there's no real
+    /// `HKWorkout` to build one from.
+    init(id: UUID = UUID(), activityLabel: String, symbol: String, start: Date, durationMinutes: Double, activeEnergyKcal: Double?) {
+        self.id = id
+        self.activityLabel = activityLabel
+        self.symbol = symbol
+        self.start = start
+        self.durationMinutes = durationMinutes
+        self.activeEnergyKcal = activeEnergyKcal
+    }
+
+    /// Apple defines ~80 activity types; only the common ones get a
+    /// specific label and symbol, the rest fall back to a generic
+    /// "Workout" rather than silently omitting a session someone actually
+    /// logged.
+    private static func describe(_ type: HKWorkoutActivityType) -> (label: String, symbol: String) {
+        switch type {
+        case .running: ("Run", "figure.run")
+        case .walking: ("Walk", "figure.walk")
+        case .cycling: ("Cycling", "figure.outdoor.cycle")
+        case .swimming: ("Swimming", "figure.pool.swim")
+        case .traditionalStrengthTraining, .functionalStrengthTraining: ("Strength Training", "figure.strengthtraining.traditional")
+        case .yoga: ("Yoga", "figure.yoga")
+        case .hiking: ("Hike", "figure.hiking")
+        case .highIntensityIntervalTraining: ("HIIT", "figure.highintensity.intervaltraining")
+        case .coreTraining: ("Core Training", "figure.core.training")
+        case .elliptical: ("Elliptical", "figure.elliptical")
+        case .rowing: ("Rowing", "figure.rower")
+        case .dance: ("Dance", "figure.dance")
+        case .pilates: ("Pilates", "figure.pilates")
+        case .mindAndBody: ("Mind & Body", "figure.mind.and.body")
+        default: ("Workout", "figure.mixed.cardio")
+        }
+    }
+}
+
 enum HealthKitError: LocalizedError {
     case unavailable
 

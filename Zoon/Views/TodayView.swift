@@ -102,6 +102,7 @@ struct TodayView: View {
                 StressCard(stress: stress, todayStrain: context.strain.value).entrance(1)
             }
             dailyLoadRow(context).entrance(2)
+            TodayWorkoutsCard(workouts: coordinator.todayWorkouts).entrance(2)
             HealthPulseStrip(context: context, recentNights: coordinator.recentNights).entrance(2)
             SleepSummaryStrip(context: context).entrance(3)
             // Tonight's countdown used to live only on the Sleep tab, so the
