@@ -48,6 +48,12 @@ struct SleepDebtWidgetView: View {
 
     private var snapshot: SleepSnapshot { entry.snapshot }
 
+    /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
+    /// makes on `snapshot.isShiftWorkModeEnabled`.
+    private var lastNightLabel: String {
+        snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night"
+    }
+
     // MARK: - Home screen
 
     private var small: some View {
@@ -70,7 +76,7 @@ struct SleepDebtWidgetView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 4) {
-                Text("Last night")
+                Text(lastNightLabel)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                 Spacer()
@@ -164,7 +170,7 @@ struct SleepDebtWidgetView: View {
             Text(snapshot.balanceLabel)
                 .font(.system(.title2, design: .rounded).weight(.bold))
                 .privacySensitive()
-            Text("Last night \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.score)")
+            Text("\(lastNightLabel) \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.score)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .privacySensitive()
