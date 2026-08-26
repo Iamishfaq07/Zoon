@@ -229,12 +229,16 @@ struct SleepScoreWidgetView: View {
         }
     }
 
+    /// Reads the same thresholds `SleepScore.Band` uses (`SleepScoreTests`
+    /// covers those boundaries) rather than re-deriving them here, so the
+    /// widget's color bands can't silently drift out of sync with the
+    /// score's own definition of poor/fair/good/excellent.
     private var scoreColor: Color {
-        switch snapshot.score {
-        case ..<50: .orange
-        case 50..<70: .yellow
-        case 70..<85: .mint
-        default: .green
+        switch SleepScore.Band.forValue(snapshot.score) {
+        case .poor: .orange
+        case .fair: .yellow
+        case .good: .mint
+        case .excellent: .green
         }
     }
 }

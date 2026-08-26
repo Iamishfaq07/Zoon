@@ -206,11 +206,15 @@ struct RecoveryPage: View {
 
     let snapshot: SleepSnapshot
 
+    /// Reads the same thresholds `RecoveryScore.Band` uses
+    /// (`RecoveryScoreTests` covers those boundaries) rather than
+    /// re-deriving them here, so the watch's ring color can't silently
+    /// drift out of sync with the score's own low/moderate/high definition.
     private var tint: Color {
-        switch snapshot.recoveryPercent {
-        case 67...: Theme.Metric.recoveryHigh
-        case 34..<67: Theme.Metric.recoveryMid
-        default: Theme.Metric.recoveryLow
+        switch RecoveryScore.Band.forPercent(snapshot.recoveryPercent) {
+        case .high: Theme.Metric.recoveryHigh
+        case .moderate: Theme.Metric.recoveryMid
+        case .low: Theme.Metric.recoveryLow
         }
     }
 
