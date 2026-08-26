@@ -80,6 +80,10 @@ TESTS_EXTRA_APP_FILES = [
     # Foundation/SwiftData only -- see the SwiftDataProbeTests doc comment
     # above for why this specific type, alone, is back in the test target.
     "Zoon/Models/SleepNightRecord.swift",
+    # Foundation only -- RollingBaseline, the type SleepNightRecord.features(baseline:)
+    # takes. Extracted out of FeatureExtractor.swift (which imports HealthKit)
+    # specifically so it's compilable here without pulling HealthKit in too.
+    "Zoon/Services/RollingBaseline.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
     # Pure logic over SleepNightFeatures (which is already in SHARED), so it
     # brings no app-only dependencies into the test target. Needed because
