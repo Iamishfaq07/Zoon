@@ -148,8 +148,6 @@ enum GuidedExperiment {
         let baseline = observations.filter { $0.date >= baselineStart && $0.date < startDate }
         let trial = observations.filter { $0.date >= startDate && $0.date <= endDate }
         guard baseline.count >= minimumPeriodNights, trial.count >= minimumPeriodNights else { return nil }
-        guard let baselineMedian = Statistics.median(baseline.compactMap(primaryMetric.value(from:))),
-              let trialMedian = Statistics.median(trial.compactMap(primaryMetric.value(from:))) else { return nil }
 
         // How many trial nights actually had a known yes/no for this tag --
         // i.e. how consistently the behaviour itself kept getting logged
@@ -170,6 +168,20 @@ enum GuidedExperiment {
         let trialCompliantNightCount = trial.filter {
             $0.exposureState(for: tag) == direction.compliantExposureState
         }.count
+
+        // The primary comparison is baseline against the nights that actually
+        // complied with what the experiment tests -- not the whole trial
+        // window. Averaging in noncompliant nights as if they demonstrated
+        // the behaviour would dilute a real effect toward zero, or manufacture
+        // one from nights that never tested the hypothesis at all: a trial
+        // that's 36% adherent (the worked example above) has a trialMedian
+        // dominated by the 64% of nights nothing was actually being tried.
+        // Same minimum as baseline/trial -- a "result" built from three
+        // compliant nights out of fourteen isn't one to report as settled.
+        let adherentTrial = trial.filter { $0.exposureState(for: tag) == direction.compliantExposureState }
+        guard adherentTrial.count >= minimumPeriodNights else { return nil }
+        guard let baselineMedian = Statistics.median(baseline.compactMap(primaryMetric.value(from:))),
+              let trialMedian = Statistics.median(adherentTrial.compactMap(primaryMetric.value(from:))) else { return nil }
 
         return SleepExperimentStore.Outcome(
             id: UUID(),
