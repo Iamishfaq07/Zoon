@@ -168,7 +168,12 @@ struct SleepBankComplicationView: View {
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                Label("Last night", systemImage: "moon.stars.fill")
+                // Mirrors the same "Last Night"/"Last Sleep" switch
+                // SleepScoreWidget makes on isShiftWorkModeEnabled.
+                Label(
+                    entry.snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night",
+                    systemImage: "moon.stars.fill"
+                )
                     .font(Theme.text(13, weight: .semibold))
                 Text(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))
                     .font(.system(size: 20, weight: .bold, design: .rounded))

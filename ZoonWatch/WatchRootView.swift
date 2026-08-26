@@ -273,9 +273,17 @@ struct SleepPage: View {
         snapshot.sleepDebtMinutes <= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
     }
 
+    /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
+    /// makes on `snapshot.isShiftWorkModeEnabled` -- the watch app is its
+    /// own process with no `UserPreferences` access, which is exactly why
+    /// that flag rides along on the snapshot itself.
+    private var lastNightLabel: String {
+        snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Last night", systemImage: "moon.stars.fill")
+            Label(lastNightLabel, systemImage: "moon.stars.fill")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.Metric.sleep)
 
