@@ -99,6 +99,33 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             2>&1 | tee test.log
 
+      - name: Collect crash reports
+        # A crashed test process (as opposed to a clean assertion failure)
+        # leaves nothing useful in test.log beyond "Restarting after
+        # unexpected exit" -- macOS itself writes the actual crash report
+        # (signal, faulting thread, stack trace) to DiagnosticReports, but
+        # nothing was ever capturing it, so every such crash in this repo's
+        # history has gone undiagnosed. Copies whatever's there (empty on an
+        # ordinary pass/fail run) so it rides along in the same artifact as
+        # test.log instead of being lost when the runner is torn down.
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          mkdir -p crash-reports
+          cp ~/Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
+          cp /Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
+          echo "Collected $(ls crash-reports | wc -l | tr -d ' ') crash report(s)."
+
+      - name: Upload test log and crash reports
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log-and-crash-reports
+          path: |
+            test.log
+            crash-reports/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Summarise tests
         if: always() && steps.build.outcome == 'success'
         run: |

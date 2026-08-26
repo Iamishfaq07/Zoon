@@ -69,8 +69,17 @@ UITESTS_SRC = swift_files("ZoonUITests")
 # since it's a verified, real correctness fix, just not one with automated
 # coverage right now. See git history around "sync now prunes nights deleted
 # or corrected away in Health" for the two failed attempts' full CI logs.
+#
+# SleepNightRecord (below) is back for a narrower diagnostic: SwiftDataProbeTests
+# exercises a bare ModelContainer/SleepNightRecord insert-and-fetch with none
+# of SleepHistoryStore/FeatureExtractor/HealthKitManager in the mix, to learn
+# whether SwiftData itself can run at all in this unhosted test bundle before
+# trying a real store again. See SwiftDataProbeTests.swift's own doc comment.
 TESTS_EXTRA_APP_FILES = [
     "Zoon/Services/SleepSessionBuilder.swift",
+    # Foundation/SwiftData only -- see the SwiftDataProbeTests doc comment
+    # above for why this specific type, alone, is back in the test target.
+    "Zoon/Models/SleepNightRecord.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
     # Pure logic over SleepNightFeatures (which is already in SHARED), so it
     # brings no app-only dependencies into the test target. Needed because
