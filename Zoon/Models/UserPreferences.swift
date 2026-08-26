@@ -29,6 +29,7 @@ final class UserPreferences {
         static let experimentPrimaryMetric = "zoon.pref.experimentPrimaryMetric"
         static let experimentDirection = "zoon.pref.experimentDirection"
         static let obligationWeekdays = "zoon.pref.obligationWeekdays"
+        static let shiftWorkModeEnabled = "zoon.pref.shiftWorkModeEnabled"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
         static let preferredSleepSourceBundleIdentifier = "zoon.pref.preferredSleepSourceBundleIdentifier"
         static let trackedBehaviorTagIdentifiers = "zoon.pref.trackedBehaviorTagIdentifiers"
@@ -64,6 +65,21 @@ final class UserPreferences {
 
     func isFreeDay(_ date: Date, calendar: Calendar = .current) -> Bool {
         !obligationWeekdays.contains(calendar.component(.weekday, from: date))
+    }
+
+    /// The user's primary sleep happens during conventional daytime hours
+    /// rather than at night. `SleepDataCoordinator.classify(_:)` normally
+    /// treats a session centered in the 9am-6pm window as a nap (anything
+    /// else is "secondary sleep") on the assumption that the main block
+    /// happens at night; that assumption inverts for a night-shift worker,
+    /// where a short break during the overnight work hours is the nap and
+    /// the long daytime block is the main sleep. This toggle flips which
+    /// window counts as "expected primary sleep" for that classification,
+    /// and swaps a handful of night-relative UI labels ("Last Night",
+    /// "Tonight") for schedule-neutral ones. Off by default so nothing
+    /// changes for anyone who's never touched the setting.
+    var isShiftWorkModeEnabled: Bool {
+        didSet { defaults.set(isShiftWorkModeEnabled, forKey: Key.shiftWorkModeEnabled) }
     }
 
     /// Which behaviours the Journal's daily quick-confirm screen shows.
@@ -435,6 +451,7 @@ final class UserPreferences {
         self.preferredSleepSourceBundleIdentifier = defaults.string(forKey: Key.preferredSleepSourceBundleIdentifier)
         self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
             ?? Self.defaultObligationWeekdays
+        self.isShiftWorkModeEnabled = defaults.bool(forKey: Key.shiftWorkModeEnabled)
         self.trackedBehaviorTagIdentifiers = (defaults.array(forKey: Key.trackedBehaviorTagIdentifiers) as? [String]).map(Set.init)
     }
 
@@ -467,6 +484,7 @@ final class UserPreferences {
         preferredSleepSourceName = nil
         preferredSleepSourceBundleIdentifier = nil
         obligationWeekdays = Self.defaultObligationWeekdays
+        isShiftWorkModeEnabled = false
         trackedBehaviorTagIdentifiers = nil
 
         let keys = [
@@ -490,6 +508,7 @@ final class UserPreferences {
             Key.experimentPrimaryMetric,
             Key.experimentDirection,
             Key.obligationWeekdays,
+            Key.shiftWorkModeEnabled,
             Key.trackedBehaviorTagIdentifiers,
         ]
         for key in keys { defaults.removeObject(forKey: key) }

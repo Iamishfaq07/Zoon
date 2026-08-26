@@ -573,12 +573,23 @@ final class SleepDataCoordinator {
     /// its own recorded timezone) reads as a nap; anything else -- an early
     /// morning or late-evening block -- reads as secondary sleep rather than
     /// guessing which one is "primary" from duration alone.
+    ///
+    /// That 9am-6pm window assumes the main sleep happens at night, which
+    /// inverts for a night-shift worker: their long block is the daytime
+    /// one, and a break during their overnight work hours is the nap. With
+    /// `UserPreferences.isShiftWorkModeEnabled` on, the two windows swap --
+    /// 6pm-9am reads as nap instead. (`preferredMainSleep(in:)` itself
+    /// already picks the main block by duration, not clock time, so it
+    /// needs no change here; this only affects how the *other* sessions on
+    /// the same day get labeled.)
     private func classify(_ session: SleepSession) -> SleepEpisodeType {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: session.timeZoneIdentifier) ?? .current
         let midpoint = session.start.addingTimeInterval(session.end.timeIntervalSince(session.start) / 2)
         let hour = calendar.component(.hour, from: midpoint)
-        return (9..<18).contains(hour) ? .nap : .secondarySleep
+        let isDaytime = (9..<18).contains(hour)
+        let isNap = preferences.isShiftWorkModeEnabled ? !isDaytime : isDaytime
+        return isNap ? .nap : .secondarySleep
     }
 
     /// Reads the newest stored night back out, derives everything, updates state
