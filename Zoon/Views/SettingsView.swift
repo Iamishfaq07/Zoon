@@ -552,6 +552,9 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section {
+            NavigationLink("Data Quality") {
+                DataQualityView()
+            }
             LabeledContent("Nights recorded", value: "\(coordinator.recentNights.count)")
             LabeledContent("Naps logged", value: "\(naps.naps.count)")
 
