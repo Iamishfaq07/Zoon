@@ -204,15 +204,23 @@ extension RecoveryScore {
                 "Primed. Your body looks ready for a harder session today, if that's part of your plan."
             }
         }
-    }
 
-    var band: Band {
-        switch percent {
-        case ..<34: .low
-        case 34..<67: .moderate
-        default: .high
+        /// Single source of truth for the percent thresholds, callable from
+        /// a bare `Int` -- the widget/watch targets only ever have
+        /// `SleepSnapshot.recoveryPercent`, not a full `RecoveryScore`, and
+        /// re-deriving these cutoffs independently (as
+        /// `WatchRootView.RecoveryPage.tint` once did) is exactly how the
+        /// two silently drift apart.
+        static func forPercent(_ percent: Int) -> Band {
+            switch percent {
+            case ..<34: .low
+            case 34..<67: .moderate
+            default: .high
+            }
         }
     }
+
+    var band: Band { Band.forPercent(percent) }
 
     /// The single strongest driver, for the "why" line under the ring.
     /// Unavailable components default their `normalized` to 0 internally

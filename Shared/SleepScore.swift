@@ -87,14 +87,21 @@ extension SleepScore {
             case .excellent: "Excellent"
             }
         }
-    }
 
-    var band: Band {
-        switch value {
-        case ..<50: .poor
-        case 50..<70: .fair
-        case 70..<85: .good
-        default: .excellent
+        /// Single source of truth for the score thresholds, callable from a
+        /// bare `Int` -- the widget/watch targets only ever have
+        /// `SleepSnapshot.score`, not a full `SleepScore`, and re-deriving
+        /// these cutoffs independently (as `SleepScoreWidget.scoreColor`
+        /// once did) is exactly how the two silently drift apart.
+        static func forValue(_ value: Int) -> Band {
+            switch value {
+            case ..<50: .poor
+            case 50..<70: .fair
+            case 70..<85: .good
+            default: .excellent
+            }
         }
     }
+
+    var band: Band { Band.forValue(value) }
 }

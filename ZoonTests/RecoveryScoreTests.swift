@@ -10,6 +10,17 @@ final class RecoveryScoreTests: XCTestCase {
         hrv: 55, restingHeartRate: 54, respiratoryRate: 14.5, wristTemperature: 0, nightCount: 30
     )
 
+    // MARK: - Band boundaries
+
+    func testBandBoundaries() {
+        XCTAssertEqual(RecoveryScore.Band.forPercent(0), .low)
+        XCTAssertEqual(RecoveryScore.Band.forPercent(33), .low)
+        XCTAssertEqual(RecoveryScore.Band.forPercent(34), .moderate)
+        XCTAssertEqual(RecoveryScore.Band.forPercent(66), .moderate)
+        XCTAssertEqual(RecoveryScore.Band.forPercent(67), .high)
+        XCTAssertEqual(RecoveryScore.Band.forPercent(100), .high)
+    }
+
     func testAllComponentsAvailableSumsToFullWeight() {
         let night = Fixture.night()
         let score = RecoveryScore.compute(features: night, baseline: fullBaseline, sleepPerformance: 100)
