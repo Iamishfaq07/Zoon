@@ -126,7 +126,13 @@ struct DataQuality {
     ///     as bad rather than being diluted by months of good data.
     ///   - now: injectable for tests.
     static func compute(nights: [SleepNightFeatures], windowDays: Int = 30, now: Date = .now, calendar: Calendar = .current) -> DataQuality {
-        let cutoff = calendar.date(byAdding: .day, value: -windowDays, to: now) ?? now
+        // `night.date` is always a startOfDay midnight value (see
+        // SleepNightFeatures.date), so the cutoff needs to be midnight too --
+        // otherwise a night from exactly `windowDays` ago (midnight) reads as
+        // older than a same-day-clock-time cutoff and drops out of the
+        // window whenever `now` isn't itself midnight, i.e. always.
+        let rawCutoff = calendar.date(byAdding: .day, value: -windowDays, to: now) ?? now
+        let cutoff = calendar.startOfDay(for: rawCutoff)
         let windowed = nights.filter { $0.date >= cutoff && $0.date <= now }
 
         let coverage = Metric.allCases.map { metric -> Coverage in
