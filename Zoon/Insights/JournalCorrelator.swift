@@ -207,10 +207,18 @@ struct JournalCorrelator {
     enum Metric: String, CaseIterable, Hashable {
         case recovery
         /// 24-hour sleep (main sleep plus naps) against each night's own
-        /// historical need, not main sleep alone against one current
-        /// Settings goal applied uniformly to every night -- see
-        /// `SleepDataCoordinator.journalObservations()`, where
-        /// `Observation.sleepPerformance` is actually built.
+        /// historical learned-baseline need, not main sleep alone against
+        /// one current Settings goal applied uniformly to every night --
+        /// see `SleepDataCoordinator.journalObservations()`, where
+        /// `Observation.sleepPerformance` is actually built. This is a
+        /// baseline-only approximation, the same one Sleep Health's
+        /// sufficiency component and `rebuildRecoveryHistory` use -- it
+        /// does not include the debt-payback/strain/nap adjustments the
+        /// live Today screen's `SleepNeed` applies, since those aren't
+        /// reconstructable for a past night without a stored strain
+        /// history. Don't expect this to match what Today showed for the
+        /// same night; it will only ever agree with Sleep Health and
+        /// Recovery history, which use the same approximation.
         case sleepPerformance
         case deepSleep
         case remSleep
