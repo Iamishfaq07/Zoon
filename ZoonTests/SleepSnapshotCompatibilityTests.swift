@@ -10,7 +10,7 @@ import XCTest
 /// the home screen going blank, silently, for anyone who hadn't relaunched
 /// the app.
 ///
-/// Fourteen fields now carry that defaulting and none of them was covered.
+/// Fifteen fields now carry that defaulting and none of them was covered.
 /// The test that matters is the one below: a payload holding *only* the
 /// original required fields must still decode.
 final class SleepSnapshotCompatibilityTests: XCTestCase {
@@ -67,6 +67,7 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         XCTAssertEqual(snapshot.badgesUnlocked, 0)
         XCTAssertEqual(snapshot.bodySignalsLabel, "Nothing unusual")
         XCTAssertFalse(snapshot.isMock)
+        XCTAssertFalse(snapshot.isShiftWorkModeEnabled)
     }
 
     /// The realistic upgrade path: a payload from an *intermediate* build,

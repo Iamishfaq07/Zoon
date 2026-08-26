@@ -66,6 +66,16 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// failing to render.
     var bodySignalsLabel: String = "Nothing unusual"
 
+    /// Mirrors `UserPreferences.isShiftWorkModeEnabled` as of the last
+    /// publish. The widget extension never reads `UserPreferences` itself
+    /// (it's a separate process with no HealthKit pipeline -- see this
+    /// type's own doc comment), so without this the "Last Night" label
+    /// couldn't follow the toggle at all. Defaulted `false` for the same
+    /// reason every field added after the first release is: an older
+    /// snapshot on disk still decodes, and false is the setting's own
+    /// default besides.
+    var isShiftWorkModeEnabled: Bool = false
+
     /// Sleep debt expressed in hours, which is how the widget phrases it.
     var sleepDebtHours: Double { sleepDebtMinutes / 60 }
 
@@ -133,6 +143,7 @@ extension SleepSnapshot {
         nextBadgeTitle = try container.decodeIfPresent(String.self, forKey: .nextBadgeTitle) ?? ""
         nextBadgeProgress = try container.decodeIfPresent(Double.self, forKey: .nextBadgeProgress) ?? 0
         bodySignalsLabel = try container.decodeIfPresent(String.self, forKey: .bodySignalsLabel) ?? "Nothing unusual"
+        isShiftWorkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isShiftWorkModeEnabled) ?? false
     }
 
     init(
@@ -145,7 +156,8 @@ extension SleepSnapshot {
         strain: Double = 0,
         sleepPerformance: Double = 0,
         sleepIntelligencePercent: Int = 0,
-        sleepIntelligenceBand: String = ""
+        sleepIntelligenceBand: String = "",
+        isShiftWorkModeEnabled: Bool = false
     ) {
         self.date = features.date
         self.score = score.value
@@ -162,6 +174,7 @@ extension SleepSnapshot {
         self.sleepIntelligencePercent = sleepIntelligencePercent
         self.sleepIntelligenceBand = sleepIntelligenceBand
         self.isMock = features.isMock
+        self.isShiftWorkModeEnabled = isShiftWorkModeEnabled
     }
 }
 

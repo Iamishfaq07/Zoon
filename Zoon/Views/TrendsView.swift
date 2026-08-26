@@ -518,11 +518,17 @@ struct ConsistencyChartCard: View {
     private var points: [Point] {
         let calendar = Calendar.current
         return nights.map { night in
-            Point(
-                date: night.date,
-                bedHour: Self.shiftedHour(of: night.bedtime, calendar: calendar),
-                wakeHour: Self.shiftedHour(of: night.wakeTime, calendar: calendar)
-            )
+            let bedHour = Self.shiftedHour(of: night.bedtime, calendar: calendar)
+            // Derived from bedHour + the night's actual duration rather than
+            // independently re-folding wakeTime's own clock components: the
+            // old approach folded each timestamp on its own, so a wake time
+            // landing right at the 6pm fold point (e.g. a shift worker's
+            // 10am-6pm sleep) could fold *past* bedtime and plot the bar
+            // running backwards. Anchoring wakeHour to the same bedHour it
+            // was folded from keeps the pair consistent regardless of when
+            // either one falls on the clock.
+            let durationHours = night.wakeTime.timeIntervalSince(night.bedtime) / 3600
+            return Point(date: night.date, bedHour: bedHour, wakeHour: bedHour + durationHours)
         }
     }
 
