@@ -21,6 +21,8 @@ struct TonightTimelineCard: View {
     /// disappearing entirely.
     let wake: Date?
 
+    @Environment(UserPreferences.self) private var preferences
+
     private struct Node: Identifiable {
         let id: String
         let symbol: String
@@ -50,7 +52,10 @@ struct TonightTimelineCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Tonight", systemImage: "moon.stars.fill")
+            SectionHeader(
+                title: preferences.isShiftWorkModeEnabled ? "Next Sleep" : "Tonight",
+                systemImage: "moon.stars.fill"
+            )
 
             ZStack(alignment: .top) {
                 // A single connecting line reads as one sequence rather than
@@ -126,7 +131,7 @@ struct TonightTimelineCard: View {
         .padding()
     }
     .nightBackground()
-    .preferredColorScheme(.dark)
+    .zoonPreviewEnvironment()
 }
 
 #Preview("Tonight Timeline — no caffeine cutoff") {
@@ -140,5 +145,5 @@ struct TonightTimelineCard: View {
         .padding()
     }
     .nightBackground()
-    .preferredColorScheme(.dark)
+    .zoonPreviewEnvironment()
 }

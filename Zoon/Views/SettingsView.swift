@@ -169,7 +169,7 @@ struct SettingsView: View {
             }
 
             if let bedtime = coordinator.state.context?.targetBedtime() {
-                LabeledContent("Tonight") {
+                LabeledContent(preferences.isShiftWorkModeEnabled ? "Next sleep" : "Tonight") {
                     Text(bedtime, format: .dateTime.hour().minute())
                         .monospacedDigit()
                         .foregroundStyle(Theme.Metric.sleep)
@@ -289,6 +289,18 @@ struct SettingsView: View {
                 }
             }
             .padding(.vertical, 4)
+
+            Toggle(isOn: Binding(
+                get: { preferences.isShiftWorkModeEnabled },
+                set: { preferences.isShiftWorkModeEnabled = $0 }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shift work mode")
+                    Text("Your main sleep happens during the day. Zoon reads a long daytime block as your primary sleep instead of a nap, and relabels a few night-relative labels.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         } header: {
             Text("Obligation days")
         } footer: {

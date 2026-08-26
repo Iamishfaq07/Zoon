@@ -400,6 +400,7 @@ struct BodyBatteryCard: View {
 /// Compact sleep row on Today; the full breakdown lives on the Sleep tab.
 struct SleepSummaryStrip: View {
     let context: DayContext
+    @Environment(UserPreferences.self) private var preferences
 
     var body: some View {
         NavigationLink {
@@ -407,7 +408,10 @@ struct SleepSummaryStrip: View {
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    SectionHeader(title: "Last Night", systemImage: "moon.stars.fill")
+                    SectionHeader(
+                        title: preferences.isShiftWorkModeEnabled ? "Last Sleep" : "Last Night",
+                        systemImage: "moon.stars.fill"
+                    )
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(Theme.text(12, weight: .semibold))
