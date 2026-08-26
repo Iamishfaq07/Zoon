@@ -1052,7 +1052,8 @@ final class SleepDataCoordinator {
             archive.journal.map {
                 (
                     date: $0.date, tags: $0.tags, note: $0.note, feelingRaw: $0.feeling,
-                    restedRaw: $0.rested, energyRaw: $0.energy, sleepinessRaw: $0.sleepiness, moodRaw: $0.mood
+                    restedRaw: $0.rested, energyRaw: $0.energy, sleepinessRaw: $0.sleepiness, moodRaw: $0.mood,
+                    nightKey: $0.nightKey
                 )
             }
         )
@@ -1084,6 +1085,19 @@ final class SleepDataCoordinator {
             preferences.preferredEngine = UserPreferences.EngineChoice(
                 rawValue: restored.preferredEngine
             ) ?? .ruleBased
+            preferences.preferredSleepSourceBundleIdentifier = restored.preferredSleepSourceBundleIdentifier
+            if let obligationWeekdays = restored.obligationWeekdays {
+                preferences.obligationWeekdays = Set(obligationWeekdays)
+            }
+            preferences.isShiftWorkModeEnabled = restored.isShiftWorkModeEnabled ?? false
+            preferences.trackedBehaviorTagIdentifiers = restored.trackedBehaviorTagIdentifiers.map(Set.init)
+            preferences.restoreActiveExperiment(
+                tag: restored.activeExperimentTag.flatMap(BehaviorTag.init(rawValue:)),
+                startDate: restored.experimentStartDate,
+                hypothesis: restored.experimentHypothesis,
+                primaryMetric: restored.experimentPrimaryMetric.flatMap(JournalCorrelator.Metric.init(rawValue:)),
+                direction: restored.experimentDirection.flatMap(GuidedExperiment.Direction.init(rawValue:))
+            )
             engine = Self.makeEngine(for: preferences.preferredEngine)
         }
 

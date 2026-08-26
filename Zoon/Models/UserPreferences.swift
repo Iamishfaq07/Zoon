@@ -330,6 +330,27 @@ final class UserPreferences {
         experimentDirection = direction
     }
 
+    /// Restores an in-progress experiment's state from a backup, preserving
+    /// its original `startDate` -- unlike `startExperiment`, which always
+    /// stamps `.now`, a restore has to reproduce exactly when the experiment
+    /// actually began, or the baseline/trial windows `GuidedExperiment`
+    /// computes from it would shift. `tag == nil` clears the active
+    /// experiment, matching `endExperiment`, since a backup with no active
+    /// experiment at export time shouldn't leave a stale one running.
+    func restoreActiveExperiment(
+        tag: BehaviorTag?,
+        startDate: Date?,
+        hypothesis: String?,
+        primaryMetric: JournalCorrelator.Metric?,
+        direction: GuidedExperiment.Direction?
+    ) {
+        activeExperimentTag = tag
+        experimentStartDate = tag == nil ? nil : startDate
+        experimentHypothesis = tag == nil ? nil : hypothesis
+        experimentPrimaryMetric = tag == nil ? nil : primaryMetric
+        experimentDirection = tag == nil ? nil : direction
+    }
+
     func endExperiment() {
         activeExperimentTag = nil
         experimentStartDate = nil

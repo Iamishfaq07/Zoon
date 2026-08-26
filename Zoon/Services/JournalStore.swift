@@ -117,14 +117,15 @@ final class JournalStore {
     func importEntries(
         _ records: [(
             date: Date, tags: [String], note: String?, feelingRaw: Int?,
-            restedRaw: Int?, energyRaw: Int?, sleepinessRaw: Int?, moodRaw: Int?
+            restedRaw: Int?, energyRaw: Int?, sleepinessRaw: Int?, moodRaw: Int?,
+            nightKey: String?
         )]
     ) -> Int {
         var created = 0
         for record in records {
             let day = Calendar.current.startOfDay(for: record.date)
             guard entry(for: day) == nil else { continue }
-            let entry = JournalEntry(date: day)
+            let entry = JournalEntry(date: day, nightKey: record.nightKey)
             entry.tagIdentifiers = record.tags
             entry.note = record.note
             entry.feelingRaw = record.feelingRaw

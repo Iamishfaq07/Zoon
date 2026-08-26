@@ -79,6 +79,15 @@ enum DataExporter {
             let energy: Int?
             let sleepiness: Int?
             let mood: Int?
+            /// `JournalEntry.nightKey`, when the entry had one at export
+            /// time. Optional -- older backups, and entries written before
+            /// this field existed, decode it as `nil` and fall back to
+            /// `date`-based matching on import, same as the live app does
+            /// (see `JournalEntry.nightKey`'s doc comment). Carrying it
+            /// through matters on a travel day: without it, a restored
+            /// entry can silently stop matching the night it was actually
+            /// about.
+            let nightKey: String?
         }
 
         struct PreferencesRecord: Codable {
@@ -96,6 +105,21 @@ enum DataExporter {
             let wakeAlarmEnabled: Bool?
             let focusSilencesBedtimeNudges: Bool?
             let preferredSleepSourceName: String?
+            /// All optional -- added after format 3 shipped, so any earlier
+            /// backup simply decodes these as `nil` and the corresponding
+            /// preference stays at its default.
+            let preferredSleepSourceBundleIdentifier: String?
+            let obligationWeekdays: [Int]?
+            let isShiftWorkModeEnabled: Bool?
+            let trackedBehaviorTagIdentifiers: [String]?
+            /// A currently-running Guided Experiment, if one was active at
+            /// export time. All four travel together -- `activeExperimentTag`
+            /// is the signal that the others are meaningful at all.
+            let activeExperimentTag: String?
+            let experimentStartDate: Date?
+            let experimentHypothesis: String?
+            let experimentPrimaryMetric: String?
+            let experimentDirection: String?
         }
 
         struct WristTemperatureRecord: Codable {
@@ -135,7 +159,8 @@ enum DataExporter {
             journal: journal.map {
                 Archive.JournalRecord(
                     date: $0.date, tags: $0.tagIdentifiers, note: $0.note, feeling: $0.feelingRaw,
-                    rested: $0.restedRaw, energy: $0.energyRaw, sleepiness: $0.sleepinessRaw, mood: $0.moodRaw
+                    rested: $0.restedRaw, energy: $0.energyRaw, sleepiness: $0.sleepinessRaw, mood: $0.moodRaw,
+                    nightKey: $0.nightKey
                 )
             },
             naps: naps,
@@ -149,7 +174,16 @@ enum DataExporter {
                 lifestyleInsightsEnabled: preferences.lifestyleInsightsEnabled,
                 wakeAlarmEnabled: preferences.wakeAlarmEnabled,
                 focusSilencesBedtimeNudges: preferences.focusSilencesBedtimeNudges,
-                preferredSleepSourceName: preferences.preferredSleepSourceName
+                preferredSleepSourceName: preferences.preferredSleepSourceName,
+                preferredSleepSourceBundleIdentifier: preferences.preferredSleepSourceBundleIdentifier,
+                obligationWeekdays: Array(preferences.obligationWeekdays),
+                isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
+                trackedBehaviorTagIdentifiers: preferences.trackedBehaviorTagIdentifiers.map(Array.init),
+                activeExperimentTag: preferences.activeExperimentTag?.rawValue,
+                experimentStartDate: preferences.experimentStartDate,
+                experimentHypothesis: preferences.experimentHypothesis,
+                experimentPrimaryMetric: preferences.experimentPrimaryMetric?.rawValue,
+                experimentDirection: preferences.experimentDirection?.rawValue
             ),
             snoreSummaries: snoreSummaries,
             wristTemperatures: wristTemperatures.map {
