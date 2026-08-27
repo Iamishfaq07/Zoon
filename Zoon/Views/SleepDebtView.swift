@@ -130,6 +130,17 @@ struct SleepDebtView: View {
                 .chartYAxisLabel("hours owed")
                 .frame(height: 110)
                 .chartXSelection(value: $selectedDate)
+                // Sleep debt is better low, so a falling line is the
+                // improvement -- the trend helper has to be told that or it
+                // would call a shrinking debt a decline.
+                .chartSummary(
+                    "Sleep debt over the last \(nights.count) nights",
+                    "Now \(SleepNightFeatures.formatMinutes(nights.last?.sleepDebtMinutes ?? 0)) owed. "
+                        + ChartTrend.describe(
+                            nights.map { ($0.sleepDebtMinutes ?? 0) / 60 },
+                            higherIsBetter: false
+                        ) + "."
+                )
             }
             .glassCard()
         }

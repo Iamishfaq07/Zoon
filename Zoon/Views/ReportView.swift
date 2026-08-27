@@ -247,6 +247,15 @@ struct ReportView: View {
                     }
                 }
                 .frame(height: 150)
+                // The 67% reference line is the actionable part of this
+                // chart, so the summary names it rather than leaving a
+                // screen reader with bare percentages.
+                .chartSummary(
+                    "Recovery over the last \(points.count) days",
+                    (points.last.map { "Latest \($0.1)%. " } ?? "")
+                        + ChartTrend.describe(points.map { Double($0.1) })
+                        + ". 67% and above is the level where hard training is a good idea."
+                )
                 .chartXSelection(value: $selectedRecoveryDate)
             }
             .glassCard()
