@@ -230,6 +230,25 @@ enum Theme {
         #endif
     }
 
+    /// The live "now" marker on a dial -- Body Clock's orbit dot, on both
+    /// the card and the full screen.
+    ///
+    /// Dark resolves to pure white, which is byte-identical to the hardcoded
+    /// `Color.white` this replaced: the appearance the screenshots were taken
+    /// against cannot change. Only the Light path is new, and it has to be,
+    /// because a white dot with a white halo on a pale dial is the one marker
+    /// in the app that could disappear into its own background.
+    ///
+    /// Not `neutral()`, despite that being the usual adaptive answer. neutral
+    /// is a *translucent* ink for ticks and tracks, and this marker is opaque
+    /// on purpose -- it is the one element on the dial that has to read as a
+    /// solid object rather than as a graduation. The Light value is the app's
+    /// own near-black navy rather than pure black, so the dot stays in the
+    /// family the rest of the palette is drawn from.
+    static var dialMarker: Color {
+        adaptive(dark: (1, 1, 1), light: (0.09, 0.09, 0.16))
+    }
+
     /// A glass card's specular highlight -- the soft sheen a curved glass
     /// surface catches along its top edge. Deliberately **not** built from
     /// `neutral`, which flips to black in Light on purpose (it needs to

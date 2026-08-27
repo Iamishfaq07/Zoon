@@ -112,9 +112,9 @@ struct BodyClockView: View {
                 // the fixed shape of the day, same marker as the Body Clock
                 // card on the Sleep tab.
                 Circle()
-                    .fill(Color.white)
+                    .fill(Theme.dialMarker)
                     .frame(width: 8, height: 8)
-                    .shadow(color: .white.opacity(0.7), radius: 4)
+                    .shadow(color: Theme.dialMarker.opacity(0.7), radius: 4)
                     .offset(y: -100)
                     .rotationEffect(.degrees(wallClockFraction(hourOfDay(.now)) * 360))
 
