@@ -247,3 +247,8 @@ struct EvidenceView: View {
         }
     }
 }
+
+#Preview("What Zoon knows") {
+    NavigationStack { EvidenceView() }
+        .zoonPreviewEnvironment()
+}
