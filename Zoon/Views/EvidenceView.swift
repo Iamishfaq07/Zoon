@@ -32,6 +32,8 @@ struct EvidenceView: View {
                 nextExperiment(observations: observations, findings: findings)
                     .entrance(0)
 
+                sensorTruthLink.entrance(0)
+
                 let entries = notebookEntries(findings: findings)
                 if entries.isEmpty {
                     emptyState.entrance(1)
@@ -173,6 +175,36 @@ struct EvidenceView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()
         }
+    }
+
+    /// One level further down from this screen's question. Evidence grades
+    /// the claims Zoon makes; that screen grades the numbers those claims
+    /// are built from, which is the natural next "how much of this should I
+    /// believe".
+    private var sensorTruthLink: some View {
+        NavigationLink {
+            SensorTruthView()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "sensor.tag.radiowaves.forward.fill")
+                    .font(Theme.text(14))
+                    .foregroundStyle(Theme.Metric.strain)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Where the numbers come from")
+                        .font(Theme.label(14, weight: .semibold))
+                    Text("Which are measured, and which are estimates")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(12, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {
