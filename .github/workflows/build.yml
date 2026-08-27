@@ -114,16 +114,40 @@ jobs:
           cp ~/Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
           cp /Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
           echo "Collected $(ls crash-reports | wc -l | tr -d ' ') crash report(s)."
-          # Echo the Zoon-relevant reports into the job log as well as the
-          # artifact. The artifact is only reachable by someone who can
-          # download it; the log is readable through the API, which is the
-          # only channel some contributors (and CI tooling) actually have.
-          # Capped hard -- a full .ips carries every thread plus a binary
-          # image list, and the first screenful is where the signal is.
-          for f in crash-reports/*Zoon*.ips crash-reports/*xctest*.ips; do
-            [ -e "$f" ] || continue
+          # Echo the decisive part of the first crash report into the job log
+          # as well as the artifact. The artifact is only reachable by someone
+          # who can download it; the log is readable through the API, which is
+          # the only channel some contributors (and CI tooling) actually have.
+          #
+          # Parsed rather than `head`-ed: an .ips is a JSON header line plus a
+          # JSON body, and the faulting thread's frames sit well past any byte
+          # cap that keeps the log readable. Printing the exception, the
+          # termination reason, and the symbolicated frames is the whole
+          # diagnostic; the rest of the file is register dumps and a binary
+          # image list. Only the first report is printed -- when a whole suite
+          # dies the reports are all the same crash.
+          for f in $(ls crash-reports/*.ips 2>/dev/null | head -1); do
             echo "=================== $f ==================="
-            head -c 6000 "$f"
+            python3 - "$f" <<'PY' || echo "(could not parse this .ips)"
+          import json, sys
+          raw = open(sys.argv[1], errors="replace").read()
+          body = json.loads(raw[raw.index("\n") + 1:])
+          print("exception  :", json.dumps(body.get("exception")))
+          print("termination:", json.dumps(body.get("termination")))
+          images = body.get("usedImages", [])
+          def image_name(i):
+              if not isinstance(i, int) or i < 0 or i >= len(images):
+                  return "?"
+              img = images[i]
+              return img.get("name") or img.get("path", "?").rsplit("/", 1)[-1]
+          for thread in body.get("threads", []):
+              if not thread.get("triggered"):
+                  continue
+              print("--- faulting thread", thread.get("id"), thread.get("name", ""))
+              for frame in thread.get("frames", [])[:30]:
+                  sym = frame.get("symbol") or hex(frame.get("imageOffset", 0))
+                  print("   ", image_name(frame.get("imageIndex", -1)), sym)
+          PY
             echo ""
           done
 
