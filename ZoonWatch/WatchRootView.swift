@@ -438,6 +438,11 @@ struct MorePage: View {
                     .foregroundStyle(.secondary)
             }
 
+            if !snapshot.headlineFindingText.isEmpty {
+                Divider().overlay(Color.white.opacity(0.15))
+                headlineFinding
+            }
+
             if snapshot.isMock {
                 Text("Sample data")
                     .font(Theme.text(9))
@@ -445,6 +450,29 @@ struct MorePage: View {
             }
         }
         .padding(.horizontal, 10)
+    }
+
+    /// The strongest thing Zoon believes, with the tier that earned it.
+    ///
+    /// The tier label is not decoration and is not optional: "Caffeine goes
+    /// with shorter sleep" and "You tested this: caffeine goes with shorter
+    /// sleep" are different claims, and the second is the only one this
+    /// screen has room to justify. `EvidenceNotebook.glanceMinimumStrength`
+    /// is what keeps the weakest two tiers off the wrist entirely -- their
+    /// caveats do not fit here, and they are the tiers that need them.
+    private var headlineFinding: some View {
+        VStack(spacing: 3) {
+            Text(snapshot.headlineFindingStrength.uppercased())
+                .font(Theme.label(9, weight: .semibold))
+                .kerning(0.5)
+                .foregroundStyle(Theme.Metric.recoveryHigh)
+            Text(snapshot.headlineFindingText)
+                .font(Theme.text(11))
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .minimumScaleFactor(0.75)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -492,6 +520,13 @@ struct WaitingPage: View {
 
 #Preview("More") {
     MorePage(snapshot: MockData.snapshotWithBadges)
+}
+
+/// With a headline finding. The page is a fixed-height watch screen with two
+/// stacked blocks already, so this is where a third one either fits or does
+/// not -- and the finding is the block whose length Zoon does not control.
+#Preview("More - with a finding") {
+    MorePage(snapshot: MockData.findingSnapshot)
 }
 
 #Preview("Waiting") {

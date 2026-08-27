@@ -157,6 +157,20 @@ enum MockData {
         makeTonightSnapshot(sleepNeedMinutes: habitualSleepMinutes, sleepDebtMinutes: 0)
     }
 
+    /// A snapshot carrying a headline finding, for the watch More page.
+    ///
+    /// Hard-coded rather than run through `EvidenceNotebook`, unlike the
+    /// Tonight mocks: the notebook is app-side (it needs `BehaviorTag`) and
+    /// `Shared` compiles into the watch and widget targets too, so calling
+    /// it from here would not build. The strings match what the engine
+    /// produces -- an association headline and `Strength.associated.label`.
+    static var findingSnapshot: SleepSnapshot {
+        var result = snapshot
+        result.headlineFindingText = "Late caffeine goes with shorter sleep."
+        result.headlineFindingStrength = "Association"
+        return result
+    }
+
     private static func makeTonightSnapshot(sleepNeedMinutes: Double, sleepDebtMinutes: Double) -> SleepSnapshot {
         var result = snapshot
         if let plan = SleepAutopilot.plan(

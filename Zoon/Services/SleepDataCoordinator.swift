@@ -861,6 +861,21 @@ final class SleepDataCoordinator {
             snapshot.tomorrowRangeLabel = forecast.rangeLabel
         }
 
+        // The strongest claim, for the watch. Same compilation the Evidence
+        // screen runs, so the two cannot disagree about what that claim is,
+        // and gated by `glanceMinimumStrength` so the tiers that depend on
+        // their caveat never reach a surface with no room to print one.
+        //
+        // This is the most expensive line in `publishSnapshot`: a matched-pair
+        // correlator pass plus change-point detection across every metric.
+        // It runs on refresh, not on render, and the Evidence screen already
+        // pays the same cost per appearance -- but if snapshot publishing
+        // ever moves somewhere hotter, this is the call to hoist or cache.
+        if let headline = EvidenceNotebook.glanceHeadline(from: notebookEntries()) {
+            snapshot.headlineFindingText = headline.headline
+            snapshot.headlineFindingStrength = headline.strength.label
+        }
+
         // Badges are evaluated here rather than in the extension: the engine
         // needs the whole night history and the journal, and the widget
         // deliberately reads nothing but this snapshot.
@@ -1224,6 +1239,42 @@ final class SleepDataCoordinator {
     /// comparison pool versus treating every recorded night as a control,
     /// especially early on when few nights are logged at all, but a smaller
     /// honest pool is the right trade against a larger biased one.
+    /// Every claim Zoon holds, strongest first.
+    ///
+    /// Lives here rather than in `EvidenceView` because the snapshot needs
+    /// the same list. Two call sites assembling the notebook's inputs
+    /// separately is how the watch ends up naming a different "strongest
+    /// claim" than the screen that exists to list them -- and the inputs are
+    /// easy to get subtly wrong: `findings(from:)` and `topFindingPerTag`
+    /// are both plausible here and produce different top rows.
+    ///
+    /// Findings are a parameter because `EvidenceView` already computes them
+    /// once per render and passes them to the planner as well; making it
+    /// recompute here would undo that hoisting on the app's most expensive
+    /// screen.
+    func notebookEntries(findings: [JournalCorrelator.Finding]) -> [EvidenceNotebook.Entry] {
+        let sorted = recentNights.sorted { $0.date < $1.date }
+        // Only last night is investigated -- NightDetective is about one
+        // night against its own history, not a survey.
+        let nightReport = sorted.last.flatMap {
+            NightDetective.investigate(night: $0, history: Array(sorted.dropLast()))
+        }
+        return EvidenceNotebook.compile(
+            experiments: experiments.outcomes,
+            findings: findings,
+            changePoints: ChangePointDetector.detectAll(nights: recentNights),
+            nightReport: nightReport
+        )
+    }
+
+    /// The same list, computing findings itself. For callers off the render
+    /// path -- the snapshot publisher -- where there is nothing to hoist.
+    func notebookEntries() -> [EvidenceNotebook.Entry] {
+        notebookEntries(
+            findings: JournalCorrelator().findings(from: journalObservations())
+        )
+    }
+
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })

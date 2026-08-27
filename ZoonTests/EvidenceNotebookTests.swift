@@ -189,4 +189,42 @@ final class EvidenceNotebookTests: XCTestCase {
         XCTAssertEqual(entries.count, 1)
         XCTAssertTrue(entry.headline.contains("somethingRetired"), entry.headline)
     }
+
+    // MARK: - The glance bar
+
+    /// The weakest two tiers must never reach a watch face. Both depend on a
+    /// caveat -- "one night only", "nothing here says what changed it" --
+    /// that a glance surface has no room to print, and without it each reads
+    /// as a finding.
+    func testGlanceHeadlineRejectsTheTwoWeakestTiers() throws {
+        let entries = EvidenceNotebook.compile(
+            changePoints: [try changePoint(daysAgo: 1)],
+            nightReport: try nightReport()
+        )
+        XCTAssertFalse(entries.isEmpty, "expected the weak tiers to compile")
+        XCTAssertTrue(entries.allSatisfy { $0.strength < .associated })
+        XCTAssertNil(EvidenceNotebook.glanceHeadline(from: entries))
+    }
+
+    /// A tested result is the strongest thing the app can hold, so it is
+    /// what a glance should carry when one exists.
+    func testGlanceHeadlineTakesTheStrongestClaim() throws {
+        let entries = EvidenceNotebook.compile(
+            experiments: [outcome(daysAgo: 2)],
+            changePoints: [try changePoint(daysAgo: 1)],
+            nightReport: try nightReport()
+        )
+        let headline = try XCTUnwrap(EvidenceNotebook.glanceHeadline(from: entries))
+        XCTAssertEqual(headline.strength, .tested)
+        XCTAssertEqual(headline.id, entries.first?.id, "compile is already strongest-first")
+    }
+
+    /// Pins the policy itself rather than one example of it. Exactly two
+    /// tiers may reach a glance; lowering the bar should require changing
+    /// this line and thinking about why, not just editing a constant.
+    func testExactlyTheTopTwoTiersClearTheGlanceBar() {
+        let admitted = EvidenceNotebook.Strength.allCases
+            .filter { $0 >= EvidenceNotebook.glanceMinimumStrength }
+        XCTAssertEqual(admitted, [.associated, .tested])
+    }
 }
