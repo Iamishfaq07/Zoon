@@ -145,6 +145,14 @@ struct YearHeatmapView: View {
         Text(isNewMonth ? week[0].formatted(.dateTime.month(.abbreviated)) : "")
             .font(Theme.text(8, weight: .semibold))
             .foregroundStyle(.tertiary)
+            // The fixed height is structural -- every column's label slot has
+            // to be the same height or the heatmap grid below it stops
+            // lining up -- but `Theme.text` maps to a text *style*, so it
+            // scales with Dynamic Type and an 8pt label clips out of a 12pt
+            // slot at the larger sizes. Shrinking inside the slot keeps both
+            // the alignment and the label.
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .frame(height: 12)
     }
 
