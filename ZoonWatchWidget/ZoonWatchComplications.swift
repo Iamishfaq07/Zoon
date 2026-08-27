@@ -25,6 +25,7 @@ struct ZoonWatchComplications: WidgetBundle {
     var body: some Widget {
         RecoveryComplication()
         SleepBankComplication()
+        TonightComplication()
         BadgeComplication()
     }
 }
@@ -196,6 +197,81 @@ struct SleepBankComplicationView: View {
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
+        }
+    }
+}
+
+// MARK: - Tonight
+
+/// Tonight's bed and wake target.
+///
+/// The only complication here about a night that has not happened. The other
+/// three all grade the one that has, which makes them a morning glance; this
+/// is the evening one, and a watch face is where "when should I be getting
+/// into bed" is actually asked.
+///
+/// No circular family. A gauge needs a value with a natural maximum to draw
+/// an arc against -- the same reason `SleepBankComplication` puts the score
+/// in its circular slot rather than a duration -- and a bedtime has neither
+/// a maximum nor a meaningful fraction. Offering a circular slot that could
+/// only show a clipped "23:4" would be worse than not offering one.
+struct TonightComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "ZoonTonight", provider: WatchComplicationProvider()) { entry in
+            TonightComplicationView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Tonight")
+        .description("Tonight's bed and wake target.")
+        .supportedFamilies([.accessoryInline, .accessoryRectangular])
+    }
+}
+
+struct TonightComplicationView: View {
+
+    let entry: WatchComplicationEntry
+    @Environment(\.widgetFamily) private var family
+
+    /// Empty covers both "no plan yet" and a snapshot written before these
+    /// fields existed. The complication cannot tell them apart and does not
+    /// need to -- both mean there is no target to show.
+    private var hasPlan: Bool { !entry.snapshot.tonightTargetLabel.isEmpty }
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Text(hasPlan ? "Bed \(entry.snapshot.tonightTargetLabel)" : "No target yet")
+                .privacySensitive()
+
+        default:
+            VStack(alignment: .leading, spacing: 1) {
+                Label("Tonight", systemImage: entry.snapshot.isTonightTargetHolding
+                      ? "checkmark.circle.fill" : "arrow.left.arrow.right.circle.fill")
+                    .font(Theme.text(13, weight: .semibold))
+                if hasPlan {
+                    Text(entry.snapshot.tonightTargetLabel)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                        .privacySensitive()
+                    // Two words rather than the engine's full sentence: a
+                    // rectangular complication has one line left, and the
+                    // sentence explains a shift the person can read on the
+                    // phone. Whether tonight is a change at all is the part
+                    // that fits.
+                    Text(entry.isPlaceholder
+                         ? "Sample data"
+                         : (entry.snapshot.isTonightTargetHolding ? "Your usual night" : "A small shift"))
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                        .privacySensitive()
+                } else {
+                    Text("Not enough nights yet")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }
