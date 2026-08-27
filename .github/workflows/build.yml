@@ -126,7 +126,11 @@ jobs:
           # diagnostic; the rest of the file is register dumps and a binary
           # image list. Only the first report is printed -- when a whole suite
           # dies the reports are all the same crash.
-          for f in $(ls crash-reports/*.ips 2>/dev/null | head -1); do
+          # Only xctest reports: the runner image ships with unrelated
+          # DiagnosticReports (JetsamEvent memory-pressure records and the
+          # like) that sort ahead of ours alphabetically and carry no
+          # exception/termination at all.
+          for f in $(ls crash-reports/xctest-*.ips 2>/dev/null | head -1); do
             echo "=================== $f ==================="
             python3 - "$f" <<'PY' || echo "(could not parse this .ips)"
           import json, sys
