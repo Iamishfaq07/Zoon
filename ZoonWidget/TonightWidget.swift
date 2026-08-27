@@ -132,9 +132,22 @@ struct TonightWidgetView: View {
                     Text(snapshot.tomorrowRangeLabel)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(4)
+                        .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
+                    // Only on medium: the small family has no room for a
+                    // button under a three-line note, and a control that
+                    // squeezes the content it sits under is worse than no
+                    // control. Placeholder entries get no button because
+                    // there is nothing real behind it to open.
+                    if !entry.isPlaceholder {
+                        Button(intent: OpenPatternsIntent()) {
+                            Label("See the range", systemImage: "chart.dots.scatter")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Theme.Metric.strain)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

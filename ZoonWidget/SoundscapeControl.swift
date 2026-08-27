@@ -76,6 +76,28 @@ struct OpenNapIntent: AppIntent {
     }
 }
 
+/// Backs the Tonight widget's tap-through.
+///
+/// Patterns rather than Today: the widget shows tonight's target and
+/// tomorrow's range, and Patterns is where the forecast those come from is
+/// actually explained. Sending someone to the Today screen would land them
+/// on the same card they just tapped.
+///
+/// Not gated on iOS 18 like the two Control Center intents above -- those are
+/// `ControlWidget` buttons, which is what needs the newer floor. An
+/// `AppIntent` behind a widget `Button` is the same mechanism
+/// `OpenJournalIntent` already uses on the Sleep Score widget.
+struct OpenPatternsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Open Your Patterns"
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        DeepLink.pending = .patterns
+        return .result()
+    }
+}
+
 /// Backs the interactive "Log a habit" button on the medium Sleep Score
 /// widget, in addition to the Control Center buttons above.
 struct OpenJournalIntent: AppIntent {
