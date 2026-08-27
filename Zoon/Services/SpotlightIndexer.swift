@@ -77,6 +77,24 @@ enum SpotlightIndexer {
                 subtitle: "Listen for snoring overnight",
                 keywords: ["snore", "snoring", "microphone", "listen"]
             )
+        case .evidence:
+            Entry(
+                title: "What Zoon Knows",
+                subtitle: "Every claim, ranked by how it was found",
+                keywords: ["evidence", "claims", "proof", "tested", "experiment", "what changed", "discoveries", "believe"]
+            )
+        case .patterns:
+            Entry(
+                title: "Your Patterns",
+                subtitle: "Where your best nights sit, and tomorrow's range",
+                keywords: ["patterns", "sleep map", "forecast", "tomorrow", "range", "prediction", "longer nights"]
+            )
+        case .sensorTruth:
+            Entry(
+                title: "Where The Numbers Come From",
+                subtitle: "Which are measured, and which are estimates",
+                keywords: ["measured", "estimated", "accuracy", "sensor", "how it works", "provenance", "reliable", "stages"]
+            )
         case .report:
             Entry(
                 title: "Weekly Report",

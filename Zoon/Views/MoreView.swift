@@ -78,6 +78,9 @@ struct MoreView: View {
                 case .report: ReportView()
                 case .settings: SettingsView()
                 case .badges: AchievementsView()
+                case .evidence: EvidenceView()
+                case .patterns: PatternsView()
+                case .sensorTruth: SensorTruthView()
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck, .bodyClock: EmptyView()
                 // Presented as its own sheet from GlobalPresentation, not
