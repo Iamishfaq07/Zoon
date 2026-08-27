@@ -565,7 +565,15 @@ struct HRVStatusCard: View {
                         "This compares your HRV this week against your own rolling quarterly range, not a population average -- what's balanced for you can be a meaningful drop for someone else.",
                         "It needs a few weeks of nights before the range is trustworthy, and one low night on its own is normal noise, not a signal."
                     ],
-                    relatedArticleID: "hrv-explained"
+                    relatedArticleID: "hrv-explained",
+                    // The only call site on this screen with an exact
+                    // SensorTruth mapping. Daily Load, Energy Reserve,
+                    // Recovery and Sleep Intelligence are composite scores
+                    // with no single provenance -- a score is not "measured"
+                    // just because one of its inputs is, and inventing a
+                    // mapping for them is the exact dishonesty SensorTruth
+                    // exists to prevent.
+                    quantity: .hrv
                 )
                 StatusPill(text: status.state.label, tint: tint)
             }

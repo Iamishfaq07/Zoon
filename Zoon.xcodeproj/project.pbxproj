@@ -287,6 +287,7 @@
 		8758E73526D3F61C2E41BAB1 /* SleepHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF614D35BFFE603C238A0E5 /* SleepHealth.swift */; };
 		8764AE483BC7BC2959EBEAB3 /* SleepNightRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8220F4ECA3D51EACAA15 /* SleepNightRecord.swift */; };
 		87C21FC8660D20B3AF622E69 /* DataPrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359A6C66E7D3A1CF1406C6C6 /* DataPrivacyView.swift */; };
+		88ADDB95DD257E6E64896A81 /* SensorTruthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DE8982C23D4D9CA3E186C1E /* SensorTruthView.swift */; };
 		88CD51271183B7EE86B2AE68 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC1FF35F8179A094C3AB745 /* Theme.swift */; };
 		89A3007BBE6330EA925E1EFD /* BreathingHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA66C12A65CB79C420569CF /* BreathingHealth.swift */; };
 		89A5D27A2AFF76E37F2C4E32 /* DataEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C458C7D6817D45BFD7B0E390 /* DataEnvironment.swift */; };
@@ -720,6 +721,7 @@
 		6881F31273FCDCB3E4A004D5 /* SleepNeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepNeedView.swift"; sourceTree = "<group>"; };
 		6A941681C0FF29010F444059 /* NapActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapActivityAttributes.swift"; sourceTree = "<group>"; };
 		6D31C7DE63B4080D06AF6341 /* MetricConfidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricConfidenceTests.swift"; sourceTree = "<group>"; };
+		6DE8982C23D4D9CA3E186C1E /* SensorTruthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensorTruthView.swift"; sourceTree = "<group>"; };
 		6E73BF56BE184A76A17FDF61 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
 		6E98EDB5E5022A03033E5A73 /* DateInterval+Subtracting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateInterval+Subtracting.swift"; sourceTree = "<group>"; };
 		6EF28EA3935C59AD80111D89 /* NapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapView.swift"; sourceTree = "<group>"; };
@@ -1303,6 +1305,7 @@
 				63601E03B47D9BF517DC788D,
 				37EAA5532EFA21001A098C97,
 				406D31EF0E61E462C6DAC9C5,
+				6DE8982C23D4D9CA3E186C1E,
 				90AD8CB0B86EA29FC8EBEF2B,
 				C04C95F7B4CAD642DA384A03,
 				F89C5DEE01809047EF6230EF,
@@ -1701,6 +1704,7 @@
 				3153092B31B38B2F928CD363,
 				E9CFB4321D71716E53CF9575,
 				5EA91DA4CE2DC82C8268D79F,
+				88ADDB95DD257E6E64896A81,
 				280DC4B2F8180261BC53D2E2,
 				10002633F956390118F079A1,
 				E11AF6F8F50A25A70CB39D3C,
