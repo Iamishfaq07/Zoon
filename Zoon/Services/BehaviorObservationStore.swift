@@ -203,6 +203,56 @@ final class BehaviorObservationStore {
         return created
     }
 
+    // MARK: - Backup
+
+    func observationsForExport() -> [DataExporter.Archive.BehaviorObservationRecordExport] {
+        allRecords().map {
+            DataExporter.Archive.BehaviorObservationRecordExport(
+                nightKey: $0.nightKey,
+                behaviorIdentifier: $0.behaviorIdentifier,
+                state: $0.stateRaw,
+                source: $0.sourceRaw,
+                observedAt: $0.observedAt
+            )
+        }
+    }
+
+    /// Restores answers from a backup.
+    ///
+    /// Existing answers win on conflict, the same rule
+    /// `JournalStore.importEntries` follows: an answer given on this
+    /// device is more trustworthy than one from an older archive. An
+    /// unrecognised state raw value is skipped rather than stored, so a
+    /// corrupt or future archive cannot inject a row that reads as
+    /// `.unknown` yet still occupies the identity.
+    /// - Returns: how many answers were created.
+    @discardableResult
+    func importObservations(
+        _ imported: [DataExporter.Archive.BehaviorObservationRecordExport]
+    ) -> Int {
+        var existingIdentities = Set(allRecords().map(\.id))
+        var created = 0
+        for record in imported {
+            guard let state = BehaviorObservationState(rawValue: record.state),
+                  state != .unknown else { continue }
+            let identity = BehaviorObservationRecord.identity(
+                nightKey: record.nightKey, behaviorIdentifier: record.behaviorIdentifier
+            )
+            guard !existingIdentities.contains(identity) else { continue }
+            context.insert(BehaviorObservationRecord(
+                nightKey: record.nightKey,
+                behaviorIdentifier: record.behaviorIdentifier,
+                state: state,
+                source: BehaviorObservationSource(rawValue: record.source) ?? .manual,
+                observedAt: record.observedAt
+            ))
+            existingIdentities.insert(identity)
+            created += 1
+        }
+        if created > 0 { save() }
+        return created
+    }
+
     // MARK: - Deletion
 
     @discardableResult

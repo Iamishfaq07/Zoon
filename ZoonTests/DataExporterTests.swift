@@ -76,18 +76,34 @@ final class DataExporterTests: XCTestCase {
             ],
             soundEvents: [
                 SoundEvent(id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!, date: Date(timeIntervalSince1970: 1_700_000_500), identifier: "snoring", confidence: 0.82)
+            ],
+            behaviorObservations: [
+                DataExporter.Archive.BehaviorObservationRecordExport(
+                    nightKey: "night1",
+                    behaviorIdentifier: "alcohol",
+                    state: "yes",
+                    source: "manual",
+                    observedAt: Date(timeIntervalSince1970: 1_700_000_100)
+                ),
+                DataExporter.Archive.BehaviorObservationRecordExport(
+                    nightKey: "night1",
+                    behaviorIdentifier: "caffeineLate",
+                    state: "no",
+                    source: "manual",
+                    observedAt: Date(timeIntervalSince1970: 1_700_000_200)
+                ),
             ]
         )
     }
 
     // MARK: - Round trip
 
-    func testFormatVersionThreeRoundTripsEveryNewField() throws {
+    func testFormatVersionFourRoundTripsEveryNewField() throws {
         let original = makeArchive()
         let data = try DataExporter.jsonData(original)
         let decoded = try DataExporter.decode(data)
 
-        XCTAssertEqual(decoded.formatVersion, 3)
+        XCTAssertEqual(decoded.formatVersion, 4)
 
         XCTAssertEqual(decoded.preferences?.wakeAlarmEnabled, true)
         XCTAssertEqual(decoded.preferences?.focusSilencesBedtimeNudges, true)
@@ -217,6 +233,50 @@ final class DataExporterTests: XCTestCase {
         XCTAssertEqual(night.timeZoneIdentifier, TimeZone.current.identifier)
     }
 
+    // MARK: - Behaviour answers
+
+    /// The reason the format went to 4. A backup that silently omitted these
+    /// would restore every behaviour to unknown while still reporting a
+    /// complete import, which is worse than refusing to import at all.
+    func testBehaviourAnswersRoundTripWithTheirStateAndSource() throws {
+        let decoded = try DataExporter.decode(try DataExporter.jsonData(makeArchive()))
+        let observations = try XCTUnwrap(decoded.behaviorObservations)
+
+        XCTAssertEqual(observations.count, 2)
+        let alcohol = try XCTUnwrap(observations.first { $0.behaviorIdentifier == "alcohol" })
+        XCTAssertEqual(alcohol.state, "yes")
+        XCTAssertEqual(alcohol.nightKey, "night1")
+        XCTAssertEqual(alcohol.source, "manual")
+
+        // The negative is the load-bearing one: it is the only kind of
+        // evidence that can form a control arm, and it is exactly what the
+        // old tag-list format had no way to express.
+        let caffeine = try XCTUnwrap(observations.first { $0.behaviorIdentifier == "caffeineLate" })
+        XCTAssertEqual(caffeine.state, "no")
+    }
+
+    /// A version 3 archive predates the field entirely. It must still import,
+    /// with no answers rather than answers reconstructed from its positive
+    /// tags -- the legacy-tag path in `exposureState` already covers those,
+    /// and synthesising rows here would claim the archive held answers it
+    /// never did.
+    func testAVersionThreeArchiveStillImportsWithNoAnswers() throws {
+        let json = """
+        {
+          "formatVersion": 3,
+          "exportedAt": "2023-11-14T22:13:20Z",
+          "goalMinutes": 480,
+          "nights": [],
+          "journal": [],
+          "naps": []
+        }
+        """
+        let decoded = try DataExporter.decode(Data(json.utf8))
+
+        XCTAssertEqual(decoded.formatVersion, 3)
+        XCTAssertNil(decoded.behaviorObservations)
+    }
+
     /// A file from a *future* Zoon version must still be rejected with a
     /// clear message rather than silently importing a partial, possibly
     /// misinterpreted subset of a format this version doesn't understand.
@@ -228,7 +288,8 @@ final class DataExporterTests: XCTestCase {
             nights: archive.nights, journal: archive.journal, naps: archive.naps,
             preferences: archive.preferences, snoreSummaries: archive.snoreSummaries,
             wristTemperatures: archive.wristTemperatures, episodes: archive.episodes,
-            experiments: archive.experiments, soundEvents: archive.soundEvents
+            experiments: archive.experiments, soundEvents: archive.soundEvents,
+            behaviorObservations: archive.behaviorObservations
         )
         guard let data = try? DataExporter.jsonData(archive) else {
             return XCTFail("expected the archive to encode")

@@ -1119,6 +1119,12 @@ final class SleepDataCoordinator {
         let restoredEpisodes = store.importEpisodes(archive.episodes ?? [])
         let restoredExperiments = experiments.importOutcomes(archive.experiments ?? [])
         let restoredSoundEvents = SoundEventStore().importEvents(archive.soundEvents ?? [])
+        // A V3 archive has no observations. They import as nothing rather
+        // than being reconstructed from `archive.journal`'s positive tags:
+        // the legacy-tag path in `exposureState` already covers those, and
+        // synthesising rows here would claim the archive recorded answers
+        // it never held.
+        let restoredObservations = behaviors.importObservations(archive.behaviorObservations ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -1181,6 +1187,9 @@ final class SleepDataCoordinator {
         if restoredEpisodes > 0 { extras.append(restoredEpisodes.pluralized("secondary sleep episode")) }
         if restoredExperiments > 0 { extras.append(restoredExperiments.pluralized("experiment")) }
         if restoredSoundEvents > 0 { extras.append(restoredSoundEvents.pluralized("sound event")) }
+        if restoredObservations > 0 {
+            extras.append(restoredObservations.pluralized("behaviour answer"))
+        }
         if !extras.isEmpty {
             summary += " Also restored \(extras.joined(separator: ", "))."
         }
@@ -1193,6 +1202,10 @@ final class SleepDataCoordinator {
 
     func episodesForExport() -> [DataExporter.Archive.EpisodeRecord] {
         store.episodesForExport()
+    }
+
+    func behaviorObservationsForExport() -> [DataExporter.Archive.BehaviorObservationRecordExport] {
+        behaviors.observationsForExport()
     }
 
     /// Erases every Zoon-owned representation of the user's data, including
