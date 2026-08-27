@@ -110,7 +110,13 @@ struct EnergyForecastCard: View {
                         path.move(to: CGPoint(x: x, y: 0))
                         path.addLine(to: CGPoint(x: x, y: geo.size.height))
                     }
-                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                    // Theme.neutral rather than white: every sibling chart
+                    // draws this same drag indicator with Theme.neutral(0.25)
+                    // (SleepNeedView, BreathingHealthView, MetricTrendView),
+                    // and a hardcoded white line is the one value here that
+                    // does not adapt -- on the Light theme it is white on a
+                    // light card.
+                    .stroke(Theme.neutral(0.25), lineWidth: 1)
 
                     if let time = time(atFraction: selectedFraction, samples: samples) {
                         let level = Self.interpolate(time, in: samples)
