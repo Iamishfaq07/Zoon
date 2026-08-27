@@ -88,6 +88,68 @@ all of them locally.
 - **Weekly report** (Whoop/Garmin-style) — averages, week-over-week trends,
   narrative highlights, best and worst night.
 
+### What Zoon knows
+The rest of the app is organised by subject. This part is organised by **how
+much you should believe it**, because a tested result and a single odd night
+otherwise arrive as the same sentence on the same kind of card.
+
+- **Evidence Notebook** — every claim graded by how it was obtained: *tested*
+  (you ran an experiment) > *associated* (matched pairs) > *observed* (a change
+  in the data) > *anecdote* (one night). Recency is the tie-break, never the
+  ranking. Each tier carries its own caveat, attached to the tier rather than
+  repeated under every row — a sentence printed four times is a sentence people
+  learn to skip.
+- **Change-Point Detector** — finds *when* a metric shifted, not just whether.
+  A change that happened six weeks ago and one that started on Tuesday are
+  different facts, and an average over the window hides both.
+- **Night Detective** — ranks what was unusual about a single night against
+  your own baseline. Says "alongside", never "because".
+- **Experiment Planner** — which question is worth testing next. Ranks an
+  association observation already flagged above one it cannot answer, because
+  promoting a claim a whole tier is the biggest available gain. It is given the
+  *set* of flagged behaviours and deliberately not their direction or size, so
+  there is no path by which a proposal could be ranked by what the answer might
+  be. A proposal is a question, not a prediction.
+- **Sensor Truth** — what kind of claim each number is: measured, calculated,
+  estimated, or self-reported. A wrist temperature is a thing a sensor
+  recorded; a REM minute-count is a model's guess, and both otherwise render in
+  the same font. Provenance propagates: nothing is presented as a stronger kind
+  of claim than the weakest thing it was computed from, so sleep efficiency —
+  "just a division" — resolves to *estimated*, because one of the numbers it
+  divides is a guess.
+
+### Your patterns
+- **Sleep Map** — bedtime against duration on one grid, scored on HRV, cut at
+  **your own** terciles rather than clock times or guideline durations. A 2am
+  sleeper's early nights and a 10pm sleeper's late ones can both be described
+  without either being told they are doing it wrong. Regions too thin to score
+  are still drawn: where you never sleep is part of the picture.
+- **Zoon Twin** — "what tends to happen on your nights when X is different?",
+  answered by splitting your real history rather than fabricating a synthetic
+  night. A night with thirty more minutes of sleep but identical efficiency,
+  stage split and HRV is not a night that could physically happen, and
+  re-scoring one would produce a confident number describing nothing.
+- **Uncertainty Forecast** — tomorrow as a **range**, never a single number.
+  Empirical 10th/90th percentiles over recent nights: a prediction interval,
+  not a confidence interval, because the honest question is where a night is
+  likely to fall rather than where the average sits.
+
+### Tonight
+- **Sleep Autopilot** — a bounded controller rather than an ideal schedule.
+  Computing the perfect bedtime and displaying it is easy; the schedule was
+  never the hard part, the *distance* was. So it moves the target at most 20
+  minutes a night (roughly what circadian phase actually shifts), holds inside
+  a 10-minute deadband so ordinary variation does not manufacture a new target
+  every evening, and repays sleep debt a capped quarter at a time. On Today, on
+  the watch, and in a widget.
+- **Adaptive Journal** — shortens the nightly ask from 23 checkboxes to the
+  handful worth asking about, *above* the full list rather than instead of it:
+  a shortcut that hides the thing you came to log is worse than no shortcut.
+  Its ranking takes **no sleep outcome at all** — asking about alcohol more
+  often after bad nights would fill the journal with alcohol tags attached to
+  bad nights, and the correlator would then "discover" an association the app
+  manufactured by choosing when to ask.
+
 ### Coach
 - **Ask Zoon** — suggested, data-driven questions about last night that
   actually submit when tapped, plus a free-form chat, both running on Apple's
@@ -95,7 +157,9 @@ all of them locally.
 
 ### Everything else
 - Lock-screen, home-screen, and **watch-face** widgets, plus a companion Apple
-  Watch app
+  Watch app. Of the engines above, only Sleep Autopilot and Uncertainty
+  Forecast reach the wrist and the widgets — they are the two about the night
+  *ahead*, which is what earns a glance surface; the rest are reading material.
 - **Badges** — 13 of them, every one cumulative or best-ever. Nothing here can
   be lost to one bad night, on purpose.
 - **Stress today** — the one live, daytime number in an app otherwise built
@@ -251,6 +315,14 @@ has run this against a real Health store:
 - Naps, settings, export, and the sleep detail screen — all reachable only by
   interaction
 - Animations, and layout on device sizes other than the captured one
+- **Every screen added after the screenshots above were captured** — What Zoon
+  knows, Your patterns, Where the numbers come from, the Tonight card, the
+  watch's Tonight page and the Tonight widget. All of them compile and the app
+  still launches with them present, which is all CI proves. Specifically worth
+  a device: the Sleep Map 3x3 grid (fixed-height rows in a three-column
+  `HStack`), the Autopilot card's two-time headline row, the provenance capsule
+  beside a title, the small widget family, and how the new chart summaries
+  sound in sequence under VoiceOver
 
 ### Known gaps
 
@@ -261,6 +333,12 @@ has run this against a real Health store:
   registered and associated with all four App IDs in the Apple Developer portal.
 - Background delivery needs the HealthKit background-delivery capability.
   Without it the app still refreshes on foreground.
+- The **Body Clock "now" markers** are a hardcoded white dot on both the card
+  and the full screen. Every other non-adapting colour in the view layer has
+  been either fixed or justified (medal colours are physical materials; watchOS
+  has no light appearance), but whether white still separates from a
+  light-theme dial is a question about appearance rather than about code, and
+  it was left alone rather than changed unseen.
 
 ## Not medical advice
 
