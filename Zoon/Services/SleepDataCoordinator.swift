@@ -1343,8 +1343,17 @@ final class SleepDataCoordinator {
     // MARK: - Coach longitudinal context
 
     /// Compact JSON summary of standing patterns -- this week vs last, the
-    /// current regularity/sleep-need read, and whatever Cause Finder has
-    /// actually found -- fed to `CoachChat` alongside tonight's own numbers.
+    /// current regularity/sleep-need read, whatever Cause Finder has
+    /// actually found, and what the evidence engines know -- fed to
+    /// `CoachChat` alongside tonight's own numbers.
+    ///
+    /// The evidence half was added after those engines shipped, because the
+    /// app had reached a state where it could answer "what changed lately?"
+    /// and "what should I test next?" on a screen but not in conversation:
+    /// Coach was still reading a digest written before any of them existed.
+    /// A question the app can answer in one place and not the other is a
+    /// worse failure than one it cannot answer at all -- the person has
+    /// already seen that Zoon knows.
     ///
     /// Before this, Coach's only input was `SleepNightFeatures.summaryForLLM`
     /// for the one night on screen: it could describe *tonight* but had no
@@ -1391,6 +1400,43 @@ final class SleepDataCoordinator {
                     isImprovement: $0.isImprovement,
                     confidence: $0.confidence.rawValue
                 )
+            },
+            // Capped at three. The digest doc above already worries about
+            // handing the model more context than any one question needs,
+            // and these engines rank their own output, so the cap costs
+            // nothing a fourth entry would have added.
+            recentChanges: ChangePointDetector.detectAll(nights: recentNights)
+                .prefix(3)
+                .map {
+                    CoachContextDigest.ChangePoint(
+                        metric: $0.metric.label,
+                        daysAgo: max(0, Calendar.current.dateComponents(
+                            [.day], from: $0.date, to: .now
+                        ).day ?? 0),
+                        isImprovement: $0.isImprovement
+                    )
+                },
+            testedResults: experiments.outcomes
+                .sorted { $0.endDate > $1.endDate }
+                .prefix(3)
+                .map {
+                    CoachContextDigest.TestedResult(
+                        behavior: BehaviorTag(rawValue: $0.tag)?.label ?? $0.tag,
+                        metric: $0.metricLabel,
+                        isImprovement: $0.isImprovement
+                    )
+                },
+            suggestedNextTest: ExperimentPlanner.next(
+                observations: journalObservations(),
+                associatedTags: Set(findings.map(\.tag)),
+                settledTags: Set(experiments.outcomes.map(\.tag))
+            )?.tag.label,
+            tonightTarget: context.flatMap {
+                SleepAutopilot.plan(
+                    nights: recentNights,
+                    sleepNeedMinutes: $0.learnedSleepNeed.minutes,
+                    sleepDebtMinutes: $0.sleepNeed.debtMinutes
+                )?.sentence
             }
         )
 
@@ -1422,6 +1468,21 @@ final class SleepDataCoordinator {
         let sleepDebtMinutes: Double?
         let activeExperimentTag: String?
         let causeFinderFindings: [CorrelatorFinding]
+        /// Shifts `ChangePointDetector` located, so "has anything changed
+        /// lately?" stops being a question the app can answer on a screen
+        /// but not in conversation.
+        let recentChanges: [ChangePoint]
+        /// Finished experiments -- the only claims in the app that came from
+        /// something the person deliberately ran, and the tier Coach should
+        /// lean on hardest when they conflict with a mere association.
+        let testedResults: [TestedResult]
+        /// What `ExperimentPlanner` would suggest testing next. A question,
+        /// not a prediction -- the field name says "suggested", and no
+        /// direction travels with it, for the same reason the planner
+        /// refuses to see one.
+        let suggestedNextTest: String?
+        /// Tonight's `SleepAutopilot` target, already phrased.
+        let tonightTarget: String?
 
         struct CorrelatorFinding: Encodable {
             let behavior: String
@@ -1429,6 +1490,18 @@ final class SleepDataCoordinator {
             let percentChange: Int
             let isImprovement: Bool
             let confidence: String
+        }
+
+        struct ChangePoint: Encodable {
+            let metric: String
+            let daysAgo: Int
+            let isImprovement: Bool
+        }
+
+        struct TestedResult: Encodable {
+            let behavior: String
+            let metric: String
+            let isImprovement: Bool
         }
     }
 
