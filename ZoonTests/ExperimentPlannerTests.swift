@@ -5,13 +5,20 @@ final class ExperimentPlannerTests: XCTestCase {
     private func observation(
         daysAgo: Int,
         tags: Set<BehaviorTag> = [],
-        isJournaled: Bool = true
+        // Replaced an `isJournaled` flag that meant only "a JournalEntry
+        // row exists" -- which the old model read as a confident no for
+        // every untagged behaviour, though a row is created merely by
+        // opening the journal screen. `true` now states what these fixtures
+        // actually mean: the whole list was worked through, so tagged
+        // behaviours are yes and every other one is an explicit no. `false`
+        // means nothing was answered, so every behaviour is unknown.
+        fullyAnswered: Bool = true
     ) -> JournalCorrelator.Observation {
         let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
         return JournalCorrelator.Observation(
             date: date,
             tags: tags,
-            isJournaled: isJournaled,
+            answers: fullyAnswered ? .fullyAnswered(tags: tags) : .none,
             recoveryPercent: 70,
             sleepPerformance: 80,
             deepMinutes: 80,
@@ -37,7 +44,7 @@ final class ExperimentPlannerTests: XCTestCase {
         let total = total ?? journaledNights
         return (0..<total).map { index in
             guard index < journaledNights else {
-                return observation(daysAgo: total - index, isJournaled: false)
+                return observation(daysAgo: total - index, fullyAnswered: false)
             }
             var tags: Set<BehaviorTag> = []
             if index % 3 == 0 { tags.insert(.alcohol) }

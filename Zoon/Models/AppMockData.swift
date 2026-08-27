@@ -75,9 +75,13 @@ enum AppMockData {
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
-                // Sample data simulates a fully-reviewed history, not a real
-                // gappy one -- every night here should count as journaled.
-                isJournaled: true,
+                // Sample data simulates a history the user worked all the
+                // way through: the tags above answered yes, every other
+                // behaviour explicitly no. Previews need a real control
+                // arm, and under the new model that has to be stated --
+                // an unanswered night resolves to `.unknown` and produces
+                // no matched pairs at all.
+                answers: .fullyAnswered(tags: tags),
                 recoveryPercent: (night.avgHRV ?? 55) * penalty,
                 sleepPerformance: min(100, night.timeAsleepMinutes / 480 * 100) * penalty,
                 deepMinutes: night.deepMinutes * penalty,
