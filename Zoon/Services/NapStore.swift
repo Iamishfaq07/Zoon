@@ -99,14 +99,31 @@ final class NapStore {
 
     private let defaults: UserDefaults
 
+    /// Schedules the notification that ends a nap.
+    ///
+    /// Optional, and nil by default, which is deliberate and load-bearing.
+    /// `NapWake`'s initialiser reaches for `UNUserNotificationCenter.current()`,
+    /// and that traps outside a real app process -- `ZoonTests` is an unhosted
+    /// bundle, and `NapStore` is compiled into it. A non-optional default
+    /// would mean every test that constructs a `NapStore` builds a live
+    /// notification centre, which is the shape of failure this repo has
+    /// already been bitten by twice (see `SleepHistoryStoreIntegrationTests`'
+    /// header).
+    ///
+    /// So production passes one explicitly and previews and tests do not.
+    private let wake: NapWakeScheduling?
+
     private(set) var naps: [Nap] = []
     private(set) var activeNap: ActiveNap?
     /// A nap awaiting the user's answer about when it actually ended. See
     /// `PendingNap`.
     private(set) var pendingNap: PendingNap?
 
-    init(defaults: UserDefaults = .standard) {
+    /// - Parameter wake: pass `NapWake()` in the app. Left nil in previews
+    ///   and tests -- see the property's doc comment.
+    init(defaults: UserDefaults = .standard, wake: NapWakeScheduling? = nil) {
         self.defaults = defaults
+        self.wake = wake
         load()
     }
 
@@ -115,19 +132,32 @@ final class NapStore {
     /// - Parameter now: injectable so a test can drive the clock. Production
     ///   callers use the default.
     func start(targetMinutes: Int, now: Date = .now) {
+        let targetEnd = now.addingTimeInterval(Double(targetMinutes) * 60)
         activeNap = ActiveNap(
             start: now,
             targetMinutes: targetMinutes,
-            targetEndAt: now.addingTimeInterval(Double(targetMinutes) * 60)
+            targetEndAt: targetEnd
         )
         persistActive()
         startLiveActivity()
+        // Fire-and-forget for the same reason the Live Activity is: a nap
+        // whose notification fails to register is still a working nap timer,
+        // and blocking the tap on a notification-centre round trip would make
+        // starting a nap feel broken. `NapWake` logs its own failures.
+        //
+        // The notification is what ends the nap for the user. `reconcile`
+        // ends it for the *store*, whenever the app next runs. The two are
+        // independent on purpose: neither one failing loses the nap.
+        if let wake {
+            Task { await wake.schedule(at: targetEnd, targetMinutes: targetMinutes) }
+        }
     }
 
     func cancel() {
         activeNap = nil
         persistActive()
         endLiveActivity()
+        wake?.cancel()
     }
 
     /// Ends the nap and records it.
@@ -157,6 +187,7 @@ final class NapStore {
         activeNap = nil
         persistActive()
         endLiveActivity()
+        wake?.cancel()
         return recorded
     }
 
@@ -177,6 +208,10 @@ final class NapStore {
         activeNap = nil
         persistActive()
         endLiveActivity()
+        // Already fired, most likely -- but a nap reconciled early by a
+        // foreground activation would otherwise leave a notification armed
+        // for a nap that no longer exists.
+        wake?.cancel()
 
         if now <= targetEnd.addingTimeInterval(Self.graceMinutes * 60) {
             // Clamped to the target, not to `now`. The timer was set for
@@ -334,6 +369,7 @@ final class NapStore {
         persistActive()
         persistPending()
         endLiveActivity()
+        wake?.cancel()
     }
 
     /// Merges naps from a backup, keyed on start time.

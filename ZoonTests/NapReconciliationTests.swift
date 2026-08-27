@@ -235,4 +235,75 @@ final class NapReconciliationTests: XCTestCase {
         XCTAssertNotNil(second.activeNap, "restored, so reconcile can decide")
         XCTAssertEqual(second.reconcile(), NapStore.ReconcileOutcome.discarded)
     }
+
+    // MARK: - The system wake
+
+    /// Records what was asked of the notification layer without touching it.
+    /// `NapWake` reaches for `UNUserNotificationCenter.current()`, which traps
+    /// outside a real app process -- which is exactly why `NapStore.wake` is
+    /// nil by default rather than defaulting to a live one.
+    @MainActor
+    private final class WakeSpy: NapWakeScheduling {
+        var scheduled: [(date: Date, minutes: Int)] = []
+        var cancelCount = 0
+        var onSchedule: (() -> Void)?
+
+        @discardableResult
+        func schedule(at date: Date, targetMinutes: Int) async -> Bool {
+            scheduled.append((date, targetMinutes))
+            onSchedule?()
+            return true
+        }
+
+        func cancel() { cancelCount += 1 }
+    }
+
+    func testStartingANapArmsAWakeAtTheTarget() async {
+        let spy = WakeSpy()
+        let armed = expectation(description: "wake scheduled")
+        spy.onSchedule = { armed.fulfill() }
+
+        let store = NapStore(defaults: defaults, wake: spy)
+        store.start(targetMinutes: 20, now: start)
+        await fulfillment(of: [armed], timeout: 2)
+
+        XCTAssertEqual(spy.scheduled.count, 1)
+        XCTAssertEqual(spy.scheduled.first?.minutes, 20)
+        XCTAssertEqual(spy.scheduled.first?.date, start.addingTimeInterval(20 * 60))
+    }
+
+    func testCancellingANapDisarmsTheWake() {
+        let spy = WakeSpy()
+        let store = NapStore(defaults: defaults, wake: spy)
+        store.start(targetMinutes: 20, now: start)
+        store.cancel()
+        XCTAssertGreaterThanOrEqual(spy.cancelCount, 1)
+    }
+
+    func testFinishingANapDisarmsTheWake() {
+        let spy = WakeSpy()
+        let store = NapStore(defaults: defaults, wake: spy)
+        store.start(targetMinutes: 20, now: start)
+        store.finish(now: start.addingTimeInterval(18 * 60))
+        XCTAssertGreaterThanOrEqual(spy.cancelCount, 1)
+    }
+
+    /// A nap closed early by a foreground activation must not leave a
+    /// notification armed for a nap that no longer exists.
+    func testReconcilingDisarmsTheWake() {
+        let spy = WakeSpy()
+        let store = NapStore(defaults: defaults, wake: spy)
+        store.start(targetMinutes: 20, now: start)
+        store.reconcile(now: start.addingTimeInterval(25 * 60))
+        XCTAssertGreaterThanOrEqual(spy.cancelCount, 1)
+    }
+
+    /// The default really is nil. If this ever regresses to a live `NapWake`,
+    /// every test in this file starts building a notification centre inside an
+    /// unhosted bundle.
+    func testAStoreBuiltWithoutAWakeDoesNotCrashOnStart() {
+        let store = NapStore(defaults: defaults)
+        store.start(targetMinutes: 20, now: start)
+        XCTAssertNotNil(store.activeNap)
+    }
 }

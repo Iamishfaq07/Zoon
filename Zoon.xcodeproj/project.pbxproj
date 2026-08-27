@@ -447,6 +447,7 @@
 		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		D7C6FD8BD94D75FDCA219D7B /* DiagnosticLanguageGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133EB3E89E56B82FF6F25EB8 /* DiagnosticLanguageGuard.swift */; };
 		D82BBBFA0333215822EA5D08 /* SleepSessionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */; };
+		D8B1B1F560F5CEE5D1130FE9 /* NapWake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1A84A69DF140554FD8BBC3 /* NapWake.swift */; };
 		D92C20AD9E19D6322BE37D32 /* FirstNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0270263CE62B9C1BB2D468 /* FirstNightCard.swift */; };
 		D993EF29ECD2D4B5886F9012 /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */; };
 		DA84B88AAB515C128D30D215 /* GuidedExperiment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54305AA7DFBC8E20A175DAE7 /* GuidedExperiment.swift */; };
@@ -515,6 +516,7 @@
 		F60616FD58E75981B626DE1D /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
 		F60C9D12E6B768F3CB1F1C06 /* ChartInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0056BFA9411ACE233F7DC0D1 /* ChartInteraction.swift */; };
 		F68C515B483769C23ACBCC89 /* NapCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4980E3BEBDBC7753D6697D62 /* NapCoach.swift */; };
+		F6A2C04D8B49679EEDB51129 /* NapWake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1A84A69DF140554FD8BBC3 /* NapWake.swift */; };
 		F7D50D4A2644F88D12CE6225 /* SleepDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */; };
 		F80123D855A4D20A724937D3 /* EnergyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E8412807D761D3BAC2CBF0 /* EnergyForecast.swift */; };
 		F975AEF960918955595FAD4C /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
@@ -671,6 +673,7 @@
 		37EAA5532EFA21001A098C97 /* ReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReportView.swift"; sourceTree = "<group>"; };
 		3804031F499B6717417985F3 /* UncertaintyForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UncertaintyForecast.swift"; sourceTree = "<group>"; };
 		39A6056F83CDEFE5D5D1B851 /* CoachChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoachChat.swift"; sourceTree = "<group>"; };
+		3C1A84A69DF140554FD8BBC3 /* NapWake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapWake.swift"; sourceTree = "<group>"; };
 		3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryMode.swift"; sourceTree = "<group>"; };
 		406D31EF0E61E462C6DAC9C5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView.swift"; sourceTree = "<group>"; };
 		40C905EF878241FBB40DA514 /* PreviewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PreviewSupport.swift"; sourceTree = "<group>"; };
@@ -1023,6 +1026,7 @@
 				796AF05941A49BBC5BC53802,
 				49631B20B1506B60BDEB8FC7,
 				7C1DB3776628821BCA9A8964,
+				3C1A84A69DF140554FD8BBC3,
 				753455C5E45B0F317E8996AE,
 				DE7FB093E433D30982864FBB,
 				2737914DCB7E7960D6E8862E,
@@ -1653,6 +1657,7 @@
 				17F1F32ECCE94547CB95F327,
 				FA872B4C4904465C3E1557A2,
 				402487B4962F61C60243F542,
+				F6A2C04D8B49679EEDB51129,
 				1209AD7C72CC0DF78D801683,
 				0AF0CB34F0DF3B7527E4B281,
 				7BD74E0AA147B8EEBB8B8D3A,
@@ -2027,6 +2032,7 @@
 				30C4E372E8A49C2879632006,
 				B585B10F3F6E1577B46B1220,
 				C72A9732AA66A32239D16817,
+				D8B1B1F560F5CEE5D1130FE9,
 				25C24B9B1E242C7A6AE22070,
 				D993EF29ECD2D4B5886F9012,
 			);

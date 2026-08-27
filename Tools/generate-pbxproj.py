@@ -145,6 +145,13 @@ TESTS_EXTRA_APP_FILES = [
     # Foundation (+ ActivityKit, guarded by #if canImport) -- NapStore.Nap
     # is one of Archive's stored record types.
     "Zoon/Services/NapStore.swift",
+    # Foundation/UserNotifications/os only -- the NapWakeScheduling
+    # protocol NapStore now holds. Required, not optional: NapStore
+    # references the type, so the test target cannot compile without
+    # it. NapStore defaults the dependency to nil precisely so no test
+    # constructs a live NapWake (and therefore a live
+    # UNUserNotificationCenter) inside this unhosted bundle.
+    "Zoon/Services/NapWake.swift",
     # Foundation only -- SnoreStore.NightSummary is one of Archive's stored
     # record types.
     "Zoon/Services/SnoreStore.swift",
