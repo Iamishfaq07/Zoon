@@ -121,6 +121,11 @@ TESTS_EXTRA_APP_FILES = [
     # BehaviorTag and SleepExperimentStore.Outcome, so it is app-side for the
     # same reason NightDetective is.
     "Zoon/Insights/EvidenceNotebook.swift",
+    # Pure ranking over JournalCorrelator.Observation/BehaviorTag plus
+    # GuidedExperiment's period constant -- app-side for the same reason as
+    # the two above, and exactly the exposure-count and refusal logic
+    # ExperimentPlannerTests exists to pin down.
+    "Zoon/Insights/ExperimentPlanner.swift",
     # Pure ranking over JournalCorrelator.Observation/BehaviorTag -- chooses
     # which behaviours to ask about tonight. Its defining property is that it
     # takes no sleep outcome at all, and AdaptiveJournalTests exists to hold
