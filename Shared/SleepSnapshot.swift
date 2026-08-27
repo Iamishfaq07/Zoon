@@ -102,6 +102,22 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// change" from an absent shift, which would read the same as "no plan".
     var isTonightTargetHolding: Bool = false
 
+    /// The single strongest claim Zoon holds, phrased for a glance.
+    ///
+    /// Compiled phone-side by `EvidenceNotebook`, which needs the journal,
+    /// the experiment store and the whole night history -- none of which an
+    /// extension has. Empty when nothing clears the bar below.
+    var headlineFindingText: String = ""
+
+    /// Which tier that claim came from -- "You tested this", "Association".
+    ///
+    /// Carried rather than derived, and rendered beside the claim rather
+    /// than behind a tap. The whole point of the evidence hierarchy is that
+    /// a claim without its strength is a different, stronger claim; a glance
+    /// surface is where that distinction is most likely to be dropped and
+    /// least likely to be recovered by the reader.
+    var headlineFindingStrength: String = ""
+
     /// Sleep debt expressed in hours, which is how the widget phrases it.
     var sleepDebtHours: Double { sleepDebtMinutes / 60 }
 

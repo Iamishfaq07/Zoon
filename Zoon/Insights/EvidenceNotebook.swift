@@ -88,6 +88,32 @@ enum EvidenceNotebook {
         var caveat: String { strength.caveat }
     }
 
+    /// The weakest claim allowed onto a glance surface.
+    ///
+    /// Higher than the bar for the Evidence screen, deliberately. On the
+    /// phone every claim arrives with its tier heading above it and its
+    /// caveat below it, and the reader has chosen to be there. A watch face
+    /// or a complication has room for the sentence and almost nothing else,
+    /// is read in two seconds, and is never scrolled.
+    ///
+    /// So the two tiers that depend most on their caveat are excluded.
+    /// `.anecdote` is one night -- "interesting, never evidence" -- and
+    /// `.observed` is a change with no comparison group, whose own caveat has
+    /// to say that nothing here explains what caused it. Stripped of that
+    /// sentence and shown alone on a wrist, both read as findings. An
+    /// association at least rests on matched pairs across many nights.
+    static let glanceMinimumStrength: Strength = .associated
+
+    /// The single claim worth putting on a glance surface, or `nil`.
+    ///
+    /// Takes an already-compiled list rather than recompiling, so the watch
+    /// and the Evidence screen cannot disagree about what the strongest
+    /// claim is. `compile` returns strongest-first, so this is the first
+    /// entry that clears the bar, not a re-sort.
+    static func glanceHeadline(from entries: [Entry]) -> Entry? {
+        entries.first { $0.strength >= glanceMinimumStrength }
+    }
+
     // MARK: - Compilation
 
     /// Gathers every claim into one ranked list.

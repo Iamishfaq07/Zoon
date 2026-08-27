@@ -54,25 +54,16 @@ struct EvidenceView: View {
 
     // MARK: - Data
 
+    /// Moved to the coordinator so the watch's headline claim and this
+    /// screen's top row come out of one compilation. Only last night is
+    /// investigated there, for the reason that comment records: running
+    /// `NightDetective` across a history would manufacture a stream of
+    /// anecdotes, the weakest tier flooding the strongest ones off the
+    /// screen.
     private func notebookEntries(
         findings: [JournalCorrelator.Finding]
     ) -> [EvidenceNotebook.Entry] {
-        EvidenceNotebook.compile(
-            experiments: coordinator.experiments.outcomes,
-            findings: findings,
-            changePoints: ChangePointDetector.detectAll(nights: coordinator.recentNights),
-            nightReport: nightReport()
-        )
-    }
-
-    /// Only last night is investigated. `NightDetective` is explicitly about
-    /// one night, and running it across a history would manufacture a stream
-    /// of anecdotes -- the weakest tier flooding the strongest ones off the
-    /// screen.
-    private func nightReport() -> NightDetective.Report? {
-        let sorted = coordinator.recentNights.sorted { $0.date < $1.date }
-        guard let last = sorted.last else { return nil }
-        return NightDetective.investigate(night: last, history: Array(sorted.dropLast()))
+        coordinator.notebookEntries(findings: findings)
     }
 
     private struct Tier {
