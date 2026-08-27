@@ -103,6 +103,11 @@ TESTS_EXTRA_APP_FILES = [
     # brings no app-only dependencies into the test target. Needed because
     # its highlight strings had two copy defects worth asserting on.
     "Zoon/Insights/WeeklyReport.swift",
+    # Foundation only (the one HealthKit mention is a doc comment) -- the
+    # protocol RuleBasedInsightEngine conforms to. Required alongside it, or
+    # the test target hits "cannot find type 'SleepInsightEngine' in scope"
+    # while the app target builds fine.
+    "Zoon/Insights/SleepInsightEngine.swift",
     # Foundation only -- pure rules over SleepNightFeatures (Shared) and
     # RollingBaseline (above). Added so the causal wording of each rule
     # can actually be asserted rather than reviewed by eye; see

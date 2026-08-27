@@ -427,6 +427,7 @@
 		CE4694EE40E55959DB6EEB17 /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */; };
 		CE6A395E3F53BF5632DD4C4D /* SleepPlaybook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B52306F9315392857B399E7 /* SleepPlaybook.swift */; };
 		CEA20FF457B3F55A08F6B41D /* NapStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F76DE039CB6BBE6C56490672 /* NapStoreTests.swift */; };
+		CED29035D2BEA718B7197531 /* SleepInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2DDB308F9F23D99795E240 /* SleepInsightEngine.swift */; };
 		CEF42B0CEF4B28AA158A6DBB /* SleepScoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE124896DF66A305DE386B60 /* SleepScoreTests.swift */; };
 		CF172F688E6D427E01763C3E /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 		D0079B2C352ACA706E9E0B4E /* LifestyleInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E0BB7B287F3739433EC5B8 /* LifestyleInsights.swift */; };
@@ -1998,6 +1999,7 @@
 				23F5E31C18A6ADF0EEF51B9D,
 				2A3319A5E611E223907FA02B,
 				E7513DC8D0F08944E871CF4A,
+				CED29035D2BEA718B7197531,
 				0BA4B48EE518B586B2E80979,
 				85BFC5F54D68B3EEC76F0672,
 				63E5D4209DB615B5CDCBE371,
