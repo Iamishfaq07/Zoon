@@ -173,3 +173,51 @@ private struct MetricInfoSheet: View {
         }
     }
 }
+
+// The sheet, not the button. The button is a 13pt "i" glyph with nothing to
+// look at; the sheet is where the layout decisions live, and it is only
+// reachable at runtime behind a tap, which is exactly the kind of thing that
+// ships wrong.
+
+/// Sleep stages is the most interesting provenance case in the app: Apple's
+/// staging is a model's guess from indirect signals, so this renders the
+/// "Estimated" capsule rather than the reassuring one.
+#Preview("Metric info - estimated") {
+    MetricInfoSheet(
+        title: "Sleep Stages",
+        symbol: "chart.bar.fill",
+        tint: Theme.Metric.sleep,
+        explanation: [
+            "Core, Deep and REM are the phases your night cycles through.",
+            "Deep sleep clusters early; REM lengthens towards morning."
+        ],
+        relatedArticleID: nil,
+        quantity: .sleepStages
+    )
+}
+
+/// A directly-measured quantity, for the other end of the capsule's range.
+#Preview("Metric info - measured") {
+    MetricInfoSheet(
+        title: "Resting Heart Rate",
+        symbol: "heart.fill",
+        tint: Theme.Metric.hrv,
+        explanation: ["Your lowest sustained heart rate while you slept."],
+        relatedArticleID: nil,
+        quantity: .restingHeartRate
+    )
+}
+
+/// No quantity: the shape every call site had before provenance existed, and
+/// still the shape of any metric with no mapping. The capsule should be
+/// absent rather than empty.
+#Preview("Metric info - no provenance") {
+    MetricInfoSheet(
+        title: "Sleep Score",
+        symbol: "moon.stars.fill",
+        tint: Theme.Metric.sleep,
+        explanation: ["A single number combining duration, quality and timing."],
+        relatedArticleID: nil,
+        quantity: nil
+    )
+}
