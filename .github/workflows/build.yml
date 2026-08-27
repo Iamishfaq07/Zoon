@@ -99,6 +99,73 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             2>&1 | tee test.log
 
+      - name: Collect crash reports
+        # A crashed test process (as opposed to a clean assertion failure)
+        # leaves nothing useful in test.log beyond "Restarting after
+        # unexpected exit" -- macOS itself writes the actual crash report
+        # (signal, faulting thread, stack trace) to DiagnosticReports, but
+        # nothing was ever capturing it, so every such crash in this repo's
+        # history has gone undiagnosed. Copies whatever's there (empty on an
+        # ordinary pass/fail run) so it rides along in the same artifact as
+        # test.log instead of being lost when the runner is torn down.
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          mkdir -p crash-reports
+          cp ~/Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
+          cp /Library/Logs/DiagnosticReports/*.ips crash-reports/ 2>/dev/null || true
+          echo "Collected $(ls crash-reports | wc -l | tr -d ' ') crash report(s)."
+          # Echo the decisive part of the first crash report into the job log
+          # as well as the artifact. The artifact is only reachable by someone
+          # who can download it; the log is readable through the API, which is
+          # the only channel some contributors (and CI tooling) actually have.
+          #
+          # Parsed rather than `head`-ed: an .ips is a JSON header line plus a
+          # JSON body, and the faulting thread's frames sit well past any byte
+          # cap that keeps the log readable. Printing the exception, the
+          # termination reason, and the symbolicated frames is the whole
+          # diagnostic; the rest of the file is register dumps and a binary
+          # image list. Only the first report is printed -- when a whole suite
+          # dies the reports are all the same crash.
+          # Only xctest reports: the runner image ships with unrelated
+          # DiagnosticReports (JetsamEvent memory-pressure records and the
+          # like) that sort ahead of ours alphabetically and carry no
+          # exception/termination at all.
+          for f in $(ls crash-reports/xctest-*.ips 2>/dev/null | head -1); do
+            echo "=================== $f ==================="
+            python3 - "$f" <<'PY' || echo "(could not parse this .ips)"
+          import json, sys
+          raw = open(sys.argv[1], errors="replace").read()
+          body = json.loads(raw[raw.index("\n") + 1:])
+          print("exception  :", json.dumps(body.get("exception")))
+          print("termination:", json.dumps(body.get("termination")))
+          images = body.get("usedImages", [])
+          def image_name(i):
+              if not isinstance(i, int) or i < 0 or i >= len(images):
+                  return "?"
+              img = images[i]
+              return img.get("name") or img.get("path", "?").rsplit("/", 1)[-1]
+          for thread in body.get("threads", []):
+              if not thread.get("triggered"):
+                  continue
+              print("--- faulting thread", thread.get("id"), thread.get("name", ""))
+              for frame in thread.get("frames", [])[:30]:
+                  sym = frame.get("symbol") or hex(frame.get("imageOffset", 0))
+                  print("   ", image_name(frame.get("imageIndex", -1)), sym)
+          PY
+            echo ""
+          done
+
+      - name: Upload test log and crash reports
+        if: always() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log-and-crash-reports
+          path: |
+            test.log
+            crash-reports/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Summarise tests
         if: always() && steps.build.outcome == 'success'
         run: |

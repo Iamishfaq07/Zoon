@@ -69,8 +69,35 @@ UITESTS_SRC = swift_files("ZoonUITests")
 # since it's a verified, real correctness fix, just not one with automated
 # coverage right now. See git history around "sync now prunes nights deleted
 # or corrected away in Health" for the two failed attempts' full CI logs.
+#
+# SleepNightRecord (below) is back for a narrower diagnostic: SwiftDataProbeTests
+# exercises a bare ModelContainer/SleepNightRecord insert-and-fetch with none
+# of SleepHistoryStore/FeatureExtractor/HealthKitManager in the mix, to learn
+# whether SwiftData itself can run at all in this unhosted test bundle before
+# trying a real store again. See SwiftDataProbeTests.swift's own doc comment.
 TESTS_EXTRA_APP_FILES = [
     "Zoon/Services/SleepSessionBuilder.swift",
+    # Foundation/SwiftData only -- see the SwiftDataProbeTests doc comment
+    # above for why this specific type, alone, is back in the test target.
+    "Zoon/Models/SleepNightRecord.swift",
+    # Foundation only -- RollingBaseline, the type SleepNightRecord.features(baseline:)
+    # takes. Extracted out of FeatureExtractor.swift (which imports HealthKit)
+    # specifically so it's compilable here without pulling HealthKit in too.
+    "Zoon/Services/RollingBaseline.swift",
+    # Foundation/SwiftData only -- the second @Model SleepHistoryStore manages.
+    "Zoon/Models/SleepEpisodeRecord.swift",
+    # Foundation only -- the UserDefaults half of AnchorStore, split out of
+    # HealthKitManager.swift for exactly this reason (see AnchorStore.swift).
+    # SleepHistoryStore.importNights calls AnchorStore.clear() and nothing else.
+    "Zoon/Services/AnchorStore.swift",
+    # Foundation/SwiftData/os only, now that RollingBaseline and AnchorStore.clear()
+    # are reachable without HealthKit -- every other HealthKit mention in these two
+    # is a doc comment. This extraction is what lets these compile here at all;
+    # it was NOT the August crash's cause. That was the test's own ModelContainer
+    # going out of scope in its factory method -- see
+    # SleepHistoryStoreIntegrationTests' header.
+    "Zoon/Services/SleepHistoryStore.swift",
+    "Zoon/Services/JournalStore.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
     # Pure logic over SleepNightFeatures (which is already in SHARED), so it
     # brings no app-only dependencies into the test target. Needed because
