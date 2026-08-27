@@ -52,6 +52,21 @@ final class InsightLanguageTests: XCTestCase {
         [insight.summary, insight.likelyCause ?? "", insight.actionableTip].joined(separator: " ")
     }
 
+    /// Just the parts that make a claim about the night.
+    ///
+    /// Deliberately excludes the tip, because the tip is where the
+    /// non-diagnostic note is appended for physiological findings -- and that
+    /// note reads "Zoon can't diagnose anything", which
+    /// `DiagnosticLanguageGuard.bannedTerms` catches on the stem "diagnos".
+    /// That match is correct for its real job of screening model output (see
+    /// `DiagnosticLanguageGuardTests.testMatchesAsSubstringWithinALongerWord`),
+    /// so the engine's own copy is checked in two parts rather than loosening
+    /// the guard: diagnostic language against the claim, causal overclaiming
+    /// against everything including the tip.
+    private func claim(of insight: SleepInsight) -> String {
+        [insight.summary, insight.likelyCause ?? ""].joined(separator: " ")
+    }
+
     private func insight(
         _ night: SleepNightFeatures,
         baseline: RollingBaseline? = nil
@@ -126,14 +141,15 @@ final class InsightLanguageTests: XCTestCase {
                                     wakeCount: wakes,
                                     lastWorkoutHoursBeforeBed: workout
                                 )
-                                let all = text(of: insight(night))
+                                let generated = insight(night)
+                                let all = text(of: generated)
                                 XCTAssertFalse(
                                     DiagnosticLanguageGuard.overclaimsCausation(all),
                                     "causal overclaim: \(all)"
                                 )
                                 XCTAssertFalse(
-                                    DiagnosticLanguageGuard.containsBannedLanguage(all),
-                                    "diagnostic language: \(all)"
+                                    DiagnosticLanguageGuard.containsBannedLanguage(claim(of: generated)),
+                                    "diagnostic language: \(claim(of: generated))"
                                 )
                                 checked += 1
                             }
@@ -163,6 +179,22 @@ final class InsightLanguageTests: XCTestCase {
             insight(night).actionableTip.contains("can't diagnose"),
             insight(night).actionableTip
         )
+    }
+
+    /// The reason `claim(of:)` exists, stated as a test so the split in the
+    /// sweep above reads as deliberate rather than as an oversight.
+    ///
+    /// Zoon's own non-diagnostic disclaimer contains the word "diagnose",
+    /// which the guard matches on the stem "diagnos". Over-matching is the
+    /// right call for screening model output -- but it means the guard cannot
+    /// be pointed at Zoon's own disclaimer and expected to pass.
+    func testTheGuardFlagsZoonsOwnNonDiagnosticNote() {
+        let note = "Zoon can't diagnose anything \u{2014} this is an observation, not a finding."
+        XCTAssertTrue(
+            DiagnosticLanguageGuard.containsBannedLanguage(note),
+            "if this ever stops matching, the sweep can check the tip too"
+        )
+        XCTAssertFalse(DiagnosticLanguageGuard.overclaimsCausation(note))
     }
 
     // MARK: - Weekly report
