@@ -32,6 +32,11 @@ struct MoreView: View {
                         ArticlesView()
                     }
                     .entrance(2)
+                    navRow("What Zoon knows", "Every claim, ranked by how it was found",
+                            "checkmark.seal.fill", Theme.Metric.recoveryHigh) {
+                        EvidenceView()
+                    }
+                    .entrance(2)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
