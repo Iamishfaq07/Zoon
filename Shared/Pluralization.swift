@@ -22,3 +22,21 @@ extension Int {
         "\(self) \(self == 1 ? singular : plural ?? singular + "s")"
     }
 }
+
+extension String {
+
+    /// Uppercases only the first character, leaving the rest alone --
+    /// `capitalized` would turn "resting heart rate" into "Resting Heart
+    /// Rate" mid-sentence.
+    ///
+    /// Lived as a `private extension` inside `NightDetective` until a second
+    /// caller needed it. Kept here beside `pluralized` rather than copied:
+    /// two private copies of the same three lines is how the two duplicate
+    /// confidence enums that became `MetricConfidence` started, and a
+    /// sentence-casing rule is exactly the kind of thing that has to stay
+    /// consistent across every string the app renders.
+    var capitalizedFirst: String {
+        guard let first else { return self }
+        return first.uppercased() + dropFirst()
+    }
+}
