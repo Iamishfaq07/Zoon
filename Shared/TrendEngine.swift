@@ -52,7 +52,11 @@ enum TrendEngine {
 
         /// Minimum absolute or relative change before a shift is reported at
         /// all -- see the type doc for why this varies per metric.
-        fileprivate func clearsThreshold(_ delta: Double, previousMedian: Double) -> Bool {
+        ///
+        /// Internal rather than fileprivate so `ChangePointDetector` can apply
+        /// the same per-metric tuning instead of keeping a second copy that
+        /// could drift out of sync with this one.
+        func clearsThreshold(_ delta: Double, previousMedian: Double) -> Bool {
             switch self {
             case .duration: abs(delta) >= 15
             case .bedtime: abs(delta) >= 20
@@ -63,7 +67,7 @@ enum TrendEngine {
             }
         }
 
-        fileprivate func formattedMagnitude(_ magnitude: Double) -> String {
+        func formattedMagnitude(_ magnitude: Double) -> String {
             switch self {
             case .duration, .bedtime, .sleepDebt:
                 SleepNightFeatures.formatMinutes(magnitude)
@@ -74,7 +78,7 @@ enum TrendEngine {
             }
         }
 
-        fileprivate func value(from night: SleepNightFeatures) -> Double? {
+        func value(from night: SleepNightFeatures) -> Double? {
             switch self {
             case .duration: return night.timeAsleepMinutes
             case .bedtime:
