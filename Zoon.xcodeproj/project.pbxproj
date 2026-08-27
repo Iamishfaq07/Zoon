@@ -440,6 +440,7 @@
 		D92C20AD9E19D6322BE37D32 /* FirstNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0270263CE62B9C1BB2D468 /* FirstNightCard.swift */; };
 		D993EF29ECD2D4B5886F9012 /* DataExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */; };
 		DA84B88AAB515C128D30D215 /* GuidedExperiment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54305AA7DFBC8E20A175DAE7 /* GuidedExperiment.swift */; };
+		DBBDEDEFA1D8CD03E16E5AA0 /* PatternsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C4E7C578ABEA241EBDD3384 /* PatternsView.swift */; };
 		DBC50BE324B6D423D623ADC8 /* SensorTruth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E074F4F2EE237C68FD6FDD1 /* SensorTruth.swift */; };
 		DC2C58193F5F943D820FC820 /* SleepScoreWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */; };
 		DC31EF25FEAF86F5DAA8405E /* WidgetRelevanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32391DFF099379A08D5BD5A4 /* WidgetRelevanceTests.swift */; };
@@ -639,6 +640,7 @@
 		29BBBECC2713C3FCF9065786 /* SleepScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScore.swift"; sourceTree = "<group>"; };
 		2A088D94B376B7C6652E976B /* HRVStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HRVStatusTests.swift"; sourceTree = "<group>"; };
 		2B50A94B6FCAD440E1EF0A19 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = ".gitignore"; sourceTree = "<group>"; };
+		2C4E7C578ABEA241EBDD3384 /* PatternsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PatternsView.swift"; sourceTree = "<group>"; };
 		2CD50E712746E68436F3A59B /* SeededGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SeededGenerator.swift"; sourceTree = "<group>"; };
 		2CEEC938F70D39622049AB5E /* LightCoachCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachCard.swift"; sourceTree = "<group>"; };
 		2D4A8155271E6F375B5123C3 /* NightDetective.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightDetective.swift"; sourceTree = "<group>"; };
@@ -1295,6 +1297,7 @@
 				061D8B57C5C60F25DF62DC31,
 				5EFBC9C57EA44E2338347F52,
 				ACAE597AA889C96CF598DA3C,
+				2C4E7C578ABEA241EBDD3384,
 				40C905EF878241FBB40DA514,
 				EBF13117CFB2BE353EB64293,
 				63601E03B47D9BF517DC788D,
@@ -1692,6 +1695,7 @@
 				78D62954D6C8F59B9CE164D7,
 				C2FD94B4F7D4CF309A5514A5,
 				869A51FF9BAA6569A58A6DE9,
+				DBBDEDEFA1D8CD03E16E5AA0,
 				0AFB79BBE592F3A82611801A,
 				F99A72CF0ABD1AC852FC9B39,
 				3153092B31B38B2F928CD363,

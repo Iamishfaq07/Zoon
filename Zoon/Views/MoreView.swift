@@ -37,6 +37,11 @@ struct MoreView: View {
                         EvidenceView()
                     }
                     .entrance(2)
+                    navRow("Your patterns", "Where your good nights sit, and tomorrow's range",
+                            "square.grid.3x3.fill", Theme.Metric.sleep) {
+                        PatternsView()
+                    }
+                    .entrance(2)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()

@@ -207,13 +207,3 @@ enum NightDetective {
         )
     }
 }
-
-private extension String {
-    /// Uppercases only the first character, leaving the rest alone --
-    /// `capitalized` would turn "resting heart rate" into "Resting Heart
-    /// Rate" mid-sentence.
-    var capitalizedFirst: String {
-        guard let first else { return self }
-        return first.uppercased() + dropFirst()
-    }
-}
