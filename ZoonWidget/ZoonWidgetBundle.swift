@@ -14,6 +14,10 @@ struct ZoonWidgetBundle: WidgetBundle {
         SleepDebtWidget()
         SleepScoreWidget()
         BadgeWidget()
+        // The only widget about a night that has not happened yet -- see its
+        // own doc comment for why that earns a slot rather than making it a
+        // fourth view of last night.
+        TonightWidget()
 
         // Live Activities and Control Center controls are both newer than the
         // app's iOS 18 floor in places, so each is gated rather than assumed.
