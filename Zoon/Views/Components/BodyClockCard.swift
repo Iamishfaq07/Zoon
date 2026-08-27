@@ -123,9 +123,9 @@ struct BodyClockCard: View {
             // an orbit, a live position against the fixed shape of the day,
             // rather than a chart of two intervals.
             Circle()
-                .fill(Color.white)
+                .fill(Theme.dialMarker)
                 .frame(width: 6, height: 6)
-                .shadow(color: .white.opacity(0.7), radius: 3)
+                .shadow(color: Theme.dialMarker.opacity(0.7), radius: 3)
                 .offset(y: -46)
                 .rotationEffect(.degrees(nowFraction * 360 * sweep))
 

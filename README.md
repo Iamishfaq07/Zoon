@@ -333,12 +333,6 @@ has run this against a real Health store:
   registered and associated with all four App IDs in the Apple Developer portal.
 - Background delivery needs the HealthKit background-delivery capability.
   Without it the app still refreshes on foreground.
-- The **Body Clock "now" markers** are a hardcoded white dot on both the card
-  and the full screen. Every other non-adapting colour in the view layer has
-  been either fixed or justified (medal colours are physical materials; watchOS
-  has no light appearance), but whether white still separates from a
-  light-theme dial is a question about appearance rather than about code, and
-  it was left alone rather than changed unseen.
 
 ## Not medical advice
 
