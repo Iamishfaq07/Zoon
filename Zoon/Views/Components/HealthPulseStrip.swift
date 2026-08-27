@@ -184,3 +184,27 @@ struct HealthPulseStrip: View {
         }
     }
 }
+
+#Preview("Health Pulse") {
+    HealthPulseStrip(context: AppMockData.dayContext(), recentNights: MockData.history)
+        .padding()
+        .zoonPreviewEnvironment()
+}
+
+/// The four tiles divide the width evenly and each carries a label under its
+/// own visual, so this is the row where large text runs out of horizontal
+/// room first.
+#Preview("Health Pulse - large text") {
+    HealthPulseStrip(context: AppMockData.dayContext(), recentNights: MockData.history)
+        .padding()
+        .zoonPreviewEnvironment()
+        .environment(\.dynamicTypeSize, .accessibility3)
+}
+
+/// A poor day, because three of the four tiles are colour-coded against
+/// thresholds and the good-day preview only ever exercises one side of them.
+#Preview("Health Pulse - poor day") {
+    HealthPulseStrip(context: AppMockData.poorDayContext(), recentNights: MockData.history)
+        .padding()
+        .zoonPreviewEnvironment()
+}
