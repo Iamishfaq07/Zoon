@@ -350,3 +350,25 @@ struct BadgeComplicationView: View {
 } timeline: {
     WatchComplicationEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: false)
 }
+
+// Both of Tonight's families, where the three siblings above preview one
+// each. It is the only complication here with a state that renders
+// perfectly well while saying nothing -- the waiting copy someone sees for
+// their first week -- so that state is worth a timeline entry of its own
+// rather than being the state nobody ever looks at.
+
+#Preview("Tonight rectangular", as: .accessoryRectangular) {
+    TonightComplication()
+} timeline: {
+    WatchComplicationEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
+    WatchComplicationEntry(date: .now, snapshot: MockData.holdingTonightSnapshot, isPlaceholder: false)
+    // The three-line rectangular layout with no plan yet.
+    WatchComplicationEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+}
+
+#Preview("Tonight inline", as: .accessoryInline) {
+    TonightComplication()
+} timeline: {
+    WatchComplicationEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
+    WatchComplicationEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+}
