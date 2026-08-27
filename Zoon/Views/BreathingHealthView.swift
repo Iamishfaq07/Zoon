@@ -124,6 +124,18 @@ struct BreathingHealthView: View {
                 }
                 .frame(height: 100)
                 .chartXSelection(value: $selectedDate)
+                // Higher disturbance is worse, so the trend helper is told
+                // so -- otherwise a rising bar chart would be summarised as
+                // an improvement.
+                .chartSummary(
+                    "Breathing disturbances, last \(health.disturbanceTrend.count) nights",
+                    (health.disturbanceTrend.last.map {
+                        "Last night \(Int($0.value))%. "
+                    } ?? "")
+                        + ChartTrend.describe(
+                            health.disturbanceTrend.map(\.value), higherIsBetter: false
+                        ) + "."
+                )
 
                 if case .repeatedPattern(let elevated, let window) = health.pattern {
                     Text("Elevated on \(elevated) of the last \(window) tracked nights. Consider discussing a repeated pattern like this with a healthcare professional if it continues.")
@@ -182,6 +194,14 @@ struct BreathingHealthView: View {
                 .chartYScale(domain: 88...100)
                 .frame(height: 90)
                 .chartXSelection(value: $selectedOxygenDate)
+                .chartSummary(
+                    "Blood oxygen, last \(health.oxygenTrend.count) nights",
+                    (health.oxygenTrend.last.map {
+                        String(format: "Last night %.0f%%. ", $0.value)
+                    } ?? "")
+                        + ChartTrend.describe(health.oxygenTrend.map(\.value))
+                        + ". Trend only, not a screening tool."
+                )
             }
             .glassCard()
         }

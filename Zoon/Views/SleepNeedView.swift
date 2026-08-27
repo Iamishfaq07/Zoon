@@ -146,6 +146,21 @@ struct SleepNeedView: View {
                 }
                 .frame(height: 100)
                 .chartXSelection(value: $selectedDate)
+                // The reference line is the whole point of this chart, so
+                // the summary has to carry it: bars alone would tell a
+                // screen reader how long the nights were without saying
+                // what they are being compared against.
+                .chartSummary(
+                    "Nightly sleep against your learned need, last \(nights.count) nights",
+                    {
+                        let hours = nights.map { $0.total24hAsleepMinutes / 60 }
+                        let need = learned.map { "Need is \(SleepNightFeatures.formatMinutes($0.minutes)). " } ?? ""
+                        let last = nights.last.map {
+                            "Last night \($0.formattedTimeAsleep). "
+                        } ?? ""
+                        return need + last + ChartTrend.describe(hours) + "."
+                    }()
+                )
             }
             .glassCard()
         }

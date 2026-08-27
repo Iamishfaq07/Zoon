@@ -142,6 +142,7 @@
 		35E99C1587A2DB7A3425CF63 /* HealthRadar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03508B538C62AC65FD8AD914 /* HealthRadar.swift */; };
 		35FDF61CD6F3F73E6C2294A0 /* ZoonTwin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7775D66F59AC28BF8EDDEED1 /* ZoonTwin.swift */; };
 		360144239BB7101468D7AF1A /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
+		366ED0B304894CDB53A2004B /* ChartAccessibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = C95D71E4BFB29978DEA0D2DE /* ChartAccessibility.swift */; };
 		36B1C7EF0815C51842522689 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
 		37D54E5BDD40739E90B7D9BE /* SleepNightRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8220F4ECA3D51EACAA15 /* SleepNightRecord.swift */; };
 		39DE55C97728B3EB7C175F0B /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
@@ -817,6 +818,7 @@
 		C7700BC5A9C298B80602F5A5 /* SleepInsightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepInsightTests.swift"; sourceTree = "<group>"; };
 		C86F4E642A185C699DD6A3F0 /* EvidenceNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceNotebook.swift"; sourceTree = "<group>"; };
 		C92235080998380B7580437E /* SleepStoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStoryTests.swift"; sourceTree = "<group>"; };
+		C95D71E4BFB29978DEA0D2DE /* ChartAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChartAccessibility.swift"; sourceTree = "<group>"; };
 		CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreWidget.swift"; sourceTree = "<group>"; };
 		CC432720166E6624FE4B4078 /* BreathingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingView.swift"; sourceTree = "<group>"; };
 		CD69CD9C06439C33415CFE06 /* SETUP.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "SETUP.md"; sourceTree = "<group>"; };
@@ -931,6 +933,7 @@
 				BE323A154A812CF844797F4A,
 				B04DB48634B9461AF67635F9,
 				B202E4810C0F1C50E34E2DC3,
+				C95D71E4BFB29978DEA0D2DE,
 				0056BFA9411ACE233F7DC0D1,
 				3150FC3EEA03A2CC36022FA3,
 				F87DDDFB40C40EF1EEA472F0,
@@ -1658,6 +1661,7 @@
 				5B06FAA7FC659D9DD72AD43C,
 				0A7C54E3814C703015DAABFB,
 				5FD7E940C881946CF2A5EF92,
+				366ED0B304894CDB53A2004B,
 				F60C9D12E6B768F3CB1F1C06,
 				5EDFF7056555887B3CCBEEB5,
 				E2035CEA799143574AC638C0,
