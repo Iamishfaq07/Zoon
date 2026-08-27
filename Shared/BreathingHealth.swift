@@ -2,16 +2,47 @@ import Foundation
 
 /// Apple's own night-level classification of the `appleSleepingBreathingDisturbances`
 /// quantity, via `HKAppleSleepingBreathingDisturbancesClassification(for:)` (iOS
-/// 18+). Preferred over `BreathingHealth`'s own percent-of-night threshold
-/// wherever available -- Apple's own cutoff is the one its Sleep Apnea
-/// Notifications feature is actually calibrated against, not a guess this
-/// app invented. Stored per-night on `SleepNightFeatures` so historical
-/// nights extracted before this classification existed, or nights from a
-/// watch/OS combination too old to report it, simply have `nil` here and
-/// fall back to the in-app threshold -- see `BreathingHealth.isElevated`.
+/// 18+). This is the only source Zoon will call a night "elevated" from: it is
+/// the cutoff Apple's Sleep Apnea Notifications feature is actually calibrated
+/// against. Nights from a watch/OS combination too old to report it, or
+/// extracted before it existed, are `nil` here and resolve to
+/// `BreathingElevation.unclassified` -- see `BreathingHealth.elevation`.
 enum BreathingDisturbanceClassification: String, Codable, Sendable {
     case notElevated
     case elevated
+}
+
+/// Whether a night was classified elevated, was classified not elevated, or
+/// was never classified at all.
+///
+/// The third case is the point. `BreathingHealth.isElevated` used to return a
+/// plain `Bool` and, when Apple's classification was absent, substituted an
+/// in-app cutoff of `value >= 5.0` percent of the night. That number was
+/// Zoon's own invention. It read as a clinical threshold, it was surfaced to
+/// users and printed on the clinician report as "nights classified elevated",
+/// and nothing in this app ever calibrated it against anything.
+///
+/// The same `Bool` also conflated two different unknowns: a night with no
+/// breathing data at all returned `false`, which is indistinguishable from a
+/// night Apple's own classifier examined and called not elevated.
+///
+/// Zoon can honestly show the raw trend and the deviation from someone's own
+/// baseline without either of those. So it does, and says "not classified"
+/// where that is the truth.
+enum BreathingElevation: String, Codable, Sendable, CaseIterable {
+    case elevated
+    case notElevated
+    /// No Apple classification for this night. Zoon does not substitute a
+    /// threshold of its own.
+    case unclassified
+
+    var label: String {
+        switch self {
+        case .elevated: "Elevated"
+        case .notElevated: "Not elevated"
+        case .unclassified: "Not classified"
+        }
+    }
 }
 
 /// A dedicated breathing-signal summary: respiratory rate vs. baseline, a
@@ -19,10 +50,10 @@ enum BreathingDisturbanceClassification: String, Codable, Sendable {
 /// never a diagnosis, never the word "apnea".
 ///
 /// The repeated-pattern check exists specifically because a single elevated
-/// night proves nothing (see `spec §89`): breathing disturbances are noisy,
-/// and alerting from one night trains people to distrust or ignore the
-/// signal by the time it might matter. This only flags when a real multi-
-/// night pattern shows up.
+/// night proves nothing: breathing disturbances are noisy, and alerting from
+/// one night trains people to distrust or ignore the signal by the time it
+/// might matter. This only flags when a real multi-night pattern shows up,
+/// and only from nights Apple actually classified.
 struct BreathingHealth: Codable, Hashable, Sendable {
 
     let tonightRespiratoryRate: Double?
@@ -39,35 +70,47 @@ struct BreathingHealth: Codable, Hashable, Sendable {
     struct TrendPoint: Codable, Hashable, Sendable, Identifiable {
         let date: Date
         let value: Double
-        /// Whether this specific night was classified elevated -- see
-        /// `BreathingHealth.isElevated`, computed once here rather than
-        /// callers (chart coloring, etc.) re-deriving their own cutoff from
-        /// `value` alone and disagreeing with the real classification.
+        /// How this specific night was classified -- computed once here
+        /// rather than callers (chart colouring, and so on) re-deriving a
+        /// cutoff from `value` alone and disagreeing with the real answer.
         /// Meaningful only for `disturbanceTrend` points; `oxygenTrend`
-        /// reuses this same struct shape for SpO2 and always leaves this
-        /// at its default, unread.
-        let isElevated: Bool
+        /// reuses this struct shape for SpO2 and leaves this `.unclassified`,
+        /// unread.
+        let elevation: BreathingElevation
         var id: Date { date }
 
-        init(date: Date, value: Double, isElevated: Bool = false) {
+        /// Convenience for surfaces that only need the positive case. Note
+        /// that `false` here means "not known to be elevated", which
+        /// includes never having been classified -- use `elevation` wherever
+        /// that difference should be visible.
+        var isElevated: Bool { elevation == .elevated }
+
+        init(date: Date, value: Double, elevation: BreathingElevation = .unclassified) {
             self.date = date
             self.value = value
-            self.isElevated = isElevated
+            self.elevation = elevation
         }
     }
 
     enum Pattern: Codable, Hashable, Sendable {
         /// Not enough nights with disturbance data to say anything.
         case insufficientData
+        /// There are readings, but too few of them carry Apple's
+        /// classification to draw a conclusion. Distinct from
+        /// `insufficientData` because the user does have data -- the trend is
+        /// worth showing -- and distinct from `normal` because Zoon has not
+        /// established that anything is normal.
+        case unclassified(windowNights: Int)
         case normal
-        /// `nightsElevated` of the last `windowNights` were above the
-        /// elevated threshold -- language stays at "repeated pattern",
-        /// never a named condition.
+        /// `nightsElevated` of the last `windowNights` were classified
+        /// elevated by Apple -- language stays at "repeated pattern", never a
+        /// named condition.
         case repeatedPattern(nightsElevated: Int, windowNights: Int)
 
         var label: String {
             switch self {
             case .insufficientData: "Not enough data"
+            case .unclassified: "Not classified"
             case .normal: "Not elevated"
             case .repeatedPattern: "Repeated pattern"
             }
@@ -76,23 +119,33 @@ struct BreathingHealth: Codable, Hashable, Sendable {
 
     /// Nights considered for the pattern check.
     private static let patternWindow = 14
-    /// Fallback threshold for a night with no Apple classification at all
-    /// (an older watch/OS, or a night extracted before this classification
-    /// existed) -- a conservative, in-app-only heuristic, used only when
-    /// `isElevated` has nothing better to go on.
-    private static let elevatedThresholdPercent = 5.0
     /// This many elevated nights out of the window before it's called a
-    /// pattern rather than noise.
+    /// pattern rather than noise. Also the minimum number of *classified*
+    /// nights before the check runs at all.
     private static let patternMinimumNights = 5
 
-    /// Whether a night counts as "elevated" -- Apple's own classification
-    /// when HealthKit provided one, the in-app percent threshold otherwise.
-    static func isElevated(_ night: SleepNightFeatures) -> Bool {
-        if let classification = night.breathingDisturbancesClassification {
-            return classification == .elevated
+    /// How a night was classified. Apple's classification, or nothing.
+    static func elevation(_ night: SleepNightFeatures) -> BreathingElevation {
+        guard let classification = night.breathingDisturbancesClassification else {
+            return .unclassified
         }
-        guard let value = night.breathingDisturbances else { return false }
-        return value >= elevatedThresholdPercent
+        return classification == .elevated ? .elevated : .notElevated
+    }
+
+    /// Whether a night is *known* to be elevated.
+    ///
+    /// `false` covers both "classified not elevated" and "never classified".
+    /// Callers that count elevated nights against a denominator must filter
+    /// with `classified(_:)` first, or an unclassified night silently reads
+    /// as a clean one.
+    static func isElevated(_ night: SleepNightFeatures) -> Bool {
+        elevation(night) == .elevated
+    }
+
+    /// The nights Apple actually classified. The correct denominator for any
+    /// "N of M nights elevated" statement.
+    static func classified(_ nights: [SleepNightFeatures]) -> [SleepNightFeatures] {
+        nights.filter { elevation($0) != .unclassified }
     }
 
     static func compute(nights: [SleepNightFeatures]) -> BreathingHealth {
@@ -113,7 +166,7 @@ struct BreathingHealth: Codable, Hashable, Sendable {
         let disturbanceWindow = Array(sorted.suffix(patternWindow))
         let disturbanceNights = disturbanceWindow.filter { $0.breathingDisturbances != nil }
         let disturbanceTrend = disturbanceNights.map {
-            TrendPoint(date: $0.date, value: $0.breathingDisturbances!, isElevated: isElevated($0))
+            TrendPoint(date: $0.date, value: $0.breathingDisturbances!, elevation: elevation($0))
         }
 
         let oxygenTrend = disturbanceWindow.compactMap { night -> TrendPoint? in
@@ -121,13 +174,20 @@ struct BreathingHealth: Codable, Hashable, Sendable {
             return TrendPoint(date: night.date, value: value)
         }
 
+        // Only classified nights can support a claim about elevation. A
+        // window full of readings from a watch that does not classify them is
+        // `unclassified`, not `normal` -- the old code called it normal,
+        // because its invented 5% cutoff answered for every night.
+        let classifiedNights = classified(disturbanceNights)
         let pattern: Pattern
         if disturbanceTrend.count < patternMinimumNights {
             pattern = .insufficientData
+        } else if classifiedNights.count < patternMinimumNights {
+            pattern = .unclassified(windowNights: disturbanceTrend.count)
         } else {
-            let elevatedCount = disturbanceNights.filter(isElevated).count
+            let elevatedCount = classifiedNights.filter(isElevated).count
             pattern = elevatedCount >= patternMinimumNights
-                ? .repeatedPattern(nightsElevated: elevatedCount, windowNights: disturbanceTrend.count)
+                ? .repeatedPattern(nightsElevated: elevatedCount, windowNights: classifiedNights.count)
                 : .normal
         }
 

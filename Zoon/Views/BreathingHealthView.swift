@@ -138,7 +138,13 @@ struct BreathingHealthView: View {
                 )
 
                 if case .repeatedPattern(let elevated, let window) = health.pattern {
-                    Text("Elevated on \(elevated) of the last \(window) tracked nights. Consider discussing a repeated pattern like this with a healthcare professional if it continues.")
+                    Text("Elevated on \(elevated) of the last \(window) classified nights. Consider discussing a repeated pattern like this with a healthcare professional if it continues.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if case .unclassified(let window) = health.pattern {
+                    Text("Your device recorded breathing disturbances on \(window) of these nights but didn't classify them. The trend above is real; Zoon won't call any of it elevated on its own, because that classification comes from Apple and isn't available here.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -151,6 +157,9 @@ struct BreathingHealthView: View {
     private var patternTint: Color {
         switch health.pattern {
         case .insufficientData: .secondary
+        // Not a reassuring colour. Zoon has readings but no classification,
+        // which is not the same as nothing being wrong.
+        case .unclassified: .secondary
         case .normal: Theme.Metric.recoveryHigh
         case .repeatedPattern: Theme.Metric.recoveryMid
         }

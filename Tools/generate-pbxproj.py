@@ -103,6 +103,11 @@ TESTS_EXTRA_APP_FILES = [
     # brings no app-only dependencies into the test target. Needed because
     # its highlight strings had two copy defects worth asserting on.
     "Zoon/Insights/WeeklyReport.swift",
+    # Foundation only -- pure rules over SleepNightFeatures (Shared) and
+    # RollingBaseline (above). Added so the causal wording of each rule
+    # can actually be asserted rather than reviewed by eye; see
+    # InsightLanguageTests.
+    "Zoon/Insights/RuleBasedInsightEngine.swift",
     # Its identifier round-trip decides which screen a Spotlight tap
     # opens, and a silent mismatch would route to the wrong one.
     "Zoon/Services/SpotlightIndexer.swift",

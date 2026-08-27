@@ -28,7 +28,8 @@ enum Fixture {
         avgSpO2: Double? = 97,
         wakeCount: Int = 2,
         breathingDisturbances: Double? = 1.0,
-        breathingDisturbancesClassification: BreathingDisturbanceClassification? = nil
+        breathingDisturbancesClassification: BreathingDisturbanceClassification? = nil,
+        lastWorkoutHoursBeforeBed: Double? = nil
     ) -> SleepNightFeatures {
         let calendar = Calendar.current
         let wake = calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
@@ -61,7 +62,7 @@ enum Fixture {
             breathingDisturbancesClassification: breathingDisturbancesClassification,
             hrv7DayAvg: avgHRV,
             sleepDebtMinutes: 0,
-            lastWorkoutHoursBeforeBed: nil,
+            lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: nil,
             sourceName: "Fixture",
             isMock: true

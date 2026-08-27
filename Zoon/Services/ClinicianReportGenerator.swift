@@ -204,13 +204,27 @@ enum ClinicianReportGenerator {
                 drawRow("Breathing disturbances", "Not available on this device/range")
             } else {
                 let values = measuredNights.compactMap(\.breathingDisturbances)
-                // Apple's own classification where HealthKit provided one,
-                // the same in-app threshold `BreathingHealth` falls back to
-                // otherwise -- see `BreathingHealth.isElevated`, the single
-                // place this "elevated" call is made.
-                let elevated = measuredNights.filter(BreathingHealth.isElevated).count
                 drawRow("Median, % of night", String(format: "%.1f%%", Statistics.median(values) ?? 0))
-                drawRow("Nights classified elevated", "\(elevated) of \(values.count)")
+
+                // Only Apple's classification is reported, and only against
+                // the count of nights that actually carry one.
+                //
+                // This row previously read "N of M" where M was every
+                // measured night and the classification fell back to an
+                // in-app 5%-of-night cutoff Zoon invented. On a document
+                // headed for a clinician, that presented an uncalibrated
+                // in-app heuristic as a classification. If nothing here is
+                // classified, the row says so rather than reporting zero.
+                let classified = BreathingHealth.classified(measuredNights)
+                if classified.isEmpty {
+                    drawRow("Nights classified elevated", "Not classified on this device/range")
+                } else {
+                    let elevated = classified.filter(BreathingHealth.isElevated).count
+                    drawRow(
+                        "Nights classified elevated (Apple)",
+                        "\(elevated) of \(classified.count) classified"
+                    )
+                }
             }
 
         case .spO2:

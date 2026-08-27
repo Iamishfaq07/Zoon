@@ -41,4 +41,50 @@ final class DiagnosticLanguageGuardTests: XCTestCase {
             )
         }
     }
+
+    // MARK: - Causal overclaiming
+
+    /// Every entry here was a real string in `RuleBasedInsightEngine` or
+    /// `WeeklyReport`. The list exists so they cannot come back, and so the
+    /// model-backed engines are held to the same standard as the rule-based
+    /// one.
+    func testCatchesEachCausalOverclaimTerm() {
+        for term in DiagnosticLanguageGuard.causalOverclaimTerms {
+            let text = "Last night was short, and \(term) something."
+            XCTAssertTrue(
+                DiagnosticLanguageGuard.overclaimsCausation(text),
+                "expected \"\(term)\" to be caught"
+            )
+        }
+    }
+
+    func testCausalOverclaimingIsCaseInsensitive() {
+        XCTAssertTrue(DiagnosticLanguageGuard.overclaimsCausation("This TRACES TO alcohol."))
+    }
+
+    /// Association language is exactly what Zoon should be using, so it must
+    /// pass. A guard that rejects the correct phrasing would push copy back
+    /// toward the wrong phrasing.
+    func testAssociationLanguagePasses() {
+        let allowed = [
+            "Your HRV was lower than usual, alongside a late workout.",
+            "These two signals moved together last night.",
+            "Nights you logged alcohol averaged 8% lower recovery.",
+            "This occurred near your latest bedtime of the week.",
+            "An association in your data, not proof of cause.",
+            "Worth watching over the next few nights.",
+        ]
+        for text in allowed {
+            XCTAssertFalse(DiagnosticLanguageGuard.overclaimsCausation(text), text)
+            XCTAssertFalse(DiagnosticLanguageGuard.containsBannedLanguage(text), text)
+        }
+    }
+
+    /// Model output is refused for causal overclaiming the same way it is for
+    /// naming a condition. Both callers fail closed, so a stricter guard costs
+    /// an occasional good answer rather than showing a bad one.
+    func testRejectsCausalOverclaimingInModelOutput() {
+        XCTAssertTrue(DiagnosticLanguageGuard.rejects("Your poor sleep was caused by late caffeine."))
+        XCTAssertTrue(DiagnosticLanguageGuard.rejects("Deep sleep is the first thing to suffer here."))
+    }
 }
