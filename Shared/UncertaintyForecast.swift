@@ -63,6 +63,16 @@ enum UncertaintyForecast {
         /// on its own.
         var spread: Double { upper - lower }
 
+        /// "Duration: 6h 20m to 8h 05m". The compact form, for surfaces with
+        /// one line to spend. Lives here rather than at each call site so the
+        /// widget and the phone cannot drift into two renderings of the same
+        /// interval.
+        var rangeLabel: String {
+            "\(metric.label.capitalizedFirst): "
+                + "\(metric.formattedMagnitude(lower))"
+                + " to \(metric.formattedMagnitude(upper))"
+        }
+
         /// Plain-language forecast. Leads with the range, not the midpoint.
         var sentence: String {
             "Tomorrow will most likely land between \(metric.formattedMagnitude(lower)) and "

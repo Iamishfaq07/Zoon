@@ -73,6 +73,14 @@ enum SleepAutopilot {
 
         var targetWakeMinutes: Double { targetBedtimeMinutes + targetSleepMinutes }
 
+        /// "10:45 PM - 6:30 AM". Lives here rather than at each call site so
+        /// the widget, the watch and the phone cannot drift into three
+        /// slightly different renderings of the same plan.
+        var targetRangeLabel: String {
+            "\(SleepAutopilot.clockLabel(targetBedtimeMinutes)) - "
+                + SleepAutopilot.clockLabel(targetWakeMinutes)
+        }
+
         var sentence: String {
             guard !isHolding else {
                 return "Tonight looks like your usual night. No change worth making."

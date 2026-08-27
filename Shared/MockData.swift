@@ -126,6 +126,54 @@ enum MockData {
         )
     }
 
+    /// The habitual night length the autopilot would measure from `history`.
+    ///
+    /// Computed over the same trailing window the engine uses, not over all
+    /// of `history`: the two Tonight snapshots below need a plan that is
+    /// *definitely* holding and one that is *definitely* shifting, and a
+    /// median taken over a different window would only land inside the
+    /// deadband by luck. Matching the window makes the holding case exact --
+    /// asking for precisely the habit produces a zero shift by construction.
+    private static var habitualSleepMinutes: Double {
+        let recent = history.sorted { $0.date < $1.date }.suffix(SleepAutopilot.window)
+        return Statistics.median(recent.compactMap { TrendEngine.Metric.duration.value(from: $0) }) ?? 420
+    }
+
+    /// Snapshot with tonight's plan and tomorrow's range filled in, for the
+    /// Tonight widget and complication previews.
+    ///
+    /// Runs the real engines over the mock history rather than hard-coding
+    /// strings, so a preview shows what the widget will actually render. The
+    /// phone fills these fields the same way -- see
+    /// `SleepDataCoordinator.publishSnapshot`.
+    static var tonightSnapshot: SleepSnapshot {
+        makeTonightSnapshot(sleepNeedMinutes: habitualSleepMinutes + 45, sleepDebtMinutes: 96)
+    }
+
+    /// The other half of the plan: nothing worth changing tonight. Worth its
+    /// own preview because it is a different tint and different copy, and
+    /// because "hold" is the outcome most nights should produce.
+    static var holdingTonightSnapshot: SleepSnapshot {
+        makeTonightSnapshot(sleepNeedMinutes: habitualSleepMinutes, sleepDebtMinutes: 0)
+    }
+
+    private static func makeTonightSnapshot(sleepNeedMinutes: Double, sleepDebtMinutes: Double) -> SleepSnapshot {
+        var result = snapshot
+        if let plan = SleepAutopilot.plan(
+            nights: history,
+            sleepNeedMinutes: sleepNeedMinutes,
+            sleepDebtMinutes: sleepDebtMinutes
+        ) {
+            result.tonightTargetLabel = plan.targetRangeLabel
+            result.tonightTargetNote = plan.sentence
+            result.isTonightTargetHolding = plan.isHolding
+        }
+        if let forecast = UncertaintyForecast.forecastAll(nights: history).first {
+            result.tomorrowRangeLabel = forecast.rangeLabel
+        }
+        return result
+    }
+
     /// Snapshot with badge fields filled in, for the badge widget previews.
     static var snapshotWithBadges: SleepSnapshot {
         var result = snapshot

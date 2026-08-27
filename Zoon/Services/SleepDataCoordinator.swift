@@ -853,15 +853,12 @@ final class SleepDataCoordinator {
             },
             sleepDebtMinutes: context.sleepNeed.debtMinutes
         ) {
-            snapshot.tonightTargetLabel = "\(SleepAutopilot.clockLabel(plan.targetBedtimeMinutes)) - "
-                + SleepAutopilot.clockLabel(plan.targetWakeMinutes)
+            snapshot.tonightTargetLabel = plan.targetRangeLabel
             snapshot.tonightTargetNote = plan.sentence
             snapshot.isTonightTargetHolding = plan.isHolding
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: recentNights).first {
-            snapshot.tomorrowRangeLabel = "\(forecast.metric.label.capitalizedFirst): "
-                + "\(forecast.metric.formattedMagnitude(forecast.lower))"
-                + " to \(forecast.metric.formattedMagnitude(forecast.upper))"
+            snapshot.tomorrowRangeLabel = forecast.rangeLabel
         }
 
         // Badges are evaluated here rather than in the extension: the engine
