@@ -191,7 +191,7 @@ struct RootView: View {
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
-        case .report, .settings, .badges:
+        case .report, .settings, .badges, .evidence, .patterns, .sensorTruth:
             presentation.presentMore(pushing: destination)
         case .journal:
             presentation.presentJournal()
@@ -282,7 +282,7 @@ struct SleepTabView: View {
                     }
                 // Owned by the More tab; unreachable here, but the switch has
                 // to stay exhaustive.
-                case .report, .settings, .badges: EmptyView()
+                case .report, .settings, .badges, .evidence, .patterns, .sensorTruth: EmptyView()
                 // Owned by the Journal tab; never pushed onto this stack.
                 case .journal: EmptyView()
                 }
