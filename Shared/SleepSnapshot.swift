@@ -76,6 +76,32 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// default besides.
     var isShiftWorkModeEnabled: Bool = false
 
+    /// Tonight's `SleepAutopilot` target, pre-formatted as "23:40 - 07:00",
+    /// and the one-line reason underneath it.
+    ///
+    /// Formatted on the phone rather than published as raw minutes for two
+    /// reasons. The autopilot works on a signed minutes-from-midnight scale
+    /// that has to be folded back onto a clock face before display, and
+    /// re-implementing that fold in the watch and widget targets is three
+    /// copies of an off-by-a-day bug waiting to happen. The engine also
+    /// needs the whole night history to run at all, which neither extension
+    /// has -- the same reason badges are evaluated on the phone.
+    ///
+    /// Empty when there is too little history for a plan. Defaulted for the
+    /// same reason every field added after the first release is: an older
+    /// snapshot on disk still decodes.
+    var tonightTargetLabel: String = ""
+    var tonightTargetNote: String = ""
+
+    /// The most predictable metric's `UncertaintyForecast` range, phrased
+    /// for a small screen. Empty when there is too little history.
+    var tomorrowRangeLabel: String = ""
+
+    /// Whether the autopilot is holding rather than asking for a change.
+    /// Carried so the watch can say so plainly instead of inferring "no
+    /// change" from an absent shift, which would read the same as "no plan".
+    var isTonightTargetHolding: Bool = false
+
     /// Sleep debt expressed in hours, which is how the widget phrases it.
     var sleepDebtHours: Double { sleepDebtMinutes / 60 }
 

@@ -214,6 +214,36 @@ final class SleepAutopilotTests: XCTestCase {
         XCTAssertEqual(full.confidence, .high)
     }
 
+    // MARK: - Clock formatting
+
+    /// Shared by the card, the watch and the widget, so the fold is worth
+    /// pinning: values are negative before midnight, and a target sleep
+    /// length can push a wake time past 1440.
+    func testClockLabelFoldsBothEndsOntoARealClockFace() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        // 23:40 arrives as -20, not as a negative clock time.
+        XCTAssertEqual(SleepAutopilot.clockLabel(-20, calendar: calendar),
+                       SleepAutopilot.clockLabel(1420, calendar: calendar))
+        // A 1:00 wake arrives as 1500 once a sleep length is added past
+        // midnight, and must not render as hour 25.
+        XCTAssertEqual(SleepAutopilot.clockLabel(1500, calendar: calendar),
+                       SleepAutopilot.clockLabel(60, calendar: calendar))
+        // Midnight itself round-trips rather than folding to 1440.
+        XCTAssertEqual(SleepAutopilot.clockLabel(0, calendar: calendar),
+                       SleepAutopilot.clockLabel(1440, calendar: calendar))
+    }
+
+    func testClockLabelNeverRendersANegativeOrOutOfRangeHour() {
+        for minutes in stride(from: -720.0, through: 2160.0, by: 37) {
+            let label = SleepAutopilot.clockLabel(minutes)
+            XCTAssertFalse(label.contains("-"), "\(minutes) -> \(label)")
+            XCTAssertFalse(label.hasPrefix("25"), "\(minutes) -> \(label)")
+            XCTAssertFalse(label.isEmpty, "\(minutes)")
+        }
+    }
+
     // MARK: - Copy
 
     func testTheSentenceNamesTheDirectionAndAmount() throws {

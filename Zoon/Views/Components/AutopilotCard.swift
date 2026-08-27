@@ -59,25 +59,9 @@ struct AutopilotCard: View {
         .glassCard()
     }
 
-    /// Formats a wrapped minutes-from-midnight value.
-    ///
-    /// The autopilot works on the same signed scale as
-    /// `Statistics.circularMinutesFromMidnight` -- negative before midnight,
-    /// and a target sleep length can push the wake time past 24:00 -- so both
-    /// ends have to be folded back into a real clock face before display.
-    /// Rendering -20 as "-0:20", or a 1500-minute wake as "25:00", is the
-    /// obvious failure here.
+    /// Delegates to the engine so the phone, watch and widget all fold the
+    /// clock the same way -- see `SleepAutopilot.clockLabel`.
     private func clock(_ minutes: Double) -> String {
-        let wrapped = ((minutes.rounded().truncatingRemainder(dividingBy: 1440)) + 1440)
-            .truncatingRemainder(dividingBy: 1440)
-        let hour = Int(wrapped) / 60
-        let minute = Int(wrapped) % 60
-        var components = DateComponents()
-        components.hour = hour
-        components.minute = minute
-        guard let date = Calendar.current.date(from: components) else {
-            return String(format: "%02d:%02d", hour, minute)
-        }
-        return date.formatted(date: .omitted, time: .shortened)
+        SleepAutopilot.clockLabel(minutes)
     }
 }
