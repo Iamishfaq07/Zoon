@@ -252,3 +252,14 @@ struct EvidenceView: View {
     NavigationStack { EvidenceView() }
         .zoonPreviewEnvironment()
 }
+
+/// The densest of the four new screens, and the last one without a large-text
+/// preview. Two places to look: the tier headers, where an icon sits beside
+/// uppercased kerned text on one line, and the claim rows, where the bullet
+/// is pinned six points down from the top of a headline that gets much
+/// taller here -- fine against one line, adrift against three.
+#Preview("What Zoon knows - large text") {
+    NavigationStack { EvidenceView() }
+        .zoonPreviewEnvironment()
+        .environment(\.dynamicTypeSize, .accessibility3)
+}
