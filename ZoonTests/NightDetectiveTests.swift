@@ -32,7 +32,12 @@ final class NightDetectiveTests: XCTestCase {
         )
 
         XCTAssertEqual(report.factors.first?.signal, .restingHeartRate)
-        XCTAssertTrue(report.headline.contains("resting heart rate"), report.headline)
+        // Case-insensitive: the headline capitalises its first word, and this
+        // assertion is about which signal it names, not how it is cased.
+        XCTAssertTrue(
+            report.headline.lowercased().contains("resting heart rate"),
+            report.headline
+        )
     }
 
     func testFactorsAreSortedByAbsoluteDeviation() throws {
