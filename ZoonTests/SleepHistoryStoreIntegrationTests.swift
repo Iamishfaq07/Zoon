@@ -4,26 +4,26 @@ import SwiftData
 /// Restores the coverage dropped in "Drop SleepHistoryStorePruneTests -- crashes
 /// the test process, cause unknown".
 ///
-/// The cause turned out to be TWO independent bugs, which is why every
-/// single-fix attempt looked wrong while the other bug was still present:
+/// The cause, finally read off a symbolicated CI crash report rather than
+/// guessed at: the `ModelContainer` was a local inside the `makeStore()`
+/// factory, so it was released the moment that function returned, while the
+/// store it returned went on holding that container's `mainContext`. The
+/// first fetch afterwards traps inside SwiftData -- EXC_BREAKPOINT/SIGTRAP,
+/// three SwiftData frames sitting directly under `JournalStore.entry(for:)`
+/// -- and takes the process with it, with no XCTest failure message.
+/// Retaining the container on the test case is the fix. The August attempt
+/// used this same factory shape, so this was its bug too.
 ///
-/// 1. Adding `SleepHistoryStore` to this target used to drag in
-///    `FeatureExtractor.swift` (for `RollingBaseline`) and
-///    `HealthKitManager.swift` (for `AnchorStore`), both `import HealthKit`.
-///    Fixed by extracting those two types into HealthKit-free files.
-/// 2. A synchronous `throws` test method on a `@MainActor` XCTestCase is
-///    invoked through XCTest's non-async path, which never actually enters
-///    the main actor -- the compiler emits no hop (it trusts the annotation),
-///    and the first `@MainActor`-isolated call into the store trips the
-///    runtime's executor assertion: EXC_BREAKPOINT (SIGTRAP), captured in
-///    this repo's CI crash reports with `JournalEntry` metadata in the
-///    faulting frame. That kills the process with no XCTest failure message.
-///    Fixed by making every test method `async throws`, which uses the
-///    concurrency-aware invocation path that does hop -- `SwiftDataProbeTests`
-///    (async all along) passing in the same run these crashed as sync was
-///    the isolating evidence.
+/// Worth recording what it was NOT, since each was tested and disproven
+/// across five CI runs: SwiftData in an unhosted test bundle (a bare probe
+/// passes), `#Predicate` evaluation (a predicate probe passes), and
+/// sync-vs-async invocation on a `@MainActor` XCTestCase (the crash stack
+/// shows the async thunks, so isolation was never involved). The
+/// HealthKit-free extraction of `RollingBaseline` and `AnchorStore.clear()`
+/// was still needed -- without it these files do not compile into this
+/// target at all -- but it was never what caused the crash.
 ///
-/// So every test here must stay `async throws` even though nothing awaits.
+/// Tests stay `async throws`: harmless, and right for a `@MainActor` case.
 ///
 /// `prune` is worth this trouble: it is the only thing that removes a stored
 /// night whose HealthKit sample was later deleted or corrected away, and
@@ -32,12 +32,19 @@ import SwiftData
 @MainActor
 final class SleepHistoryStoreIntegrationTests: XCTestCase {
 
+    /// Held for the lifetime of the test -- see the note in `makeStore()`.
+    private var container: ModelContainer?
+
     private func makeStore() throws -> SleepHistoryStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
             for: SleepNightRecord.self, SleepEpisodeRecord.self,
             configurations: config
         )
+        // Retained above. A container that goes out of scope here takes the
+        // in-memory store with it while the returned SleepHistoryStore still
+        // holds its mainContext, and the next fetch traps inside SwiftData.
+        self.container = container
         return SleepHistoryStore(context: container.mainContext)
     }
 

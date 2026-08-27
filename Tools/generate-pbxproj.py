@@ -92,10 +92,10 @@ TESTS_EXTRA_APP_FILES = [
     "Zoon/Services/AnchorStore.swift",
     # Foundation/SwiftData/os only, now that RollingBaseline and AnchorStore.clear()
     # are reachable without HealthKit -- every other HealthKit mention in these two
-    # is a doc comment. Safe to test now that BOTH of the August crash's causes
-    # are fixed: the HealthKit linkage above, and sync-vs-async test invocation
-    # on a @MainActor XCTestCase -- see SleepHistoryStoreIntegrationTests'
-    # header for the full story.
+    # is a doc comment. This extraction is what lets these compile here at all;
+    # it was NOT the August crash's cause. That was the test's own ModelContainer
+    # going out of scope in its factory method -- see
+    # SleepHistoryStoreIntegrationTests' header.
     "Zoon/Services/SleepHistoryStore.swift",
     "Zoon/Services/JournalStore.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",

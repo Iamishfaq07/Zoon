@@ -11,19 +11,28 @@ import SwiftData
 /// actually lands in the store with its fields intact -- including `nightKey`,
 /// whose whole purpose is to survive the trip.
 ///
-/// Every test method here must be `async throws` even though nothing awaits:
-/// a synchronous test on a `@MainActor` XCTestCase goes through XCTest's
-/// non-async invocation path, which never actually enters the main actor,
-/// and the first isolated call into `JournalStore` then trips the runtime's
-/// executor assertion -- EXC_BREAKPOINT/SIGTRAP, no XCTest failure message,
-/// whole process dead. See `SleepHistoryStoreIntegrationTests`' header for
-/// the full two-bug history behind that.
+/// The one thing to preserve when editing this file is that `makeStore()`
+/// retains its `ModelContainer` -- see the property below. A container that
+/// dies with the factory call takes the in-memory store with it and the next
+/// fetch traps inside SwiftData, killing the process silently. See
+/// `SleepHistoryStoreIntegrationTests`' header for how that was tracked down.
 @MainActor
 final class JournalStoreIntegrationTests: XCTestCase {
+
+    /// Held for the lifetime of the test. Letting the container go out of
+    /// scope at the end of `makeStore()` tears the in-memory store down while
+    /// the returned `JournalStore` is still holding its `mainContext` -- the
+    /// next fetch then traps inside SwiftData (EXC_BREAKPOINT/SIGTRAP) and
+    /// takes the whole process with it, with no XCTest failure message. That
+    /// is exactly what killed `SleepHistoryStorePruneTests` in August: it
+    /// used this same factory shape. XCTest builds a fresh instance per test
+    /// method, so this property is released between tests on its own.
+    private var container: ModelContainer?
 
     private func makeStore() throws -> JournalStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: JournalEntry.self, configurations: config)
+        self.container = container
         return JournalStore(context: container.mainContext)
     }
 
