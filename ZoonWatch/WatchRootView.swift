@@ -34,6 +34,16 @@ struct WatchRootView: View {
                 }
                 RecoveryPage(snapshot: snapshot)
                 SleepPage(snapshot: snapshot)
+                // Tonight, not last night -- the only page here about a
+                // night that has not happened yet, which is why it sits
+                // after the two that grade the one that has. Gated on the
+                // label being non-empty: snapshots written before these
+                // fields existed decode with "", and a page that renders a
+                // blank target is worse than one page fewer.
+                if !snapshot.tonightTargetLabel.isEmpty
+                    || !snapshot.tomorrowRangeLabel.isEmpty {
+                    TonightPage(snapshot: snapshot)
+                }
                 MorePage(snapshot: snapshot)
             } else {
                 WaitingPage(isActivated: link.isActivated)
@@ -52,6 +62,54 @@ struct WatchRootView: View {
         .sheet(isPresented: $showsQuickLog) {
             QuickLogView()
         }
+    }
+}
+
+/// Tonight's target from `SleepAutopilot`, and tomorrow's range from
+/// `UncertaintyForecast`.
+///
+/// Both arrive pre-formatted in the snapshot. The watch has no HealthKit
+/// pipeline and no night history, so it could not run either engine even if
+/// they were compiled in -- the same reason badges are evaluated on the
+/// phone. What the watch does own is the decision about how much of it fits
+/// on a 40mm screen, which is why the note is capped at two lines here
+/// rather than truncated on the phone.
+private struct TonightPage: View {
+    let snapshot: SleepSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Tonight", systemImage: snapshot.isTonightTargetHolding
+                  ? "checkmark.circle.fill" : "arrow.left.arrow.right.circle.fill")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(snapshot.isTonightTargetHolding
+                                 ? Theme.Metric.recoveryHigh : Theme.Metric.sleep)
+
+            if !snapshot.tonightTargetLabel.isEmpty {
+                Text(snapshot.tonightTargetLabel)
+                    .font(.title3.weight(.semibold))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+                Text(snapshot.tonightTargetNote)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if !snapshot.tomorrowRangeLabel.isEmpty {
+                Divider()
+                Text(snapshot.tomorrowRangeLabel)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
     }
 }
 

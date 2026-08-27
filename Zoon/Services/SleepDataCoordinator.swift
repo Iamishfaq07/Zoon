@@ -839,6 +839,31 @@ final class SleepDataCoordinator {
             ? context.healthRadar.severity.label
             : "Nothing unusual"
 
+        // Autopilot and forecast are computed here for the same reason
+        // badges are: both need the whole night history, and neither the
+        // widget nor the watch has a HealthKit pipeline to rebuild it from.
+        // The clock formatting happens here too -- see the snapshot fields'
+        // own documentation for why it is not left to each extension.
+        let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
+        if let plan = SleepAutopilot.plan(
+            nights: recentNights,
+            sleepNeedMinutes: context.learnedSleepNeed.minutes,
+            obligationWakeMinutes: obligationWake.map {
+                Statistics.circularMinutesFromMidnight($0)
+            },
+            sleepDebtMinutes: context.sleepNeed.debtMinutes
+        ) {
+            snapshot.tonightTargetLabel = "\(SleepAutopilot.clockLabel(plan.targetBedtimeMinutes)) - "
+                + SleepAutopilot.clockLabel(plan.targetWakeMinutes)
+            snapshot.tonightTargetNote = plan.sentence
+            snapshot.isTonightTargetHolding = plan.isHolding
+        }
+        if let forecast = UncertaintyForecast.forecastAll(nights: recentNights).first {
+            snapshot.tomorrowRangeLabel = "\(forecast.metric.label.capitalizedFirst): "
+                + "\(forecast.metric.formattedMagnitude(forecast.lower))"
+                + " to \(forecast.metric.formattedMagnitude(forecast.upper))"
+        }
+
         // Badges are evaluated here rather than in the extension: the engine
         // needs the whole night history and the journal, and the widget
         // deliberately reads nothing but this snapshot.

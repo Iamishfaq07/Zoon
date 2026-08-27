@@ -48,6 +48,7 @@ struct JournalView: View {
                 VStack(spacing: Theme.stackSpacing) {
                     dayPicker
                     lifestyleInsightsCard
+                    tonightsAsk
                     tagSections
                     noteCard
                     correlationsSection
@@ -193,6 +194,49 @@ struct JournalView: View {
     }
 
     // MARK: - Tags
+
+    /// The short list `AdaptiveJournal` ranks for tonight, above the full
+    /// vocabulary rather than instead of it.
+    ///
+    /// Replacing the categorised list outright was the obvious move and the
+    /// wrong one: the ranking is a convenience, and someone who did
+    /// something not in tonight's six still has to be able to log it. A
+    /// shortcut that hides the thing you came to record is worse than no
+    /// shortcut. So this is a fast path, and the full list stays below it.
+    ///
+    /// Note what is *not* passed in: nothing about how the person slept.
+    /// That absence is the point -- ranking on outcome would fill the
+    /// journal with tags disproportionately attached to bad nights, and the
+    /// correlator would later find an association Zoon manufactured by
+    /// choosing when to ask. See `AdaptiveJournal`'s type documentation.
+    @ViewBuilder
+    private var tonightsAsk: some View {
+        let prompts = AdaptiveJournal.prompts(
+            observations: coordinator.journalObservations(),
+            activeExperimentTag: preferences.activeExperimentTag?.rawValue,
+            pinnedTags: Set(BehaviorTag.allCases.filter(preferences.isTracked))
+        )
+        if prompts.count > 1 {
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader(title: "Tonight")
+                FlowLayout(spacing: 8) {
+                    ForEach(prompts) { prompt in
+                        tagChip(prompt.tag)
+                    }
+                }
+                // One shared line rather than a note per chip: six
+                // explanations under six chips is more reading than the
+                // whole list it replaces.
+                if let first = prompts.first {
+                    Text(first.note)
+                        .font(Theme.text(11))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .glassCard()
+        }
+    }
 
     private var tagSections: some View {
         VStack(spacing: Theme.stackSpacing) {

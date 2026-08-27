@@ -167,6 +167,30 @@ enum SleepAutopilot {
         )
     }
 
+    /// Formats a value on this engine's signed minutes-from-midnight scale
+    /// as a clock time.
+    ///
+    /// Lives here rather than in the card that first needed it because a
+    /// second caller appeared immediately: the phone also formats these for
+    /// the watch and widget, which have no history to recompute from. The
+    /// fold is the part worth sharing -- values are negative before midnight
+    /// and a target sleep length can push a wake time past 1440, so rendering
+    /// -20 as "-0:20" or a 1500-minute wake as "25:00" is the failure mode,
+    /// and three copies of it is three chances to get it wrong.
+    static func clockLabel(_ minutes: Double, calendar: Calendar = .current) -> String {
+        let wrapped = (minutes.rounded().truncatingRemainder(dividingBy: 1440) + 1440)
+            .truncatingRemainder(dividingBy: 1440)
+        let hour = Int(wrapped) / 60
+        let minute = Int(wrapped) % 60
+        var components = DateComponents()
+        components.hour = hour
+        components.minute = minute
+        guard let date = calendar.date(from: components) else {
+            return String(format: "%02d:%02d", hour, minute)
+        }
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
     private static func confidence(nights: Int) -> MetricConfidence {
         switch nights {
         case ..<minimumNights: .insufficient
