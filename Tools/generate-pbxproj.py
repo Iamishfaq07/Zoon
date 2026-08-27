@@ -117,6 +117,10 @@ TESTS_EXTRA_APP_FILES = [
     # BehaviorTag for the logged-behaviour list -- which is exactly why it
     # is not in Shared/ (the widget and watch targets have no app models).
     "Zoon/Insights/NightDetective.swift",
+    # Composes the four claim-producing engines into one graded list. Needs
+    # BehaviorTag and SleepExperimentStore.Outcome, so it is app-side for the
+    # same reason NightDetective is.
+    "Zoon/Insights/EvidenceNotebook.swift",
     # Foundation only (the @Observable macro needs the system Observation
     # framework, not SwiftUI) -- the Outcome record GuidedExperiment.summarize
     # builds and GuidedExperimentTests asserts on.
