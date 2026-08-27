@@ -119,6 +119,14 @@ struct TodayView: View {
                     wake: context.bodyClock?.window(for: .now)?.end
                 ).entrance(3)
             }
+            // Under the timeline on purpose: that card draws the schedule
+            // they already keep, this one says whether to move it. The
+            // obligation wake time comes from the body clock's window when
+            // there is one, which is what makes the autopilot solve for
+            // bedtime rather than for duration.
+            if let plan = autopilotPlan(context) {
+                AutopilotCard(plan: plan).entrance(3)
+            }
             if coordinator.recentNights.count < 30 {
                 PersonalizationProgressCard(
                     nightsTracked: coordinator.recentNights.count,
@@ -174,6 +182,24 @@ struct TodayView: View {
     /// text ("You're recovered", "You need to take it easy"); it reads fine
     /// as the supporting line under the new hero since `guidanceCard`
     /// immediately below spells out what to actually do about it.
+    /// Tonight's autopilot plan, or `nil` when there is too little history.
+    ///
+    /// Written as a method rather than inline in the body so the optional
+    /// wake time has somewhere to land: `bodyClock?.window(for:)?.end` is a
+    /// non-optional `Date` *inside* the chain, so mapping it there applies
+    /// `map` to `Date` rather than to `Date?`.
+    private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
+        let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
+        return SleepAutopilot.plan(
+            nights: coordinator.recentNights,
+            sleepNeedMinutes: context.learnedSleepNeed.minutes,
+            obligationWakeMinutes: obligationWake.map {
+                Statistics.circularMinutesFromMidnight($0)
+            },
+            sleepDebtMinutes: context.sleepNeed.debtMinutes
+        )
+    }
+
     private func morningBrief(_ context: DayContext) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             heroSection(context)

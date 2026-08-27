@@ -380,6 +380,7 @@
 		BD69CD7B133005454B6155FE /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
 		BE2649BD4969F8C0BD8DC7C5 /* BodyClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5988981A0B2312A8B53FB4B /* BodyClock.swift */; };
 		BE8F8EADC36EFF631AA73AC1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC1FF35F8179A094C3AB745 /* Theme.swift */; };
+		BF085A49F51581E10C5377B2 /* AutopilotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A5FCBE2C70C5E0F7681DCF /* AutopilotCard.swift */; };
 		C0A750EE84110AE9A3E1D13D /* UncertaintyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3804031F499B6717417985F3 /* UncertaintyForecast.swift */; };
 		C0AE31F820E588805AB0EA93 /* UncertaintyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3804031F499B6717417985F3 /* UncertaintyForecast.swift */; };
 		C0D8E300BC03BFE1E1DF5999 /* StressScoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C575B7DDF40369D37AF5D867 /* StressScoreTests.swift */; };
@@ -839,6 +840,7 @@
 		EEF614D35BFFE603C238A0E5 /* SleepHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepHealth.swift"; sourceTree = "<group>"; };
 		EF14B47CE493455F452C408F /* FoundationModelInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FoundationModelInsightEngine.swift"; sourceTree = "<group>"; };
 		F22352B1B6ACE1C047925BE1 /* SleepRegularityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepRegularityTests.swift"; sourceTree = "<group>"; };
+		F2A5FCBE2C70C5E0F7681DCF /* AutopilotCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AutopilotCard.swift"; sourceTree = "<group>"; };
 		F32F7CEA939645724CB03401 /* WakeAlarm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WakeAlarm.swift"; sourceTree = "<group>"; };
 		F381FE30E3EFE052D944E960 /* DiagnosticLanguageGuardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DiagnosticLanguageGuardTests.swift"; sourceTree = "<group>"; };
 		F39A93CBDC0796684C98A6E4 /* WeeklyWrappedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyWrappedCard.swift"; sourceTree = "<group>"; };
@@ -911,6 +913,7 @@
 		037D43276F716FE803145F5F /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				F2A5FCBE2C70C5E0F7681DCF,
 				BE323A154A812CF844797F4A,
 				B04DB48634B9461AF67635F9,
 				B202E4810C0F1C50E34E2DC3,
@@ -1631,6 +1634,7 @@
 				0D89A4EAA851E7C304E32665,
 				CE0253756CA59F5F3974A284,
 				C1A1A299E033E992DD7306FE,
+				BF085A49F51581E10C5377B2,
 				5B06FAA7FC659D9DD72AD43C,
 				0A7C54E3814C703015DAABFB,
 				5FD7E940C881946CF2A5EF92,
