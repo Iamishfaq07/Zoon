@@ -113,6 +113,10 @@ TESTS_EXTRA_APP_FILES = [
     # Shared) -- the matched-pair engine behind Cause Finder, and exactly
     # the exposure-state semantics JournalCorrelatorTests exists to pin down.
     "Zoon/Insights/JournalCorrelator.swift",
+    # Pure ranking over SleepNightFeatures + Statistics.robustZ, plus
+    # BehaviorTag for the logged-behaviour list -- which is exactly why it
+    # is not in Shared/ (the widget and watch targets have no app models).
+    "Zoon/Insights/NightDetective.swift",
     # Foundation only (the @Observable macro needs the system Observation
     # framework, not SwiftUI) -- the Outcome record GuidedExperiment.summarize
     # builds and GuidedExperimentTests asserts on.
