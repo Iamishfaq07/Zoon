@@ -65,3 +65,54 @@ struct AutopilotCard: View {
         SleepAutopilot.clockLabel(minutes)
     }
 }
+
+/// Both states, because the argument for this card is that the holding case
+/// has to read as an answer rather than as an absence. If "no change worth
+/// making" looks like an empty card next to the shifting one, that argument
+/// has lost, and this is the pair that shows it.
+///
+/// The plans are built directly rather than run through `SleepAutopilot.plan`:
+/// coaxing the engine into holding needs a history whose median happens to sit
+/// inside the deadband, which is a fixture to maintain rather than a thing to
+/// look at.
+#Preview("Autopilot - shifting") {
+    AutopilotCard(plan: SleepAutopilot.Plan(
+        targetBedtimeMinutes: -20,
+        targetSleepMinutes: 480,
+        shiftMinutes: -20,
+        debtRepaymentMinutes: 30,
+        isHolding: false,
+        confidence: .moderate
+    ))
+    .padding()
+    .zoonPreviewEnvironment()
+}
+
+#Preview("Autopilot - holding") {
+    AutopilotCard(plan: SleepAutopilot.Plan(
+        targetBedtimeMinutes: -52,
+        targetSleepMinutes: 465,
+        shiftMinutes: 0,
+        debtRepaymentMinutes: 0,
+        isHolding: true,
+        confidence: .high
+    ))
+    .padding()
+    .zoonPreviewEnvironment()
+}
+
+/// The two-time headline is a `firstTextBaseline` HStack of two scaled
+/// numerals with an arrow between them -- the row most likely to wrap badly.
+#Preview("Autopilot - large text") {
+    AutopilotCard(plan: SleepAutopilot.Plan(
+        targetBedtimeMinutes: -20,
+        targetSleepMinutes: 480,
+        shiftMinutes: -20,
+        debtRepaymentMinutes: 30,
+        isHolding: false,
+        confidence: .moderate
+    ))
+    .padding()
+    .zoonPreviewEnvironment()
+    .environment(\.dynamicTypeSize, .accessibility3)
+}

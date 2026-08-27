@@ -84,3 +84,16 @@ struct SensorTruthView: View {
         }
     }
 }
+
+#Preview("Where the numbers come from") {
+    NavigationStack { SensorTruthView() }
+        .zoonPreviewEnvironment()
+}
+
+/// Every row pairs a title with a provenance capsule on the same line, which
+/// is where large text crowds first.
+#Preview("Where the numbers come from - large text") {
+    NavigationStack { SensorTruthView() }
+        .zoonPreviewEnvironment()
+        .environment(\.dynamicTypeSize, .accessibility3)
+}

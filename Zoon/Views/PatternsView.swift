@@ -213,3 +213,26 @@ struct PatternsView: View {
             .glassCard()
     }
 }
+
+#Preview("Your patterns") {
+    NavigationStack { PatternsView() }
+        .zoonPreviewEnvironment()
+}
+
+/// The 3x3 grid is the layout in this app most likely to break at large text:
+/// fixed-height rows inside a three-column `HStack`, with a count centred in
+/// each cell. Nobody in CI can look at it, so the preview that would show the
+/// break is checked in rather than left for someone to configure by hand.
+#Preview("Your patterns - large text") {
+    NavigationStack { PatternsView() }
+        .zoonPreviewEnvironment()
+        .environment(\.dynamicTypeSize, .accessibility3)
+}
+
+/// Light is the appearance the shading and the best-region border were never
+/// seen in.
+#Preview("Your patterns - light") {
+    NavigationStack { PatternsView() }
+        .zoonPreviewEnvironment()
+        .preferredColorScheme(.light)
+}
