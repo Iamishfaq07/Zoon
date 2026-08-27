@@ -269,4 +269,57 @@ final class SleepAutopilotTests: XCTestCase {
         XCTAssertFalse(caveat.contains("will improve"), caveat)
         XCTAssertFalse(caveat.contains("better sleep"), caveat)
     }
+
+    // MARK: - Preview fixtures
+
+    /// The Tonight previews are only useful if the mock actually produces a
+    /// plan. `MockData.tonightSnapshot` runs the real engine over the seeded
+    /// history, so a change to the history, the window, or the deadband could
+    /// quietly turn every Tonight preview into the "not enough nights yet"
+    /// waiting state -- which still renders, so nothing would fail.
+    func testTonightMockProducesAShiftingPlan() {
+        let snapshot = MockData.tonightSnapshot
+        XCTAssertFalse(snapshot.tonightTargetLabel.isEmpty)
+        XCTAssertFalse(snapshot.tonightTargetNote.isEmpty)
+        XCTAssertFalse(snapshot.isTonightTargetHolding)
+        XCTAssertFalse(snapshot.tomorrowRangeLabel.isEmpty)
+    }
+
+    /// The other half: asking for precisely the measured habit has to land
+    /// inside the deadband, or the "nothing worth changing" preview is
+    /// showing the wrong state.
+    func testTonightMockProducesAHoldingPlan() {
+        let snapshot = MockData.holdingTonightSnapshot
+        XCTAssertFalse(snapshot.tonightTargetLabel.isEmpty)
+        XCTAssertTrue(snapshot.isTonightTargetHolding)
+        XCTAssertTrue(
+            snapshot.tonightTargetNote.contains("No change worth making"),
+            snapshot.tonightTargetNote
+        )
+    }
+
+    /// The label the widget and the watch both read is built once, on the
+    /// plan. A separate rendering at either call site is the drift this
+    /// guards against.
+    func testTargetRangeLabelFoldsBothEnds() {
+        guard let plan = SleepAutopilot.plan(
+            nights: nights(bedtimeMinutes: -30, sleepMinutes: 420),
+            sleepNeedMinutes: 480
+        ) else {
+            return XCTFail("expected a plan")
+        }
+        let label = plan.targetRangeLabel
+        XCTAssertTrue(label.contains(" - "), label)
+        // Both halves come from `clockLabel`, so a bedtime before midnight
+        // renders as a clock time rather than a negative number.
+        XCTAssertFalse(label.hasPrefix("-"), label)
+        XCTAssertTrue(
+            label.contains(SleepAutopilot.clockLabel(plan.targetBedtimeMinutes)),
+            label
+        )
+        XCTAssertTrue(
+            label.contains(SleepAutopilot.clockLabel(plan.targetWakeMinutes)),
+            label
+        )
+    }
 }

@@ -193,3 +193,35 @@ struct TonightWidgetView: View {
             .foregroundStyle(.tertiary)
     }
 }
+
+#Preview("Small", as: .systemSmall) {
+    TonightWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.holdingTonightSnapshot, isPlaceholder: false)
+    // The state everyone sees on install: no plan yet, so the widget has to
+    // say why rather than render an empty box.
+    SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true)
+}
+
+#Preview("Medium", as: .systemMedium) {
+    TonightWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.holdingTonightSnapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true)
+}
+
+#Preview("Rectangular", as: .accessoryRectangular) {
+    TonightWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.holdingTonightSnapshot, isPlaceholder: false)
+}
+
+#Preview("Inline", as: .accessoryInline) {
+    TonightWidget()
+} timeline: {
+    SleepEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
+    SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+}
