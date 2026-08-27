@@ -46,6 +46,24 @@ struct NapControl: ControlWidget {
     }
 }
 
+// MARK: - Previews
+
+// There are none, and that is a verified fact rather than an oversight.
+//
+// Every other file in this target carries #Preview blocks; a reader is
+// entitled to wonder why this one does not. `#Preview(as:)` is a Widget-only
+// macro, so a ControlWidget cannot go through it. Tried on this SDK, all
+// three errors from one build:
+//
+//     macro 'Preview(_:as:widget:timeline:)' requires that
+//       'SoundscapeControl' conform to 'Widget'
+//     type 'WidgetFamily' has no member 'controlCenter'
+//     cannot find 'ControlWidgetPreviewValue' in scope
+//
+// So the two controls above are inspectable only by building to a device or
+// simulator and opening Control Center's gallery. If a future SDK adds a
+// control-shaped preview, this comment is the thing to delete.
+
 // MARK: - Intents
 
 /// Opens the app on the soundscapes screen.
