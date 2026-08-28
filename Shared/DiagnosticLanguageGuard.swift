@@ -26,14 +26,55 @@ enum DiagnosticLanguageGuard {
         "sleep fewer than", "stay awake all night", "ignore chest pain"
     ]
 
+    /// Phrasing that asserts a cause, a mechanism, or a readiness verdict
+    /// Zoon has not established.
+    ///
+    /// Zoon's rules observe things co-occurring on a single night. That is
+    /// not evidence one produced the other, and the difference is the whole
+    /// epistemic position of the app -- `JournalCorrelator` goes to
+    /// considerable trouble over matched pairs and bootstrap intervals
+    /// precisely because a co-occurrence is not a cause. Copy that says
+    /// "usually traces to" throws that away in four words.
+    ///
+    /// Each entry here was a real string in `RuleBasedInsightEngine` or
+    /// `WeeklyReport`. Kept as a list rather than deleted with the strings so
+    /// they cannot come back, and so the model-backed engines are held to the
+    /// same standard as the rule-based one.
+    static let causalOverclaimTerms = [
+        "fighting something off",
+        "traces to",
+        "first thing to suffer",
+        "ready to train",
+        "sleep is the lever",
+        "stayed in gear",
+        "caused by",
+        "this is why",
+        "which is why you",
+    ]
+
     static func containsBannedLanguage(_ text: String) -> Bool {
         let lowered = text.lowercased()
         return bannedTerms.contains { lowered.contains($0) }
     }
 
+    /// Whether `text` asserts a cause or a verdict Zoon cannot support.
+    static func overclaimsCausation(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        return causalOverclaimTerms.contains { lowered.contains($0) }
+    }
+
+    /// The full check applied to on-device model output.
+    ///
+    /// Causal overclaiming is included, so a generation that asserts a
+    /// mechanism is refused the same way one that names a condition is. That
+    /// makes the guard stricter and will occasionally reject an otherwise
+    /// fine answer -- an acceptable trade, since both callers fail closed
+    /// (`FoundationModelInsightEngine` falls back to the rule engine,
+    /// `CoachChat` shows a plain refusal) rather than showing raw output.
     static func rejects(_ text: String) -> Bool {
         let lowered = text.lowercased()
         return containsBannedLanguage(text)
+            || overclaimsCausation(text)
             || unsafeGuidanceTerms.contains { lowered.contains($0) }
     }
 }
