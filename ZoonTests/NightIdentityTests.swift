@@ -30,10 +30,22 @@ final class NightIdentityTests: XCTestCase {
     /// Single-digit months and days must stay zero-padded, or keys stop
     /// sorting lexicographically and stop matching their older selves.
     func testNightKeyZeroPadsMonthAndDay() {
-        let wake = instant(2026, 1, 5, 6, 0, zone: "UTC")
+        let wake = instant(2026, 1, 5, 6, 0, zone: "Asia/Tokyo")
+        XCTAssertEqual(
+            NightKey.make(wakeInstant: wake, in: TimeZone(identifier: "Asia/Tokyo")!),
+            "2026-01-05@Asia/Tokyo"
+        )
+    }
+
+    /// A trap worth pinning: `TimeZone(identifier: "UTC").identifier` is
+    /// `"GMT"` on Apple platforms, so a key built for UTC is stamped `@GMT`.
+    /// Harmless — it is stable and round-trips — but anyone reading a raw
+    /// persisted key, or writing a fixture, will otherwise expect `@UTC`.
+    func testUTCIsNormalisedToGMTInTheKey() {
+        let wake = instant(2026, 8, 28, 12, 0, zone: "UTC")
         XCTAssertEqual(
             NightKey.make(wakeInstant: wake, in: TimeZone(identifier: "UTC")!),
-            "2026-01-05@UTC"
+            "2026-08-28@GMT"
         )
     }
 
@@ -42,7 +54,8 @@ final class NightIdentityTests: XCTestCase {
     /// filed under the zone it was recorded in, so the key must not drift
     /// when the device later travels.
     func testSameInstantYieldsDifferentKeysInDifferentZones() {
-        // 22:30 UTC on Aug 27 is already 07:30 on Aug 28 in Tokyo.
+        // 22:30 UTC on Aug 27 is already 07:30 on Aug 28 in Tokyo, but
+        // still 15:30 on Aug 27 in Los Angeles.
         let wake = instant(2026, 8, 27, 22, 30, zone: "UTC")
 
         XCTAssertEqual(
@@ -50,8 +63,8 @@ final class NightIdentityTests: XCTestCase {
             "2026-08-28@Asia/Tokyo"
         )
         XCTAssertEqual(
-            NightKey.make(wakeInstant: wake, in: TimeZone(identifier: "UTC")!),
-            "2026-08-27@UTC"
+            NightKey.make(wakeInstant: wake, in: TimeZone(identifier: "America/Los_Angeles")!),
+            "2026-08-27@America/Los_Angeles"
         )
     }
 
