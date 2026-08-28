@@ -28,51 +28,248 @@ final class NapStore {
     struct ActiveNap: Codable, Hashable, Sendable {
         let start: Date
         let targetMinutes: Int
+
+        /// When the nap is meant to end.
+        ///
+        /// Persisted rather than always recomputed from `start` and
+        /// `targetMinutes`, because this is the instant a system wake was
+        /// scheduled against. Recomputing it would let a later change to how
+        /// a target is derived silently move an in-flight nap's end away from
+        /// the alarm that was already set.
+        ///
+        /// Optional so a nap persisted by a build predating this field still
+        /// decodes -- `targetEnd` falls back for those.
+        var targetEndAt: Date?
+
+        var targetEnd: Date {
+            targetEndAt ?? start.addingTimeInterval(Double(targetMinutes) * 60)
+        }
     }
+
+    /// A nap whose target passed while Zoon was not running, and whose real
+    /// end time is therefore unknown.
+    ///
+    /// Deliberately not resolved automatically. `finish()` recorded
+    /// `end: .now` unconditionally, and its only caller was a button -- so
+    /// opening the app two hours after a twenty-minute nap and tapping stop
+    /// logged a two-hour nap. That fed `SleepNeed.napCreditMinutes` and
+    /// silently cancelled most of tonight's requirement, from a number the
+    /// user never observed. Zoon asks instead.
+    struct PendingNap: Codable, Hashable, Sendable {
+        let start: Date
+        let targetMinutes: Int
+        let targetEnd: Date
+        /// When Zoon noticed. Not the nap's end -- only the earliest moment
+        /// the nap is known to have already been over.
+        let noticedAt: Date
+    }
+
+    /// What `reconcile` did.
+    enum ReconcileOutcome: Equatable, Sendable {
+        /// No nap, or one still within its target.
+        case none
+        /// Closed without asking, clamped to the target.
+        case finished(Nap)
+        /// Too long past the target to guess. Awaiting the user.
+        case needsConfirmation(PendingNap)
+        /// Unrecoverably stale. Dropped rather than invented.
+        case discarded
+    }
+
+    /// A nap shorter than this is a mis-tap, not a nap.
+    static let minimumMinutes = 2.0
+
+    /// How far past the target a nap can be closed without asking.
+    ///
+    /// Fifteen minutes covers the ordinary case -- the alarm went off, the
+    /// user surfaced a few minutes later -- without covering "the app was
+    /// closed all afternoon".
+    static let graceMinutes = 15.0
+
+    /// Beyond this past the target, what happened is unknowable and the
+    /// entry is dropped. Four hours matches the bound `load()` already
+    /// applied, except that this reports it rather than deleting silently.
+    static let staleHours = 4.0
 
     private enum Key {
         static let naps = "zoon.naps"
         static let active = "zoon.naps.active"
+        static let pending = "zoon.naps.pending"
     }
 
     private let defaults: UserDefaults
 
+    /// Schedules the notification that ends a nap.
+    ///
+    /// Optional, and nil by default, which is deliberate and load-bearing.
+    /// `NapWake`'s initialiser reaches for `UNUserNotificationCenter.current()`,
+    /// and that traps outside a real app process -- `ZoonTests` is an unhosted
+    /// bundle, and `NapStore` is compiled into it. A non-optional default
+    /// would mean every test that constructs a `NapStore` builds a live
+    /// notification centre, which is the shape of failure this repo has
+    /// already been bitten by twice (see `SleepHistoryStoreIntegrationTests`'
+    /// header).
+    ///
+    /// So production passes one explicitly and previews and tests do not.
+    private let wake: NapWakeScheduling?
+
     private(set) var naps: [Nap] = []
     private(set) var activeNap: ActiveNap?
+    /// A nap awaiting the user's answer about when it actually ended. See
+    /// `PendingNap`.
+    private(set) var pendingNap: PendingNap?
 
-    init(defaults: UserDefaults = .standard) {
+    /// - Parameter wake: pass `NapWake()` in the app. Left nil in previews
+    ///   and tests -- see the property's doc comment.
+    init(defaults: UserDefaults = .standard, wake: NapWakeScheduling? = nil) {
         self.defaults = defaults
+        self.wake = wake
         load()
     }
 
     // MARK: - Control
 
-    func start(targetMinutes: Int) {
-        activeNap = ActiveNap(start: .now, targetMinutes: targetMinutes)
+    /// - Parameter now: injectable so a test can drive the clock. Production
+    ///   callers use the default.
+    func start(targetMinutes: Int, now: Date = .now) {
+        let targetEnd = now.addingTimeInterval(Double(targetMinutes) * 60)
+        activeNap = ActiveNap(
+            start: now,
+            targetMinutes: targetMinutes,
+            targetEndAt: targetEnd
+        )
         persistActive()
         startLiveActivity()
+        // Fire-and-forget for the same reason the Live Activity is: a nap
+        // whose notification fails to register is still a working nap timer,
+        // and blocking the tap on a notification-centre round trip would make
+        // starting a nap feel broken. `NapWake` logs its own failures.
+        //
+        // The notification is what ends the nap for the user. `reconcile`
+        // ends it for the *store*, whenever the app next runs. The two are
+        // independent on purpose: neither one failing loses the nap.
+        if let wake {
+            Task { await wake.schedule(at: targetEnd, targetMinutes: targetMinutes) }
+        }
     }
 
     func cancel() {
         activeNap = nil
         persistActive()
         endLiveActivity()
+        wake?.cancel()
     }
 
     /// Ends the nap and records it.
     ///
-    /// Naps under two minutes are discarded rather than logged — a mis-tap
-    /// shouldn't put a 4-second "nap" into the sleep-need calculation.
-    func finish() {
-        guard let active = activeNap else { return }
-        let nap = Nap(start: active.start, end: .now)
-        if nap.minutes >= 2 {
+    /// Naps under `minimumMinutes` are discarded rather than logged — a
+    /// mis-tap shouldn't put a 4-second "nap" into the sleep-need
+    /// calculation.
+    ///
+    /// The end is clamped to `graceMinutes` past the target. Overshooting by
+    /// a few minutes is ordinary and recorded as-is; overshooting by an hour
+    /// means the app was not in front of anyone, and the elapsed time is not
+    /// evidence of sleep. `reconcile` handles the larger overruns properly,
+    /// but this is the floor under the button itself so no single path can
+    /// record an afternoon as a nap.
+    /// - Returns: the recorded nap, or `nil` if it was too short to keep.
+    @discardableResult
+    func finish(now: Date = .now) -> Nap? {
+        guard let active = activeNap else { return nil }
+        let latestDefensibleEnd = active.targetEnd.addingTimeInterval(Self.graceMinutes * 60)
+        let nap = Nap(start: active.start, end: min(now, latestDefensibleEnd))
+        var recorded: Nap?
+        if nap.minutes >= Self.minimumMinutes {
             naps.append(nap)
             persistNaps()
+            recorded = nap
         }
         activeNap = nil
         persistActive()
         endLiveActivity()
+        wake?.cancel()
+        return recorded
+    }
+
+    // MARK: - Reconciliation
+
+    /// Brings the stored nap state in line with the clock.
+    ///
+    /// Call on foreground and on appear. This is what replaces depending on
+    /// `NapView`'s one-second `Task`: that loop only ever computed a progress
+    /// ring, never ended anything, and it does not exist while the view is
+    /// off screen — so before this, a nap simply never ended on its own.
+    @discardableResult
+    func reconcile(now: Date = .now) -> ReconcileOutcome {
+        guard let active = activeNap else { return .none }
+        let targetEnd = active.targetEnd
+        guard now > targetEnd else { return .none }
+
+        activeNap = nil
+        persistActive()
+        endLiveActivity()
+        // Already fired, most likely -- but a nap reconciled early by a
+        // foreground activation would otherwise leave a notification armed
+        // for a nap that no longer exists.
+        wake?.cancel()
+
+        if now <= targetEnd.addingTimeInterval(Self.graceMinutes * 60) {
+            // Clamped to the target, not to `now`. The timer was set for
+            // `targetMinutes` and nothing observed more than that.
+            let nap = Nap(start: active.start, end: targetEnd)
+            if nap.minutes >= Self.minimumMinutes {
+                naps.append(nap)
+                persistNaps()
+            }
+            return .finished(nap)
+        }
+
+        if now <= targetEnd.addingTimeInterval(Self.staleHours * 3600) {
+            let pending = PendingNap(
+                start: active.start,
+                targetMinutes: active.targetMinutes,
+                targetEnd: targetEnd,
+                noticedAt: now
+            )
+            pendingNap = pending
+            persistPending()
+            return .needsConfirmation(pending)
+        }
+
+        return .discarded
+    }
+
+    /// Records a pending nap as having run exactly to its target — the
+    /// conservative answer, and the one the UI offers first.
+    @discardableResult
+    func acceptPendingAtTarget() -> Nap? {
+        guard let pending = pendingNap else { return nil }
+        return resolvePending(actualEnd: pending.targetEnd)
+    }
+
+    /// Records a pending nap with an end the user supplied.
+    ///
+    /// Clamped to the target: a user correcting the record downward is
+    /// giving Zoon information, while one pushing it past the target is
+    /// describing sleep nothing measured.
+    @discardableResult
+    func resolvePending(actualEnd: Date) -> Nap? {
+        guard let pending = pendingNap else { return nil }
+        let end = min(actualEnd, pending.targetEnd)
+        pendingNap = nil
+        persistPending()
+        let nap = Nap(start: pending.start, end: end)
+        guard nap.minutes >= Self.minimumMinutes else { return nil }
+        naps.append(nap)
+        persistNaps()
+        return nap
+    }
+
+    /// Drops a pending nap without recording anything. "I don't remember" is
+    /// a legitimate answer, and a guess is worse than a gap.
+    func discardPending() {
+        pendingNap = nil
+        persistPending()
     }
 
     // MARK: - Live Activity
@@ -164,9 +361,15 @@ final class NapStore {
     func deleteAll() {
         naps = []
         activeNap = nil
+        // Pending naps are user data too. Leaving one behind would have the
+        // Delete Everything screen prompt about a nap after promising to
+        // leave nothing.
+        pendingNap = nil
         persistNaps()
         persistActive()
+        persistPending()
         endLiveActivity()
+        wake?.cancel()
     }
 
     /// Merges naps from a backup, keyed on start time.
@@ -194,20 +397,30 @@ final class NapStore {
             let cutoff = Calendar.current.date(byAdding: .year, value: -1, to: .now) ?? .distantPast
             naps = decoded.filter { $0.start >= cutoff }
         }
+        if let data = defaults.data(forKey: Key.pending),
+           let decoded = try? JSONDecoder().decode(PendingNap.self, from: data) {
+            pendingNap = decoded
+        }
         if let data = defaults.data(forKey: Key.active),
            let decoded = try? JSONDecoder().decode(ActiveNap.self, from: data) {
-            // A nap "in progress" from more than 4 hours ago means the app was
-            // killed mid-nap. Discard rather than resurrect a stale timer.
-            if Date.now.timeIntervalSince(decoded.start) < 4 * 3600 {
-                activeNap = decoded
-            } else {
-                defaults.removeObject(forKey: Key.active)
-            }
+            // Restored regardless of age. `reconcile` decides what a nap
+            // whose target has passed becomes -- closed at target, awaiting
+            // confirmation, or dropped -- so the age bound that used to live
+            // here now reports itself instead of deleting in silence.
+            activeNap = decoded
         }
     }
 
     private func persistNaps() {
         defaults.set(try? JSONEncoder().encode(naps), forKey: Key.naps)
+    }
+
+    private func persistPending() {
+        if let pendingNap {
+            defaults.set(try? JSONEncoder().encode(pendingNap), forKey: Key.pending)
+        } else {
+            defaults.removeObject(forKey: Key.pending)
+        }
     }
 
     private func persistActive() {

@@ -7,6 +7,9 @@ struct RootView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(BedtimeReminder.self) private var reminders
+    /// Needed to close a nap whose target passed while the app was
+    /// away -- see the `scenePhase` handler.
+    @Environment(NapStore.self) private var naps
     @Environment(GlobalPresentation.self) private var presentation
     @Environment(\.scenePhase) private var scenePhase
 
@@ -18,6 +21,10 @@ struct RootView: View {
     /// the wake schedule, and `WakeAlarm` holds no state worth sharing --
     /// AlarmKit itself is the store of record for what's scheduled.
     @State private var wakeAlarm = WakeAlarm()
+    /// What Zoon last actually scheduled. Without this, reconciliation
+    /// has nothing to compare against and cannot tell "nothing is
+    /// scheduled" from "something is scheduled at the wrong time".
+    @State private var schedules = ScheduleStateStore()
 
     /// Today, Sleep, Insights, Coach — Journal and Settings/More moved off
     /// the tab bar entirely (see `GlobalPresentation`), which is what frees
@@ -116,6 +123,10 @@ struct RootView: View {
             // Background delivery is best-effort — HealthKit clamps sleep updates
             // to roughly hourly and defers further under low power — so returning
             // to the app is when the user most expects fresh data.
+            // A nap whose target passed while the app was away is closed
+            // here rather than by the countdown in `NapView`, which only
+            // ever drew a progress ring and does not exist off screen.
+            naps.reconcile()
             Task {
                 await coordinator.refresh()
                 await refreshReminders()
@@ -128,36 +139,60 @@ struct RootView: View {
     /// Runs on every activation rather than once: the target bedtime moves
     /// with sleep debt and yesterday's strain, so a reminder scheduled a week
     /// ago would be firing at last week's bedtime.
+    /// Every slot is reconciled independently through
+    /// `ScheduleReconciliation`. The previous shape had three defects, all
+    /// from mixing "is this wanted" with "is there a target":
+    ///
+    /// 1. A slot stayed armed when the toggle stayed on but the target went
+    ///    away. `guard enabled, let target else { if !enabled { cancel() } }`
+    ///    cancels on the toggle and does nothing on the missing target — and
+    ///    `BedtimeReminder` uses `repeats: true` calendar triggers, so that
+    ///    was not one stale notification but one every day, indefinitely, at
+    ///    a time Zoon no longer believed in.
+    /// 2. The bedtime guard `return`ed, so switching bedtime reminders off
+    ///    stopped the wake window and wake alarm being reconciled at all.
+    ///    They froze in whatever state they were last left.
+    /// 3. Nothing recorded what was scheduled, so Settings could only echo
+    ///    the toggle back rather than say whether anything was armed.
     private func refreshReminders() async {
         await reminders.refreshAuthorization()
+        let notificationsPermitted = reminders.authorization == .authorized
+            || reminders.authorization == .provisional
+        let context = coordinator.state.context
+
         // `focusSilencesBedtimeNudges` is checked here as well as in the
         // filter itself: without it, opening the app during a Focus would
         // re-arm the very notifications the Focus just cancelled, and the
         // setting would appear to do nothing.
-        guard preferences.bedtimeRemindersEnabled,
-              !preferences.focusSilencesBedtimeNudges,
-              let bedtime = coordinator.state.context?.targetBedtime()
-        else {
-            if !preferences.bedtimeRemindersEnabled || preferences.focusSilencesBedtimeNudges {
-                reminders.cancel()
-            }
-            return
-        }
-        await reminders.schedule(bedtime: bedtime)
+        let bedtimeWanted = preferences.bedtimeRemindersEnabled
+            && !preferences.focusSilencesBedtimeNudges
+        await reconcile(
+            .bedtime,
+            wanted: bedtimeWanted,
+            permitted: notificationsPermitted,
+            target: bedtimeWanted ? context?.targetBedtime() : nil,
+            schedule: { await reminders.schedule(bedtime: $0) },
+            cancel: { reminders.cancel() }
+        )
 
-        // Wake window rides on the same authorization and the same body-clock
-        // data, but is its own toggle — someone might want the bedtime nudge
-        // without a second alarm layered on top of the one they already use.
-        guard preferences.smartWakeEnabled,
-              let wakeTime = coordinator.state.context?.bodyClock?.window(for: .now)?.end
-        else {
-            if !preferences.smartWakeEnabled {
-                reminders.cancelWakeWindow()
-                wakeAlarm.cancel()
-            }
-            return
-        }
-        await reminders.scheduleWakeWindow(wakeTime: wakeTime, leadMinutes: Self.wakeWindowLeadMinutes)
+        // The wake window rides on the same authorization and the same
+        // body-clock data as the bedtime nudge, but is its own toggle —
+        // someone might want the bedtime nudge without a second alarm
+        // layered on top of the one they already use.
+        let wakeTarget = context?.bodyClock?.window(for: .now)?.end
+        let wakeWindowWanted = preferences.smartWakeEnabled
+        await reconcile(
+            .wakeWindow,
+            wanted: wakeWindowWanted,
+            permitted: notificationsPermitted,
+            target: wakeWindowWanted ? wakeTarget : nil,
+            schedule: {
+                await reminders.scheduleWakeWindow(
+                    wakeTime: $0, leadMinutes: Self.wakeWindowLeadMinutes
+                )
+            },
+            cancel: { reminders.cancelWakeWindow() }
+        )
 
         // The notification and the alarm are two halves of one idea, not
         // duplicates: the notification fires at the *start* of the window as a
@@ -165,10 +200,52 @@ struct RootView: View {
         // rings at the *end* of it as the backstop that actually wakes anyone
         // still asleep. Scheduling the alarm at the window's start instead
         // would just be an alarm 20 minutes early.
-        if preferences.wakeAlarmEnabled {
-            await wakeAlarm.schedule(at: wakeTime)
-        } else {
-            wakeAlarm.cancel()
+        let alarmWanted = preferences.smartWakeEnabled && preferences.wakeAlarmEnabled
+        await reconcile(
+            .wakeAlarm,
+            wanted: alarmWanted,
+            permitted: wakeAlarm.isAvailable,
+            target: alarmWanted ? wakeTarget : nil,
+            schedule: { await wakeAlarm.schedule(at: $0) },
+            cancel: { wakeAlarm.cancel() }
+        )
+    }
+
+    /// One slot: decide, act, record.
+    ///
+    /// - Parameter schedule: returns whether the OS accepted the request, so a
+    ///   refusal records `.failed` rather than claiming something is armed.
+    private func reconcile(
+        _ slot: ScheduleStateStore.Slot,
+        wanted: Bool,
+        permitted: Bool,
+        target: Date?,
+        schedule: (Date) async -> Bool,
+        cancel: () -> Void
+    ) async {
+        // Permission folds into the desired value rather than being checked
+        // separately: an unpermitted slot wants nothing scheduled, and
+        // anything still recorded from before permission was revoked has to
+        // be cleared rather than left to fire.
+        let desired = permitted ? target : nil
+        let status = ScheduleReconciliation.status(
+            wanted: wanted, permitted: permitted, hasTarget: target != nil
+        )
+
+        switch ScheduleReconciliation.action(
+            desired: desired, scheduled: schedules.scheduledFor(slot)
+        ) {
+        case .noChange:
+            schedules.record(schedules.scheduledFor(slot), status: status, for: slot)
+        case .cancel:
+            cancel()
+            schedules.record(nil, status: status, for: slot)
+        case .replace(let date):
+            if await schedule(date) {
+                schedules.record(date, status: status, for: slot)
+            } else {
+                schedules.record(nil, status: .failed, for: slot)
+            }
         }
     }
 

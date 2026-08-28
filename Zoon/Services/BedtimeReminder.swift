@@ -82,12 +82,16 @@ final class BedtimeReminder {
     /// Idempotent: identifiers are fixed, so re-scheduling replaces rather than
     /// accumulates. Getting this wrong is how apps end up firing six copies of
     /// the same notification.
-    func schedule(bedtime: Date) async {
+    /// - Returns: whether both requests were accepted. Reported rather than
+    ///   swallowed so `ScheduleStateStore` can record `.failed` instead of
+    ///   claiming something is armed when the OS refused it.
+    @discardableResult
+    func schedule(bedtime: Date) async -> Bool {
         cancel()
 
         guard authorization == .authorized || authorization == .provisional else {
             logger.notice("Not authorized; nothing scheduled")
-            return
+            return false
         }
 
         let calendar = Calendar.current
@@ -95,14 +99,14 @@ final class BedtimeReminder {
         let windDown = bedtime.addingTimeInterval(-Double(Self.windDownLeadMinutes) * 60)
         let windComponents = calendar.dateComponents([.hour, .minute], from: windDown)
 
-        await add(
+        let windDownAdded = await add(
             id: ID.windDown,
             title: "Wind down",
             body: "Bedtime in \(Self.windDownLeadMinutes) minutes. Dim the lights and put the screens away.",
             components: windComponents
         )
 
-        await add(
+        let bedtimeAdded = await add(
             id: ID.bedtime,
             title: "Bedtime",
             body: "Going to sleep now hits your full sleep need for tomorrow.",
@@ -110,6 +114,7 @@ final class BedtimeReminder {
         )
 
         logger.info("Scheduled wind-down and bedtime reminders")
+        return windDownAdded && bedtimeAdded
     }
 
     /// Notifies within a window before your usual wake time, derived from
@@ -123,16 +128,17 @@ final class BedtimeReminder {
     /// the wake time your own history already points to, so there's a
     /// chance of catching a lighter stretch without claiming to have
     /// detected one.
-    func scheduleWakeWindow(wakeTime: Date, leadMinutes: Int) async {
+    @discardableResult
+    func scheduleWakeWindow(wakeTime: Date, leadMinutes: Int) async -> Bool {
         center.removePendingNotificationRequests(withIdentifiers: [ID.wakeWindow])
 
-        guard authorization == .authorized || authorization == .provisional else { return }
+        guard authorization == .authorized || authorization == .provisional else { return false }
 
         let calendar = Calendar.current
         let early = wakeTime.addingTimeInterval(-Double(leadMinutes) * 60)
         let components = calendar.dateComponents([.hour, .minute], from: early)
 
-        await add(
+        return await add(
             id: ID.wakeWindow,
             title: "Wake window",
             body: "Somewhere in the next \(leadMinutes) minutes is close to your usual wake time.",
@@ -153,7 +159,7 @@ final class BedtimeReminder {
         title: String,
         body: String,
         components: DateComponents
-    ) async {
+    ) async -> Bool {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -168,8 +174,10 @@ final class BedtimeReminder {
 
         do {
             try await center.add(request)
+            return true
         } catch {
             logger.error("Could not schedule \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
