@@ -25,9 +25,9 @@ import Foundation
 /// *unknown*.
 enum ExperimentPlanner {
 
-    /// Journaled nights required before any proposal is made. Below this the
-    /// exposure counts are too thin to tell "they never do this" from "they
-    /// have not been logging".
+    /// Nights with at least one answered behaviour, required before any
+    /// proposal is made. Below this the exposure counts are too thin to tell
+    /// "they never do this" from "they have not been answering".
     static let minimumJournaledNights = 14
 
     /// How far back exposure is counted. Long enough to see a habit, short
@@ -140,7 +140,11 @@ enum ExperimentPlanner {
         let recent = observations
             .sorted { $0.date < $1.date }
             .suffix(window)
-        let journaled = recent.filter(\.isJournaled)
+        // Nights something is actually known about, not nights with a
+        // journal row. `entryOrCreate` writes a row for every day whose
+        // screen was opened, so the old `isJournaled` gate counted screens
+        // rather than data -- see `Observation.hasAnyExplicitAnswer`.
+        let journaled = recent.filter(\.hasAnyExplicitAnswer)
         guard journaled.count >= minimumJournaledNights else { return [] }
 
         var proposals: [Proposal] = []

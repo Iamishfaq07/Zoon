@@ -23,20 +23,30 @@ struct NapView: View {
         )
     }
 
-    /// Nap lengths that correspond to actual sleep architecture rather than
-    /// round numbers: 20 stays above deep sleep and avoids grogginess, 90 is a
-    /// full cycle so you wake at the light end of one.
+    /// Nap lengths drawn from the usual general advice about sleep
+    /// architecture.
+    ///
+    /// The copy deliberately no longer claims what *your* nap will do. It
+    /// used to: "stays out of deep sleep", "no grogginess", and worst,
+    /// "wakes you at the light end" of a cycle. Zoon measures nothing during
+    /// a nap — there is no live staging loop, and until this change there
+    /// was no wake mechanism at all — so a promise to wake you at a
+    /// particular point in a cycle described something the app could not do
+    /// even in principle. These are population generalities about typical
+    /// nap lengths, and they now read as such.
     private let presets: [(minutes: Int, label: String, detail: String)] = [
-        (10, "Power", "Alertness boost, no grogginess"),
-        (20, "Classic", "The safest length — stays out of deep sleep"),
-        (30, "Long", "Some grogginess likely on waking"),
-        (90, "Full cycle", "A complete cycle, wakes you at the light end")
+        (10, "Short", "Briefest option"),
+        (20, "Classic", "The length most commonly suggested"),
+        (30, "Long", "Long enough that waking can feel rough"),
+        (90, "Full cycle", "About one sleep cycle for most people")
     ]
 
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
-                if let active = naps.activeNap {
+                if let pending = naps.pendingNap {
+                    pendingCard(pending)
+                } else if let active = naps.activeNap {
                     activeCard(active)
                 } else {
                     napCoachCard
@@ -54,12 +64,73 @@ struct NapView: View {
         .navigationBarTitleDisplayMode(.inline)
         // A one-second tick rather than a Timer publisher: this view only exists
         // while it's on screen, and TimelineView would redraw the whole card.
+        // The tick only moves the progress ring. It never ended a nap, and
+        // it does not exist while this screen is off, which is why ending a
+        // nap is `NapStore.reconcile`'s job -- called here and on every
+        // foreground activation in `RootView`.
         .task {
+            naps.reconcile()
             while !Task.isCancelled {
                 now = .now
+                if naps.activeNap.map({ now > $0.targetEnd }) == true {
+                    naps.reconcile(now: now)
+                }
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+    }
+
+    // MARK: - Pending
+
+    /// A nap whose target passed while Zoon was not running.
+    ///
+    /// Asking is the point. `finish()` used to record `end: .now` from a
+    /// button, so opening the app hours after a twenty-minute nap and tapping
+    /// stop logged a multi-hour nap into `SleepNeed.napCreditMinutes` and
+    /// wiped out most of tonight's requirement -- from a duration nobody
+    /// observed. Zoon offers the target as the conservative default and lets
+    /// the user drop it entirely, because "I don't remember" is a real answer
+    /// and a gap beats a guess.
+    private func pendingCard(_ pending: NapStore.PendingNap) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(Theme.text(15, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.strain)
+                Text("Unfinished nap")
+                    .font(Theme.label(15, weight: .semibold))
+            }
+            Text("You started a \(pending.targetMinutes)-minute nap at \(pending.start.formatted(date: .omitted, time: .shortened)), and Zoon wasn't running when it was due to end. It doesn't know when you actually woke up.")
+                .font(Theme.text(13))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 12) {
+                Button {
+                    naps.acceptPendingAtTarget()
+                    Haptics.success()
+                } label: {
+                    Text("Log \(pending.targetMinutes) min")
+                        .font(Theme.label(14, weight: .semibold))
+                        .padding(.horizontal, 20).padding(.vertical, 11)
+                        .background(Theme.Metric.strain.opacity(0.3), in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    naps.discardPending()
+                    Haptics.tap()
+                } label: {
+                    Text("Don't log it")
+                        .font(Theme.label(14, weight: .semibold))
+                        .padding(.horizontal, 20).padding(.vertical, 11)
+                        .background(Theme.neutral(0.09), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
     }
 
     // MARK: - Active

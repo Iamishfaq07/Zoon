@@ -5,7 +5,14 @@ final class JournalCorrelatorTests: XCTestCase {
     private func observation(
         daysAgo: Int,
         tags: Set<BehaviorTag> = [],
-        isJournaled: Bool = true,
+        // Replaced an `isJournaled` flag that meant only "a JournalEntry
+        // row exists" -- which the old model read as a confident no for
+        // every untagged behaviour, though a row is created merely by
+        // opening the journal screen. `true` now states what these fixtures
+        // actually mean: the whole list was worked through, so tagged
+        // behaviours are yes and every other one is an explicit no. `false`
+        // means nothing was answered, so every behaviour is unknown.
+        fullyAnswered: Bool = true,
         sleepPerformance: Double? = 80,
         isWeekend: Bool = false
     ) -> JournalCorrelator.Observation {
@@ -13,7 +20,7 @@ final class JournalCorrelatorTests: XCTestCase {
         return JournalCorrelator.Observation(
             date: date,
             tags: tags,
-            isJournaled: isJournaled,
+            answers: fullyAnswered ? .fullyAnswered(tags: tags) : .none,
             recoveryPercent: 70,
             sleepPerformance: sleepPerformance,
             deepMinutes: 80,
@@ -36,33 +43,45 @@ final class JournalCorrelatorTests: XCTestCase {
         XCTAssertEqual(obs.exposureState(for: .alcohol), .yes)
     }
 
-    func testJournaledNightWithoutTagIsNo() {
-        let obs = observation(daysAgo: 0, tags: [.alcohol], isJournaled: true)
-        // caffeineLate wasn't tagged, but the night was reviewed -- a
-        // real "no" for that specific tag.
-        XCTAssertEqual(obs.exposureState(for: .caffeineLate), .no)
+    /// Inverted deliberately. This used to assert that tagging alcohol made
+    /// caffeine a confident "no", on the reasoning that the night had been
+    /// "reviewed". But a `JournalEntry` row is created by rendering the
+    /// screen, so that inference turned a screen visit into twenty-two
+    /// fabricated negatives. See `BehaviorEvidenceTests`.
+    func testTaggingOneBehaviourLeavesAnotherUnknown() {
+        let obs = observation(daysAgo: 0, tags: [.alcohol], fullyAnswered: false)
+        XCTAssertEqual(obs.exposureState(for: .alcohol), .yes)
+        XCTAssertEqual(obs.exposureState(for: .caffeineLate), .unknown)
     }
 
     /// The core fix: a night the user never opened the Journal on must
     /// never resolve to a confident "no" for a tag it doesn't carry --
     /// only "unknown."
     func testUnjournaledNightWithoutTagIsUnknown() {
-        let obs = observation(daysAgo: 0, tags: [], isJournaled: false)
+        let obs = observation(daysAgo: 0, tags: [], fullyAnswered: false)
         XCTAssertEqual(obs.exposureState(for: .alcohol), .unknown)
     }
 
-    /// A night the user genuinely reviewed and had nothing to tag is a
-    /// real "no" across the board -- not the same as never having opened
-    /// the Journal at all.
-    func testJournaledNightWithNoTagsIsNoNotUnknown() {
-        let obs = observation(daysAgo: 0, tags: [], isJournaled: true)
+    /// A night the user genuinely worked through is a real "no" across the
+    /// board. What changed is that this now has to be *stated* -- the
+    /// `fullyAnswered` fixture below records an explicit no for every
+    /// untagged behaviour, where the old `isJournaled` flag merely asserted
+    /// a row existed.
+    func testAFullyAnsweredNightIsNoForUntaggedBehaviours() {
+        let obs = observation(daysAgo: 0, tags: [], fullyAnswered: true)
         XCTAssertEqual(obs.exposureState(for: .alcohol), .no)
+    }
+
+    /// And the same night with nothing answered is unknown, not no.
+    func testAnUnansweredNightIsUnknown() {
+        let obs = observation(daysAgo: 0, tags: [], fullyAnswered: false)
+        XCTAssertEqual(obs.exposureState(for: .alcohol), .unknown)
     }
 
     func testMeasuredAlcoholUpgradesUnjournaledNightToYes() {
         let date = Date.now
         let obs = JournalCorrelator.Observation(
-            date: date, tags: [], isJournaled: false, recoveryPercent: 70,
+            date: date, tags: [], answers: .none, recoveryPercent: 70,
             sleepPerformance: 80, deepMinutes: 80, remMinutes: 90, efficiency: 90,
             wakeCount: 2, isWeekend: false, sleepDebtMinutes: 30, bedtimeHour: -1,
             alcoholicBeverages: 2, lateCaffeineMg: nil, measuredTimeZoneShift: false
@@ -91,7 +110,7 @@ final class JournalCorrelatorTests: XCTestCase {
         // known non-alcohol nights, just unreviewed ones.
         for i in 8..<40 {
             observations.append(observation(
-                daysAgo: i, tags: [], isJournaled: false, sleepPerformance: 95, isWeekend: i % 2 == 0
+                daysAgo: i, tags: [], fullyAnswered: false, sleepPerformance: 95, isWeekend: i % 2 == 0
             ))
         }
         // A handful of genuinely journaled "no" nights with performance
@@ -100,7 +119,7 @@ final class JournalCorrelatorTests: XCTestCase {
         // exclusion, not a specific direction of effect.
         for i in 40..<48 {
             observations.append(observation(
-                daysAgo: i, tags: [], isJournaled: true, sleepPerformance: 62, isWeekend: i % 2 == 0
+                daysAgo: i, tags: [], fullyAnswered: true, sleepPerformance: 62, isWeekend: i % 2 == 0
             ))
         }
 

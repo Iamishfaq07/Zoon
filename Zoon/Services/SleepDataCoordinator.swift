@@ -111,6 +111,10 @@ final class SleepDataCoordinator {
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
     let journal: JournalStore
+    /// Durable per-behaviour answers. Injected alongside `journal` because
+    /// both are SwiftData stores over the same context, and the Journal
+    /// screen writes to this one directly.
+    let behaviors: BehaviorObservationStore
     /// History of completed Guided Experiments. Default-constructed rather
     /// than injected -- unlike `journal`/`naps` it has no HealthKit
     /// dependency and no test needs a distinct instance, so the extra
@@ -136,6 +140,7 @@ final class SleepDataCoordinator {
         healthKit: HealthKitManager,
         store: SleepHistoryStore,
         journal: JournalStore,
+        behaviors: BehaviorObservationStore,
         naps: NapStore,
         preferences: UserPreferences,
         reminders: BedtimeReminder
@@ -143,6 +148,7 @@ final class SleepDataCoordinator {
         self.healthKit = healthKit
         self.store = store
         self.journal = journal
+        self.behaviors = behaviors
         self.naps = naps
         self.preferences = preferences
         self.reminders = reminders
@@ -150,6 +156,14 @@ final class SleepDataCoordinator {
         // selected implementation here so the displayed preference and the
         // engine doing the work cannot diverge after a relaunch.
         self.engine = Self.makeEngine(for: preferences.preferredEngine)
+        // One-time forward-fill of legacy positive tags into the
+        // observation store. Guarded by its own UserDefaults flag, which
+        // it checks before touching the store, so every launch after the
+        // first costs a single Bool read. Runs here rather than lazily on
+        // a read path because `journalObservations()` is called from
+        // several SwiftUI view bodies, and a write triggered from inside
+        // a body evaluation is how you get a mutation-during-render loop.
+        behaviors.migrateLegacyTags(from: journal.allEntries())
         watchLink.activate()
         watchLink.onQuickAction = { [journal, naps] action in
             Self.apply(action, journal: journal, naps: naps)
@@ -1105,6 +1119,12 @@ final class SleepDataCoordinator {
         let restoredEpisodes = store.importEpisodes(archive.episodes ?? [])
         let restoredExperiments = experiments.importOutcomes(archive.experiments ?? [])
         let restoredSoundEvents = SoundEventStore().importEvents(archive.soundEvents ?? [])
+        // A V3 archive has no observations. They import as nothing rather
+        // than being reconstructed from `archive.journal`'s positive tags:
+        // the legacy-tag path in `exposureState` already covers those, and
+        // synthesising rows here would claim the archive recorded answers
+        // it never held.
+        let restoredObservations = behaviors.importObservations(archive.behaviorObservations ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -1167,6 +1187,9 @@ final class SleepDataCoordinator {
         if restoredEpisodes > 0 { extras.append(restoredEpisodes.pluralized("secondary sleep episode")) }
         if restoredExperiments > 0 { extras.append(restoredExperiments.pluralized("experiment")) }
         if restoredSoundEvents > 0 { extras.append(restoredSoundEvents.pluralized("sound event")) }
+        if restoredObservations > 0 {
+            extras.append(restoredObservations.pluralized("behaviour answer"))
+        }
         if !extras.isEmpty {
             summary += " Also restored \(extras.joined(separator: ", "))."
         }
@@ -1181,6 +1204,10 @@ final class SleepDataCoordinator {
         store.episodesForExport()
     }
 
+    func behaviorObservationsForExport() -> [DataExporter.Archive.BehaviorObservationRecordExport] {
+        behaviors.observationsForExport()
+    }
+
     /// Erases every Zoon-owned representation of the user's data, including
     /// derived copies outside SwiftData. HealthKit itself remains untouched.
     /// - Returns: `false` if any disk-backed deletion reported a failure.
@@ -1188,6 +1215,7 @@ final class SleepDataCoordinator {
     func deleteAllData() -> Bool {
         let nightsDeleted = store.deleteAll()
         let journalDeleted = journal.deleteAll()
+        let behaviorsDeleted = behaviors.deleteAll()
         naps.deleteAll()
         experiments.deleteAll()
         SnoreStore.erasePersistedData()
@@ -1219,6 +1247,7 @@ final class SleepDataCoordinator {
 
         return nightsDeleted
             && journalDeleted
+            && behaviorsDeleted
             && snapshotDeleted
             && legacyStoreDeleted
             && temporaryExportsDeleted
@@ -1226,19 +1255,6 @@ final class SleepDataCoordinator {
 
     // MARK: - Derived views of history
 
-    /// Journal observations joined to outcomes, for the correlation engine.
-    ///
-    /// Only nights with a `JournalEntry` row are included -- a night nobody
-    /// opened the Journal for is genuinely unknown for every tag, not
-    /// evidence any particular behaviour didn't happen, and treating it as a
-    /// confirmed "no" biases whatever tag happens to be under test. A
-    /// `JournalEntry` row exists as soon as the screen is opened for that
-    /// date, before any tag is toggled (see `JournalStore.entryOrCreate`), so
-    /// its presence -- not whether it happens to carry the tag in question --
-    /// is the real "the user actually looked" signal. This does shrink the
-    /// comparison pool versus treating every recorded night as a control,
-    /// especially early on when few nights are logged at all, but a smaller
-    /// honest pool is the right trade against a larger biased one.
     /// Every claim Zoon holds, strongest first.
     ///
     /// Lives here rather than in `EvidenceView` because the snapshot needs
@@ -1275,8 +1291,88 @@ final class SleepDataCoordinator {
         )
     }
 
+    /// Journal observations joined to outcomes, for the correlation engine.
+    ///
+    /// Every recent night is included, not just nights carrying a
+    /// `JournalEntry`. What separates a night that tells us something from
+    /// one that doesn't is now `Observation.hasAnyExplicitAnswer`, which
+    /// asks whether any behaviour was actually answered -- rather than
+    /// whether a journal row exists, which `JournalStore.entryOrCreate`
+    /// creates the moment the screen renders a day.
+    ///
+    /// Including unanswered nights is what makes two downstream numbers
+    /// mean anything. `AdaptiveJournal.Prompt.unknownNights` counts nights
+    /// nobody reviewed, and `ExperimentPlanner.estimatedNights` inflates a
+    /// trial's length by how often this person actually answers -- both were
+    /// computing over a list filtered to answered nights only, so the first
+    /// was always zero and the second always found a 100% answer rate and
+    /// never inflated anything.
+    ///
+    /// The comparison pool is unaffected: `JournalCorrelator` only ever
+    /// draws controls from nights whose `exposureState` is an explicit
+    /// `.no`, which an unanswered night can never produce.
+    /// The answers recorded for one day, for the Journal screen.
+    ///
+    /// Falls back to the provisional key so answers given before a night
+    /// existed for that date keep showing once one does. Real key wins
+    /// when both carry answers.
+    func behaviorAnswers(on date: Date, nightKey: String?) -> BehaviorAnswers {
+        let provisional = BehaviorObservationRecord.provisionalNightKey(for: date)
+        guard let nightKey else { return behaviors.answers(forNightKey: provisional) }
+        let real = behaviors.answers(forNightKey: nightKey)
+        return real.hasAnyAnswer ? real : behaviors.answers(forNightKey: provisional)
+    }
+
+    /// Records an explicit answer for one behaviour on one day.
+    ///
+    /// Writes both the canonical observation and the legacy positive-tag
+    /// set, deliberately. `BehaviorObservationRecord` is the answer every
+    /// engine reads, but `JournalEntry.tagIdentifiers` is still what the
+    /// journal badge counts (`JournalStore.taggedNightCount`), what the
+    /// archive exports, and what `exposureState(for:)` falls back to for
+    /// historical nights. Keeping it as exactly "the behaviours answered
+    /// yes" preserves all three without giving it a second meaning.
+    func setBehavior(
+        _ state: BehaviorObservationState,
+        for tag: BehaviorTag,
+        on date: Date,
+        nightKey: String?
+    ) {
+        let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
+        behaviors.set(state, for: tag, nightKey: key)
+        let entry = journal.entryOrCreate(for: date, nightKey: nightKey)
+        // The tag set tracks yes and nothing else, so an explicit no and
+        // a cleared answer both remove it.
+        if (state == .yes) != entry.contains(tag) {
+            journal.toggle(tag, on: date, nightKey: nightKey)
+        }
+    }
+
+    /// Advances one behaviour through unanswered, yes, no, unanswered.
+    /// - Returns: the state now recorded.
+    @discardableResult
+    func cycleBehavior(for tag: BehaviorTag, on date: Date, nightKey: String?) -> BehaviorObservationState {
+        let current = behaviorAnswers(on: date, nightKey: nightKey).state(for: tag)
+        let next: BehaviorObservationState = switch current {
+        case .unknown: .yes
+        case .yes: .no
+        case .no: .unknown
+        }
+        setBehavior(next, for: tag, on: date, nightKey: nightKey)
+        return next
+    }
+
+    /// Answers every still-unanswered tracked behaviour `.no` for a day.
+    /// - Returns: how many answers were recorded.
+    @discardableResult
+    func answerRemainingBehaviorsNo(on date: Date, nightKey: String?, candidates: [BehaviorTag]) -> Int {
+        let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
+        return behaviors.answerRemainingNo(nightKey: key, candidates: candidates)
+    }
+
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
+        let answersByNightKey = behaviors.allAnswersByNightKey()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
         // Entries that carry a `nightKey` (see `JournalEntry.nightKey`) join
         // against a night's own `nightKey` instead of its `date` -- safe
@@ -1311,8 +1407,11 @@ final class SleepDataCoordinator {
             previousTimeZoneByDate[current.date] = previous.timeZoneIdentifier
         }
 
-        return recentNights.compactMap { night -> JournalCorrelator.Observation? in
-            guard let tags = tagsByNightKey[night.nightKey] ?? tagsByDate[night.date] else { return nil }
+        return recentNights.map { night -> JournalCorrelator.Observation in
+            // Empty rather than nil for a night with no entry: an
+            // unanswered night is still an observation, it just carries no
+            // behaviour information. See this method's doc comment.
+            let tags = tagsByNightKey[night.nightKey] ?? tagsByDate[night.date] ?? []
             // Each night's own timezone, not the device's current one -- see
             // SleepNightFeatures.timeZoneIdentifier. Otherwise a night
             // recorded while traveling can flip which weekday it's classified
@@ -1321,22 +1420,20 @@ final class SleepDataCoordinator {
             return JournalCorrelator.Observation(
                 date: night.date,
                 tags: tags,
-                // `tagsByDate[night.date]` above already gates this whole
-                // branch on a JournalEntry existing for the night -- and
-                // `JournalStore.entryOrCreate` persists one the moment
-                // JournalView renders that day's tag screen, whether or not
-                // the user taps anything. That's the actual "did the user
-                // see the tag list" signal; requiring `!tags.isEmpty` on
-                // top of it double-gated on tag presence and, per that
-                // stricter reading, treated a night the user genuinely
-                // reviewed and had nothing to tag as unreviewed -- which is
-                // also the wrong direction from the opposite failure mode
-                // (tagging one behaviour reads as a confirmed "no" for
-                // every other one): `exposureState(for:)` still resolves
-                // per-tag from `tags.contains(tag)` first, so a real "no"
-                // here only ever applies to tags this reviewed night didn't
-                // have on it, not to nights the user never opened at all.
-                isJournaled: true,
+                // The explicit answers recorded for this night, and nothing
+                // inferred from the night having been visited. A night with
+                // no answers gets `.none`, which resolves every behaviour to
+                // `.unknown`.
+                // Real key first, then any answers recorded for that day
+                // before a night existed for it -- see
+                // `BehaviorObservationRecord.provisionalNightKey`.
+                answers: answersByNightKey[night.nightKey]
+                    ?? answersByNightKey[
+                        BehaviorObservationRecord.provisionalNightKey(
+                            for: night.date, calendar: calendar
+                        )
+                    ]
+                    ?? .none,
                 recoveryPercent: recoveryHistory[night.date].map(Double.init),
                 // 24-hour sleep (main sleep plus naps) against this night's
                 // own historical need, not main sleep alone against one
