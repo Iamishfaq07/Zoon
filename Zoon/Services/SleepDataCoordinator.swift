@@ -1161,6 +1161,7 @@ final class SleepDataCoordinator {
                 primaryMetric: restored.experimentPrimaryMetric.flatMap(JournalCorrelator.Metric.init(rawValue:)),
                 direction: restored.experimentDirection.flatMap(GuidedExperiment.Direction.init(rawValue:))
             )
+            preferences.restoreRecoveryModeDate(restored.recoveryModeDate)
             engine = Self.makeEngine(for: preferences.preferredEngine)
         }
 

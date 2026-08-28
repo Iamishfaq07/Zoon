@@ -41,7 +41,8 @@ final class DataExporterTests: XCTestCase {
                 experimentStartDate: Date(timeIntervalSince1970: 1_699_000_000),
                 experimentHypothesis: "Skipping it helps",
                 experimentPrimaryMetric: "sleepPerformance",
-                experimentDirection: "avoid"
+                experimentDirection: "avoid",
+                recoveryModeDate: Date(timeIntervalSince1970: 1_700_000_000)
             ),
             snoreSummaries: [],
             wristTemperatures: [],
@@ -300,5 +301,48 @@ final class DataExporterTests: XCTestCase {
             }
             XCTAssertEqual(version, DataExporter.formatVersion + 1)
         }
+    }
+
+    /// Recovery Mode is persisted state, so a "complete backup" has to carry
+    /// it. It is deliberately stored as the *date* it was switched on rather
+    /// than a Bool -- restoring the instant is what lets
+    /// `isRecoveryModeManuallyEnabledToday` correctly report `false` for a
+    /// backup taken on an earlier day.
+    func testRecoveryModeDateRoundTrips() throws {
+        let data = try DataExporter.jsonData(makeArchive())
+        let decoded = try DataExporter.decode(data)
+
+        XCTAssertEqual(
+            decoded.preferences?.recoveryModeDate,
+            Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    /// The field was added after format 4 shipped, so a format-4 file written
+    /// before it existed must still decode -- as `nil`, meaning Recovery Mode
+    /// simply stays off, not as a decode failure that loses the whole backup.
+    func testFormatFourArchiveWithoutRecoveryModeDateStillDecodes() throws {
+        let json = """
+        {
+          "formatVersion": 4,
+          "exportedAt": "2023-11-14T22:13:20Z",
+          "goalMinutes": 480,
+          "nights": [],
+          "journal": [],
+          "naps": [],
+          "preferences": {
+            "preferredEngine": "ruleBased",
+            "appearance": "dark",
+            "bedtimeRemindersEnabled": true,
+            "cycleTrackingEnabled": false,
+            "smartWakeEnabled": true
+          }
+        }
+        """
+        let decoded = try DataExporter.decode(Data(json.utf8))
+
+        XCTAssertEqual(decoded.formatVersion, 4)
+        XCTAssertNotNil(decoded.preferences)
+        XCTAssertNil(decoded.preferences?.recoveryModeDate)
     }
 }
