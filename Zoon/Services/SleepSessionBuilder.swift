@@ -47,6 +47,26 @@ struct SleepSessionBuilder {
     /// but it no longer disappears.
     var minimumSessionDuration: TimeInterval = 60 * 15
 
+    /// A single sample longer than this is not a real sleep record, and is
+    /// dropped before clustering.
+    ///
+    /// HealthKit faithfully stores whatever a writer hands it, and one
+    /// malformed multi-hour "asleep" block is a known third-party artifact.
+    /// Grouping per source stops such a sample corrupting *other* sources'
+    /// nights, but within its own source there is no rival account to
+    /// arbitrate against: the block simply bridges every genuine episode it
+    /// spans, and the result is a physically impossible night whose duration
+    /// then poisons debt, need, and every baseline computed downstream. An
+    /// integration test caught exactly this -- two 8-hour nights and one
+    /// 20-hour block emerging as a single 32-hour "night".
+    ///
+    /// Dropping the sample loses whatever it claimed. That is the right
+    /// trade: what it claimed was not true, and keeping it destroys the real
+    /// nights on either side by merging them into it. 16 hours is deliberately
+    /// generous -- longer than any plausible single sleep record, including a
+    /// long `inBed` span -- so this only ever catches the pathological case.
+    var maximumPlausibleSampleDuration: TimeInterval = 16 * 60 * 60
+
     /// Overrides automatic source selection when set -- see
     /// `UserPreferences.preferredSleepSourceBundleIdentifier`. `nil` (the
     /// default) keeps the automatic richest-source pick.
@@ -101,7 +121,15 @@ struct SleepSessionBuilder {
     func buildSessions(from samples: [HKCategorySample]) -> [SleepSession] {
         guard !samples.isEmpty else { return [] }
 
-        let candidates = Dictionary(grouping: samples) { $0.sourceRevision.source.bundleIdentifier }
+        // Discard impossible individual samples before anything groups them,
+        // so one of them cannot glue unrelated episodes together. See
+        // `maximumPlausibleSampleDuration`.
+        let plausible = samples.filter {
+            $0.endDate.timeIntervalSince($0.startDate) <= maximumPlausibleSampleDuration
+        }
+        guard !plausible.isEmpty else { return [] }
+
+        let candidates = Dictionary(grouping: plausible) { $0.sourceRevision.source.bundleIdentifier }
             .values
             .flatMap { Self.clusterByGap($0, threshold: sessionGapThreshold) }
             .map(Candidate.init)

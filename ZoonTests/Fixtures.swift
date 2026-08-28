@@ -75,4 +75,54 @@ enum Fixture {
     static func consecutiveNights(_ count: Int, template: (Int) -> SleepNightFeatures = { night(daysAgo: $0) }) -> [SleepNightFeatures] {
         (0..<count).map { template(count - $0) }.sorted { $0.date < $1.date }
     }
+
+    /// Maps a built `SleepSession` onto the sleep half of
+    /// `SleepNightFeatures`, so a test can carry real builder output through
+    /// persistence and analytics instead of hand-writing a night that never
+    /// came out of the pipeline.
+    ///
+    /// Deliberately covers only what `SleepSessionBuilder` itself produces.
+    /// The vitals half is `FeatureExtractor.extract(from:baseline:)`, which is
+    /// async and reads HealthKit directly with no protocol to substitute, so
+    /// it cannot be exercised from a test bundle. Every vital here is `nil`
+    /// for that reason, not because a real night would have none.
+    static func night(
+        from session: SleepSession,
+        need: Double? = nil,
+        secondaryAsleepMinutes: Double = 0
+    ) -> SleepNightFeatures {
+        let asleep = session.totalAsleepMinutes
+        let inBed = session.timeInBed / 60
+        return SleepNightFeatures(
+            date: session.wakeDate,
+            bedtime: session.start,
+            wakeTime: session.end,
+            timeInBedMinutes: inBed,
+            timeAsleepMinutes: asleep,
+            sleepEfficiencyPercent: inBed > 0 ? min(100, asleep / inBed * 100) : 0,
+            coreMinutes: session.stageMinutes[.core] ?? 0,
+            deepMinutes: session.stageMinutes[.deep] ?? 0,
+            remMinutes: session.stageMinutes[.rem] ?? 0,
+            unspecifiedAsleepMinutes: session.stageMinutes[.unspecified] ?? 0,
+            awakeMinutes: session.stageMinutes[.awake] ?? 0,
+            wakeCount: 0,
+            sleepLatencyMinutes: nil,
+            avgHeartRate: nil,
+            minHeartRate: nil,
+            avgHRV: nil,
+            avgRespiratoryRate: nil,
+            avgSpO2: nil,
+            wristTempDeltaC: nil,
+            hrv7DayAvg: nil,
+            sleepDebtMinutes: nil,
+            lastWorkoutHoursBeforeBed: nil,
+            exerciseMinutesPreviousDay: nil,
+            secondaryAsleepMinutes: secondaryAsleepMinutes,
+            sleepNeedBaselineMinutes: need,
+            sourceName: session.sourceName,
+            sourceBundleIdentifier: session.sourceBundleIdentifier,
+            stageSegments: session.segments,
+            timeZoneIdentifier: session.timeZoneIdentifier
+        )
+    }
 }
