@@ -197,7 +197,8 @@ struct MoreView: View {
                     wristTemperatures: coordinator.absoluteWristTemperaturesForExport(),
                     episodes: coordinator.episodesForExport(),
                     experiments: coordinator.experiments.outcomes,
-                    soundEvents: SoundEventStore().recentEvents
+                    soundEvents: SoundEventStore().recentEvents,
+                    behaviorObservations: coordinator.behaviorObservationsForExport()
                 )
                 url = try DataExporter.writeTemporary(
                     try DataExporter.jsonData(archive),

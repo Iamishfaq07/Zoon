@@ -29,7 +29,13 @@ enum DataExporter {
     /// them) still decodes cleanly -- see `JournalRecord`'s own doc comment
     /// for why that's the load-bearing compatibility mechanism here rather
     /// than a hand-written migration.
-    static let formatVersion = 3
+    /// 4 adds `behaviorObservations`. Bumped rather than left at 3
+    /// because a V3 archive genuinely cannot round-trip a V4 store: the
+    /// three-state behaviour answers have no representation in it, and
+    /// restoring one would silently return every behaviour to unknown.
+    /// Older archives still import -- the field is optional and the
+    /// version guard is `<=`.
+    static let formatVersion = 4
 
     struct Archive: Codable {
         let formatVersion: Int
@@ -50,6 +56,11 @@ enum DataExporter {
         /// Most recent overnight sound-event session -- `nil` before
         /// format 3.
         let soundEvents: [SoundEvent]?
+        /// Explicit per-behaviour answers. Optional so a V3 archive,
+        /// which predates them, still decodes -- those import as no
+        /// answers at all, which is the honest result rather than a
+        /// reconstruction from the positive tags in `journal`.
+        let behaviorObservations: [BehaviorObservationRecordExport]?
 
         struct EpisodeRecord: Codable {
             let id: String
@@ -64,6 +75,22 @@ enum DataExporter {
             let asleepMinutes: Double
             let timeInBedMinutes: Double
             let sourceName: String?
+        }
+
+        /// A `BehaviorObservationRecord` flattened for export.
+        ///
+        /// A separate value type rather than the `@Model` itself: a
+        /// SwiftData model is not a portable archive record, and pinning
+        /// the wire format here means a later schema change to the stored
+        /// model cannot silently alter what a backup contains.
+        struct BehaviorObservationRecordExport: Codable {
+            let nightKey: String
+            let behaviorIdentifier: String
+            /// `BehaviorObservationState.rawValue`.
+            let state: String
+            /// `BehaviorObservationSource.rawValue`.
+            let source: String
+            let observedAt: Date
         }
 
         struct JournalRecord: Codable {
@@ -149,7 +176,8 @@ enum DataExporter {
         wristTemperatures: [(date: Date, absoluteCelsius: Double)],
         episodes: [Archive.EpisodeRecord] = [],
         experiments: [SleepExperimentStore.Outcome] = [],
-        soundEvents: [SoundEvent] = []
+        soundEvents: [SoundEvent] = [],
+        behaviorObservations: [Archive.BehaviorObservationRecordExport] = []
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -194,7 +222,8 @@ enum DataExporter {
             },
             episodes: episodes,
             experiments: experiments,
-            soundEvents: soundEvents
+            soundEvents: soundEvents,
+            behaviorObservations: behaviorObservations
         )
     }
 

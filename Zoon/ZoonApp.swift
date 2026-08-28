@@ -58,6 +58,7 @@ struct ZoonApp: App {
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
                 journal: JournalStore(context: container.mainContext),
+                behaviors: BehaviorObservationStore(context: container.mainContext),
                 naps: naps,
                 preferences: preferences,
                 reminders: reminders
