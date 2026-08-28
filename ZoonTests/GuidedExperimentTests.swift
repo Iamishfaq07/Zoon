@@ -15,12 +15,19 @@ final class GuidedExperimentTests: XCTestCase {
     private func observation(
         date: Date,
         tags: Set<BehaviorTag> = [],
-        isJournaled: Bool = true,
+        // Replaced an `isJournaled` flag that meant only "a JournalEntry
+        // row exists" -- which the old model read as a confident no for
+        // every untagged behaviour, though a row is created merely by
+        // opening the journal screen. `true` now states what these fixtures
+        // actually mean: the whole list was worked through, so tagged
+        // behaviours are yes and every other one is an explicit no. `false`
+        // means nothing was answered, so every behaviour is unknown.
+        fullyAnswered: Bool = true,
         sleepPerformance: Double? = 80,
         wakeCount: Double = 2
     ) -> JournalCorrelator.Observation {
         JournalCorrelator.Observation(
-            date: date, tags: tags, isJournaled: isJournaled, recoveryPercent: 70,
+            date: date, tags: tags, answers: fullyAnswered ? .fullyAnswered(tags: tags) : .none, recoveryPercent: 70,
             sleepPerformance: sleepPerformance, deepMinutes: 80, remMinutes: 90, efficiency: 90,
             wakeCount: wakeCount, isWeekend: false, sleepDebtMinutes: 30, bedtimeHour: -1,
             alcoholicBeverages: nil, lateCaffeineMg: nil, measuredTimeZoneShift: false
@@ -129,10 +136,10 @@ final class GuidedExperimentTests: XCTestCase {
         // or summarize returns nil before this test's own assertions run.
         var trialNights: [JournalCorrelator.Observation] = []
         for i in 0..<7 {
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], fullyAnswered: true))
         }
         for i in 7..<11 {
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: false))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], fullyAnswered: false))
         }
         let endDate = dateOffset(10, from: startDate)
 
@@ -165,11 +172,11 @@ final class GuidedExperimentTests: XCTestCase {
         // demonstrating adherence (8/14) reads differently from "100% known".
         for i in 0..<8 {
             // Compliant: journaled, no alcohol tag -- exposureState resolves to `.no`.
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], fullyAnswered: true))
         }
         for i in 8..<14 {
             // Known, but noncompliant: alcohol tagged.
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], fullyAnswered: true))
         }
         let endDate = dateOffset(13, from: startDate)
 
@@ -194,10 +201,10 @@ final class GuidedExperimentTests: XCTestCase {
         }
         var trialNights: [JournalCorrelator.Observation] = []
         for i in 0..<8 {
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.hardTraining], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.hardTraining], fullyAnswered: true))
         }
         for i in 8..<10 {
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], fullyAnswered: true))
         }
         let endDate = dateOffset(9, from: startDate)
 
@@ -228,11 +235,11 @@ final class GuidedExperimentTests: XCTestCase {
         var trialNights: [JournalCorrelator.Observation] = []
         for i in 0..<8 {
             // Compliant: no alcohol tag.
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true, sleepPerformance: 90))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], fullyAnswered: true, sleepPerformance: 90))
         }
         for i in 8..<14 {
             // Noncompliant: alcohol tagged.
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], isJournaled: true, sleepPerformance: 40))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], fullyAnswered: true, sleepPerformance: 40))
         }
         let endDate = dateOffset(13, from: startDate)
 
@@ -258,10 +265,10 @@ final class GuidedExperimentTests: XCTestCase {
         // 14 total trial nights, but only 3 compliant -- below the
         // minimumPeriodNights floor the primary analysis now enforces.
         for i in 0..<3 {
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [], fullyAnswered: true))
         }
         for i in 3..<14 {
-            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], isJournaled: true))
+            trialNights.append(observation(date: dateOffset(i, from: startDate), tags: [.alcohol], fullyAnswered: true))
         }
         let endDate = dateOffset(13, from: startDate)
 

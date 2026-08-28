@@ -14,7 +14,7 @@ struct TodayView: View {
     // Owned locally rather than read fresh from `coordinator.journal` on
     // every render: a tap saved through the store and re-fetched wouldn't
     // reliably trigger a SwiftUI update on its own -- same reasoning as
-    // JournalView's `selectedTagIdentifiers`, see that type's doc comment.
+    // JournalView's `answers`, see that type's doc comment.
     @State private var checkInFeeling: MorningFeeling?
     @State private var checkInDetails: [CheckInDimension: Int] = [:]
 

@@ -5,7 +5,14 @@ final class AdaptiveJournalTests: XCTestCase {
     private func observation(
         daysAgo: Int,
         tags: Set<BehaviorTag> = [],
-        isJournaled: Bool = true,
+        // Replaced an `isJournaled` flag that meant only "a JournalEntry
+        // row exists" -- which the old model read as a confident no for
+        // every untagged behaviour, though a row is created merely by
+        // opening the journal screen. `true` now states what these fixtures
+        // actually mean: the whole list was worked through, so tagged
+        // behaviours are yes and every other one is an explicit no. `false`
+        // means nothing was answered, so every behaviour is unknown.
+        fullyAnswered: Bool = true,
         sleepPerformance: Double? = 80,
         recoveryPercent: Double? = 70
     ) -> JournalCorrelator.Observation {
@@ -13,7 +20,7 @@ final class AdaptiveJournalTests: XCTestCase {
         return JournalCorrelator.Observation(
             date: date,
             tags: tags,
-            isJournaled: isJournaled,
+            answers: fullyAnswered ? .fullyAnswered(tags: tags) : .none,
             recoveryPercent: recoveryPercent,
             sleepPerformance: sleepPerformance,
             deepMinutes: 80,
@@ -39,7 +46,7 @@ final class AdaptiveJournalTests: XCTestCase {
     ) -> [JournalCorrelator.Observation] {
         (0..<30).map { index in
             guard index < 24 else {
-                return observation(daysAgo: 30 - index, isJournaled: false,
+                return observation(daysAgo: 30 - index, fullyAnswered: false,
                                    sleepPerformance: sleepPerformance(index))
             }
             var tags: Set<BehaviorTag> = []

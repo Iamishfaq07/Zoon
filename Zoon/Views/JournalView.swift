@@ -17,13 +17,14 @@ struct JournalView: View {
     @State private var note: String = ""
     @FocusState private var noteFieldFocused: Bool
 
-    // The source of truth for what's highlighted. `entry.contains(tag)` used
-    // to be read straight from the SwiftData model on every render, but a tap
-    // saved through the store and re-fetched a model instance SwiftUI hadn't
-    // been told to re-observe -- the chip only caught up on the next render
-    // triggered by something unrelated, like switching days. Owning the set
-    // as plain @State makes a tap's visual result unconditional on that.
-    @State private var selectedTagIdentifiers: Set<String> = []
+    // The source of truth for what each chip shows. Read from the stores
+    // once per reload rather than straight off the SwiftData models on every
+    // render: a tap saved through a store and re-fetched a model instance
+    // SwiftUI hadn't been told to re-observe, so the chip only caught up on
+    // the next render triggered by something unrelated, like switching days.
+    // Owning the value as plain @State makes a tap's visual result
+    // unconditional on that.
+    @State private var answers: BehaviorAnswers = .none
 
     private var entry: JournalEntry {
         coordinator.journal.entryOrCreate(for: selectedDate, nightKey: selectedNightKey)
@@ -79,10 +80,10 @@ struct JournalView: View {
                 }
             }
             .onAppear(perform: reload)
-            .onChange(of: selectedDate) { _, _ in
-                note = entry.note ?? ""
-                selectedTagIdentifiers = Set(entry.tagIdentifiers)
-            }
+            // The same reload the screen does on appear. Was a
+            // hand-inlined copy of two of its three lines, which is how
+            // switching days left the third one stale.
+            .onChange(of: selectedDate) { _, _ in reload() }
             .onChange(of: noteFieldFocused) { wasFocused, isFocused in
                 if wasFocused, !isFocused {
                     coordinator.journal.setNote(note, on: selectedDate, nightKey: selectedNightKey)
@@ -259,21 +260,36 @@ struct JournalView: View {
                     .glassCard()
                 }
             }
+            nothingElseRow
         }
     }
 
+    /// One behaviour, as one of three states rather than a checkbox.
+    ///
+    /// A checkbox has two states and the journal has three. The missing one
+    /// is the one that mattered: an unticked box used to mean "did not
+    /// happen" to every engine downstream, which is a claim the user never
+    /// made. Tapping cycles unanswered -> yes -> no -> unanswered, so a
+    /// negative is something you say rather than something inferred from
+    /// your silence.
     private func tagChip(_ tag: BehaviorTag) -> some View {
-        let isOn = selectedTagIdentifiers.contains(tag.rawValue)
+        let state = answers.state(for: tag)
+        let tint: Color = switch state {
+        case .yes: Theme.Metric.sleep
+        case .no: Theme.neutral(0.55)
+        case .unknown: Theme.cardStroke
+        }
+        let fill: Color = switch state {
+        case .yes: Theme.Metric.sleep.opacity(0.3)
+        case .no: Theme.neutral(0.10)
+        case .unknown: Theme.neutral(0.06)
+        }
 
         return Button {
-            if isOn {
-                selectedTagIdentifiers.remove(tag.rawValue)
-            } else {
-                selectedTagIdentifiers.insert(tag.rawValue)
-            }
-            coordinator.journal.toggle(tag, on: selectedDate, nightKey: selectedNightKey)
+            coordinator.cycleBehavior(for: tag, on: selectedDate, nightKey: selectedNightKey)
+            answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
             findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
-            // Selection is a physical act here — the haptic confirms the toggle
+            // Selection is a physical act here — the haptic confirms the tap
             // landed without needing to look for a colour change.
             Haptics.tap()
         } label: {
@@ -282,23 +298,100 @@ struct JournalView: View {
                     .font(Theme.text(11, weight: .medium))
                 Text(tag.label)
                     .font(Theme.label(12, weight: .medium))
+                // Never colour alone. Yes and no carry distinct glyphs and a
+                // solid border, unanswered carries no glyph and a dashed one,
+                // so all three separate in greyscale.
+                if let glyph = Self.glyph(for: state) {
+                    Image(systemName: glyph)
+                        .font(Theme.text(10, weight: .bold))
+                }
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 8)
             .background {
                 Capsule()
-                    .fill(isOn ? Theme.Metric.sleep.opacity(0.3) : Theme.neutral(0.06))
+                    .fill(fill)
                     .overlay {
                         Capsule().strokeBorder(
-                            isOn ? Theme.Metric.sleep : Theme.cardStroke,
-                            lineWidth: 1
+                            tint,
+                            style: StrokeStyle(
+                                lineWidth: 1,
+                                dash: state == .unknown ? [3, 3] : []
+                            )
                         )
                     }
             }
-            .foregroundStyle(isOn ? Color.white : Color.secondary)
+            .foregroundStyle(state == .yes ? Color.white : Color.secondary)
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? [.isSelected, .isButton] : .isButton)
+        .accessibilityLabel(tag.label)
+        .accessibilityValue(Self.description(for: state))
+        .accessibilityHint("Cycles between yes, no, and not answered.")
+        .accessibilityAddTraits(state == .yes ? [.isSelected, .isButton] : .isButton)
+    }
+
+    private static func glyph(for state: BehaviorObservationState) -> String? {
+        switch state {
+        case .yes: "checkmark"
+        case .no: "xmark"
+        case .unknown: nil
+        }
+    }
+
+    private static func description(for state: BehaviorObservationState) -> String {
+        switch state {
+        case .yes: "Yes"
+        case .no: "No"
+        case .unknown: "Not answered"
+        }
+    }
+
+    /// Answers every remaining tracked behaviour "no" in one tap.
+    ///
+    /// The necessary counterpart to making negatives explicit. A matched-pair
+    /// comparison needs a control arm, the control arm is now built only from
+    /// stated negatives, and nobody is going to tap twenty-two chips twice
+    /// each. Without this, the honest model would just be an app that never
+    /// finds anything.
+    ///
+    /// Still one deliberate action rather than a default, which is the whole
+    /// distinction being drawn: opening this screen says nothing, pressing
+    /// this says something.
+    @ViewBuilder
+    private var nothingElseRow: some View {
+        let tracked = BehaviorTag.allCases.filter(preferences.isTracked)
+        let remaining = tracked.filter { answers.state(for: $0) == .unknown }
+        if !remaining.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    coordinator.answerRemainingBehaviorsNo(
+                        on: selectedDate, nightKey: selectedNightKey, candidates: tracked
+                    )
+                    answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+                    findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+                    Haptics.tap()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checklist.checked")
+                            .font(Theme.text(12, weight: .semibold))
+                        Text("None of the other \(remaining.count) applied")
+                            .font(Theme.label(13, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background {
+                        Capsule().fill(Theme.neutral(0.08))
+                            .overlay { Capsule().strokeBorder(Theme.cardStroke, lineWidth: 1) }
+                    }
+                }
+                .buttonStyle(.plain)
+                Text("Zoon can only compare a behaviour against nights you have said it didn't happen on. Unanswered stays unknown.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .glassCard()
+        }
     }
 
     private var noteCard: some View {
@@ -349,7 +442,7 @@ struct JournalView: View {
 
     private func reload() {
         note = entry.note ?? ""
-        selectedTagIdentifiers = Set(entry.tagIdentifiers)
+        answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
         findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
     }
 }

@@ -109,6 +109,21 @@ TESTS_EXTRA_APP_FILES = [
     # Foundation/SwiftData only, no UIKit/SwiftUI dependency -- BehaviorTag
     # and JournalEntry, needed by JournalCorrelatorTests below.
     "Zoon/Models/JournalEntry.swift",
+    # Foundation only -- BehaviorObservationState/Source and BehaviorAnswers.
+    # Not optional: JournalCorrelator.Observation now stores a BehaviorAnswers,
+    # so the test target cannot compile JournalCorrelator without this. Lives
+    # in Zoon/Models rather than Shared/ because it is keyed by BehaviorTag,
+    # which the widget and watch targets have no model layer for.
+    "Zoon/Models/BehaviorObservation.swift",
+    # Foundation/SwiftData only -- the @Model row behind a durable per-night
+    # behaviour answer, and the provisional-night-key helper the coordinator
+    # falls back to. Same in-test-bundle SwiftData pattern as JournalEntry
+    # and SleepNightRecord above.
+    "Zoon/Models/BehaviorObservationRecord.swift",
+    # Foundation/SwiftData/os only -- exercised against an in-memory store by
+    # BehaviorObservationStoreTests, the same way JournalStore above is by
+    # JournalStoreIntegrationTests.
+    "Zoon/Services/BehaviorObservationStore.swift",
     # Pure logic over Observation/BehaviorTag plus Statistics (already
     # Shared) -- the matched-pair engine behind Cause Finder, and exactly
     # the exposure-state semantics JournalCorrelatorTests exists to pin down.
