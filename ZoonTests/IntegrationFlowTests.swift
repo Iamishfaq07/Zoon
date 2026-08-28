@@ -183,15 +183,18 @@ final class IntegrationFlowTests: XCTestCase {
 
     // MARK: - The source bridge, end to end
 
-    /// Task 6's defect, checked through the real pipeline rather than at the
-    /// scoring seam: a malformed 20-hour block must not collapse two nights
-    /// into one persisted row.
+    /// The bug this test found.
     ///
-    /// In this bundle every sample reports the same source (there is no API to
-    /// set `sourceRevision` on an unsaved sample), so the bad block is treated
-    /// as same-source data — which is the *harder* case for the builder, not
-    /// an easier one: same-source samples are clustered together by gap, so
-    /// nothing separates them but the pipeline's own handling.
+    /// Grouping per source stops a malformed sample corrupting *other*
+    /// sources' nights, but in this bundle every sample reports the same
+    /// source — which turns out to be the harder case, not an easier one.
+    /// Within one source there is no rival account to arbitrate against, so a
+    /// 20-hour block simply bridged both real nights and the pipeline emitted
+    /// a single 32-hour "night". That duration would then have flowed into
+    /// debt, need and every baseline downstream.
+    ///
+    /// The fix is `maximumPlausibleSampleDuration`: an individual sample that
+    /// long is not a sleep record, and is dropped before anything groups it.
     func testAMalformedBlockDoesNotSilentlyCollapseTwoNightsIntoOne() throws {
         let store = try makeStore()
         var samples = twoNightsOfSamples()
@@ -202,20 +205,33 @@ final class IntegrationFlowTests: XCTestCase {
             _ = store.upsert(features, nightKey: features.nightKey)
         }
 
-        // Whatever the merge produces, no persisted night may claim a
-        // physically impossible amount of sleep.
-        for night in store.historicalFeatures(goalMinutes: 480) {
+        let persisted = store.historicalFeatures(goalMinutes: 480)
+
+        XCTAssertEqual(persisted.count, 2, "Both real nights must survive the bad block.")
+        for night in persisted {
             XCTAssertLessThanOrEqual(
                 night.timeAsleepMinutes, 16 * 60,
                 "A persisted night claiming more than 16h of sleep is a bridge, not a night."
             )
         }
     }
+
+    /// The guard must not fire on ordinary data — a long-but-real night has to
+    /// come through untouched, or the fix would be quietly deleting sleep.
+    func testALongButRealNightIsNotDiscardedByTheGuard() throws {
+        let store = try makeStore()
+        // 11 hours: long, entirely possible, well under the 16h ceiling.
+        let samples = [sample(.asleepCore, date(1, 21), date(2, 8))]
+
+        for session in SleepSessionBuilder().buildSessions(from: samples) {
+            let features = Fixture.night(from: session, need: 480)
+            _ = store.upsert(features, nightKey: features.nightKey)
+        }
+
+        XCTAssertEqual(store.allNights().count, 1)
+    }
 }
 
-/// Element-wise comparison with tolerance. Named distinctly rather than
-/// overloading `XCTAssertEqual`, which risks ambiguous resolution against
-/// XCTest's own generic collection overloads.
 private func assertEqual(
     _ lhs: [Double],
     _ rhs: [Double],
