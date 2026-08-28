@@ -241,6 +241,22 @@ final class UserPreferences {
         recoveryModeDate = enabled ? .now : nil
     }
 
+    /// The stored Recovery Mode instant, exposed for backup only.
+    ///
+    /// The app reads `isRecoveryModeManuallyEnabledToday`; a backup has to
+    /// carry the instant itself rather than today's interpretation of it,
+    /// or the value could not be restored truthfully.
+    var recoveryModeDateForBackup: Date? { recoveryModeDate }
+
+    /// Restores Recovery Mode from a backup, preserving the original date
+    /// rather than stamping `.now` -- same reasoning as
+    /// `restoreActiveExperiment`. A restore of an older backup therefore
+    /// correctly leaves Recovery Mode *off*: the date it carries is no
+    /// longer today, and `isRecoveryModeManuallyEnabledToday` says so.
+    func restoreRecoveryModeDate(_ date: Date?) {
+        recoveryModeDate = date
+    }
+
     /// The behaviour a Guided Experiment is currently tracking, if any --
     /// see `GuidedExperiment`. Only one at a time: running several at once
     /// would make it unclear which behaviour a result actually belongs to,

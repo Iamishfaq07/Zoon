@@ -135,10 +135,21 @@ final class SnoreDetector {
         logger.info("Snore detection stopped")
 
         guard monitoredSeconds > 0 else { return nil }
+        // Monitoring stops in the morning, so `now` is this night's wake
+        // instant and the current zone is the one it was recorded in -- the
+        // two inputs `NightKey` needs. Both are captured here rather than
+        // derived on read, because a later read can happen from a different
+        // timezone and would then reconstruct the wrong day.
+        let wakeInstant = Date()
+        let zone = TimeZone.current
+        var calendar = Calendar.current
+        calendar.timeZone = zone
         return SnoreStore.NightSummary(
-            date: Calendar.current.startOfDay(for: .now),
+            date: calendar.startOfDay(for: wakeInstant),
             monitoredMinutes: monitoredSeconds / 60,
-            snoreMinutes: snoreSeconds / 60
+            snoreMinutes: snoreSeconds / 60,
+            nightKey: NightKey.make(wakeInstant: wakeInstant, in: zone),
+            timezoneIdentifier: zone.identifier
         )
     }
 

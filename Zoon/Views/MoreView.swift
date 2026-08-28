@@ -161,7 +161,7 @@ struct MoreView: View {
             Button {
                 isImporting = true
             } label: {
-                actionRow("Import a backup", "Restore nights, journal, and naps", "square.and.arrow.down", Theme.Metric.hrv)
+                actionRow("Import a backup", "Restores everything an export contains", "square.and.arrow.down", Theme.Metric.hrv)
             }
             .buttonStyle(.plain)
         }

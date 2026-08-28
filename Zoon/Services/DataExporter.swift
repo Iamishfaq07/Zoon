@@ -147,6 +147,13 @@ enum DataExporter {
             let experimentHypothesis: String?
             let experimentPrimaryMetric: String?
             let experimentDirection: String?
+            /// The date Recovery Mode was turned on, if it was on at export
+            /// time. Optional -- added after format 4 shipped, so an earlier
+            /// backup decodes it as `nil`. Not a version bump: unlike the
+            /// behaviour answers that forced 4, this value is day-scoped and
+            /// expires on its own, so a V4 file restoring without it loses
+            /// nothing that would still have applied.
+            let recoveryModeDate: Date?
         }
 
         struct WristTemperatureRecord: Codable {
@@ -211,7 +218,8 @@ enum DataExporter {
                 experimentStartDate: preferences.experimentStartDate,
                 experimentHypothesis: preferences.experimentHypothesis,
                 experimentPrimaryMetric: preferences.experimentPrimaryMetric?.rawValue,
-                experimentDirection: preferences.experimentDirection?.rawValue
+                experimentDirection: preferences.experimentDirection?.rawValue,
+                recoveryModeDate: preferences.recoveryModeDateForBackup
             ),
             snoreSummaries: snoreSummaries,
             wristTemperatures: wristTemperatures.map {
