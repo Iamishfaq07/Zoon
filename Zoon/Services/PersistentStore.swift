@@ -21,6 +21,7 @@ enum PersistentStore {
 
         let container = try ModelContainer(
             for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
+            BehaviorObservationRecord.self,
             configurations: configuration
         )
         if AppGroup.isConfigured {
@@ -46,7 +47,16 @@ enum PersistentStore {
         let destinationJournalCount = try destinationContext.fetchCount(
             FetchDescriptor<JournalEntry>()
         )
-        let destinationHasData = destinationNightCount > 0 || destinationJournalCount > 0
+        // Observations are counted too. A destination holding only
+        // behaviour answers -- possible once those can arrive from an
+        // archive import before any night syncs -- would otherwise read
+        // as empty and be treated as a fresh install to copy over.
+        let destinationObservationCount = try destinationContext.fetchCount(
+            FetchDescriptor<BehaviorObservationRecord>()
+        )
+        let destinationHasData = destinationNightCount > 0
+            || destinationJournalCount > 0
+            || destinationObservationCount > 0
         guard !destinationHasData else {
             defaults.set(true, forKey: migrationKey)
             return
@@ -59,6 +69,7 @@ enum PersistentStore {
 
         let legacy = try ModelContainer(
             for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
+            BehaviorObservationRecord.self,
             configurations: ModelConfiguration()
         )
         // If this throws, it propagates out of this function before reaching
@@ -90,6 +101,7 @@ enum PersistentStore {
         let nights = try source.fetch(FetchDescriptor<SleepNightRecord>())
         let entries = try source.fetch(FetchDescriptor<JournalEntry>())
         let episodes = try source.fetch(FetchDescriptor<SleepEpisodeRecord>())
+        let observations = try source.fetch(FetchDescriptor<BehaviorObservationRecord>())
 
         for night in nights {
             let copy = SleepNightRecord(
@@ -102,7 +114,14 @@ enum PersistentStore {
             destination.insert(copy)
         }
         for entry in entries {
-            let copy = JournalEntry(date: entry.date)
+            // `nightKey` is passed through rather than dropped. Omitting
+            // it silently downgraded every migrated entry to `date`-only
+            // matching, which disagrees with a night's own key exactly on
+            // travel days -- and `eraseLegacyStoreFiles()` deletes the
+            // source right afterwards, so the loss was permanent. It also
+            // now decides which observations a legacy tag can be
+            // forward-filled into (see `BehaviorObservationStore`).
+            let copy = JournalEntry(date: entry.date, nightKey: entry.nightKey)
             copy.tagIdentifiers = entry.tagIdentifiers
             copy.note = entry.note
             copy.feelingRaw = entry.feelingRaw
@@ -127,6 +146,15 @@ enum PersistentStore {
             )
             copy.createdAt = episode.createdAt
             destination.insert(copy)
+        }
+        for observation in observations {
+            destination.insert(BehaviorObservationRecord(
+                nightKey: observation.nightKey,
+                behaviorIdentifier: observation.behaviorIdentifier,
+                state: observation.state,
+                source: observation.source,
+                observedAt: observation.observedAt
+            ))
         }
         try destination.save()
     }

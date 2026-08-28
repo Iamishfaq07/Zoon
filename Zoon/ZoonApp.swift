@@ -46,7 +46,7 @@ struct ZoonApp: App {
         self.modelContainer = container
         self.storeOpeningError = storeOpeningError
 
-        let naps = NapStore()
+        let naps = NapStore(wake: NapWake())
         let reminders = BedtimeReminder()
 
         _preferences = State(initialValue: preferences)
@@ -58,6 +58,7 @@ struct ZoonApp: App {
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
                 journal: JournalStore(context: container.mainContext),
+                behaviors: BehaviorObservationStore(context: container.mainContext),
                 naps: naps,
                 preferences: preferences,
                 reminders: reminders

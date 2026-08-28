@@ -34,6 +34,10 @@ struct JournalCorrelator {
     /// Matched pairs required before a behaviour is eligible at all.
     static let minimumMatchedPairs = 8
 
+    /// Distance charged for a confounder that could not be compared because
+    /// one of the two nights is missing it. See `bestMatch`.
+    static let unknownConfounderPenalty = 1.0
+
     /// Whether a given behaviour happened, didn't happen, or simply wasn't
     /// reviewed on a given night.
     ///
@@ -55,15 +59,19 @@ struct JournalCorrelator {
     struct Observation {
         let date: Date
         let tags: Set<BehaviorTag>
-        /// Whether the user actually opened the Journal's tag screen for
-        /// this night, i.e. had a real opportunity to see the full
-        /// behaviour list -- not whether they tagged anything on it. A
-        /// night the user genuinely reviewed and had nothing to tag is
-        /// just as reviewed as one where they tagged three things; without
-        /// this distinction (see the call site building `Observation`), a
-        /// tag's absence can't be told apart from the night never having
-        /// been reviewed at all.
-        let isJournaled: Bool
+        /// The explicit per-behaviour answers recorded for this night.
+        ///
+        /// This replaced an `isJournaled: Bool`, and the replacement is the
+        /// point of the whole type. That flag was true for any night with a
+        /// `JournalEntry` row, and `JournalStore.entryOrCreate` writes a row
+        /// the moment the journal screen renders a day -- so merely opening
+        /// the screen used to manufacture a confident "did not happen" for
+        /// all twenty-three behaviours, and those fabricated negatives
+        /// became the control arm of every matched-pair comparison below.
+        ///
+        /// A behaviour with no entry here is `.unknown`. Nothing about the
+        /// night as a whole can promote it to `.no`.
+        let answers: BehaviorAnswers
         let recoveryPercent: Double?
         let sleepPerformance: Double?
         let deepMinutes: Double?
@@ -94,39 +102,69 @@ struct JournalCorrelator {
         /// here; this is only the underlying signal.
         let measuredTimeZoneShift: Bool
 
-        /// `.yes` if tagged, or if HealthKit/the timezone check measured
-        /// the behaviour directly; `.no` if the night was journaled and it
-        /// wasn't tagged, or if HealthKit measured a definite zero (for
-        /// alcohol/caffeine); `.unknown` otherwise. Measured data can only
-        /// ever *upgrade* an unknown to yes here, never assert a confident
-        /// no on its own for travel specifically -- a same-timezone trip
-        /// is real travel this heuristic simply can't see, so its absence
-        /// isn't evidence of anything.
+        /// Resolves one behaviour for this night, in strict order of
+        /// authority.
         ///
-        /// Measured data resolving a night manual tagging left `.unknown`
-        /// is the whole point of finding #49 (and, for travel, #55/#56):
-        /// a night the user never opened the Journal on can still
-        /// honestly answer "did this happen" if Zoon already knows.
+        /// 1. An explicit answer the user gave. The only source of `.no`.
+        /// 2. A legacy positive tag, which is a `.yes` the user really did
+        ///    record before this model existed.
+        /// 3. Measured data, which can only ever *upgrade* an unanswered
+        ///    behaviour to `.yes`.
+        /// 4. Otherwise `.unknown`.
+        ///
+        /// Step 3 is upgrade-only for a reason the previous version stated
+        /// in its own doc comment and then violated for alcohol and
+        /// caffeine: it read a non-nil zero as a confident `.no`. But
+        /// `FeatureExtractor.alcoholicBeverages` returns nil both when
+        /// nothing was logged and when Lifestyle Insights was never
+        /// authorized -- HealthKit makes read-permission denial and absent
+        /// data deliberately indistinguishable -- so an absent sample can
+        /// never prove abstinence. Travel was already handled correctly:
+        /// a same-timezone trip is real travel the heuristic cannot see,
+        /// so its absence is evidence of nothing.
+        ///
+        /// There is deliberately no path from "this night has a journal
+        /// row" to `.no`.
         func exposureState(for tag: BehaviorTag) -> ExposureState {
+            switch answers.state(for: tag) {
+            case .yes: return .yes
+            case .no: return .no
+            case .unknown: break
+            }
             if tags.contains(tag) { return .yes }
             switch tag {
             case .alcohol:
-                if let alcoholicBeverages { return alcoholicBeverages > 0 ? .yes : .no }
+                if let alcoholicBeverages, alcoholicBeverages > 0 { return .yes }
             case .caffeineLate:
-                if let lateCaffeineMg { return lateCaffeineMg > 0 ? .yes : .no }
+                if let lateCaffeineMg, lateCaffeineMg > 0 { return .yes }
             case .travelled:
                 if measuredTimeZoneShift { return .yes }
             default:
                 break
             }
-            return isJournaled ? .no : .unknown
+            return .unknown
+        }
+
+        /// Whether anything at all is known about this night's behaviours.
+        ///
+        /// The night-level gate that `isJournaled` used to serve, with the
+        /// meaning it should always have had: a journal row exists for every
+        /// day whose screen was opened, but only an answered behaviour is
+        /// data. A legacy positive tag counts, because it is a real recorded
+        /// answer.
+        var hasAnyExplicitAnswer: Bool {
+            answers.hasAnyAnswer || !tags.isEmpty
         }
 
         /// Travel and illness are themselves loggable confounders (finding
         /// #45): a hard hotel bed or a cold plausibly explains a bad night on
         /// its own, independent of whatever else got tagged that day.
-        var isTravelDay: Bool { tags.contains(.travelled) || measuredTimeZoneShift }
-        var isSickDay: Bool { tags.contains(.sick) }
+        /// Routed through `exposureState` rather than reading `tags`
+        /// directly, so an explicit answer wins here too -- otherwise a
+        /// night the user answered "no travel" would still be treated as a
+        /// travel night by the matcher because a stale legacy tag said so.
+        var isTravelDay: Bool { exposureState(for: .travelled) == .yes }
+        var isSickDay: Bool { exposureState(for: .sick) == .yes }
     }
 
     struct Finding: Identifiable, Hashable {
@@ -447,12 +485,32 @@ struct JournalCorrelator {
                 guard night.isSickDay == candidate.isSickDay else { continue }
             }
 
+            // A confounder that cannot be compared is charged a fixed
+            // penalty rather than skipped.
+            //
+            // Skipping it inverted the whole point of matching: distance is
+            // minimised, so a candidate *missing* a confounder scored
+            // strictly better than one whose value was known and close, and
+            // the matcher preferentially picked the nights it knew least
+            // about. `SleepNightFeatures.sleepDebtMinutes` is nil until
+            // fourteen nights of history exist, so the bias was strongest
+            // exactly when this engine first starts producing findings.
+            //
+            // One unit is the same cost as 90 minutes of debt difference or
+            // one hour of bedtime difference -- a real but not disqualifying
+            // gap, so an unmatched-on-one-axis night stays eligible under
+            // the cutoff below while losing to any night with a genuinely
+            // close known value.
             var distance = 0.0
             if let a = night.sleepDebtMinutes, let b = candidate.sleepDebtMinutes {
                 distance += abs(a - b) / 90.0
+            } else {
+                distance += Self.unknownConfounderPenalty
             }
             if let a = night.bedtimeHour, let b = candidate.bedtimeHour {
                 distance += abs(a - b)
+            } else {
+                distance += Self.unknownConfounderPenalty
             }
 
             if best == nil || distance < best!.distance {
