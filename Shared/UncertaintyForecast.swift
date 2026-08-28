@@ -74,18 +74,27 @@ enum UncertaintyForecast {
         }
 
         /// Plain-language forecast. Leads with the range, not the midpoint.
+        /// Describes where recent nights *have* landed. Deliberately not a
+        /// claim about tomorrow.
+        ///
+        /// This used to read "Tomorrow will most likely land between...",
+        /// which is a forecast, and this type does not make one: it reports
+        /// the median and 10th/90th percentiles of recent values, with no
+        /// conditioning on context and no calibration against what actually
+        /// happened next. Until there is a model that has been backtested,
+        /// the honest headline is the range itself.
         var sentence: String {
-            "Tomorrow will most likely land between \(metric.formattedMagnitude(lower)) and "
+            "Your recent nights ranged between \(metric.formattedMagnitude(lower)) and "
                 + "\(metric.formattedMagnitude(upper)) for \(metric.label), "
                 + "typically around \(metric.formattedMagnitude(typical))."
         }
 
-        /// The caveat that must travel with any forecast from this type.
-        /// A forecast built purely from past nights knows nothing about what
-        /// the person actually intends to do tomorrow.
+        /// The caveat that must travel with this range. Built purely from
+        /// past nights, it knows nothing about what the person intends to do
+        /// next, and it has never been checked against what followed.
         var caveat: String {
-            "Based on your last \(nightsUsed) nights, and assuming tomorrow is an ordinary one. "
-                + "It doesn't know your plans."
+            "Based on your last \(nightsUsed) nights. This is where they landed, "
+                + "not a prediction — it doesn't know your plans."
         }
     }
 

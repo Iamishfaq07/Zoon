@@ -36,6 +36,7 @@ final class DataExporterTests: XCTestCase {
                 preferredSleepSourceBundleIdentifier: "com.apple.health.watch",
                 obligationWeekdays: [2, 3, 4, 5, 6],
                 isShiftWorkModeEnabled: false,
+                shiftWorkMode: "rotating",
                 trackedBehaviorTagIdentifiers: ["alcohol", "lateCaffeine"],
                 activeExperimentTag: "alcohol",
                 experimentStartDate: Date(timeIntervalSince1970: 1_699_000_000),

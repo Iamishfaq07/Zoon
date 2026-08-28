@@ -713,21 +713,41 @@ final class SleepDataCoordinator {
     ///
     /// That 9am-6pm window assumes the main sleep happens at night, which
     /// inverts for a night-shift worker: their long block is the daytime
-    /// one, and a break during their overnight work hours is the nap. With
-    /// `UserPreferences.isShiftWorkModeEnabled` on, the two windows swap --
-    /// 6pm-9am reads as nap instead. (`preferredMainSleep(in:)` itself
-    /// already picks the main block by duration, not clock time, so it
-    /// needs no change here; this only affects how the *other* sessions on
-    /// the same day get labeled.)
+    /// one, and a break during their overnight work hours is the nap.
+    ///
+    /// For a rotating or custom schedule there is no honest window in either
+    /// direction -- the shift moves between cycles, or the pattern is split --
+    /// so applying one just relabels the assumption instead of removing it.
+    /// Those fall back to duration, which is the only signal that does not
+    /// encode a belief about when a person *ought* to sleep. This is the
+    /// "don't penalise daytime main sleep merely because it is daytime" case.
+    ///
+    /// (`preferredMainSleep(in:)` itself already picks the main block by
+    /// duration, not clock time, so it needs no change here; this only
+    /// affects how the *other* sessions on the same day get labeled.)
     private func classify(_ session: SleepSession) -> SleepEpisodeType {
+        let mode = preferences.shiftWorkMode
+
+        guard mode.usesClockTimeWindow else {
+            let duration = session.end.timeIntervalSince(session.start)
+            return duration < Self.napDurationCeiling ? .nap : .secondarySleep
+        }
+
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: session.timeZoneIdentifier) ?? .current
         let midpoint = session.start.addingTimeInterval(session.end.timeIntervalSince(session.start) / 2)
         let hour = calendar.component(.hour, from: midpoint)
         let isDaytime = (9..<18).contains(hour)
-        let isNap = preferences.isShiftWorkModeEnabled ? !isDaytime : isDaytime
+        let isNap = mode.treatsDaytimeAsNap ? isDaytime : !isDaytime
         return isNap ? .nap : .secondarySleep
     }
+
+    /// Above this, a non-primary episode is secondary sleep rather than a nap.
+    ///
+    /// Only consulted for schedules with no usable clock-time window. Three
+    /// hours is the point past which calling something "a nap" stops matching
+    /// what people mean by the word.
+    static let napDurationCeiling: TimeInterval = 3 * 60 * 60
 
     /// Reads the newest stored night back out, derives everything, updates state
     /// and hands a snapshot to the widget.
@@ -1275,7 +1295,11 @@ final class SleepDataCoordinator {
             if let obligationWeekdays = restored.obligationWeekdays {
                 preferences.obligationWeekdays = Set(obligationWeekdays)
             }
-            preferences.isShiftWorkModeEnabled = restored.isShiftWorkModeEnabled ?? false
+            // Prefer the explicit mode; fall back to migrating the Bool so a
+            // pre-V2 backup restores as the night shift it actually described.
+            preferences.shiftWorkMode = restored.shiftWorkMode
+                .flatMap(ShiftWorkMode.init(rawValue:))
+                ?? .migrating(fromLegacyEnabled: restored.isShiftWorkModeEnabled ?? false)
             preferences.trackedBehaviorTagIdentifiers = restored.trackedBehaviorTagIdentifiers.map(Set.init)
             preferences.restoreActiveExperiment(
                 tag: restored.activeExperimentTag.flatMap(BehaviorTag.init(rawValue:)),
