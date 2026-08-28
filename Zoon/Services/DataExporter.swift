@@ -138,6 +138,11 @@ enum DataExporter {
             let preferredSleepSourceBundleIdentifier: String?
             let obligationWeekdays: [Int]?
             let isShiftWorkModeEnabled: Bool?
+            /// `ShiftWorkMode.rawValue`. Optional -- a backup written before
+            /// the mode replaced the Bool decodes as `nil`, and import falls
+            /// back to migrating `isShiftWorkModeEnabled` instead, which is
+            /// exactly what a fresh install does with the same old value.
+            let shiftWorkMode: String?
             let trackedBehaviorTagIdentifiers: [String]?
             /// A currently-running Guided Experiment, if one was active at
             /// export time. All four travel together -- `activeExperimentTag`
@@ -213,6 +218,7 @@ enum DataExporter {
                 preferredSleepSourceBundleIdentifier: preferences.preferredSleepSourceBundleIdentifier,
                 obligationWeekdays: Array(preferences.obligationWeekdays),
                 isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
+                shiftWorkMode: preferences.shiftWorkMode.rawValue,
                 trackedBehaviorTagIdentifiers: preferences.trackedBehaviorTagIdentifiers.map(Array.init),
                 activeExperimentTag: preferences.activeExperimentTag?.rawValue,
                 experimentStartDate: preferences.experimentStartDate,

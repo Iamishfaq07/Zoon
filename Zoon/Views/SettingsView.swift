@@ -290,17 +290,22 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
 
-            Toggle(isOn: Binding(
-                get: { preferences.isShiftWorkModeEnabled },
-                set: { preferences.isShiftWorkModeEnabled = $0 }
-            )) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Shift work mode")
-                    Text("Your main sleep happens during the day. Zoon reads a long daytime block as your primary sleep instead of a nap, and relabels a few night-relative labels.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                Picker("Schedule", selection: Binding(
+                    get: { preferences.shiftWorkMode },
+                    set: { preferences.shiftWorkMode = $0 }
+                )) {
+                    ForEach(ShiftWorkMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
                 }
+
+                Text(preferences.shiftWorkMode.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .padding(.vertical, 2)
         } header: {
             Text("Obligation days")
         } footer: {
