@@ -39,16 +39,16 @@ struct PatternsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Tomorrow
+    // MARK: - Recent range
 
     @ViewBuilder
     private var forecastSection: some View {
         let forecasts = UncertaintyForecast.forecastAll(nights: coordinator.recentNights)
         if forecasts.isEmpty {
-            placeholder("Once there are a couple of weeks of nights, Zoon can say what range tomorrow is likely to land in.")
+            placeholder("Once there are a couple of weeks of nights, Zoon can show the range yours typically fall in.")
         } else {
             VStack(alignment: .leading, spacing: 12) {
-                sectionHeader("Tomorrow, as a range", "dice", Theme.Metric.strain)
+                sectionHeader("Your recent range", "dice", Theme.Metric.strain)
 
                 // Most predictable first, which is what forecastAll already
                 // orders by. Capped at three: the ranking exists so the

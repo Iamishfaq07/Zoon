@@ -150,4 +150,32 @@ final class UncertaintyForecastTests: XCTestCase {
             XCTAssertFalse(lower.contains("guarantee"), text)
         }
     }
+
+    /// V8 Task 9: until a context-conditioned model exists and has been
+    /// backtested, this type reports where recent nights *landed*. It must not
+    /// phrase that as a claim about tomorrow — the numbers behind it are the
+    /// median and 10th/90th percentiles of recent values, with no calibration
+    /// against what actually happened next.
+    func testCopyDoesNotPresentTheRangeAsAPredictionAboutTomorrow() throws {
+        let forecast = try XCTUnwrap(
+            UncertaintyForecast.forecast(metric: .duration, nights: nights(21))
+        )
+        for text in [forecast.sentence, forecast.caveat] {
+            let lower = text.lowercased()
+            XCTAssertFalse(lower.contains("tomorrow will"), text)
+            XCTAssertFalse(lower.contains("most likely land"), text)
+            XCTAssertFalse(lower.contains("expect"), text)
+        }
+    }
+
+    /// The range itself still has to be legible, or the honesty fix would
+    /// have removed the information along with the overclaim.
+    func testSentenceStillReportsTheRangeAndTypicalValue() throws {
+        let forecast = try XCTUnwrap(
+            UncertaintyForecast.forecast(metric: .duration, nights: nights(21))
+        )
+
+        XCTAssertTrue(forecast.sentence.contains("between"), forecast.sentence)
+        XCTAssertTrue(forecast.sentence.contains("typically"), forecast.sentence)
+    }
 }
