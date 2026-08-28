@@ -140,10 +140,12 @@ struct SleepHealth: Sendable {
         // averaged. Capped at 100 per night -- sleeping well past goal
         // isn't a deficiency in the other direction, this component just
         // has nothing more to say once met.
-        let sufficiencyValues = zip(windowNights, personalNeeds).map { night, need in
-            min(100, night.total24hAsleepMinutes / max(need, 1) * 100)
-        }
-        if let sufficiency = Statistics.mean(sufficiencyValues) {
+        // Delegated to `SleepSufficiencyEngine` so this is the same
+        // calculation every other screen answers "was that enough?" with,
+        // rather than a second inline copy that can drift from it.
+        if let sufficiency = SleepSufficiencyEngine.averagePercent(
+            nights: windowNights, goalMinutes: goalMinutes
+        ) {
             components.append(Component(id: "sufficiency", label: "Sufficiency", score: sufficiency))
         }
 

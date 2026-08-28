@@ -107,7 +107,9 @@ enum AchievementEngine {
         // daily sleep goal, and denying it credit here would silently
         // contradict how "achieved vs. need" is computed everywhere else in
         // the app (Sleep Need, Today's Load row, the Clinician Report).
-        let atGoal = sorted.filter { $0.total24hAsleepMinutes >= goalMinutes }
+        let atGoal = sorted.filter {
+            SleepSufficiencyEngine.meetsGoal(night: $0, goalMinutes: goalMinutes)
+        }
 
         var out: [Achievement] = []
 
