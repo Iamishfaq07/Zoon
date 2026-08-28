@@ -87,6 +87,53 @@ final class SleepDataCoordinator {
     /// data than the in-flight pass was already fetching (new HealthKit
     /// samples, a changed goal) and never get it until the *next*
     /// independent trigger happened to come along.
+    #if DEBUG
+    /// Counters for the incremental-sync path, so a change here can be
+    /// measured rather than argued about.
+    ///
+    /// DEBUG-only on purpose. Zoon has no telemetry and this is not the
+    /// beginning of any -- it is a development instrument, readable from the
+    /// debugger or a test, and compiled out of release builds entirely.
+    struct SyncMetrics {
+        var refreshes = 0
+        var fullRebuilds = 0
+        var partialRebuilds = 0
+        var skippedRebuilds = 0
+        var rangesRebuilt = 0
+        var nightsRebuilt = 0
+        var episodesRebuilt = 0
+        var changedSamplesSeen = 0
+        var deletionsSeen = 0
+        var lastRefreshSeconds: Double = 0
+
+        mutating func record(plan: SyncRange.Plan, changedSamples: Int, deletions: Int) {
+            refreshes += 1
+            changedSamplesSeen += changedSamples
+            deletionsSeen += deletions
+            switch plan {
+            case .nothingToDo:
+                skippedRebuilds += 1
+            case .partial(let ranges):
+                partialRebuilds += 1
+                rangesRebuilt += ranges.count
+            case .full:
+                fullRebuilds += 1
+            }
+        }
+
+        /// The line worth reading. `nightsRebuilt` against `refreshes` is the
+        /// number this whole change is about: it used to be every night in the
+        /// ninety-day window, every time.
+        var summary: String {
+            """
+            refreshes \(refreshes) | rebuilds full \(fullRebuilds) partial \(partialRebuilds)             skipped \(skippedRebuilds) | ranges \(rangesRebuilt) | nights \(nightsRebuilt)             episodes \(episodesRebuilt) | delta samples \(changedSamplesSeen) deletions \(deletionsSeen)             | last \(String(format: "%.2f", lastRefreshSeconds))s
+            """
+        }
+    }
+
+    private(set) var syncMetrics = SyncMetrics()
+    #endif
+
     private enum RefreshState { case idle, refreshing, refreshingWithPending }
     private var refreshState: RefreshState = .idle
     var isRefreshing: Bool { refreshState != .idle }
@@ -337,7 +384,7 @@ final class SleepDataCoordinator {
             return
         }
 
-        healthKit.startObservingSleep { [weak self] in
+        healthKit.startObserving { [weak self] in
             await self?.refresh()
         }
 
@@ -382,6 +429,10 @@ final class SleepDataCoordinator {
     }
 
     private func performRefresh() async {
+        #if DEBUG
+        let startedAt = Date.now
+        defer { syncMetrics.lastRefreshSeconds = Date.now.timeIntervalSince(startedAt) }
+        #endif
         await refreshTodayStress()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
         if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
@@ -405,21 +456,52 @@ final class SleepDataCoordinator {
             let anchor = AnchorStore.load()
             let result = try await healthKit.fetchSleepSamples(since: anchor, window: window)
 
-            // The anchored delta alone isn't enough to rebuild whole sessions —
-            // a delta can land mid-night and we'd segment against a partial
-            // picture. So when anything changed, re-read the full window and
-            // rebuild from complete data. The anchor still earns its keep: when
-            // nothing changed we skip all of this.
-            let hasChanges = !result.samples.isEmpty || !result.deletedUUIDs.isEmpty
+            // The samples fetch stays full-window on purpose. The anchored
+            // delta cannot be rebuilt from directly -- a delta can land
+            // mid-night, and segmenting against a partial picture would split
+            // one night in two -- and fetching a narrower *range* has the same
+            // problem at its edges: a night straddling the boundary would come
+            // back truncated and overwrite a good record. One query over the
+            // window is cheap and always yields complete sessions.
+            //
+            // What the plan narrows is the expensive half. `processSessions`
+            // runs `FeatureExtractor.extract` per night, and that issues
+            // roughly eight HealthKit queries each -- so a full pass over
+            // ninety nights is several hundred queries, and it ran on every
+            // single change. With the observer set now covering physiology as
+            // well as sleep, that had to stop being the per-callback cost.
+            let plan = SyncRange.plan(
+                // Both edges of every changed sample: either one moving can
+                // change which night the sample belongs to.
+                changedAt: result.samples.flatMap { [$0.startDate, $0.endDate] },
+                hasDeletions: !result.deletedUUIDs.isEmpty,
+                storeIsEmpty: store.isEmpty,
+                window: window,
+                recheckFrom: Calendar.current.date(
+                    byAdding: .day, value: -SyncRange.physiologyRecheckDays, to: .now
+                )
+            )
+
             var persisted = true
-            if hasChanges || store.isEmpty {
+            switch plan {
+            case .nothingToDo:
+                break
+            case .partial(let ranges):
                 // Not gated on `!samples.isEmpty`: a window whose only sample
-                // was deleted in Health legitimately refetches to nothing,
-                // and `processSessions` still needs to run so it prunes the
-                // now-stale stored night rather than leaving it behind.
+                // was deleted in Health legitimately refetches to nothing, and
+                // `processSessions` still needs to run so it prunes the
+                // now-stale stored night rather than leaving it behind. (That
+                // case reaches `.full` anyway, since deletions force it.)
                 let samples = try await healthKit.fetchAllSleepSamples(in: window)
-                persisted = await processSessions(from: samples, window: window)
+                persisted = await processSessions(from: samples, window: window, rebuilding: ranges)
+            case .full:
+                let samples = try await healthKit.fetchAllSleepSamples(in: window)
+                persisted = await processSessions(from: samples, window: window, rebuilding: nil)
             }
+
+            #if DEBUG
+            syncMetrics.record(plan: plan, changedSamples: result.samples.count, deletions: result.deletedUUIDs.count)
+            #endif
 
             // Anchor advances only after the delta it covers has actually been
             // processed and written. Saving it immediately after the fetch --
@@ -457,7 +539,21 @@ final class SleepDataCoordinator {
     /// - Returns: whether every write in this pass actually reached disk.
     ///   `refresh()` gates the HealthKit anchor advance on this.
     @discardableResult
-    private func processSessions(from samples: [HKCategorySample], window: DateInterval) async -> Bool {
+    /// - Parameter rebuilding: when non-nil, only nights intersecting one of
+    ///   these ranges are re-extracted and upserted. `nil` rebuilds every
+    ///   night in the window.
+    ///
+    ///   Narrowing is safe here specifically because `samples` is always a
+    ///   complete fetch of `window`: every session is built from full data
+    ///   whether or not it is then rebuilt, so `validDates` below stays
+    ///   complete and pruning is unaffected. A night skipped for rebuilding
+    ///   keeps the row it already has -- it is not pruned, because HealthKit
+    ///   still has data behind it.
+    private func processSessions(
+        from samples: [HKCategorySample],
+        window: DateInterval,
+        rebuilding ranges: [DateInterval]? = nil
+    ) async -> Bool {
         store.beginTrackingWrites()
         sessionBuilder.preferredSourceBundleIdentifier = preferences.preferredSleepSourceBundleIdentifier
         sessionBuilder.preferredSourceName = preferences.preferredSleepSourceName
@@ -476,6 +572,18 @@ final class SleepDataCoordinator {
             .values
             .sorted { $0.start < $1.start }
 
+        // The subset actually worth re-extracting. Compared against each
+        // session's own interval rather than its wake date, so a night that
+        // began inside a range but ended outside it still counts.
+        let sessionsToRebuild: [SleepSession]
+        if let ranges {
+            sessionsToRebuild = mainSleepPerDate.filter { session in
+                ranges.contains { $0.intersects(DateInterval(start: session.start, end: session.end)) }
+            }
+        } else {
+            sessionsToRebuild = mainSleepPerDate
+        }
+
         let extractor = FeatureExtractor(healthKit: healthKit)
         let goal = preferences.sleepGoalMinutes
 
@@ -484,7 +592,11 @@ final class SleepDataCoordinator {
         // this batch is about to reprocess are excluded up front so a
         // same-night re-sync can't appear twice in "nights before" for a
         // later night in the same pass.
-        let batchDates = Set(mainSleepPerDate.map(\.wakeDate))
+        // Only the nights this pass will actually rewrite. A night left
+        // alone keeps its stored row, and that row is exactly what the
+        // baseline should read for it -- excluding it here would drop it out
+        // of the history a later night in this batch compares against.
+        let batchDates = Set(sessionsToRebuild.map(\.wakeDate))
         let priorFeaturesBeforeBatch = store.allNights()
             .filter { !batchDates.contains($0.date) }
             .sorted { $0.date < $1.date }
@@ -495,7 +607,11 @@ final class SleepDataCoordinator {
         // it, so they must land in the store in chronological order. This
         // also matters for sleepNeedBaselineMinutes below, which needs the
         // same chronological guarantee.
-        for session in mainSleepPerDate {
+        #if DEBUG
+        syncMetrics.nightsRebuilt += sessionsToRebuild.count
+        #endif
+
+        for session in sessionsToRebuild {
             let nightDate = session.wakeDate
             let baseline = store.baseline(for: nightDate, goalMinutes: goal, manualNaps: naps.naps)
             let result = await extractor.extract(from: session, baseline: baseline)
@@ -520,12 +636,19 @@ final class SleepDataCoordinator {
         }
 
         let validEpisodeIDs = persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)
+        #if DEBUG
+        syncMetrics.episodesRebuilt += validEpisodeIDs.count
+        #endif
 
         // `samples` here is always a full re-fetch of `window` (see call site),
         // never an incremental delta -- so any previously-stored night in
         // `window` that didn't produce a session this pass genuinely no
         // longer has HealthKit data behind it (deleted or corrected away in
         // the Health app), not just "wasn't included in today's delta".
+        //
+        // Deliberately built from `mainSleepPerDate` and not from
+        // `sessionsToRebuild`: a night that exists in HealthKit but was not
+        // worth re-extracting must not look stale to the pruner.
         let validDates = Set(mainSleepPerDate.map(\.wakeDate))
         store.prune(window: window, keeping: validDates)
         store.pruneEpisodes(window: window, keeping: validEpisodeIDs)

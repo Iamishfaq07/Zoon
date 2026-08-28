@@ -228,7 +228,7 @@ final class HealthKitManager {
 
     // MARK: - Background delivery
 
-    /// Registers an observer so new sleep data is picked up without polling.
+    /// Registers observers so new data is picked up without polling.
     ///
     /// Must be called on every launch, not just after the permission sheet:
     /// observer queries do not survive process death, and background delivery
@@ -242,21 +242,66 @@ final class HealthKitManager {
     /// Note that HealthKit clamps `.immediate` to roughly hourly for
     /// non-critical types like sleep. Expect "some time after you wake up", not
     /// "the instant the watch syncs".
-    func startObservingSleep(onChange: @escaping @Sendable () async -> Void) {
+    /// Types whose arrival should wake Zoon up.
+    ///
+    /// Sleep alone is not enough, which is the defect this closes. Watch
+    /// physiology syncs in pieces: stages can land at 07:05 and the same
+    /// night's HRV, resting heart rate, respiratory rate, wrist temperature
+    /// and breathing disturbances anywhere from minutes to tens of minutes
+    /// later. Observing only `sleepAnalysis` meant those late arrivals were
+    /// not picked up until the *next* sleep event -- tomorrow morning -- so a
+    /// night could sit all day with nil HRV while Recovery was computed
+    /// without it, then silently change the following day.
+    ///
+    /// `oxygenSaturation` is included because it is genuinely consumed:
+    /// `SleepNightFeatures.avgSpO2` and `BreathingHealth`'s oxygen trend both
+    /// read it. Types Zoon only reads on demand (workouts, exercise time,
+    /// dietary caffeine) are deliberately absent -- an observer for something
+    /// no night depends on is a wake-up that buys nothing.
+    private var observedTypes: [HKSampleType] {
+        [
+            HKCategoryType(.sleepAnalysis),
+            HKQuantityType(.restingHeartRate),
+            HKQuantityType(.heartRateVariabilitySDNN),
+            HKQuantityType(.respiratoryRate),
+            HKQuantityType(.oxygenSaturation),
+            HKQuantityType(.appleSleepingBreathingDisturbances),
+            HKQuantityType(.appleSleepingWristTemperature),
+        ]
+    }
+
+    /// Registers observers for sleep and for the physiology that arrives after
+    /// it.
+    ///
+    /// Several observers can fire within seconds of each other when a watch
+    /// syncs a night's worth of data. That is safe because every callback goes
+    /// through `SleepDataCoordinator.refresh()`, whose `refreshState` machine
+    /// collapses any number of concurrent requests into the in-flight pass
+    /// plus at most one more -- so seven observers cost two refreshes, not
+    /// seven. That mechanism predates this change and is the reason widening
+    /// the observer set is affordable at all.
+    func startObserving(onChange: @escaping @Sendable () async -> Void) {
         guard Self.isHealthDataAvailable else { return }
         stopObserving()
+        for type in observedTypes {
+            register(type, onChange: onChange)
+        }
+    }
 
-        let sleepType = HKCategoryType(.sleepAnalysis)
+    private func register(_ type: HKSampleType, onChange: @escaping @Sendable () async -> Void) {
+        let identifier = type.identifier
         // Note on captures: the query handler holds `self` weakly, so inside it
         // `self` is already Optional. The nested Task captures that Optional
         // directly — writing `[weak self]` a second time would be applying
         // `weak` to an already-optional binding.
-        let observer = HKObserverQuery(sampleType: sleepType, predicate: nil) { [weak self] _, completionHandler, error in
+        let observer = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completionHandler, error in
             if let error {
                 // Logged, not surfaced: an observer hiccup shouldn't put a red
                 // banner in front of the user.
                 Task { @MainActor in
-                    self?.logger.error("Observer query error: \(error.localizedDescription, privacy: .public)")
+                    self?.logger.error(
+                        "Observer query error for \(identifier, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                    )
                 }
             } else {
                 Task { await onChange() }
@@ -269,18 +314,19 @@ final class HealthKitManager {
         store.execute(observer)
         activeObservers.append(observer)
 
-        store.enableBackgroundDelivery(for: sleepType, frequency: .hourly) { [weak self] success, error in
+        store.enableBackgroundDelivery(for: type, frequency: .hourly) { [weak self] success, error in
             Task { @MainActor in
                 if let error {
                     self?.logger.notice(
                         """
-                        Background delivery unavailable: \(error.localizedDescription, privacy: .public). \
+                        Background delivery unavailable for \(identifier, privacy: .public): \
+                        \(error.localizedDescription, privacy: .public). \
                         The app still refreshes on foreground; add the HealthKit background delivery \
                         capability to enable automatic morning updates.
                         """
                     )
                 } else if success {
-                    self?.logger.info("Background delivery enabled for sleepAnalysis")
+                    self?.logger.info("Background delivery enabled for \(identifier, privacy: .public)")
                 }
             }
         }
