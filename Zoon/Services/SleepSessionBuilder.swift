@@ -72,45 +72,43 @@ struct SleepSessionBuilder {
 
     /// Groups samples into sessions, newest last.
     ///
-    /// Source selection happens **after** clustering, one winner per cluster —
-    /// not once for the whole batch. `buildSessions` is routinely called with
-    /// weeks of history in one query (an initial import, a wide incremental
-    /// sync window), and choosing a single source for that entire span meant
-    /// switching Apple Watches, or losing Watch coverage for even one night,
-    /// silently discarded every night written by whichever source didn't win
-    /// -- not just that one night's ambiguity, but every other night's
-    /// perfectly good data from the "losing" source. Clustering by time gap
-    /// doesn't care which source a sample came from, so it's safe to run
-    /// across every source's samples together; only the per-night dedup step
-    /// that follows needs to pick one source, and it needs to do that once
-    /// per night, not once for the query.
+    /// The pipeline is deliberately **per source first**:
+    ///
+    /// ```text
+    /// samples grouped by source
+    ///   -> candidate episodes per source
+    ///   -> overlapping candidates grouped
+    ///   -> quality scoring
+    ///   -> canonical episode selection
+    /// ```
+    ///
+    /// The order matters, and getting it wrong was a real defect. Clustering
+    /// every source's samples together by time gap looks safe -- a gap is a
+    /// gap -- but it lets *one* malformed sample from *one* source silently
+    /// restructure another source's night. A third-party app that writes a
+    /// single 20-hour "asleep" block spans the gap between two genuine Apple
+    /// Watch episodes, so they land in one cluster and are emitted as one
+    /// impossible night with the waking day inside it. Clustering each source
+    /// against only its own samples contains that damage: a bad sample can
+    /// still ruin its own source's episodes, and nothing else.
+    ///
+    /// Selection still happens per episode rather than once per query. That
+    /// was the earlier fix and it stays: choosing one source for a whole
+    /// multi-week import meant switching Apple Watches, or losing Watch
+    /// coverage for a single night, discarded every night the "losing" source
+    /// wrote. Both properties hold now -- one winner per real-world episode,
+    /// and no cross-source bridging.
     func buildSessions(from samples: [HKCategorySample]) -> [SleepSession] {
         guard !samples.isEmpty else { return [] }
 
-        let sorted = samples.sorted { $0.startDate < $1.startDate }
+        let candidates = Dictionary(grouping: samples) { $0.sourceRevision.source.bundleIdentifier }
+            .values
+            .flatMap { Self.clusterByGap($0, threshold: sessionGapThreshold) }
+            .map(Candidate.init)
 
-        // Walk the samples, cutting a new session whenever the gap from the
-        // furthest-seen end date exceeds the threshold. Tracking the max end
-        // (not the previous sample's end) matters because samples can be
-        // out of order in duration even when sorted by start.
-        var clusters: [[HKCategorySample]] = []
-        var current: [HKCategorySample] = []
-        var currentEnd: Date?
-
-        for sample in sorted {
-            if let end = currentEnd, sample.startDate.timeIntervalSince(end) > sessionGapThreshold {
-                clusters.append(current)
-                current = []
-                currentEnd = nil
-            }
-            current.append(sample)
-            currentEnd = max(currentEnd ?? sample.endDate, sample.endDate)
-        }
-        if !current.isEmpty { clusters.append(current) }
-
-        return clusters
-            .map(preferredSourceSamples)
-            .compactMap(makeSession)
+        return Self.overlapGroups(in: candidates)
+            .flatMap { canonicalCandidates(in: $0) }
+            .compactMap { makeSession(from: $0.samples) }
             // An in-bed schedule with no asleep sample is not a sleep episode.
             // Letting it through can make a long empty span beat the user's
             // actual staged night when the coordinator chooses one row per day.
@@ -118,6 +116,7 @@ struct SleepSessionBuilder {
                 $0.timeInBed >= minimumSessionDuration
                     && $0.totalAsleepMinutes > 0
             }
+            .sorted { $0.start < $1.start }
     }
 
     /// The most recent qualifying session — "last night".
@@ -140,64 +139,170 @@ struct SleepSessionBuilder {
         }
     }
 
-    // MARK: - Source selection
+    // MARK: - Candidates
 
-    /// Picks one source and drops the rest, **within a single already-clustered
-    /// session's candidate samples** -- called once per cluster, not once for
-    /// an entire query's worth of samples. See `buildSessions`'s doc comment
-    /// for why that distinction is the whole fix.
-    ///
-    /// Merging *across* sources is a trap: two trackers disagree about stage
-    /// boundaries, and any union of their samples produces a night that neither
-    /// device reported. Choosing the single richest source gives an answer that
-    /// matches what the user sees in the Health app.
-    ///
-    /// Preference order: `preferredSourceName` wins outright when present in
-    /// this cluster (a user's explicit choice beats a heuristic); otherwise
-    /// `sourceQualityTier` (Apple Watch beats iPhone beats a third-party app,
-    /// regardless of which one happened to write more samples), ties broken
-    /// by staged-sample count, then by total sample count.
-    private func preferredSourceSamples(from samples: [HKCategorySample]) -> [HKCategorySample] {
-        let grouped = Dictionary(grouping: samples) { $0.sourceRevision.source.bundleIdentifier }
-        guard grouped.count > 1 else { return samples }
+    /// One source's view of one episode, before any cross-source arbitration.
+    struct Candidate {
+        let samples: [HKCategorySample]
+        let span: DateInterval
+        let sourceBundleIdentifier: String
 
-        if let preferredSourceBundleIdentifier, let match = grouped[preferredSourceBundleIdentifier] {
+        init(samples: [HKCategorySample]) {
+            self.samples = samples
+            let start = samples.map(\.startDate).min() ?? .distantPast
+            let end = max(samples.map(\.endDate).max() ?? start, start)
+            self.span = DateInterval(start: start, end: end)
+            self.sourceBundleIdentifier = samples.first?.sourceRevision.source.bundleIdentifier ?? ""
+        }
+    }
+
+    /// Splits one source's samples on the gap threshold. Extracted so it can
+    /// run per source rather than across the whole batch.
+    ///
+    /// Tracks the furthest-seen end date rather than the previous sample's,
+    /// because samples can be out of order in duration even when sorted by
+    /// start -- a long `inBed` sample followed by short stage samples inside it.
+    static func clusterByGap(_ samples: [HKCategorySample], threshold: TimeInterval) -> [[HKCategorySample]] {
+        let sorted = samples.sorted { $0.startDate < $1.startDate }
+
+        var clusters: [[HKCategorySample]] = []
+        var current: [HKCategorySample] = []
+        var currentEnd: Date?
+
+        for sample in sorted {
+            if let end = currentEnd, sample.startDate.timeIntervalSince(end) > threshold {
+                clusters.append(current)
+                current = []
+                currentEnd = nil
+            }
+            current.append(sample)
+            currentEnd = max(currentEnd ?? sample.endDate, sample.endDate)
+        }
+        if !current.isEmpty { clusters.append(current) }
+        return clusters
+    }
+
+    /// Groups candidates that describe the same real-world episode, i.e. that
+    /// overlap in time. Transitive by design: A overlapping B and B
+    /// overlapping C puts all three in one group, because they are all
+    /// competing accounts of one span of the user's night.
+    ///
+    /// Two candidates from the *same* source can never overlap -- they were
+    /// split by gap -- so a group only ever contains rival sources.
+    static func overlapGroups(in candidates: [Candidate]) -> [[Candidate]] {
+        let sorted = candidates.sorted { $0.span.start < $1.span.start }
+        var groups: [[Candidate]] = []
+        var current: [Candidate] = []
+        var currentEnd = Date.distantPast
+
+        for candidate in sorted {
+            if current.isEmpty || candidate.span.start < currentEnd {
+                current.append(candidate)
+                currentEnd = max(currentEnd, candidate.span.end)
+            } else {
+                groups.append(current)
+                current = [candidate]
+                currentEnd = candidate.span.end
+            }
+        }
+        if !current.isEmpty { groups.append(current) }
+        return groups
+    }
+
+    // MARK: - Canonical selection
+
+    /// Picks the winning source for one overlap group and returns **all** of
+    /// that source's candidates in it.
+    ///
+    /// Returning all of them is what actually undoes a bridge. When a bad
+    /// 20-hour sample from source B overlaps two clean episodes from source A,
+    /// the group is `[A1, A2, B1]`; A wins on quality, and both A1 and A2 are
+    /// emitted as the separate episodes they always were. B's bridge is
+    /// discarded rather than being allowed to define the night's shape.
+    ///
+    /// Merging *across* sources is never an option: two trackers disagree
+    /// about stage boundaries, and any union of them produces a night neither
+    /// device reported and the Health app never shows.
+    private func canonicalCandidates(in group: [Candidate]) -> [Candidate] {
+        let bySource = Dictionary(grouping: group, by: \.sourceBundleIdentifier)
+        guard bySource.count > 1 else { return group }
+
+        // An explicit user choice is not a heuristic input -- it wins outright.
+        if let preferredSourceBundleIdentifier, let match = bySource[preferredSourceBundleIdentifier] {
             return match
         }
         if preferredSourceBundleIdentifier == nil, let preferredSourceName,
-           let match = grouped.values.first(where: { $0.first?.sourceRevision.source.name == preferredSourceName }) {
+           let match = bySource.values.first(where: {
+               $0.first?.samples.first?.sourceRevision.source.name == preferredSourceName
+           }) {
             return match
         }
 
-        let best = grouped.max { lhs, rhs in
-            let lhsTier = sourceQualityTier(for: lhs.value)
-            let rhsTier = sourceQualityTier(for: rhs.value)
-            if lhsTier != rhsTier { return lhsTier < rhsTier }
-            let lhsStaged = lhs.value.filter(\.isStagedAsleep).count
-            let rhsStaged = rhs.value.filter(\.isStagedAsleep).count
-            if lhsStaged != rhsStaged { return lhsStaged < rhsStaged }
-            return lhs.value.count < rhs.value.count
+        let best = bySource.max { lhs, rhs in
+            let lhsScore = Self.qualityScore(for: lhs.value)
+            let rhsScore = Self.qualityScore(for: rhs.value)
+            if lhsScore != rhsScore { return lhsScore < rhsScore }
+            // Deterministic last resort, so the same input never yields a
+            // different night between two runs.
+            return lhs.key < rhs.key
         }
-        return best?.value ?? samples
+        return best?.value ?? group
     }
 
-    /// How much to trust a source's sleep data, independent of how many
-    /// samples it happens to have written.
+    /// How much to trust one source's account of an episode.
     ///
-    /// Raw sample/staged counts alone can be misleading: a chatty
-    /// third-party app that writes a sample every few seconds can out-count
-    /// an Apple Watch night that (correctly) wrote far fewer, coarser-grained
-    /// stage transitions -- and would previously have won the tiebreak for
-    /// exactly the wrong reason. Apple Watch sleep staging is measured
-    /// on-device from motion and heart rate; most third-party trackers and
-    /// the iPhone-only Sleep Schedule are not.
-    private func sourceQualityTier(for samples: [HKCategorySample]) -> Int {
+    /// Weighted so that *what the samples actually say* dominates, and
+    /// provenance only breaks ties. The previous implementation made
+    /// `productType != nil` a hard tier, which meant a paired Apple Watch won
+    /// even when the thing it wrote was obviously broken -- an implausibly
+    /// long block, or a span with almost no sleep in it. Apple Watch staging
+    /// is genuinely better *on average*, which is a reason to weight it, not
+    /// a reason to stop reading the data.
+    static func qualityScore(for candidates: [Candidate]) -> Double {
+        let samples = candidates.flatMap(\.samples)
+        guard !samples.isEmpty else { return 0 }
+
+        // Staged coverage: does this source distinguish core/deep/REM at all,
+        // or is it writing undifferentiated "asleep"?
+        let staged = Double(samples.filter(\.isStagedAsleep).count)
+        let stagedFraction = staged / Double(samples.count)
+
+        // Plausibility: no real sleep episode runs 16 hours. Decays to zero by
+        // 24h rather than cliff-edging, so a merely-long night is not treated
+        // the same as a clearly broken one.
+        let longest = candidates.map(\.span.duration).max() ?? 0
+        let plausibility = longest <= 16 * 3600
+            ? 1.0
+            : max(0, 1 - (longest - 16 * 3600) / (8 * 3600))
+
+        // Continuity: how much of the claimed span is actually asleep. A
+        // source that spans ten hours to report forty minutes of sleep is
+        // describing something other than a night.
+        let asleepSeconds = samples
+            .filter { sample in
+                guard let stage = SleepStage(sampleValue: sample.value) else { return false }
+                return SleepStage.asleepStages.contains(stage)
+            }
+            .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+        let totalSpan = candidates.reduce(0.0) { $0 + $1.span.duration }
+        let coverage = totalSpan > 0 ? min(1, asleepSeconds / totalSpan) : 0
+
+        return 3.0 * stagedFraction
+            + 2.0 * plausibility
+            + 1.0 * coverage
+            + 0.5 * provenanceBonus(for: samples)
+    }
+
+    /// A modest thumb on the scale for a source Apple measures on-device,
+    /// deliberately smaller than any single data-driven term above.
+    ///
+    /// `productType` is only ever populated for a sample written by a paired
+    /// Apple Watch (e.g. "Watch7,4"); every other source, Apple's own iPhone
+    /// Sleep Schedule included, leaves it nil.
+    private static func provenanceBonus(for samples: [HKCategorySample]) -> Double {
         guard let sample = samples.first else { return 0 }
-        // `productType` is only ever populated for a sample written by a
-        // paired Apple Watch (e.g. "Watch7,4"); every other source, Apple's
-        // own iPhone Sleep Schedule included, leaves it nil.
-        if sample.sourceRevision.productType != nil { return 2 }
-        if sample.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple.health") { return 1 }
+        if sample.sourceRevision.productType != nil { return 1.0 }
+        if sample.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple.health") { return 0.5 }
         return 0
     }
 
@@ -299,7 +404,7 @@ struct SleepSession {
     /// explicit "preferred source" choice should actually be matched
     /// against; `sourceName` stays around only for display and for
     /// matching sources recorded before this field existed. See
-    /// `SleepSessionBuilder.preferredSourceSamples`'s doc comment.
+    /// `SleepSessionBuilder.canonicalCandidates`'s doc comment.
     let sourceBundleIdentifier: String?
     /// Timezone recorded with the HealthKit samples. This must travel with the
     /// episode: `Calendar.current` may be somewhere else when a traveler next

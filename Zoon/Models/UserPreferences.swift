@@ -30,6 +30,7 @@ final class UserPreferences {
         static let experimentDirection = "zoon.pref.experimentDirection"
         static let obligationWeekdays = "zoon.pref.obligationWeekdays"
         static let shiftWorkModeEnabled = "zoon.pref.shiftWorkModeEnabled"
+        static let shiftWorkMode = "zoon.pref.shiftWorkMode"
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
         static let preferredSleepSourceBundleIdentifier = "zoon.pref.preferredSleepSourceBundleIdentifier"
         static let trackedBehaviorTagIdentifiers = "zoon.pref.trackedBehaviorTagIdentifiers"
@@ -78,8 +79,24 @@ final class UserPreferences {
     /// and swaps a handful of night-relative UI labels ("Last Night",
     /// "Tonight") for schedule-neutral ones. Off by default so nothing
     /// changes for anyone who's never touched the setting.
+    var shiftWorkMode: ShiftWorkMode {
+        didSet { defaults.set(shiftWorkMode.rawValue, forKey: Key.shiftWorkMode) }
+    }
+
+    /// Kept as a derived value rather than deleted: `SleepSnapshot` carries
+    /// this Bool across the process boundary to the widgets and watch app
+    /// under a backward-compatibility contract, and every consumer over there
+    /// only needs "is this a standard schedule?".
+    ///
+    /// The setter is guarded so writing `true` cannot silently downgrade a
+    /// `rotating` or `custom` choice to `night` -- if the Bool already agrees
+    /// with the mode, there is nothing to change.
     var isShiftWorkModeEnabled: Bool {
-        didSet { defaults.set(isShiftWorkModeEnabled, forKey: Key.shiftWorkModeEnabled) }
+        get { shiftWorkMode.isNonStandard }
+        set {
+            guard newValue != shiftWorkMode.isNonStandard else { return }
+            shiftWorkMode = ShiftWorkMode.migrating(fromLegacyEnabled: newValue)
+        }
     }
 
     /// Which behaviours the Journal's daily quick-confirm screen shows.
@@ -488,7 +505,17 @@ final class UserPreferences {
         self.preferredSleepSourceBundleIdentifier = defaults.string(forKey: Key.preferredSleepSourceBundleIdentifier)
         self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
             ?? Self.defaultObligationWeekdays
-        self.isShiftWorkModeEnabled = defaults.bool(forKey: Key.shiftWorkModeEnabled)
+        // Read the mode if it has been written; otherwise migrate the Bool
+        // this replaced. `true` meant "invert the night window", which is the
+        // night-shift case.
+        if let raw = defaults.string(forKey: Key.shiftWorkMode),
+           let mode = ShiftWorkMode(rawValue: raw) {
+            self.shiftWorkMode = mode
+        } else {
+            self.shiftWorkMode = .migrating(
+                fromLegacyEnabled: defaults.bool(forKey: Key.shiftWorkModeEnabled)
+            )
+        }
         self.trackedBehaviorTagIdentifiers = (defaults.array(forKey: Key.trackedBehaviorTagIdentifiers) as? [String]).map(Set.init)
     }
 
@@ -521,7 +548,7 @@ final class UserPreferences {
         preferredSleepSourceName = nil
         preferredSleepSourceBundleIdentifier = nil
         obligationWeekdays = Self.defaultObligationWeekdays
-        isShiftWorkModeEnabled = false
+        shiftWorkMode = .standard
         trackedBehaviorTagIdentifiers = nil
 
         let keys = [
@@ -546,6 +573,7 @@ final class UserPreferences {
             Key.experimentDirection,
             Key.obligationWeekdays,
             Key.shiftWorkModeEnabled,
+            Key.shiftWorkMode,
             Key.trackedBehaviorTagIdentifiers,
         ]
         for key in keys { defaults.removeObject(forKey: key) }

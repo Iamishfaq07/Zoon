@@ -4,7 +4,7 @@ import HealthKit
 /// `HKCategorySample`'s convenience initializers can't set a custom
 /// `sourceRevision` (there's no public API for that on an unsaved sample --
 /// it's always synthesized from the running process), so the per-cluster
-/// multi-source selection fix in `SleepSessionBuilder.preferredSourceSamples`
+/// multi-source selection fix in `SleepSessionBuilder.canonicalCandidates`
 /// isn't mechanically unit-testable here: every sample built in-process
 /// reports the same source, so the "which source wins" branch never
 /// activates. What *is* testable, and what these tests cover, is the
