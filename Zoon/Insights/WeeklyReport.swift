@@ -178,9 +178,13 @@ struct WeeklyReport {
             items.append(Highlight(
                 symbol: "bolt.heart.fill",
                 title: "Average recovery \(Int(recovery))%",
+                // Descriptive, not prescriptive. "Ready to train" is a
+                // readiness verdict Zoon has not earned, and "sleep is the
+                // lever" asserts a cause for a weekly average that could
+                // have any number of inputs.
                 detail: recovery >= 60
-                    ? "You spent most of the week ready to train."
-                    : "You spent most of the week under-recovered. Sleep is the lever.",
+                    ? "Recovery sat at or above 60% on most days this week."
+                    : "Recovery sat below 60% on most days this week.",
                 tone: recovery >= 60 ? .positive : .neutral
             ))
         }

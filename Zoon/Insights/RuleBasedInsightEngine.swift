@@ -141,7 +141,7 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         return Finding(
             priority: 100,
             cause: String(
-                format: "Your wrist temperature ran %.1f°C above your baseline while HRV dropped to %.0f ms (usually %.0f). That combination often shows up when your body is fighting something off, or after a heavy drinking night.",
+                format: "Your wrist temperature ran %.1f°C above your baseline while HRV dropped to %.0f ms (usually %.0f). Those two moved together on the same night. Raised temperature and lower HRV travel together for a lot of reasons, and one night cannot separate them.",
                 tempDelta, hrv, hrvBase
             ),
             tip: "Treat today as a recovery day — go easy on training, hydrate, and get to bed early.",
@@ -167,12 +167,16 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         )
     }
 
-    /// Hard training close to bedtime suppressing deep sleep.
+    /// Late training near bedtime alongside deep sleep below baseline.
     ///
-    /// The strongest genuinely *causal* rule in the set: a mechanism (elevated
-    /// core temperature and sympathetic tone), a measurable trigger (workout
-    /// within 2h), and a measurable effect (deep sleep below baseline). Fires
-    /// only when both halves are present.
+    /// The best-evidenced rule in the set: a measurable trigger (workout
+    /// within 2h) and a measurable effect (deep sleep below baseline), firing
+    /// only when both halves are present. A plausible mechanism exists in the
+    /// literature -- elevated core temperature and sympathetic tone -- but
+    /// this rule observes two things co-occurring on one night, which is not
+    /// evidence that one produced the other, and the copy no longer says it
+    /// is. `JournalCorrelator` and `GuidedExperiment` are where a claim like
+    /// that could actually be tested.
     private let lateWorkoutRule: Rule = { features, baseline, _ in
         guard baseline.hasComparativeContext,
               let hours = features.lastWorkoutHoursBeforeBed, hours <= T.lateWorkoutHours,
@@ -185,7 +189,7 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         return Finding(
             priority: 80,
             cause: String(
-                format: "Deep sleep was down %.0f%% (%.0f min vs your usual %.0f). Your last workout ended about %.1fh before bed — hard training that close keeps core body temperature and adrenaline up, and deep sleep is the first thing to suffer.",
+                format: "Deep sleep was down %.0f%% (%.0f min vs your usual %.0f). Your last workout ended about %.1fh before bed — late sessions and lower deep sleep often occur near each other, though one night cannot show that one produced the other.",
                 dropPercent, features.deepMinutes, deepBase, hours
             ),
             tip: "Aim to finish hard sessions at least 3h before bed. Easy movement that late is fine.",
@@ -205,7 +209,7 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         return Finding(
             priority: 75,
             cause: String(
-                format: "Your lowest overnight heart rate was %.0f bpm against a usual %.0f, and HRV fell to %.0f ms. Your nervous system stayed in gear overnight — typically late eating, alcohol, stress, or a hard training block.",
+                format: "Your lowest overnight heart rate was %.0f bpm against a usual %.0f, and HRV fell to %.0f ms. Late eating, alcohol, stress and heavy training blocks are the things people usually check when both move this way.",
                 minHR, hrBase, hrv
             ),
             tip: "Keep tonight's dinner earlier and lighter, and skip alcohol.",
@@ -225,7 +229,7 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
             cause: "You woke \(features.wakeCount) times and spent "
                 + "\(SleepNightFeatures.formatMinutes(features.awakeMinutes)) awake in bed — "
                 + String(format: "efficiency came out at %.0f%%. ", features.sleepEfficiencyPercent)
-                + "Fragmentation like this usually traces to room temperature, light, noise, or a late drink.",
+                + "Room temperature, light, noise and a late drink are the usual things worth checking first.",
             tip: "Try the room a couple of degrees cooler tonight, and cut liquids an hour before bed.",
             confidence: .medium
         )

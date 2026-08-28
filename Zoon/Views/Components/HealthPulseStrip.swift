@@ -103,6 +103,7 @@ struct HealthPulseStrip: View {
         let tint: Color = {
             switch breathing.pattern {
             case .insufficientData: .secondary
+            case .unclassified: .secondary
             case .normal: Theme.Metric.recoveryHigh
             case .repeatedPattern: Theme.Metric.recoveryMid
             }
@@ -131,6 +132,9 @@ struct HealthPulseStrip: View {
     private var breathingValueLabel: String {
         switch breathing.pattern {
         case .insufficientData: "--"
+        // Not "OK". There are readings, but nothing has been classified, and
+        // a tile that says OK is making a claim.
+        case .unclassified: "--"
         case .normal: "OK"
         case let .repeatedPattern(nightsElevated, _): "\(nightsElevated)n"
         }

@@ -185,22 +185,23 @@ struct SleepHealth: Sendable {
             components.append(Component(id: "debt", label: "Sleep debt", score: debtScore))
         }
 
-        // Breathing stability: fraction of nights classified elevated,
-        // inverted onto 0...100, only when at least half the window's
-        // nights actually measured it -- Watch-generation-gated, so many
-        // users will have none at all. Elevated is decided by
-        // `BreathingHealth.isElevated`, the same call every other breathing
-        // surface in the app uses -- Apple's own
-        // `HKAppleSleepingBreathingDisturbancesClassification` where
-        // HealthKit provides one, this file's in-app percent threshold only
-        // as the documented fallback. Previously this scored directly off
-        // the raw percentage with an arbitrary `100 - value * 10` formula,
-        // ignoring Apple's classification entirely -- a night Apple's own
-        // classifier called "not elevated" could still get marked down (or
-        // vice versa) by that invented linear penalty.
-        let breathingNights = windowNights.filter {
-            $0.breathingDisturbances != nil || $0.breathingDisturbancesClassification != nil
-        }
+        // Breathing stability: fraction of *classified* nights Apple called
+        // elevated, inverted onto 0...100, and only when at least half the
+        // window carries that classification.
+        //
+        // The denominator is `BreathingHealth.classified` rather than every
+        // night with a reading. It used to be the latter, with
+        // `BreathingHealth.isElevated` falling back to an in-app 5%-of-night
+        // cutoff Zoon invented -- so a whole window from a watch that does
+        // not classify disturbances scored as perfectly stable, and this
+        // component contributed a confident 100 built on nothing. Excluding
+        // unclassified nights means the component is absent rather than
+        // optimistic, which is the honest failure.
+        //
+        // Before that it scored off the raw percentage with an arbitrary
+        // `100 - value * 10`, which could mark down a night Apple's own
+        // classifier called not elevated.
+        let breathingNights = BreathingHealth.classified(windowNights)
         let breathingCoverage = Double(breathingNights.count) / Double(windowNights.count)
         if breathingCoverage >= 0.5, !breathingNights.isEmpty {
             let elevatedFraction = Double(breathingNights.filter(BreathingHealth.isElevated).count)

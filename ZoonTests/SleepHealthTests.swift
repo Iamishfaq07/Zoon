@@ -20,7 +20,8 @@ final class SleepHealthTests: XCTestCase {
 
     func testGoodNightsScoreHigh() {
         let nights = Fixture.consecutiveNights(14, template: { daysAgo in
-            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 1, breathingDisturbances: 0.2)
+            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 1, breathingDisturbances: 0.2,
+                                  breathingDisturbancesClassification: .notElevated)
         })
         let health = SleepHealth.compute(window: .twoWeeks, goalMinutes: 480, nights: nights)
         guard let score = health.score else {
@@ -150,7 +151,8 @@ final class SleepHealthTests: XCTestCase {
         // Exactly the failure case the spec calls out: enough components,
         // barely enough nights, no check-ins logged.
         let nights = Fixture.consecutiveNights(7, template: { daysAgo in
-            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 1, breathingDisturbances: 0.2)
+            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 1, breathingDisturbances: 0.2,
+                                  breathingDisturbancesClassification: .notElevated)
         })
         let health = SleepHealth.compute(window: .twoWeeks, goalMinutes: 480, nights: nights)
         XCTAssertNotEqual(health.confidence, .high)
@@ -158,7 +160,8 @@ final class SleepHealthTests: XCTestCase {
 
     func testComponentScoresAreOrientedHigherIsBetter() {
         let nights = Fixture.consecutiveNights(14, template: { daysAgo in
-            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 0, breathingDisturbances: 0)
+            Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 470, timeInBedMinutes: 490, wakeCount: 0, breathingDisturbances: 0,
+                                  breathingDisturbancesClassification: .notElevated)
         })
         let health = SleepHealth.compute(window: .twoWeeks, goalMinutes: 480, nights: nights)
         for component in health.components {
