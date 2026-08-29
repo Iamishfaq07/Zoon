@@ -85,6 +85,32 @@ final class BehaviorObservationStore {
             clear(tag, nightKey: nightKey)
             return
         }
+
+        // Only a person can say a behaviour did not happen.
+        //
+        // `BehaviorObservationSource` documents this for every case -- an
+        // absent HealthKit sample means "nothing logged *or* the type was
+        // never authorized", which Apple deliberately makes
+        // indistinguishable, and a same-timezone trip is real travel the
+        // derived rule cannot see. Absence of evidence, from either, is not
+        // evidence of absence.
+        //
+        // Until now that rule lived only in comments. Nothing passes a
+        // non-manual source yet, so this fixes no live bug; it closes the
+        // door before the first HealthKit ingestion caller arrives, because
+        // one wrong argument there silently rebuilds the fabricated control
+        // arm this whole model exists to remove -- and it would rebuild it
+        // invisibly, as a plausible-looking Cause Finder result.
+        //
+        // Refused rather than trapped: a crash in a background ingest is a
+        // worse outcome than a dropped write, and the prior state (usually
+        // `.unknown`, which is the truth) survives either way.
+        guard state != .no || source == .manual else {
+            logger.error("""
+                Refused a .no for \(tag.rawValue, privacy: .public) from                 \(source.rawValue, privacy: .public): only a manual answer                 can assert that a behaviour did not happen.
+                """)
+            return
+        }
         if let existing = record(nightKey: nightKey, behaviorIdentifier: tag.rawValue) {
             existing.state = state
             existing.source = source
