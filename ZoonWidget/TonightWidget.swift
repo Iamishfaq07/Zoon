@@ -126,7 +126,14 @@ struct TonightWidgetView: View {
             if !snapshot.tomorrowRangeLabel.isEmpty {
                 Divider()
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Tomorrow")
+                    // Not "Tomorrow". `UncertaintyForecast` reports where
+                    // recent nights landed; it does not condition on context
+                    // and has never been checked against what followed (see
+                    // its own `sentence`). A header naming tomorrow turns the
+                    // same numbers back into the prediction that type refuses
+                    // to make -- on the one surface with no room for the
+                    // caveat that would walk it back.
+                    Text("Recent nights")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(snapshot.tomorrowRangeLabel)

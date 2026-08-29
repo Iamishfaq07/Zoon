@@ -178,4 +178,41 @@ final class UncertaintyForecastTests: XCTestCase {
         XCTAssertTrue(forecast.sentence.contains("between"), forecast.sentence)
         XCTAssertTrue(forecast.sentence.contains("typically"), forecast.sentence)
     }
+
+    // MARK: - Language, on every surface
+
+    /// #226 corrected `sentence` and `caveat` but not `rangeLabel` -- the
+    /// compact string the widget and the watch actually render. The widget
+    /// then framed it under a header reading "Tomorrow", restating the
+    /// prediction in the one place a caveat cannot fit.
+    ///
+    /// This covers the third string. The widget's own header is a view
+    /// literal no unit test can reach; it carries a comment instead, which is
+    /// the weaker guard and worth knowing about.
+    func testRangeLabelDoesNotPredictEither() throws {
+        let forecast = try XCTUnwrap(
+            UncertaintyForecast.forecast(metric: .duration, nights: nights(21))
+        )
+        let lower = forecast.rangeLabel.lowercased()
+        for banned in ["tomorrow", "will be", "most likely", "expect", "predict"] {
+            XCTAssertFalse(lower.contains(banned), "\(banned) in: \(forecast.rangeLabel)")
+        }
+    }
+
+    /// And still carries both ends, so the honesty fix cannot quietly become
+    /// an empty label.
+    func testRangeLabelStillCarriesBothEnds() throws {
+        let forecast = try XCTUnwrap(
+            UncertaintyForecast.forecast(metric: .duration, nights: nights(21))
+        )
+        XCTAssertTrue(forecast.rangeLabel.contains(" to "), forecast.rangeLabel)
+        XCTAssertTrue(
+            forecast.rangeLabel.contains(forecast.metric.formattedMagnitude(forecast.lower)),
+            forecast.rangeLabel
+        )
+        XCTAssertTrue(
+            forecast.rangeLabel.contains(forecast.metric.formattedMagnitude(forecast.upper)),
+            forecast.rangeLabel
+        )
+    }
 }
