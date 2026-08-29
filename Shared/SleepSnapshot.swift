@@ -93,8 +93,14 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     var tonightTargetLabel: String = ""
     var tonightTargetNote: String = ""
 
-    /// The most predictable metric's `UncertaintyForecast` range, phrased
-    /// for a small screen. Empty when there is too little history.
+    /// The tightest `UncertaintyForecast` range, phrased for a small screen:
+    /// where recent nights actually landed.
+    ///
+    /// Despite the name, this is not a forecast and must never be presented
+    /// as one -- the engine does not condition on context and has never been
+    /// calibrated against what followed. The name is kept only because it is
+    /// the Codable key: renaming it would decode as empty on every snapshot
+    /// already written, blanking the widget until the next publish.
     var tomorrowRangeLabel: String = ""
 
     /// Whether the autopilot is holding rather than asking for a change.
