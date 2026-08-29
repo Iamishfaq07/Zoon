@@ -276,4 +276,39 @@ final class BehaviorObservationStoreTests: XCTestCase {
             BehaviorObservationRecord.provisionalNightKey(for: evening, calendar: calendar)
         )
     }
+
+    // MARK: - Only a person can say "no"
+
+    /// The rule every `BehaviorObservationSource` case documents, now
+    /// enforced at the one place that writes.
+    ///
+    /// A fabricated `.no` is not a cosmetic error: it becomes the control arm
+    /// of a matched-pair comparison, which is the exact failure this whole
+    /// model replaced. An absent HealthKit sample cannot distinguish "nothing
+    /// logged" from "never authorized", so it can never prove absence.
+    func testANonManualSourceCannotAssertNo() throws {
+        let store = try makeStore()
+        store.set(.no, for: .alcohol, nightKey: night, source: .healthKit)
+        XCTAssertEqual(
+            store.answers(forNightKey: night).state(for: .alcohol),
+            .unknown,
+            "a HealthKit-sourced .no must be refused, leaving the truth: unknown"
+        )
+    }
+
+    /// And it must not quietly overwrite an answer the person did give.
+    func testARefusedNoLeavesAnExistingManualAnswerIntact() throws {
+        let store = try makeStore()
+        store.set(.yes, for: .alcohol, nightKey: night)
+        store.set(.no, for: .alcohol, nightKey: night, source: .derived)
+        XCTAssertEqual(store.answers(forNightKey: night).state(for: .alcohol), .yes)
+    }
+
+    /// The upgrade direction stays open -- a sample of the behaviour itself
+    /// is real evidence that it happened.
+    func testANonManualSourceCanStillAssertYes() throws {
+        let store = try makeStore()
+        store.set(.yes, for: .alcohol, nightKey: night, source: .healthKit)
+        XCTAssertEqual(store.answers(forNightKey: night).state(for: .alcohol), .yes)
+    }
 }
