@@ -74,7 +74,7 @@ struct ZoonTimeline: View {
                 HStack(spacing: 6) {
                     Image(systemName: node.symbol)
                         .font(Theme.text(11, weight: .semibold))
-                        .foregroundStyle(isPast ? .tertiary : node.tint)
+                        .foregroundStyle(isPast ? AnyShapeStyle(.tertiary) : AnyShapeStyle(node.tint))
                     Text(node.title)
                         .font(Theme.label(14, weight: node.isEmphasised ? .semibold : .medium))
                         .foregroundStyle(isPast ? .secondary : .primary)

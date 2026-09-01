@@ -116,6 +116,7 @@
 		2560FF07E008B1CC68A807F9 /* LearnedSleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127E0E0C1644DEB364D02EAC /* LearnedSleepNeed.swift */; };
 		2581511FA48E1366F2E47DA7 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625E612FBC59560157E62DB /* WatchLink.swift */; };
 		25C24B9B1E242C7A6AE22070 /* SnoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED7225BE24ECD0414B324C9 /* SnoreStore.swift */; };
+		2633F84AED3B6953ABBD7C6E /* HypnogramV4.swift in Sources */ = {isa = PBXBuildFile; fileRef = 427D7648D38B1148AC3FFCDB /* HypnogramV4.swift */; };
 		267A21093E1C627DB6E74928 /* BreathingCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = C306D669251A84B1C8762BF5 /* BreathingCoach.swift */; };
 		271DE062D46481958EDF063A /* NightKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428FBEDA15967526E0AD1710 /* NightKey.swift */; };
 		27E2054A0061749B9C0CB573 /* SleepHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF614D35BFFE603C238A0E5 /* SleepHealth.swift */; };
@@ -738,6 +739,7 @@
 		41F3143BC9E915F4D207693A /* JournalCorrelator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalCorrelator.swift"; sourceTree = "<group>"; };
 		423CBBEE5037B19C59780D54 /* SleepIntelligenceOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepIntelligenceOrb.swift"; sourceTree = "<group>"; };
 		4244633C56362A14F2ABE898 /* JournalEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalEntry.swift"; sourceTree = "<group>"; };
+		427D7648D38B1148AC3FFCDB /* HypnogramV4.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HypnogramV4.swift"; sourceTree = "<group>"; };
 		428FBEDA15967526E0AD1710 /* NightKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightKey.swift"; sourceTree = "<group>"; };
 		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		449A6ED264EB4AB017A39AF5 /* CyclePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CyclePhase.swift"; sourceTree = "<group>"; };
@@ -1037,6 +1039,7 @@
 				BFB3C23F8240B4F9AD67AE02,
 				E8D991648B2623D1113B42B7,
 				AE48A5D44EF4E0599DDBA08C,
+				427D7648D38B1148AC3FFCDB,
 				12AB23E8C636FD67F0EFBBA9,
 				45237B7D4C6548BAEC55290F,
 				49024A9138A57C2C104AFE9B,
@@ -1809,6 +1812,7 @@
 				96583164B236BBE666AAB3FF,
 				97EDEFF3552E6772F2961588,
 				D54AF07DE7CEE3CF700AE908,
+				2633F84AED3B6953ABBD7C6E,
 				8508204FEC412F59D8F3D82F,
 				E7E68658D923ECD0BD14401E,
 				D3B728E1CEEFC7AF4FDE89D9,
