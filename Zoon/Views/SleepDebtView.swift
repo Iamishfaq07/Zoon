@@ -51,19 +51,18 @@ struct SleepDebtView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// V8: the reservoir arc replaces the number-in-a-card. Same
+    /// `sleepDebtMinutes` value; the week-ago figure comes from the same
+    /// history the trend chart below plots.
     private var hero: some View {
-        VStack(spacing: 6) {
-            Text("Estimated sleep debt")
-                .font(Theme.label(13))
-                .foregroundStyle(.secondary)
-            Text(SleepNightFeatures.formatMinutes(currentDebt))
-                .font(Theme.numeral(46))
-                .monospacedDigit()
-                .foregroundStyle(band.tint)
-            StatusPill(text: band.label, tint: band.tint)
-        }
-        .frame(maxWidth: .infinity)
-        .glassCard()
+        LunarReservoir(debtMinutes: currentDebt, weekAgoMinutes: debtWeekAgo)
+            .padding(.vertical, 8)
+    }
+
+    private var debtWeekAgo: Double? {
+        let nights = coordinator.recentNights
+        guard nights.count >= 8 else { return nil }
+        return nights[nights.count - 8].sleepDebtMinutes
     }
 
     private var recentNightsCard: some View {

@@ -28,19 +28,41 @@ struct HealthRadarView: View {
 
     private var content: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            // V8: personal baseline lanes on the page, each a tap from its
+            // trend, separated by hairlines rather than boxed one per card.
+            VStack(alignment: .leading, spacing: 24) {
                 if let context {
                     hero(context.healthRadar)
-                    ForEach(context.vitals.metrics) { metric in
-                        baselineBarRow(metric, drift: driftSignal(for: metric.kind, in: context.healthRadar))
+                    VStack(spacing: 0) {
+                        ForEach(Array(context.vitals.metrics.enumerated()), id: \.element.id) { index, metric in
+                            if index > 0 {
+                                Rectangle().fill(Theme.cardStroke).frame(height: 1)
+                            }
+                            NavigationLink {
+                                MetricTrendView(kind: metric.kind)
+                            } label: {
+                                ZoonBaselineLane(
+                                    metric: metric,
+                                    drift: driftSignal(for: metric.kind, in: context.healthRadar),
+                                    tint: laneTint(for: metric.kind)
+                                )
+                                .padding(.vertical, 14)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Show \(metric.kind.label) trend")
+                        }
                     }
                     if context.healthRadar.isActive {
                         multiSignalNote(context.healthRadar)
                     }
                     disclaimerCard
                 } else {
-                    ContentUnavailableView("No night yet", systemImage: "moon.zzz")
-                        .padding(.top, 60)
+                    ZoonEmptyState(kind: .noData(
+                        title: "No night yet",
+                        message: "Body signals are compared against your own overnight baseline once Zoon has a night to read.",
+                        unlocks: []
+                    ))
                 }
             }
             .padding()
@@ -54,73 +76,41 @@ struct HealthRadarView: View {
         radar.signals.first { $0.kind == kind }
     }
 
+    /// The same family colour a signal carries everywhere else in the app.
+    private func laneTint(for kind: VitalsStatus.Kind) -> Color {
+        switch kind {
+        case .restingHeartRate: Theme.Metric.heart
+        case .hrv: Theme.Metric.hrv
+        case .respiratoryRate, .breathingDisturbances, .oxygenSaturation: Theme.Family.breathing
+        case .wristTemperature: Theme.Family.circadian
+        case .sleepDuration: Theme.Family.sleep
+        }
+    }
+
     private func hero(_ radar: HealthRadar) -> some View {
         VStack(spacing: 8) {
             Text("Body Signals")
-                .font(Theme.label(13))
+                .font(Theme.kicker)
+                .tracking(1.0)
+                .textCase(.uppercase)
                 .foregroundStyle(.secondary)
-            Text(radar.isActive ? radar.severity.label : "Normal")
-                .font(Theme.numeral(30))
-                .foregroundStyle(radar.isActive ? tint(for: radar.severity) : Theme.Metric.recoveryHigh)
-            Text("Compared with your recent overnight baseline.")
-                .font(Theme.text(12))
+            Text(radar.isActive ? radar.severity.label : "Nothing unusual")
+                .font(.system(size: 30, weight: .light, design: .rounded))
+                .foregroundStyle(radar.isActive ? tint(for: radar.severity) : .primary)
+            Text("Each signal against your own recent overnight baseline.")
+                .font(Theme.evidence)
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
-        .glassCard()
+        .accessibilityElement(children: .combine)
     }
 
     private func tint(for severity: HealthRadar.Severity) -> Color {
         switch severity {
-        case .clear: Theme.Metric.recoveryHigh
-        case .watch: Theme.Metric.recoveryMid
-        case .notable: Theme.Metric.recoveryLow
+        case .clear: Theme.Family.recovery
+        case .watch: Theme.Family.attention
+        case .notable: Theme.Family.deviation
         }
-    }
-
-    private func baselineBarRow(_ metric: VitalsStatus.Metric, drift: HealthRadar.Signal?) -> some View {
-        // Tap → trend -- the redesign spec's ask for these rows, previously
-        // static (no `onTapGesture`/`NavigationLink` at all).
-        NavigationLink {
-            MetricTrendView(kind: metric.kind)
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: metric.kind.symbol)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 18)
-                    Text(metric.kind.label)
-                        .font(Theme.label(13, weight: .semibold))
-                    Spacer()
-                    Text(metric.formattedValue)
-                        .font(Theme.label(14, weight: .bold))
-                        .monospacedDigit()
-                    if let drift {
-                        Image(systemName: drift.direction.symbol)
-                            .font(Theme.text(11, weight: .bold))
-                            .foregroundStyle(Theme.Metric.recoveryMid)
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(Theme.text(11, weight: .semibold))
-                        .foregroundStyle(.tertiary)
-                }
-
-                BaselineLaneView(
-                    value: metric.value,
-                    baseline: metric.baseline,
-                    tolerance: metric.tolerance,
-                    tint: drift != nil ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh
-                )
-
-                if let range = metric.formattedRange {
-                    Text("Your typical range: \(range)")
-                        .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .glassCard()
-        }
-        .buttonStyle(PressableStyle())
     }
 
     private func multiSignalNote(_ radar: HealthRadar) -> some View {
