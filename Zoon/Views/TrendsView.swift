@@ -72,10 +72,23 @@ struct TrendsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: Theme.stackSpacing) {
+                // V8: *how am I changing?* Sleep Health leads, then what
+                // changed as a story stream, then the sleep system as four
+                // visual modules, then discoveries as findings, then the
+                // charts. The Settings-style hub list is gone -- Sleep Story
+                // and Cause Finder are reached from the sections that show
+                // their content; Playbook, Year in Sleep and Labs sit in a
+                // single quiet "More to explore" row at the end.
+                VStack(alignment: .leading, spacing: 28) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
-                    WhatChangedCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
-                    DiscoveriesCard(
+                    WhatChangedStream(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
+                    if let context = coordinator.state.context {
+                        VStack(alignment: .leading, spacing: 12) {
+                            ZoonSectionHeader("Your sleep system")
+                            CoreIntelligenceGrid(context: context)
+                        }
+                    }
+                    DiscoveriesStream(
                         findings: JournalCorrelator().findings(from: coordinator.journalObservations()),
                         activeExperiment: preferences.activeExperimentTag.map { tag in
                             (tag, GuidedExperiment.status(
@@ -83,25 +96,26 @@ struct TrendsView: View {
                                 observations: coordinator.journalObservations(),
                                 since: preferences.experimentStartDate
                             ))
-                        }
+                        },
+                        taggedNights: coordinator.journal.taggedNightCount()
                     )
-                    if let context = coordinator.state.context {
-                        CoreIntelligenceGrid(context: context)
-                    }
-                    insightsHub
 
                     if nights.count < 2 {
                         notEnoughData
                     } else {
-                        windowPicker
-                        DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
-                        HRVChartCard(nights: nights)
-                        SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
-                        ConsistencyChartCard(nights: nights)
-                        if let correlations = cycleCorrelations {
-                            CycleCorrelationCard(correlations: correlations)
+                        VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+                            ZoonSectionHeader("Over time") { windowPicker.frame(maxWidth: 160) }
+                            DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
+                            HRVChartCard(nights: nights)
+                            SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
+                            ConsistencyChartCard(nights: nights)
+                            if let correlations = cycleCorrelations {
+                                CycleCorrelationCard(correlations: correlations)
+                            }
                         }
                     }
+
+                    moreToExplore
                 }
                 .padding()
             }
@@ -129,59 +143,39 @@ struct TrendsView: View {
         .pickerStyle(.segmented)
     }
 
-    private var insightsHub: some View {
-        VStack(spacing: 8) {
-            // Sleep Need, Sleep Debt, Body Clock, and Body Signals moved to
-            // `CoreIntelligenceGrid` above -- a 2x2 grid of distinct visuals
-            // rather than four more identical rows here.
-            hubRow("Cause Finder", icon: AnyView(ZoonIcon.CauseFinder(tint: Theme.Metric.hrv)), Theme.Metric.hrv) { CauseFinderView() }
-            hubRow("Sleep Story", "clock.arrow.circlepath", Theme.Metric.sleep) { SleepStoryView() }
-            hubRow("Sleep Playbook", "checklist", Theme.Metric.recoveryHigh) { SleepPlaybookView() }
-            hubRow("Year in Sleep", "square.grid.3x3.fill", Theme.Metric.recoveryHigh) { YearHeatmapView() }
-            hubRow("Labs", "flask", .secondary) { LabsView() }
+    /// The three destinations that have no section of their own to be
+    /// reached from, as a single row of text links -- not five glass rows.
+    /// Cause Finder and Sleep Story are linked from Discoveries and the
+    /// Sleep tab's story moments respectively; Need, Debt, Body Clock and
+    /// Body Signals are the four modules of `CoreIntelligenceGrid`.
+    private var moreToExplore: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZoonSectionHeader("More to explore")
+            FlowLayout(spacing: 10) {
+                exploreLink("Sleep Story", "clock.arrow.circlepath") { SleepStoryView() }
+                exploreLink("Sleep Playbook", "checklist") { SleepPlaybookView() }
+                exploreLink("Year in Sleep", "square.grid.3x3.fill") { YearHeatmapView() }
+                exploreLink("Labs", "flask") { LabsView() }
+            }
         }
     }
 
-    private func hubRow<Destination: View>(
-        _ title: String, _ symbol: String, _ tint: Color,
-        @ViewBuilder destination: @escaping () -> Destination
-    ) -> some View {
-        hubRow(title, icon: AnyView(Image(systemName: symbol).font(Theme.text(15))), tint, destination: destination)
-    }
-
-    /// Overload for rows whose concept has its own `ZoonIcon` mark instead
-    /// of a generic SF Symbol -- currently only Cause Finder, one of the
-    /// redesign spec's named custom-icon concepts.
-    private func hubRow<Destination: View>(
-        _ title: String, icon: AnyView, _ tint: Color,
+    private func exploreLink<Destination: View>(
+        _ title: String, _ symbol: String,
         @ViewBuilder destination: @escaping () -> Destination
     ) -> some View {
         NavigationLink(destination: destination) {
-            HStack(spacing: 12) {
-                icon
-                    .foregroundStyle(tint)
-                    .frame(width: 34, height: 34)
-                    .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                Text(title)
-                    .font(Theme.label(14, weight: .semibold))
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(Theme.text(11, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(12)
-            .glassCard()
+            ZoonMetricPill(text: title, systemImage: symbol, tint: Theme.Family.sleep, isSelected: false)
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(.plain)
     }
 
     private var notEnoughData: some View {
-        ContentUnavailableView {
-            Label("Not enough history", systemImage: "chart.xyaxis.line")
-        } description: {
-            Text("Trends appear once Zoon has recorded a few nights. Keep wearing your watch to bed.")
-        }
-        .padding(.top, 60)
+        ZoonEmptyState(kind: .learning(
+            collected: nights.count,
+            typicallyNeeded: 7...14,
+            message: "Trends appear once Zoon has a few nights to compare. Keep wearing your watch to bed."
+        ))
     }
 }
 
