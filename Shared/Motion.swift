@@ -69,6 +69,71 @@ enum Motion {
     /// a screen transition that overshoots reads as sluggish rather than
     /// alive.
     static let navigation = Animation.smooth(duration: 0.4)
+
+    // MARK: - V8 additions
+
+    /// A chart or ribbon revealing left → right the first time it appears.
+    /// Fires once per data change, never on scroll re-entry (callers gate
+    /// on `.onAppear` + a `@State` flag, not on visibility).
+    static let draw = Animation.easeOut(duration: 0.7)
+
+    /// Scrub/selection updates: the highlighted mark and the headline value
+    /// move together. Short enough that a finger dragging never outruns it.
+    static let scrub = Animation.snappy(duration: 0.12)
+
+    /// The Today entrance sequence, expressed as delays from first frame.
+    /// Total perceived duration is under half a second -- the screen is
+    /// opened half-asleep every morning and must not make anyone wait.
+    enum Entry {
+        static let background: Double = 0
+        static let hero: Double = 0.05
+        static let heroValue: Double = 0.18
+        static let supporting: Double = 0.28
+        static let secondary: Double = 0.36
+    }
+
+    /// The right animation for a state change given the Reduce Motion
+    /// setting: `nil` (instant) when it's on, the supplied curve otherwise.
+    /// Every V8 view routes its `withAnimation` through this so the
+    /// accessibility check can't be forgotten at a call site.
+    static func respecting(_ reduceMotion: Bool, _ animation: Animation) -> Animation? {
+        reduceMotion ? nil : animation
+    }
+}
+
+/// The per-view "has this already animated in?" flag `Motion.draw` relies
+/// on, so a chart draws once when its data arrives and never again as the
+/// user scrolls it on and off screen.
+struct DrawOnce: ViewModifier {
+    /// The data identity; a change here re-arms the draw.
+    let id: AnyHashable
+    @Binding var progress: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { run() }
+            .onChange(of: id) { _, _ in
+                progress = 0
+                run()
+            }
+    }
+
+    private func run() {
+        guard !reduceMotion else {
+            progress = 1
+            return
+        }
+        withAnimation(Motion.draw) { progress = 1 }
+    }
+}
+
+extension View {
+    /// Drives `progress` 0 → 1 once on appear and again only when `id`
+    /// changes. See `DrawOnce`.
+    func drawOnce(id: some Hashable, progress: Binding<Double>) -> some View {
+        modifier(DrawOnce(id: AnyHashable(id), progress: progress))
+    }
 }
 
 /// Fades and lifts a view into place on first appearance.
@@ -185,10 +250,25 @@ enum Haptics {
     static func warning() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
+
+    /// One detent while scrubbing a chart or ring: fires only when the
+    /// selection actually changes to a new element, never per pixel.
+    /// `.soft` rather than `.light` -- a scrub crosses several detents in a
+    /// second, and a light impact repeated that fast reads as buzzing.
+    static func scrubDetent() {
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.7)
+    }
+
+    /// A moment on a timeline being reached, or a milestone completing.
+    static func milestone() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
     #else
     static func tap() {}
     static func select() {}
     static func success() {}
     static func warning() {}
+    static func scrubDetent() {}
+    static func milestone() {}
     #endif
 }
