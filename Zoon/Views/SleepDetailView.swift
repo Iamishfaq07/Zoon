@@ -23,14 +23,16 @@ struct SleepDetailView: View {
 
     var body: some View {
         ScrollView {
+            // V8 order: the night itself first (headline, hypnogram, story),
+            // then its breakdown, then completeness. Sleep Need and
+            // Chronotype no longer repeat here -- both lead the "Tonight and
+            // beyond" section on the Sleep tab this screen is reached from.
             VStack(spacing: Theme.stackSpacing) {
                 headline
-                SleepNeedCard(need: context.sleepNeed)
                 hypnogramCard
                 storyPreviewCard
                 stagesCard
                 timingCard
-                ChronotypeCard(chronotype: context.chronotype)
                 dataCompletenessCard
             }
             .padding(.horizontal)

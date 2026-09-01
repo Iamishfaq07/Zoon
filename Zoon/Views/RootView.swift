@@ -276,62 +276,97 @@ struct RootView: View {
     }
 }
 
-/// Sleep tab: last night's detail, plus the tools you use at bedtime.
+/// Sleep tab, V8: *what happened last night?* -- answered visually before
+/// any planning or tools.
+///
+/// Order: Last Night hero → Hypnogram V4 (the visual hero) → three story
+/// moments → metric board → then Sleep Need, Body Clock, chronotype, past
+/// nights and the tools strip. Analysis of the night comes first; planning
+/// follows it. The full `SleepDetailView` (completeness, stage breakdown)
+/// is one tap from the metric board.
 struct SleepTabView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Binding var path: NavigationPath
+    @State private var soundEventStore = SoundEventStore()
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                // Last Night leads -- the redesign spec's reversal of the old
-                // order, where five tool rows sat between opening the tab and
-                // seeing anything about how you actually slept. Tools move to
-                // a horizontal strip below, still one tap away, not first.
-                VStack(spacing: Theme.stackSpacing) {
+                VStack(alignment: .leading, spacing: 28) {
                     if let context = coordinator.state.context {
-                        SleepNeedCard(need: context.sleepNeed).entrance(0)
-                        // A live hypnogram preview, not a generic icon+label
-                        // row -- the redesign spec's complaint was that this
-                        // tab's interactive content sat one tap behind a
-                        // list row indistinguishable from "Past Nights"
-                        // below it. Reuses `SleepSummaryStrip` as-is (already
-                        // doing exactly this on Today) rather than a second,
-                        // parallel implementation of the same preview.
-                        SleepSummaryStrip(context: context).entrance(1)
-                        NavigationLink {
-                            NightHistoryView()
-                        } label: {
-                            toolRow(
-                                "Past Nights",
-                                detail: coordinator.recentNights.isEmpty
-                                    ? "Nothing recorded yet"
-                                    : "\(coordinator.recentNights.count) night\(coordinator.recentNights.count == 1 ? "" : "s") on file",
-                                symbol: "calendar",
-                                tint: Theme.Metric.hrv
+                        LastNightHero(context: context).entrance(0)
+
+                        if !context.night.stageSegments.isEmpty {
+                            HypnogramV4(
+                                night: context.night,
+                                heartRateSamples: context.hourlyHeartRate,
+                                soundEvents: soundEventStore.recentEvents
                             )
+                            .entrance(1)
+                        } else {
+                            VStack(alignment: .leading, spacing: 10) {
+                                StageProportionBar(features: context.night)
+                                Text("\(context.night.sourceName ?? "This source") records sleep without breaking it into stages. Wearing an Apple Watch to bed adds Deep, REM and Core.")
+                                    .font(Theme.evidence)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .entrance(1)
                         }
-                        .buttonStyle(PressableStyle())
-                        .entrance(1)
-                        ChronotypeCard(chronotype: context.chronotype).entrance(2)
-                        if let clock = context.bodyClock {
-                            BodyClockCard(
-                                bodyClock: clock,
-                                plannedBedtime: context.targetBedtime(),
-                                actualBedtime: context.night.bedtime,
-                                actualWakeTime: context.night.wakeTime
-                            )
-                            .entrance(3)
+
+                        SleepStoryMoments(story: story(for: context), night: context.night)
+                            .entrance(2)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            ZoonSectionHeader("Last night in numbers") {
+                                NavigationLink {
+                                    SleepDetailView(context: context)
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Text("All details")
+                                        Image(systemName: "chevron.right").font(Theme.text(10, weight: .semibold))
+                                    }
+                                    .font(Theme.text(12, weight: .semibold))
+                                    .foregroundStyle(Theme.Family.sleep)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            SleepMetricBoard(night: context.night)
                         }
+                        .entrance(3)
+
+                        // Planning follows analysis.
+                        VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+                            ZoonSectionHeader("Tonight and beyond")
+                            SleepNeedCard(need: context.sleepNeed)
+                            if let clock = context.bodyClock {
+                                BodyClockCard(
+                                    bodyClock: clock,
+                                    plannedBedtime: context.targetBedtime(),
+                                    actualBedtime: context.night.bedtime,
+                                    actualWakeTime: context.night.wakeTime
+                                )
+                            }
+                            ChronotypeCard(chronotype: context.chronotype)
+                            NavigationLink {
+                                NightHistoryView()
+                            } label: {
+                                toolRow(
+                                    "Past Nights",
+                                    detail: coordinator.recentNights.isEmpty
+                                        ? "Nothing recorded yet"
+                                        : "\(coordinator.recentNights.count) night\(coordinator.recentNights.count == 1 ? "" : "s") on file",
+                                    symbol: "calendar",
+                                    tint: Theme.Metric.hrv
+                                )
+                            }
+                            .buttonStyle(PressableStyle())
+                        }
+                        .entrance(4)
                     }
 
-                    // BedtimeCountdownCard moved to Today: showing the exact
-                    // same card on both tabs was redundant rather than
-                    // reinforcing, and Sleep's job here is "how did I sleep"
-                    // and "what tools do I have," not "when should I go to
-                    // bed" -- that's a today/planning question.
-                    SleepToolsStrip().entrance(4)
+                    SleepToolsStrip().entrance(5)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
@@ -365,6 +400,18 @@ struct SleepTabView: View {
                 }
             }
         }
+    }
+
+    /// Same construction `SleepDetailView` uses, so the three moments shown
+    /// here are drawn from exactly the story the full screen tells.
+    private func story(for context: DayContext) -> SleepStory {
+        let tagLabels = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)?.tags.map(\.label) ?? []
+        return SleepStory.build(
+            night: context.night,
+            tagLabels: tagLabels,
+            napIntervals: coordinator.napIntervals(before: context.night.date, timeZone: context.night.timeZone),
+            soundEvents: soundEventStore.recentEvents
+        )
     }
 
     private func toolRow(_ title: String, detail: String, symbol: String, tint: Color) -> some View {

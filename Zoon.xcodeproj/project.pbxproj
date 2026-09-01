@@ -204,6 +204,7 @@
 		4E2A594FC6EE5B9F868E389A /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */; };
 		4EF58D8227C0F1706874FD57 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
 		4F2E87506FDADC731060A171 /* DataEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 275F0131A98765781C43B872 /* DataEnvironmentTests.swift */; };
+		50821C2AAC01B71256BBEE4A /* LastNightComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39A9E863D2EDC167F3A32A7 /* LastNightComponents.swift */; };
 		525F04445EAA8E4875107CEB /* BreathingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC432720166E6624FE4B4078 /* BreathingView.swift */; };
 		52C16D1645ED631246F3B6C1 /* BehaviorObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B71499926BBCC880385250 /* BehaviorObservation.swift */; };
 		53E6BA65541896145AF5CA8A /* EvidenceNotebookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BD2D71FCBA3594B5DDA19C /* EvidenceNotebookTests.swift */; };
@@ -854,6 +855,7 @@
 		9F6E6954AE9E93E1873800C5 /* StatisticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StatisticsTests.swift"; sourceTree = "<group>"; };
 		A1232A774FB22CCFA6F3FECC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		A266B25D9732E28AB9C8A587 /* YearHeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YearHeatmapView.swift"; sourceTree = "<group>"; };
+		A39A9E863D2EDC167F3A32A7 /* LastNightComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LastNightComponents.swift"; sourceTree = "<group>"; };
 		A642BBA44A200DA78DC8E341 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		A6437A30250182778821169D /* SleepPlaybookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepPlaybookView.swift"; sourceTree = "<group>"; };
 		A7060DA0F52BD67E4086F62D /* SleepStory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStory.swift"; sourceTree = "<group>"; };
@@ -1044,6 +1046,7 @@
 				45237B7D4C6548BAEC55290F,
 				49024A9138A57C2C104AFE9B,
 				53636D4BAAB21D53B0232B06,
+				A39A9E863D2EDC167F3A32A7,
 				2CEEC938F70D39622049AB5E,
 				02779EA3AEB013BA04850CC0,
 				7CF38D0E51C20F2A8477C0F5,
@@ -1817,6 +1820,7 @@
 				E7E68658D923ECD0BD14401E,
 				D3B728E1CEEFC7AF4FDE89D9,
 				677698CE93C3E4DF75B50AA1,
+				50821C2AAC01B71256BBEE4A,
 				76A38D2DC300EAB2473D2A6A,
 				A08FD4B54D44A08867A7D700,
 				33439A6340A0128408653E51,
