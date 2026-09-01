@@ -44,30 +44,106 @@ struct CoachTabView: View {
         }
     }
 
+    /// V8: not a chat landing page but an analytical one -- four categories
+    /// of question (Today, Trend, Discovery, Plan), each with one prompt
+    /// derived from the person's own data, then the open composer. The
+    /// data-driven picker `suggestions(for:)` is unchanged; it feeds the
+    /// Today slot.
     private func landing(_ night: SleepNightFeatures) -> some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            VStack(alignment: .leading, spacing: 28) {
                 header
+
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(categories(for: night).enumerated()), id: \.element.kicker) { index, category in
+                        if index > 0 { Rectangle().fill(Theme.cardStroke).frame(height: 1) }
+                        NavigationLink {
+                            CoachChatView(night: night, initialPrompt: category.question)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(category.kicker)
+                                    .font(Theme.kicker)
+                                    .tracking(1.0)
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(category.tint)
+                                HStack(alignment: .firstTextBaseline) {
+                                    Text(category.question)
+                                        .font(Theme.label(16, weight: .medium))
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.leading)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Spacer(minLength: 8)
+                                    Image(systemName: "arrow.up.right")
+                                        .font(Theme.text(12, weight: .semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                            .padding(.vertical, 16)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(category.kicker): \(category.question)")
+                        .accessibilityHint("Ask Zoon")
+                    }
+                }
+
                 NavigationLink {
                     CoachChatView(night: night)
                 } label: {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Label("Start a conversation", systemImage: "bubble.left.and.bubble.right.fill")
-                            .font(Theme.label(15, weight: .semibold))
-                            .foregroundStyle(Theme.Metric.sleep)
-                        Text("Ask anything about last night in your own words.")
-                            .font(Theme.text(12))
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 10) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .foregroundStyle(Theme.Family.sleep)
+                        Text("Ask something else in your own words")
+                            .font(Theme.label(14, weight: .medium))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(Theme.text(11, weight: .semibold))
+                            .foregroundStyle(.tertiary)
                     }
-                    .glassCard()
+                    .padding(14)
+                    .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(PressableStyle())
 
-                suggestedQuestions(night)
                 capabilityCard
             }
             .padding()
         }
+    }
+
+    private struct Category {
+        let kicker: String
+        let question: String
+        let tint: Color
+    }
+
+    /// One question per analytical lens. Today's comes from the existing
+    /// signal-driven picker; the other three read the same history the
+    /// Insights tab does so they ask about something that's actually there.
+    private func categories(for night: SleepNightFeatures) -> [Category] {
+        let today = suggestions(for: night).first ?? "How did I sleep last night?"
+
+        let nights = coordinator.recentNights
+        let trend: String = nights.count >= 14 ? "What changed this month?" : "What's Zoon learning about my sleep so far?"
+
+        let findings = JournalCorrelator().findings(from: coordinator.journalObservations())
+        let discovery: String = {
+            if let strongest = findings.first {
+                return "Is \(strongest.tag.label.lowercased()) actually affecting me?"
+            }
+            return "Which of my habits might be affecting my sleep?"
+        }()
+
+        let plan: String = (night.sleepDebtMinutes ?? 0) >= 45
+            ? "How should I catch up on sleep this week?"
+            : "How should I prepare for tomorrow?"
+
+        return [
+            Category(kicker: "Today", question: today, tint: Theme.Family.sleep),
+            Category(kicker: "Trend", question: trend, tint: Theme.Family.recovery),
+            Category(kicker: "Discovery", question: discovery, tint: Theme.Family.bodySignals),
+            Category(kicker: "Plan", question: plan, tint: Theme.Family.circadian)
+        ]
     }
 
     /// What the coach can actually see, and whether it can answer at all.
@@ -137,39 +213,6 @@ struct CoachTabView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Data-driven prompts rather than a fixed list — a night with low HRV
-    /// surfaces a question about HRV, a night with a debt spike surfaces a
-    /// question about debt.
-    ///
-    /// Each one is passed to `CoachChatView` as `initialPrompt` and sent
-    /// automatically once the chat starts -- previously the question text
-    /// went nowhere: the link opened a blank composer with nothing typed
-    /// or sent, so tapping a suggestion looked identical to tapping "Start a
-    /// conversation".
-    private func suggestedQuestions(_ night: SleepNightFeatures) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Based on last night", systemImage: "wand.and.sparkles")
-            ForEach(suggestions(for: night), id: \.self) { question in
-                NavigationLink {
-                    CoachChatView(night: night, initialPrompt: question)
-                } label: {
-                    HStack {
-                        Text(question)
-                            .font(Theme.text(13))
-                            .foregroundStyle(.primary)
-                            .multilineTextAlignment(.leading)
-                        Spacer(minLength: 8)
-                        Image(systemName: "chevron.right")
-                            .font(Theme.text(11, weight: .semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .glassCard(padding: 14)
-                }
-                .buttonStyle(PressableStyle())
-            }
-        }
     }
 
     /// Picks up to three prompts whose underlying signal actually moved last
