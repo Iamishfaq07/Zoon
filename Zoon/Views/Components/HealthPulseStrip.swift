@@ -22,19 +22,34 @@ struct HealthPulseStrip: View {
 
     private var breathing: BreathingHealth { BreathingHealth.compute(nights: recentNights) }
 
+    /// V8: sits on the page between two hairlines rather than inside a glass
+    /// card, so it reads as a status line under the hero rather than as the
+    /// first of a stack of boxes. At accessibility text sizes the four
+    /// tiles reflow to a 2×2 grid instead of squeezing.
     var body: some View {
-        HStack(spacing: 0) {
-            tile(recoveryTile)
-            Spacer(minLength: 4)
-            tile(bodySignalsTile)
-            Spacer(minLength: 4)
-            tile(breathingTile)
-            Spacer(minLength: 4)
-            tile(regularityTile)
+        VStack(spacing: 0) {
+            Rectangle().fill(Theme.cardStroke).frame(height: 1)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 0) {
+                    tile(recoveryTile)
+                    tile(bodySignalsTile)
+                    tile(breathingTile)
+                    tile(regularityTile)
+                }
+                VStack(spacing: 14) {
+                    HStack(spacing: 0) {
+                        tile(recoveryTile)
+                        tile(bodySignalsTile)
+                    }
+                    HStack(spacing: 0) {
+                        tile(breathingTile)
+                        tile(regularityTile)
+                    }
+                }
+            }
+            .padding(.vertical, 14)
+            Rectangle().fill(Theme.cardStroke).frame(height: 1)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 14)
-        .glassCard(padding: 0)
     }
 
     @ViewBuilder

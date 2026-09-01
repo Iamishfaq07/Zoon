@@ -160,9 +160,14 @@ struct ZoonExplainThenDetail<Detail: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(explanation)
-                .font(Theme.text(14))
-                .fixedSize(horizontal: false, vertical: true)
+            // An empty explanation means the caller only wants the
+            // disclosure (e.g. "Why this score?" under a headline that is
+            // itself the explanation).
+            if !explanation.isEmpty {
+                Text(explanation)
+                    .font(Theme.text(14))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             Button {
                 withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { isExpanded.toggle() }
