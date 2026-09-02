@@ -117,7 +117,10 @@ struct OnboardingView: View {
                     )
                 )
                 .frame(width: 260, height: 260)
-                .scaleEffect(moonGlow ? 1.06 : 0.94)
+                // Settles at 1.0 rather than overshooting to 1.06: this now
+                // resolves once (see `onAppear`), so the end state is the
+                // resting state, not one end of a cycle.
+                .scaleEffect(moonGlow || reduceMotion ? 1 : 0.9)
 
             Image(systemName: "moon.stars.fill")
                 .font(Theme.text(88, weight: .light))
@@ -130,9 +133,14 @@ struct OnboardingView: View {
         }
         .onAppear {
             guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 3.4).repeatForever(autoreverses: true)) {
-                moonGlow = true
-            }
+            // Resolves once, and stops. It used to pulse on
+            // `.repeatForever`, which kept a 260pt radial gradient
+            // animating for as long as onboarding was open -- including
+            // behind pages two and three, where it wasn't even visible.
+            // The redesign's motion rule is that animation explains
+            // something; a permanent pulse on a static illustration
+            // explains nothing and only teaches people to ignore motion.
+            withAnimation(Motion.hero) { moonGlow = true }
         }
     }
 
