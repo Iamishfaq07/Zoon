@@ -91,3 +91,163 @@ alone stacks **14** independent cards on a full-data morning.
   `SleepAutopilot.Plan`, `HealthRadar`, `StressScore`, …).
 * No feature is deleted. Relocations are listed above and in the final report.
 * Deployment target stays iOS 18; Liquid Glass stays `#available`-gated.
+
+---
+
+# FINAL REPORT
+
+## Screens redesigned
+
+| Screen | Classification | What changed |
+|---|---|---|
+| Today | REDESIGN | Full-width hero (greeting → `LunarOrbit` → duration → Sleep/Need/Debt), Health Pulse strip, single Morning Brief, one `EnergyHorizon` replacing three energy cards, one Tonight timeline absorbing Autopilot, one conditional "Worth noticing" |
+| Sleep tab / Sleep detail | RESTRUCTURE | Opens on **Last Night**, not Sleep Need; `HypnogramV4` is the hero; Sleep Story; typographic metric board; Need/Debt/naps/tools follow |
+| Insights (`TrendsView`) | RESTRUCTURE | Sleep Health hero, `InsightsStream` ("what changed"), Sleep System as visual navigation, `DiscoveriesStream`; the Settings-style hub list is gone |
+| Body Signals (`HealthRadarView`) | VISUALIZE | `ZoonBaselineLane` per signal with LOW / YOUR NORMAL / HIGH and exact value |
+| Body Clock | VISUALIZE | `ZoonBodyClockOrbit`, scrub-to-hour |
+| Sleep Debt | VISUALIZE | `LunarReservoir` |
+| Cause Finder | VISUALIZE | `ZoonPairedPlot` — real matched pairs, dots then connectors |
+| Experiments | VISUALIZE | `ZoonTrialRibbon` replaces "Logged N of M days" + progress capsule |
+| Zoon Twin | VISUALIZE | `ZoonWhatIfLab` with two uncertainty bands |
+| Patterns / Sleep Map | VISUALIZE | `ZoonConstellation` leads the screen |
+| Evidence | VISUALIZE | `ZoonEvidenceLedger` belief history |
+| Data Quality / Sensor Truth | VISUALIZE | `ZoonCoverageMatrix` |
+| Coach | SIMPLIFY + VISUALIZE | Analytical categories on landing; `CoachDataAnswer` renders the app's own chart in answers |
+| Onboarding | Partial | Infinite decorative pulse removed; value-first ordering was already correct |
+
+## Components introduced
+
+`ZoonHeroMetric`, `ZoonMetricRow`, `ZoonSectionHeader`, `ZoonEvidenceBadge`,
+`LunarOrbit`, `EnergyHorizon`, `ZoonTimeline`, `HypnogramV4`,
+`ZoonBaselineLane`, `ZoonBodyClockOrbit`, `LunarReservoir`,
+`ZoonUncertaintyBand`, `ZoonTrialRibbon`, `ZoonPairedPlot`,
+`ZoonCoverageMatrix`, `ZoonConstellation`, `ZoonEvidenceLedger`,
+`ZoonWhatIfLab`, `ZoonChartScrubber` + `ScrubCursor`, `ZoonEmptyState`,
+`MorningBrief`, `TonightSection`, `WorthNoticing`, `InsightsStream`,
+`DiscoveriesStream`, `LastNightComponents`, `CoachDataAnswer`, plus
+`ZoonMotion`-equivalent additions to `Motion` (`drawOnce`, `Motion.scrub`,
+`Motion.respecting`) and `Haptics.scrubDetent` / `.milestone`.
+
+## Cards removed / consolidated
+
+`.glassCard()` uses in `Zoon/Views`: **147 → 135**, but the headline number
+understates it — Today went from **14 cards to 1** (the Morning Check-In,
+which is an input control and genuinely a container). The remaining
+`glassCard` uses are concentrated in Journal, Settings, and tool screens
+where a card is a real semantic grouping. Every new visualization sits
+directly on the page via `pageSection()`.
+
+## Interactive charts
+
+`LunarOrbit` (scrub components), `EnergyHorizon` (24h scrub),
+`HypnogramV4` (scrub + overlays + awakening zoom), `ZoonBodyClockOrbit`
+(rotate to hour), `ZoonPairedPlot` (vertical pair scrub),
+`ZoonWhatIfLab` (slider → band), `ZoonUncertaintyBand`,
+`ZoonTrialRibbon` (tap day), `ZoonConstellation` (tap node / edge),
+plus the pre-existing Swift Charts screens, which keep `chartXSelection`.
+
+## New gestures
+
+Ring scrub (orbit, body clock) · horizontal chart scrub (hypnogram, energy
+horizon) · vertical pair scrub (paired plot, press-and-hold first so it
+cannot steal the page's scroll) · tap-to-zoom on an awakening · tap node /
+tap edge on the constellation · tap day on the trial ribbon.
+
+## New animations, and why each exists
+
+| Animation | Reason |
+|---|---|
+| Entry cascade (`Motion.Delay`) | Establishes reading order: background → hero → value → supporting |
+| Orbit resolve, **once** | Shows the score arriving at its value; never rotates continuously |
+| `drawOnce` graph reveal | Shows a series' direction; keyed on data identity so scrolling never replays it |
+| Scrub highlight / dim | Shows which datum is selected |
+| Paired-plot two-beat (dots, then connectors) | Separates "here are your nights" from "here is the relationship between them" |
+| Baseline dot settle | Shows where today sits in the personal band |
+| Uncertainty band width change | Shows confidence changing — the one thing a what-if must not fake |
+| Ledger row reveal in date order | Shows a belief forming over time |
+| Numeric text transitions | Counts a changed value rather than snapping |
+
+All route through `Motion.respecting(reduceMotion:)`; with Reduce Motion on,
+travel and scale become crossfade or instant, and **no interaction is lost**.
+
+## Accessibility improvements
+
+* App-wide Dynamic Type cap **removed** (`.accessibility3` → full
+  `.accessibility5`); layouts fixed with `AdaptiveStack` / `ViewThatFits`
+  instead of clamping text.
+* Every new chart has a `chartSummary(label:summary:)` high-level VoiceOver
+  summary plus a selected-value description — values and units, never
+  "purple line".
+* Evidence strength encoded by **dash pattern**, magnitude by **thickness**,
+  coverage by **fill vs outline** — never colour alone; text labels always
+  present.
+* Constellation VoiceOver hints match what a tap actually does.
+* Generous hit targets; whole-chart scrub surfaces.
+
+## Dark / Light changes
+
+Light mode designed independently, not inverted: `Theme.adaptiveMetric`
+supplies per-appearance hues, `pageSection` uses hairlines rather than grey
+cards, and Light captures of Today / Settings / Journal stay in the
+screenshot regression set. The identity moved off blanket purple — purple is
+now the *sleep* family only, with recovery emerald, circadian amber,
+breathing aqua, body-signals lavender, energy blue→gold.
+
+## Performance considerations
+
+* Zero `.repeatForever` outside `BreathingModifier`, whose remaining uses are
+  genuinely live (nap timer, sound session, snore check).
+* `drawOnce` prevents off-screen rows re-animating on scroll.
+* No `TimelineView`, particle systems, or simultaneous `Canvas` scenes.
+* GPU-friendly properties only: opacity, scale, offset, shape trim.
+* Constellation draws only the focused node's edges, so the graph never
+  renders forty lines.
+
+## Existing features relocated (old → new)
+
+Battery / Energy / Forecast cards → one `EnergyHorizon` (+ `EnergyDetailView`) ·
+Autopilot card → Tonight timeline · Stress / Daily Load / Vitals / Radar /
+AI cards on Today → conditional "Worth noticing" or their own screens ·
+Insights hub link list → `DiscoveriesStream` + Sleep System visual nav ·
+`PairedDotPlot` → `ZoonPairedPlot` · `BaselineLaneView` → `ZoonBaselineLane`.
+
+## Existing functionality preserved
+
+Confirmed. No algorithm in `Shared/` changed. The one model-layer edit was
+additive: `JournalCorrelator.Finding.pairDeltas` became a derived property
+over a new `pairs: [Pair]` array, so the view can draw both ends of each
+matched pair. Statistics, thresholds, and confidence rules are unchanged.
+
+## Build results
+
+`Build` workflow green on the branch: **Validate project file**, **Build app
+and widget** (iOS + widget + Watch + Watch widget targets via the generated
+pbxproj), **ZoonTests**, **ZoonUITests**, and **"Verify every source
+compiled"** all passing.
+
+## Real-device visual testing still required
+
+CI renders the app in a booted Simulator (`iPhone 17 Pro`) and now captures
+`evidence`, `patterns`, `sensorTruth` and largest-Dynamic-Type Today / Sleep
+detail / Insights. Still **not** verified anywhere automated:
+
+* Live Activities and the Watch app — the Simulator capture covers neither.
+* Real haptics: `scrubDetent` intensity across orbit, hypnogram, ribbon and
+  paired plot can only be judged on a device.
+* Liquid Glass on iOS 26 hardware vs the `#available` material fallback.
+* Smallest supported iPhone (SE) and the largest Pro Max at accessibility
+  sizes together.
+* Increased Contrast, Reduced Transparency, Bold Text.
+* Scroll/animation profiling under Instruments on device (Today, hypnogram,
+  constellation, what-if slider, body clock).
+* True 1-year-history and night-shift datasets; mock data covers new-user,
+  30-day, poor-night and empty states only.
+
+## Phases not completed
+
+**Phase 7 (Watch / Widgets / Onboarding) is only partially done.** Widgets
+were classified KEEP and are unchanged; onboarding lost its infinite
+animation but was not restructured into the three UNDERSTAND / LEARN / PLAN
+scenes; and `WatchRootView` still mirrors phone metrics rather than being
+rebuilt as three glanceable pages. These are stated here rather than
+implied complete.
