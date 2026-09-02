@@ -99,6 +99,7 @@
 		1ED9A5367B3705AEEEB0B333 /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
 		1F02C1A62649769BA9183211 /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */; };
 		1F0BAE90812B36875A249405 /* SleepInsight.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B138F2A60F6322FB92FB15 /* SleepInsight.swift */; };
+		1F403B7A6E0EA27988A1351D /* ZoonBodyClockOrbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62405A9E18D7C15EBAE64F2 /* ZoonBodyClockOrbit.swift */; };
 		1F95ADE0352279494A37A30F /* DayContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7C368630DDEC4A2AA747A1 /* DayContext.swift */; };
 		1FB34652CFE1F0BA16F33F57 /* ZoonTwin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7775D66F59AC28BF8EDDEED1 /* ZoonTwin.swift */; };
 		1FE3B67D7D550351A7006072 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
@@ -900,6 +901,7 @@
 		B4A8F4C33D6ED860E4481578 /* SensorTruthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensorTruthTests.swift"; sourceTree = "<group>"; };
 		B5988981A0B2312A8B53FB4B /* BodyClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClock.swift"; sourceTree = "<group>"; };
 		B5AF71841A82B67EF82EB629 /* PRIVACY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "PRIVACY.md"; sourceTree = "<group>"; };
+		B62405A9E18D7C15EBAE64F2 /* ZoonBodyClockOrbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonBodyClockOrbit.swift"; sourceTree = "<group>"; };
 		B66AB7D457143EE80D839E0D /* Pluralization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pluralization.swift"; sourceTree = "<group>"; };
 		B6FE8A9B735F1487A519AA65 /* ZoonEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonEmptyState.swift"; sourceTree = "<group>"; };
 		B816541F65D89DBBBC7FF830 /* SleepPlaybookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepPlaybookTests.swift"; sourceTree = "<group>"; };
@@ -1089,6 +1091,7 @@
 				213D22A6A83EC98AD923972A,
 				4C4F794FC22711D31AE51FB3,
 				006E64082F1EF426B9BF8089,
+				B62405A9E18D7C15EBAE64F2,
 				AB308A3A34C7E1427A3C378D,
 				445F8A134A58B330BC70BD4E,
 				B6FE8A9B735F1487A519AA65,
@@ -1872,6 +1875,7 @@
 				D0D98A5190EC12C683DB882C,
 				3CE8E0215165CD2B0633783B,
 				E8D4DAF25EB06021F18AD8C5,
+				1F403B7A6E0EA27988A1351D,
 				C497A0D42CF8A5273CE181F6,
 				1B87F668B25C13F568C590A7,
 				CCD13A4279B10F14E63F2402,
