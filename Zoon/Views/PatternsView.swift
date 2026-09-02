@@ -27,9 +27,10 @@ struct PatternsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
-                forecastSection.entrance(0)
-                mapSection.entrance(1)
-                twinSection.entrance(2)
+                constellationSection.entrance(0)
+                forecastSection.entrance(1)
+                mapSection.entrance(2)
+                twinSection.entrance(3)
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -37,6 +38,26 @@ struct PatternsView: View {
         .nightBackground()
         .navigationTitle("Your patterns")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - Connections
+
+    /// What Zoon has connected to your sleep, as a graph rather than a list
+    /// of sentences. Leads the screen because it is the one visual here that
+    /// answers "what affects me" at a glance; the ranges and the grid below
+    /// answer narrower questions.
+    @ViewBuilder
+    private var constellationSection: some View {
+        let findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        if let graph = ZoonConstellation.fromFindings(findings) {
+            VStack(alignment: .leading, spacing: 12) {
+                sectionHeader("What connects to your sleep", "point.3.filled.connected.trianglepath.dotted", Theme.Family.sleep)
+                ZoonConstellation(nodes: graph.nodes, edges: graph.edges, initialFocus: "sleep")
+                Text("Tap a connection to see the evidence behind it.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(.tertiary)
+            }
+        }
     }
 
     // MARK: - Recent range
