@@ -185,30 +185,17 @@ struct PatternsView: View {
 
     // MARK: - What tends to follow
 
+    /// Zoon Twin as the what-if lab: lever pills, a direction control, and
+    /// two ranges per outcome on one axis. Shown whenever there is any
+    /// history at all -- the lab explains its own thresholds when a split
+    /// has too few nights on one side, which the old fixed "longer nights"
+    /// paragraph could only do by disappearing.
     @ViewBuilder
     private var twinSection: some View {
-        let projections = ZoonTwin.projectAll(
-            nights: coordinator.recentNights, lever: .duration, direction: .more
-        )
-        if projections.isEmpty {
-            EmptyView()
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                sectionHeader("On your longer nights", "arrow.triangle.branch", Theme.Metric.hrv)
-
-                ForEach(projections.prefix(3)) { projection in
-                    Text(projection.sentence)
-                        .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if let first = projections.first {
-                    Text(first.caveat)
-                        .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+        if coordinator.recentNights.count >= ZoonTwin.minimumGroupNights * 2 {
+            VStack(alignment: .leading, spacing: 14) {
+                sectionHeader("What tends to follow", "arrow.triangle.branch", Theme.Family.recovery)
+                ZoonWhatIfLab(nights: coordinator.recentNights)
             }
             .glassCard()
         }

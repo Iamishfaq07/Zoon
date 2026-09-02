@@ -240,6 +240,7 @@
 		5E4DDA74EC47B99CD053766B /* CoachChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39A6056F83CDEFE5D5D1B851 /* CoachChat.swift */; };
 		5EA91DA4CE2DC82C8268D79F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406D31EF0E61E462C6DAC9C5 /* RootView.swift */; };
 		5EDFF7056555887B3CCBEEB5 /* CoreIntelligenceGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3150FC3EEA03A2CC36022FA3 /* CoreIntelligenceGrid.swift */; };
+		5EEDED8F6B5B0B072F064E08 /* ZoonWhatIfLab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D8F6B0DA34DAFB54A499597 /* ZoonWhatIfLab.swift */; };
 		5F7CDBC3500E81B1B198E4C8 /* SnoreStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A837ED66C219F928B0656AE4 /* SnoreStoreTests.swift */; };
 		5F8ECDD151305F9B5B01837C /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		5FB61CABFDDAD8B9CCC67C46 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
@@ -725,6 +726,7 @@
 		2CD50E712746E68436F3A59B /* SeededGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SeededGenerator.swift"; sourceTree = "<group>"; };
 		2CEEC938F70D39622049AB5E /* LightCoachCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachCard.swift"; sourceTree = "<group>"; };
 		2D4A8155271E6F375B5123C3 /* NightDetective.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightDetective.swift"; sourceTree = "<group>"; };
+		2D8F6B0DA34DAFB54A499597 /* ZoonWhatIfLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWhatIfLab.swift"; sourceTree = "<group>"; };
 		2F1D3D8C86204A5AA8EE1BF2 /* EnergyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyForecastTests.swift"; sourceTree = "<group>"; };
 		2F52218C052A9B2F2CFF1E9A /* SleepDebtCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtCalculatorTests.swift"; sourceTree = "<group>"; };
 		2F5DD7E52B2623F0A7D68849 /* LightCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachTests.swift"; sourceTree = "<group>"; };
@@ -1095,6 +1097,7 @@
 				CA2313A4FDE3B0D1E1A6AEEC,
 				B3CAC52ACF48FF8B7C3E8016,
 				D0691CF614257AC914455309,
+				2D8F6B0DA34DAFB54A499597,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1877,6 +1880,7 @@
 				199F4C23DB7AB576EF9027C3,
 				E20DA4CD17E8E59FF5710501,
 				9930E3174D8C712F674AB9A3,
+				5EEDED8F6B5B0B072F064E08,
 				87C21FC8660D20B3AF622E69,
 				00CB05416D217DF8AECE330F,
 				C2C9D3654C3BF73A02A2F15B,
