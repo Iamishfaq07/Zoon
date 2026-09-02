@@ -94,6 +94,7 @@
 		1D31EA1BFCEF2007B9E9A58D /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
 		1E1ECB1DEE8251E2359268A0 /* CauseFinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B44F3703015A6C11B51F7F00 /* CauseFinderView.swift */; };
 		1E5C49D5B488C563A10EAB0C /* IntegrationFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 330761C5EA614104E6172BEB /* IntegrationFlowTests.swift */; };
+		1E722F2ED94049C6243909F8 /* CoachDataAnswer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE40B7A83F0DB3DEB94E7F0C /* CoachDataAnswer.swift */; };
 		1E9CA31043BE3458E6F3BD44 /* SoundscapeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FB1A978A10EA12B9D48DB4D /* SoundscapeControl.swift */; };
 		1EC991B072B615C1E9084D97 /* DateIntervalSubtractingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF5336844834D65C567626A /* DateIntervalSubtractingTests.swift */; };
 		1ED9A5367B3705AEEEB0B333 /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
@@ -891,6 +892,7 @@
 		AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StrainScore.swift"; sourceTree = "<group>"; };
 		ADE7FA2FF9A6280968D97436 /* ChangePointDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChangePointDetector.swift"; sourceTree = "<group>"; };
 		AE124896DF66A305DE386B60 /* SleepScoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreTests.swift"; sourceTree = "<group>"; };
+		AE40B7A83F0DB3DEB94E7F0C /* CoachDataAnswer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoachDataAnswer.swift"; sourceTree = "<group>"; };
 		AE48A5D44EF4E0599DDBA08C /* HealthPulseStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthPulseStrip.swift"; sourceTree = "<group>"; };
 		AF2DDB308F9F23D99795E240 /* SleepInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepInsightEngine.swift"; sourceTree = "<group>"; };
 		B04DB48634B9461AF67635F9 /* BodyBatteryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyBatteryChart.swift"; sourceTree = "<group>"; };
@@ -1057,6 +1059,7 @@
 				B202E4810C0F1C50E34E2DC3,
 				C95D71E4BFB29978DEA0D2DE,
 				0056BFA9411ACE233F7DC0D1,
+				AE40B7A83F0DB3DEB94E7F0C,
 				3150FC3EEA03A2CC36022FA3,
 				F87DDDFB40C40EF1EEA472F0,
 				58468C3B86FACD6E92814352,
@@ -1843,6 +1846,7 @@
 				5FD7E940C881946CF2A5EF92,
 				366ED0B304894CDB53A2004B,
 				F60C9D12E6B768F3CB1F1C06,
+				1E722F2ED94049C6243909F8,
 				5EDFF7056555887B3CCBEEB5,
 				E2035CEA799143574AC638C0,
 				90563CD1F9E87E966215EB23,
