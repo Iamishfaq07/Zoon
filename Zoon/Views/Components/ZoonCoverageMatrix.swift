@@ -83,7 +83,7 @@ struct ZoonCoverageMatrix: View {
         guard !recent.isEmpty else { return "No nights recorded yet." }
         let gaps = rows.dropFirst().filter { row in recent.contains { !row.present($0) } }
         if gaps.isEmpty { return "Every signal was recorded on every night. Scores used the full model." }
-        let names = gaps.map(\.label.lowercased()).joined(separator: ", ")
+        let names = gaps.map { $0.label.lowercased() }.joined(separator: ", ")
         return "Missing on some nights: \(names). A missing signal is left out of that night's score, never assumed."
     }
 }
