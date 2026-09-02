@@ -369,7 +369,41 @@ jobs:
           # LaunchOptions, so the paths filter wouldn't retrigger — but the
           # marker makes that explicit rather than incidental.
           git commit -m "Update screenshots [skip ci]"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          # A capture takes ~13 minutes, so a commit landing on the branch
+          # while it runs is normal, not exceptional -- and it used to fail
+          # the whole run at the last step, reporting "Screenshots: failure"
+          # for a job whose every screenshot had rendered correctly. That is
+          # the worst failure mode a visual check can have: it cries wolf
+          # about the one signal nobody can reproduce locally.
+          #
+          # On rejection, re-point HEAD at the fetched branch tip and rebuild
+          # the commit rather than rebasing. `reset --mixed` leaves the JPEGs
+          # in the working tree, so re-adding them produces one clean commit
+          # on top of whatever landed -- and it works on the shallow clone
+          # `actions/checkout` gives us, which `git rebase` does not reliably.
+          # No conflict is possible: the only paths involved are images this
+          # job just generated.
+          pushed=0
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              pushed=1
+              break
+            fi
+            echo "Push rejected (attempt $attempt); rebuilding onto the branch tip."
+            git fetch --depth=1 origin "${GITHUB_REF_NAME}" || break
+            git reset --mixed "origin/${GITHUB_REF_NAME}" || break
+            git add docs/screenshots
+            if git diff --cached --quiet; then
+              echo "Screenshots already current on the branch tip."
+              pushed=1
+              break
+            fi
+            git commit -m "Update screenshots [skip ci]"
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::warning::Captures rendered but could not be committed; see the screenshots artifact."
+          fi
 
       - name: Upload screenshots
         if: always()
