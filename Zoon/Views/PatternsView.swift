@@ -47,32 +47,57 @@ struct PatternsView: View {
         if forecasts.isEmpty {
             placeholder("Once there are a couple of weeks of nights, Zoon can show the range yours typically fall in.")
         } else {
-            VStack(alignment: .leading, spacing: 12) {
-                sectionHeader("Your recent range", "dice", Theme.Metric.strain)
+            VStack(alignment: .leading, spacing: 16) {
+                // Not "Tonight" or "Tomorrow" -- see `UncertaintyForecast`
+                // and the same note in `TonightWidget`. The range is where
+                // recent nights landed; naming a night turns it into the
+                // prediction the type refuses to make.
+                sectionHeader("Your recent range", "dice", Theme.Family.sleep)
 
                 // Most predictable first, which is what forecastAll already
-                // orders by. Capped at three: the ranking exists so the
-                // useful ones lead, and a list of six intervals is a table
-                // nobody reads.
-                ForEach(forecasts.prefix(3), id: \.metric) { forecast in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(forecast.metric.label.capitalizedFirst)
+                // orders by. The leader is drawn as a band -- its width is
+                // the point -- and the next two are one line each. Capped at
+                // three: the ranking exists so the useful ones lead, and a
+                // list of six intervals is a table nobody reads.
+                if let lead = forecasts.first {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(lead.metric.label.capitalizedFirst)
                             .font(Theme.label(14, weight: .semibold))
-                        Text(forecast.sentence)
-                            .font(Theme.text(12))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        ZoonUncertaintyBand(forecast: lead, tint: tint(for: lead.metric))
                     }
                 }
 
-                if let first = forecasts.first {
-                    Text(first.caveat)
-                        .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+                if forecasts.count > 1 {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(forecasts.dropFirst().prefix(2), id: \.metric) { forecast in
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(forecast.metric.label.capitalizedFirst)
+                                    .font(Theme.text(13))
+                                    .foregroundStyle(.secondary)
+                                Spacer(minLength: 12)
+                                Text("\(forecast.metric.formattedMagnitude(forecast.lower))–\(forecast.metric.formattedMagnitude(forecast.upper))")
+                                    .font(Theme.text(13, weight: .semibold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(tint(for: forecast.metric))
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(forecast.sentence)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             }
             .glassCard()
+        }
+    }
+
+    /// Each metric keeps the hue its family owns everywhere else in the app.
+    private func tint(for metric: TrendEngine.Metric) -> Color {
+        switch metric {
+        case .duration, .efficiency, .sleepDebt: Theme.Family.sleep
+        case .bedtime: Theme.Family.circadian
+        case .hrv: Theme.Family.recovery
+        case .restingHeartRate: Theme.Family.bodySignals
         }
     }
 

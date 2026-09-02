@@ -369,6 +369,7 @@
 		98A23B492096217F0C6BB323 /* DataQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D958A9FD3398B01D9DC02A /* DataQuality.swift */; };
 		98B37C347E77AA62583CDB55 /* DiagnosticLanguageGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133EB3E89E56B82FF6F25EB8 /* DiagnosticLanguageGuard.swift */; };
 		991CAAD251CDFA58A37F1186 /* StressScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BFFA2C02EE15C5E13B57E9B /* StressScore.swift */; };
+		9930E3174D8C712F674AB9A3 /* ZoonUncertaintyBand.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0691CF614257AC914455309 /* ZoonUncertaintyBand.swift */; };
 		99EF928D29360D6BA7202393 /* LearnedSleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127E0E0C1644DEB364D02EAC /* LearnedSleepNeed.swift */; };
 		9A824EC21CE6D64719D96B16 /* SleepStoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98A436D538AAC795E4E7A7E /* SleepStoryView.swift */; };
 		9AA5CD9B20F3F55A2D0EBBEE /* ArticlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5B8904E22CF71043BC097B5 /* ArticlesView.swift */; };
@@ -931,6 +932,7 @@
 		CE191264FB836AC4CAD15978 /* RecoveryBaselineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryBaselineTests.swift"; sourceTree = "<group>"; };
 		CED7225BE24ECD0414B324C9 /* SnoreStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreStore.swift"; sourceTree = "<group>"; };
 		CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ZoonWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0691CF614257AC914455309 /* ZoonUncertaintyBand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonUncertaintyBand.swift"; sourceTree = "<group>"; };
 		D2085D9AC2A441527B854FCA /* SnoreDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreDetector.swift"; sourceTree = "<group>"; };
 		D2E8412807D761D3BAC2CBF0 /* EnergyForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyForecast.swift"; sourceTree = "<group>"; };
 		D546FAA3F177B70FB23B107A /* AlgorithmTransparencyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AlgorithmTransparencyView.swift"; sourceTree = "<group>"; };
@@ -1092,6 +1094,7 @@
 				A0C4E13A2C7D5D231786E8CB,
 				CA2313A4FDE3B0D1E1A6AEEC,
 				B3CAC52ACF48FF8B7C3E8016,
+				D0691CF614257AC914455309,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1873,6 +1876,7 @@
 				F48F468EA6184AA510B2A68F,
 				199F4C23DB7AB576EF9027C3,
 				E20DA4CD17E8E59FF5710501,
+				9930E3174D8C712F674AB9A3,
 				87C21FC8660D20B3AF622E69,
 				00CB05416D217DF8AECE330F,
 				C2C9D3654C3BF73A02A2F15B,
