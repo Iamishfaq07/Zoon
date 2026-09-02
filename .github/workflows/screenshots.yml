@@ -170,15 +170,26 @@ jobs:
           mkdir -p "$CRASH_DIR"
           rm -f "$CRASH_DIR"/Zoon*.ips || true
 
+          # shoot <tab> [variant]
+          #
+          # `variant` only ever affects the output filename and, for `light`,
+          # the appearance override. `largeText` deliberately passes no
+          # arguments: the caller sets the simulator's content size around the
+          # call, because Dynamic Type is a system setting and faking it from
+          # inside the app would exercise the wrong code path.
           shoot() {
             local tab="$1"
-            local appearance="${2:-dark}"
+            local variant="${2:-dark}"
             local output="$tab"
             local appearance_args=()
-            if [ "$appearance" = "light" ]; then
-              output="${tab}-light"
-              appearance_args=(-zoon.pref.appearance light)
-            fi
+            case "$variant" in
+              light)
+                output="${tab}-light"
+                appearance_args=(-zoon.pref.appearance light)
+                ;;
+              dark) ;;
+              *) output="${tab}-${variant}" ;;
+            esac
             # --terminate-running-process so each tab gets a clean launch;
             # the tab is chosen at launch (see LaunchOptions) rather than by
             # driving the tab bar, which would need a UI-test target.
@@ -252,10 +263,17 @@ jobs:
           # only shot the first three real tabs plus the journal/more
           # sheets. Added alongside trends/coach so the walkthrough covers
           # every tab, not three of the current four.
+          # evidence/patterns/sensorTruth were reachable via DeepLink for a
+          # while but never captured, which meant the three screens carrying
+          # the V8 redesign's most structural visuals -- the evidence ledger's
+          # dated spine, the constellation graph, and the coverage matrix --
+          # were the least verified in the app. A graph layout is exactly the
+          # kind of thing that compiles, passes tests, and still overlaps its
+          # own labels; only a render shows it.
           FAILED=0
           for tab in onboarding today sleep trends coach journal more \
                      sleepDetail bodyClock soundscapes nap breathing snoreCheck \
-                     report settings badges; do
+                     report settings badges evidence patterns sensorTruth; do
             shoot "$tab" || FAILED=1
           done
           # The app is dark-first, but Light is a real preference. Keep
@@ -268,6 +286,26 @@ jobs:
           shoot today light || FAILED=1
           shoot settings light || FAILED=1
           shoot journal light || FAILED=1
+
+          # Largest Dynamic Type, on the three screens with the most competing
+          # text. V8 removed the app-wide `.accessibility5` cap
+          # (`Theme.zoonTypography`), which means the size someone can actually
+          # select is now larger than any size this capture had ever rendered.
+          # The checked-in previews cover it in Xcode, but nobody in CI opens
+          # Xcode -- and the failure mode here is silent truncation, not a
+          # crash, so a passing build proves nothing about it.
+          #
+          # Set on the *simulator*, not via a launch argument: Dynamic Type is
+          # a system setting, and overriding `dynamicTypeSize` from inside the
+          # app would test SwiftUI's modifier rather than the real path a
+          # user's setting takes.
+          echo "Raising Dynamic Type to the largest accessibility size"
+          xcrun simctl ui "$UDID" content_size accessibility-extra-extra-extra-large || \
+            echo "::warning::Could not set content size; large-text shots will match the default."
+          shoot today largeText || FAILED=1
+          shoot sleepDetail largeText || FAILED=1
+          shoot trends largeText || FAILED=1
+          xcrun simctl ui "$UDID" content_size medium || true
           exit $FAILED
 
       - name: Summarise

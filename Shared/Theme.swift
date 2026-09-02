@@ -585,27 +585,30 @@ extension View {
         modifier(GlassCard(padding: padding))
     }
 
-    /// Caps Dynamic Type growth to a size the card layouts survive.
+    /// Allows Dynamic Type across its **full** range, `.xSmall` through
+    /// `.accessibility5`.
     ///
-    /// Applied once per screen alongside the background, rather than per view.
-    /// Raised from `.accessibility1` to `.accessibility3` (~215% of default):
-    /// the app has no on-device or screenshot-based visual verification in
-    /// this CI-only environment, so removing the cap entirely is not something
-    /// that can be honestly claimed as verified here. `.accessibility3` is a
-    /// real, substantial increase for anyone who needs it while staying inside
-    /// a range where `.fixedSize(horizontal:false, vertical:true)` and
-    /// scrolling containers (already used throughout) still hold up against
-    /// the fixed-height stat rows that clip first. Fully removing the cap is
-    /// the honest next step, gated on either a visual-regression harness or
-    /// a real-device pass — see task tracking `accessibility5`.
+    /// Applied once per screen alongside the background rather than per view,
+    /// so a new screen cannot forget it.
+    ///
+    /// History, because the value here has moved twice and the reasoning
+    /// matters more than the number: this was `.accessibility1`, then
+    /// `.accessibility3`, both times because layouts with fixed-height rows
+    /// clipped above that and there was no way to see it happening from CI.
+    /// V8 removed the cap, having removed the reason for it -- the rows that
+    /// clipped first (Today's metric cluster, the Health Pulse tiles, the
+    /// two-time Autopilot headline) are rebuilt on `AdaptiveStack` /
+    /// `ViewThatFits` and reflow to a single column instead of truncating;
+    /// every screen scrolls; and the densest screens carry checked-in
+    /// large-text previews so a future break is visible beside the
+    /// normal-size render rather than only on someone's device.
+    ///
+    /// A cap is a decision to make the app unusable for someone rather than
+    /// fix a layout, which is the wrong trade whenever the layout can be
+    /// fixed. The one deliberately non-scaling element left is the hero
+    /// numeral (see `Theme.numeral`), which is already larger than any
+    /// accessibility size would make body text.
     func zoonTypography() -> some View {
-        // V8: cap raised from `.accessibility3` to the full range. The rows
-        // that used to clip first (Today's metric cluster, Health Pulse
-        // tiles, the two-time Autopilot headline) have all been rebuilt on
-        // `AdaptiveStack`/`ViewThatFits` so they reflow instead of
-        // truncating, and the hero numeral is the one deliberately fixed
-        // size in the app (see `Theme.numeral`). Screens not yet rebuilt
-        // scroll; nothing is unreachable at `.accessibility5`.
         dynamicTypeSize(...DynamicTypeSize.accessibility5)
     }
 

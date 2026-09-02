@@ -439,6 +439,29 @@ struct ChronotypeCard: View {
     .zoonPreviewEnvironment()
 }
 
+/// The densest screen in the app at the largest size anyone can ask for.
+/// `zoonTypography` no longer caps Dynamic Type, so `.accessibility5` is
+/// reachable in the shipping build and this is where the metric board, the
+/// hypnogram's axis labels and the Sleep Story rows would break first.
+#Preview("Sleep detail - largest text") {
+    NavigationStack {
+        SleepDetailView(context: withSegments(AppMockData.dayContext()))
+    }
+    .preferredColorScheme(.dark)
+    .zoonPreviewEnvironment()
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+/// Light mode, where the hypnogram ribbons and the hairline separators were
+/// designed independently rather than inverted from dark.
+#Preview("Sleep detail - light") {
+    NavigationStack {
+        SleepDetailView(context: withSegments(AppMockData.dayContext()))
+    }
+    .preferredColorScheme(.light)
+    .zoonPreviewEnvironment()
+}
+
 #Preview("Sleep need only") {
     ScrollView {
         VStack(spacing: 16) {
