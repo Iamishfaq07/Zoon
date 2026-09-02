@@ -77,6 +77,7 @@ struct CauseFinderView: View {
             GuidedExperimentCard(
                 tag: tag,
                 startDate: preferences.experimentStartDate,
+                direction: preferences.experimentDirection ?? .avoid,
                 status: GuidedExperiment.status(for: tag, observations: observations, since: preferences.experimentStartDate),
                 observations: observations,
                 primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
@@ -293,79 +294,73 @@ private struct NoEffectRow: View {
     }
 }
 
+/// The active experiment: what is being tested, the day-by-day trial
+/// ribbon, and the state of the answer. The ribbon replaced a "Logged 5 of
+/// 8 days" line and a plain progress bar -- the same facts, but as a
+/// pattern the eye reads rather than a ratio it has to compute.
 private struct GuidedExperimentCard: View {
     let tag: BehaviorTag
     let startDate: Date?
+    let direction: GuidedExperiment.Direction
     let status: GuidedExperiment.Status
-    /// So the card can show adherence (how many elapsed days actually got a
-    /// known yes/no for `tag`, not just how many calendar days have passed)
-    /// and the primary outcome it's being judged on -- both named in the
-    /// redesign audit's "trial progress" ask, neither previously shown here.
     let observations: [JournalCorrelator.Observation]
     let primaryMetric: JournalCorrelator.Metric
     let onEnd: () -> Void
 
-    private var daysTracking: Int? {
-        guard let startDate else { return nil }
-        return max(0, Calendar.current.dateComponents([.day], from: startDate, to: .now).day ?? 0)
-    }
-
-    /// (known, elapsed) -- elapsed days since the experiment started that
-    /// have a journal observation at all, and of those, how many actually
-    /// resolved to a known yes/no for `tag` rather than staying unlogged.
-    /// `nil` before the experiment has any elapsed days to judge yet.
-    private var adherence: (known: Int, elapsed: Int)? {
-        guard let startDate else { return nil }
-        let elapsed = observations.filter { $0.date >= startDate }
-        guard !elapsed.isEmpty else { return nil }
-        let known = elapsed.filter { $0.exposureState(for: tag) != .unknown }.count
-        return (known, elapsed.count)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "flask.fill")
-                    .foregroundStyle(Theme.Metric.sleep)
+                    .foregroundStyle(Theme.Family.sleep)
                     .frame(width: 24, height: 24)
-                    .background(Theme.Metric.sleep.opacity(0.15), in: Circle())
+                    .background(Theme.Family.sleep.opacity(0.15), in: Circle())
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Experiment: \(tag.label)")
-                        .font(Theme.label(14, weight: .semibold))
-                    if let daysTracking {
-                        Text("Tracking for \(daysTracking) day\(daysTracking == 1 ? "" : "s") · judged on \(primaryMetric.shortLabel)")
-                            .font(Theme.text(11))
-                            .foregroundStyle(.secondary)
-                    }
-                    if let adherence {
-                        Text("Logged \(adherence.known) of \(adherence.elapsed) day\(adherence.elapsed == 1 ? "" : "s") so far")
-                            .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
-                    }
+                    Text("Current experiment")
+                        .font(Theme.kicker)
+                        .tracking(1.0)
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    Text("\(direction == .avoid ? "Less" : "More") \(tag.label.lowercased())")
+                        .font(Theme.label(15, weight: .semibold))
+                    Text("Judged on \(primaryMetric.shortLabel)")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
 
+            if let startDate {
+                ZoonTrialRibbon(
+                    tag: tag,
+                    startDate: startDate,
+                    direction: direction,
+                    observations: observations
+                )
+            }
+
             switch status {
             case .learning(let learning):
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.neutral(0.08))
-                        Capsule()
-                            .fill(Theme.Metric.sleep)
-                            .frame(width: geo.size.width * learning.progress)
-                    }
-                }
-                .frame(height: 5)
-                Text("Needs about \(learning.remainingNights) more comparable night\(learning.remainingNights == 1 ? "" : "s") before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")
-                    .font(Theme.text(10))
+                Text("Needs about \(learning.remainingNights.pluralized("more comparable night")) before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")
+                    .font(Theme.text(11))
                     .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
 
             case .result(let helpful, let harmful):
-                ForEach(helpful + harmful) { finding in
-                    Text(finding.headline)
-                        .font(Theme.text(11, weight: .semibold))
-                        .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Early result")
+                        .font(Theme.kicker)
+                        .tracking(1.0)
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    ForEach(helpful + harmful) { finding in
+                        HStack(spacing: 8) {
+                            Image(systemName: finding.isImprovement ? "arrow.up.right" : "arrow.down.right")
+                                .font(Theme.text(10, weight: .bold))
+                            Text(finding.headline)
+                                .font(Theme.text(12, weight: .semibold))
+                        }
+                        .foregroundStyle(finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention)
+                    }
                 }
 
             case .noEffect:
