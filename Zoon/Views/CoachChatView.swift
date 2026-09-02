@@ -81,8 +81,9 @@ struct CoachChatView: View {
                             .foregroundStyle(.secondary)
                             .padding(.top, 8)
                     }
-                    ForEach(chat.messages) { message in
-                        bubble(message).id(message.id)
+                    ForEach(Array(chat.messages.enumerated()), id: \.element.id) { index, message in
+                        bubble(message, question: precedingQuestion(before: index))
+                            .id(message.id)
                     }
                     if chat.isResponding {
                         HStack(spacing: 6) {
@@ -108,8 +109,15 @@ struct CoachChatView: View {
     /// bubbles" specifically for the app's *responses*, so those render as an
     /// editorial block (a small attribution label, plain text, no bubble
     /// shape) instead of a mirrored bubble on the opposite side.
+    /// The user turn an answer is responding to, which is what decides
+    /// whether a chart is relevant. Read from the transcript rather than
+    /// asked of the model -- see `CoachDataAnswer`.
+    private func precedingQuestion(before index: Int) -> String? {
+        chat.messages[..<index].last { $0.role == .user }?.text
+    }
+
     @ViewBuilder
-    private func bubble(_ message: CoachChat.Message) -> some View {
+    private func bubble(_ message: CoachChat.Message, question: String?) -> some View {
         switch message.role {
         case .user:
             HStack {
@@ -145,6 +153,14 @@ struct CoachChatView: View {
                     .font(Theme.text(14))
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
+                // Chart. Rendered from the app's own engines when the
+                // question was about a metric Zoon tracks, so an answer
+                // about HRV shows the same baseline lane Body Signals
+                // shows rather than describing it in words. Draws nothing
+                // when the question wasn't about a tracked metric.
+                if let question {
+                    CoachDataAnswer(question: question)
+                }
                 // Evidence: which number in tonight's data (or the standing-
                 // pattern digest) the answer is actually grounded in, set
                 // apart from the sentence itself rather than folded into the

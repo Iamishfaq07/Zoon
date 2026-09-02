@@ -23,6 +23,7 @@ struct InsightsHero: View {
     /// reliably get its own tap in SwiftUI, since the whole label is one tap
     /// target.
     @State private var window: SleepHealth.Window = .month
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Dated so `compute` can scope each call to its own window -- both
     /// calls below used to receive the exact same undated feelings array
@@ -69,49 +70,51 @@ struct InsightsHero: View {
         .pickerStyle(.segmented)
     }
 
+    /// V8: the hero sits on the page -- hero numeral, meaning word, trend --
+    /// with the score change animating through `numericText` when the window
+    /// picker moves. No card.
     private var card: some View {
         NavigationLink {
             SleepHealthView()
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 HStack(spacing: 5) {
-                    // 16, not 13: a detailed vector mark needs a little more
-                    // room than the cap-height of the label beside it before
-                    // its parts resolve. See ZoonIcon.SleepIntelligence.
-                    ZoonIcon.SleepIntelligence(tint: Theme.Metric.sleep)
+                    ZoonIcon.SleepIntelligence(tint: Theme.Family.sleep)
                         .frame(width: 16, height: 16)
                     Text("Sleep Health")
-                        .font(Theme.label(13))
+                        .font(Theme.kicker)
+                        .tracking(1.0)
+                        .textCase(.uppercase)
                         .foregroundStyle(.secondary)
                 }
 
                 if let score = current.score {
-                    Text(String(format: "%.0f", score))
-                        .font(Theme.numeral(46))
-                        .monospacedDigit()
-                        .foregroundStyle(.primary)
+                    ZoonHeroMetric(
+                        value: String(format: "%.0f", score),
+                        meaning: current.band?.label ?? "",
+                        tint: .primary
+                    )
+                    .animation(Motion.respecting(reduceMotion, Motion.value), value: window)
 
-                    HStack(spacing: 8) {
-                        if let band = current.band {
-                            StatusPill(text: band.label, tint: Theme.Metric.recoveryHigh)
-                        }
-                        if let trend, trend != 0 {
-                            Label("\(trend > 0 ? "+" : "")\(trend) vs prior \(window.label.lowercased())", systemImage: trend > 0 ? "arrow.up.right" : "arrow.down.right")
-                                .font(Theme.text(11, weight: .semibold))
-                                .foregroundStyle(trend > 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
-                        }
+                    if let trend, trend != 0 {
+                        Label("\(trend > 0 ? "+" : "")\(trend) vs prior \(window.label.lowercased())", systemImage: trend > 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(Theme.text(12, weight: .semibold))
+                            .foregroundStyle(trend > 0 ? Theme.Family.recovery : Theme.Family.attention)
+                            .contentTransition(.numericText())
+                    } else {
+                        Text("Steady vs prior \(window.label.lowercased())")
+                            .font(Theme.text(12, weight: .medium))
+                            .foregroundStyle(.tertiary)
                     }
                 } else {
-                    Text("--")
-                        .font(Theme.numeral(46))
-                        .foregroundStyle(.tertiary)
-                    StatusPill(text: "Insufficient data", tint: .secondary)
+                    ZoonHeroMetric(value: "--", meaning: "Not enough nights yet", tint: .secondary)
                 }
             }
             .frame(maxWidth: .infinity)
-            .glassCard()
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PressableStyle())
+        .buttonStyle(.plain)
+        .accessibilityHint("Open Sleep Health")
     }
 }
 

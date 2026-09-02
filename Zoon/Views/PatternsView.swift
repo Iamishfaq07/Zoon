@@ -27,9 +27,10 @@ struct PatternsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
-                forecastSection.entrance(0)
-                mapSection.entrance(1)
-                twinSection.entrance(2)
+                constellationSection.entrance(0)
+                forecastSection.entrance(1)
+                mapSection.entrance(2)
+                twinSection.entrance(3)
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -37,6 +38,26 @@ struct PatternsView: View {
         .nightBackground()
         .navigationTitle("Your patterns")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - Connections
+
+    /// What Zoon has connected to your sleep, as a graph rather than a list
+    /// of sentences. Leads the screen because it is the one visual here that
+    /// answers "what affects me" at a glance; the ranges and the grid below
+    /// answer narrower questions.
+    @ViewBuilder
+    private var constellationSection: some View {
+        let findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        if let graph = ZoonConstellation.fromFindings(findings) {
+            VStack(alignment: .leading, spacing: 12) {
+                sectionHeader("What connects to your sleep", "point.3.filled.connected.trianglepath.dotted", Theme.Family.sleep)
+                ZoonConstellation(nodes: graph.nodes, edges: graph.edges, initialFocus: "sleep")
+                Text("Tap a connection to see the evidence behind it.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(.tertiary)
+            }
+        }
     }
 
     // MARK: - Recent range
@@ -47,32 +68,57 @@ struct PatternsView: View {
         if forecasts.isEmpty {
             placeholder("Once there are a couple of weeks of nights, Zoon can show the range yours typically fall in.")
         } else {
-            VStack(alignment: .leading, spacing: 12) {
-                sectionHeader("Your recent range", "dice", Theme.Metric.strain)
+            VStack(alignment: .leading, spacing: 16) {
+                // Not "Tonight" or "Tomorrow" -- see `UncertaintyForecast`
+                // and the same note in `TonightWidget`. The range is where
+                // recent nights landed; naming a night turns it into the
+                // prediction the type refuses to make.
+                sectionHeader("Your recent range", "dice", Theme.Family.sleep)
 
                 // Most predictable first, which is what forecastAll already
-                // orders by. Capped at three: the ranking exists so the
-                // useful ones lead, and a list of six intervals is a table
-                // nobody reads.
-                ForEach(forecasts.prefix(3), id: \.metric) { forecast in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(forecast.metric.label.capitalizedFirst)
+                // orders by. The leader is drawn as a band -- its width is
+                // the point -- and the next two are one line each. Capped at
+                // three: the ranking exists so the useful ones lead, and a
+                // list of six intervals is a table nobody reads.
+                if let lead = forecasts.first {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(lead.metric.label.capitalizedFirst)
                             .font(Theme.label(14, weight: .semibold))
-                        Text(forecast.sentence)
-                            .font(Theme.text(12))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        ZoonUncertaintyBand(forecast: lead, tint: tint(for: lead.metric))
                     }
                 }
 
-                if let first = forecasts.first {
-                    Text(first.caveat)
-                        .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+                if forecasts.count > 1 {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(forecasts.dropFirst().prefix(2), id: \.metric) { forecast in
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(forecast.metric.label.capitalizedFirst)
+                                    .font(Theme.text(13))
+                                    .foregroundStyle(.secondary)
+                                Spacer(minLength: 12)
+                                Text("\(forecast.metric.formattedMagnitude(forecast.lower))–\(forecast.metric.formattedMagnitude(forecast.upper))")
+                                    .font(Theme.text(13, weight: .semibold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(tint(for: forecast.metric))
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(forecast.sentence)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             }
             .glassCard()
+        }
+    }
+
+    /// Each metric keeps the hue its family owns everywhere else in the app.
+    private func tint(for metric: TrendEngine.Metric) -> Color {
+        switch metric {
+        case .duration, .efficiency, .sleepDebt: Theme.Family.sleep
+        case .bedtime: Theme.Family.circadian
+        case .hrv: Theme.Family.recovery
+        case .restingHeartRate: Theme.Family.bodySignals
         }
     }
 
@@ -160,30 +206,17 @@ struct PatternsView: View {
 
     // MARK: - What tends to follow
 
+    /// Zoon Twin as the what-if lab: lever pills, a direction control, and
+    /// two ranges per outcome on one axis. Shown whenever there is any
+    /// history at all -- the lab explains its own thresholds when a split
+    /// has too few nights on one side, which the old fixed "longer nights"
+    /// paragraph could only do by disappearing.
     @ViewBuilder
     private var twinSection: some View {
-        let projections = ZoonTwin.projectAll(
-            nights: coordinator.recentNights, lever: .duration, direction: .more
-        )
-        if projections.isEmpty {
-            EmptyView()
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
-                sectionHeader("On your longer nights", "arrow.triangle.branch", Theme.Metric.hrv)
-
-                ForEach(projections.prefix(3)) { projection in
-                    Text(projection.sentence)
-                        .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if let first = projections.first {
-                    Text(first.caveat)
-                        .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+        if coordinator.recentNights.count >= ZoonTwin.minimumGroupNights * 2 {
+            VStack(alignment: .leading, spacing: 14) {
+                sectionHeader("What tends to follow", "arrow.triangle.branch", Theme.Family.recovery)
+                ZoonWhatIfLab(nights: coordinator.recentNights)
             }
             .glassCard()
         }

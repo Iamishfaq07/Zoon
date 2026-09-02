@@ -43,9 +43,19 @@ enum Theme {
                 // top settling into the existing cool silver/lavender/blue
                 // stops below is the "Lunar Dawn" progression: warm pearl →
                 // cool silver → lavender-grey → soft blue.
-                adaptive(dark: (0.024, 0.031, 0.078), light: (0.976, 0.965, 0.945)),
-                adaptive(dark: (0.051, 0.063, 0.141), light: (0.925, 0.925, 0.976)),
-                adaptive(dark: (0.078, 0.063, 0.200), light: (0.949, 0.925, 0.976))
+                // V8 "Lunar Night": the bottom stop used to lean violet
+                // (B channel 0.200 against R 0.078), which made purple the
+                // room rather than the accent. Graphite → midnight navy →
+                // deep blue-black keeps the depth without the tint, so the
+                // sleep-indigo hue reads as *the sleep colour* again instead
+                // of "the colour of everything."
+                //
+                // Light is "Lunar Dawn": warm pearl into cool white into
+                // very pale blue-grey. No lavender, so cards stop looking like
+                // Dark Mode inverted.
+                adaptive(dark: (0.024, 0.031, 0.070), light: (0.980, 0.973, 0.961)),
+                adaptive(dark: (0.043, 0.055, 0.118), light: (0.957, 0.961, 0.973)),
+                adaptive(dark: (0.055, 0.070, 0.160), light: (0.929, 0.937, 0.957))
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -102,7 +112,9 @@ enum Theme {
     /// Subtle top-glow used behind hero content.
     static var heroGlow: RadialGradient {
         RadialGradient(
-            colors: [adaptive(dark: (0.35, 0.30, 0.95), light: (0.55, 0.50, 0.95)).opacity(0.35), .clear],
+            // Moon-blue rather than violet, and a notch quieter: the glow
+            // is the moonlight on the sky, not a second purple layer.
+            colors: [adaptive(dark: (0.30, 0.40, 0.92), light: (0.45, 0.55, 0.92)).opacity(0.26), .clear],
             center: .top,
             startRadius: 10,
             endRadius: 420
@@ -308,6 +320,59 @@ enum Theme {
         static let oxygen = Theme.adaptiveMetric((0.400, 0.780, 1.00))
     }
 
+    // MARK: - Semantic families (V8)
+    //
+    // One colour per *intelligence family*, so a concept keeps its hue from
+    // Today through Sleep, Insights, Coach and the widgets. Where an existing
+    // `Metric` hue already carried that meaning it is aliased here rather
+    // than redefined -- nothing already drawn changes colour silently, and
+    // there is exactly one place to change it if it ever should.
+    //
+    // Two rules the palette enforces by construction:
+    //  * `attention` and `deviation` are muted amber and soft coral. There is
+    //    deliberately no saturated warning red: normal physiological
+    //    variation is not an alarm.
+    //  * `energy` is a gradient, not a colour, because energy is a curve.
+    enum Family {
+        /// Sleep duration, stages, timing. Indigo / moon-blue.
+        static let sleep = Metric.sleep
+        /// Recovery, HRV-as-readiness. Emerald.
+        static let recovery = Metric.recoveryHigh
+        /// Circadian timing, body clock, daylight. Warm amber / sunrise.
+        static let circadian = Metric.temperature
+        /// Respiration, breathing disturbances, SpO2. Aqua.
+        static let breathing = Metric.respiratory
+        /// Resting HR, HRV-as-signal, wrist temperature. Soft lavender.
+        static let bodySignals = Theme.adaptiveMetric((0.70, 0.62, 0.96))
+        /// Something worth a look, not a warning. Muted amber.
+        static let attention = Metric.recoveryMid
+        /// A meaningful departure from personal baseline. Soft coral.
+        static let deviation = Theme.adaptiveMetric((1.00, 0.48, 0.44))
+
+        /// Electric blue at wake → warm gold at the day's peak. Used as a
+        /// stroke/fill along the x-axis of anything that draws a day.
+        static var energy: LinearGradient {
+            LinearGradient(
+                colors: [Metric.strain, Theme.adaptiveMetric((1.00, 0.82, 0.36))],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
+
+        /// The hue Sleep Intelligence bands resolve to. Poor/fair are
+        /// attention-coloured, never red; good/excellent are the sleep hue and
+        /// recovery hue so a strong night reads as calm rather than as a
+        /// green tick.
+        static func sleepIntelligence(_ band: SleepIntelligenceScore.Band) -> Color {
+            switch band {
+            case .poor: deviation
+            case .fair: attention
+            case .good: sleep
+            case .excellent: recovery
+            }
+        }
+    }
+
     /// Sleep stage colours, dark → light, matching the depth they represent.
     enum Stage {
         static let deep = Color(red: 0.294, green: 0.235, blue: 0.780)
@@ -409,6 +474,34 @@ enum Theme {
         .system(style(for: size), design: .rounded, weight: weight)
     }
 
+    // MARK: - Data hierarchy (V8)
+    //
+    // Four named levels so every screen ranks its numbers the same way. A
+    // reader should be able to tell which number matters most from weight
+    // and size alone, before reading a single label.
+
+    /// Level 1 — the one number the screen exists to show. Large, calm,
+    /// light-weight so it reads as a value rather than a shout.
+    static let heroNumeral: Font = .system(size: 72, weight: .light, design: .rounded)
+
+    /// Level 2 — what the hero number *means*: "GOOD", "Strong recovery".
+    /// Tracked uppercase in the caller via `.tracking(1.2)`.
+    static let meaning: Font = .system(.footnote, design: .rounded, weight: .semibold)
+
+    /// Level 3 — supporting values under the hero: "7h 42m", "Need 8h 14m".
+    static let supportingValue: Font = .system(.title3, design: .rounded, weight: .semibold)
+
+    /// Level 3 label — the word under a supporting value.
+    static let supportingLabel: Font = .system(.caption, design: .rounded, weight: .medium)
+
+    /// Level 4 — evidence and detail. Deliberately the system caption so it
+    /// never competes with the numbers.
+    static let evidence: Font = .caption
+
+    /// Editorial kicker above a block of prose ("YOUR MORNING BRIEF"). Pair
+    /// with `.tracking(1.0)` and `.foregroundStyle(.secondary)`.
+    static let kicker: Font = .system(.caption2, design: .rounded, weight: .bold)
+
     // MARK: - Layout
 
     static let cardRadius: CGFloat = 24
@@ -492,21 +585,40 @@ extension View {
         modifier(GlassCard(padding: padding))
     }
 
-    /// Caps Dynamic Type growth to a size the card layouts survive.
+    /// Allows Dynamic Type across its **full** range, `.xSmall` through
+    /// `.accessibility5`.
     ///
-    /// Applied once per screen alongside the background, rather than per view.
-    /// Raised from `.accessibility1` to `.accessibility3` (~215% of default):
-    /// the app has no on-device or screenshot-based visual verification in
-    /// this CI-only environment, so removing the cap entirely is not something
-    /// that can be honestly claimed as verified here. `.accessibility3` is a
-    /// real, substantial increase for anyone who needs it while staying inside
-    /// a range where `.fixedSize(horizontal:false, vertical:true)` and
-    /// scrolling containers (already used throughout) still hold up against
-    /// the fixed-height stat rows that clip first. Fully removing the cap is
-    /// the honest next step, gated on either a visual-regression harness or
-    /// a real-device pass — see task tracking `accessibility5`.
+    /// Applied once per screen alongside the background rather than per view,
+    /// so a new screen cannot forget it.
+    ///
+    /// History, because the value here has moved twice and the reasoning
+    /// matters more than the number: this was `.accessibility1`, then
+    /// `.accessibility3`, both times because layouts with fixed-height rows
+    /// clipped above that and there was no way to see it happening from CI.
+    /// V8 removed the cap, having removed the reason for it -- the rows that
+    /// clipped first (Today's metric cluster, the Health Pulse tiles, the
+    /// two-time Autopilot headline) are rebuilt on `AdaptiveStack` /
+    /// `ViewThatFits` and reflow to a single column instead of truncating;
+    /// every screen scrolls; and the densest screens carry checked-in
+    /// large-text previews so a future break is visible beside the
+    /// normal-size render rather than only on someone's device.
+    ///
+    /// A cap is a decision to make the app unusable for someone rather than
+    /// fix a layout, which is the wrong trade whenever the layout can be
+    /// fixed. The one deliberately non-scaling element left is the hero
+    /// numeral (see `Theme.numeral`), which is already larger than any
+    /// accessibility size would make body text.
     func zoonTypography() -> some View {
-        dynamicTypeSize(...DynamicTypeSize.accessibility3)
+        dynamicTypeSize(...DynamicTypeSize.accessibility5)
+    }
+
+    /// The V8 alternative to `.glassCard()`: content that sits directly on
+    /// the page, separated from its neighbours by a hairline rather than by
+    /// a rounded container. Use this for a visualization or a typographic
+    /// block; keep `.glassCard()` for things that genuinely are a container
+    /// (an input control, a grouped set of toggles).
+    func pageSection(topRule: Bool = true) -> some View {
+        modifier(PageSection(topRule: topRule))
     }
 
     /// Applies the app's night background behind a scrolling screen.
@@ -604,6 +716,60 @@ struct AdaptiveStack<Content: View>: View {
         layout {
             content
         }
+    }
+}
+
+/// See `View.pageSection(topRule:)`.
+struct PageSection: ViewModifier {
+    var topRule: Bool
+
+    func body(content: Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if topRule {
+                Rectangle()
+                    .fill(Theme.cardStroke)
+                    .frame(height: 1)
+                    .padding(.bottom, 18)
+            }
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+}
+
+/// Editorial section heading: a small tracked uppercase kicker, optionally
+/// with a trailing accessory (a "See all" link, a picker). This is the V8
+/// heading for content that sits on the page; `SectionHeader` below keeps
+/// serving the cards that remain.
+struct ZoonSectionHeader<Accessory: View>: View {
+    let title: String
+    var accessory: Accessory
+
+    init(_ title: String, @ViewBuilder accessory: () -> Accessory) {
+        self.title = title
+        self.accessory = accessory()
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(Theme.kicker)
+                .tracking(1.0)
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            accessory
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+extension ZoonSectionHeader where Accessory == EmptyView {
+    init(_ title: String) {
+        self.title = title
+        self.accessory = EmptyView()
     }
 }
 

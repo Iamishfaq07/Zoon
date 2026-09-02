@@ -18,6 +18,7 @@ import SwiftUI
 struct EvidenceView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
 
     var body: some View {
         ScrollView {
@@ -33,6 +34,9 @@ struct EvidenceView: View {
                     .entrance(0)
 
                 sensorTruthLink.entrance(0)
+
+                ledgers(observations: observations, findings: findings)
+                    .entrance(1)
 
                 let entries = notebookEntries(findings: findings)
                 if entries.isEmpty {
@@ -137,6 +141,71 @@ struct EvidenceView: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    // MARK: - Belief history
+
+    /// The behaviours whose belief has moved furthest, each as a dated ledger.
+    ///
+    /// Picks the tags that have progressed past "suspected": an association
+    /// the correlator found, a trial that was run, or a trial that is
+    /// running. Capped at three -- the ledger exists to show *how* a belief
+    /// formed, and that reading takes attention a list of twelve would
+    /// exhaust. Everything else still appears in the tiers below.
+    @ViewBuilder
+    private func ledgers(
+        observations: [JournalCorrelator.Observation],
+        findings: [JournalCorrelator.Finding]
+    ) -> some View {
+        let candidates = ledgerTags(findings: findings)
+        if !candidates.isEmpty {
+            VStack(alignment: .leading, spacing: 24) {
+                ZoonSectionHeader("How Zoon got here")
+
+                ForEach(candidates, id: \.self) { tag in
+                    let outcomes = coordinator.experiments.outcomes.filter { $0.tag == tag.rawValue }
+                    let active: (startDate: Date, direction: GuidedExperiment.Direction)? = {
+                        guard preferences.activeExperimentTag == tag, let start = preferences.experimentStartDate else { return nil }
+                        return (start, preferences.experimentDirection ?? .avoid)
+                    }()
+                    if let milestones = ZoonEvidenceLedger.milestones(
+                        for: tag,
+                        observations: observations,
+                        finding: findings.first { $0.tag == tag },
+                        activeExperiment: active,
+                        outcomes: outcomes
+                    ) {
+                        ZoonEvidenceLedger(tag: tag, milestones: milestones)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Tested first (strongest belief), then the active trial, then
+    /// associations by confidence -- the order the tiers below use.
+    private func ledgerTags(findings: [JournalCorrelator.Finding]) -> [BehaviorTag] {
+        var ordered: [BehaviorTag] = []
+        for outcome in coordinator.experiments.outcomes.sorted(by: { $0.endDate > $1.endDate }) {
+            if let tag = BehaviorTag(rawValue: outcome.tag), !ordered.contains(tag) { ordered.append(tag) }
+        }
+        if let active = preferences.activeExperimentTag, !ordered.contains(active) {
+            ordered.append(active)
+        }
+        for finding in findings.sorted(by: { Self.rank($0.confidence) > Self.rank($1.confidence) }) {
+            if !ordered.contains(finding.tag) { ordered.append(finding.tag) }
+        }
+        return Array(ordered.prefix(3))
+    }
+
+    /// `Confidence` is a `String` enum; sorting by its raw value would put
+    /// "high" before "low" alphabetically.
+    private static func rank(_ confidence: JournalCorrelator.Confidence) -> Int {
+        switch confidence {
+        case .low: 0
+        case .moderate: 1
+        case .high: 2
         }
     }
 

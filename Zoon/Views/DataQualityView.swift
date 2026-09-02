@@ -13,10 +13,20 @@ struct DataQualityView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+            // V8: the last week as a coverage matrix first -- one glance says
+            // which signals were there -- then the 30-day percentages as
+            // hairline-separated rows rather than a card each.
+            VStack(alignment: .leading, spacing: 24) {
                 header
-                ForEach(quality.coverage) { coverage in
-                    row(coverage)
+                ZoonCoverageMatrix(nights: coordinator.recentNights)
+                VStack(alignment: .leading, spacing: 10) {
+                    ZoonSectionHeader("Last \(quality.windowDays) days")
+                    VStack(spacing: 0) {
+                        ForEach(Array(quality.coverage.enumerated()), id: \.element.id) { index, coverage in
+                            if index > 0 { Rectangle().fill(Theme.cardStroke).frame(height: 1) }
+                            row(coverage).padding(.vertical, 12)
+                        }
+                    }
                 }
             }
             .padding()
@@ -72,16 +82,17 @@ struct DataQualityView: View {
                 .font(Theme.text(10))
                 .foregroundStyle(.tertiary)
         }
-        .glassCard()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(coverage.metric.label): \(coverage.percent) percent, \(coverage.confidence.label), \(coverage.presentNightCount) of \(coverage.expectedNightCount) nights")
     }
 
+    /// No red: a missing sensor is a fact about the hardware, not an alarm.
+    /// The text label beside every percentage carries the meaning.
     private func tint(for confidence: DataQuality.Coverage.Confidence) -> Color {
         switch confidence {
-        case .strong: Theme.Metric.recoveryHigh
-        case .limited: Theme.Metric.recoveryMid
-        case .insufficient: Theme.Metric.recoveryLow
+        case .strong: Theme.Family.recovery
+        case .limited: Theme.Family.attention
+        case .insufficient: Theme.Family.deviation
         }
     }
 }

@@ -77,6 +77,7 @@ struct CauseFinderView: View {
             GuidedExperimentCard(
                 tag: tag,
                 startDate: preferences.experimentStartDate,
+                direction: preferences.experimentDirection ?? .avoid,
                 status: GuidedExperiment.status(for: tag, observations: observations, since: preferences.experimentStartDate),
                 observations: observations,
                 primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
@@ -164,18 +165,26 @@ struct CauseFinderView: View {
     }
 }
 
+/// One finding. Collapsed, it is the headline and a compact delta strip;
+/// expanded, it is the full paired plot -- every matched pair, both ends,
+/// connectors drawn in -- with the statistics that came out of them
+/// underneath. The plot is the point of the screen (the redesign's "true
+/// data visualizations, not generic bars"), so it is not wrapped in another
+/// card of its own; the row's single container is enough grouping.
 private struct CauseFinderRow: View {
     let finding: JournalCorrelator.Finding
     @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var tint: Color {
-        finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow
+        finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Button {
-                withAnimation(.snappy(duration: 0.2)) { expanded.toggle() }
+                withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { expanded.toggle() }
+                Haptics.select()
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: finding.tag.symbol)
@@ -185,35 +194,40 @@ private struct CauseFinderRow: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(finding.tag.label)
                             .font(Theme.label(14, weight: .semibold))
-                        Text("Associated with \(finding.metric.format(finding.delta)) \(finding.metric.shortLabel)")
+                        Text("\(finding.metric.format(finding.delta)) \(finding.metric.shortLabel)")
                             .font(Theme.text(11))
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("\(finding.matchedPairCount) nights")
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(finding.matchedPairCount.pluralized("matched night"))
                             .font(Theme.text(10))
                             .foregroundStyle(.tertiary)
-                        Text(finding.confidence.label)
-                            .font(Theme.text(9, weight: .semibold))
-                            .foregroundStyle(tint)
+                        ZoonEvidenceBadge(confidence: ZoonPairedPlot.metricConfidence(finding.confidence))
                     }
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.down")
                         .font(Theme.text(10, weight: .semibold))
                         .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityHint(expanded ? "Collapses the paired plot." : "Expands to show every matched pair.")
 
             if expanded {
-                if finding.pairDeltas.count >= 2 {
-                    PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
+                if finding.pairs.count >= 2 {
+                    ZoonPairedPlot(finding: finding, tint: tint)
                         .transition(.opacity)
                 }
                 Text(finding.detail)
                     .font(Theme.text(12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            } else if finding.pairDeltas.count >= 2 {
+                // Collapsed: the compact one-line delta strip keeps the shape
+                // of the evidence visible without the row growing tall.
+                PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
                     .transition(.opacity)
             }
         }
@@ -280,79 +294,73 @@ private struct NoEffectRow: View {
     }
 }
 
+/// The active experiment: what is being tested, the day-by-day trial
+/// ribbon, and the state of the answer. The ribbon replaced a "Logged 5 of
+/// 8 days" line and a plain progress bar -- the same facts, but as a
+/// pattern the eye reads rather than a ratio it has to compute.
 private struct GuidedExperimentCard: View {
     let tag: BehaviorTag
     let startDate: Date?
+    let direction: GuidedExperiment.Direction
     let status: GuidedExperiment.Status
-    /// So the card can show adherence (how many elapsed days actually got a
-    /// known yes/no for `tag`, not just how many calendar days have passed)
-    /// and the primary outcome it's being judged on -- both named in the
-    /// redesign audit's "trial progress" ask, neither previously shown here.
     let observations: [JournalCorrelator.Observation]
     let primaryMetric: JournalCorrelator.Metric
     let onEnd: () -> Void
 
-    private var daysTracking: Int? {
-        guard let startDate else { return nil }
-        return max(0, Calendar.current.dateComponents([.day], from: startDate, to: .now).day ?? 0)
-    }
-
-    /// (known, elapsed) -- elapsed days since the experiment started that
-    /// have a journal observation at all, and of those, how many actually
-    /// resolved to a known yes/no for `tag` rather than staying unlogged.
-    /// `nil` before the experiment has any elapsed days to judge yet.
-    private var adherence: (known: Int, elapsed: Int)? {
-        guard let startDate else { return nil }
-        let elapsed = observations.filter { $0.date >= startDate }
-        guard !elapsed.isEmpty else { return nil }
-        let known = elapsed.filter { $0.exposureState(for: tag) != .unknown }.count
-        return (known, elapsed.count)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Image(systemName: "flask.fill")
-                    .foregroundStyle(Theme.Metric.sleep)
+                    .foregroundStyle(Theme.Family.sleep)
                     .frame(width: 24, height: 24)
-                    .background(Theme.Metric.sleep.opacity(0.15), in: Circle())
+                    .background(Theme.Family.sleep.opacity(0.15), in: Circle())
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Experiment: \(tag.label)")
-                        .font(Theme.label(14, weight: .semibold))
-                    if let daysTracking {
-                        Text("Tracking for \(daysTracking) day\(daysTracking == 1 ? "" : "s") · judged on \(primaryMetric.shortLabel)")
-                            .font(Theme.text(11))
-                            .foregroundStyle(.secondary)
-                    }
-                    if let adherence {
-                        Text("Logged \(adherence.known) of \(adherence.elapsed) day\(adherence.elapsed == 1 ? "" : "s") so far")
-                            .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
-                    }
+                    Text("Current experiment")
+                        .font(Theme.kicker)
+                        .tracking(1.0)
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    Text("\(direction == .avoid ? "Less" : "More") \(tag.label.lowercased())")
+                        .font(Theme.label(15, weight: .semibold))
+                    Text("Judged on \(primaryMetric.shortLabel)")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
 
+            if let startDate {
+                ZoonTrialRibbon(
+                    tag: tag,
+                    startDate: startDate,
+                    direction: direction,
+                    observations: observations
+                )
+            }
+
             switch status {
             case .learning(let learning):
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.neutral(0.08))
-                        Capsule()
-                            .fill(Theme.Metric.sleep)
-                            .frame(width: geo.size.width * learning.progress)
-                    }
-                }
-                .frame(height: 5)
-                Text("Needs about \(learning.remainingNights) more comparable night\(learning.remainingNights == 1 ? "" : "s") before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")
-                    .font(Theme.text(10))
+                Text("Needs about \(learning.remainingNights.pluralized("more comparable night")) before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")
+                    .font(Theme.text(11))
                     .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
 
             case .result(let helpful, let harmful):
-                ForEach(helpful + harmful) { finding in
-                    Text(finding.headline)
-                        .font(Theme.text(11, weight: .semibold))
-                        .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Early result")
+                        .font(Theme.kicker)
+                        .tracking(1.0)
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    ForEach(helpful + harmful) { finding in
+                        HStack(spacing: 8) {
+                            Image(systemName: finding.isImprovement ? "arrow.up.right" : "arrow.down.right")
+                                .font(Theme.text(10, weight: .bold))
+                            Text(finding.headline)
+                                .font(Theme.text(12, weight: .semibold))
+                        }
+                        .foregroundStyle(finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention)
+                    }
                 }
 
             case .noEffect:

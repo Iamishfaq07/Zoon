@@ -23,14 +23,16 @@ struct SleepDetailView: View {
 
     var body: some View {
         ScrollView {
+            // V8 order: the night itself first (headline, hypnogram, story),
+            // then its breakdown, then completeness. Sleep Need and
+            // Chronotype no longer repeat here -- both lead the "Tonight and
+            // beyond" section on the Sleep tab this screen is reached from.
             VStack(spacing: Theme.stackSpacing) {
                 headline
-                SleepNeedCard(need: context.sleepNeed)
                 hypnogramCard
                 storyPreviewCard
                 stagesCard
                 timingCard
-                ChronotypeCard(chronotype: context.chronotype)
                 dataCompletenessCard
             }
             .padding(.horizontal)
@@ -434,6 +436,29 @@ struct ChronotypeCard: View {
         SleepDetailView(context: withSegments(AppMockData.dayContext()))
     }
     .preferredColorScheme(.dark)
+    .zoonPreviewEnvironment()
+}
+
+/// The densest screen in the app at the largest size anyone can ask for.
+/// `zoonTypography` no longer caps Dynamic Type, so `.accessibility5` is
+/// reachable in the shipping build and this is where the metric board, the
+/// hypnogram's axis labels and the Sleep Story rows would break first.
+#Preview("Sleep detail - largest text") {
+    NavigationStack {
+        SleepDetailView(context: withSegments(AppMockData.dayContext()))
+    }
+    .preferredColorScheme(.dark)
+    .zoonPreviewEnvironment()
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+/// Light mode, where the hypnogram ribbons and the hairline separators were
+/// designed independently rather than inverted from dark.
+#Preview("Sleep detail - light") {
+    NavigationStack {
+        SleepDetailView(context: withSegments(AppMockData.dayContext()))
+    }
+    .preferredColorScheme(.light)
     .zoonPreviewEnvironment()
 }
 

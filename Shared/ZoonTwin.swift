@@ -63,6 +63,17 @@ enum ZoonTwin {
         let outcomeOtherwise: Double
         let confidence: MetricConfidence
 
+        /// Where the middle 80% of each group's outcomes landed -- the same
+        /// 10th–90th percentile band `UncertaintyForecast` reports, so the
+        /// two groups can be drawn as two ranges on one axis. Carried for
+        /// the view layer only: `delta`, `isImprovement` and `sentence` are
+        /// still computed from the medians alone, exactly as before. Two
+        /// medians that differ by 4 bpm while both bands span 20 bpm is a
+        /// different picture from the same 4 bpm between two bands 5 bpm
+        /// wide, and a sentence cannot show that difference.
+        let withLeverRange: ClosedRange<Double>
+        let otherwiseRange: ClosedRange<Double>
+
         var id: String { "\(lever.rawValue)-\(direction.rawValue)-\(outcome.rawValue)" }
 
         var delta: Double { outcomeWithLever - outcomeOtherwise }
@@ -132,8 +143,22 @@ enum ZoonTwin {
             otherNights: otherwise.count,
             outcomeWithLever: a,
             outcomeOtherwise: b,
-            confidence: confidence(smallestGroup: min(withLever.count, otherwise.count))
+            confidence: confidence(smallestGroup: min(withLever.count, otherwise.count)),
+            withLeverRange: middleRange(withLever, fallback: a),
+            otherwiseRange: middleRange(otherwise, fallback: b)
         )
+    }
+
+    /// 10th–90th percentile of a group, matching `UncertaintyForecast`'s
+    /// coverage so the two visuals mean the same thing by "range". Both
+    /// groups already cleared `minimumGroupNights`, so the percentiles are
+    /// defined; the fallback only guards the type.
+    private static func middleRange(_ values: [Double], fallback: Double) -> ClosedRange<Double> {
+        guard let lower = Statistics.percentile(values, UncertaintyForecast.lowerPercentile),
+              let upper = Statistics.percentile(values, UncertaintyForecast.upperPercentile) else {
+            return fallback...fallback
+        }
+        return min(lower, upper)...max(lower, upper)
     }
 
     /// Every projection worth showing for one lever, strongest effect first.

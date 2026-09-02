@@ -190,12 +190,30 @@ struct JournalCorrelator {
         let confidenceIntervalUpper: Double?
         let matchedPairCount: Int
         let confidence: Confidence
+        /// Every matched pair, both ends, in the order they were matched
+        /// (tagged nights ascending by date). Kept alongside the summary
+        /// stats above so a result row can plot the actual pairs -- the
+        /// redesign's paired plot draws a comparison-night dot, a tagged-night
+        /// dot and the connector between them, which needs more than the
+        /// delta -- rather than only the median and interval derived from
+        /// them.
+        let pairs: [Pair]
+
+        /// One matched pair as the view layer sees it. `date` is the tagged
+        /// night's; the comparison night is only ever shown by its value.
+        struct Pair: Hashable {
+            let date: Date
+            /// Outcome on the comparison night matched to this one.
+            let matched: Double
+            /// Outcome on the night the behaviour was logged.
+            let exposed: Double
+            var delta: Double { exposed - matched }
+        }
+
         /// Each matched pair's own (exposed − matched) delta, same units as
-        /// `metric`. Kept alongside the summary stats above so a result row
-        /// can plot the actual matched pairs -- the redesign spec's
-        /// "paired-dot plot" -- rather than only the median and interval
-        /// derived from them.
-        let pairDeltas: [Double]
+        /// `metric`. Derived from `pairs`; the compact `PairedDotPlot` preview
+        /// reads this, the full `ZoonPairedPlot` reads `pairs`.
+        var pairDeltas: [Double] { pairs.map(\.delta) }
 
         var id: String { "\(tag.rawValue)-\(metric.rawValue)" }
 
@@ -347,7 +365,7 @@ struct JournalCorrelator {
                     confidenceIntervalUpper: ci?.upper,
                     matchedPairCount: pairs.count,
                     confidence: confidence(forPairCount: pairDeltas.count, ci: ci),
-                    pairDeltas: pairDeltas
+                    pairs: pairs.map { Finding.Pair(date: $0.exposedDate, matched: $0.matchedValue, exposed: $0.exposedValue) }
                 ))
             }
         }
