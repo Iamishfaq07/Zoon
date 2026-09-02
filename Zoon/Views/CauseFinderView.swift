@@ -164,18 +164,26 @@ struct CauseFinderView: View {
     }
 }
 
+/// One finding. Collapsed, it is the headline and a compact delta strip;
+/// expanded, it is the full paired plot -- every matched pair, both ends,
+/// connectors drawn in -- with the statistics that came out of them
+/// underneath. The plot is the point of the screen (the redesign's "true
+/// data visualizations, not generic bars"), so it is not wrapped in another
+/// card of its own; the row's single container is enough grouping.
 private struct CauseFinderRow: View {
     let finding: JournalCorrelator.Finding
     @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var tint: Color {
-        finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow
+        finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Button {
-                withAnimation(.snappy(duration: 0.2)) { expanded.toggle() }
+                withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { expanded.toggle() }
+                Haptics.select()
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: finding.tag.symbol)
@@ -185,35 +193,40 @@ private struct CauseFinderRow: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(finding.tag.label)
                             .font(Theme.label(14, weight: .semibold))
-                        Text("Associated with \(finding.metric.format(finding.delta)) \(finding.metric.shortLabel)")
+                        Text("\(finding.metric.format(finding.delta)) \(finding.metric.shortLabel)")
                             .font(Theme.text(11))
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("\(finding.matchedPairCount) nights")
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(finding.matchedPairCount.pluralized("matched night"))
                             .font(Theme.text(10))
                             .foregroundStyle(.tertiary)
-                        Text(finding.confidence.label)
-                            .font(Theme.text(9, weight: .semibold))
-                            .foregroundStyle(tint)
+                        ZoonEvidenceBadge(confidence: ZoonPairedPlot.metricConfidence(finding.confidence))
                     }
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.down")
                         .font(Theme.text(10, weight: .semibold))
                         .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityHint(expanded ? "Collapses the paired plot." : "Expands to show every matched pair.")
 
             if expanded {
-                if finding.pairDeltas.count >= 2 {
-                    PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
+                if finding.pairs.count >= 2 {
+                    ZoonPairedPlot(finding: finding, tint: tint)
                         .transition(.opacity)
                 }
                 Text(finding.detail)
                     .font(Theme.text(12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            } else if finding.pairDeltas.count >= 2 {
+                // Collapsed: the compact one-line delta strip keeps the shape
+                // of the evidence visible without the row growing tall.
+                PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
                     .transition(.opacity)
             }
         }

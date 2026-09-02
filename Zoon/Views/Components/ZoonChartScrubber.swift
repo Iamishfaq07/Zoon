@@ -20,6 +20,12 @@ import SwiftUI
 /// is as easy to scrub as one 200pt tall.
 struct ZoonChartScrubber: ViewModifier {
     @Binding var fraction: CGFloat?
+    /// Which way the finger travels. Horizontal scrubs start on touch.
+    /// Vertical ones sit inside a vertical `ScrollView` on every screen that
+    /// uses them, so they wait for a brief press-and-hold before taking the
+    /// drag -- otherwise the first pixel of every scroll would select a row
+    /// and the chart would be a dead zone in the page.
+    var axis: Axis = .horizontal
     /// Maps a fraction to a haptic bucket. Return `nil` to disable haptics.
     var detent: ((CGFloat) -> Int?)?
     /// Called once when the finger lifts, with the last fraction. Lets a
@@ -36,27 +42,49 @@ struct ZoonChartScrubber: ViewModifier {
             .contentShape(Rectangle())
             .overlay {
                 GeometryReader { geo in
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { value in
-                                    let width = max(geo.size.width, 1)
-                                    let next = min(1, max(0, value.location.x / width))
-                                    fraction = next
-                                    if let detent, let bucket = detent(next), bucket != lastDetent {
-                                        if lastDetent != nil { Haptics.scrubDetent() }
-                                        lastDetent = bucket
+                    if axis == .horizontal {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { moved(to: $0.location, in: geo.size) }
+                                    .onEnded { _ in lifted() }
+                            )
+                    } else {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .gesture(
+                                LongPressGesture(minimumDuration: 0.2)
+                                    .sequenced(before: DragGesture(minimumDistance: 0))
+                                    .onChanged { value in
+                                        if case .second(true, let drag?) = value {
+                                            moved(to: drag.location, in: geo.size)
+                                        }
                                     }
-                                }
-                                .onEnded { _ in
-                                    onEnd?(fraction)
-                                    if clearsOnEnd { fraction = nil }
-                                    lastDetent = nil
-                                }
-                        )
+                                    .onEnded { _ in lifted() }
+                            )
+                    }
                 }
             }
+    }
+
+    private func moved(to location: CGPoint, in size: CGSize) {
+        let next: CGFloat
+        switch axis {
+        case .horizontal: next = min(1, max(0, location.x / max(size.width, 1)))
+        case .vertical: next = min(1, max(0, location.y / max(size.height, 1)))
+        }
+        fraction = next
+        if let detent, let bucket = detent(next), bucket != lastDetent {
+            if lastDetent != nil { Haptics.scrubDetent() }
+            lastDetent = bucket
+        }
+    }
+
+    private func lifted() {
+        onEnd?(fraction)
+        if clearsOnEnd { fraction = nil }
+        lastDetent = nil
     }
 }
 
@@ -64,11 +92,12 @@ extension View {
     /// See `ZoonChartScrubber`.
     func zoonScrubbable(
         fraction: Binding<CGFloat?>,
+        axis: Axis = .horizontal,
         detent: ((CGFloat) -> Int?)? = nil,
         clearsOnEnd: Bool = true,
         onEnd: ((CGFloat?) -> Void)? = nil
     ) -> some View {
-        modifier(ZoonChartScrubber(fraction: fraction, detent: detent, onEnd: onEnd, clearsOnEnd: clearsOnEnd))
+        modifier(ZoonChartScrubber(fraction: fraction, axis: axis, detent: detent, onEnd: onEnd, clearsOnEnd: clearsOnEnd))
     }
 }
 
