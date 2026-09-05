@@ -34,10 +34,24 @@ enum Fixture {
         /// caller is unchanged; `SourceCoverage` needs it because coverage is
         /// measured per source.
         sourceName: String = "Fixture",
+        /// The stable identity `SourceCoverage` prefers when matching. `nil`
+        /// by default so existing callers keep exercising the name fallback,
+        /// which is what every night stored before the extractor started
+        /// passing one through looks like.
+        sourceBundleIdentifier: String? = nil,
         /// `false` writes the night as one undifferentiated asleep block, the
         /// way a source that reports no stages does. Not the same as a short
         /// night: the sleep is all there, the structure is not.
-        staged: Bool = true
+        staged: Bool = true,
+        /// Whether a raw wrist-temperature reading arrived. Defaults to
+        /// following `wristTempDeltaC`, which is what a night with enough
+        /// history behind it looks like -- pass `true` with a nil delta to
+        /// build the first week of an install, where the sensor works and the
+        /// baseline does not exist yet.
+        wristTempMeasured: Bool? = nil,
+        /// Who wrote each measurement. Empty by default, which is the honest
+        /// shape of every night recorded before provenance was captured.
+        measurementSources: NightMeasurementSources = .empty
     ) -> SleepNightFeatures {
         let calendar = Calendar.current
         let wake = calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
@@ -73,7 +87,10 @@ enum Fixture {
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: nil,
             sourceName: sourceName,
-            isMock: true
+            sourceBundleIdentifier: sourceBundleIdentifier,
+            isMock: true,
+            measurementSources: measurementSources,
+            wristTempMeasured: wristTempMeasured ?? (wristTempDeltaC != nil)
         )
     }
 
