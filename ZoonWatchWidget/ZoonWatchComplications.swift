@@ -105,6 +105,19 @@ struct RecoveryComplicationView: View {
 
     private var percent: Int { entry.snapshot.recoveryPercent }
 
+    /// Recovery's own band, derived from Recovery's own percent.
+    ///
+    /// This used to render `snapshot.scoreBand`, which is the *sleep* score's
+    /// band. The two are different measurements of different things, so the
+    /// complication could read "Recovery 41%" under the word "Excellent" --
+    /// the night having gone well says nothing about how recovered the body
+    /// is, which is the entire reason Recovery exists as a separate number.
+    ///
+    /// Derived here rather than published into the snapshot: the mapping is
+    /// `RecoveryScore.Band.forPercent`, it lives in `Shared`, and a second
+    /// wire field would be another thing to keep in sync with the decoder.
+    private var band: String { RecoveryScore.Band.forPercent(percent).label }
+
     var body: some View {
         switch family {
         case .accessoryInline:
@@ -121,7 +134,7 @@ struct RecoveryComplicationView: View {
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .privacySensitive()
-                Text(entry.isPlaceholder ? "Sample data" : entry.snapshot.scoreBand)
+                Text(entry.isPlaceholder ? "Sample data" : band)
                     .font(Theme.text(11))
                     .foregroundStyle(.secondary)
                     .privacySensitive()

@@ -192,6 +192,21 @@ extension SleepSnapshot {
         nextBadgeProgress = try container.decodeIfPresent(Double.self, forKey: .nextBadgeProgress) ?? 0
         bodySignalsLabel = try container.decodeIfPresent(String.self, forKey: .bodySignalsLabel) ?? "Nothing unusual"
         isShiftWorkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isShiftWorkModeEnabled) ?? false
+
+        // Tonight's plan and tomorrow's range. Missing here until now, which
+        // is why every surface that reads them has only ever shown its
+        // waiting copy: `encode(to:)` is synthesised and writes all of them,
+        // so the phone published the values and this decoder dropped them on
+        // the floor. Silent, because each one falls back to a default that
+        // reads as "no plan yet" rather than failing.
+        tonightTargetLabel = try container.decodeIfPresent(String.self, forKey: .tonightTargetLabel) ?? ""
+        tonightTargetNote = try container.decodeIfPresent(String.self, forKey: .tonightTargetNote) ?? ""
+        tomorrowRangeLabel = try container.decodeIfPresent(String.self, forKey: .tomorrowRangeLabel) ?? ""
+        isTonightTargetHolding = try container.decodeIfPresent(Bool.self, forKey: .isTonightTargetHolding) ?? false
+
+        // The strongest claim, for the watch. Same story.
+        headlineFindingText = try container.decodeIfPresent(String.self, forKey: .headlineFindingText) ?? ""
+        headlineFindingStrength = try container.decodeIfPresent(String.self, forKey: .headlineFindingStrength) ?? ""
     }
 
     init(
