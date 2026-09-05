@@ -182,7 +182,14 @@ jobs:
               grep -E "error:|Test Case.*failed|fatal error" test.log | sort -u || true
               echo '```'
             fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          # tee, not plain redirection. The step summary is visible only to
+          # someone loading the run in a browser; the job log is what the API
+          # serves, and that is the only channel remote tooling has. This is
+          # the same reasoning the crash-report step above already applies to
+          # .ips files -- a failing assertion was the one thing still
+          # invisible from outside, which is exactly how this line came to be
+          # written.
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Run ZoonUITests
         id: uitest
