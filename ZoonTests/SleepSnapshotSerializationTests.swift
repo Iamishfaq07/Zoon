@@ -66,83 +66,75 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         return snapshot
     }
 
-    /// A snapshot built the plain way, for comparison. Everything optional is
-    /// at its declared default here.
-    private func atDefaults() -> SleepSnapshot {
-        SleepSnapshot(
-            features: Fixture.night(daysAgo: 1, timeAsleepMinutes: 431),
-            score: SleepScore.compute(for: Fixture.night(daysAgo: 1), goalMinutes: 462),
-            insight: SleepInsight(
-                summary: "A distinctive summary",
-                likelyCause: "cause",
-                actionableTip: "tip",
-                confidence: .medium
-            ),
-            goalMinutes: 462
-        )
-    }
-
-    /// Guards the fixture, not the decoder.
+    /// The decoder test, and it needs no fixture at all.
     ///
-    /// A property added to `SleepSnapshot` and not added to `fullyPopulated()`
-    /// would sit at its default, which would make the round-trip test below
-    /// pass for the wrong reason: a field the decoder skips still "matches" if
-    /// the value it skipped happened to be the default anyway. This fails
-    /// first, and names the property.
-    func testFixtureLeavesNoPropertyAtItsDefault() {
-        let populated = Mirror(reflecting: fullyPopulated())
-        let defaults = Mirror(reflecting: atDefaults())
-
-        // Compared as strings so this needs no per-type knowledge and keeps
-        // working for whatever type is added next. Crude, and sufficient:
-        // every fixture value above is chosen to be unmistakable.
-        var defaultsByLabel: [String: String] = [:]
-        for child in defaults.children {
-            guard let label = child.label else { continue }
-            defaultsByLabel[label] = String(describing: child.value)
-        }
-
-        for child in populated.children {
-            guard let label = child.label,
-                  let defaultValue = defaultsByLabel[label]
-            else { continue }
-            // These four come from the init and cannot be at a "default".
-            guard !["date", "generatedAt", "score", "scoreBand"].contains(label) else { continue }
-            XCTAssertNotEqual(
-                String(describing: child.value), defaultValue,
-                "\(label) is still at its default -- add it to fullyPopulated() "
-                    + "so the round-trip test can actually see it"
-            )
-        }
-    }
-
-    /// The decoder test. Fails for any encoded field it does not read back.
+    /// Encodes a snapshot, then **perturbs every value in the resulting JSON**
+    /// -- numbers shifted, booleans flipped, strings suffixed -- decodes that,
+    /// and re-encodes. Any key `init(from:)` ignores comes back carrying the
+    /// original value instead of the perturbed one, so the payloads differ and
+    /// the test names the key.
+    ///
+    /// Written this way because the hazard is the property that does not exist
+    /// yet. Nothing here enumerates field names, and nothing depends on a
+    /// hand-maintained fixture being exhaustive -- an earlier version of this
+    /// test did, and it was both weaker and wrong: a skipped field whose value
+    /// happened to equal its default would have round-tripped cleanly.
     func testEveryEncodedFieldSurvivesTheRoundTrip() throws {
         let encoder = JSONEncoder()
-        let original = fullyPopulated()
-
-        let firstPass = try encoder.encode(original)
-        let decoded = try JSONDecoder().decode(SleepSnapshot.self, from: firstPass)
-        let secondPass = try encoder.encode(decoded)
-
-        let before = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: firstPass) as? [String: Any]
-        )
-        let after = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: secondPass) as? [String: Any]
+        let original = try encoder.encode(fullyPopulated())
+        let asDictionary = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: original) as? [String: Any]
         )
 
-        // Reported per key rather than as one opaque inequality, so a failure
-        // names the field that was dropped instead of printing two payloads.
-        for (key, value) in before {
-            let round = after[key]
-            XCTAssertEqual(
-                String(describing: value), String(describing: round ?? "<missing>"),
-                "\(key) did not survive decoding -- it is encoded but "
-                    + "init(from:) never reads it"
-            )
+        // Perturbed per JSON type.
+        //
+        // `value as? Bool` is not usable here: JSONSerialization returns
+        // NSNumber for both booleans and numbers, and that cast succeeds for
+        // any NSNumber equal to 0 or 1 -- so `badgeTier: 0` would be "flipped"
+        // to true and then fail to decode as an Int. CFBooleanGetTypeID is the
+        // only reliable discriminator.
+        var perturbed: [String: Any] = [:]
+        for (key, value) in asDictionary {
+            if CFGetTypeID(value as CFTypeRef) == CFBooleanGetTypeID() {
+                perturbed[key] = !((value as? Bool) ?? false)
+            } else if let number = value as? NSNumber {
+                // Dates encode as seconds, so they shift with everything else.
+                perturbed[key] = number.doubleValue + 7
+            } else if let text = value as? String {
+                perturbed[key] = text + " (perturbed)"
+            } else {
+                perturbed[key] = value
+            }
         }
-        XCTAssertEqual(before.count, after.count)
+        XCTAssertEqual(perturbed.count, asDictionary.count, "perturbation dropped a key")
+
+        let perturbedData = try JSONSerialization.data(withJSONObject: perturbed)
+        let decoded = try JSONDecoder().decode(SleepSnapshot.self, from: perturbedData)
+        let round = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: try encoder.encode(decoded)) as? [String: Any]
+        )
+
+        for (key, expected) in perturbed {
+            let actual = round[key]
+            // Compared numerically where both sides are numbers: an Int
+            // property re-encodes as 81 while the perturbed value was 81.0,
+            // and comparing those as strings would fail for no reason.
+            if let lhs = expected as? NSNumber, let rhs = actual as? NSNumber {
+                XCTAssertEqual(
+                    lhs.doubleValue, rhs.doubleValue, accuracy: 0.0001,
+                    "\(key) did not survive decoding -- it is encoded but "
+                        + "init(from:) never reads it"
+                )
+            } else {
+                XCTAssertEqual(
+                    String(describing: expected),
+                    String(describing: actual ?? "<missing>"),
+                    "\(key) did not survive decoding -- it is encoded but "
+                        + "init(from:) never reads it"
+                )
+            }
+        }
+        XCTAssertEqual(round.count, perturbed.count)
     }
 
     /// The specific regression, stated in the terms the bug had.
