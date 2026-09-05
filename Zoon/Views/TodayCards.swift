@@ -136,6 +136,27 @@ struct RecoveryBreakdownCard: View {
                 )
             }
 
+            // How much to believe the number, above the working rather than
+            // below it. `dataCompletenessPercent` has always been computed
+            // and never rendered, so a score built from 55% of its inputs
+            // looked exactly like one built from all of them.
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: "gauge.with.dots.needle.bottom.50percent")
+                    .font(Theme.text(11))
+                Text(recovery.confidence.label)
+                    .font(Theme.label(12, weight: .semibold))
+                if let reason = recovery.confidenceReason {
+                    Text(reason)
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .foregroundStyle(
+                recovery.confidence >= .moderate ? Color.secondary : Theme.Metric.strain
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             ForEach(recovery.components) { component in
                 HStack(spacing: 10) {
                     Text(component.label)
