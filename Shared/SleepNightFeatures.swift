@@ -180,6 +180,27 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// match against instead of the display name alone.
     let sourceBundleIdentifier: String?
 
+    /// Which HealthKit source actually wrote each physiological measurement
+    /// this night -- see `NightMeasurementSources`.
+    ///
+    /// `sourceName` above names the source of the *sleep* samples only. The
+    /// physiology is queried over the night's asleep intervals with no source
+    /// predicate, so on a wrist wearing two devices the HRV can come from one
+    /// and the sleep from the other. Empty for every night recorded before
+    /// this existed, which means *unknown*, never *nobody*.
+    var measurementSources: NightMeasurementSources = .empty
+
+    /// Whether a raw sleeping wrist-temperature reading arrived this night.
+    ///
+    /// Not the same question as `wristTempDeltaC != nil`. The delta is this
+    /// app's arithmetic against a baseline that needs about a week of history,
+    /// so a brand new install has readings and no deltas -- and anything that
+    /// judged sensor availability by the delta would report a perfectly good
+    /// temperature sensor as absent for the first week. Defaults to `false`
+    /// for nights stored before the distinction existed, which understates
+    /// rather than overstates.
+    var wristTempMeasured: Bool = false
+
     /// True when this record is synthetic sample data rather than real HealthKit
     /// output. Views badge these so a Simulator screenshot is never mistaken for
     /// a real night.
@@ -246,7 +267,9 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         sourceBundleIdentifier: String? = nil,
         isMock: Bool = false,
         stageSegments: [StageSegment] = [],
-        timeZoneIdentifier: String = TimeZone.current.identifier
+        timeZoneIdentifier: String = TimeZone.current.identifier,
+        measurementSources: NightMeasurementSources = .empty,
+        wristTempMeasured: Bool = false
     ) {
         self.date = date
         self.bedtime = bedtime
@@ -284,6 +307,8 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         self.isMock = isMock
         self.stageSegments = stageSegments
         self.timeZoneIdentifier = timeZoneIdentifier
+        self.measurementSources = measurementSources
+        self.wristTempMeasured = wristTempMeasured
     }
 
     // MARK: - Decoding
@@ -344,6 +369,10 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         stageSegments = try c.decodeIfPresent([StageSegment].self, forKey: .stageSegments) ?? []
         timeZoneIdentifier = try c.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)
             ?? TimeZone.current.identifier
+        measurementSources = try c.decodeIfPresent(
+            NightMeasurementSources.self, forKey: .measurementSources
+        ) ?? .empty
+        wristTempMeasured = try c.decodeIfPresent(Bool.self, forKey: .wristTempMeasured) ?? false
     }
 }
 

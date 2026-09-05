@@ -85,7 +85,10 @@ struct SensorTruthView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if report.providesEverything {
+            // "Everything is arriving" is only true of *this* watch when
+            // nothing is being supplied by a different one -- see
+            // `Report.suppliedElsewhere`.
+            if report.providesEverything && report.suppliedElsewhere.isEmpty {
                 Text("Everything Zoon reads is arriving.")
                     .font(Theme.text(13))
                     .fixedSize(horizontal: false, vertical: true)
@@ -104,22 +107,41 @@ struct SensorTruthView: View {
             if !report.provided.isEmpty {
                 Divider().overlay(Theme.neutral(0.12))
                 ForEach(report.provided) { entry in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(entry.quantity.label)
-                            .font(Theme.text(13))
-                        Spacer(minLength: 8)
-                        Text(entry.availability.label)
-                            .font(Theme.text(11, weight: .semibold))
-                            .foregroundStyle(
-                                entry.availability == .usually
-                                    ? Theme.Metric.recoveryHigh : Theme.Metric.strain
-                            )
-                    }
+                    providedRow(entry)
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
+    }
+
+    /// A quantity that is arriving, and who is actually writing it.
+    ///
+    /// The second line is the point. The physiology queries average over the
+    /// night's asleep intervals with no source predicate, so a second device
+    /// on the same wrist contributes to the number -- and this card used to
+    /// credit all of it to whichever source wrote the sleep samples. It stays
+    /// silent when provenance was never recorded rather than guessing.
+    private func providedRow(_ entry: SourceCoverage.Entry) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(entry.quantity.label)
+                    .font(Theme.text(13))
+                Spacer(minLength: 8)
+                Text(entry.availability.label)
+                    .font(Theme.text(11, weight: .semibold))
+                    .foregroundStyle(
+                        entry.availability == .usually
+                            ? Theme.Metric.recoveryHigh : Theme.Metric.strain
+                    )
+            }
+            if let note = entry.attributionNote {
+                Text(note)
+                    .font(Theme.text(11))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func missingRow(_ entry: SourceCoverage.Entry, note: String) -> some View {
