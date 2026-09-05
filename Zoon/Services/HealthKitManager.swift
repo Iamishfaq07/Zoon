@@ -419,6 +419,32 @@ final class HealthKitManager {
     ) async throws -> Double? {
         try await statistic(identifier, unit: unit, in: intervals, options: .discreteAverage) {
             $0.averageQuantity()
+        }.value
+    }
+
+    /// The same average, plus every source that contributed a sample to it.
+    ///
+    /// Physiology is queried over the night's asleep intervals with no source
+    /// predicate -- deliberately, since a reading is a reading whichever
+    /// device recorded it. That makes the *value* right and the *attribution*
+    /// unknowable after the fact, which is how the app came to tell a Garmin
+    /// owner their Garmin provides HRV that an Apple Watch on the same wrist
+    /// had written. `.separateBySource` is what closes that: HealthKit fills
+    /// in `HKStatistics.sources` while `averageQuantity()` keeps returning the
+    /// combined average across all of them, so nothing about the number
+    /// changes.
+    func averageWithSources(
+        _ identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        in intervals: [DateInterval]
+    ) async throws -> (value: Double?, sources: [MeasurementSource]) {
+        try await statistic(
+            identifier,
+            unit: unit,
+            in: intervals,
+            options: [.discreteAverage, .separateBySource]
+        ) {
+            $0.averageQuantity()
         }
     }
 
@@ -429,7 +455,7 @@ final class HealthKitManager {
     ) async throws -> Double? {
         try await statistic(identifier, unit: unit, in: intervals, options: .discreteMin) {
             $0.minimumQuantity()
-        }
+        }.value
     }
 
     func sum(
@@ -439,7 +465,7 @@ final class HealthKitManager {
     ) async throws -> Double? {
         try await statistic(identifier, unit: unit, in: [interval], options: .cumulativeSum) {
             $0.sumQuantity()
-        }
+        }.value
     }
 
     /// - Parameter intervals: OR'd together into one predicate. Empty yields
@@ -451,8 +477,8 @@ final class HealthKitManager {
         in intervals: [DateInterval],
         options: HKStatisticsOptions,
         extract: @escaping @Sendable (HKStatistics) -> HKQuantity?
-    ) async throws -> Double? {
-        guard !intervals.isEmpty else { return nil }
+    ) async throws -> (value: Double?, sources: [MeasurementSource]) {
+        guard !intervals.isEmpty else { return (nil, []) }
         let type = HKQuantityType(identifier)
         let subpredicates = intervals.map {
             HKQuery.predicateForSamples(withStart: $0.start, end: $0.end)
@@ -472,17 +498,25 @@ final class HealthKitManager {
                     // normal result, not a failure — a night with no SpO2
                     // readings is just a night with no SpO2 readings.
                     if (error as? HKError)?.code == .errorNoData {
-                        continuation.resume(returning: nil)
+                        continuation.resume(returning: (nil, []))
                     } else {
                         continuation.resume(throwing: error)
                     }
                     return
                 }
                 guard let statistics else {
-                    continuation.resume(returning: nil)
+                    continuation.resume(returning: (nil, []))
                     return
                 }
-                continuation.resume(returning: extract(statistics)?.doubleValue(for: unit))
+                // `sources` is populated only when `.separateBySource` was
+                // requested; nil otherwise, which is why an empty list here
+                // must never be read as "nobody wrote it".
+                let sources = (statistics.sources ?? []).map {
+                    MeasurementSource(name: $0.name, bundleIdentifier: $0.bundleIdentifier)
+                }
+                continuation.resume(
+                    returning: (extract(statistics)?.doubleValue(for: unit), sources)
+                )
             }
             store.execute(query)
         }

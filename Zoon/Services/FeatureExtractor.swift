@@ -50,7 +50,7 @@ struct FeatureExtractor {
         // Vitals are queried concurrently — six sequential round trips to the
         // health store is a visible pause on a cold refresh. Each returns nil on
         // failure: one missing signal should degrade the record, not fail it.
-        async let avgHRTask = measuredAverage(.heartRate, unit: .beatsPerMinute, in: intervals)
+        async let avgHRTask = attributedAverage(.heartRate, unit: .beatsPerMinute, in: intervals)
         async let minHRTask = measuredMinimum(.heartRate, unit: .beatsPerMinute, in: intervals)
         // Resting HR is a once-daily value that can arrive after wake. Bound the
         // query to the wake date so a missing reading cannot silently reuse an
@@ -71,22 +71,64 @@ struct FeatureExtractor {
             unit: .beatsPerMinute,
             in: DateInterval(start: wakeDayStart, end: wakeDayEnd)
         )
-        async let hrvTask = measuredAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: intervals)
-        async let respiratoryTask = measuredAverage(.respiratoryRate, unit: .breathsPerMinute, in: intervals)
-        async let spo2Task = measuredAverage(.oxygenSaturation, unit: .percent(), in: intervals)
-        async let wristTempTask = measuredAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: intervals)
-        async let breathingTask = measuredAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: intervals)
+        async let hrvTask = attributedAverage(.heartRateVariabilitySDNN, unit: .secondUnit(with: .milli), in: intervals)
+        async let respiratoryTask = attributedAverage(.respiratoryRate, unit: .breathsPerMinute, in: intervals)
+        async let spo2Task = attributedAverage(.oxygenSaturation, unit: .percent(), in: intervals)
+        async let wristTempTask = attributedAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: intervals)
+        async let breathingTask = attributedAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: intervals)
 
-        let avgHROutcome = await avgHRTask
+        let avgHRMeasurement = await avgHRTask
+        let avgHROutcome = avgHRMeasurement.outcome
         let minHROutcome = await minHRTask
         let restingHROutcome = await restingHRTask
-        let hrvOutcome = await hrvTask
-        let respiratoryOutcome = await respiratoryTask
+        let hrvMeasurement = await hrvTask
+        let hrvOutcome = hrvMeasurement.outcome
+        let respiratoryMeasurement = await respiratoryTask
+        let respiratoryOutcome = respiratoryMeasurement.outcome
         // HKUnit.percent() yields a 0–1 fraction, NOT 0–100. Forgetting this is
         // how you end up displaying "0.97% blood oxygen".
-        let spo2Outcome = await spo2Task.map { $0 * 100 }
-        let wristTempOutcome = await wristTempTask
-        let breathingRaw = await breathingTask
+        let spo2Measurement = await spo2Task
+        let spo2Outcome = spo2Measurement.outcome.map { $0 * 100 }
+        let wristTempMeasurement = await wristTempTask
+        let wristTempOutcome = wristTempMeasurement.outcome
+        let breathingMeasurement = await breathingTask
+        let breathingRaw = breathingMeasurement.outcome
+
+        // Who wrote each measurement, recorded only where HealthKit actually
+        // said. A metric with no value gets no entry: an empty source list
+        // would be indistinguishable from "never recorded", and
+        // `NightMeasurementSources` treats those as opposite claims.
+        //
+        // Resting heart rate is absent from this map on purpose. It comes
+        // from a single-sample query rather than a statistics query, so
+        // `.separateBySource` has nothing to say about it; leaving it
+        // unrecorded reports honestly as "unknown" rather than inventing an
+        // attribution the query never made.
+        //
+        // Built as a typed local rather than one dictionary literal: a literal
+        // mixing six plain values with a mapped optional is exactly the shape
+        // that makes the type checker slow or ambiguous, and it reads no
+        // better.
+        var writers: [SensorTruth.Quantity: [MeasurementSource]] = [
+            .heartRate: avgHRMeasurement.sources,
+            .hrv: hrvMeasurement.sources,
+            .respiratoryRate: respiratoryMeasurement.sources,
+            .bloodOxygen: spo2Measurement.sources,
+            .wristTemperature: wristTempMeasurement.sources,
+            .breathingDisturbances: breathingMeasurement.sources
+        ]
+        // The stage data's own writer, which the session already knows.
+        // Recorded here too so every quantity is answered from one place
+        // rather than some from this map and one from `sourceName`.
+        if let stageSourceName = session.sourceName {
+            writers[.sleepStages] = [
+                MeasurementSource(
+                    name: stageSourceName,
+                    bundleIdentifier: session.sourceBundleIdentifier ?? ""
+                )
+            ]
+        }
+        let measurementSources = NightMeasurementSources(writers)
         // Breathing disturbances also arrive as a 0-1 fraction under
         // HKUnit.percent(), same trap as SpO2.
         let breathingOutcome = breathingRaw.map { $0 * 100 }
@@ -181,9 +223,20 @@ struct FeatureExtractor {
             alcoholicBeverages: measuredAlcoholicBeverages,
             lateCaffeineMg: measuredLateCaffeineMg,
             sourceName: session.sourceName,
+            // Never passed before, so `sourceBundleIdentifier` was nil on
+            // every night this pipeline has ever written -- the column
+            // exists, `SleepSession` populates it, and the value was dropped
+            // here. Everything downstream that matches on a stable source
+            // identity (the preferred-source picker, source coverage) has
+            // been falling back to the display name for want of one line.
+            sourceBundleIdentifier: session.sourceBundleIdentifier,
             isMock: false,
             stageSegments: session.segments,
-            timeZoneIdentifier: session.timeZoneIdentifier
+            timeZoneIdentifier: session.timeZoneIdentifier,
+            measurementSources: measurementSources,
+            // The raw reading arrived, whether or not a baseline existed to
+            // turn it into a delta -- see `wristTempMeasured`'s doc comment.
+            wristTempMeasured: wristTemp != nil
         )
 
         return Result(
@@ -202,18 +255,25 @@ struct FeatureExtractor {
     // stale stored value, the two must stay distinguishable: a confirmed
     // absence should clear, a failed query must not. See `MeasurementOutcome`.
 
-    private func measuredAverage(
+    /// An average plus the sources that contributed to it.
+    ///
+    /// Replaces the plain averaging wrapper this file used to have: every
+    /// caller wanted the attribution, and keeping both would have left a
+    /// second path that silently records nothing. Outcome semantics are
+    /// unchanged -- a thrown query and a confirmed absence stay
+    /// distinguishable. Sources are empty whenever there is no value, which
+    /// is what keeps "unknown" and "nobody" separable one layer up.
+    private func attributedAverage(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         in intervals: [DateInterval]
-    ) async -> MeasurementOutcome {
+    ) async -> (outcome: MeasurementOutcome, sources: [MeasurementSource]) {
         do {
-            guard let value = try await healthKit.average(identifier, unit: unit, in: intervals) else {
-                return .noData
-            }
-            return .measured(value)
+            let result = try await healthKit.averageWithSources(identifier, unit: unit, in: intervals)
+            guard let value = result.value else { return (.noData, []) }
+            return (.measured(value), result.sources)
         } catch {
-            return .queryFailed
+            return (.queryFailed, [])
         }
     }
 

@@ -100,6 +100,16 @@ final class SleepNightRecord {
     /// matching until the next re-sync fills it in.
     var sourceBundleIdentifier: String?
 
+    /// Which HealthKit source wrote each of this night's measurements,
+    /// JSON-encoded -- see `NightMeasurementSources`.
+    ///
+    /// Optional and defaulted, so SwiftData adds the column to an existing
+    /// store without a migration plan, same as every other field added here
+    /// after v1. `nil` on every row written before this existed, which reads
+    /// as *unknown* rather than *nobody*: those nights were extracted by a
+    /// pipeline that never asked HealthKit the question.
+    var measurementSourcesData: Data?
+
     /// The night's stage timeline, JSON-encoded.
     ///
     /// A blob rather than a to-many relationship: it's only ever read whole to
@@ -160,6 +170,7 @@ final class SleepNightRecord {
         self.lateCaffeineMg = features.lateCaffeineMg
         self.sourceName = features.sourceName
         self.sourceBundleIdentifier = features.sourceBundleIdentifier
+        self.measurementSourcesData = features.measurementSources.encoded
         self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
         self.insightLikelyCause = insight?.likelyCause
@@ -247,6 +258,12 @@ final class SleepNightRecord {
         if !features.stageSegments.isEmpty {
             stageSegmentsData = features.stageSegments.encoded
         }
+        // Same rule, same reason: a re-sync that recorded no provenance --
+        // an older build, or a query that threw -- must leave what is stored
+        // alone rather than overwrite known attribution with unknown.
+        if !features.measurementSources.isEmpty {
+            measurementSourcesData = features.measurementSources.encoded
+        }
     }
 
     func apply(_ insight: SleepInsight) {
@@ -308,7 +325,13 @@ extension SleepNightRecord {
             sourceBundleIdentifier: sourceBundleIdentifier,
             isMock: false,
             stageSegments: [StageSegment].decode(stageSegmentsData),
-            timeZoneIdentifier: timeZoneIdentifier ?? TimeZone.current.identifier
+            timeZoneIdentifier: timeZoneIdentifier ?? TimeZone.current.identifier,
+            measurementSources: NightMeasurementSources.decode(measurementSourcesData),
+            // The absolute reading, not the delta. `wristTempDeltaC` above is
+            // nil for the first week of any install because the baseline it
+            // subtracts does not exist yet, and reading availability off it
+            // would report a working temperature sensor as absent.
+            wristTempMeasured: wristTempAbsoluteC != nil
         )
     }
 
