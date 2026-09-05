@@ -369,16 +369,28 @@ extension SleepIntelligenceScore {
             case .excellent: "Excellent"
             }
         }
-    }
 
-    var band: Band {
-        switch percent {
-        case ..<50: .poor
-        case 50..<70: .fair
-        case 70..<85: .good
-        default: .excellent
+        /// Callable from a bare `Int`, for the same reason
+        /// `SleepScore.Band.forValue` is: the widget and watch targets hold a
+        /// `SleepSnapshot`, not a full score, and a surface that re-derives
+        /// these cutoffs is how two tables drift apart while both look right.
+        ///
+        /// The thresholds are currently identical to `SleepScore.Band`'s.
+        /// That is a coincidence of two independent tables, not a shared
+        /// definition -- `SleepIntelligenceBandTests` pins the agreement so a
+        /// change to either one is a failing test rather than a widget whose
+        /// colour stops matching its label.
+        static func forPercent(_ percent: Int) -> Band {
+            switch percent {
+            case ..<50: .poor
+            case 50..<70: .fair
+            case 70..<85: .good
+            default: .excellent
+            }
         }
     }
+
+    var band: Band { Band.forPercent(percent) }
 
     /// Components that helped, strongest first.
     var positiveContributors: [Component] {

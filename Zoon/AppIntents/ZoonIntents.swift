@@ -38,7 +38,7 @@ struct GetSleepSummaryIntent: AppIntent {
             return .result(dialog: "I don't have last night's data yet — open Zoon once to get started.")
         }
         let duration = SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)
-        return .result(dialog: "You slept \(duration) last night, a sleep score of \(snapshot.score).")
+        return .result(dialog: "You slept \(duration) last night, a sleep score of \(snapshot.flagshipScore).")
     }
 }
 

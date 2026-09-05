@@ -38,6 +38,14 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// treats a missing recovery reading: as "nothing to show yet", not zero.
     var sleepIntelligencePercent: Int = 0
     var sleepIntelligenceBand: String = ""
+    /// `SleepIntelligenceScore.currentVersion` at the time this was written.
+    ///
+    /// 0 means "no Sleep Intelligence in this payload" -- either a snapshot
+    /// from a build that predates the field, or one where the score could not
+    /// be computed. Read together with the band, it is what `flagshipScore`
+    /// uses to decide whether it has a real score or a placeholder; the band
+    /// alone cannot tell a genuine empty string from an absent field.
+    var sleepIntelligenceVersion: Int = 0
 
     var isMock: Bool = false
 
@@ -124,6 +132,40 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// least likely to be recovered by the reader.
     var headlineFindingStrength: String = ""
 
+    /// Whether this payload carries a real Sleep Intelligence score.
+    ///
+    /// Both halves are needed. The version alone would accept a score whose
+    /// band string never made it across; the band alone cannot distinguish a
+    /// genuine empty label from a field that did not exist when the phone
+    /// wrote this.
+    var hasSleepIntelligence: Bool {
+        sleepIntelligenceVersion > 0 && !sleepIntelligenceBand.isEmpty
+    }
+
+    /// The one score every glance surface shows.
+    ///
+    /// The phone's hero, its Last Night card and the watch's Sleep page all
+    /// lead with Sleep Intelligence. The watch's Last Night page, both home
+    /// screen widgets, the complication gauge and the Siri response led with
+    /// `score` -- the older `SleepScore`. Same night, two different numbers,
+    /// depending on which piece of glass you happened to look at, with no
+    /// indication that they were answering different questions.
+    ///
+    /// `score` remains as the fallback rather than as an alternative. A watch
+    /// or a widget can hold a snapshot written before the phone was updated,
+    /// and showing the older number is better than showing nothing -- but it
+    /// is the older number, not a second opinion.
+    var flagshipScore: Int {
+        hasSleepIntelligence ? sleepIntelligencePercent : score
+    }
+
+    /// The band belonging to `flagshipScore`, from the same payload. Never
+    /// mix these: `scoreBand` grades `score`, and pairing one score's number
+    /// with another's label is the mistake `RecoveryComplicationView` made.
+    var flagshipBand: String {
+        hasSleepIntelligence ? sleepIntelligenceBand : scoreBand
+    }
+
     /// Sleep debt expressed in hours, which is how the widget phrases it.
     var sleepDebtHours: Double { sleepDebtMinutes / 60 }
 
@@ -182,6 +224,7 @@ extension SleepSnapshot {
         sleepPerformance = try container.decodeIfPresent(Double.self, forKey: .sleepPerformance) ?? 0
         sleepIntelligencePercent = try container.decodeIfPresent(Int.self, forKey: .sleepIntelligencePercent) ?? 0
         sleepIntelligenceBand = try container.decodeIfPresent(String.self, forKey: .sleepIntelligenceBand) ?? ""
+        sleepIntelligenceVersion = try container.decodeIfPresent(Int.self, forKey: .sleepIntelligenceVersion) ?? 0
         isMock = try container.decodeIfPresent(Bool.self, forKey: .isMock) ?? false
         badgeTitle = try container.decodeIfPresent(String.self, forKey: .badgeTitle) ?? ""
         badgeSymbol = try container.decodeIfPresent(String.self, forKey: .badgeSymbol) ?? "hexagon.fill"
@@ -220,6 +263,7 @@ extension SleepSnapshot {
         sleepPerformance: Double = 0,
         sleepIntelligencePercent: Int = 0,
         sleepIntelligenceBand: String = "",
+        sleepIntelligenceVersion: Int = 0,
         isShiftWorkModeEnabled: Bool = false
     ) {
         self.date = features.date
@@ -236,6 +280,7 @@ extension SleepSnapshot {
         self.sleepPerformance = sleepPerformance
         self.sleepIntelligencePercent = sleepIntelligencePercent
         self.sleepIntelligenceBand = sleepIntelligenceBand
+        self.sleepIntelligenceVersion = sleepIntelligenceVersion
         self.isMock = features.isMock
         self.isShiftWorkModeEnabled = isShiftWorkModeEnabled
     }

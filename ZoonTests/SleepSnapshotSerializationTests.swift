@@ -47,6 +47,7 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         snapshot.sleepPerformance = 88.5
         snapshot.sleepIntelligencePercent = 79
         snapshot.sleepIntelligenceBand = "Distinctive band"
+        snapshot.sleepIntelligenceVersion = 4
         snapshot.isMock = true
         snapshot.badgeTitle = "Distinctive badge"
         snapshot.badgeSymbol = "star.circle.fill"

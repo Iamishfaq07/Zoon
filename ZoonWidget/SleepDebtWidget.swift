@@ -114,7 +114,7 @@ struct SleepDebtWidgetView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                ScoreBadge(score: snapshot.score, band: snapshot.scoreBand)
+                ScoreBadge(score: snapshot.flagshipScore, band: snapshot.flagshipBand)
 
                 Text(snapshot.insightSummary)
                     .font(.caption2)
@@ -144,10 +144,10 @@ struct SleepDebtWidgetView: View {
     // widget is still identifiable at a glance.
 
     private var circular: some View {
-        Gauge(value: min(Double(snapshot.score), 100), in: 0...100) {
+        Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
             Image(systemName: "moon.zzz.fill")
         } currentValueLabel: {
-            Text("\(snapshot.score)")
+            Text("\(snapshot.flagshipScore)")
                 .font(.system(.body, design: .rounded).weight(.semibold))
         }
         .gaugeStyle(.accessoryCircular)
@@ -170,7 +170,7 @@ struct SleepDebtWidgetView: View {
             Text(snapshot.balanceLabel)
                 .font(.system(.title2, design: .rounded).weight(.bold))
                 .privacySensitive()
-            Text("\(lastNightLabel) \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.score)")
+            Text("\(lastNightLabel) \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.flagshipScore)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .privacySensitive()
