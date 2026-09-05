@@ -997,6 +997,7 @@ final class SleepDataCoordinator {
             sleepPerformance: context.sleepNeed.performancePercent,
             sleepIntelligencePercent: context.sleepIntelligence.percent,
             sleepIntelligenceBand: context.sleepIntelligence.band.label,
+            sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
             isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled
         )
         snapshot.bodySignalsLabel = context.healthRadar.isActive

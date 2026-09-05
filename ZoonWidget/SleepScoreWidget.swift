@@ -56,12 +56,12 @@ struct SleepScoreWidgetView: View {
     private var large: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(snapshot.score)")
+                Text("\(snapshot.flagshipScore)")
                     .font(.system(size: 52, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(scoreColor)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(snapshot.scoreBand)
+                    Text(snapshot.flagshipBand)
                         .font(.subheadline.weight(.semibold))
                     Text(lastNightLabel)
                         .font(.caption2)
@@ -115,12 +115,12 @@ struct SleepScoreWidgetView: View {
 
             Spacer(minLength: 0)
 
-            Text("\(snapshot.score)")
+            Text("\(snapshot.flagshipScore)")
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(scoreColor)
 
-            Text(snapshot.scoreBand)
+            Text(snapshot.flagshipBand)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -137,11 +137,11 @@ struct SleepScoreWidgetView: View {
     private var medium: some View {
         HStack(spacing: 16) {
             VStack(spacing: 2) {
-                Text("\(snapshot.score)")
+                Text("\(snapshot.flagshipScore)")
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(scoreColor)
-                Text(snapshot.scoreBand)
+                Text(snapshot.flagshipBand)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -196,7 +196,7 @@ struct SleepScoreWidgetView: View {
             // opts these two lines into the system's own Lock Screen
             // privacy redaction (Settings > Notifications > Show Previews),
             // the same mechanism first-party widgets use.
-            Text("\(snapshot.score) · \(snapshot.scoreBand)")
+            Text("\(snapshot.flagshipScore) · \(snapshot.flagshipBand)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .privacySensitive()
             Text(snapshot.insightSummary)
@@ -229,12 +229,16 @@ struct SleepScoreWidgetView: View {
         }
     }
 
-    /// Reads the same thresholds `SleepScore.Band` uses (`SleepScoreTests`
-    /// covers those boundaries) rather than re-deriving them here, so the
-    /// widget's color bands can't silently drift out of sync with the
-    /// score's own definition of poor/fair/good/excellent.
+    /// Reads the flagship score's own threshold table rather than
+    /// re-deriving the cutoffs here, so the widget's colours can't drift out
+    /// of sync with the label printed beside them.
+    ///
+    /// `SleepIntelligenceScore.Band`, matching what `flagshipScore` returns.
+    /// On the fallback path -- a snapshot too old to carry Sleep Intelligence
+    /// -- the number is a `SleepScore` instead, and the two tables agree
+    /// exactly; `SleepIntelligenceBandTests` fails if either moves.
     private var scoreColor: Color {
-        switch SleepScore.Band.forValue(snapshot.score) {
+        switch SleepIntelligenceScore.Band.forPercent(snapshot.flagshipScore) {
         case .poor: .orange
         case .fair: .yellow
         case .good: .mint

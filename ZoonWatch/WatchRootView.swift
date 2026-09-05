@@ -355,11 +355,17 @@ struct SleepPage: View {
 
             // The score as a bar rather than a second big number: two large
             // numerals on one small screen and neither gets read.
+            //
+            // `flagshipScore`, not `score`. This page and the Sleep page sit
+            // two swipes apart on the same watch and used to show different
+            // numbers for the same night -- this one the older `SleepScore`,
+            // that one Sleep Intelligence -- with nothing to say they were
+            // answering different questions.
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
-                    Text("Score")
+                    Text("Sleep")
                     Spacer()
-                    Text("\(snapshot.score)").monospacedDigit()
+                    Text("\(snapshot.flagshipScore)").monospacedDigit()
                 }
                 .font(Theme.label(11, weight: .regular))
                 .foregroundStyle(.secondary)
@@ -369,7 +375,7 @@ struct SleepPage: View {
                         Capsule().fill(Color.white.opacity(0.12))
                         Capsule()
                             .fill(Theme.Metric.sleep)
-                            .frame(width: geometry.size.width * Double(snapshot.score) / 100)
+                            .frame(width: geometry.size.width * Double(snapshot.flagshipScore) / 100)
                     }
                 }
                 .frame(height: 6)
