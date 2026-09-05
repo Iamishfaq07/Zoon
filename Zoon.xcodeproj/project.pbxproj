@@ -195,6 +195,7 @@
 		3FAFF50F81F032C0A489661C /* SleepMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94863AD57BC6DF42B748A3BB /* SleepMap.swift */; };
 		402487B4962F61C60243F542 /* NapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1DB3776628821BCA9A8964 /* NapStore.swift */; };
 		408D22C1B528FB25B057BC19 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
+		419AFF3F1A5D1DF58DA74469 /* RecoveryConfidenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7019651EFEC9BBAB163A15 /* RecoveryConfidenceTests.swift */; };
 		41BEA2D9EBB8D252072C79FF /* PairedDotPlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DF81B66203884E4C36BE4D2 /* PairedDotPlot.swift */; };
 		428F835C77993F29739A4C03 /* SleepMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5DFA724348089E9D19996D /* SleepMapTests.swift */; };
 		432F30A14EEFE12881030E12 /* SleepSessionBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02032F4DEAB22D8D55BEC054 /* SleepSessionBuilderTests.swift */; };
@@ -736,6 +737,7 @@
 		1A00AE87DBDA56AC4CCB5B66 /* BehaviorObservationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorObservationStore.swift"; sourceTree = "<group>"; };
 		1A572D9FB17470E31AB20EEE /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockData.swift"; sourceTree = "<group>"; };
 		1AF6BFEAF25ED5145D61FB79 /* SleepExperimentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepExperimentStore.swift"; sourceTree = "<group>"; };
+		1B7019651EFEC9BBAB163A15 /* RecoveryConfidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryConfidenceTests.swift"; sourceTree = "<group>"; };
 		1BDA01402141290D2E448035 /* DataEnvironment+Live.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataEnvironment+Live.swift"; sourceTree = "<group>"; };
 		1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapLiveActivity.swift"; sourceTree = "<group>"; };
 		1D1890339F09B39454113525 /* MorningBrief.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningBrief.swift"; sourceTree = "<group>"; };
@@ -1332,6 +1334,7 @@
 				61D956F040253B0CA1FB34BE,
 				CE191264FB836AC4CAD15978,
 				AC2598BE02E91A9C95109E77,
+				1B7019651EFEC9BBAB163A15,
 				728522C938EB304A352B98B0,
 				9D6BA693E9476B3989FEB75F,
 				B4A8F4C33D6ED860E4481578,
@@ -2179,6 +2182,7 @@
 				3D19938F41400805F90D63FA,
 				8D97CC1A03164A983BD15302,
 				E46DAC3B1BE6879273091E86,
+				419AFF3F1A5D1DF58DA74469,
 				8B838995599BC2BFFAC52ECC,
 				93AA7361FCCD00EAD308307C,
 				7BA1298E55AD9747F8AD12ED,

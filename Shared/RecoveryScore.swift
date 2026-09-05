@@ -40,6 +40,10 @@ struct RecoveryScore: Codable, Hashable, Sendable {
     let dataCompletenessPercent: Int
     /// How many of the (up to 4) components had real data behind them.
     let availableComponentCount: Int
+    /// Nights in the window the baseline was built from -- carried so
+    /// `confidence` can be derived here rather than recomputed by every
+    /// caller that has the score but not the baseline.
+    let baselineNightCount: Int
 
     struct Component: Codable, Hashable, Sendable, Identifiable {
         let label: String
@@ -170,11 +174,104 @@ struct RecoveryScore: Codable, Hashable, Sendable {
             components: components,
             isEstimate: baseline.nightCount < minimumBaselineNights,
             dataCompletenessPercent: Int((availableWeight * 100).rounded()),
-            availableComponentCount: availableCount
+            availableComponentCount: availableCount,
+            baselineNightCount: baseline.nightCount
         )
     }
 
     private static func clamp01(_ x: Double) -> Double { min(max(x, 0), 1) }
+}
+
+// MARK: - Confidence
+
+extension RecoveryScore {
+
+    /// How much to believe this number.
+    ///
+    /// Recovery already knew both halves of this and said neither. It
+    /// reported `dataCompletenessPercent` -- so a score assembled from 55% of
+    /// its usual inputs was already distinguishable from a full one, in a
+    /// field nothing rendered -- and `isEstimate`, a single boolean that
+    /// flipped at four nights and then said the same thing forever after.
+    /// `SleepIntelligenceScore` and `LearnedSleepNeed` have both carried a
+    /// `MetricConfidence` for a while. The headline number did not.
+    ///
+    /// Two independent judgments, and the answer is the **weaker** of them,
+    /// never their average -- the same rule `SleepMap` uses and the reason
+    /// `MetricConfidence` is `Comparable`. Thirty nights of history cannot
+    /// rescue a night with no HRV, and a complete night cannot rescue a
+    /// baseline of three.
+    var confidence: MetricConfidence {
+        min(
+            Self.baselineConfidence(nightCount: baselineNightCount),
+            Self.coverageConfidence(percent: dataCompletenessPercent)
+        )
+    }
+
+    /// Confidence from how much history the baseline stands on.
+    ///
+    /// Below `minimumBaselineNights` the comparison is against a mean of
+    /// three or fewer readings, which is what `isEstimate` has always
+    /// flagged. Above it the number keeps improving, and a boolean cannot
+    /// say so: two weeks of baseline is a materially better comparison than
+    /// five nights, and someone deciding whether to train on it deserves to
+    /// know which they have.
+    static func baselineConfidence(nightCount: Int) -> MetricConfidence {
+        switch nightCount {
+        case ..<minimumBaselineNights: .insufficient
+        case minimumBaselineNights..<7: .low
+        case 7..<14: .moderate
+        default: .high
+        }
+    }
+
+    /// Confidence from how much of the model actually ran.
+    ///
+    /// Thresholds are in weight, not component count, because the components
+    /// are not interchangeable: HRV alone carries 0.45 and respiratory rate
+    /// 0.10, so three of four components is 90% when respiration is the
+    /// missing one and 55% when HRV is. Counting components would call those
+    /// two the same night.
+    ///
+    /// The attainable values, given sleep performance is always present:
+    ///
+    ///     100  everything                     high
+    ///      90  no respiratory                 moderate
+    ///      75  no resting HR                  moderate
+    ///      55  no HRV                         low
+    ///      45  sleep + resting HR             insufficient
+    ///      30  sleep + respiratory            insufficient
+    ///      20  sleep alone                    insufficient
+    ///
+    /// Below 50 the score is mostly a restatement of how long you slept.
+    /// That is a real number and a useful one, but it is not a recovery
+    /// score, and presenting it as one is the thing this exists to stop.
+    static func coverageConfidence(percent: Int) -> MetricConfidence {
+        switch percent {
+        case ..<50: .insufficient
+        case 50..<75: .low
+        case 75..<100: .moderate
+        default: .high
+        }
+    }
+
+    /// One sentence saying which half is the limit, for the card that shows
+    /// the confidence. `nil` when nothing is holding it back.
+    var confidenceReason: String? {
+        let fromBaseline = Self.baselineConfidence(nightCount: baselineNightCount)
+        let fromCoverage = Self.coverageConfidence(percent: dataCompletenessPercent)
+        guard min(fromBaseline, fromCoverage) < .high else { return nil }
+
+        let missing = components.filter { !$0.isAvailable }.map(\.label)
+        // Whichever judgment is the binding one gets named. When they tie,
+        // the missing signals are the more actionable of the two -- history
+        // arrives on its own, a signal that never arrives may be a setting.
+        if fromCoverage <= fromBaseline, !missing.isEmpty {
+            return "No \(missing.map { $0.lowercased() }.joined(separator: " or ")) last night, so the rest carried the score."
+        }
+        let nights = baselineNightCount
+        return "Comparing against \(nights) \(nights == 1 ? "night" : "nights") of your own history."
+    }
 }
 
 // MARK: - Presentation
