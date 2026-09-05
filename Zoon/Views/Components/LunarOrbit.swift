@@ -40,7 +40,7 @@ struct LunarOrbit: View {
         "Recovery": Theme.Family.recovery,
         "Circadian": Theme.Family.circadian,
         "Breathing": Theme.Family.breathing,
-        "Architecture": Theme.Family.bodySignals
+        "Stage Pattern": Theme.Family.bodySignals
     ]
 
     private var selected: SleepIntelligenceScore.Component? {
