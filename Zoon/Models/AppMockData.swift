@@ -25,7 +25,10 @@ enum AppMockData {
         let night = MockData.goodNight
         return DayContextBuilder().build(.init(
             night: night,
-            insight: MockData.goodInsight,
+            // The band is ignored here: these two previews want their
+            // hand-written copy, not the engine's. Everything else in this
+            // file runs the real pipeline.
+            insight: { _ in MockData.goodInsight },
             history: MockData.history.filter { $0.date < night.date },
             goalMinutes: goalMinutes,
             yesterdayStrain: MockData.yesterdayStrain,
@@ -43,7 +46,7 @@ enum AppMockData {
         let night = MockData.poorNight
         return DayContextBuilder().build(.init(
             night: night,
-            insight: MockData.poorInsight,
+            insight: { _ in MockData.poorInsight },
             history: MockData.history.filter { $0.date < night.date },
             goalMinutes: goalMinutes,
             yesterdayStrain: MockData.yesterdayStrain,

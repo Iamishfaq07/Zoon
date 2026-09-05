@@ -65,13 +65,19 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
     func generate(
         for features: SleepNightFeatures,
         baseline: RollingBaseline,
-        goalMinutes: Double
+        goalMinutes: Double,
+        band: SleepIntelligenceScore.Band?
     ) -> SleepInsight {
 
         let findings = allRules.compactMap { $0(features, baseline, goalMinutes) }
         let strongest = findings.max { $0.priority < $1.priority }
 
-        let summary = makeSummary(features: features, goalMinutes: goalMinutes, baseline: baseline)
+        let summary = makeSummary(
+            features: features,
+            goalMinutes: goalMinutes,
+            baseline: baseline,
+            band: band
+        )
 
         guard let strongest else {
             // Nothing fired. Say so plainly and give a maintenance tip rather
@@ -360,13 +366,28 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
     private func makeSummary(
         features: SleepNightFeatures,
         goalMinutes: Double,
-        baseline: RollingBaseline
+        baseline: RollingBaseline,
+        band: SleepIntelligenceScore.Band?
     ) -> String {
-        let score = SleepScore.compute(for: features, goalMinutes: goalMinutes)
         let duration = features.formattedTimeAsleep
 
+        // The flagship score's band, not `SleepScore`'s. This sentence is the
+        // most-read text the app produces -- it leads the Today card, the
+        // widget and the watch -- and it opened with a grade from a score no
+        // other surface shows any more. A night the hero orb called Good
+        // could be introduced here as "Mixed night", with nothing to say the
+        // two words were grading different things.
+        //
+        // `SleepScore` remains the fallback for the nights that have no
+        // flagship score yet, and only those. Both tables use the same
+        // poor/fair/good/excellent cutoffs, so the fallback never renames a
+        // night relative to what the flagship would have called it -- the
+        // grade can differ because the two scores measure differently, but
+        // the vocabulary is one vocabulary.
+        let grade = band ?? Self.fallbackBand(features: features, goalMinutes: goalMinutes)
+
         let qualifier: String
-        switch score.band {
+        switch grade {
         case .excellent: qualifier = "Strong night"
         case .good: qualifier = "Solid night"
         case .fair: qualifier = "Mixed night"
@@ -384,6 +405,20 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
             return "\(qualifier) — \(duration) at \(Int(features.sleepEfficiencyPercent))% efficiency."
         }
         return "\(qualifier) — \(duration) asleep."
+    }
+
+    /// The grade to open with when no flagship score was supplied.
+    ///
+    /// Kept as a named function rather than inlined so the one place that
+    /// still reaches for `SleepScore` in user-facing copy is findable, and so
+    /// its removal -- once every path can supply a band -- is a single edit.
+    private static func fallbackBand(
+        features: SleepNightFeatures,
+        goalMinutes: Double
+    ) -> SleepIntelligenceScore.Band {
+        SleepIntelligenceScore.Band.forPercent(
+            SleepScore.compute(for: features, goalMinutes: goalMinutes).value
+        )
     }
 
     /// Used when no rule fires: a good night still deserves a useful sentence.

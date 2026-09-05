@@ -775,9 +775,6 @@ final class SleepDataCoordinator {
             await modelEngine.prepare(for: night, baseline: baseline, goalMinutes: goal)
         }
 
-        let insight = engine.generate(for: night, baseline: baseline, goalMinutes: goal)
-        store.attach(insight, to: record)
-
         // Rebuild each stored night against the context that existed before
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
@@ -800,9 +797,18 @@ final class SleepDataCoordinator {
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
         )
 
+        // Generation is deferred into the builder rather than run above,
+        // because the summary's opening grade has to come from Sleep
+        // Intelligence and that is computed inside `build`. Running the
+        // engine here and the score there is what let the sentence and the
+        // hero orb disagree about the same night.
         let context = contextBuilder.build(.init(
             night: night,
-            insight: insight,
+            insight: { band in
+                engine.generate(
+                    for: night, baseline: baseline, goalMinutes: goal, band: band
+                )
+            },
             history: history,
             goalMinutes: goal,
             yesterdayStrain: yesterdayStrain,
@@ -815,6 +821,7 @@ final class SleepDataCoordinator {
             obligationWeekdays: preferences.obligationWeekdays
         ))
 
+        store.attach(context.insight, to: record)
         state = .loaded(context)
         recentNights = history + [night]
         rebuildRecoveryHistory(goal: goal)
@@ -1172,7 +1179,11 @@ final class SleepDataCoordinator {
 
         let context = contextBuilder.build(.init(
             night: night,
-            insight: engine.generate(for: night, baseline: AppMockData.baseline, goalMinutes: goal),
+            insight: { band in
+                engine.generate(
+                    for: night, baseline: AppMockData.baseline, goalMinutes: goal, band: band
+                )
+            },
             history: history,
             goalMinutes: goal,
             yesterdayStrain: MockData.yesterdayStrain,

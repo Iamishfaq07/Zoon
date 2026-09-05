@@ -27,9 +27,35 @@ protocol SleepInsightEngine {
     ///     implementations must degrade to non-comparative statements rather
     ///     than claiming a change they can't substantiate.
     ///   - goalMinutes: the user's own sleep target.
+    ///   - band: the night's Sleep Intelligence band -- the flagship score's
+    ///     own grade. Supplied because the summary opens with a word for the
+    ///     whole night ("Strong night", "Rough night"), and that word has to
+    ///     come from the same score every other surface shows. It was derived
+    ///     from `SleepScore` here, which meant the most-read sentence in the
+    ///     app could call a night "Mixed" while the hero orb two lines above
+    ///     it graded the same night Good.
+    ///
+    ///     `nil` when no flagship score could be computed for the night --
+    ///     implementations fall back rather than inventing a grade. Defaulted
+    ///     so preview and test call sites that only want a sentence stay
+    ///     unchanged.
+    func generate(
+        for features: SleepNightFeatures,
+        baseline: RollingBaseline,
+        goalMinutes: Double,
+        band: SleepIntelligenceScore.Band?
+    ) -> SleepInsight
+}
+
+extension SleepInsightEngine {
+
+    /// Convenience for callers with no flagship score to hand -- previews,
+    /// tests, and the engines' own fallbacks.
     func generate(
         for features: SleepNightFeatures,
         baseline: RollingBaseline,
         goalMinutes: Double
-    ) -> SleepInsight
+    ) -> SleepInsight {
+        generate(for: features, baseline: baseline, goalMinutes: goalMinutes, band: nil)
+    }
 }
