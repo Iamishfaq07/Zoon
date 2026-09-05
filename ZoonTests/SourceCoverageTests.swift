@@ -118,7 +118,7 @@ final class SourceCoverageTests: XCTestCase {
         XCTAssertEqual(report.source, .garmin)
         XCTAssertEqual(report.source.possessivePhrase, "your Garmin")
     }
-\n
+
     // MARK: - Absent for different reasons
 
     /// A Garmin cannot write sleeping wrist temperature because HealthKit has
