@@ -29,7 +29,15 @@ enum Fixture {
         wakeCount: Int = 2,
         breathingDisturbances: Double? = 1.0,
         breathingDisturbancesClassification: BreathingDisturbanceClassification? = nil,
-        lastWorkoutHoursBeforeBed: Double? = nil
+        lastWorkoutHoursBeforeBed: Double? = nil,
+        /// Which app or device wrote the night. Defaulted so every existing
+        /// caller is unchanged; `SourceCoverage` needs it because coverage is
+        /// measured per source.
+        sourceName: String = "Fixture",
+        /// `false` writes the night as one undifferentiated asleep block, the
+        /// way a source that reports no stages does. Not the same as a short
+        /// night: the sleep is all there, the structure is not.
+        staged: Bool = true
     ) -> SleepNightFeatures {
         let calendar = Calendar.current
         let wake = calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
@@ -44,10 +52,10 @@ enum Fixture {
             timeAsleepMinutes: timeAsleepMinutes,
             sleepEfficiencyPercent: timeInBedMinutes > 0
                 ? min(100, timeAsleepMinutes / timeInBedMinutes * 100) : 0,
-            coreMinutes: timeAsleepMinutes * 0.55,
-            deepMinutes: timeAsleepMinutes * 0.18,
-            remMinutes: timeAsleepMinutes * 0.22,
-            unspecifiedAsleepMinutes: 0,
+            coreMinutes: staged ? timeAsleepMinutes * 0.55 : 0,
+            deepMinutes: staged ? timeAsleepMinutes * 0.18 : 0,
+            remMinutes: staged ? timeAsleepMinutes * 0.22 : 0,
+            unspecifiedAsleepMinutes: staged ? 0 : timeAsleepMinutes,
             awakeMinutes: max(0, timeInBedMinutes - timeAsleepMinutes),
             wakeCount: wakeCount,
             sleepLatencyMinutes: 12,
@@ -64,7 +72,7 @@ enum Fixture {
             sleepDebtMinutes: 0,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: nil,
-            sourceName: "Fixture",
+            sourceName: sourceName,
             isMock: true
         )
     }
