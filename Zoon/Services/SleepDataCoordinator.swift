@@ -804,7 +804,10 @@ final class SleepDataCoordinator {
         // hero orb disagree about the same night.
         let context = contextBuilder.build(.init(
             night: night,
-            insight: { band in
+            // `[engine]` rather than `self.engine`: the closure is stored
+            // on Inputs, so it escapes, and capturing it by value keeps the
+            // coordinator out of the capture entirely.
+            insight: { [engine] band in
                 engine.generate(
                     for: night, baseline: baseline, goalMinutes: goal, band: band
                 )
@@ -1180,7 +1183,7 @@ final class SleepDataCoordinator {
 
         let context = contextBuilder.build(.init(
             night: night,
-            insight: { band in
+            insight: { [engine] band in
                 engine.generate(
                     for: night, baseline: AppMockData.baseline, goalMinutes: goal, band: band
                 )
