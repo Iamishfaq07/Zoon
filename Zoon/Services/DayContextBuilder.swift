@@ -31,7 +31,23 @@ struct DayContextBuilder {
 
     struct Inputs {
         let night: SleepNightFeatures
-        let insight: SleepInsight
+        /// Produces the night's insight, given the flagship score's band.
+        ///
+        /// A closure rather than a finished `SleepInsight` because of an
+        /// ordering problem that used to be resolved the wrong way. The
+        /// insight's summary opens with a word for the whole night --
+        /// "Strong night", "Rough night" -- and that word must come from
+        /// Sleep Intelligence, which is computed in here. The insight was
+        /// generated before this builder ran, so the engine had nothing to
+        /// grade the night with but `SleepScore`, and the most-read sentence
+        /// in the app could call a night "Mixed" while the hero orb two lines
+        /// above it graded the same night Good.
+        ///
+        /// Passing the engine's work in as a closure keeps Sleep Intelligence
+        /// computed exactly once, here, and hands it to the sentence that
+        /// quotes it. The alternative -- computing the score a second time at
+        /// the call site -- is two computations that can silently disagree.
+        let insight: (SleepIntelligenceScore.Band) -> SleepInsight
         /// Stored nights, oldest first, **excluding** tonight.
         let history: [SleepNightFeatures]
         let goalMinutes: Double
@@ -162,7 +178,7 @@ struct DayContextBuilder {
 
         return DayContext(
             night: night,
-            insight: inputs.insight,
+            insight: inputs.insight(sleepIntelligence.band),
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedNeed,

@@ -32,6 +32,7 @@ final class InsightLanguageTests: XCTestCase {
         minHR: Double? = 48,
         restingHR: Double? = 54,
         wristTempC: Double? = 34.0,
+        bedtimeConsistencyMinutes: Double? = 25,
         sampleCount: Int = 14
     ) -> RollingBaseline {
         RollingBaseline(
@@ -43,7 +44,7 @@ final class InsightLanguageTests: XCTestCase {
             minHeartRate7DayAvg: minHR,
             restingHeartRate7DayAvg: restingHR,
             wristTempBaselineC: wristTempC,
-            bedtimeConsistencyMinutes: 25,
+            bedtimeConsistencyMinutes: bedtimeConsistencyMinutes,
             sampleCount: sampleCount
         )
     }
@@ -117,6 +118,41 @@ final class InsightLanguageTests: XCTestCase {
         let all = text(of: insight(night)).lowercased()
 
         XCTAssertFalse(all.contains("stayed in gear"), all)
+    }
+
+    // MARK: - Two the first pass missed
+
+    /// An irregular bedtime used to be told it "costs you deep sleep".
+    ///
+    /// The rule fires on bedtime spread alone -- it never reads the person's
+    /// deep sleep at all -- so that sentence asserted a mechanism about
+    /// someone from data containing no trace of it. The V9 spec names this
+    /// exact claim ("irregularity causes architecture loss") as one not to
+    /// make.
+    func testIrregularBedtimeDoesNotClaimItCostsDeepSleep() {
+        let swinging = baseline(bedtimeConsistencyMinutes: 95)
+        let all = text(of: insight(Fixture.night(), baseline: swinging)).lowercased()
+
+        // The rule has to have fired, or the assertions below pass for the
+        // wrong reason.
+        XCTAssertTrue(all.contains("bedtime has swung"), all)
+
+        XCTAssertFalse(all.contains("costs you deep sleep"), all)
+        XCTAssertFalse(all.contains("shifts your body clock around"), all)
+    }
+
+    /// Low deep sleep used to be explained by "a late bedtime or a disturbed
+    /// first few hours" -- neither of which the rule checks. The physiology
+    /// is real, so it stays; presenting it as the reason for last night does
+    /// not.
+    func testLowDeepSleepDoesNotBlameAnUncheckedBedtime() {
+        let night = Fixture.night(avgHRV: 55, wristTempDeltaC: 0.0)
+        let all = text(of: insight(night, baseline: baseline(deep: 220))).lowercased()
+
+        // Same reason as above: assert the rule fired before asserting what
+        // it does not say.
+        XCTAssertTrue(all.contains("deep sleep came in"), all)
+        XCTAssertFalse(all.contains("hits it hardest"), all)
     }
 
     // MARK: - Nothing anywhere in the matrix

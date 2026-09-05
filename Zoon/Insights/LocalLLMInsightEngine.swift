@@ -63,11 +63,12 @@ struct LocalLLMInsightEngine: SleepInsightEngine {
     func generate(
         for features: SleepNightFeatures,
         baseline: RollingBaseline,
-        goalMinutes: Double
+        goalMinutes: Double,
+        band: SleepIntelligenceScore.Band?
     ) -> SleepInsight {
         guard isModelAvailable else {
             // Note: not an error path. This is the shipping configuration.
-            return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes)
+            return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes, band: band)
         }
 
         // TODO: Replace with real inference once a model is wired up.
@@ -75,7 +76,7 @@ struct LocalLLMInsightEngine: SleepInsightEngine {
         //   let prompt = buildPrompt(features: features, baseline: baseline, goalMinutes: goalMinutes)
         //   guard let raw = try? runInference(prompt: prompt),
         //         let insight = Self.parse(raw) else {
-        //       return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes)
+        //       return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes, band: band)
         //   }
         //   return insight
         //
@@ -83,7 +84,7 @@ struct LocalLLMInsightEngine: SleepInsightEngine {
         // but wrong for inference. When you get here, widen the protocol to
         // `async` — every call site is already inside an async context, so the
         // change is mechanical.
-        return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes)
+        return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes, band: band)
     }
 
     // MARK: - Prompt construction

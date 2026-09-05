@@ -556,6 +556,7 @@
 		E11AF6F8F50A25A70CB39D3C /* SleepDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89C5DEE01809047EF6230EF /* SleepDetailView.swift */; };
 		E1253D973703FEC5DE2042D0 /* SleepNightFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D123766B00625BEF005F888 /* SleepNightFeatures.swift */; };
 		E13D865C46A69974CCCAA22C /* MetricConfidenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D31C7DE63B4080D06AF6341 /* MetricConfidenceTests.swift */; };
+		E13DA3F2A892EC0ACD2E3981 /* InsightSummaryBandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D79FDE834BDD7AAAB61568 /* InsightSummaryBandTests.swift */; };
 		E1BD2C0D78C37991446153DF /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB86D405417CEEDF41C16199 /* Achievement.swift */; };
 		E2035CEA799143574AC638C0 /* CycleCorrelationCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F87DDDFB40C40EF1EEA472F0 /* CycleCorrelationCard.swift */; };
 		E20DA4CD17E8E59FF5710501 /* ZoonTrialRibbon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3CAC52ACF48FF8B7C3E8016 /* ZoonTrialRibbon.swift */; };
@@ -851,6 +852,7 @@
 		6847E2B5BE16AD9DF6FE55DA /* TonightSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TonightSection.swift"; sourceTree = "<group>"; };
 		6868DEFF98DF1C38239CDC19 /* SleepIntelligenceScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepIntelligenceScore.swift"; sourceTree = "<group>"; };
 		6881F31273FCDCB3E4A004D5 /* SleepNeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepNeedView.swift"; sourceTree = "<group>"; };
+		68D79FDE834BDD7AAAB61568 /* InsightSummaryBandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightSummaryBandTests.swift"; sourceTree = "<group>"; };
 		6A941681C0FF29010F444059 /* NapActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapActivityAttributes.swift"; sourceTree = "<group>"; };
 		6D31C7DE63B4080D06AF6341 /* MetricConfidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricConfidenceTests.swift"; sourceTree = "<group>"; };
 		6DE8982C23D4D9CA3E186C1E /* SensorTruthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensorTruthView.swift"; sourceTree = "<group>"; };
@@ -1323,6 +1325,7 @@
 				2A088D94B376B7C6652E976B,
 				FE1407BF1441EF6FE38A66DA,
 				B1198F9ADB217DC729E52C3C,
+				68D79FDE834BDD7AAAB61568,
 				330761C5EA614104E6172BEB,
 				5916908C5ABDE5191F03FFF2,
 				752C7D764C48DF46664CFA7F,
@@ -2172,6 +2175,7 @@
 				21D5835007FCFA81EF145704,
 				0F9D0C7482C6B0EDFFB7D2C7,
 				0DA18FFE99E4CA7CAAF6BD0F,
+				E13DA3F2A892EC0ACD2E3981,
 				1E5C49D5B488C563A10EAB0C,
 				CBBF746DD5E11C79D4C9ADCB,
 				965FF743CE5080F050623B97,

@@ -96,12 +96,13 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
     func generate(
         for features: SleepNightFeatures,
         baseline: RollingBaseline,
-        goalMinutes: Double
+        goalMinutes: Double,
+        band: SleepIntelligenceScore.Band?
     ) -> SleepInsight {
         if let cached = InsightCache.shared.value(for: features.date) {
             return cached
         }
-        return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes)
+        return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes, band: band)
     }
 
     /// Runs inference and caches the result. Call before `generate`.
