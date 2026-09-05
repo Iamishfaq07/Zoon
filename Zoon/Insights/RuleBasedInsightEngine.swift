@@ -291,7 +291,14 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         return Finding(
             priority: 55,
             cause: String(
-                format: "Your bedtime has swung by roughly ±%.0f minutes over the past week. An irregular schedule shifts your body clock around and costs you deep sleep even on nights you get enough hours.",
+                // Was: "An irregular schedule shifts your body clock around
+                // and costs you deep sleep even on nights you get enough
+                // hours." That is a mechanism, asserted about this person,
+                // from data that contains no such evidence -- the rule fires
+                // on bedtime spread alone and never looks at their deep
+                // sleep. It states the observation, and where the general
+                // finding belongs it says whose finding it is.
+                format: "Your bedtime has swung by roughly ±%.0f minutes over the past week. Sleep research associates irregular schedules with worse sleep across groups of people; whether it shows up in yours is something Zoon can only tell you from your own nights.",
                 sd
             ),
             tip: "Pick one bedtime and hold it within 30 minutes for the next week, weekends included.",
@@ -326,7 +333,13 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         return Finding(
             priority: 45,
             cause: String(
-                format: "Deep sleep came in %.0f%% below your usual (%.0f min vs %.0f). Deep sleep is front-loaded into the first half of the night, so a late bedtime or a disturbed first few hours hits it hardest.",
+                // Was: "...so a late bedtime or a disturbed first few hours
+                // hits it hardest." Presented as the explanation for this
+                // night, while the rule checks neither: it fires on the deep
+                // sleep drop alone. The physiology is real and worth knowing,
+                // so it stays -- as physiology, not as a finding about last
+                // night.
+                format: "Deep sleep came in %.0f%% below your usual (%.0f min vs %.0f). Most deep sleep happens in the first half of a night. Zoon has not checked what your first few hours looked like, so this is context rather than a reason.",
                 dropPercent, features.deepMinutes, deepBase
             ),
             tip: "Protect the first three hours tonight — dark, cool, quiet, and get to bed at your usual time.",
