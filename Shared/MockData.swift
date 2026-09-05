@@ -122,7 +122,10 @@ enum MockData {
             insight: goodInsight,
             goalMinutes: 480,
             sleepIntelligencePercent: 84,
-            sleepIntelligenceBand: "Excellent"
+            sleepIntelligenceBand: SleepIntelligenceScore.Band.forPercent(84).label,
+            // Without this the previews fall back to the legacy score, which
+            // is exactly the state `flagshipScore` exists to detect.
+            sleepIntelligenceVersion: SleepIntelligenceScore.currentVersion
         )
     }
 
@@ -219,7 +222,15 @@ enum MockData {
             insight: poorInsight,
             goalMinutes: 480,
             sleepIntelligencePercent: 41,
-            sleepIntelligenceBand: "Fair"
+            // "Fair" until now, which 41 is not -- the band table puts
+            // anything below 50 in Poor. Harmless while nothing rendered the
+            // pair together; the widgets now colour the number from the band
+            // table and print the label beside it, so the preview showed an
+            // orange 41 labelled Fair.
+            sleepIntelligenceBand: SleepIntelligenceScore.Band.forPercent(41).label,
+            // Without this the previews fall back to the legacy score, which
+            // is exactly the state `flagshipScore` exists to detect.
+            sleepIntelligenceVersion: SleepIntelligenceScore.currentVersion
         )
     }
 
