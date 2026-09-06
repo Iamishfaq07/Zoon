@@ -198,7 +198,8 @@ struct MoreView: View {
                     episodes: coordinator.episodesForExport(),
                     experiments: coordinator.experiments.outcomes,
                     soundEvents: SoundEventStore().recentEvents,
-                    behaviorObservations: coordinator.behaviorObservationsForExport()
+                    behaviorObservations: coordinator.behaviorObservationsForExport(),
+                    evidenceHistory: coordinator.evidenceHistoryForExport()
                 )
                 url = try DataExporter.writeTemporary(
                     try DataExporter.jsonData(archive),

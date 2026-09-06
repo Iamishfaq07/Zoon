@@ -18,6 +18,26 @@ final class SleepHistoryStore {
         self.context = context
     }
 
+    func evidenceHistory() -> [EvidenceLedger.Revision] {
+        ((try? context.fetch(FetchDescriptor<EvidenceRevisionRecord>())) ?? []).map(\.revision)
+    }
+
+    @discardableResult
+    func importEvidenceHistory(_ revisions: [EvidenceLedger.Revision]) -> Int {
+        var known = Set(evidenceHistory())
+        let additions = revisions.filter { known.insert($0).inserted }
+        for revision in additions { context.insert(EvidenceRevisionRecord(revision)) }
+        do { try context.save(); return additions.count }
+        catch { context.rollback(); return 0 }
+    }
+
+    func recordBelief(_ revision: EvidenceLedger.Revision) {
+        let history = evidenceHistory()
+        guard EvidenceLedger.recording(revision, into: history).count > history.count else { return }
+        context.insert(EvidenceRevisionRecord(revision))
+        save()
+    }
+
     // MARK: - Reads
 
     /// All nights, newest first.

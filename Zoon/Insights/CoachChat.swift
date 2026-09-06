@@ -64,6 +64,7 @@ final class CoachChat {
         }
     }
 
+    var evidence: CoachEvidence?
     private(set) var messages: [Message] = []
     private(set) var isResponding = false
 
@@ -86,10 +87,10 @@ final class CoachChat {
     @available(iOS 26.0, *)
     @Generable
     struct ChatAnswer {
-        @Guide(description: "The direct answer itself, two to three sentences, plain language, answered only from the data given.")
+        @Guide(description: "Two short sentences explaining the supplied data. Do not state any quantities, numbers, dates, durations or percentages; the app renders those from its evidence catalog.")
         var answer: String
 
-        @Guide(description: "The specific number(s) this answer is grounded in, written as a short fragment like 'HRV 42ms vs your 7-day average of 58ms'. Empty string if the answer isn't tied to one specific figure.")
+        @Guide(description: "Return exactly one evidence ID from the supplied catalog: sleep, timing, hrv, or heart. Never write a value or invent an ID. Empty if no evidence applies.")
         var groundedIn: String
 
         @Guide(description: "One concrete next step the user could take, only if the answer actually supports one -- e.g. 'Consider an earlier bedtime tonight.' Empty string if the answer doesn't call for an action (most factual questions don't).")
@@ -143,6 +144,13 @@ final class CoachChat {
 
     var isTransientlyUnavailable: Bool { Self.isTransientlyUnavailable }
 
+    private func appendLocalAnswer(_ question: String) {
+        let answer = evidence?.answer(to: question)
+        messages.append(Message(role: .assistant,
+            text: answer?.text ?? "Choose a recorded night to explore its sleep, timing, HRV, or resting heart rate.",
+            groundedIn: answer?.evidence))
+    }
+
     /// Starts a new session with tonight's numbers -- and, when there's
     /// enough history for one, `SleepDataCoordinator.coachContextDigest()`'s
     /// standing-pattern summary -- as context the model already has, so the
@@ -177,7 +185,7 @@ final class CoachChat {
 
         #if canImport(FoundationModels)
         guard #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
-            messages.append(Message(role: .assistant, text: unavailabilityReason ?? "Not available."))
+            appendLocalAnswer(trimmed)
             return
         }
 
@@ -196,7 +204,7 @@ final class CoachChat {
         // self-report it.
         do {
             let response = try await session.respond(
-                to: trimmed,
+                to: trimmed + "\nEvidence catalog (only these IDs may be cited):\n" + (evidence?.promptCatalog ?? "None"),
                 generating: ChatAnswer.self,
                 options: GenerationOptions(temperature: 0.4)
             )
@@ -212,7 +220,7 @@ final class CoachChat {
             // rules engine the way the nightly insight can -- there's no
             // rule-based conversation to hand off to -- so it shows a plain
             // refusal instead of the raw response.
-            guard !answer.isEmpty, !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
+            guard !answer.isEmpty, CoachEvidence.allowsGeneratedProse(answer + " " + bestAction), !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
                 logger.notice("Chat response was empty or failed the diagnostic-language check; not shown")
                 messages.append(Message(
                     role: .assistant,
@@ -224,7 +232,7 @@ final class CoachChat {
             messages.append(Message(
                 role: .assistant,
                 text: answer,
-                groundedIn: grounding.isEmpty || grounding.lowercased() == "null" ? nil : grounding,
+                groundedIn: evidence?.catalog[grounding],
                 bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction
             ))
         } catch {
@@ -235,7 +243,7 @@ final class CoachChat {
             ))
         }
         #else
-        messages.append(Message(role: .assistant, text: unavailabilityReason ?? "Not available."))
+        appendLocalAnswer(trimmed)
         #endif
     }
 

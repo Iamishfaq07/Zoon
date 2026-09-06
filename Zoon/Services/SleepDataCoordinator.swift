@@ -159,6 +159,7 @@ final class SleepDataCoordinator {
 
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
+    func evidenceHistoryForExport() -> [EvidenceLedger.Revision] { store.evidenceHistory() }
     let journal: JournalStore
     /// Durable per-behaviour answers. Injected alongside `journal` because
     /// both are SwiftData stores over the same context, and the Journal
@@ -846,6 +847,7 @@ final class SleepDataCoordinator {
         store.attach(context.insight, to: record)
         state = .loaded(context)
         recentNights = history + [night]
+        recordCurrentBeliefs()
         rebuildRecoveryHistory(goal: goal)
         publishSnapshot(context, goal: goal)
     }
@@ -1313,6 +1315,7 @@ final class SleepDataCoordinator {
         let restoredNaps = naps.importNaps(archive.naps)
         let restoredSnore = SnoreStore().importSummaries(archive.snoreSummaries ?? [])
         let restoredEpisodes = store.importEpisodes(archive.episodes ?? [])
+        store.importEvidenceHistory(archive.evidenceHistory ?? [])
         let restoredExperiments = experiments.importOutcomes(archive.experiments ?? [])
         let restoredSoundEvents = SoundEventStore().importEvents(archive.soundEvents ?? [])
         // A V3 archive has no observations. They import as nothing rather
@@ -1462,6 +1465,42 @@ final class SleepDataCoordinator {
             && snapshotDeleted
             && legacyStoreDeleted
             && temporaryExportsDeleted
+    }
+
+    /// Offers today's findings to the ledger. Most of the time nothing is
+    /// written, which is the intended behaviour.
+    private func recordCurrentBeliefs() {
+        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations())
+        for finding in findings {
+            store.recordBelief(
+                EvidenceLedger.Revision(
+                    claimID: "tag:\(finding.tag.rawValue)",
+                    recordedAt: .now,
+                    status: status(for: finding),
+                    headline: finding.plainSentence,
+                    effect: finding.delta,
+                    effectUnit: finding.metric.shortLabel,
+                    uncertaintyLower: finding.confidenceIntervalLower,
+                    uncertaintyUpper: finding.confidenceIntervalUpper,
+                    sampleSize: finding.matchedPairCount,
+                    windowStart: finding.pairs.map(\.date).min(),
+                    windowEnd: finding.pairs.map(\.date).max(),
+                    algorithmVersion: JournalCorrelator.algorithmVersion,
+                    sourceFeature: finding.metric.rawValue,
+                    provenance: "JournalCorrelator"
+                )
+            )
+        }
+    }
+
+    /// A matched-pair finding is an association, never a tested result --
+    /// only a pre-specified experiment earns `.supported`, and this engine
+    /// does not run one. Low confidence is still learning.
+    private func status(for finding: JournalCorrelator.Finding) -> EvidenceLedger.Status {
+        switch finding.confidence {
+        case .low: .learning
+        case .moderate, .high: .associated
+        }
     }
 
     // MARK: - Derived views of history

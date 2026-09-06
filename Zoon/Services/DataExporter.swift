@@ -35,7 +35,7 @@ enum DataExporter {
     /// restoring one would silently return every behaviour to unknown.
     /// Older archives still import -- the field is optional and the
     /// version guard is `<=`.
-    static let formatVersion = 4
+    static let formatVersion = 5
 
     struct Archive: Codable {
         let formatVersion: Int
@@ -61,6 +61,7 @@ enum DataExporter {
         /// answers at all, which is the honest result rather than a
         /// reconstruction from the positive tags in `journal`.
         let behaviorObservations: [BehaviorObservationRecordExport]?
+        var evidenceHistory: [EvidenceLedger.Revision]? = nil
 
         struct EpisodeRecord: Codable {
             let id: String
@@ -189,7 +190,8 @@ enum DataExporter {
         episodes: [Archive.EpisodeRecord] = [],
         experiments: [SleepExperimentStore.Outcome] = [],
         soundEvents: [SoundEvent] = [],
-        behaviorObservations: [Archive.BehaviorObservationRecordExport] = []
+        behaviorObservations: [Archive.BehaviorObservationRecordExport] = [],
+        evidenceHistory: [EvidenceLedger.Revision] = []
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -237,7 +239,8 @@ enum DataExporter {
             episodes: episodes,
             experiments: experiments,
             soundEvents: soundEvents,
-            behaviorObservations: behaviorObservations
+            behaviorObservations: behaviorObservations,
+            evidenceHistory: evidenceHistory
         )
     }
 
@@ -357,6 +360,9 @@ enum DataExporter {
         guard archive.formatVersion <= formatVersion else {
             throw ImportError.unsupportedVersion(archive.formatVersion)
         }
+        guard archive.formatVersion > 0, archive.goalMinutes.isFinite,
+              archive.nights.allSatisfy({ $0.bedtime < $0.wakeTime && $0.timeAsleepMinutes.isFinite && $0.timeAsleepMinutes >= 0 }),
+              archive.naps.allSatisfy({ $0.start < $0.end }) else { throw ImportError.unreadable }
         return archive
     }
 }

@@ -163,7 +163,7 @@ struct CoachTabView: View {
             SectionHeader(title: "What Zoon can see", systemImage: "eye")
 
             if let reason = CoachChat.unavailabilityReason {
-                Label(reason, systemImage: "exclamationmark.triangle.fill")
+                Label("Local answers are ready. Optional generated explanations: " + reason, systemImage: "checkmark.circle")
                     .font(Theme.text(12))
                     .foregroundStyle(Theme.Metric.recoveryMid)
                     .fixedSize(horizontal: false, vertical: true)
