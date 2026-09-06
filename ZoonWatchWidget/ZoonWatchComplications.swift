@@ -31,6 +31,10 @@ struct ZoonWatchComplications: WidgetBundle {
         TonightComplication()
         BodySignalsComplication()
         SleepBankComplication()
+        // The only surface here about something happening *now*. It scores
+        // 100 while a nap runs and 0 otherwise, so it takes the stack's slot
+        // for the duration and is invisible the rest of the time.
+        NapTimerComplication()
         // `BadgeComplication` is deliberately absent. The spec: badges "can
         // remain elsewhere but should not consume prime complication
         // space". They are still on the watch's More page and in the phone
@@ -104,13 +108,32 @@ struct WatchComplicationProvider: TimelineProvider {
         in context: Context,
         completion: @escaping (Timeline<WatchComplicationEntry>) -> Void
     ) {
-        // One entry, refreshed after the small hours. Sleep data changes once a
-        // day and the watch app reloads timelines the moment a new snapshot
-        // arrives, so a dense timeline would only burn the complication's
-        // refresh budget and get the extension throttled — making it less
-        // current rather than more.
+        let entry = currentEntry()
+
+        // A running nap is the one thing on this surface with a known end,
+        // and every complication in the bundle is suppressed while it runs.
+        // With a single entry they would all stay suppressed until the next
+        // four-hourly refresh, so Zoon would be missing from the Smart Stack
+        // for up to four hours *after* the nap finished. A second entry at
+        // the instant the suppression lifts costs one extra entry and fixes
+        // that for the whole bundle.
+        if let napEnd = entry.snapshot.napSuppressionEnd,
+           entry.snapshot.isNapRunning(at: entry.date),
+           napEnd > entry.date {
+            let after = WatchComplicationEntry(
+                date: napEnd, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder, kind: kind
+            )
+            completion(Timeline(entries: [entry, after], policy: .after(napEnd)))
+            return
+        }
+
+        // Otherwise one entry, refreshed after the small hours. Sleep data
+        // changes once a day and the watch app reloads timelines the moment a
+        // new snapshot arrives, so a dense timeline would only burn the
+        // complication's refresh budget and get the extension throttled —
+        // making it less current rather than more.
         let next = Calendar.current.date(byAdding: .hour, value: 4, to: .now) ?? .now
-        completion(Timeline(entries: [currentEntry()], policy: .after(next)))
+        completion(Timeline(entries: [entry], policy: .after(next)))
     }
 
     private func currentEntry() -> WatchComplicationEntry {
@@ -514,6 +537,125 @@ struct TonightComplicationView: View {
                 }
             }
         }
+        }
+    }
+}
+
+// MARK: - Nap timer
+
+/// The running nap, on the wrist.
+///
+/// `WatchRelevance` has had a `.napTimer` kind since the relevance engine was
+/// written, and nothing ever declared it. The effect was worse than a missing
+/// feature: a running nap *suppresses* every other complication in the bundle
+/// down to `outOfWindowScore`, so with nothing scoring 100 to take the slot,
+/// Zoon dropped out of the Smart Stack for exactly as long as the timer ran.
+/// The engine was built for this surface; the surface was never added.
+///
+/// Everything it needs is already in the snapshot -- `napStartedAt` and
+/// `napTargetEnd` are absolute instants, stored that way precisely so a
+/// widget entry can re-decide the state at its own date rather than inherit
+/// the phone's.
+struct NapTimerComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "ZoonNapTimer", provider: WatchComplicationProvider(kind: .napTimer)) { entry in
+            NapTimerComplicationView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Nap Timer")
+        .description("Time left in a running nap.")
+        .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryRectangular])
+    }
+}
+
+struct NapTimerComplicationView: View {
+
+    let entry: WatchComplicationEntry
+    @Environment(\.widgetFamily) private var family
+
+    /// Judged at the entry's own date, never at the snapshot's -- an entry
+    /// scheduled for the moment the nap ends must render as ended.
+    private var isRunning: Bool { entry.snapshot.isNapRunning(at: entry.date) }
+
+    /// The range a live countdown ticks over.
+    ///
+    /// `Text(timerInterval:)` and `ProgressView(timerInterval:)` are rendered
+    /// by the system between timeline entries, which is the only way a timer
+    /// on this surface can be right to the minute -- a complication that
+    /// refreshed on its own budget would show a number minutes stale, and a
+    /// stale timer is worse than none.
+    private var countdown: ClosedRange<Date>? {
+        guard isRunning, let end = entry.snapshot.napTargetEnd, end > entry.date else { return nil }
+        return entry.date...end
+    }
+
+    var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
+            switch family {
+            case .accessoryCircular:
+                circular
+            case .accessoryInline:
+                Text(inlineText).privacySensitive()
+            default:
+                rectangular
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var circular: some View {
+        if let countdown {
+            ProgressView(timerInterval: countdown, countsDown: true) {
+                Image(systemName: "powersleep")
+            }
+            .progressViewStyle(.circular)
+            .tint(Theme.Metric.sleep)
+            .privacySensitive()
+        } else {
+            // Pinned to a face with no nap running: say so rather than
+            // showing a zeroed timer, which reads as a nap that just ended.
+            VStack(spacing: 1) {
+                Image(systemName: "powersleep")
+                    .font(Theme.text(14, weight: .semibold))
+                Text("Nap")
+                    .font(Theme.text(10))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var inlineText: String {
+        guard isRunning, let remaining = entry.snapshot.napRemaining(at: entry.date) else {
+            return "No nap running"
+        }
+        return "Nap \(Int((remaining / 60).rounded()))m left"
+    }
+
+    @ViewBuilder
+    private var rectangular: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Label("Nap", systemImage: "powersleep")
+                .font(Theme.text(13, weight: .semibold))
+            if let countdown {
+                Text(timerInterval: countdown, countsDown: true)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .privacySensitive()
+                Text(entry.isPlaceholder ? "Sample data" : "until your target")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("No nap running")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+                // Deliberately not a prompt to start one. A complication
+                // cannot start a nap, and telling someone to do something the
+                // surface cannot do is worse than saying nothing.
+            }
         }
     }
 }
