@@ -117,6 +117,139 @@ enum CalibrationLedger {
         return (max(0, centre - margin), min(1, centre + margin))
     }
 
+    // MARK: - Dependence
+
+    /// Consecutive attempts are not independent, and Wilson assumes they are.
+    ///
+    /// Two things couple them. The forecasts themselves overlap: a 21-night
+    /// window advanced by one night shares twenty of its twenty-one nights
+    /// with the one before it, so neighbouring intervals are nearly the same
+    /// interval. And sleep is serially correlated in its own right -- a rough
+    /// fortnight is a rough fortnight, not fourteen coin flips.
+    ///
+    /// So `attempts` overstates how much independent evidence there is, and a
+    /// Wilson interval computed from it is too narrow: it would report a
+    /// precision the data does not contain, on the one screen whose entire
+    /// job is to say how much to trust a number.
+    ///
+    /// A moving-block bootstrap resamples runs rather than individual nights,
+    /// which preserves the local dependence instead of destroying it.
+    /// Blocks are drawn from every overlapping window of `blockLength`, with
+    /// replacement, until the resample is as long as the original.
+    enum Dependence {
+
+        /// Resamples per interval. A thousand is enough for percentile bounds
+        /// at two decimal places and cheap on the numbers involved here --
+        /// tens to low hundreds of attempts, not millions.
+        static let resamples = 1_000
+
+        /// Shortest and longest block. Below three there is not enough of a
+        /// run left to carry any dependence; above seven a person with a
+        /// couple of months of history has too few distinct blocks for the
+        /// resample to vary at all.
+        static let minimumBlockLength = 3
+        static let maximumBlockLength = 7
+
+        /// The usual n^(1/3) rule, clamped.
+        ///
+        /// It under-corrects here and it is worth saying so: the window
+        /// overlap alone couples attempts up to twenty-one nights apart, and
+        /// no block this short can represent that. Correcting it fully would
+        /// need blocks so long that a sixty-night history yields three of
+        /// them, which resamples to nothing useful. The residual error is
+        /// therefore in the known direction -- still slightly too narrow --
+        /// rather than in an unknown one.
+        static func blockLength(attempts: Int) -> Int {
+            guard attempts > 0 else { return minimumBlockLength }
+            let rule = Int(pow(Double(attempts), 1.0 / 3.0).rounded())
+            return min(maximumBlockLength, max(minimumBlockLength, rule))
+        }
+
+        /// Deterministic, so the same history always produces the same
+        /// interval. A bootstrap seeded from the clock would move the numbers
+        /// on this screen every time it was drawn, which reads as instability
+        /// in the estimate rather than in the RNG.
+        struct Generator: RandomNumberGenerator {
+            private var state: UInt64
+            init(seed: UInt64) { state = seed &+ 0x9E37_79B9_7F4A_7C15 }
+            mutating func next() -> UInt64 {
+                state = state &+ 0x9E37_79B9_7F4A_7C15
+                var z = state
+                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+                return z ^ (z >> 31)
+            }
+        }
+
+        /// Moving-block bootstrap percentile interval for the hit rate.
+        ///
+        /// - Parameter outcomes: whether each attempt landed inside its own
+        ///   interval, in chronological order. Order is the whole point --
+        ///   shuffling these would destroy exactly the dependence being
+        ///   measured.
+        static func interval(
+            outcomes: [Bool],
+            resamples: Int = resamples
+        ) -> (lower: Double, upper: Double) {
+            let n = outcomes.count
+            guard n > 0 else { return (0, 1) }
+            let length = min(blockLength(attempts: n), n)
+            let blockCount = n - length + 1
+            let draws = Int((Double(n) / Double(length)).rounded(.up))
+
+            // Seeded from the data: same history, same interval, and two
+            // different histories do not share a resampling pattern.
+            var generator = Generator(seed: outcomes.reduce(into: UInt64(n)) {
+                $0 = $0 &* 31 &+ ($1 ? 1 : 0)
+            })
+
+            var rates: [Double] = []
+            rates.reserveCapacity(resamples)
+            for _ in 0..<resamples {
+                var hits = 0
+                var taken = 0
+                for _ in 0..<draws {
+                    let start = Int.random(in: 0..<blockCount, using: &generator)
+                    for offset in 0..<length where taken < n {
+                        if outcomes[start + offset] { hits += 1 }
+                        taken += 1
+                    }
+                }
+                rates.append(taken > 0 ? Double(hits) / Double(taken) : 0)
+            }
+            rates.sort()
+
+            let lower = Statistics.percentile(rates, 2.5) ?? 0
+            let upper = Statistics.percentile(rates, 97.5) ?? 1
+            return (lower, upper)
+        }
+
+        /// The interval actually reported: the wider of Wilson and the
+        /// bootstrap at each end.
+        ///
+        /// The bootstrap alone is wrong at the boundary. Thirty hits out of
+        /// thirty makes every resample all-hits, so the interval collapses to
+        /// a single point -- a *stronger* claim than the independence
+        /// assumption it was meant to weaken, and a plainly false one:
+        /// thirty for thirty is not proof that coverage is exactly 100%.
+        /// Wilson is well behaved exactly there, being built for proportions
+        /// near zero and one.
+        ///
+        /// Taking the wider end of each therefore gets both properties that
+        /// matter: dependence can only ever widen the interval, and it can
+        /// never collapse.
+        static func combined(
+            hits: Int,
+            attempts: Int,
+            outcomes: [Bool]
+        ) -> (lower: Double, upper: Double) {
+            let wilson = CalibrationLedger.wilsonInterval(hits: hits, attempts: attempts)
+            guard outcomes.count > 1 else { return wilson }
+            let block = interval(outcomes: outcomes)
+            return (min(wilson.lower, block.lower), max(wilson.upper, block.upper))
+        }
+    }
+
     // MARK: - Backtest
 
     /// Scores every night that had enough history behind it to be forecast.
@@ -134,6 +267,9 @@ enum CalibrationLedger {
         var attempts = 0
         var hits = 0
         var expectedSum = 0.0
+        // Kept in order, because the dependence between neighbouring attempts
+        // is what the interval has to account for. A count cannot express it.
+        var outcomes: [Bool] = []
 
         for index in sorted.indices {
             // The whole discipline of the thing: the forecast may see the
@@ -145,7 +281,9 @@ enum CalibrationLedger {
             else { continue }
 
             attempts += 1
-            if actual >= forecast.lower && actual <= forecast.upper { hits += 1 }
+            let landedInside = actual >= forecast.lower && actual <= forecast.upper
+            if landedInside { hits += 1 }
+            outcomes.append(landedInside)
             // Per attempt, because early windows are shorter than late ones
             // and a shorter window has a lower expected coverage.
             expectedSum += expectedCoverage(windowSize: forecast.nightsUsed)
@@ -154,7 +292,7 @@ enum CalibrationLedger {
         guard attempts > 0 else { return nil }
 
         let expected = expectedSum / Double(attempts)
-        let bounds = wilsonInterval(hits: hits, attempts: attempts)
+        let bounds = Dependence.combined(hits: hits, attempts: attempts, outcomes: outcomes)
 
         let verdict: Verdict
         if attempts < minimumAttempts {
