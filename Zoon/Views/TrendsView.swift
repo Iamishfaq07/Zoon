@@ -106,7 +106,7 @@ struct TrendsView: View {
                         VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                             ZoonSectionHeader("Over time") { windowPicker.frame(maxWidth: 160) }
                             DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
-                            HRVChartCard(nights: nights)
+                            HRVChartCard(nights: nights, tagsByDate: tagsByDate)
                             SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
                             ConsistencyChartCard(nights: nights)
                             if let correlations = cycleCorrelations {
@@ -282,14 +282,53 @@ struct DurationChartCard: View {
 
 struct HRVChartCard: View {
     let nights: [SleepNightFeatures]
+    /// What was logged on each day, so a question about a point can carry
+    /// what the user themselves recorded around it.
+    var tagsByDate: [Date: Set<BehaviorTag>] = [:]
 
     @State private var selectedDate: Date?
+    @State private var asking: ChartQuestion?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var points: [SleepNightFeatures] {
         nights.filter { $0.avgHRV != nil }
     }
 
+    /// The question for whatever is currently selected -- the spec's own
+    /// example ("why was my HRV lower here?"), built from typed values
+    /// rather than from a picture of the line.
+    private var selectedQuestion: ChartQuestion? {
+        guard let selectedDate, let night = points.nearest(toDay: selectedDate) else { return nil }
+        return ChartQuestion.forNight(
+            night,
+            metric: .hrv,
+            in: points,
+            journal: (tagsByDate[night.date] ?? []).map(\.label).sorted()
+        )
+    }
+
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            card
+            // Outside the card rather than inside it: `ChartCard` pins its
+            // content to a fixed height, so a row added in there would take
+            // its space out of the chart.
+            if let selectedQuestion {
+                AskZoonAboutChart(question: selectedQuestion) { asking = selectedQuestion }
+            }
+        }
+        .animation(Motion.respecting(reduceMotion, Motion.scrub), value: selectedDate)
+        .askZoonSheet(about: $asking, night: askedNight)
+    }
+
+    /// The night the question is about -- so the coach is grounded in the
+    /// night that was tapped, not in whichever night happens to be first.
+    private var askedNight: SleepNightFeatures? {
+        guard let asking else { return nil }
+        return points.first { $0.date == asking.selected.date }
+    }
+
+    private var card: some View {
         ChartCard(
             title: "Heart Rate Variability",
             subtitle: "Overnight SDNN. Higher generally means better recovery."

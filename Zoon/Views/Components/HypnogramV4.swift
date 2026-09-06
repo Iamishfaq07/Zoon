@@ -17,6 +17,10 @@ import SwiftUI
 /// * **Awakening zoom** -- tap an awakening in the list below and the chart
 ///   animates into ±15 minutes around it. Tap again, or "Full night", to
 ///   return. This is the doorway to Night Detective.
+/// * **Replay** -- plays the cursor across the night, captioning the handful
+///   of moments the night is actually made of (`SleepReplay`). It reuses the
+///   scrub cursor and readout rather than adding a second cursor, so replay
+///   and finger land on exactly the same numbers.
 ///
 /// Draw-in is once per night (`drawOnce`) and never replays on scroll.
 struct HypnogramV4: View {
@@ -55,7 +59,18 @@ struct HypnogramV4: View {
     /// The window currently shown; `nil` means the whole night.
     @State private var zoom: DateInterval?
     @State private var progress: Double = 0
+    @State private var replay: Task<Void, Never>?
+    @State private var isReplaying = false
+    /// Which moment Reduce Motion has stepped to. Separate from the replay
+    /// task because stepping is not a paused replay -- it never advances on
+    /// its own, and leaving it does not resume anything.
+    @State private var steppedMoment: Int?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Roughly 30 cursor positions a second. Fine enough that the readout
+    /// ticks rather than jumps, coarse enough that a fifteen-second replay
+    /// is a few hundred state updates rather than a few thousand.
+    private static let replayFramesPerSecond = 30.0
 
     private var fullSpan: DateInterval? { night.stageSegments.span }
     private var shownSpan: DateInterval? { zoom ?? fullSpan }
@@ -84,12 +99,18 @@ struct HypnogramV4: View {
         VStack(alignment: .leading, spacing: 12) {
             readout
             chart
+            replayCaption
             controls
             if !awakenings.isEmpty {
                 awakeningRow
             }
         }
         .drawOnce(id: night.nightKey, progress: $progress)
+        // A replay of the full night means nothing once the chart is showing
+        // fifteen minutes of it, and the moments it would narrate are no
+        // longer the moments on screen.
+        .onChange(of: zoom) { _, _ in stopReplay() }
+        .onDisappear { stopReplay() }
     }
 
     // MARK: - Readout
@@ -226,6 +247,157 @@ struct HypnogramV4: View {
         .padding(.leading, 50)
     }
 
+    // MARK: - Replay
+
+    /// The moments of the window currently on screen.
+    ///
+    /// Derived from `shownSegments`, not the whole night, so a zoomed chart
+    /// narrates what it is actually showing. Sound events go in regardless of
+    /// the Sound overlay: the replay is narration rather than a layer, and a
+    /// snore is part of what happened whether or not a dot is drawn for it.
+    private var moments: [SleepReplay.Moment] {
+        SleepReplay.moments(from: shownSegments, soundEvents: soundEvents)
+    }
+
+    /// The most recent moment at or before the cursor -- what the caption
+    /// says. Not the *nearest* moment: a caption that appears before the
+    /// thing it describes has happened would be a small lie about the night.
+    private var currentMoment: SleepReplay.Moment? {
+        guard let scrubTime else { return nil }
+        return moments.last { $0.date <= scrubTime }
+    }
+
+    /// Present only while a replay or a step-through is in progress, so the
+    /// chart is not permanently carrying an empty line.
+    @ViewBuilder
+    private var replayCaption: some View {
+        if isReplaying || steppedMoment != nil, let moment = currentMoment {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Self.color(for: moment.kind))
+                    .frame(width: 7, height: 7)
+                Text(moment.caption)
+                    .font(Theme.label(14, weight: .semibold))
+                Text(moment.date, format: .dateTime.hour().minute())
+                    .font(Theme.text(12))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                if let index = steppedMoment {
+                    Text("\(index + 1) of \(moments.count)")
+                        .font(Theme.text(11))
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.leading, 50)
+            .transition(.opacity)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private static func color(for kind: SleepReplay.Moment.Kind) -> Color {
+        switch kind {
+        case .fellAsleep, .wokeUp: Theme.Family.sleep
+        case .awoke: Theme.Stage.awake
+        case .stageChange, .sound: Theme.Family.bodySignals
+        }
+    }
+
+    /// Play, pause, or -- under Reduce Motion -- step.
+    ///
+    /// Reduce Motion does not get a slower animation, it gets no animation:
+    /// the same moments, one tap at a time. An auto-advancing cursor is
+    /// exactly the kind of unrequested movement the setting asks apps to
+    /// stop doing, and the content of a replay is the captions, not the
+    /// sweep.
+    @ViewBuilder
+    private var replayControl: some View {
+        if moments.count >= 2 {
+            Button {
+                reduceMotion ? stepReplay() : toggleReplay()
+            } label: {
+                ZoonMetricPill(
+                    text: reduceMotion ? (steppedMoment == nil ? "Replay" : "Next") : (isReplaying ? "Pause" : "Replay"),
+                    systemImage: reduceMotion ? "forward.frame" : (isReplaying ? "pause.fill" : "play.fill"),
+                    tint: Theme.Family.sleep,
+                    isSelected: isReplaying || steppedMoment != nil
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(reduceMotion ? "Step through the night" : "Replay the night")
+            .accessibilityHint("Moves the cursor through the moments of this night")
+        }
+    }
+
+    private func toggleReplay() {
+        Haptics.tap()
+        if isReplaying {
+            stopReplay()
+        } else {
+            startReplay()
+        }
+    }
+
+    private func startReplay() {
+        guard let shownSpan, shownSpan.duration > 0 else { return }
+        replay?.cancel()
+        steppedMoment = nil
+        isReplaying = true
+
+        let seconds = SleepReplay.duration(forNightHours: shownSpan.duration / 3600)
+        let frames = max(1, Int(seconds * Self.replayFramesPerSecond))
+        let interval = seconds / Double(frames)
+        let moments = self.moments
+        let span = shownSpan
+
+        replay = Task { @MainActor in
+            // The reached moment is tracked here rather than in `@State`:
+            // it exists only for the life of one replay, and the loop would
+            // otherwise be reading back state it had just written from
+            // outside a view update.
+            var reached: String?
+            for frame in 0...frames {
+                if Task.isCancelled { return }
+                let fraction = Double(frame) / Double(frames)
+                scrubFraction = CGFloat(fraction)
+
+                // One soft haptic as each moment is passed, so the night has
+                // a felt rhythm -- four taps for a settled night, a dozen for
+                // a broken one.
+                let time = span.start.addingTimeInterval(span.duration * fraction)
+                if let moment = moments.last(where: { $0.date <= time }), moment.id != reached {
+                    if reached != nil { Haptics.scrubDetent() }
+                    reached = moment.id
+                }
+                try? await Task.sleep(for: .seconds(interval))
+            }
+            isReplaying = false
+            replay = nil
+        }
+    }
+
+    private func stopReplay() {
+        replay?.cancel()
+        replay = nil
+        isReplaying = false
+        steppedMoment = nil
+        scrubFraction = nil
+    }
+
+    /// The Reduce Motion path: advance to the next moment and stop there.
+    /// Wraps back to the first moment after the last, so the control never
+    /// becomes a dead button.
+    private func stepReplay() {
+        guard !moments.isEmpty else { return }
+        Haptics.select()
+        let next = steppedMoment.map { $0 + 1 } ?? 0
+        let index = next < moments.count ? next : 0
+        steppedMoment = index
+        guard let fraction = SleepReplay.fraction(of: moments[index].date, in: shownSegments) else { return }
+        scrubFraction = CGFloat(fraction)
+    }
+
     // MARK: - Controls
 
     /// Stages is always on. Heart/Breathing/Sound toggle, at most two extra
@@ -234,6 +406,7 @@ struct HypnogramV4: View {
     private var controls: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                replayControl
                 ZoonMetricPill(text: "Stages", systemImage: "square.stack.3d.up", tint: Theme.Family.sleep, isSelected: true)
                     .accessibilityLabel("Stages, always shown")
                 ForEach(Overlay.allCases) { overlay in
