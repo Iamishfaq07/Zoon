@@ -298,28 +298,63 @@ struct JournalView: View {
         .accessibilityLabel("\(title), \(tag.question)")
     }
 
+    /// Every behaviour, in one card rather than one card per category.
+    ///
+    /// This was four peer cards -- Substances, Food & Drink, Activity,
+    /// Environment & State -- each with its own border, fill and shadow. Four
+    /// separate objects on screen, for four halves of a single activity:
+    /// ticking what happened yesterday. A border says "this is a different
+    /// thing from the one above it", and here that was not true.
+    ///
+    /// The categories still group the chips, because the grouping is real and
+    /// helps scanning. What they no longer do is each claim a card.
     private var tagSections: some View {
         VStack(spacing: Theme.stackSpacing) {
-            ForEach(BehaviorTag.Category.allCases) { category in
+            VStack(alignment: .leading, spacing: 16) {
                 // Filtered to whatever the user has curated in Settings ->
                 // Tracked Behaviours -- `isTracked` defaults to true for
                 // everyone who's never touched that screen, so this changes
                 // nothing until someone opts in. A category with nothing
-                // tracked in it doesn't get an empty card.
-                let tags = category.tags.filter(preferences.isTracked)
-                if !tags.isEmpty {
+                // tracked in it draws no group.
+                ForEach(trackedByCategory) { group in
+                    if group.category != trackedByCategory.first?.category {
+                        Divider().overlay(Theme.cardStroke)
+                    }
                     VStack(alignment: .leading, spacing: 10) {
-                        SectionHeader(title: category.label)
+                        SectionHeader(title: group.category.label)
                         FlowLayout(spacing: 8) {
-                            ForEach(tags) { tag in
+                            ForEach(group.tags) { tag in
                                 tagChip(tag)
                             }
                         }
                     }
-                    .glassCard()
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+
             nothingElseRow
+        }
+    }
+
+    /// One category's chips.
+    ///
+    /// A named type rather than a tuple because `ForEach` needs an
+    /// `Identifiable` element, and a key path cannot address a tuple's
+    /// members -- `\.element.category` compiles nowhere.
+    private struct TrackedGroup: Identifiable {
+        let category: BehaviorTag.Category
+        let tags: [BehaviorTag]
+        var id: String { category.rawValue }
+    }
+
+    /// The categories that have anything tracked in them, in their declared
+    /// order. Computed once rather than filtered inside the loop, so the
+    /// divider can tell which group is first without re-running the filter.
+    private var trackedByCategory: [TrackedGroup] {
+        BehaviorTag.Category.allCases.compactMap { category in
+            let tags = category.tags.filter(preferences.isTracked)
+            return tags.isEmpty ? nil : TrackedGroup(category: category, tags: tags)
         }
     }
 

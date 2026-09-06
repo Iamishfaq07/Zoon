@@ -24,16 +24,17 @@ struct SleepDetailView: View {
     var body: some View {
         ScrollView {
             // V8 order: the night itself first (headline, hypnogram, story),
-            // then its breakdown, then completeness. Sleep Need and
-            // Chronotype no longer repeat here -- both lead the "Tonight and
-            // beyond" section on the Sleep tab this screen is reached from.
+            // then what it was made of. Sleep Need and Chronotype no longer
+            // repeat here -- both lead the "Tonight and beyond" section on
+            // the Sleep tab this screen is reached from.
+            //
+            // Stage breakdown, timing and completeness used to be three more
+            // cards in this stack. They are one now: see `breakdownCard`.
             VStack(spacing: Theme.stackSpacing) {
                 headline
                 hypnogramCard
                 storyPreviewCard
-                stagesCard
-                timingCard
-                dataCompletenessCard
+                breakdownCard
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -153,15 +154,42 @@ struct SleepDetailView: View {
         }
     }
 
+    /// The night's structure, its numbers, and how much of it was actually
+    /// measured -- one card rather than three.
+    ///
+    /// These were three peer cards stacked in a row, and all three answered
+    /// the same question: what was this night made of. A border says "a
+    /// different thing from the one above", which was not true of any of
+    /// them. Stage breakdown and timing sit together with a rule between
+    /// them, and completeness -- which is supporting evidence for both, not a
+    /// finding of its own -- goes behind a disclosure.
+    ///
+    /// The V10 rule this follows: simple when you open it, deep when you
+    /// explore it. Nothing is removed; one of the three now waits to be
+    /// asked for.
+    private var breakdownCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            stagesSection
+            Divider().overlay(Theme.cardStroke)
+            timingSection
+            Divider().overlay(Theme.cardStroke)
+            DisclosureGroup("How much of tonight was measured?") {
+                completenessSection.padding(.top, 8)
+            }
+            .font(Theme.label(13, weight: .medium))
+            .tint(Theme.Metric.sleep)
+        }
+        .glassCard()
+    }
+
     @ViewBuilder
-    private var stagesCard: some View {
+    private var stagesSection: some View {
         if context.night.hasStageBreakdown {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(title: "Stage Breakdown", systemImage: "square.stack.3d.up")
                 StageProportionBar(features: context.night)
                 StageLegend(features: context.night)
             }
-            .glassCard()
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 SectionHeader(title: "Stage Breakdown", systemImage: "applewatch.slash")
@@ -173,11 +201,10 @@ struct SleepDetailView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .glassCard()
         }
     }
 
-    private var timingCard: some View {
+    private var timingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Timing & Quality", systemImage: "clock")
 
@@ -230,13 +257,12 @@ struct SleepDetailView: View {
                 ]
             )
         }
-        .glassCard()
     }
 
     // MARK: - Data completeness
 
     @ViewBuilder
-    private var dataCompletenessCard: some View {
+    private var completenessSection: some View {
         let sources: [(label: String, available: Bool)] = [
             ("Sleep stages", context.night.hasStageBreakdown),
             ("Heart rate", context.night.avgHeartRate != nil),
@@ -272,7 +298,6 @@ struct SleepDetailView: View {
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .glassCard()
     }
 
     private func row(
