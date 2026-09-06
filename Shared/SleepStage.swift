@@ -19,11 +19,21 @@ enum SleepStage: String, Codable, Hashable, CaseIterable, Sendable {
     /// Every value that counts as sleep. `inBed` and `awake` are not sleep.
     static let asleepStages: [SleepStage] = [.core, .deep, .rem, .unspecified]
 
+    /// What to call this stage on screen.
+    ///
+    /// `.core` reads "Light sleep" rather than Apple's own word for it. That
+    /// is a deliberate divergence from the Health app and it costs something
+    /// -- someone comparing the two screens sees different words for the same
+    /// minutes. It buys more than it costs: "Core" means nothing to a reader
+    /// who has not already learned Apple's vocabulary, and every other
+    /// tracker calls this light sleep. `SleepVocabulary.core` keeps Apple's
+    /// term as the technical alias so the two can be reconciled wherever
+    /// there is room to say both.
     var displayName: String {
         switch self {
         case .inBed: "In Bed"
         case .awake: "Awake"
-        case .core: "Core"
+        case .core: SleepVocabulary.core.plain
         case .deep: "Deep"
         case .rem: "REM"
         case .unspecified: "Asleep"

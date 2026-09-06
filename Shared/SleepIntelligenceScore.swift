@@ -130,7 +130,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// a hand-copied duplicate that could drift out of sync with it.
     static let nominalWeights: [(component: String, weight: Double)] = [
         ("Duration", 0.25), ("Continuity", 0.20), ("Regularity", 0.15),
-        ("Recovery", 0.15), ("Circadian", 0.10), ("Breathing", 0.10), ("Stage Pattern", 0.05)
+        ("Recovery", 0.15), ("Timing", 0.10), ("Breathing", 0.10), ("Stage Pattern", 0.05)
     ]
     private static let nominalWeightsByName = Dictionary(
         uniqueKeysWithValues: nominalWeights.map { ($0.component, $0.weight) }
@@ -230,7 +230,18 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             ), nominalWeightsByName["Recovery"]!))
         }
 
-        // --- Circadian -------------------------------------------------------
+        // --- Timing ----------------------------------------------------------
+        //
+        // "Circadian" until now. The V9 audit's own list of the six
+        // components calls this one Timing, and it is right to: the number
+        // measures how far last night's midpoint sat from where this person
+        // usually sleeps, which is a thing anyone can picture. "Circadian" is
+        // the word for the system underneath, kept as the technical alias in
+        // `SleepVocabulary.circadianAlignment`.
+        //
+        // A label change only -- the score is bit-for-bit identical, so
+        // `currentVersion` does not move. Versions track what the number
+        // means, not what it is called.
         if let habitual = inputs.habitualMidpointHours {
             let tonightMidpoint = midpointHours(night)
             let diffMinutes = abs(tonightMidpoint - habitual) * 60
@@ -239,12 +250,12 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 anchors: [(0, 100), (15, 100), (30, 90), (60, 75), (90, 55), (120, 35), (180, 10), (240, 0)]
             ) / 100
             raw.append((Component(
-                label: "Circadian",
+                label: "Timing",
                 detail: String(format: "%+.0fm vs usual timing", (tonightMidpoint - habitual) * 60),
                 normalized: circadianNormalized,
                 weightUsed: 0,
                 expectedNeutral: Self.circadianNeutral
-            ), nominalWeightsByName["Circadian"]!))
+            ), nominalWeightsByName["Timing"]!))
         }
 
         // --- Breathing -------------------------------------------------------
