@@ -50,7 +50,7 @@ struct LunarOrbit: View {
         "Continuity": Theme.Metric.hrv,
         "Regularity": Theme.Family.recovery,
         "Recovery": Theme.Family.recovery,
-        "Circadian": Theme.Family.circadian,
+        "Timing": Theme.Family.circadian,
         "Breathing": Theme.Family.breathing,
         "Stage Pattern": Theme.Family.bodySignals
     ]

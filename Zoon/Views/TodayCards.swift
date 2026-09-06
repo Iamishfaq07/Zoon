@@ -130,7 +130,7 @@ struct RecoveryBreakdownCard: View {
                     symbol: "chart.bar.doc.horizontal",
                     tint: Theme.recoveryColor(Double(recovery.percent)),
                     explanation: [
-                        "Recovery blends several signals -- HRV, resting heart rate, and sleep performance among them -- each compared against your own baseline rather than a fixed target.",
+                        "Recovery blends several signals -- your recovery signal (HRV), resting heart rate, and how much of your sleep need you met among them -- each compared against your own baseline rather than a fixed target.",
                         "The bars above show how much each input pulled the score up or down. A signal with nothing to measure tonight (no reading, or no baseline yet) is left out entirely and its weight redistributes among the rest -- it's never scored as average or assumed fine."
                     ]
                 )
