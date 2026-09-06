@@ -76,7 +76,7 @@ struct BodyClockView: View {
     private func ring(bodyClock: BodyClock, night: SleepNightFeatures) -> some View {
         let driftMinutes = bodyClock.drift(of: night.bedtime) ?? 0
         let alignment = alignmentScore(driftMinutes: driftMinutes)
-        let energyMarks = energyMarks(bodyClock: bodyClock, night: night)
+        let energyMarks = energyWindows(bodyClock: bodyClock, night: night)
 
         return VStack(spacing: 16) {
             ZoonBodyClockOrbit(
@@ -156,7 +156,7 @@ struct BodyClockView: View {
     /// Peak, dip, and wind-down only. Morning rise and second wind sit close
     /// enough to the window edges already on the dial that marking them too
     /// would be noise around the same arc.
-    private func energyMarks(bodyClock: BodyClock, night: SleepNightFeatures) -> [EnergyForecast.Window] {
+    private func energyWindows(bodyClock: BodyClock, night: SleepNightFeatures) -> [EnergyForecast.Window] {
         EnergyForecast.compute(
             wakeTime: night.wakeTime,
             sleepDebtMinutes: night.sleepDebtMinutes ?? 0,
@@ -169,7 +169,7 @@ struct BodyClockView: View {
     private func agenda(bodyClock: BodyClock, night: SleepNightFeatures) -> [BodyClockAgenda.Moment] {
         BodyClockAgenda.moments(
             bodyClock: bodyClock,
-            energyMarks: energyMarks(bodyClock: bodyClock, night: night)
+            energyMarks: energyWindows(bodyClock: bodyClock, night: night)
         )
     }
 
