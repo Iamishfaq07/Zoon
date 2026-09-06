@@ -104,6 +104,21 @@ struct EvidenceHistoryView: View {
                             .font(Theme.evidence)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+
+                        // "Why did this change?" -- the timeline already
+                        // shows *that* a belief moved; this says why. Absent
+                        // on the first revision, which did not change from
+                        // anything.
+                        if index > 0 {
+                            let change = EvidenceLedger.change(from: timeline[index - 1], to: revision)
+                            if !change.whyLine.isEmpty {
+                                Text(change.whyLine)
+                                    .font(Theme.evidence)
+                                    .foregroundStyle(change.isComparable ? Color.secondary : Theme.Family.attention)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.top, 2)
+                            }
+                        }
                     }
                     Spacer(minLength: 0)
                 }

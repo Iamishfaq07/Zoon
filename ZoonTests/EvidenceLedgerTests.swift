@@ -175,4 +175,127 @@ final class EvidenceLedgerTests: XCTestCase {
             XCTAssertFalse(status.label.isEmpty, "\(status.rawValue) has no label")
         }
     }
+
+    // MARK: - Why did this change?
+
+    /// The spec's own worked example: an association at +3 minutes on low
+    /// evidence becomes +11 on more, and the screen says which.
+    func testAChangeReportsTheReadingsAndTheReason() throws {
+        let before = revision(at: 30, status: .associated, effect: 3, lower: -2, upper: 8, sampleSize: 8)
+        let after = revision(at: 2, status: .supported, effect: 11, sampleSize: 17)
+        let change = EvidenceLedger.change(from: before, to: after)
+
+        XCTAssertTrue(change.earlierLine.contains("+3 minutes"), change.earlierLine)
+        XCTAssertTrue(change.earlierLine.contains("8 nights"), change.earlierLine)
+        XCTAssertTrue(change.nowLine.contains("+11 minutes"), change.nowLine)
+        XCTAssertTrue(change.nowLine.contains("17 nights"), change.nowLine)
+        XCTAssertTrue(change.whyLine.contains("9 new comparable nights were added"), change.whyLine)
+    }
+
+    /// A first belief did not change from anything, and saying it did would
+    /// invent a history.
+    func testTheFirstRevisionOfAClaimHasNoChange() {
+        let first = revision(at: 30)
+        XCTAssertNil(EvidenceLedger.change(to: first, in: [first]))
+    }
+
+    func testAChangeComparesAgainstTheImmediatelyPreviousRevision() throws {
+        let oldest = revision(at: 30, status: .learning, effect: nil, sampleSize: 2)
+        let middle = revision(at: 20, status: .associated, effect: 3, sampleSize: 8)
+        let newest = revision(at: 2, status: .supported, effect: 11, sampleSize: 17)
+        let change = try XCTUnwrap(
+            EvidenceLedger.change(to: newest, in: [oldest, middle, newest])
+        )
+        XCTAssertEqual(change.previous, middle, "the comparison must be against the one before it")
+    }
+
+    /// An effect from a superseded model is not a larger or smaller version
+    /// of the current one -- it is a different measurement, and putting the
+    /// two side by side invites a comparison that was never valid.
+    func testAMethodChangeSuppressesTheEffectComparison() {
+        let before = revision(at: 30, effect: 3, sampleSize: 17, algorithmVersion: 1)
+        let after = revision(at: 2, effect: 11, sampleSize: 17, algorithmVersion: 2)
+        let change = EvidenceLedger.change(from: before, to: after)
+
+        XCTAssertFalse(change.isComparable)
+        XCTAssertFalse(
+            change.reasons.contains { if case .effectMoved = $0 { return true } else { return false } },
+            "the effect must not be described as having moved across a method change"
+        )
+        XCTAssertTrue(change.whyLine.contains("method changed"), change.whyLine)
+        XCTAssertTrue(change.whyLine.contains("different measurement"), change.whyLine)
+    }
+
+    /// Listed first wherever it appears, because it makes every other
+    /// comparison in the list meaningless.
+    func testAMethodChangeIsTheFirstReasonGiven() throws {
+        let before = revision(at: 30, status: .associated, sampleSize: 8, algorithmVersion: 1)
+        let after = revision(at: 2, status: .supported, sampleSize: 17, algorithmVersion: 2)
+        let change = EvidenceLedger.change(from: before, to: after)
+
+        let first = try XCTUnwrap(change.reasons.first)
+        guard case .methodChanged = first else {
+            return XCTFail("expected the method change first, got \(first)")
+        }
+    }
+
+    func testAStatusMoveIsNamedInBothDirections() {
+        let forward = EvidenceLedger.change(
+            from: revision(at: 30, status: .associated),
+            to: revision(at: 2, status: .supported)
+        )
+        XCTAssertTrue(forward.whyLine.contains("Association detected became Supported"), forward.whyLine)
+
+        // A belief can weaken. Recording that is the entire point of a ledger.
+        let backward = EvidenceLedger.change(
+            from: revision(at: 30, status: .supported),
+            to: revision(at: 2, status: .inconclusive)
+        )
+        XCTAssertTrue(backward.whyLine.contains("Supported became Inconclusive"), backward.whyLine)
+    }
+
+    /// A shrinking sample is unusual -- a window rolling past old nights, an
+    /// entry deleted -- and is exactly the case where a silently moving
+    /// number would look like new evidence.
+    func testASmallerSampleIsStatedNotHidden() {
+        let change = EvidenceLedger.change(
+            from: revision(at: 30, sampleSize: 20),
+            to: revision(at: 2, sampleSize: 14)
+        )
+        XCTAssertTrue(change.whyLine.contains("6 nights dropped out"), change.whyLine)
+    }
+
+    func testAnUnchangedBeliefHasNothingToExplain() {
+        let same = revision(at: 30)
+        let change = EvidenceLedger.change(from: same, to: revision(at: 2))
+        XCTAssertTrue(change.reasons.isEmpty)
+        XCTAssertTrue(change.whyLine.isEmpty)
+    }
+
+    func testASingleAddedNightReadsAsSingular() {
+        let change = EvidenceLedger.change(
+            from: revision(at: 30, sampleSize: 16),
+            to: revision(at: 2, sampleSize: 17)
+        )
+        XCTAssertTrue(change.whyLine.contains("1 new comparable night was added"), change.whyLine)
+    }
+
+    // MARK: - Reading an effect
+
+    /// The sign is the finding: "3 minutes" does not say whether the night
+    /// got better or worse.
+    func testAnEffectIsAlwaysSigned() {
+        XCTAssertEqual(EvidenceLedger.Change.formatted(3, unit: "minutes"), "+3 minutes")
+        XCTAssertEqual(EvidenceLedger.Change.formatted(-11, unit: "minutes"), "-11 minutes")
+    }
+
+    func testAFractionalEffectKeepsOneDecimal() {
+        XCTAssertEqual(EvidenceLedger.Change.formatted(9.24, unit: "minutes"), "+9.2 minutes")
+        // Swift's `rounded()` is half-away-from-zero, not banker's rounding.
+        XCTAssertEqual(EvidenceLedger.Change.formatted(9.25, unit: "minutes"), "+9.3 minutes")
+    }
+
+    func testAnEffectWithNoUnitIsStillReadable() {
+        XCTAssertEqual(EvidenceLedger.Change.formatted(5, unit: nil), "+5")
+    }
 }
