@@ -30,62 +30,56 @@ struct WhatChangedCard: View {
     }
 
     private var rows: [Row]? {
-        guard currentWeek.count == 7, previousWeek.count == 7 else { return nil }
-
-        var result: [Row] = []
-
-        let sleepDelta = average(currentWeek.map(\.timeAsleepMinutes)) - average(previousWeek.map(\.timeAsleepMinutes))
-        result.append(Row(
-            label: "Time asleep",
-            symbol: "bed.double.fill",
-            formatted: signedMinutes(sleepDelta),
-            isImprovement: sleepDelta == 0 ? nil : sleepDelta > 0
-        ))
-
-        let currentHRV = currentWeek.compactMap(\.avgHRV)
-        let previousHRV = previousWeek.compactMap(\.avgHRV)
-        if currentHRV.count >= 2, previousHRV.count >= 2 {
-            let hrvDelta = average(currentHRV) - average(previousHRV)
-            result.append(Row(
-                label: "HRV",
-                symbol: "waveform.path.ecg",
-                formatted: "\(hrvDelta >= 0 ? "+" : "")\(Int(hrvDelta.rounded())) ms",
-                isImprovement: hrvDelta == 0 ? nil : hrvDelta > 0
-            ))
-        }
-
-        let consistencyDelta = bedtimeStandardDeviationMinutes(previousWeek) - bedtimeStandardDeviationMinutes(currentWeek)
-        result.append(Row(
-            label: "Bedtime steadiness",
-            symbol: "clock.arrow.2.circlepath",
-            formatted: consistencyDelta == 0
-                ? "No change"
-                : "\(Int(abs(consistencyDelta).rounded()))m \(consistencyDelta > 0 ? "steadier" : "more scattered")",
-            isImprovement: consistencyDelta == 0 ? nil : consistencyDelta > 0
-        ))
-
-        let series = SleepDebtCalculator.debtSeries(
-            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: nights.map { $0.sleepNeedBaselineMinutes ?? goalMinutes }
-        )
-        if series.count >= 14, let debtNow = series.last, let debtWeekAgo = series.dropLast(7).last {
-            let debtDelta = debtNow - debtWeekAgo
-            result.append(Row(
-                label: "Sleep debt",
-                symbol: "chart.line.downtrend.xyaxis",
-                formatted: debtDelta == 0
-                    ? "No change"
-                    : "\(signedMinutes(-debtDelta)) owed",
-                isImprovement: debtDelta == 0 ? nil : debtDelta < 0
-            ))
-        }
+        // One engine, shared with `WhatChangedStream`. The two used to compute
+        // these four comparisons independently with slightly different
+        // "no change" tests, which is exactly how two screens end up
+        // disagreeing about the same week.
+        let changes = WeekOverWeek.compare(nights: nights, goalMinutes: goalMinutes)
+        guard !changes.isEmpty else { return nil }
 
         // Capped at 3 -- the redesign audit found this card could show 4
         // rows (sleep time, HRV, bedtime steadiness, sleep debt) when the
         // spec caps it at 3. Debt is the one most likely to drop off the
         // end since it alone needs a full 14-night series where the other
         // three don't.
-        return Array(result.prefix(3))
+        return changes.prefix(3).map { change in
+            Row(
+                label: change.title,
+                symbol: symbol(for: change.id),
+                formatted: formatted(change),
+                isImprovement: change.isImprovement
+            )
+        }
+    }
+
+    private func symbol(for id: String) -> String {
+        switch id {
+        case "sleep": "bed.double.fill"
+        case "hrv": "waveform.path.ecg"
+        case "bedtime": "clock.arrow.2.circlepath"
+        default: "chart.line.downtrend.xyaxis"
+        }
+    }
+
+    /// The reading for one row.
+    ///
+    /// A move that did not clear the bars says so in words rather than
+    /// showing a signed number in a neutral colour: "+3 ms" greyed out still
+    /// reads as a change that happened, and the point is that it has not been
+    /// shown to be one.
+    private func formatted(_ change: WeekOverWeek.Change) -> String {
+        guard change.isMeaningful else { return "About the same" }
+        switch change.id {
+        case "hrv":
+            return "\(change.delta >= 0 ? "+" : "")\(Int(change.delta.rounded())) ms"
+        case "bedtime":
+            let word = change.delta < 0 ? "steadier" : "more scattered"
+            return "\(Int(abs(change.delta).rounded()))m \(word)"
+        case "debt":
+            return "\(signedMinutes(-change.delta)) owed"
+        default:
+            return signedMinutes(change.delta)
+        }
     }
 
     var body: some View {
@@ -124,38 +118,12 @@ struct WhatChangedCard: View {
         }
     }
 
-    private func average(_ values: [Double]) -> Double {
-        guard !values.isEmpty else { return 0 }
-        return values.reduce(0, +) / Double(values.count)
-    }
-
     private func signedMinutes(_ minutes: Double) -> String {
         guard minutes != 0 else { return "No change" }
         let magnitude = Int(abs(minutes).rounded())
         return "\(minutes > 0 ? "+" : "-")\(magnitude)m"
     }
 
-    /// Standard deviation of bedtime, in minutes, shifted so evening times
-    /// don't wrap around midnight -- the same convention `ConsistencyChartCard`
-    /// uses for its Y axis, recomputed here rather than shared because that
-    /// helper is `private` to a view built around a very different shape.
-    private func bedtimeStandardDeviationMinutes(_ week: [SleepNightFeatures]) -> Double {
-        var calendar = Calendar.current
-        let minutesFromMidnight = week.map { night -> Double in
-            // Each night's own timezone, not the device's current one -- a
-            // historical bedtime's wall-clock hour doesn't change because
-            // the user has since traveled. Same reasoning as
-            // DayContextBuilder.shiftedBedtimeHour and BodyClock.compute.
-            calendar.timeZone = night.timeZone
-            let components = calendar.dateComponents([.hour, .minute], from: night.bedtime)
-            let minutes = Double(components.hour ?? 0) * 60 + Double(components.minute ?? 0)
-            return minutes >= 18 * 60 ? minutes - 24 * 60 : minutes
-        }
-        guard minutesFromMidnight.count > 1 else { return 0 }
-        let mean = average(minutesFromMidnight)
-        let variance = minutesFromMidnight.reduce(0) { $0 + pow($1 - mean, 2) } / Double(minutesFromMidnight.count)
-        return variance.squareRoot()
-    }
 }
 
 /// The strongest one or two patterns Cause Finder has found in your own
