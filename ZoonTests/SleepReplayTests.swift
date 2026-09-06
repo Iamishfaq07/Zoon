@@ -161,4 +161,112 @@ final class SleepReplayTests: XCTestCase {
     func testFractionOfAnEmptyNightIsNil() {
         XCTAssertNil(SleepReplay.fraction(of: start, in: []))
     }
+
+    // MARK: - Runs, not segments (V10 item 6)
+
+    /// **The regression.** An ignored micro-run still updated `previousStage`
+    /// in a `defer`, so the stretch that resumed afterwards looked like a
+    /// fresh transition: Deep, 2 minutes of Core, Deep produced *two* "Deep
+    /// sleep" moments for one continuous stretch of deep sleep.
+    func testAStretchInterruptedByAMicroRunIsOneMomentNotTwo() {
+        // A core run comes first on purpose. The onset moment already
+        // captions the first sleep run, and a second caption at the same
+        // instant would be noise -- so making the interrupted stretch the
+        // *onset* stretch would test the onset guard rather than the
+        // micro-run handling this test is about.
+        let interrupted = [
+            segment(.inBed, from: 0, to: 10),
+            segment(.core, from: 10, to: 40),
+            segment(.deep, from: 40, to: 70),
+            segment(.core, from: 70, to: 72),      // 2 minutes: noise
+            segment(.deep, from: 72, to: 97),
+            segment(.rem, from: 97, to: 130)
+        ]
+        let deepMoments = SleepReplay.moments(from: interrupted)
+            .filter { $0.caption == SleepStage.deep.displayName }
+
+        XCTAssertEqual(deepMoments.count, 1, "one stretch of deep sleep produced two moments")
+        XCTAssertEqual(deepMoments.first?.date, start.addingTimeInterval(40 * 60))
+    }
+
+    /// The micro-run is absorbed rather than dropped: the stretch it
+    /// interrupted runs through it.
+    func testAMicroRunIsAbsorbedIntoTheRunItInterrupted() {
+        let runs = SleepReplay.significantRuns(from: [
+            segment(.deep, from: 0, to: 30),
+            segment(.core, from: 30, to: 32),
+            segment(.deep, from: 32, to: 57)
+        ])
+        XCTAssertEqual(runs.count, 1)
+        XCTAssertEqual(runs.first?.stage, .deep)
+        XCTAssertEqual(runs.first?.minutes ?? 0, 57, accuracy: 0.001)
+    }
+
+    /// A real transition is still a transition. The fix must not swallow
+    /// stage changes that genuinely lasted.
+    func testALongStageChangeIsStillItsOwnRun() {
+        let runs = SleepReplay.significantRuns(from: [
+            segment(.deep, from: 0, to: 30),
+            segment(.core, from: 30, to: 50),
+            segment(.deep, from: 50, to: 75)
+        ])
+        XCTAssertEqual(runs.map(\.stage), [.deep, .core, .deep])
+    }
+
+    /// Two separate awakenings are two moments, not one.
+    func testTwoAwakeningsAreTwoMoments() {
+        let moments = SleepReplay.moments(from: [
+            segment(.core, from: 0, to: 60),
+            segment(.awake, from: 60, to: 68),
+            segment(.core, from: 68, to: 140),
+            segment(.awake, from: 140, to: 146),
+            segment(.core, from: 146, to: 300)
+        ])
+        XCTAssertEqual(moments.filter { $0.kind == .awoke }.count, 2)
+    }
+
+    /// A micro-run with nothing before it has nothing to interrupt, so it is
+    /// dropped rather than becoming a run of its own.
+    func testAMicroRunBeforeAnythingElseIsDropped() {
+        let runs = SleepReplay.significantRuns(from: [
+            segment(.awake, from: 0, to: 2),
+            segment(.core, from: 2, to: 60)
+        ])
+        XCTAssertEqual(runs.map(\.stage), [.core])
+    }
+
+    /// An unreadable stretch is not a caption, but it *is* a separator: an
+    /// hour the source could not stage is not nothing, and the deep sleep on
+    /// either side of it is two stretches rather than one.
+    func testAnUnspecifiedStretchSeparatesTheRunsAroundItWithoutCaptioningItself() {
+        // Again a core run first, so neither deep stretch is the onset run
+        // whose caption the "Fell asleep" moment already covers.
+        let moments = SleepReplay.moments(from: [
+            segment(.core, from: 0, to: 30),
+            segment(.deep, from: 30, to: 70),
+            segment(.unspecified, from: 70, to: 130),
+            segment(.deep, from: 130, to: 180)
+        ])
+        XCTAssertEqual(moments.filter { $0.caption == SleepStage.deep.displayName }.count, 2)
+        XCTAssertFalse(moments.contains { $0.caption == SleepStage.unspecified.displayName })
+    }
+
+    func testNoStageDataProducesNoRuns() {
+        XCTAssertTrue(SleepReplay.significantRuns(from: []).isEmpty)
+    }
+
+    /// The spec's own example output names how long the awakening lasted --
+    /// "Awake 6m" -- because "Awake" alone is the one caption where the
+    /// duration is the whole point.
+    func testAnAwakeningSaysHowLongItLasted() {
+        let moments = SleepReplay.moments(from: [
+            segment(.core, from: 0, to: 60),
+            segment(.awake, from: 60, to: 66),
+            segment(.core, from: 66, to: 200)
+        ])
+        XCTAssertTrue(
+            moments.contains { $0.kind == .awoke && $0.caption == "Awake 6m" },
+            "captions were \(moments.map(\.caption))"
+        )
+    }
 }
