@@ -35,6 +35,20 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
     /// Held for the lifetime of the test -- see the note in `makeStore()`.
     private var container: ModelContainer?
 
+    func testEraseRemovesEvidenceAndImportDoesNotDuplicateIt() throws {
+        let store = try makeStore()
+        let revision = EvidenceLedger.Revision(claimID: "tag:caffeineLate", recordedAt: .now,
+            status: .associated, headline: "A private observation", effect: 2, effectUnit: "minutes",
+            uncertaintyLower: 1, uncertaintyUpper: 3, sampleSize: 12,
+            windowStart: nil, windowEnd: nil, algorithmVersion: 1,
+            sourceFeature: "sleep", provenance: "test")
+        XCTAssertEqual(store.importEvidenceHistory([revision]), 1)
+        XCTAssertEqual(store.importEvidenceHistory([revision]), 0)
+        XCTAssertEqual(store.evidenceHistory().count, 1)
+        XCTAssertTrue(store.deleteAll())
+        XCTAssertTrue(store.evidenceHistory().isEmpty)
+    }
+
     private func makeStore() throws -> SleepHistoryStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(

@@ -100,12 +100,12 @@ final class DataExporterTests: XCTestCase {
 
     // MARK: - Round trip
 
-    func testFormatVersionFourRoundTripsEveryNewField() throws {
+    func testCurrentFormatRoundTripsEveryNewField() throws {
         let original = makeArchive()
         let data = try DataExporter.jsonData(original)
         let decoded = try DataExporter.decode(data)
 
-        XCTAssertEqual(decoded.formatVersion, 4)
+        XCTAssertEqual(decoded.formatVersion, DataExporter.formatVersion)
 
         XCTAssertEqual(decoded.preferences?.wakeAlarmEnabled, true)
         XCTAssertEqual(decoded.preferences?.focusSilencesBedtimeNudges, true)

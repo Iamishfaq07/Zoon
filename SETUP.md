@@ -186,17 +186,15 @@ Two things to know:
 
 ## Regenerating the project file
 
-You shouldn't need to. If `project.pbxproj` ever gets mangled by a merge and
-you'd rather regenerate than resolve a conflict by hand:
+The checked-in project is generated from the repository's canonical script:
 
 ```bash
-brew install xcodegen
-xcodegen generate
+python3 Tools/generate-pbxproj.py
+python3 Tools/validate-pbxproj.py
 ```
 
-`project.yml` describes the same targets and the same build settings. After
-regenerating you'll need to redo steps 2–3 — signing and capabilities aren't in
-the spec, since they're specific to your team.
+The generator owns target membership, settings, schemes, signing entitlements,
+and test membership. CI regenerates it and fails if the checked-in project differs.
 
 ## Adding the local LLM later
 

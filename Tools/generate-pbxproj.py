@@ -194,7 +194,7 @@ APP_PRIVACY = "Zoon/PrivacyInfo.xcprivacy"
 EXT_PRIVACY = "ZoonWidget/PrivacyInfo.xcprivacy"
 WATCH_PRIVACY = "ZoonWatch/PrivacyInfo.xcprivacy"
 WATCH_EXT_PRIVACY = "ZoonWatchWidget/PrivacyInfo.xcprivacy"
-DOCS = ["README.md", "SETUP.md", "PRIVACY.md", "project.yml", "LICENSE", ".gitignore"]
+DOCS = ["README.md", "SETUP.md", "PRIVACY.md", "LICENSE", ".gitignore"]
 
 # ---------------------------------------------------------------- objects
 
