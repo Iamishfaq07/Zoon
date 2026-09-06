@@ -11,6 +11,11 @@ struct CoachChatView: View {
     /// once the chat starts. `nil` for the plain "Start a conversation"
     /// entry point, which opens to an empty composer as before.
     var initialPrompt: String? = nil
+    /// The chart point this conversation was opened from, when it was.
+    /// Its `question` is asked automatically and its `context` seeds the
+    /// session, so the first reply is about the point that was tapped rather
+    /// than about the night in general.
+    var chartQuestion: ChartQuestion? = nil
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -48,10 +53,17 @@ struct CoachChatView: View {
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            chat.start(nightSummary: night.summaryForLLM, contextDigest: coordinator.coachContextDigest())
-            guard let initialPrompt, !hasSubmittedInitialPrompt else { return }
+            chat.start(
+                nightSummary: night.summaryForLLM,
+                contextDigest: coordinator.coachContextDigest(),
+                chartContext: chartQuestion?.context
+            )
+            // The chart's own question wins over a tapped suggestion: this
+            // screen was opened *by* that point, and asking anything else
+            // first would answer a question nobody asked.
+            guard let prompt = chartQuestion?.question ?? initialPrompt, !hasSubmittedInitialPrompt else { return }
             hasSubmittedInitialPrompt = true
-            await chat.send(initialPrompt)
+            await chat.send(prompt)
         }
         // A real report: this screen could show "the on-device model is
         // still downloading" and stay stuck on that message indefinitely --
