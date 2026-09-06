@@ -208,7 +208,7 @@ final class AdaptiveJournalTests: XCTestCase {
         XCTAssertTrue(AdaptiveJournal.prompts(observations: history(), limit: 0).isEmpty)
         XCTAssertLessThanOrEqual(
             AdaptiveJournal.prompts(observations: history()).count,
-            AdaptiveJournal.promptSize
+            AdaptiveJournal.rankedListSize
         )
     }
 
@@ -288,5 +288,107 @@ extension AdaptiveJournalTests {
     func testTheThinnerArmIsTheSmallerOfTheTwo() {
         XCTAssertEqual(prompt(reason: .routine, yes: 15, no: 3).thinnerArmNights, 3)
         XCTAssertEqual(prompt(reason: .routine, yes: 2, no: 20).thinnerArmNights, 2)
+    }
+
+    // MARK: - The one question (V9 item 39)
+
+    /// Everything routine: the top-ranked prompt is one whose answer Zoon can
+    /// already predict, so the right number of questions is none.
+    private func allRoutineHistory() -> [JournalCorrelator.Observation] {
+        (0..<24).map { index in
+            observation(daysAgo: 24 - index, tags: index.isMultiple(of: 2) ? [.coolRoom] : [])
+        }
+    }
+
+    func testTheAskIsASingleQuestion() throws {
+        let prompt = try XCTUnwrap(AdaptiveJournal.question(observations: history()))
+        // The thinnest genuinely-short comparison wins over the barely-seen
+        // one, and both win over anything routine.
+        XCTAssertEqual(prompt.tag, .alcohol)
+        XCTAssertEqual(prompt.reason, .nearlyAnswerable)
+    }
+
+    func testNothingIsAskedWhenEveryAnswerIsAlreadyPredictable() {
+        // `prompts` still returns the routine behaviour -- it fills a list.
+        XCTAssertFalse(AdaptiveJournal.prompts(observations: allRoutineHistory()).isEmpty)
+        // The question does not, because there is no list to fill.
+        XCTAssertNil(AdaptiveJournal.question(observations: allRoutineHistory()))
+    }
+
+    func testNothingIsAskedWithNoHistoryAtAll() {
+        XCTAssertNil(AdaptiveJournal.question(observations: []))
+    }
+
+    /// A trial's adherence *is* the trial, so a missed night is a hole in the
+    /// result -- that outranks the quiet.
+    func testAnExperimentIsStillAskedAboutWhenEverythingElseIsRoutine() throws {
+        let prompt = try XCTUnwrap(AdaptiveJournal.question(
+            observations: allRoutineHistory(),
+            activeExperimentTag: BehaviorTag.magnesium.rawValue
+        ))
+        XCTAssertEqual(prompt.tag, .magnesium)
+        XCTAssertEqual(prompt.reason, .underExperiment)
+    }
+
+    /// Someone who pinned a behaviour has said it matters, and that settles
+    /// it -- their stated intent outranks anything inferred about them.
+    func testAPinnedBehaviourIsStillAskedAboutWhenEverythingElseIsRoutine() throws {
+        let prompt = try XCTUnwrap(AdaptiveJournal.question(
+            observations: allRoutineHistory(),
+            pinnedTags: [.sauna]
+        ))
+        XCTAssertEqual(prompt.tag, .sauna)
+        XCTAssertEqual(prompt.reason, .pinnedByUser)
+    }
+
+    func testABehaviourAlreadyAnsweredTonightIsNotAskedAgain() throws {
+        let first = try XCTUnwrap(AdaptiveJournal.question(observations: history()))
+        XCTAssertEqual(first.tag, .alcohol)
+
+        let second = try XCTUnwrap(AdaptiveJournal.question(
+            observations: history(), alreadyAnswered: [.alcohol]
+        ))
+        XCTAssertNotEqual(second.tag, .alcohol)
+    }
+
+    func testAnsweringEverythingWorthAskingEndsTheAsking() {
+        XCTAssertNil(AdaptiveJournal.question(
+            observations: history(),
+            alreadyAnswered: Set(BehaviorTag.allCases)
+        ))
+    }
+
+    /// The same safeguard the list has, on the single question: what gets
+    /// asked cannot depend on how the person slept.
+    func testTheQuestionIsIdenticalRegardlessOfHowTheyActuallySlept() {
+        let terrible = AdaptiveJournal.question(observations: history { _ in 20 })
+        let excellent = AdaptiveJournal.question(observations: history { _ in 99 })
+        XCTAssertEqual(terrible?.tag, excellent?.tag)
+        XCTAssertEqual(terrible?.reason, excellent?.reason)
+    }
+
+    /// The "why Zoon is asking" line has to carry both arms, not a verdict.
+    func testTheReasonGivenNamesBothSidesOfTheComparison() throws {
+        let prompt = try XCTUnwrap(AdaptiveJournal.question(observations: history()))
+        XCTAssertTrue(prompt.note.contains("\(prompt.yesNights)"))
+        XCTAssertTrue(prompt.note.contains("\(prompt.noNights)"))
+        for word in ["worse", "better", "bad night", "poor"] {
+            XCTAssertFalse(prompt.note.lowercased().contains(word), "note judged the night: \(prompt.note)")
+        }
+    }
+
+    // MARK: - The question text
+
+    func testEveryBehaviourHasAnAnswerableQuestion() {
+        for tag in BehaviorTag.allCases {
+            XCTAssertTrue(tag.question.hasSuffix("?"), "\(tag.rawValue) is not phrased as a question")
+            XCTAssertNotEqual(tag.question, tag.label)
+            XCTAssertGreaterThan(tag.question.count, tag.label.count)
+        }
+    }
+
+    func testQuestionsAreDistinct() {
+        let questions = Set(BehaviorTag.allCases.map(\.question))
+        XCTAssertEqual(questions.count, BehaviorTag.allCases.count)
     }
 }

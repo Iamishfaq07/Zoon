@@ -74,6 +74,41 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The behaviour as a yes/no question, for the one-question ask.
+    ///
+    /// Separate from `label` rather than derived from it. A chip is a noun
+    /// the person scans past ("Alcohol"); a question is addressed to them and
+    /// has to be answerable with one tap, which means naming the day it is
+    /// about. Generating these by pasting "Did you " in front of a label
+    /// produces "Did you Cool room?", so each one is written out.
+    var question: String {
+        switch self {
+        case .alcohol: "Did you drink alcohol today?"
+        case .caffeineLate: "Did you have caffeine after 4pm today?"
+        case .nicotine: "Did you use nicotine today?"
+        case .cannabis: "Did you use cannabis today?"
+        case .sleepAid: "Did you take a sleep aid tonight?"
+        case .magnesium: "Did you take magnesium today?"
+        case .lateMeal: "Did you eat late today?"
+        case .largeDinner: "Was dinner large today?"
+        case .fasted: "Did you skip eating this evening?"
+        case .hydrated: "Did you drink enough water today?"
+        case .hardTraining: "Did you train hard today?"
+        case .lateTraining: "Did you train late today?"
+        case .restDay: "Was today a rest day?"
+        case .sauna: "Did you use a sauna today?"
+        case .coldPlunge: "Did you take a cold plunge today?"
+        case .stretching: "Did you stretch today?"
+        case .screenBeforeBed: "Were you on a screen in bed tonight?"
+        case .readBeforeBed: "Did you read before bed tonight?"
+        case .stressfulDay: "Was today stressful?"
+        case .travelled: "Did you travel today?"
+        case .sharedBed: "Are you sharing a bed tonight?"
+        case .coolRoom: "Is your room cool tonight?"
+        case .sick: "Are you feeling unwell?"
+        }
+    }
+
     var symbol: String {
         switch self {
         case .alcohol: "wineglass"

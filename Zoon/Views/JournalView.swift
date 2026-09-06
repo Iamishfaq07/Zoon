@@ -196,40 +196,62 @@ struct JournalView: View {
 
     // MARK: - Tags
 
-    /// The short list `AdaptiveJournal` ranks for tonight, above the full
-    /// vocabulary rather than instead of it.
+    /// The one question `AdaptiveJournal` thinks is worth asking tonight,
+    /// above the full vocabulary rather than instead of it.
     ///
     /// Replacing the categorised list outright was the obvious move and the
-    /// wrong one: the ranking is a convenience, and someone who did
-    /// something not in tonight's six still has to be able to log it. A
+    /// wrong one: the ask is a convenience, and someone who did something
+    /// other than tonight's question still has to be able to log it. A
     /// shortcut that hides the thing you came to record is worse than no
     /// shortcut. So this is a fast path, and the full list stays below it.
+    ///
+    /// Renders nothing at all when `question` returns nil. That is a feature
+    /// -- see its doc comment -- and it is why this is not a card that says
+    /// "nothing to ask tonight": a card announcing its own emptiness is still
+    /// something to read past every evening.
     ///
     /// Note what is *not* passed in: nothing about how the person slept.
     /// That absence is the point -- ranking on outcome would fill the
     /// journal with tags disproportionately attached to bad nights, and the
     /// correlator would later find an association Zoon manufactured by
     /// choosing when to ask. See `AdaptiveJournal`'s type documentation.
+    ///
+    /// Today only. The questions name the day they are about ("Did you train
+    /// hard today?"), and the answer buttons write to whichever date the
+    /// picker is on -- so on a past day the card would ask about "today" and
+    /// then record the answer against a night three days ago. The chips
+    /// below stay available for editing history, where the day is set by the
+    /// picker and the label makes no claim about when.
     @ViewBuilder
     private var tonightsAsk: some View {
-        let prompts = AdaptiveJournal.prompts(
+        if Calendar.current.isDateInToday(selectedDate),
+           let prompt = AdaptiveJournal.question(
             observations: coordinator.journalObservations(),
             activeExperimentTag: preferences.activeExperimentTag?.rawValue,
-            pinnedTags: Set(BehaviorTag.allCases.filter(preferences.isTracked))
-        )
-        if prompts.count > 1 {
-            VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "Tonight")
-                FlowLayout(spacing: 8) {
-                    ForEach(prompts) { prompt in
-                        tagChip(prompt.tag)
-                    }
+            pinnedTags: Set(BehaviorTag.allCases.filter(preferences.isTracked)),
+            alreadyAnswered: answeredTonight
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("One question")
+                    .font(Theme.kicker)
+                    .tracking(1.0)
+                    .textCase(.uppercase)
+                    .foregroundStyle(.secondary)
+
+                Text(prompt.tag.question)
+                    .font(Theme.text(17, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    answerButton("Yes", state: .yes, for: prompt.tag)
+                    answerButton("No", state: .no, for: prompt.tag)
                 }
-                // One shared line rather than a note per chip: six
-                // explanations under six chips is more reading than the
-                // whole list it replaces.
-                if let first = prompts.first {
-                    Text(first.note)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Why Zoon is asking")
+                        .font(Theme.label(11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(prompt.note)
                         .font(Theme.text(11))
                         .foregroundStyle(.tertiary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -237,6 +259,43 @@ struct JournalView: View {
             }
             .glassCard()
         }
+    }
+
+    /// Behaviours already answered for tonight, so the one question is never
+    /// something the person just told Zoon.
+    private var answeredTonight: Set<BehaviorTag> {
+        Set(BehaviorTag.allCases.filter { answers.state(for: $0) != .unknown })
+    }
+
+    /// One tap, one recorded answer -- not the three-state cycle the chips
+    /// use. A question with a Yes and a No beside it is answered by pressing
+    /// one of them; making "No" mean "press Yes twice" would be a puzzle.
+    private func answerButton(
+        _ title: String,
+        state: BehaviorObservationState,
+        for tag: BehaviorTag
+    ) -> some View {
+        Button {
+            coordinator.setBehavior(state, for: tag, on: selectedDate, nightKey: selectedNightKey)
+            answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+            Haptics.tap()
+        } label: {
+            Text(title)
+                .font(Theme.label(14, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    state == .yes ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.08),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(state == .yes ? Theme.Metric.sleep : Theme.cardStroke, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(tag.question)")
     }
 
     private var tagSections: some View {
