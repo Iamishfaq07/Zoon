@@ -236,6 +236,29 @@ struct JournalCorrelator {
             metric.higherIsBetter ? delta > 0 : delta < 0
         }
 
+        /// The finding as a sentence, for the default Patterns view.
+        ///
+        /// `headline` puts the percentage first -- "Late caffeine: 12% worse
+        /// sleep duration" -- which is the right shape for a dense list and
+        /// the wrong one for the first thing someone reads. The wording lives
+        /// in `FindingSentence` so it can be tested; see that type for why an
+        /// association claim is not allowed to sound like a causal one.
+        var plainSentence: String {
+            FindingSentence.association(
+                behaviour: tag.label,
+                outcome: metric.shortLabel,
+                isImprovement: isImprovement
+            )
+        }
+
+        /// "18 matched nights · Moderate confidence".
+        var supportLine: String {
+            FindingSentence.support(
+                matchedPairCount: matchedPairCount,
+                confidence: confidence.label
+            )
+        }
+
         var headline: String {
             let direction = isImprovement ? "better" : "worse"
             let magnitude = abs(percentChange)
