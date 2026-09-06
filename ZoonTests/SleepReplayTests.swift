@@ -169,18 +169,24 @@ final class SleepReplayTests: XCTestCase {
     /// fresh transition: Deep, 2 minutes of Core, Deep produced *two* "Deep
     /// sleep" moments for one continuous stretch of deep sleep.
     func testAStretchInterruptedByAMicroRunIsOneMomentNotTwo() {
+        // A core run comes first on purpose. The onset moment already
+        // captions the first sleep run, and a second caption at the same
+        // instant would be noise -- so making the interrupted stretch the
+        // *onset* stretch would test the onset guard rather than the
+        // micro-run handling this test is about.
         let interrupted = [
             segment(.inBed, from: 0, to: 10),
-            segment(.deep, from: 10, to: 40),
-            segment(.core, from: 40, to: 42),      // 2 minutes: noise
-            segment(.deep, from: 42, to: 67),
-            segment(.rem, from: 67, to: 100)
+            segment(.core, from: 10, to: 40),
+            segment(.deep, from: 40, to: 70),
+            segment(.core, from: 70, to: 72),      // 2 minutes: noise
+            segment(.deep, from: 72, to: 97),
+            segment(.rem, from: 97, to: 130)
         ]
         let deepMoments = SleepReplay.moments(from: interrupted)
             .filter { $0.caption == SleepStage.deep.displayName }
 
         XCTAssertEqual(deepMoments.count, 1, "one stretch of deep sleep produced two moments")
-        XCTAssertEqual(deepMoments.first?.date, start.addingTimeInterval(10 * 60))
+        XCTAssertEqual(deepMoments.first?.date, start.addingTimeInterval(40 * 60))
     }
 
     /// The micro-run is absorbed rather than dropped: the stretch it
@@ -233,10 +239,13 @@ final class SleepReplayTests: XCTestCase {
     /// hour the source could not stage is not nothing, and the deep sleep on
     /// either side of it is two stretches rather than one.
     func testAnUnspecifiedStretchSeparatesTheRunsAroundItWithoutCaptioningItself() {
+        // Again a core run first, so neither deep stretch is the onset run
+        // whose caption the "Fell asleep" moment already covers.
         let moments = SleepReplay.moments(from: [
-            segment(.deep, from: 0, to: 40),
-            segment(.unspecified, from: 40, to: 100),
-            segment(.deep, from: 100, to: 150)
+            segment(.core, from: 0, to: 30),
+            segment(.deep, from: 30, to: 70),
+            segment(.unspecified, from: 70, to: 130),
+            segment(.deep, from: 130, to: 180)
         ])
         XCTAssertEqual(moments.filter { $0.caption == SleepStage.deep.displayName }.count, 2)
         XCTAssertFalse(moments.contains { $0.caption == SleepStage.unspecified.displayName })
