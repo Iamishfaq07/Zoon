@@ -9,7 +9,7 @@ import WidgetKit
 struct BadgeWidget: Widget {
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonBadges", provider: SleepTimelineProvider()) { entry in
+        StaticConfiguration(kind: "ZoonBadges", provider: SleepTimelineProvider(kind: .bodySignals)) { entry in
             BadgeWidgetView(snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder)
                 // Matches the other widgets: the system material, not the
                 // app's gradient. A widget that paints its own dark background

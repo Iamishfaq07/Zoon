@@ -1,8 +1,8 @@
 import Foundation
 
-/// When each complication is worth the Smart Stack's attention.
+/// When each widget or complication is worth the Smart Stack's attention.
 ///
-/// Every complication in the bundle used to share one relevance score,
+/// Every complication in the watch bundle used to share one relevance score,
 /// computed purely from how recently the phone had sent a snapshot. That is
 /// a freshness signal, not a relevance one: it says the data is current, and
 /// says nothing about whether *this* number is the one someone wants right
@@ -13,6 +13,17 @@ import Foundation
 /// in the morning, body signals through the afternoon, tonight in the
 /// evening, and the nap timer whenever a nap is actually running.
 ///
+/// ## Why this is not called `WatchRelevance` any more
+///
+/// It was, and the name was the reason the same bug survived on iOS for a
+/// release. The watch got per-surface relevance; the four iOS widgets kept
+/// sharing one freshness score, which is the identical defect described
+/// above, on the other platform. A shared type named after one of the two
+/// platforms it serves invites exactly that -- the next person reads the
+/// name, decides it does not apply to them, and writes a second table.
+///
+/// There is one table of day-parts now, and both platforms read it.
+///
 /// ## Why an hour and not a schedule
 ///
 /// This deliberately keys off the wall clock rather than the person's own
@@ -21,15 +32,24 @@ import Foundation
 /// hint that is occasionally a bit early is a much smaller failure than a
 /// widget surface that has to wait for a phone sync before it can rank
 /// anything at all.
-enum WatchRelevance {
+enum SurfaceRelevance {
 
-    /// The complications that compete for the Smart Stack.
+    /// The surfaces that compete for a Smart Stack slot, on either platform.
     enum Kind: String, CaseIterable, Hashable, Sendable {
         case lastNight
         case recovery
         case bodySignals
         case tonight
         case napTimer
+        /// Accumulated sleep debt.
+        ///
+        /// Evening, with `tonight`, because debt is the number that decides
+        /// what time to go to bed -- it is a question about the night ahead,
+        /// not a report on the one behind. Two surfaces sharing a window is
+        /// fine: they are both evening-relevant and the system picks between
+        /// them, which is a far better position than four surfaces sharing
+        /// one score and the system picking at random all day.
+        case sleepDebt
     }
 
     /// Windows, in local hours. Half-open: `start..<end`.
@@ -61,7 +81,7 @@ enum WatchRelevance {
         switch kind {
         case .lastNight, .recovery: morning.contains(hour)
         case .bodySignals: afternoon.contains(hour)
-        case .tonight: evening.contains(hour)
+        case .tonight, .sleepDebt: evening.contains(hour)
         // A nap timer has no hour of its own. It is relevant exactly while a
         // nap is running and irrelevant the rest of the time, which is a
         // fact about the nap, not about the clock.

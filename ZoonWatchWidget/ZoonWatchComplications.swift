@@ -53,7 +53,7 @@ struct WatchComplicationEntry: TimelineEntry {
     let isPlaceholder: Bool
     /// Which complication this entry is for. Relevance is per-surface, so
     /// the entry has to know which surface it belongs to.
-    var kind: WatchRelevance.Kind = .lastNight
+    var kind: SurfaceRelevance.Kind = .lastNight
 
     /// What the Smart Stack ranks this by.
     ///
@@ -63,7 +63,7 @@ struct WatchComplicationEntry: TimelineEntry {
     /// identically the Smart Stack had nothing to order them by, which is
     /// the same as not implementing relevance at all.
     ///
-    /// `WatchRelevance` decides the ordering; freshness still gates it,
+    /// `SurfaceRelevance` decides the ordering; freshness still gates it,
     /// because a stale number is not worth raising however well its hour
     /// matches. The two are separate judgments and are kept separate.
     var relevance: TimelineEntryRelevance? {
@@ -75,12 +75,12 @@ struct WatchComplicationEntry: TimelineEntry {
         // must not inherit the nap state of an hour ago, and the snapshot
         // stores absolute instants precisely so this can be re-decided per
         // entry rather than baked in once.
-        let score = WatchRelevance.score(
+        let score = SurfaceRelevance.score(
             for: kind, at: date, isNapRunning: snapshot.isNapRunning(at: date)
         )
         return TimelineEntryRelevance(
-            score: isStale ? min(score, WatchRelevance.outOfWindowScore) : score,
-            duration: WatchRelevance.duration
+            score: isStale ? min(score, SurfaceRelevance.outOfWindowScore) : score,
+            duration: SurfaceRelevance.duration
         )
     }
 }
@@ -89,7 +89,7 @@ struct WatchComplicationProvider: TimelineProvider {
 
     /// Which complication this provider feeds, so its entries can carry a
     /// relevance that is about this surface rather than about the bundle.
-    let kind: WatchRelevance.Kind
+    let kind: SurfaceRelevance.Kind
 
     func placeholder(in context: Context) -> WatchComplicationEntry {
         WatchComplicationEntry(
@@ -545,7 +545,7 @@ struct TonightComplicationView: View {
 
 /// The running nap, on the wrist.
 ///
-/// `WatchRelevance` has had a `.napTimer` kind since the relevance engine was
+/// `SurfaceRelevance` has had a `.napTimer` kind since the relevance engine was
 /// written, and nothing ever declared it. The effect was worse than a missing
 /// feature: a running nap *suppresses* every other complication in the bundle
 /// down to `outOfWindowScore`, so with nothing scoring 100 to take the slot,

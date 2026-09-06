@@ -13,7 +13,7 @@ struct SleepDebtWidget: Widget {
     let kind = "ZoonSleepDebtWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SleepTimelineProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .sleepDebt)) { entry in
             SleepDebtWidgetView(entry: entry)
                 // Required from iOS 17: widgets no longer draw their own
                 // background, the system does, and omitting this makes the
