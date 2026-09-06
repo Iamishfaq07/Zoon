@@ -50,9 +50,22 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
     /// One rule's output. Priority orders competing explanations; the highest
     /// wins the causal slot.
+    ///
+    /// Split in two on purpose, and the split is the point of this type.
+    /// `observed` is what the rule measured about this person's night;
+    /// `general` is what is known about that pattern across people. Every rule
+    /// in this file had both, concatenated into one sentence in one voice, so
+    /// the general half read as the reason for last night. See
+    /// `SleepInsight.generalContext`.
     private struct Finding {
         let priority: Int
-        let cause: String
+        /// This person's own numbers, and nothing else. Always present -- a
+        /// rule that fired measured something, or it would not have fired.
+        let observed: String
+        /// What is generally true of this pattern, across people. `nil` when
+        /// the rule has nothing to add beyond the measurement, which is the
+        /// right answer for the rules that are pure arithmetic on a goal.
+        var general: String? = nil
         let tip: String
         let confidence: SleepInsight.Confidence
         /// True when the finding leans on SpO2 / respiratory / temperature, which
@@ -101,7 +114,8 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return SleepInsight(
             summary: summary,
-            likelyCause: strongest.cause,
+            likelyCause: strongest.observed,
+            generalContext: strongest.general,
             actionableTip: tip,
             confidence: strongest.confidence,
             source: .ruleBased
@@ -146,10 +160,11 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 100,
-            cause: String(
-                format: "Your wrist temperature ran %.1f°C above your baseline while HRV dropped to %.0f ms (usually %.0f). Those two moved together on the same night. Raised temperature and lower HRV travel together for a lot of reasons, and one night cannot separate them.",
+            observed: String(
+                format: "Your wrist temperature ran %.1f°C above your baseline while HRV dropped to %.0f ms (usually %.0f). Those two moved together on the same night.",
                 tempDelta, hrv, hrvBase
             ),
+            general: "Raised temperature and lower HRV travel together for a lot of reasons. One night cannot separate them.",
             tip: "Treat today as a recovery day — go easy on training, hydrate, and get to bed early.",
             confidence: .medium,
             isPhysiological: true
@@ -163,10 +178,11 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 95,
-            cause: String(
-                format: "Your average overnight blood oxygen was %.0f%%, below the typical range. Readings can be thrown off by a loose watch band or sleeping on your arm.",
+            observed: String(
+                format: "Your average overnight blood oxygen was %.0f%%, below the typical range.",
                 spo2
             ),
+            general: "Readings like this can be thrown off by a loose watch band or by sleeping on your arm.",
             tip: "Check your watch fits snugly. If this repeats across several nights, it's worth raising with a doctor.",
             confidence: .low,
             isPhysiological: true
@@ -194,10 +210,11 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 80,
-            cause: String(
-                format: "Deep sleep was down %.0f%% (%.0f min vs your usual %.0f). Your last workout ended about %.1fh before bed — late sessions and lower deep sleep often occur near each other, though one night cannot show that one produced the other.",
+            observed: String(
+                format: "Deep sleep was down %.0f%% (%.0f min vs your usual %.0f). Your last workout ended about %.1fh before bed.",
                 dropPercent, features.deepMinutes, deepBase, hours
             ),
+            general: "Late sessions and lower deep sleep often occur near each other. One night cannot show that one produced the other.",
             tip: "Aim to finish hard sessions at least 3h before bed. Easy movement that late is fine.",
             confidence: .high
         )
@@ -214,10 +231,11 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 75,
-            cause: String(
-                format: "Your lowest overnight heart rate was %.0f bpm against a usual %.0f, and HRV fell to %.0f ms. Late eating, alcohol, stress and heavy training blocks are the things people usually check when both move this way.",
+            observed: String(
+                format: "Your lowest overnight heart rate was %.0f bpm against a usual %.0f, and HRV fell to %.0f ms.",
                 minHR, hrBase, hrv
             ),
+            general: "Late eating, alcohol, stress and heavy training blocks are the things people usually check when both move this way.",
             tip: "Keep tonight's dinner earlier and lighter, and skip alcohol.",
             confidence: .medium
         )
@@ -232,10 +250,10 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
             priority: 70,
             // Int is interpolated rather than passed through %d: Swift's Int is
             // 64-bit and %d expects a 32-bit value.
-            cause: "You woke \(features.wakeCount) times and spent "
+            observed: "You woke \(features.wakeCount) times and spent "
                 + "\(SleepNightFeatures.formatMinutes(features.awakeMinutes)) awake in bed — "
-                + String(format: "efficiency came out at %.0f%%. ", features.sleepEfficiencyPercent)
-                + "Room temperature, light, noise and a late drink are the usual things worth checking first.",
+                + String(format: "efficiency came out at %.0f%%.", features.sleepEfficiencyPercent),
+            general: "Room temperature, light, noise and a late drink are the usual things worth checking first.",
             tip: "Try the room a couple of degrees cooler tonight, and cut liquids an hour before bed.",
             confidence: .medium
         )
@@ -246,16 +264,21 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
     private let highLatencyRule: Rule = { features, _, _ in
         guard let latency = features.sleepLatencyMinutes, latency >= T.highLatencyMinutes else { return nil }
 
-        var cause = String(format: "It took you about %.0f minutes to fall asleep.", latency)
+        // The low-movement branch splits across both tiers: the movement is
+        // measured, the mechanism it suggests is not.
+        var observed = String(format: "It took you about %.0f minutes to fall asleep.", latency)
+        let general: String
         if let exercise = features.exerciseMinutesPreviousDay, exercise < 15 {
-            cause += " You also logged very little movement yesterday — low daytime activity makes sleep pressure build more slowly."
+            observed += " You also logged very little movement yesterday."
+            general = "Low daytime activity is associated with sleep pressure building more slowly."
         } else {
-            cause += " Long onset usually points to caffeine too late, screens in bed, or an unwinding mind."
+            general = "Long onset is commonly associated with caffeine too late, screens in bed, or an unwinding mind."
         }
 
         return Finding(
             priority: 65,
-            cause: cause,
+            observed: observed,
+            general: general,
             tip: "Set a caffeine cutoff 8h before bed, and give yourself 30 screen-free minutes beforehand.",
             confidence: .medium
         )
@@ -268,7 +291,10 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 60,
-            cause: String(
+            // No general tier: this rule is arithmetic against the person's
+            // own goal, and there is no population finding to add to it that
+            // would not be padding.
+            observed: String(
                 format: "You slept %@, which is %@ short of your %@ goal. Most of the shortfall is simply time — you were only in bed %@.",
                 features.formattedTimeAsleep,
                 SleepNightFeatures.formatMinutes(shortfall),
@@ -294,17 +320,18 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 55,
-            cause: String(
-                // Was: "An irregular schedule shifts your body clock around
-                // and costs you deep sleep even on nights you get enough
-                // hours." That is a mechanism, asserted about this person,
-                // from data that contains no such evidence -- the rule fires
-                // on bedtime spread alone and never looks at their deep
-                // sleep. It states the observation, and where the general
-                // finding belongs it says whose finding it is.
-                format: "Your bedtime has swung by roughly ±%.0f minutes over the past week. Sleep research associates irregular schedules with worse sleep across groups of people; whether it shows up in yours is something Zoon can only tell you from your own nights.",
+            // Was one sentence: "An irregular schedule shifts your body clock
+            // around and costs you deep sleep even on nights you get enough
+            // hours." A mechanism, asserted about this person, from data that
+            // contains no such evidence -- the rule fires on bedtime spread
+            // alone and never looks at their deep sleep. V9 reworded it; the
+            // two halves are now in two fields, which is what stops a screen
+            // from rendering them in one voice.
+            observed: String(
+                format: "Your bedtime has swung by roughly ±%.0f minutes over the past week.",
                 sd
             ),
+            general: "Sleep research associates irregular schedules with worse sleep across groups of people. Whether it shows up in yours is something Zoon can only tell you from your own nights.",
             tip: "Pick one bedtime and hold it within 30 minutes for the next week, weekends included.",
             confidence: .high
         )
@@ -316,10 +343,11 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 50,
-            cause: String(
-                format: "You're carrying about %@ of sleep debt over the last two weeks. It builds quietly — 40 minutes short a night adds up faster than one bad night does.",
+            observed: String(
+                format: "You're carrying about %@ of sleep debt over the last two weeks.",
                 SleepNightFeatures.formatMinutes(debt)
             ),
+            general: "Debt builds quietly: 40 minutes short a night adds up faster than one bad night does.",
             tip: "Add 30–45 minutes to the front of your night for the next week. Sleeping in doesn't repay it as well as going to bed earlier.",
             confidence: .high
         )
@@ -336,16 +364,17 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
         return Finding(
             priority: 45,
-            cause: String(
-                // Was: "...so a late bedtime or a disturbed first few hours
-                // hits it hardest." Presented as the explanation for this
-                // night, while the rule checks neither: it fires on the deep
-                // sleep drop alone. The physiology is real and worth knowing,
-                // so it stays -- as physiology, not as a finding about last
-                // night.
-                format: "Deep sleep came in %.0f%% below your usual (%.0f min vs %.0f). Most deep sleep happens in the first half of a night. Zoon has not checked what your first few hours looked like, so this is context rather than a reason.",
+            // Was one sentence ending "...so a late bedtime or a disturbed
+            // first few hours hits it hardest" -- presented as the explanation
+            // for this night, while the rule checks neither and fires on the
+            // deep sleep drop alone. The physiology is real and worth knowing.
+            // It is now in the field for things that are true of people rather
+            // than measured about this one.
+            observed: String(
+                format: "Deep sleep came in %.0f%% below your usual (%.0f min vs %.0f).",
                 dropPercent, features.deepMinutes, deepBase
             ),
+            general: "Most deep sleep happens in the first half of a night. Zoon has not checked what your first few hours looked like.",
             tip: "Protect the first three hours tonight — dark, cool, quiet, and get to bed at your usual time.",
             confidence: .medium
         )
@@ -358,19 +387,18 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
               features.hasStageBreakdown,
               let remPercent = features.remPercentOfAsleep, remPercent < 15 else { return nil }
 
-        var cause = String(
+        let observed = String(
             format: "REM made up only %.0f%% of your sleep, below the usual 20–25%%.",
             remPercent
         )
-        if features.timeAsleepMinutes < goalMinutes {
-            cause += " REM is concentrated in the last few hours, so a short night cuts it disproportionately."
-        } else {
-            cause += " Alcohol and some medications suppress REM even when total sleep looks fine."
-        }
+        let general = features.timeAsleepMinutes < goalMinutes
+            ? "REM is concentrated in the last few hours, so a short night cuts it disproportionately."
+            : "Alcohol and some medications suppress REM even when total sleep looks fine."
 
         return Finding(
             priority: 40,
-            cause: cause,
+            observed: observed,
+            general: general,
             tip: "Give yourself a full night's runway — the last 90 minutes of sleep are where most REM lives.",
             confidence: .medium
         )

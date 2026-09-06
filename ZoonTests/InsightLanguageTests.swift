@@ -49,8 +49,19 @@ final class InsightLanguageTests: XCTestCase {
         )
     }
 
+    /// Every user-visible string the engine produced.
+    ///
+    /// `generalContext` is in here, and has to be: the V4 split moved half of
+    /// each rule's copy into that field, and a negative assertion that stops
+    /// looking at a string it used to cover is an assertion that silently
+    /// stopped working.
     private func text(of insight: SleepInsight) -> String {
-        [insight.summary, insight.likelyCause ?? "", insight.actionableTip].joined(separator: " ")
+        [
+            insight.summary,
+            insight.likelyCause ?? "",
+            insight.generalContext ?? "",
+            insight.actionableTip
+        ].joined(separator: " ")
     }
 
     /// Just the parts that make a claim about the night.
@@ -65,7 +76,8 @@ final class InsightLanguageTests: XCTestCase {
     /// the guard: diagnostic language against the claim, causal overclaiming
     /// against everything including the tip.
     private func claim(of insight: SleepInsight) -> String {
-        [insight.summary, insight.likelyCause ?? ""].joined(separator: " ")
+        [insight.summary, insight.likelyCause ?? "", insight.generalContext ?? ""]
+            .joined(separator: " ")
     }
 
     private func insight(
@@ -195,6 +207,89 @@ final class InsightLanguageTests: XCTestCase {
             }
         }
         XCTAssertGreaterThan(checked, 200, "the sweep should actually be broad")
+    }
+
+    // MARK: - Two tiers, not one paragraph (V10 item 11)
+
+    /// The split the whole item is about. Every rule here had a measurement
+    /// and a general finding concatenated into one sentence in one voice, so
+    /// the general half read as the reason for last night.
+    func testTheMeasurementAndTheGeneralFindingAreSeparateFields() throws {
+        let night = Fixture.night(avgHRV: 55, lastWorkoutHoursBeforeBed: 1.0)
+        let insight = insight(night, baseline: baseline(deep: 200))
+
+        let measured = try XCTUnwrap(insight.likelyCause)
+        let general = try XCTUnwrap(insight.generalContext)
+
+        // The measurement names this person's numbers.
+        XCTAssertTrue(measured.contains("Deep sleep"), measured)
+        XCTAssertTrue(measured.contains("your usual"), measured)
+        // The general finding does not quote them back.
+        XCTAssertFalse(general.contains("your usual"), general)
+        XCTAssertFalse(general.contains("%"), general)
+    }
+
+    /// The observed tier is what was measured. If a general-population claim
+    /// leaks back into it, the separation has been undone without anything
+    /// failing to compile.
+    ///
+    /// The phrases below are the ones the V4 split moved out of
+    /// `likelyCause`, checked by hand against every rule in the engine, so
+    /// this fails the moment one is written back into the measurement.
+    func testGeneralPopulationClaimsStayOutOfTheMeasuredTier() {
+        let leaked = [
+            "travel together",
+            "usually check",
+            "worth checking first",
+            "commonly associated",
+            "is associated with",
+            "sleep research associates",
+            "builds quietly",
+            "most deep sleep happens",
+            "alcohol and some medications",
+            "often occur near each other",
+            "can be thrown off"
+        ]
+
+        var checked = 0
+        for hrv in [38.0, 55.0] {
+            for temp in [0.0, 0.9] {
+                for wakes in [2, 7] {
+                    for workout in [nil, 1.0] as [Double?] {
+                        for spo2 in [88.0, 97.0] {
+                            let night = Fixture.night(
+                                timeAsleepMinutes: 360, timeInBedMinutes: 480,
+                                avgHRV: hrv, wristTempDeltaC: temp, avgSpO2: spo2,
+                                wakeCount: wakes, lastWorkoutHoursBeforeBed: workout
+                            )
+                            guard let measured = insight(night).likelyCause else { continue }
+                            let lowered = measured.lowercased()
+                            for phrase in leaked {
+                                XCTAssertFalse(
+                                    lowered.contains(phrase),
+                                    "general-population phrase \"\(phrase)\" is in the measured tier: \(measured)"
+                                )
+                            }
+                            checked += 1
+                        }
+                    }
+                }
+            }
+        }
+        XCTAssertGreaterThan(checked, 20, "the sweep should actually reach the rules")
+    }
+
+    /// A rule that is pure arithmetic against the person's own goal has no
+    /// general finding to add, and must not have one invented for symmetry.
+    func testARuleWithNothingGeneralToSayAddsNothing() {
+        // Short of goal, everything else unremarkable: `shortSleepRule` wins.
+        let night = Fixture.night(
+            timeAsleepMinutes: 360, timeInBedMinutes: 380,
+            avgHRV: 55, wristTempDeltaC: 0.0, avgSpO2: 97, wakeCount: 1
+        )
+        let insight = insight(night)
+        XCTAssertTrue(insight.likelyCause?.contains("short of your") == true, insight.likelyCause ?? "")
+        XCTAssertNil(insight.generalContext)
     }
 
     /// Every rule still produces something. A guard that passes because the

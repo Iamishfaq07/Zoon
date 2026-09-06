@@ -2,13 +2,18 @@ import SwiftUI
 
 /// Renders a `SleepInsight`.
 ///
-/// Three tiers, because the honest presentation of a guess differs from the
-/// honest presentation of a measurement:
+/// Four blocks, because the honest presentation of a guess differs from the
+/// honest presentation of a measurement, and a fact about people in general
+/// differs from both:
 ///
 /// - **summary** — always shown. Factual.
-/// - **likelyCause** — shown only when the engine actually identified one, and
-///   suppressed at low confidence. Visually distinct so it doesn't read as
-///   measured fact.
+/// - **likelyCause** — what was measured about *this* night. Shown only when
+///   the engine identified something, and suppressed at low confidence.
+/// - **generalContext** — what is known about that pattern across people.
+///   Labelled and set apart, because the whole point of the field existing is
+///   that it must not read in the same voice as the line above it. A person
+///   who cannot tell which of the two is about them is being misled by
+///   layout, whatever the words say.
 /// - **actionableTip** — always shown.
 struct InsightCard: View {
 
@@ -33,15 +38,21 @@ struct InsightCard: View {
                 .font(.title3.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let cause = insight.likelyCause, insight.confidence > .low {
-                Text(cause)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 10)
-                    .overlay(alignment: .leading) {
-                        Capsule().fill(Theme.neutral(0.14)).frame(width: 2)
-                    }
+            if insight.confidence > .low {
+                if let cause = insight.likelyCause {
+                    Text(cause)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, 10)
+                        .overlay(alignment: .leading) {
+                            Capsule().fill(Theme.neutral(0.14)).frame(width: 2)
+                        }
+                }
+
+                if let context = insight.generalContext {
+                    generalBlock(context)
+                }
             }
 
             HStack(alignment: .top, spacing: 6) {
@@ -72,6 +83,29 @@ struct InsightCard: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// The general-population tier.
+    ///
+    /// Deliberately quieter than the measurement above it and carrying its own
+    /// label -- no rail, smaller type, tertiary colour. Without the label a
+    /// reader has no way to tell that this sentence is about people in general
+    /// and the one above is about them, which is the failure the two fields
+    /// exist to prevent. Doing the separation in the model and then rendering
+    /// both as one grey paragraph would have changed nothing.
+    private func generalBlock(_ context: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("IN GENERAL, NOT MEASURED IN YOU")
+                .font(Theme.label(10, weight: .semibold))
+                .tracking(0.6)
+                .foregroundStyle(.tertiary)
+            Text(context)
+                .font(Theme.text(13))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.leading, 10)
+        .accessibilityElement(children: .combine)
     }
 
     private var kicker: some View {

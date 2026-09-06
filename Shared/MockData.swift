@@ -110,7 +110,8 @@ enum MockData {
 
     static let poorInsight = SleepInsight(
         summary: "Rough night — 5h 18m and fragmented.",
-        likelyCause: "Deep sleep was 34m, well below your usual. Your workout ended about 1h before bed, which keeps core body temperature up.",
+        likelyCause: "Deep sleep was 34m, well below your usual. Your workout ended about 1h before bed.",
+        generalContext: "Late sessions and lower deep sleep often occur near each other. One night cannot show that one produced the other.",
         actionableTip: "Try to finish hard training at least 3h before bed tonight.",
         confidence: .medium
     )
