@@ -21,7 +21,7 @@ enum PersistentStore {
 
         let container = try ModelContainer(
             for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-            BehaviorObservationRecord.self,
+            BehaviorObservationRecord.self, EvidenceRevisionRecord.self,
             configurations: configuration
         )
         if AppGroup.isConfigured {
@@ -69,7 +69,7 @@ enum PersistentStore {
 
         let legacy = try ModelContainer(
             for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-            BehaviorObservationRecord.self,
+            BehaviorObservationRecord.self, EvidenceRevisionRecord.self,
             configurations: ModelConfiguration()
         )
         // If this throws, it propagates out of this function before reaching
@@ -102,7 +102,21 @@ enum PersistentStore {
         let entries = try source.fetch(FetchDescriptor<JournalEntry>())
         let episodes = try source.fetch(FetchDescriptor<SleepEpisodeRecord>())
         let observations = try source.fetch(FetchDescriptor<BehaviorObservationRecord>())
+        // Evidence revisions migrate for the same reason naps had to: this
+        // function is followed by eraseLegacyStoreFiles(), so anything not
+        // copied here is destroyed. That is bad for any table and worse for
+        // this one -- the entire promise of the ledger is that a previous
+        // belief is never erased, and dropping the history on a container
+        // move would break it in exactly the way nobody would notice until
+        // they went looking for what Zoon used to think.
+        let revisions = try source.fetch(FetchDescriptor<EvidenceRevisionRecord>())
 
+        for revision in revisions {
+            // Re-inserted verbatim through the value type: a revision is a
+            // record of what was believed at a moment, so nothing about it
+            // is recomputed on the way across.
+            destination.insert(EvidenceRevisionRecord(revision.revision))
+        }
         for night in nights {
             let copy = SleepNightRecord(
                 features: night.features(),
