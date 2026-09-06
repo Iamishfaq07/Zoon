@@ -125,6 +125,71 @@ final class SnapshotNapStateTests: XCTestCase {
         )
     }
 
+    /// A surface has to declare the kind, or the kind is unreachable.
+    ///
+    /// This is the gap this suite was written around and did not close.
+    /// `.napTimer` was wired end to end and correct, and no complication in
+    /// the bundle ever asked for it -- so in the shipping app the branch was
+    /// still dead. Worse than absent: a running nap drops every *other*
+    /// complication to `outOfWindowScore`, so with nothing scoring 100 the
+    /// whole bundle went quiet for the duration of the nap.
+    ///
+    /// Asserted against the source rather than the type system, because the
+    /// widget bundle is not reachable from the test target and "somebody
+    /// declares this kind" is exactly the kind of claim that quietly stops
+    /// being true.
+    func testAComplicationActuallyDeclaresTheNapTimerKind() throws {
+        let source = try complicationSource()
+        XCTAssertTrue(
+            source.contains("WatchComplicationProvider(kind: .napTimer)"),
+            "no complication declares .napTimer, so the branch is dead on a real wrist"
+        )
+        XCTAssertTrue(
+            source.contains("NapTimerComplication()"),
+            ".napTimer is declared but the complication is not in the bundle"
+        )
+    }
+
+    /// Every complication is suppressed while a nap runs, so the timeline has
+    /// to schedule an entry for the instant that lifts. Without it the whole
+    /// bundle stays demoted until its next four-hourly refresh -- Zoon
+    /// missing from the Smart Stack for hours *after* the nap ended.
+    func testTheTimelineSchedulesTheEndOfTheSuppression() throws {
+        let end = try XCTUnwrap(running.napSuppressionEnd)
+        XCTAssertEqual(
+            end,
+            noon.addingTimeInterval(20 * 60 + SleepSnapshot.napBelievableAfterTarget)
+        )
+        XCTAssertFalse(running.isNapRunning(at: end), "the entry must render as ended, not running")
+        XCTAssertTrue(running.isNapRunning(at: end.addingTimeInterval(-1)))
+
+        XCTAssertTrue(
+            try complicationSource().contains("napSuppressionEnd"),
+            "the timeline does not schedule the end of the nap suppression"
+        )
+    }
+
+    func testASnapshotWithNoNapHasNothingToSchedule() {
+        XCTAssertNil(snapshot(startedAt: nil, targetEnd: nil).napSuppressionEnd)
+        XCTAssertNil(snapshot(startedAt: noon, targetEnd: nil).napSuppressionEnd)
+    }
+
+    /// The widget bundle is not a linked dependency of this target, so the
+    /// two assertions above read it off disk. Skipped rather than failed when
+    /// the file cannot be located, since a path that breaks under a different
+    /// build layout should not read as a defect in the app.
+    private func complicationSource() throws -> String {
+        let here = URL(fileURLWithPath: #filePath)
+        let file = here
+            .deletingLastPathComponent()      // ZoonTests
+            .deletingLastPathComponent()      // repo root
+            .appendingPathComponent("ZoonWatchWidget/ZoonWatchComplications.swift")
+        guard let source = try? String(contentsOf: file, encoding: .utf8) else {
+            throw XCTSkip("ZoonWatchComplications.swift not reachable from \(file.path)")
+        }
+        return source
+    }
+
     /// Absolute instants, so moving between time zones mid-nap changes
     /// nothing. A wall-clock target would have jumped.
     func testATimeZoneChangeDoesNotDisturbARunningNap() {

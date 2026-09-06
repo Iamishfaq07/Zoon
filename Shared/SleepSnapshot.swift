@@ -225,6 +225,18 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
         return max(0, napTargetEnd.timeIntervalSince(date))
     }
 
+    /// The instant `isNapRunning` stops being true.
+    ///
+    /// Needed by the watch widget timeline, which has to schedule an entry
+    /// for the moment the nap stops counting -- otherwise every complication
+    /// in the bundle stays suppressed until its next four-hourly refresh,
+    /// and Zoon is missing from the Smart Stack for hours after the nap
+    /// ended. `nil` when no nap is in progress.
+    var napSuppressionEnd: Date? {
+        guard let napTargetEnd, napStartedAt != nil else { return nil }
+        return napTargetEnd.addingTimeInterval(Self.napBelievableAfterTarget)
+    }
+
     var canStateRecovery: Bool {
         guard let confidence = MetricConfidence(rawValue: recoveryConfidence) else {
             // Written before this field existed. Those snapshots came from a
