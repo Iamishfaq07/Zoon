@@ -73,7 +73,7 @@ extension View {
 #Preview("Ask Zoon about this") {
     AskZoonAboutChart(
         question: ChartQuestion(
-            metric: .hrv,
+            subject: .trend(.hrv),
             selected: .init(date: .now, value: 42),
             baseline: 58,
             baselineNightCount: 21
