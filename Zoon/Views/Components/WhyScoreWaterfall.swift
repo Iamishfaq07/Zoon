@@ -108,10 +108,29 @@ struct WhyScoreWaterfall: View {
     NavigationStack {
         WhyScoreWaterfall(
             components: [
-                .init(label: "Duration", detail: "7h52 vs 8h10 need", normalized: 0.42, weightUsed: 0.25),
-                .init(label: "Regularity", detail: "±22m this week", normalized: 0.68, weightUsed: 0.15),
-                .init(label: "Continuity", detail: "3 awakenings", normalized: 0.35, weightUsed: 0.20),
-                .init(label: "Recovery", detail: "HRV +9% vs baseline", normalized: 0.61, weightUsed: 0.15)
+                // `expectedNeutral` is each component's own typical value --
+                // see `SleepIntelligenceScore.Component.expectedNeutral`. Set
+                // here to the same figures the engine derives, so the preview
+                // shows the split a real night would rather than one measured
+                // against a 0.5 that means nothing.
+                .init(
+                    label: "Duration", detail: "7h52 vs 8h10 need",
+                    normalized: 0.42, weightUsed: 0.25, expectedNeutral: 1.0
+                ),
+                .init(
+                    label: "Regularity", detail: "±22m this week",
+                    normalized: 0.68, weightUsed: 0.15,
+                    expectedNeutral: SleepIntelligenceScore.typicalRegularityIndex / 100
+                ),
+                .init(
+                    label: "Continuity", detail: "3 awakenings",
+                    normalized: 0.35, weightUsed: 0.20,
+                    expectedNeutral: SleepIntelligenceScore.continuityNeutral
+                ),
+                .init(
+                    label: "Recovery", detail: "HRV +9% vs baseline",
+                    normalized: 0.61, weightUsed: 0.15, expectedNeutral: 0.65
+                )
             ],
             context: AppMockData.dayContext()
         )
