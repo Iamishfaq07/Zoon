@@ -16,7 +16,7 @@ final class ChartQuestionTests: XCTestCase {
         baseline: Double?,
         baselineNights: Int = 14
     ) -> ChartQuestion {
-        var q = ChartQuestion(metric: metric, selected: .init(date: night, value: value))
+        var q = ChartQuestion(subject: .trend(metric), selected: .init(date: night, value: value))
         q.baseline = baseline
         q.baselineNightCount = baseline == nil ? 0 : baselineNights
         return q
@@ -149,18 +149,18 @@ final class ChartQuestionTests: XCTestCase {
     /// signed minutes from midnight, so an 11pm bedtime formatted as a
     /// duration prints "-1h 0m".
     func testAnEveningBedtimeReadsAsAClockTime() {
-        let q = ChartQuestion(metric: .bedtime, selected: .init(date: night, value: -30))
+        let q = ChartQuestion(subject: .trend(.bedtime), selected: .init(date: night, value: -30))
         XCTAssertEqual(q.formatted(-30), "23:30")
     }
 
     func testAnAfterMidnightBedtimeReadsAsAClockTime() {
-        let q = ChartQuestion(metric: .bedtime, selected: .init(date: night, value: 90))
+        let q = ChartQuestion(subject: .trend(.bedtime), selected: .init(date: night, value: 90))
         XCTAssertEqual(q.formatted(90), "01:30")
     }
 
     /// A bedtime *gap* is a duration, not a clock time.
     func testABedtimeDifferenceIsADuration() {
-        let q = ChartQuestion(metric: .bedtime, selected: .init(date: night, value: -30))
+        let q = ChartQuestion(subject: .trend(.bedtime), selected: .init(date: night, value: -30))
         XCTAssertEqual(q.formattedMagnitude(40), SleepNightFeatures.formatMinutes(40))
     }
 
@@ -214,4 +214,123 @@ final class ChartQuestionTests: XCTestCase {
             )
         }
     }
+    // MARK: - Vitals (V10.2 item 17)
+
+    private var vitalPoints: [ChartQuestion.Point] {
+        (0..<10).map {
+            ChartQuestion.Point(
+                date: Date(timeIntervalSince1970: 1_700_000_000 + Double($0) * 86_400),
+                value: 54 + Double($0 % 3)
+            )
+        }
+    }
+
+    /// The gap this closes. `ChartQuestion` took a `TrendEngine.Metric`, which
+    /// knows six series; the vitals screen charts seven, and only two overlap.
+    /// Five of a person's body signals had a chart they could scrub and
+    /// nothing they could ask about it.
+    func testAVitalWithNoTrendEngineEquivalentCanStillBeAskedAbout() throws {
+        let points = vitalPoints
+        let question = try XCTUnwrap(
+            ChartQuestion.forVital(
+                .respiratoryRate,
+                selected: points[5],
+                in: points,
+                baseline: 14.5,
+                tolerance: 0.6,
+                baselineNightCount: 21
+            )
+        )
+        XCTAssertEqual(question.subject, .vital(.respiratoryRate))
+        XCTAssertTrue(question.question.contains("respiratory rate"), question.question)
+    }
+
+    /// Title case is right for a panel heading and wrong mid-sentence.
+    func testAVitalsLabelIsLowercasedInsideTheQuestion() throws {
+        let points = vitalPoints
+        let question = try XCTUnwrap(
+            ChartQuestion.forVital(
+                .oxygenSaturation, selected: points[2], in: points,
+                baseline: 97, tolerance: 1, baselineNightCount: 21
+            )
+        )
+        XCTAssertFalse(question.question.contains("Blood Oxygen"), question.question)
+        XCTAssertTrue(question.question.contains("blood oxygen"), question.question)
+    }
+
+    /// The reason `Subject` is an enum over the two vocabularies rather than a
+    /// struct of copied numbers: each is judged by its own screen's rule. A
+    /// vital uses the tolerance `VitalsStatus` derived from the person's
+    /// spread, so the same delta is notable at a tight tolerance and ordinary
+    /// at a loose one.
+    func testAVitalIsJudgedByItsOwnToleranceNotAFixedThreshold() throws {
+        let points = vitalPoints
+        func deviation(tolerance: Double) throws -> ChartQuestion.Deviation {
+            let selected = ChartQuestion.Point(date: points[5].date, value: 60)
+            let question = try XCTUnwrap(
+                ChartQuestion.forVital(
+                    .restingHeartRate,
+                    selected: selected,
+                    in: points.map { $0.date == selected.date ? selected : $0 },
+                    baseline: 54, tolerance: tolerance, baselineNightCount: 21
+                )
+            )
+            return question.deviation
+        }
+        XCTAssertEqual(try deviation(tolerance: 2), .above, "6 bpm over a 2 bpm tolerance is notable")
+        XCTAssertEqual(try deviation(tolerance: 12), .typical, "6 bpm over a 12 bpm tolerance is not")
+    }
+
+    /// No tolerance means the vitals engine had too little history to
+    /// establish one. That is "cannot say", not "unremarkable" -- reporting
+    /// it as typical would claim a comparison that was never made.
+    func testAVitalWithNoToleranceIsUnknownRatherThanTypical() throws {
+        let points = vitalPoints
+        let question = try XCTUnwrap(
+            ChartQuestion.forVital(
+                .wristTemperature, selected: points[3], in: points,
+                baseline: 34.0, tolerance: nil, baselineNightCount: 3
+            )
+        )
+        XCTAssertEqual(question.deviation, .unknown)
+    }
+
+    /// Trend metrics keep the rule they always had, shared with
+    /// `ChangePointDetector`. The indirection must not have quietly changed
+    /// what counts as notable on the screens that already worked.
+    func testTrendMetricsStillUseTheSharedThreshold() {
+        let night = Date(timeIntervalSince1970: 1_700_000_000)
+        var small = ChartQuestion(subject: .trend(.hrv), selected: .init(date: night, value: 57))
+        small.baseline = 55
+        small.baselineNightCount = 21
+        XCTAssertEqual(small.deviation, .typical, "under the 10% relative bar")
+
+        var large = ChartQuestion(subject: .trend(.hrv), selected: .init(date: night, value: 70))
+        large.baseline = 55
+        large.baselineNightCount = 21
+        XCTAssertEqual(large.deviation, .above)
+    }
+
+    /// Two subjects that share a raw metric name must not collide as ids --
+    /// a sheet keyed on the id would otherwise fail to re-present when moving
+    /// between the two screens.
+    func testTrendAndVitalSubjectsDoNotShareAnIdentifier() {
+        let night = Date(timeIntervalSince1970: 1_700_000_000)
+        let trend = ChartQuestion(subject: .trend(.hrv), selected: .init(date: night, value: 55))
+        let vital = ChartQuestion(subject: .vital(.hrv), selected: .init(date: night, value: 55))
+        XCTAssertNotEqual(trend.id, vital.id)
+    }
+
+    /// A point the chart is not plotting is not a point to ask about.
+    func testAPointOutsideTheSeriesProducesNoQuestion() {
+        let points = vitalPoints
+        XCTAssertNil(
+            ChartQuestion.forVital(
+                .hrv,
+                selected: .init(date: Date(timeIntervalSince1970: 1), value: 55),
+                in: points, baseline: 55, tolerance: 4, baselineNightCount: 21
+            )
+        )
+    }
+
 }

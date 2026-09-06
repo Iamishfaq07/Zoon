@@ -19,7 +19,73 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
 
     /// Stable for a given point, so presenting a sheet keyed on it does not
     /// re-present when the surrounding view redraws.
-    var id: String { "\(metric.rawValue)-\(selected.date.timeIntervalSince1970)" }
+    var id: String { "\(subject.rawValue)-\(selected.date.timeIntervalSince1970)" }
+
+    /// The two metric vocabularies this app has, and the only two.
+    ///
+    /// `ChartQuestion` used to take a `TrendEngine.Metric` directly, which
+    /// meant "ask about this point" could only ever be offered on the six
+    /// series that type knows. The vitals screen charts seven, and only two
+    /// of them overlap -- so five of a person's body signals had a chart they
+    /// could scrub and nothing they could ask about it.
+    ///
+    /// Deliberately an enum over the existing types rather than a struct of
+    /// copied labels and thresholds. Each vocabulary already owns its own
+    /// rule for what counts as notable, and those rules are genuinely
+    /// different: `TrendEngine` uses a fixed per-metric threshold shared with
+    /// `ChangePointDetector`, while `VitalsStatus` uses a tolerance derived
+    /// from the person's own spread. Flattening both into one number here
+    /// would have quietly replaced two considered rules with a third
+    /// invented one.
+    enum Subject: Hashable, Sendable {
+        case trend(TrendEngine.Metric)
+        case vital(VitalsStatus.Kind)
+
+        var rawValue: String {
+            switch self {
+            case let .trend(metric): "trend:\(metric.rawValue)"
+            case let .vital(kind): "vital:\(kind.rawValue)"
+            }
+        }
+
+        /// Lower-cased, because it is always read mid-sentence: "why was my
+        /// resting heart rate higher on 3 May?". `VitalsStatus.Kind.label` is
+        /// title-cased for panel headings, which is the wrong register here.
+        var label: String {
+            switch self {
+            case let .trend(metric): metric.label
+            case let .vital(kind): kind.label.lowercased()
+            }
+        }
+
+        /// A reading, as the person would read it off the axis.
+        func formatValue(_ value: Double) -> String {
+            switch self {
+            case let .trend(metric):
+                // Bedtime is the exception `formattedMagnitude` cannot serve:
+                // its values are signed minutes from midnight (negative for
+                // the evening, per `Statistics.circularMinutesFromMidnight`),
+                // so formatting one as a duration prints an 11pm bedtime as
+                // "-1h 0m".
+                guard case .bedtime = metric else { return metric.formattedMagnitude(value) }
+                let wrapped = (value.truncatingRemainder(dividingBy: 1440) + 1440)
+                    .truncatingRemainder(dividingBy: 1440)
+                return String(format: "%02d:%02d", Int(wrapped) / 60, Int(wrapped) % 60)
+            case let .vital(kind):
+                return kind.format(value)
+            }
+        }
+
+        /// A *difference*. Unlike `formatValue`, a bedtime gap is a duration
+        /// -- "40m earlier" -- not a clock time. A vital's units are the same
+        /// either way, so it formats identically.
+        func formatMagnitude(_ value: Double) -> String {
+            switch self {
+            case let .trend(metric): metric.formattedMagnitude(value)
+            case let .vital(kind): kind.format(value)
+            }
+        }
+    }
 
     /// One plotted night.
     struct Point: Hashable, Sendable {
@@ -32,7 +98,9 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
         }
     }
 
-    let metric: TrendEngine.Metric
+    /// What the charted series is, and whose rule decides whether a point
+    /// is notable.
+    let subject: Subject
     let selected: Point
     /// The window the chart is showing, when it has one. Included so an
     /// answer can say "across the two weeks shown" without inventing a span.
@@ -45,6 +113,16 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
     /// model cannot know which it is being shown unless told.
     var baseline: Double? = nil
     var baselineNightCount: Int = 0
+    /// How far from `baseline` this subject has to sit before it is outside
+    /// typical, when the subject's own rule is a tolerance rather than a
+    /// threshold.
+    ///
+    /// Only `.vital` uses it: `VitalsStatus` derives a tolerance from the
+    /// person's own spread rather than applying a fixed number, so the figure
+    /// has to travel with the question instead of being recomputed here from
+    /// a different rule. `nil` for a `.trend` subject, which carries its
+    /// threshold in the metric itself.
+    var tolerance: Double? = nil
     /// How the night itself went, one already-formed fact.
     var sleep: String? = nil
     /// What the user logged, what they did, and what their body was doing:
@@ -57,10 +135,15 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
 
     /// Whether the selected value sits meaningfully off the user's baseline.
     ///
-    /// Uses the metric's own `clearsThreshold`, the same rule `TrendEngine`
-    /// and `ChangePointDetector` use to decide a shift is worth reporting.
-    /// A separate threshold here would let the app call a night "low" on one
-    /// screen and unremarkable on another.
+    /// Each subject is judged by the rule its own screen uses, never by a
+    /// rule invented here. A `.trend` metric uses `clearsThreshold`, shared
+    /// with `TrendEngine` and `ChangePointDetector`; a `.vital` uses the
+    /// tolerance `VitalsStatus` derived from the person's own spread.
+    ///
+    /// The alternative -- one threshold for everything -- is what would let
+    /// the app call a reading notable on one screen and unremarkable on
+    /// another, which is the thing this indirection exists to prevent rather
+    /// than a cost of it.
     enum Deviation: Hashable, Sendable {
         case above, below, typical, unknown
     }
@@ -68,7 +151,19 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
     var deviation: Deviation {
         guard let baseline, baselineNightCount > 0 else { return .unknown }
         let delta = selected.value - baseline
-        guard metric.clearsThreshold(delta, previousMedian: baseline) else { return .typical }
+
+        let isNotable: Bool
+        switch subject {
+        case let .trend(metric):
+            isNotable = metric.clearsThreshold(delta, previousMedian: baseline)
+        case .vital:
+            // No tolerance means the vitals engine had too little history to
+            // establish one. That is "we cannot say", not "unremarkable".
+            guard let tolerance, tolerance > 0 else { return .unknown }
+            isNotable = abs(delta) > tolerance
+        }
+
+        guard isNotable else { return .typical }
         return delta > 0 ? .above : .below
     }
 
@@ -84,11 +179,11 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
         let day = selected.date.formatted(.dateTime.month(.wide).day())
         switch deviation {
         case .above:
-            return "Why was my \(metric.label) higher on \(day)?"
+            return "Why was my \(subject.label) higher on \(day)?"
         case .below:
-            return "Why was my \(metric.label) lower on \(day)?"
+            return "Why was my \(subject.label) lower on \(day)?"
         case .typical, .unknown:
-            return "What was going on with my \(metric.label) on \(day)?"
+            return "What was going on with my \(subject.label) on \(day)?"
         }
     }
 
@@ -101,7 +196,7 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
     /// "Baseline: 0" will use the zero.
     var context: String {
         var lines: [String] = [
-            "Metric: \(metric.label)",
+            "Metric: \(subject.label)",
             "Selected night: \(selected.date.formatted(.dateTime.year().month().day()))",
             "Selected value: \(formatted(selected.value))"
         ]
@@ -139,30 +234,12 @@ struct ChartQuestion: Hashable, Sendable, Identifiable {
 
     // MARK: - Formatting
 
-    /// A reading of this metric, as the user would read it off the axis.
-    ///
-    /// Bedtime is the exception `TrendEngine.formattedMagnitude` cannot
-    /// serve: its values are signed minutes from midnight (negative for the
-    /// evening, per `Statistics.circularMinutesFromMidnight`), so formatting
-    /// one as a duration would print an 11pm bedtime as "-1h 0m".
-    func formatted(_ value: Double) -> String {
-        switch metric {
-        case .bedtime:
-            let wrapped = (value.truncatingRemainder(dividingBy: 1440) + 1440)
-                .truncatingRemainder(dividingBy: 1440)
-            let hour = Int(wrapped) / 60
-            let minute = Int(wrapped) % 60
-            return String(format: "%02d:%02d", hour, minute)
-        default:
-            return metric.formattedMagnitude(value)
-        }
-    }
+    /// A reading, as the user would read it off the axis. See
+    /// `Subject.formatValue`.
+    func formatted(_ value: Double) -> String { subject.formatValue(value) }
 
-    /// A *difference* in this metric. Unlike `formatted`, a bedtime gap is a
-    /// duration -- "40m earlier" -- not a clock time.
-    func formattedMagnitude(_ value: Double) -> String {
-        metric.formattedMagnitude(value)
-    }
+    /// A *difference*. See `Subject.formatMagnitude`.
+    func formattedMagnitude(_ value: Double) -> String { subject.formatMagnitude(value) }
 }
 
 // MARK: - Building one from a charted window
@@ -197,7 +274,7 @@ extension ChartQuestion {
                 return Point(date: other.date, value: value)
             }
 
-        var question = ChartQuestion(metric: metric, selected: Point(date: night.date, value: value))
+        var question = ChartQuestion(subject: .trend(metric), selected: Point(date: night.date, value: value))
         question.range = others.isEmpty
             ? nil
             : DateInterval(
@@ -218,6 +295,51 @@ extension ChartQuestion {
         question.journal = journal
         question.workouts = workouts
         question.bodySignals = bodySignals
+        return question
+    }
+
+    /// The question for one point on a vital's own trend.
+    ///
+    /// Takes the baseline and tolerance rather than deriving them, because
+    /// `VitalsStatus` has already computed both from the person's history
+    /// with rules of its own -- a minimum night count per vital, and a
+    /// tolerance in standard deviations. Recomputing here from the handful of
+    /// points a chart happens to be showing would produce a second, weaker
+    /// answer to a question the app has already answered properly.
+    ///
+    /// Returns `nil` when there is nothing plotted to ask about.
+    static func forVital(
+        _ kind: VitalsStatus.Kind,
+        selected: Point,
+        in points: [Point],
+        baseline: Double?,
+        tolerance: Double?,
+        baselineNightCount: Int
+    ) -> ChartQuestion? {
+        guard points.contains(where: { $0.date == selected.date }) else { return nil }
+        let others = points.filter { $0.date != selected.date }
+
+        var question = ChartQuestion(subject: .vital(kind), selected: selected)
+        question.range = others.isEmpty
+            ? nil
+            : DateInterval(
+                start: min(selected.date, others.map(\.date).min() ?? selected.date),
+                end: max(selected.date, others.map(\.date).max() ?? selected.date)
+            )
+        // Same reasoning as `forNight`: the immediate neighbours, not the
+        // whole window. A month pasted into a prompt is the same context with
+        // the points that matter buried in it.
+        question.nearby = Array(
+            others
+                .sorted {
+                    abs($0.date.timeIntervalSince(selected.date))
+                        < abs($1.date.timeIntervalSince(selected.date))
+                }
+                .prefix(4)
+        )
+        question.baseline = baseline
+        question.tolerance = tolerance
+        question.baselineNightCount = baselineNightCount
         return question
     }
 }

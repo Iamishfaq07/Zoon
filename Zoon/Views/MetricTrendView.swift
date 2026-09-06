@@ -13,6 +13,7 @@ struct MetricTrendView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @State private var selectedDate: Date?
+    @State private var asking: ChartQuestion?
 
     private var points: [(date: Date, value: Double)] {
         coordinator.recentNights.compactMap { night in
@@ -25,12 +26,44 @@ struct MetricTrendView: View {
         coordinator.state.context?.vitals.metrics.first { $0.kind == kind }
     }
 
+    /// The question for whatever is currently selected.
+    ///
+    /// Baseline and tolerance come from `VitalsStatus`, which computed both
+    /// from the person's history under its own rules, rather than being
+    /// re-derived from the handful of points on screen -- see
+    /// `ChartQuestion.forVital`.
+    private var selectedQuestion: ChartQuestion? {
+        guard let selectedDate else { return nil }
+        let plotted = points.map { ChartQuestion.Point(date: $0.date, value: $0.value) }
+        guard let nearest = plotted.nearest(toDay: selectedDate, keyPath: \.date) else { return nil }
+        return ChartQuestion.forVital(
+            kind,
+            selected: nearest,
+            in: plotted,
+            baseline: currentMetric?.baseline,
+            tolerance: currentMetric?.tolerance,
+            baselineNightCount: currentMetric?.sampleCount ?? 0
+        )
+    }
+
+    /// The night the coach is otherwise grounded in. A chart question narrows
+    /// that ground rather than replacing it, so the most recent night is the
+    /// right one even when an older point is selected.
+    private var askedNight: SleepNightFeatures? { coordinator.recentNights.last }
+
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 hero
                 if points.count >= 3 {
                     chartCard
+                    // Below the card, not inside it: a button in a Chart
+                    // annotation competes with `chartXSelection`'s own drag
+                    // recogniser for the same touches. Same placement and
+                    // reasoning as the HRV card in Trends.
+                    if let selectedQuestion {
+                        AskZoonAboutChart(question: selectedQuestion) { asking = selectedQuestion }
+                    }
                 } else {
                     ContentUnavailableView(
                         "Not enough history yet",
@@ -44,6 +77,7 @@ struct MetricTrendView: View {
             .padding()
         }
         .nightBackground()
+        .askZoonSheet(about: $asking, night: askedNight)
         .navigationTitle(kind.label)
         .navigationBarTitleDisplayMode(.inline)
     }
