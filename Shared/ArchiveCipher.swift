@@ -51,7 +51,7 @@ enum ArchiveCipher {
             }
         }
         guard result == kCCSuccess else { throw Failure.derivation }
-        defer { bytes.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) } }
+        defer { _ = bytes.withUnsafeMutableBytes { $0.initializeMemory(as: UInt8.self, repeating: 0) } }
         return SymmetricKey(data: bytes)
     }
 }
