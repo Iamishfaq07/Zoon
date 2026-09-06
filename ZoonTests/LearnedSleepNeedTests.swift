@@ -110,3 +110,100 @@ final class LearnedSleepNeedTests: XCTestCase {
         XCTAssertNotNil(result.learnedMinutes)
     }
 }
+
+// MARK: - The efficient-short-night trap
+
+/// V9 item 37. "A chronic short sleeper may repeatedly have 6h15, high
+/// efficiency, without that necessarily being sufficient."
+///
+/// The trap is that the quality filter selects *for* efficiency, and high
+/// efficiency on a short night is at least as consistent with sleep pressure
+/// as with sufficiency -- so the more disciplined the short sleeper, the
+/// more confidently the old model learned the wrong number.
+extension LearnedSleepNeedTests {
+
+    private func restrictedNight(daysAgo: Int) -> SleepNightFeatures {
+        // 6h15 asleep, 96% efficiency, measured time in bed.
+        Fixture.night(
+            daysAgo: daysAgo,
+            timeAsleepMinutes: 375,
+            timeInBedMinutes: 375 / 0.96
+        )
+    }
+
+    func testAShortNightAtVeryHighEfficiencyIsNotEvidenceOfNeed() {
+        let night = restrictedNight(daysAgo: 1)
+        XCTAssertTrue(
+            LearnedSleepNeed.isRestrictionShaped(night, goalMinutes: 480),
+            "6h15 at 96% under an 8h goal is the spec's own example"
+        )
+    }
+
+    /// The same night measured by a watch that never writes `inBed`. Its
+    /// efficiency reads high because the span omits time lying awake, so
+    /// applying the ceiling here would disqualify the users whose data is
+    /// already thinnest -- the same bug this file records for
+    /// `hasStageBreakdown`.
+    func testAnEstimatedInBedNightIsNotJudgedByTheEfficiencyCeiling() {
+        var night = restrictedNight(daysAgo: 1)
+        night.timeInBedIsEstimated = true
+        XCTAssertFalse(LearnedSleepNeed.isRestrictionShaped(night, goalMinutes: 480))
+    }
+
+    /// A long night at high efficiency is exactly what need looks like. The
+    /// rule is about *short* nights; applied to long ones it would throw
+    /// away the best evidence there is.
+    func testALongNightAtHighEfficiencyStillCounts() {
+        let night = Fixture.night(
+            daysAgo: 1, timeAsleepMinutes: 500, timeInBedMinutes: 500 / 0.96
+        )
+        XCTAssertFalse(LearnedSleepNeed.isRestrictionShaped(night, goalMinutes: 480))
+    }
+
+    /// Excluded in the opposite direction, and deliberately so: one rule
+    /// drops nights biasing the estimate down, the other drops nights
+    /// biasing it up.
+    func testANightSleptDeepInDebtIsARepaymentNotABaseline() {
+        let repaying = Fixture.night(
+            daysAgo: 1, timeAsleepMinutes: 540,
+            sleepDebtMinutes: LearnedSleepNeed.repaymentDebtMinutes + 30
+        )
+        XCTAssertTrue(LearnedSleepNeed.isRepayingDebt(repaying))
+
+        let settled = Fixture.night(daysAgo: 1, timeAsleepMinutes: 540, sleepDebtMinutes: 10)
+        XCTAssertFalse(LearnedSleepNeed.isRepayingDebt(settled))
+    }
+
+    func testANightWithNoDebtFigureIsNotTreatedAsRepaying() {
+        let night = Fixture.night(daysAgo: 1, timeAsleepMinutes: 480, sleepDebtMinutes: nil)
+        XCTAssertFalse(LearnedSleepNeed.isRepayingDebt(night))
+    }
+
+    // MARK: - What the model now says
+
+    /// The whole point. Forty restricted nights used to produce a confident
+    /// 6h15 "need"; they now produce too little qualifying evidence to claim
+    /// anything, which is what the spec means by "keep conservative
+    /// confidence" and "do not drastically change current Need until enough
+    /// evidence exists".
+    func testAChronicShortSleeperNoLongerLearnsTheirRestriction() {
+        let nights = (1...40).map { restrictedNight(daysAgo: $0) }
+        let need = LearnedSleepNeed.compute(goalMinutes: 480, history: nights)
+
+        XCTAssertNil(need.learnedMinutes, "a restriction must not be learned as a need")
+        XCTAssertEqual(need.confidence, .insufficient)
+        XCTAssertEqual(need.minutes, 480, "falls back to the stated goal, not to 6h15")
+    }
+
+    /// No regression for someone who actually sleeps well: 7h45 at 90% is
+    /// neither restriction-shaped nor a repayment, so nothing changes.
+    func testAWellSleptPersonIsUnaffected() throws {
+        let nights = (1...40).map {
+            Fixture.night(daysAgo: $0, timeAsleepMinutes: 465, timeInBedMinutes: 465 / 0.90)
+        }
+        let need = LearnedSleepNeed.compute(goalMinutes: 480, history: nights)
+
+        XCTAssertEqual(need.qualifyingNightCount, 40)
+        XCTAssertEqual(try XCTUnwrap(need.learnedMinutes), 465, accuracy: 1)
+    }
+}

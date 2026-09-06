@@ -20,7 +20,13 @@ import Foundation
 ///    (decent efficiency, not badly fragmented, real stage data) -- not "the
 ///    nights closest to what we expect," which would be circular, but a
 ///    data-quality and continuity floor applied uniformly regardless of
-///    duration.
+///    duration. That floor also excludes nights whose length was decided by
+///    something other than the sleeper: a short night at very high
+///    efficiency (the opportunity ran out) and a night slept deep in debt
+///    (a repayment, not a baseline). See `isRestrictionShaped`, which is
+///    where the "efficient short night" trap is dealt with -- a
+///    quality filter that selects for efficiency will otherwise select
+///    hardest for exactly the nights that mislead it.
 /// 2. Take the 60th percentile of *those* nights' duration, not the median --
 ///    biasing toward the more-rested end of someone's own good nights,
 ///    rather than splitting the difference with their merely-adequate ones.
@@ -54,7 +60,7 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     static let fullConfidenceNights = 60
 
     static func compute(goalMinutes: Double, history: [SleepNightFeatures]) -> LearnedSleepNeed {
-        let qualifying = history.filter(isHighQuality)
+        let qualifying = history.filter { isHighQuality($0, goalMinutes: goalMinutes) }
         let count = qualifying.count
 
         guard count >= minimumQualifyingNights,
@@ -101,10 +107,62 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     /// comment on that field), not a placeholder. The efficiency, wake-count
     /// and duration bounds below are the real quality floor; they apply
     /// identically regardless of source.
-    private static func isHighQuality(_ night: SleepNightFeatures) -> Bool {
+    private static func isHighQuality(
+        _ night: SleepNightFeatures,
+        goalMinutes: Double
+    ) -> Bool {
         night.sleepEfficiencyPercent >= 85
             && night.wakeCount <= 4
             && night.timeAsleepMinutes >= 240
             && night.timeAsleepMinutes <= 720
+            && !isRestrictionShaped(night, goalMinutes: goalMinutes)
+            && !isRepayingDebt(night)
+    }
+
+    /// Efficiency above which a *short* night stops being evidence of need.
+    static let restrictionEfficiencyPercent = 95.0
+
+    /// Debt above which a night is a repayment rather than a baseline.
+    static let repaymentDebtMinutes = 60.0
+
+    /// A night that ended because the opportunity ran out, not because the
+    /// sleeper was done.
+    ///
+    /// This is the V9 spec's named failure: "a chronic short sleeper may
+    /// repeatedly have 6h15, high efficiency, without that necessarily being
+    /// sufficient." The filter above selects *for* efficiency, and high
+    /// efficiency on a short night is at least as consistent with sleep
+    /// pressure as with sufficiency -- someone carrying a deficit falls
+    /// asleep fast and sleeps solidly *because* they are short. So the
+    /// original filter was selecting precisely the nights that mislead it,
+    /// and the more disciplined the short sleeper, the more confidently it
+    /// learned the wrong number.
+    ///
+    /// Only applied when time in bed was really measured. When it is
+    /// estimated from the session span (Apple Watch alone never writes
+    /// `inBed`), efficiency is known to read high -- see
+    /// `timeInBedIsEstimated` -- and applying a 95% ceiling to an inflated
+    /// figure would disqualify exactly the users whose data is thinnest.
+    /// That is the same bug this file already records for
+    /// `hasStageBreakdown`, and it is not being reintroduced under a new
+    /// name.
+    static func isRestrictionShaped(
+        _ night: SleepNightFeatures,
+        goalMinutes: Double
+    ) -> Bool {
+        guard !night.timeInBedIsEstimated else { return false }
+        return night.timeAsleepMinutes < goalMinutes
+            && night.sleepEfficiencyPercent >= restrictionEfficiencyPercent
+    }
+
+    /// A night slept while meaningfully in debt runs long by design, so it
+    /// describes the deficit rather than the baseline.
+    ///
+    /// Excluded in the opposite direction to `isRestrictionShaped`, and
+    /// deliberately so: one drops nights that bias the estimate down, the
+    /// other drops nights that bias it up. Removing only the first would
+    /// trade one lopsided estimate for another.
+    static func isRepayingDebt(_ night: SleepNightFeatures) -> Bool {
+        (night.sleepDebtMinutes ?? 0) >= repaymentDebtMinutes
     }
 }

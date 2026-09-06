@@ -20,6 +20,10 @@ enum Fixture {
         daysAgo: Int = 0,
         timeAsleepMinutes: Double = 450,
         timeInBedMinutes: Double = 480,
+        /// `SleepNightFeatures.sleepDebtMinutes` is a `let`, so a test that
+        /// needs a night carrying debt has to say so when the night is
+        /// built rather than assigning afterwards.
+        sleepDebtMinutes: Double? = 0,
         avgHRV: Double? = 55,
         restingHeartRate: Double? = 54,
         minHeartRate: Double? = 48,
@@ -83,7 +87,7 @@ enum Fixture {
             breathingDisturbances: breathingDisturbances,
             breathingDisturbancesClassification: breathingDisturbancesClassification,
             hrv7DayAvg: avgHRV,
-            sleepDebtMinutes: 0,
+            sleepDebtMinutes: sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: nil,
             sourceName: sourceName,
