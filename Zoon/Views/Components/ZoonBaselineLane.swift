@@ -124,11 +124,20 @@ struct ZoonBaselineLane: View {
     }
 
     private var meaning: String {
+        // A metric with a reading but no baseline yet is reported as
+        // `.typical` by `VitalsStatus.evaluate`, which is the safe default
+        // for a status pill but the wrong *sentence*: "near your normal
+        // range" is a comparison, and there is nothing to compare against
+        // until the baseline exists. The lane draws no band and no dot in
+        // that state, so the caption was the only thing still claiming one.
+        if metric.baseline == nil && metric.value != nil {
+            return "Still learning your normal"
+        }
         switch metric.state {
-        case .typical: "Near your normal range"
-        case .aboveTypical: "Above your typical range"
-        case .belowTypical: "Below your typical range"
-        case .unavailable: "No reading tonight"
+        case .typical: return "Near your normal range"
+        case .aboveTypical: return "Above your typical range"
+        case .belowTypical: return "Below your typical range"
+        case .unavailable: return "No reading tonight"
         }
     }
 

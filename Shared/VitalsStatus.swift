@@ -25,8 +25,31 @@ struct VitalsStatus: Codable, Hashable, Sendable {
         /// Half-width of the typical band (one standard deviation).
         let tolerance: Double?
         let state: State
+        /// How many nights the baseline was actually computed from.
+        ///
+        /// Optional rather than defaulted so a status decoded from a backup
+        /// written before this field existed says "not recorded" instead of
+        /// claiming zero nights -- a stored `0` and an unknown count are
+        /// different facts, and only one of them is true.
+        let sampleCount: Int?
 
         var id: String { kind.rawValue }
+
+        /// How much to trust this metric's typical range.
+        ///
+        /// Bands off the night count alone, because that is the only thing
+        /// that limits a mean and a standard deviation here. Seven nights is
+        /// the floor `evaluate` already enforces, so anything at or below it
+        /// is the weakest band that still gets shown at all.
+        var confidence: MetricConfidence? {
+            guard let sampleCount else { return nil }
+            switch sampleCount {
+            case ..<VitalsStatus.minimumNights: return .insufficient
+            case ..<14: return .low
+            case ..<28: return .moderate
+            default: return .high
+            }
+        }
 
         var formattedValue: String {
             guard let value else { return "—" }
@@ -129,14 +152,21 @@ struct VitalsStatus: Codable, Hashable, Sendable {
 
         let metrics = Kind.allCases.map { kind -> Metric in
             let value = currentValue(kind, features: features)
+            // Per kind, not `history.count`: a night in the history that
+            // carries no reading for this vital contributes nothing to its
+            // baseline, so counting it would overstate the evidence behind
+            // exactly the metrics that have the least of it.
+            let series = history.compactMap { historicValue(kind, sample: $0) }
+
             guard hasBaseline else {
                 return Metric(kind: kind, value: value, baseline: nil, tolerance: nil,
-                              state: value == nil ? .unavailable : .typical)
+                              state: value == nil ? .unavailable : .typical,
+                              sampleCount: series.count)
             }
 
-            let series = history.compactMap { historicValue(kind, sample: $0) }
             guard series.count >= minimumNights, let value else {
-                return Metric(kind: kind, value: value, baseline: nil, tolerance: nil, state: .unavailable)
+                return Metric(kind: kind, value: value, baseline: nil, tolerance: nil,
+                              state: .unavailable, sampleCount: series.count)
             }
 
             let mean = series.reduce(0, +) / Double(series.count)
@@ -156,7 +186,8 @@ struct VitalsStatus: Codable, Hashable, Sendable {
                 state = .typical
             }
 
-            return Metric(kind: kind, value: value, baseline: mean, tolerance: tolerance, state: state)
+            return Metric(kind: kind, value: value, baseline: mean, tolerance: tolerance,
+                          state: state, sampleCount: series.count)
         }
 
         return VitalsStatus(metrics: metrics, hasBaseline: hasBaseline)
