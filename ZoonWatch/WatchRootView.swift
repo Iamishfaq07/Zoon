@@ -198,6 +198,35 @@ struct QuickLogView: View {
     }
 }
 
+/// Says when the numbers above are not about last night.
+///
+/// Renders nothing at all when they are, which is almost always -- this
+/// exists for the case where the phone app has not been opened, and the
+/// watch would otherwise present a two-day-old score with the same
+/// confidence as a fresh one.
+///
+/// It does not say what last night actually was. The watch cannot know that
+/// without its own HealthKit read, which V9 item 33 gates behind an
+/// entitlement, an authorization flow, device testing and a battery
+/// evaluation. Not knowing is a gap; showing the wrong night as though it
+/// were last night is a wrong answer, and this fixes the second.
+struct WatchFreshnessNote: View {
+    let snapshot: SleepSnapshot
+    var now: Date = .now
+
+    var body: some View {
+        if let note = SnapshotFreshness.note(for: SnapshotFreshness.state(of: snapshot, now: now)) {
+            Text(note)
+                .font(Theme.text(9))
+                .foregroundStyle(Theme.Metric.recoveryMid)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .accessibilityLabel(note)
+        }
+    }
+}
+
 /// PAGE 1 -- Last night, as one page.
 ///
 /// Sleep Intelligence and the duration/debt readout used to be two separate
@@ -274,6 +303,8 @@ struct LastNightPage: View {
                     tint: debtTint
                 )
             }
+
+            WatchFreshnessNote(snapshot: snapshot)
 
             if snapshot.isMock {
                 Text("Sample data")
@@ -387,6 +418,8 @@ struct TodayPage: View {
                     .minimumScaleFactor(0.7)
             }
             .accessibilityElement(children: .combine)
+
+            WatchFreshnessNote(snapshot: snapshot)
 
             if snapshot.isMock {
                 Text("Sample data")
@@ -715,6 +748,22 @@ struct WaitingPage: View {
 
 /// The page the V9 spec insists exists: logging with a visible affordance,
 /// not only behind a long press.
+/// The state the note exists for. Previewed by moving the clock forward
+/// rather than by relabelling a fresh snapshot: the mock night is current,
+/// so a page preview called "stale" would simply be wrong.
+#Preview("Freshness note") {
+    VStack(spacing: 10) {
+        WatchFreshnessNote(
+            snapshot: MockData.snapshotWithBadges,
+            now: Date().addingTimeInterval(3 * 86_400)
+        )
+        // Current: renders nothing, which is the case that has to stay
+        // invisible.
+        WatchFreshnessNote(snapshot: MockData.snapshotWithBadges)
+    }
+    .padding()
+}
+
 #Preview("Log") {
     LogPage()
         .environment(WatchLink())
