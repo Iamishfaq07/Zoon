@@ -91,33 +91,67 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
-    /// A timestamped list, not just a count -- "3am, a cough; 4:20am,
-    /// snoring" is something to actually look at, where a second aggregate
-    /// number next to the existing snore percentage would only compete with
-    /// it for attention.
+    /// Episodes, not classified moments.
+    ///
+    /// A timestamped list rather than a count is still the right idea -- "3am
+    /// a cough, 4:20am snoring" is something to actually look at, where a
+    /// second aggregate number beside the existing snore percentage would
+    /// only compete with it. What was wrong was the grain.
+    ///
+    /// `SoundAnalysis` classifies a buffer at a time, so twenty minutes of
+    /// snoring arrived here as several hundred rows a second or two apart.
+    /// That is not just long, it is misleading: three hundred rows read as
+    /// three hundred things that happened, when they are one thing sampled
+    /// three hundred times, and the number belongs to the classifier's buffer
+    /// size rather than to the night. `SoundEvent.clusters(from:)` is where
+    /// the grouping and its thresholds live.
+    private var clusters: [SoundEvent.Cluster] {
+        SoundEvent.clusters(from: eventStore.recentEvents)
+    }
+
     private var eventsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let episodes = clusters
+        return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Events", systemImage: "list.bullet.clipboard")
-            ForEach(eventStore.recentEvents) { event in
-                HStack(spacing: 10) {
-                    Image(systemName: event.symbol)
+            ForEach(episodes) { episode in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: episode.symbol)
                         .font(Theme.text(13))
                         .foregroundStyle(Theme.Metric.sleep)
                         .frame(width: 20)
-                    Text(event.label)
-                        .font(Theme.text(13))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(episode.label)
+                            .font(Theme.text(13))
+                        // Only for an episode with real extent. A single
+                        // moment rendering as "01:42 - 01:42, 0 min" is worse
+                        // than rendering as "01:42", which is what the row
+                        // already says on the right.
+                        if !episode.isMomentary {
+                            Text("\(Int(episode.minutes.rounded())) min")
+                                .font(Theme.text(11))
+                                .foregroundStyle(.tertiary)
+                                .monospacedDigit()
+                        }
+                    }
                     Spacer()
-                    Text(event.date, style: .time)
+                    Text(timing(episode))
                         .font(Theme.text(12))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
-                if event.id != eventStore.recentEvents.last?.id {
+                .accessibilityElement(children: .combine)
+                if episode.id != episodes.last?.id {
                     Divider().overlay(Theme.cardStroke)
                 }
             }
         }
         .glassCard()
+    }
+
+    private func timing(_ episode: SoundEvent.Cluster) -> String {
+        let start = episode.start.formatted(.dateTime.hour().minute())
+        guard !episode.isMomentary else { return start }
+        return "\(start) – \(episode.end.formatted(.dateTime.hour().minute()))"
     }
 
     private var actionButton: some View {

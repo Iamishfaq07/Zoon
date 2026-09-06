@@ -317,6 +317,7 @@
 		6198D747B24D464F27331AFB /* SleepIntelligenceScoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609825EF9FEE9342ACE3B4C4 /* SleepIntelligenceScoreTests.swift */; };
 		627D9B6B22BA3FC655079A82 /* ScoreLightSnapshotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0278D14480A795D4342D056A /* ScoreLightSnapshotView.swift */; };
 		627D9D798CD6465FEB80D128 /* BehaviorObservationRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3793DA0BC899092FF4BE4C /* BehaviorObservationRecord.swift */; };
+		629581B9B7A0AC784B0F492A /* SoundEventClusterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73BEB434231B334F39AD3E1 /* SoundEventClusterTests.swift */; };
 		62BE9440E1AFA7ECC4F6DBBB /* StatisticsBootstrapCITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0F64610736F9E59D4939B3 /* StatisticsBootstrapCITests.swift */; };
 		63C0C306002158B02EA497E5 /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
 		63CDD25F11C4BC5543DCBFB9 /* SnoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED7225BE24ECD0414B324C9 /* SnoreStore.swift */; };
@@ -1178,6 +1179,7 @@
 		E5B8904E22CF71043BC097B5 /* ArticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArticlesView.swift"; sourceTree = "<group>"; };
 		E66E48E18B3180010F25B98A /* ClinicianReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClinicianReportView.swift"; sourceTree = "<group>"; };
 		E6D958A9FD3398B01D9DC02A /* DataQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataQuality.swift"; sourceTree = "<group>"; };
+		E73BEB434231B334F39AD3E1 /* SoundEventClusterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundEventClusterTests.swift"; sourceTree = "<group>"; };
 		E7FB7ED912EC5DA6CCB20F99 /* ArchiveCipher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArchiveCipher.swift"; sourceTree = "<group>"; };
 		E8D991648B2623D1113B42B7 /* GlobalToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlobalToolbar.swift"; sourceTree = "<group>"; };
 		E9179FF0EF49CA880FE57629 /* SwiftDataProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwiftDataProbeTests.swift"; sourceTree = "<group>"; };
@@ -1566,6 +1568,7 @@
 				E28219622111155B2AEFB332,
 				DF6BCFC8B0ACCBC5470DF3C4,
 				A837ED66C219F928B0656AE4,
+				E73BEB434231B334F39AD3E1,
 				19B9DF59F7E0BEE26C5F514D,
 				02C71C3A9C2D9EDDF74E93F6,
 				5DFB342C78C5CB4CA3AB5943,
@@ -2529,6 +2532,7 @@
 				93D81420B0E130B5DA31A8A4,
 				DE877ECB17E3E70CC0E5174C,
 				5F7CDBC3500E81B1B198E4C8,
+				629581B9B7A0AC784B0F492A,
 				772D2EE73607A527A8FC0D4E,
 				1F727E5A53AA124DC553EC54,
 				70228E7E5C695A83CB011B17,
