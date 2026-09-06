@@ -153,4 +153,110 @@ final class CalibrationLedgerTests: XCTestCase {
         let counts = results.map(\.attempts)
         XCTAssertEqual(counts, counts.sorted(by: >))
     }
+
+    // MARK: - Correlated attempts (V10 item 8)
+
+    /// Neighbouring attempts are not independent: a 21-night window advanced
+    /// by one night shares twenty of its nights with the previous one, and
+    /// sleep is serially correlated in its own right. Wilson assumes they
+    /// are, so it reports a precision the data does not contain.
+    func testDependenceWidensTheIntervalOnARunnyPattern() {
+        // Long runs of hits and misses -- what overlapping windows produce.
+        let outcomes = Array(repeating: true, count: 30) + Array(repeating: false, count: 10)
+        let hits = outcomes.filter { $0 }.count
+
+        let wilson = CalibrationLedger.wilsonInterval(hits: hits, attempts: outcomes.count)
+        let combined = CalibrationLedger.Dependence.combined(
+            hits: hits, attempts: outcomes.count, outcomes: outcomes
+        )
+        XCTAssertGreaterThan(
+            combined.upper - combined.lower, wilson.upper - wilson.lower,
+            "correlated attempts reported the same certainty as independent ones"
+        )
+    }
+
+    /// The failure a naive bootstrap has here, and the reason the reported
+    /// interval is the wider of the two methods. Thirty hits from thirty
+    /// attempts makes every resample all-hits, collapsing the bootstrap to a
+    /// single point -- a *stronger* claim than independence, and a false one.
+    func testAPerfectRecordDoesNotCollapseToCertainty() {
+        let outcomes = Array(repeating: true, count: 30)
+        let combined = CalibrationLedger.Dependence.combined(
+            hits: 30, attempts: 30, outcomes: outcomes
+        )
+        XCTAssertLessThan(combined.lower, 1.0, "thirty for thirty was reported as certainty")
+        XCTAssertGreaterThan(combined.upper - combined.lower, 0)
+    }
+
+    /// Dependence may only ever widen. Whatever the resampling finds, the
+    /// reported interval is never narrower than the independence assumption.
+    func testTheReportedIntervalIsNeverNarrowerThanWilson() {
+        let patterns: [[Bool]] = [
+            Array(repeating: true, count: 30),
+            (0..<30).map { $0.isMultiple(of: 2) },
+            Array(repeating: true, count: 20) + Array(repeating: false, count: 10),
+            (0..<40).map { $0 % 7 != 0 }
+        ]
+        for outcomes in patterns {
+            let hits = outcomes.filter { $0 }.count
+            let wilson = CalibrationLedger.wilsonInterval(hits: hits, attempts: outcomes.count)
+            let combined = CalibrationLedger.Dependence.combined(
+                hits: hits, attempts: outcomes.count, outcomes: outcomes
+            )
+            XCTAssertLessThanOrEqual(combined.lower, wilson.lower + 1e-9)
+            XCTAssertGreaterThanOrEqual(combined.upper, wilson.upper - 1e-9)
+        }
+    }
+
+    /// Same history, same interval. A bootstrap seeded from the clock would
+    /// move these numbers on every redraw, which reads as instability in the
+    /// estimate rather than in the random number generator.
+    func testTheIntervalIsDeterministic() {
+        let outcomes = (0..<45).map { $0 % 5 != 0 }
+        let first = CalibrationLedger.Dependence.interval(outcomes: outcomes)
+        let second = CalibrationLedger.Dependence.interval(outcomes: outcomes)
+        XCTAssertEqual(first.lower, second.lower, accuracy: 1e-12)
+        XCTAssertEqual(first.upper, second.upper, accuracy: 1e-12)
+    }
+
+    /// Order carries the dependence. Two records with the same hit count but
+    /// different run structure are not equally certain, and shuffling one
+    /// into the other would erase exactly what is being measured.
+    func testOrderMatters() {
+        let clustered = Array(repeating: true, count: 20) + Array(repeating: false, count: 20)
+        let alternating = (0..<40).map { $0.isMultiple(of: 2) }
+        XCTAssertEqual(clustered.filter { $0 }.count, alternating.filter { $0 }.count)
+
+        let clusteredWidth = { () -> Double in
+            let i = CalibrationLedger.Dependence.interval(outcomes: clustered)
+            return i.upper - i.lower
+        }()
+        let alternatingWidth = { () -> Double in
+            let i = CalibrationLedger.Dependence.interval(outcomes: alternating)
+            return i.upper - i.lower
+        }()
+        XCTAssertGreaterThan(clusteredWidth, alternatingWidth,
+                             "a run-structured record was treated like an alternating one")
+    }
+
+    func testBlockLengthGrowsWithAttemptsAndStaysClamped() {
+        XCTAssertEqual(CalibrationLedger.Dependence.blockLength(attempts: 15), 3)
+        XCTAssertEqual(CalibrationLedger.Dependence.blockLength(attempts: 61), 4)
+        XCTAssertEqual(CalibrationLedger.Dependence.blockLength(attempts: 120), 5)
+        // Clamped at both ends: too short carries no dependence, too long
+        // leaves too few distinct blocks to resample.
+        XCTAssertEqual(CalibrationLedger.Dependence.blockLength(attempts: 1),
+                       CalibrationLedger.Dependence.minimumBlockLength)
+        XCTAssertEqual(CalibrationLedger.Dependence.blockLength(attempts: 100_000),
+                       CalibrationLedger.Dependence.maximumBlockLength)
+    }
+
+    /// A single attempt has no run structure to resample, so the bootstrap
+    /// has nothing to say and the interval falls back to Wilson alone.
+    func testASingleAttemptFallsBackToWilson() {
+        let combined = CalibrationLedger.Dependence.combined(hits: 1, attempts: 1, outcomes: [true])
+        let wilson = CalibrationLedger.wilsonInterval(hits: 1, attempts: 1)
+        XCTAssertEqual(combined.lower, wilson.lower, accuracy: 1e-12)
+        XCTAssertEqual(combined.upper, wilson.upper, accuracy: 1e-12)
+    }
 }
