@@ -447,6 +447,7 @@
 		934405094CF2483A4F0844B8 /* LearnedSleepNeedTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E46E316C65A5379A85FC2C3 /* LearnedSleepNeedTests.swift */; };
 		93AA7361FCCD00EAD308307C /* ScheduleReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D6BA693E9476B3989FEB75F /* ScheduleReconciliationTests.swift */; };
 		93D1121F75F19BCC367CBF6F /* SensorTruth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E074F4F2EE237C68FD6FDD1 /* SensorTruth.swift */; };
+		93D81420B0E130B5DA31A8A4 /* SnapshotNapStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28219622111155B2AEFB332 /* SnapshotNapStateTests.swift */; };
 		94429C5869EE0347B6BD6E1D /* SleepPlaybook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B52306F9315392857B399E7 /* SleepPlaybook.swift */; };
 		947DA50F518ECCE4A633FC57 /* PersonalSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73634D1D1625805E420C39B /* PersonalSetup.swift */; };
 		94A55EA2DB12E0F4498450CD /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
@@ -1159,6 +1160,7 @@
 		E06932F33E82F37E1B73B42C /* SleepNeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepNeed.swift"; sourceTree = "<group>"; };
 		E17912E5AD672AF7D6EBE711 /* TodayWorkoutsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TodayWorkoutsCard.swift"; sourceTree = "<group>"; };
 		E1AC52AC1457ABDAC5845E37 /* SleepVocabularyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepVocabularyTests.swift"; sourceTree = "<group>"; };
+		E28219622111155B2AEFB332 /* SnapshotNapStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnapshotNapStateTests.swift"; sourceTree = "<group>"; };
 		E2A69E6C004133830D026EA3 /* MorningInThreeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningInThreeCard.swift"; sourceTree = "<group>"; };
 		E366E59E9147223C8227B3A5 /* VitalMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VitalMetric.swift"; sourceTree = "<group>"; };
 		E37034BC992888E8D1BA676B /* SleepSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSnapshot.swift"; sourceTree = "<group>"; };
@@ -1548,6 +1550,7 @@
 				82AB084AF04F6614781B2A5C,
 				E1AC52AC1457ABDAC5845E37,
 				4F45BBBF4616D56128379987,
+				E28219622111155B2AEFB332,
 				DF6BCFC8B0ACCBC5470DF3C4,
 				A837ED66C219F928B0656AE4,
 				19B9DF59F7E0BEE26C5F514D,
@@ -2504,6 +2507,7 @@
 				23B8D03E737346671C89DDA8,
 				79BABA2A0D8BD1711B896153,
 				1E650CBDCCBE31F9091E9DA4,
+				93D81420B0E130B5DA31A8A4,
 				DE877ECB17E3E70CC0E5174C,
 				5F7CDBC3500E81B1B198E4C8,
 				772D2EE73607A527A8FC0D4E,

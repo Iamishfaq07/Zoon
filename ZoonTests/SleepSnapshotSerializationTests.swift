@@ -60,6 +60,8 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         snapshot.recoveryConfidence = MetricConfidence.moderate.rawValue
         snapshot.questionTag = "distinctiveTag"
         snapshot.questionText = "A distinctive question?"
+        snapshot.napStartedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        snapshot.napTargetEnd = Date(timeIntervalSince1970: 1_700_001_500)
         snapshot.isShiftWorkModeEnabled = true
         snapshot.tonightTargetLabel = "10:45 PM - 6:30 AM"
         snapshot.tonightTargetNote = "Aim for 20m earlier than usual tonight."
@@ -180,6 +182,10 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         XCTAssertEqual(decoded.badgeSymbol, "hexagon.fill")
         XCTAssertEqual(decoded.bodySignalsLabel, "Nothing unusual")
         XCTAssertEqual(decoded.recoveryConfidence, "")
+        // No nap is the same nil as a snapshot written before the fields
+        // existed, and that is correct: both mean "no nap to show".
+        XCTAssertNil(decoded.napStartedAt)
+        XCTAssertNil(decoded.napTargetEnd)
         // No question is the same empty state as a snapshot written before
         // the field existed, and that is correct: both mean "nothing to ask".
         XCTAssertEqual(decoded.questionTag, "")
