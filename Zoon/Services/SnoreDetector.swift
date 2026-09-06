@@ -85,7 +85,7 @@ final class SnoreDetector {
         guard !isRunning else { return }
 
         try AudioSessionCoordinator.shared.acquire(audioOwner, recording: true) { [weak self] in
-            self?.stop()
+            _ = self?.stop()
         }
 
         let input = engine.inputNode
