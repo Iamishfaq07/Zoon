@@ -41,6 +41,8 @@ struct TodayView: View {
     @State private var checkInFeeling: MorningFeeling?
     @State private var checkInDetails: [CheckInDimension: Int] = [:]
     /// Shared between the orbit and its legend so either can drive selection.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @State private var selectedComponentID: String?
     /// Today opens with the answer. The orbit, the component arcs, the health
     /// strip and the morning brief are the explanation, and they wait until
@@ -114,7 +116,9 @@ struct TodayView: View {
                     isExplanationShown: showsExplanation,
                     onToggleExplanation: {
                         Haptics.select()
-                        withAnimation(ZoonMotion.standard) { showsExplanation.toggle() }
+                        withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
+                            showsExplanation.toggle()
+                        }
                     }
                 )
                 .entrance(0)
