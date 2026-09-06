@@ -82,13 +82,40 @@ enum AdaptiveJournal {
         /// every tag alike, so this number is the same across the whole
         /// list and can order nothing.
         let unknownNights: Int
+        /// Nights the behaviour did happen, and nights it did not.
+        ///
+        /// Both arms, not just the smaller one. The V9 spec asks the prompt
+        /// to say *why* it is being asked in concrete terms -- "we have 15
+        /// YES nights but only 3 NO nights" -- and the shape of that
+        /// sentence is the point: it shows the reader that a comparison
+        /// needs two sides, and which of theirs is short. A count was
+        /// already being computed for each arm here and then thrown away in
+        /// favour of the minimum.
+        let yesNights: Int
+        let noNights: Int
+
         /// The smaller of the yes and no counts -- what actually limits a
         /// matched-pair comparison, since the larger arm cannot make up for
         /// a missing smaller one.
-        let thinnerArmNights: Int
+        var thinnerArmNights: Int { min(yesNights, noNights) }
 
         var id: String { tag.rawValue }
-        var note: String { reason.note }
+
+        /// Why this is on tonight's list.
+        ///
+        /// The two reasons that exist *because a comparison is short* say
+        /// how short, in nights. The others do not: "you're testing this
+        /// right now" is already the whole reason, and appending counts to
+        /// it would be numbers for their own sake.
+        var note: String {
+            switch reason {
+            case .nearlyAnswerable, .barelySeen:
+                return "\(yesNights) \(yesNights == 1 ? "night" : "nights") with it, "
+                    + "\(noNights) without. Zoon compares the two, so the smaller side is what it needs."
+            case .underExperiment, .pinnedByUser, .routine:
+                return reason.note
+            }
+        }
     }
 
     // MARK: - Building tonight's list
@@ -150,7 +177,7 @@ enum AdaptiveJournal {
 
             prompts.append(Prompt(
                 tag: tag, reason: reason,
-                unknownNights: unknown, thinnerArmNights: thinner
+                unknownNights: unknown, yesNights: yes, noNights: no
             ))
         }
 
