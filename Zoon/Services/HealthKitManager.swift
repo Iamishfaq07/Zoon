@@ -531,11 +531,17 @@ final class HealthKitManager {
     /// continuously — averaging or min/maxing it over a sleep window the way
     /// `average`/`minimum` do for continuous signals like heart rate wouldn't
     /// be meaningful, since there's normally at most one sample a day to find.
+    /// - Returns: the value and the source that wrote it, or nil when there
+    ///   is no sample. The source travels with the value because a
+    ///   single-sample query is the one place provenance is *free* -- the
+    ///   sample carries its own `HKSource` -- and resting heart rate was the
+    ///   only observable quantity with no attribution at all purely because
+    ///   this helper discarded it.
     func mostRecentSample(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         in interval: DateInterval
-    ) async throws -> Double? {
+    ) async throws -> (value: Double, source: MeasurementSource)? {
         let type = HKQuantityType(identifier)
         let predicate = HKQuery.predicateForSamples(
             withStart: interval.start,
@@ -559,7 +565,13 @@ final class HealthKitManager {
                     continuation.resume(returning: nil)
                     return
                 }
-                continuation.resume(returning: sample.quantity.doubleValue(for: unit))
+                let source = MeasurementSource(
+                    name: sample.sourceRevision.source.name,
+                    bundleIdentifier: sample.sourceRevision.source.bundleIdentifier
+                )
+                continuation.resume(
+                    returning: (sample.quantity.doubleValue(for: unit), source)
+                )
             }
             store.execute(query)
         }

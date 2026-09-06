@@ -316,4 +316,90 @@ final class MetricProvenanceTests: XCTestCase {
             "Oura, Garmin and Whoop"
         )
     }
+
+    // MARK: - Contribution, not a Bool (V10 item 1)
+
+    /// The four states a caller has to tell apart, and the one `wasWritten`
+    /// cannot express: co-authorship.
+    func testContributionSeparatesSoleFromSharedAuthorship() throws {
+        let both = NightMeasurementSources([.hrv: [appleWatch, garmin]])
+
+        let apple = try XCTUnwrap(both.contribution(
+            of: appleWatch.bundleIdentifier, orNamed: appleWatch.name, for: .hrv
+        ))
+        XCTAssertTrue(apple.targetPresent)
+        XCTAssertTrue(apple.isShared)
+        XCTAssertFalse(apple.isExclusivelyOther)
+        XCTAssertEqual(apple.otherSourceNames, [garmin.name])
+
+        // The Bool says "yes" for both the sole and the shared case, which is
+        // why counting it alone loses the distinction.
+        XCTAssertEqual(
+            both.wasWritten(by: appleWatch.bundleIdentifier, orNamed: appleWatch.name, for: .hrv),
+            true
+        )
+    }
+
+    func testContributionReportsSoleAuthorshipWithNoOthers() throws {
+        let alone = NightMeasurementSources([.hrv: [appleWatch]])
+        let contribution = try XCTUnwrap(alone.contribution(
+            of: appleWatch.bundleIdentifier, orNamed: appleWatch.name, for: .hrv
+        ))
+        XCTAssertTrue(contribution.targetPresent)
+        XCTAssertFalse(contribution.isShared)
+        XCTAssertTrue(contribution.otherSources.isEmpty)
+    }
+
+    func testContributionReportsAnotherSourceAlone() throws {
+        let elsewhere = NightMeasurementSources([.hrv: [garmin]])
+        let contribution = try XCTUnwrap(elsewhere.contribution(
+            of: appleWatch.bundleIdentifier, orNamed: appleWatch.name, for: .hrv
+        ))
+        XCTAssertFalse(contribution.targetPresent)
+        XCTAssertTrue(contribution.isExclusivelyOther)
+        XCTAssertEqual(contribution.otherSourceNames, [garmin.name])
+    }
+
+    /// Unrecorded stays unanswerable here too -- the same rule `wasWritten`
+    /// follows, for the same reason.
+    func testContributionIsNilWhenNothingWasRecorded() {
+        let recorded = NightMeasurementSources([.hrv: [appleWatch]])
+        XCTAssertNil(recorded.contribution(
+            of: appleWatch.bundleIdentifier, orNamed: appleWatch.name, for: .bloodOxygen
+        ))
+    }
+
+    // MARK: - Resting heart rate now has provenance (V10 item 2)
+
+    /// RHR was the one observable quantity with no attribution at all, and
+    /// the cause was a dropped value rather than anything HealthKit withheld:
+    /// the single-sample query returned a bare `Double`. Now that the sample's
+    /// own source travels with it, the record can carry it like any other.
+    func testRestingHeartRateProvenanceIsRecordedAndAttributed() throws {
+        let recorded = NightMeasurementSources([.restingHeartRate: [appleWatch]])
+        let contribution = try XCTUnwrap(recorded.contribution(
+            of: appleWatch.bundleIdentifier, orNamed: appleWatch.name, for: .restingHeartRate
+        ))
+        XCTAssertTrue(contribution.targetPresent)
+        XCTAssertFalse(contribution.isShared)
+    }
+
+    func testRestingHeartRateProvenanceReachesTheCoverageReport() throws {
+        let nights = (0..<10).map { index in
+            Fixture.night(
+                daysAgo: index,
+                sourceName: appleWatch.name,
+                sourceBundleIdentifier: appleWatch.bundleIdentifier,
+                measurementSources: NightMeasurementSources([.restingHeartRate: [appleWatch]])
+            )
+        }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: nights,
+            sourceName: appleWatch.name,
+            bundleIdentifier: appleWatch.bundleIdentifier
+        ))
+        let entry = try XCTUnwrap(report.entries.first { $0.quantity == .restingHeartRate })
+        XCTAssertEqual(entry.attribution, .thisSource)
+        XCTAssertEqual(entry.nightsAttributed, 10)
+    }
 }

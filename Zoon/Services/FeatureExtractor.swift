@@ -80,7 +80,8 @@ struct FeatureExtractor {
         let avgHRMeasurement = await avgHRTask
         let avgHROutcome = avgHRMeasurement.outcome
         let minHROutcome = await minHRTask
-        let restingHROutcome = await restingHRTask
+        let restingHRMeasurement = await restingHRTask
+        let restingHROutcome = restingHRMeasurement.outcome
         let hrvMeasurement = await hrvTask
         let hrvOutcome = hrvMeasurement.outcome
         let respiratoryMeasurement = await respiratoryTask
@@ -99,18 +100,20 @@ struct FeatureExtractor {
         // would be indistinguishable from "never recorded", and
         // `NightMeasurementSources` treats those as opposite claims.
         //
-        // Resting heart rate is absent from this map on purpose. It comes
-        // from a single-sample query rather than a statistics query, so
-        // `.separateBySource` has nothing to say about it; leaving it
-        // unrecorded reports honestly as "unknown" rather than inventing an
-        // attribution the query never made.
+        // Resting heart rate is here now. It comes from a single-sample query
+        // rather than a statistics query, so `.separateBySource` has nothing
+        // to say about it -- but the sample itself carries its own
+        // `HKSource`, which the helper was discarding. It was the only
+        // observable quantity with no attribution at all, and the reason was
+        // a dropped value rather than anything HealthKit withheld.
         //
         // Built as a typed local rather than one dictionary literal: a literal
-        // mixing six plain values with a mapped optional is exactly the shape
-        // that makes the type checker slow or ambiguous, and it reads no
+        // mixing seven plain values with a mapped optional is exactly the
+        // shape that makes the type checker slow or ambiguous, and it reads no
         // better.
         var writers: [SensorTruth.Quantity: [MeasurementSource]] = [
             .heartRate: avgHRMeasurement.sources,
+            .restingHeartRate: restingHRMeasurement.sources,
             .hrv: hrvMeasurement.sources,
             .respiratoryRate: respiratoryMeasurement.sources,
             .bloodOxygen: spo2Measurement.sources,
@@ -294,22 +297,26 @@ struct FeatureExtractor {
         }
     }
 
+    /// - Returns: the outcome and the single source that wrote the sample.
+    ///   An empty source list means "no sample", never "nobody wrote it" --
+    ///   `NightMeasurementSources` treats those as opposite claims and only
+    ///   the non-empty case is recorded.
     private func measuredMostRecent(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
         in interval: DateInterval
-    ) async -> MeasurementOutcome {
+    ) async -> (outcome: MeasurementOutcome, sources: [MeasurementSource]) {
         do {
-            guard let value = try await healthKit.mostRecentSample(
+            guard let sample = try await healthKit.mostRecentSample(
                 identifier,
                 unit: unit,
                 in: interval
             ) else {
-                return .noData
+                return (.noData, [])
             }
-            return .measured(value)
+            return (.measured(sample.value), [sample.source])
         } catch {
-            return .queryFailed
+            return (.queryFailed, [])
         }
     }
 

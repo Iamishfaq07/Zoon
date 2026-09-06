@@ -97,8 +97,14 @@ enum SourceCoverage {
         /// Nights where a value arrived *and* HealthKit told us who wrote it.
         /// Zero for history recorded before provenance was captured.
         let nightsAttributed: Int
-        /// Of `nightsAttributed`, the nights this source wrote it.
+        /// Of `nightsAttributed`, the nights this source wrote it -- whether
+        /// or not anything else wrote it too.
         let nightsFromThisSource: Int
+        /// Of `nightsFromThisSource`, the nights another device wrote it as
+        /// well. The count that separates "my watch measures this" from "my
+        /// watch is one of two things measuring this", which the earlier
+        /// model could not express at all.
+        let nightsSharedWithOthers: Int
         /// Every other writer seen, by display name, sorted and deduplicated.
         let otherSourceNames: [String]
 
@@ -108,6 +114,7 @@ enum SourceCoverage {
             nightsConsidered: Int,
             nightsAttributed: Int = 0,
             nightsFromThisSource: Int = 0,
+            nightsSharedWithOthers: Int = 0,
             otherSourceNames: [String] = []
         ) {
             self.quantity = quantity
@@ -115,7 +122,13 @@ enum SourceCoverage {
             self.nightsConsidered = nightsConsidered
             self.nightsAttributed = nightsAttributed
             self.nightsFromThisSource = nightsFromThisSource
+            self.nightsSharedWithOthers = nightsSharedWithOthers
             self.otherSourceNames = otherSourceNames
+        }
+
+        /// Nights only this source wrote it.
+        var nightsExclusiveToThisSource: Int {
+            max(0, nightsFromThisSource - nightsSharedWithOthers)
         }
 
         var id: String { quantity.rawValue }
@@ -146,7 +159,25 @@ enum SourceCoverage {
                 return "Arriving from \(SourceCoverage.list(names)), not from this watch."
             case .shared(let names):
                 guard !names.isEmpty else { return nil }
-                return "Some nights from \(SourceCoverage.list(names))."
+                // Three shapes hide under one `.shared`, and they want
+                // different sentences.
+                //
+                // With no night written by both, the two sources alternated
+                // across the window -- one watch for a fortnight, then the
+                // other -- and "some nights from the other one" is exactly
+                // right. That was the only shape this branch could ever
+                // reach before same-night co-authorship was detected at all,
+                // which is why it was the only sentence here.
+                guard nightsSharedWithOthers > 0 else {
+                    return "Some nights from \(SourceCoverage.list(names))."
+                }
+                // Genuine co-authorship: both wrote the same nights. Either
+                // throughout, or on a countable subset.
+                if nightsExclusiveToThisSource == 0 {
+                    return "Also written by \(SourceCoverage.list(names)) on every night Zoon could attribute."
+                }
+                return "Also written by \(SourceCoverage.list(names)) on "
+                    + "\(nightsSharedWithOthers) of \(nightsAttributed) attributed nights."
             }
         }
 
@@ -323,20 +354,25 @@ enum SourceCoverage {
             // sleep source -- that default is the bug.
             var attributed = 0
             var fromThisSource = 0
+            var shared = 0
             var others: Set<String> = []
             for night in withValue {
-                guard let wroteIt = night.measurementSources.wasWritten(
-                    by: bundleIdentifier,
+                guard let contribution = night.measurementSources.contribution(
+                    of: bundleIdentifier,
                     orNamed: sourceName,
                     for: quantity
                 ) else { continue }
                 attributed += 1
-                if wroteIt {
-                    fromThisSource += 1
-                } else {
-                    let names = night.measurementSources.sources(for: quantity)?.map(\.name) ?? []
-                    others.formUnion(names)
-                }
+                if contribution.targetPresent { fromThisSource += 1 }
+                if contribution.isShared { shared += 1 }
+                // Unconditionally, and that is the fix. Collecting other
+                // writers only on nights this source wrote *nothing* means a
+                // night both devices wrote is counted as this source's alone
+                // and the co-writer never appears -- so `attribution` returns
+                // `.thisSource` for a metric that was shared throughout, and
+                // the screen says "your Garmin provides HRV" about samples an
+                // Apple Watch supplied.
+                others.formUnion(contribution.otherSourceNames)
             }
             return Entry(
                 quantity: quantity,
@@ -344,6 +380,7 @@ enum SourceCoverage {
                 nightsConsidered: matching.count,
                 nightsAttributed: attributed,
                 nightsFromThisSource: fromThisSource,
+                nightsSharedWithOthers: shared,
                 otherSourceNames: others.sorted()
             )
         }
