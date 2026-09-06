@@ -43,6 +43,30 @@ enum SleepMap {
     /// there is nothing to be better than.
     static let minimumScoredRegions = 2
 
+    /// Shrinkage strength, in nights.
+    ///
+    /// Nine regions competing on their own raw medians is a
+    /// winner-selection problem: with four nights each, the region that
+    /// wins is usually the one that got lucky, and it will not be the same
+    /// region next week. Each region's median is therefore pulled toward
+    /// the map's overall median by `k / (n + k)`, so a four-night region
+    /// keeps a third of its own signal and a twenty-four-night region keeps
+    /// three quarters. Ranking happens on the shrunk value; the sentence
+    /// still quotes the region's real median, because that is what those
+    /// nights actually were.
+    static let shrinkageNights = 8.0
+
+    /// How much two regions' intervals may overlap before the map stops
+    /// claiming one is better.
+    ///
+    /// Measured as a fraction of the narrower interval. Requiring *no*
+    /// overlap would silence the map almost permanently -- a bootstrap on
+    /// four to eight nights is wide -- while allowing any overlap would let
+    /// two indistinguishable regions produce a confident headline. Half is
+    /// the point where the two intervals are describing more of the same
+    /// range than not.
+    static let materialOverlapFraction = 0.5
+
     // MARK: - Bands
 
     /// Which third of the person's own range a night sits in on one axis.
@@ -64,12 +88,45 @@ enum SleepMap {
 
     // MARK: - Regions
 
+    /// A range the region's true median plausibly sits in.
+    struct Interval: Hashable, Sendable {
+        let lower: Double
+        let upper: Double
+
+        var width: Double { upper - lower }
+
+        /// How much of the narrower of two intervals the two share, 0...1.
+        func overlap(with other: Interval) -> Double {
+            let shared = min(upper, other.upper) - max(lower, other.lower)
+            // `>= 0`, not `> 0`. A zero-width interval sitting inside
+            // another shares exactly zero width with it, and rejecting that
+            // case here would report *no* overlap for an estimate that is
+            // entirely contained -- the opposite of the truth. Genuinely
+            // disjoint intervals give a negative share and still return 0.
+            guard shared >= 0 else { return 0 }
+            let narrower = min(width, other.width)
+            // Two point estimates that coincide overlap completely, and a
+            // width of zero cannot be divided by.
+            guard narrower > 0 else { return 1 }
+            return min(1, shared / narrower)
+        }
+    }
+
     struct Region: Identifiable, Hashable, Sendable {
         let x: Band
         let y: Band
         let nightCount: Int
-        /// `nil` when the region holds fewer than `minimumRegionNights`.
+        /// The region's own median. `nil` when the region holds fewer than
+        /// `minimumRegionNights`. This is what gets quoted -- it is what
+        /// those nights actually were.
         let medianOutcome: Double?
+        /// The median pulled toward the map's overall median in proportion
+        /// to how thin the region is. This is what gets *ranked*, so a
+        /// four-night fluke cannot outrank a twenty-night pattern.
+        var shrunkOutcome: Double? = nil
+        /// Bootstrap interval on the region's median. `nil` for a region
+        /// too thin to resample.
+        var interval: Interval? = nil
 
         var id: String { "\(x.rawValue)-\(y.rawValue)" }
         var isScored: Bool { medianOutcome != nil }
@@ -90,6 +147,14 @@ enum SleepMap {
         /// The region holding the most nights, scored or not.
         let usual: Region
         let confidence: MetricConfidence
+        /// Whether the best region is actually separable from the next one.
+        ///
+        /// False when their intervals overlap materially -- two regions
+        /// describing more of the same range than not. The map is still
+        /// drawn and the region is still highlighted; what changes is that
+        /// it stops being called better, because at that point it has not
+        /// been shown to be.
+        let headlineIsSupported: Bool
 
         /// True when their best-scoring region is the one they already sleep
         /// in most. Worth saying plainly rather than dressing an unchanged
@@ -108,6 +173,14 @@ enum SleepMap {
             }
             let where_ = "\(best.x.phrase(for: xAxis)) \(xAxis.axisLabel)"
                 + " with \(best.y.phrase(for: yAxis)) \(yAxis.axisLabel)"
+            // The spec's own distinction: "this is your ideal zone" from
+            // four nights is a claim; "your stronger nights cluster here"
+            // is an observation, and it is the only one available while the
+            // regions still overlap.
+            guard headlineIsSupported else {
+                return "Your stronger \(outcome.label) nights cluster around \(where_),"
+                    + " but the regions are still close enough that Zoon can't call one better."
+            }
             if bestIsAlreadyUsual {
                 return "Your best \(outcome.label) comes from \(where_) --"
                     + " which is already where most of your nights sit"
@@ -179,6 +252,12 @@ enum SleepMap {
         guard occupiedX.count == Band.allCases.count,
               occupiedY.count == Band.allCases.count else { return nil }
 
+        // The map's own centre of gravity, and what thin regions are pulled
+        // back toward. Taken across every usable night rather than across
+        // the region medians, so a single dense region cannot define
+        // "typical" for the whole map.
+        let overallMedian = Statistics.median(usable.map(\.outcome))
+
         var regions: [Region] = []
         for x in Band.allCases {
             for y in Band.allCases {
@@ -187,9 +266,16 @@ enum SleepMap {
                 let median = values.count >= minimumRegionNights
                     ? Statistics.median(values)
                     : nil
-                regions.append(Region(
+                var region = Region(
                     x: x, y: y, nightCount: values.count, medianOutcome: median
-                ))
+                )
+                if let median, let overallMedian {
+                    region.shrunkOutcome = shrink(median, nightCount: values.count, toward: overallMedian)
+                }
+                if median != nil, let ci = Statistics.pairedBootstrapCI(deltas: values) {
+                    region.interval = Interval(lower: ci.lower, upper: ci.upper)
+                }
+                regions.append(region)
             }
         }
 
@@ -201,9 +287,18 @@ enum SleepMap {
         }) else { return nil }
 
         let scored = regions.filter(\.isScored)
-        let best: Region? = scored.count >= minimumScoredRegions
-            ? scored.max(by: { isWorse($0, than: $1, outcome: outcome) })
-            : nil
+        // Ranked on the shrunk value, so the winner is the region with the
+        // strongest *evidence*, not the one that got the luckiest four
+        // nights.
+        // Ties break on region id, for the same reason `usual` does: the
+        // same history must produce the same map every time rather than
+        // reshuffling with sort order.
+        let ranked = scored.sorted { a, b in
+            if isWorse(a, than: b, outcome: outcome) { return false }
+            if isWorse(b, than: a, outcome: outcome) { return true }
+            return a.id < b.id
+        }
+        let best: Region? = scored.count >= minimumScoredRegions ? ranked.first : nil
 
         return Map(
             xAxis: xAxis, yAxis: yAxis, outcome: outcome,
@@ -211,7 +306,8 @@ enum SleepMap {
             totalNights: usable.count,
             best: best,
             usual: usual,
-            confidence: confidence(best: best, scoredRegions: scored.count)
+            confidence: confidence(best: best, scoredRegions: scored.count),
+            headlineIsSupported: isSeparated(ranked)
         )
     }
 
@@ -240,9 +336,36 @@ enum SleepMap {
     private static func isWorse(
         _ a: Region, than b: Region, outcome: TrendEngine.Metric
     ) -> Bool {
-        guard let lhs = a.medianOutcome else { return true }
-        guard let rhs = b.medianOutcome else { return false }
+        // Falls back to the raw median only when there was no overall
+        // median to shrink toward, which means there were no usable outcome
+        // values at all -- in which case nothing here is scored anyway.
+        guard let lhs = a.shrunkOutcome ?? a.medianOutcome else { return true }
+        guard let rhs = b.shrunkOutcome ?? b.medianOutcome else { return false }
         return outcome.higherIsBetter ? lhs < rhs : lhs > rhs
+    }
+
+    /// Pulls a thin region's median toward the map's overall median.
+    ///
+    /// `n / (n + k)` of the region's own signal is kept. Stated as its own
+    /// function so the weight can be argued with rather than buried in the
+    /// loop that applies it.
+    static func shrink(_ median: Double, nightCount: Int, toward overall: Double) -> Double {
+        let weight = Double(nightCount) / (Double(nightCount) + shrinkageNights)
+        return weight * median + (1 - weight) * overall
+    }
+
+    /// Whether the top region is distinguishable from the runner-up.
+    ///
+    /// A region with no interval -- too thin to resample -- is not treated
+    /// as separated. Absence of an interval is absence of evidence, and the
+    /// alternative would let the thinnest regions in the map be the ones
+    /// that produce confident headlines.
+    static func isSeparated(_ ranked: [Region]) -> Bool {
+        guard ranked.count >= minimumScoredRegions else { return false }
+        guard let best = ranked.first?.interval, let next = ranked.dropFirst().first?.interval else {
+            return false
+        }
+        return best.overlap(with: next) < materialOverlapFraction
     }
 
     /// Confidence is bounded by the winning region's own depth, then capped
