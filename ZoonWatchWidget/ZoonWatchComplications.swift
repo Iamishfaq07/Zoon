@@ -66,12 +66,14 @@ struct WatchComplicationEntry: TimelineEntry {
         guard !isPlaceholder else { return TimelineEntryRelevance(score: 10) }
         let hoursSinceGenerated = date.timeIntervalSince(snapshot.generatedAt) / 3600
         let isStale = hoursSinceGenerated < 0 || hoursSinceGenerated >= 24
-        // The watch widget extension has no way to observe a running nap --
-        // nothing in the snapshot carries one, and a nap surfaces today as
-        // a Live Activity on the phone. `WatchRelevance` handles the case
-        // and is tested for it; this call site simply has nothing to tell
-        // it yet, and says so rather than guessing.
-        let score = WatchRelevance.score(for: kind, at: date, isNapRunning: false)
+        // Judged at `date` -- the instant this entry is *for* -- not at the
+        // instant the snapshot was written. A timeline entry an hour out
+        // must not inherit the nap state of an hour ago, and the snapshot
+        // stores absolute instants precisely so this can be re-decided per
+        // entry rather than baked in once.
+        let score = WatchRelevance.score(
+            for: kind, at: date, isNapRunning: snapshot.isNapRunning(at: date)
+        )
         return TimelineEntryRelevance(
             score: isStale ? min(score, WatchRelevance.outOfWindowScore) : score,
             duration: WatchRelevance.duration

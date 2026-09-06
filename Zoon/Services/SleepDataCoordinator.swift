@@ -1074,6 +1074,16 @@ final class SleepDataCoordinator {
             snapshot.headlineFindingStrength = headline.strength.label
         }
 
+        // A nap in flight, so the watch's Smart Stack can raise the nap
+        // surface while it matters and stop when it does not. The relevance
+        // engine has always handled this case and been tested for it; the
+        // production call site had nothing to tell it and passed `false`,
+        // which made the whole path dead code on a real wrist.
+        if let active = naps.activeNap {
+            snapshot.napStartedAt = active.start
+            snapshot.napTargetEnd = active.targetEnd
+        }
+
         // Tonight's one question, so the watch can ask it without needing the
         // ranking engine, the journal history or `BehaviorTag` -- none of
         // which exist in that target. Behaviours already answered today are

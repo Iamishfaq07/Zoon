@@ -85,6 +85,17 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// watch needs the second half of that pair to be able to decline.
     var recoveryConfidence: String = ""
 
+    /// A nap running on the phone right now, as of this snapshot.
+    ///
+    /// Two instants rather than a countdown. A stored "12 minutes remaining"
+    /// is wrong the moment it is written and wronger every second after, and
+    /// a widget timeline entry can be rendered long after the snapshot was
+    /// published. Absolute instants stay true; the remaining time is derived
+    /// at render from whichever `date` the entry is for. It also makes the
+    /// pair immune to a timezone change, which a wall-clock would not be.
+    var napStartedAt: Date?
+    var napTargetEnd: Date?
+
     /// Tonight's one question, as the phone chose it.
     ///
     /// Two fields rather than one because the watch needs both halves and can
@@ -189,6 +200,31 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// reading is still shown, because a number with a visible caveat beats
     /// a blank -- the point is to stop the watch asserting more than the
     /// phone does, not to make it mute.
+    /// How long past its target end a snapshot's nap is still believed.
+    ///
+    /// A snapshot is a photograph, and the phone may have stopped publishing
+    /// -- app terminated, watch out of range -- while a nap was in flight.
+    /// Past this the snapshot is no longer evidence that anything is running,
+    /// so the Smart Stack stops raising it rather than showing a nap that
+    /// ended an hour ago. Generous enough to survive someone sleeping through
+    /// their target, short enough that a dead snapshot stops claiming a nap.
+    static let napBelievableAfterTarget: TimeInterval = 30 * 60
+
+    /// Whether a nap is running, judged at the moment being rendered rather
+    /// than at the moment the snapshot was written.
+    func isNapRunning(at date: Date = .now) -> Bool {
+        guard let napStartedAt, let napTargetEnd else { return false }
+        return date >= napStartedAt
+            && date < napTargetEnd.addingTimeInterval(Self.napBelievableAfterTarget)
+    }
+
+    /// Time left of the nap's target, or nil when none is running. Derived,
+    /// never stored -- see `napStartedAt`.
+    func napRemaining(at date: Date = .now) -> TimeInterval? {
+        guard isNapRunning(at: date), let napTargetEnd else { return nil }
+        return max(0, napTargetEnd.timeIntervalSince(date))
+    }
+
     var canStateRecovery: Bool {
         guard let confidence = MetricConfidence(rawValue: recoveryConfidence) else {
             // Written before this field existed. Those snapshots came from a
@@ -303,6 +339,12 @@ extension SleepSnapshot {
         // same empty state, which is correct: both mean "no question".
         questionTag = try container.decodeIfPresent(String.self, forKey: .questionTag) ?? ""
         questionText = try container.decodeIfPresent(String.self, forKey: .questionText) ?? ""
+
+        // Absent on any snapshot written before this existed, and absent
+        // whenever no nap is running -- the same nil, which is correct:
+        // both mean "no nap to show".
+        napStartedAt = try container.decodeIfPresent(Date.self, forKey: .napStartedAt)
+        napTargetEnd = try container.decodeIfPresent(Date.self, forKey: .napTargetEnd)
     }
 
     init(
