@@ -5,7 +5,7 @@ import SwiftUI
 /// two translucent ranges on one axis.
 ///
 /// ```
-/// WHAT IF?
+/// COMPARE NIGHTS
 ///
 /// Sleep duration            [ more ⟷ less ]
 ///
@@ -22,7 +22,8 @@ import SwiftUI
 /// modest tendency, and the drawing says so without a p-value. The bands
 /// widen and narrow with the person's own variability, so certainty is
 /// visible as shape -- a wide band is a shaky estimate -- and no exact
-/// what-if number is ever animated, because `ZoonTwin` does not produce one.
+/// what-if number is ever shown, because `ZoonTwin` does not produce one --
+/// which is why this is titled "Compare nights" rather than "What if?".
 ///
 /// Switching lever or direction re-splits the same nights and the bands
 /// slide to their new positions. That is the only motion here: it shows a
@@ -82,7 +83,14 @@ struct ZoonWhatIfLab: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("What if?")
+            // "Compare nights", not "What if?". The V9 spec reserves
+            // counterfactual phrasing for a Twin that matches on
+            // confounders; this one splits on a single lever, and the
+            // heading was the only place in this feature still promising
+            // more than that. Everything under it already said the honest
+            // thing -- "on your N nights with later bedtimes…" -- so the
+            // title was overselling its own contents.
+            Text("Compare nights")
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
@@ -295,7 +303,7 @@ struct ZoonWhatIfLab: View {
     }
 }
 
-#Preview("What-if lab") {
+#Preview("Compare nights") {
     let coordinator = PreviewSupport.coordinator
     ScrollView {
         ZoonWhatIfLab(nights: coordinator.recentNights)
@@ -305,7 +313,7 @@ struct ZoonWhatIfLab: View {
     .zoonPreviewEnvironment()
 }
 
-#Preview("What-if lab - light, large text") {
+#Preview("Compare nights - light, large text") {
     let coordinator = PreviewSupport.coordinator
     ScrollView {
         ZoonWhatIfLab(nights: coordinator.recentNights)
