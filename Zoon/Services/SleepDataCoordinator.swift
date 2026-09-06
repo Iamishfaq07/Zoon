@@ -1003,6 +1003,9 @@ final class SleepDataCoordinator {
             sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
             isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled
         )
+        // The watch needs the confidence alongside the number so it can
+        // decline to state one it cannot stand behind (V9 item 30).
+        snapshot.recoveryConfidence = context.recovery.confidence.rawValue
         snapshot.bodySignalsLabel = context.healthRadar.isActive
             ? context.healthRadar.severity.label
             : "Nothing unusual"

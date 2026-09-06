@@ -22,18 +22,8 @@ struct WatchRootView: View {
     var body: some View {
         TabView {
             if let snapshot = link.snapshot {
-                // Leads the same way the phone's hero now does: "how did I
-                // sleep" ahead of "how recovered does my body look".
-                // Snapshots written before this field existed decode with
-                // sleepIntelligenceBand == "" -- that's the one signal this
-                // page has to fall back on Recovery leading instead, since a
-                // percent of 0 with a real band is indistinguishable from a
-                // genuine (if unlikely) rock-bottom score.
-                if !snapshot.sleepIntelligenceBand.isEmpty {
-                    SleepIntelligencePage(snapshot: snapshot)
-                }
-                RecoveryPage(snapshot: snapshot)
-                SleepPage(snapshot: snapshot)
+                LastNightPage(snapshot: snapshot)
+                TodayPage(snapshot: snapshot)
                 // Tonight, not last night -- the only page here about a
                 // night that has not happened yet, which is why it sits
                 // after the two that grade the one that has. Gated on the
@@ -44,6 +34,7 @@ struct WatchRootView: View {
                     || !snapshot.tomorrowRangeLabel.isEmpty {
                     TonightPage(snapshot: snapshot)
                 }
+                LogPage()
                 MorePage(snapshot: snapshot)
             } else {
                 WaitingPage(isActivated: link.isActivated)
@@ -51,10 +42,9 @@ struct WatchRootView: View {
         }
         .tabViewStyle(.verticalPage)
         .containerBackground(Theme.watchBackground, for: .tabView)
-        // A long-press rather than a fifth page or a toolbar button: the four
-        // pages above are deliberately "check every glance" content (see the
-        // doc comment above), and logging is the opposite -- rare, deliberate,
-        // and not something that should cost a page in the every-glance swipe.
+        // Retained as a shortcut from any page, not as the only way in --
+        // see `LogPage`. A gesture with no affordance is not a route
+        // someone discovers.
         .onLongPressGesture {
             WKInterfaceDevice.current().play(.click)
             showsQuickLog = true
@@ -187,7 +177,7 @@ struct QuickLogView: View {
         }
     }
 
-    private static func feelingLabel(_ rawValue: Int) -> String {
+    static func feelingLabel(_ rawValue: Int) -> String {
         switch rawValue {
         case 1: "Terrible"
         case 2: "Poor"
@@ -197,7 +187,7 @@ struct QuickLogView: View {
         }
     }
 
-    private static func feelingSymbol(_ rawValue: Int) -> String {
+    static func feelingSymbol(_ rawValue: Int) -> String {
         switch rawValue {
         case 1: "face.dashed"
         case 2: "cloud.rain"
@@ -208,14 +198,21 @@ struct QuickLogView: View {
     }
 }
 
-/// Sleep Intelligence: "how did I sleep", the same question the phone's
-/// hero now leads with.
-struct SleepIntelligencePage: View {
+/// PAGE 1 -- Last night, as one page.
+///
+/// Sleep Intelligence and the duration/debt readout used to be two separate
+/// swipes showing two aspects of the same night. That is the shape of a
+/// phone screen split across a watch: someone glancing at their wrist to ask
+/// "how did I sleep" should not have to swipe to find out how long for.
+///
+/// The number is Sleep Intelligence (`flagshipScore`), so this page and the
+/// complications answer with the same figure.
+struct LastNightPage: View {
 
     let snapshot: SleepSnapshot
 
     private var tint: Color {
-        switch snapshot.sleepIntelligencePercent {
+        switch snapshot.flagshipScore {
         case 80...: Theme.Metric.recoveryHigh
         case 60..<80: Theme.Metric.battery
         case 40..<60: Theme.Metric.recoveryMid
@@ -223,20 +220,36 @@ struct SleepIntelligencePage: View {
         }
     }
 
+    private var debtTint: Color {
+        snapshot.sleepDebtMinutes <= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
+    }
+
+    /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
+    /// makes on `snapshot.isShiftWorkModeEnabled` -- the watch app is its own
+    /// process with no `UserPreferences` access, which is exactly why that
+    /// flag rides along on the snapshot itself.
+    private var title: String {
+        snapshot.isShiftWorkModeEnabled ? "LAST SLEEP" : "LAST NIGHT"
+    }
+
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 5) {
+            Text(title)
+                .font(Theme.label(9, weight: .semibold))
+                .foregroundStyle(.secondary)
+
             ZStack {
                 Circle()
                     .stroke(Color.white.opacity(0.12), lineWidth: 9)
                 Circle()
-                    .trim(from: 0, to: Double(snapshot.sleepIntelligencePercent) / 100)
+                    .trim(from: 0, to: Double(snapshot.flagshipScore) / 100)
                     .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .shadow(color: tint.opacity(0.5), radius: 5)
 
                 VStack(spacing: -3) {
-                    Text("\(snapshot.sleepIntelligencePercent)")
-                        .font(Theme.numeral(34))
+                    Text("\(snapshot.flagshipScore)")
+                        .font(Theme.numeral(32))
                         .monospacedDigit()
                     Text("SLEEP")
                         .font(Theme.label(9, weight: .semibold))
@@ -245,9 +258,22 @@ struct SleepIntelligencePage: View {
             }
             .frame(maxHeight: .infinity)
 
-            Text(snapshot.sleepIntelligenceBand)
-                .font(Theme.label(13, weight: .semibold))
+            Text(snapshot.flagshipBand)
+                .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                WatchMiniStat(
+                    value: SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes),
+                    label: "asleep",
+                    tint: Theme.Metric.sleep
+                )
+                WatchMiniStat(
+                    value: snapshot.balanceLabel,
+                    label: "bank",
+                    tint: debtTint
+                )
+            }
 
             if snapshot.isMock {
                 Text("Sample data")
@@ -259,14 +285,46 @@ struct SleepIntelligencePage: View {
     }
 }
 
-/// Recovery: the one number worth showing first.
-struct RecoveryPage: View {
+/// A number and its caption, sized for a wrist. Shared by the pages so the
+/// two do not drift apart typographically.
+struct WatchMiniStat: View {
+    let value: String
+    let label: String
+    var tint: Color = .primary
+
+    var body: some View {
+        VStack(spacing: -1) {
+            Text(value)
+                .font(Theme.label(15, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text(label)
+                .font(Theme.text(9))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// PAGE 2 -- Today: how recovered the body looks, and whether anything is
+/// drifting.
+///
+/// Declines to state a number it cannot stand behind. `RecoveryScore`
+/// already separates the score from the confidence in it (V9 item 4), and a
+/// watch face reading "Recovery 66" off four nights asserts exactly as
+/// firmly as one off a month. When the phone reports insufficient
+/// confidence, the ring goes and the page says so instead -- the same
+/// refusal the phone makes, carried to the wrist rather than quietly
+/// dropped on the way.
+struct TodayPage: View {
 
     let snapshot: SleepSnapshot
 
     /// Reads the same thresholds `RecoveryScore.Band` uses
     /// (`RecoveryScoreTests` covers those boundaries) rather than
-    /// re-deriving them here, so the watch's ring color can't silently
+    /// re-deriving them here, so the watch's ring colour can't silently
     /// drift out of sync with the score's own low/moderate/high definition.
     private var tint: Color {
         switch RecoveryScore.Band.forPercent(snapshot.recoveryPercent) {
@@ -276,32 +334,59 @@ struct RecoveryPage: View {
         }
     }
 
-    var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 9)
-                Circle()
-                    .trim(from: 0, to: Double(snapshot.recoveryPercent) / 100)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: tint.opacity(0.5), radius: 5)
+    private var signalsAreNormal: Bool { snapshot.bodySignalsLabel == "Nothing unusual" }
 
-                VStack(spacing: -3) {
-                    Text("\(snapshot.recoveryPercent)")
-                        .font(Theme.numeral(34))
-                        .monospacedDigit()
-                    Text("RECOVERY")
-                        .font(Theme.label(9, weight: .semibold))
+    var body: some View {
+        VStack(spacing: 5) {
+            Text("TODAY")
+                .font(Theme.label(9, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            if snapshot.canStateRecovery {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.12), lineWidth: 9)
+                    Circle()
+                        .trim(from: 0, to: Double(snapshot.recoveryPercent) / 100)
+                        .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .shadow(color: tint.opacity(0.5), radius: 5)
+
+                    VStack(spacing: -3) {
+                        Text("\(snapshot.recoveryPercent)")
+                            .font(Theme.numeral(32))
+                            .monospacedDigit()
+                        Text("RECOVERY")
+                            .font(Theme.label(9, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxHeight: .infinity)
+            } else {
+                VStack(spacing: 4) {
+                    Text("Recovery")
+                        .font(Theme.label(14, weight: .semibold))
+                    Text("Limited data")
+                        .font(Theme.label(12, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
+                .frame(maxHeight: .infinity)
+                .accessibilityElement(children: .combine)
             }
-            .frame(maxHeight: .infinity)
 
-            HStack(spacing: 10) {
-                miniStat("\(snapshot.bodyBattery)", "energy", Theme.Metric.battery)
-                miniStat(String(format: "%.1f", snapshot.strain), "load", Theme.Metric.strain)
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(signalsAreNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+                    .frame(width: 6, height: 6)
+                Text("Signals")
+                    .font(Theme.text(10))
+                    .foregroundStyle(.secondary)
+                Text(signalsAreNormal ? "Typical" : snapshot.bodySignalsLabel)
+                    .font(Theme.label(11, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
+            .accessibilityElement(children: .combine)
 
             if snapshot.isMock {
                 Text("Sample data")
@@ -311,102 +396,174 @@ struct RecoveryPage: View {
         }
         .padding(.horizontal, 6)
     }
+}
 
-    private func miniStat(_ value: String, _ label: String, _ colour: Color) -> some View {
-        VStack(spacing: -1) {
-            Text(value)
-                .font(Theme.label(15, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(colour)
-            Text(label)
-                .font(Theme.text(9))
-                .foregroundStyle(.secondary)
+/// PAGE 4 -- Log.
+///
+/// A page, not a long press. The V9 spec is explicit: "Do not hide essential
+/// logging only behind long press." A gesture with no affordance is not a
+/// route someone discovers, and logging caffeine is not an expert action --
+/// it is the thing that makes every association Zoon can later find
+/// possible at all. Nothing gets correlated that was never recorded.
+///
+/// The long press is kept as a shortcut from any page, because it is genuinely
+/// faster once you know it. It is no longer the only way in.
+struct LogPage: View {
+
+    @State private var showsFullLog = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                Text("LOG")
+                    .font(Theme.label(9, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                QuickLogActions()
+
+                Button {
+                    WKInterfaceDevice.current().play(.click)
+                    showsFullLog = true
+                } label: {
+                    Text("More")
+                        .font(Theme.label(11, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.top, 2)
+            }
+            .padding(.horizontal, 4)
         }
-        .frame(maxWidth: .infinity)
+        .sheet(isPresented: $showsFullLog) {
+            QuickLogView()
+        }
     }
 }
 
-/// Last night, and what it left you owing.
-struct SleepPage: View {
+/// The four things worth logging from a wrist, visible without a gesture.
+///
+/// Caffeine and alcohol send the same behaviour tags the phone's journal
+/// uses; nap and feeling open the fuller list, because "how long" and "how
+/// rested" are choices rather than single facts and guessing one on the
+/// user's behalf would put a number in their history they never gave.
+struct QuickLogActions: View {
 
-    let snapshot: SleepSnapshot
+    @Environment(WatchLink.self) private var link
+    @State private var confirmedID: String?
+    @State private var presented: Sheet?
 
-    private var debtTint: Color {
-        snapshot.sleepDebtMinutes <= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
-    }
-
-    /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
-    /// makes on `snapshot.isShiftWorkModeEnabled` -- the watch app is its
-    /// own process with no `UserPreferences` access, which is exactly why
-    /// that flag rides along on the snapshot itself.
-    private var lastNightLabel: String {
-        snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night"
+    private enum Sheet: String, Identifiable {
+        case nap, feeling
+        var id: String { rawValue }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(lastNightLabel, systemImage: "moon.stars.fill")
-                .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(Theme.Metric.sleep)
-
-            Text(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
-                .font(Theme.numeral(30))
-                .monospacedDigit()
-
-            // The score as a bar rather than a second big number: two large
-            // numerals on one small screen and neither gets read.
-            //
-            // `flagshipScore`, not `score`. This page and the Sleep page sit
-            // two swipes apart on the same watch and used to show different
-            // numbers for the same night -- this one the older `SleepScore`,
-            // that one Sleep Intelligence -- with nothing to say they were
-            // answering different questions.
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text("Sleep")
-                    Spacer()
-                    Text("\(snapshot.flagshipScore)").monospacedDigit()
+        VStack(spacing: 5) {
+            HStack(spacing: 5) {
+                action(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
+                    link.sendQuickAction(.behaviorTag(rawValue: "caffeineLate"))
                 }
-                .font(Theme.label(11, weight: .regular))
-                .foregroundStyle(.secondary)
+                action(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
+                    link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                }
+            }
+            HStack(spacing: 5) {
+                action(id: "nap", label: "Nap", symbol: "powersleep") { presented = .nap }
+                action(id: "feeling", label: "Feeling", symbol: "face.smiling") { presented = .feeling }
+            }
+        }
+        .sheet(item: $presented) { sheet in
+            switch sheet {
+            case .nap: NapDurationSheet()
+            case .feeling: MorningFeelingSheet()
+            }
+        }
+    }
 
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.12))
-                        Capsule()
-                            .fill(Theme.Metric.sleep)
-                            .frame(width: geometry.size.width * Double(snapshot.flagshipScore) / 100)
+    private func action(
+        id: String,
+        label: String,
+        symbol: String,
+        perform: @escaping () -> Void
+    ) -> some View {
+        Button {
+            WKInterfaceDevice.current().play(.success)
+            perform()
+            confirmedID = id
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: confirmedID == id ? "checkmark.circle.fill" : symbol)
+                    .font(Theme.text(15, weight: .semibold))
+                    .foregroundStyle(confirmedID == id ? Theme.Metric.recoveryHigh : Theme.Metric.sleep)
+                Text(label)
+                    .font(Theme.label(10, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity, minHeight: 46)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("Log \(label)")
+    }
+}
+
+/// Nap length, asked rather than assumed.
+struct NapDurationSheet: View {
+    @Environment(WatchLink.self) private var link
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach([10, 20, 30], id: \.self) { minutes in
+                    Button("\(minutes) min") {
+                        WKInterfaceDevice.current().play(.success)
+                        link.sendQuickAction(.nap(minutes: minutes))
+                        dismiss()
                     }
                 }
-                .frame(height: 6)
             }
-
-            Divider().overlay(Color.white.opacity(0.15))
-
-            HStack {
-                Text("Sleep bank")
-                    .font(Theme.label(11, weight: .regular))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(snapshot.balanceLabel)
-                    .font(Theme.label(13, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(debtTint)
-            }
-
-            Spacer(minLength: 0)
+            .navigationTitle("Nap")
         }
-        .padding(.horizontal, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// How rested, asked rather than assumed.
+struct MorningFeelingSheet: View {
+    @Environment(WatchLink.self) private var link
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(1...5, id: \.self) { rawValue in
+                    Button {
+                        WKInterfaceDevice.current().play(.success)
+                        link.sendQuickAction(.morningFeeling(rawValue: rawValue))
+                        dismiss()
+                    } label: {
+                        Label(
+                            QuickLogView.feelingLabel(rawValue),
+                            systemImage: QuickLogView.feelingSymbol(rawValue)
+                        )
+                    }
+                }
+            }
+            .navigationTitle("Feeling")
+        }
     }
 }
 
 /// Body Signals and Badges, stacked on one page rather than two -- both are
 /// "check occasionally" information (whether anything is drifting from
 /// baseline; how the reward progress is going), not "check every glance"
-/// like the three pages before it, so they share a swipe instead of each
-/// claiming a full screen. Body Battery itself doesn't need a page here:
-/// it's already legible as a mini-stat on the Recovery page.
+/// like the pages before it, so they share a swipe instead of each claiming
+/// a full screen.
+///
+/// Energy and load moved here when Today was cut back to the two things the
+/// V9 spec asks that page for. They are still worth having -- this is just
+/// the page for things you check occasionally rather than every glance, and
+/// nowhere else on the watch shows them.
 struct MorePage: View {
 
     let snapshot: SleepSnapshot
@@ -442,6 +599,21 @@ struct MorePage: View {
                     .font(Theme.label(10, weight: .regular))
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
+            }
+
+            Divider().overlay(Color.white.opacity(0.15))
+
+            HStack(spacing: 10) {
+                WatchMiniStat(
+                    value: "\(snapshot.bodyBattery)",
+                    label: "energy",
+                    tint: Theme.Metric.battery
+                )
+                WatchMiniStat(
+                    value: String(format: "%.1f", snapshot.strain),
+                    label: "load",
+                    tint: Theme.Metric.strain
+                )
             }
 
             if !snapshot.headlineFindingText.isEmpty {
@@ -512,16 +684,22 @@ struct WaitingPage: View {
     }
 }
 
-#Preview("Sleep Intelligence") {
-    SleepIntelligencePage(snapshot: MockData.snapshotWithBadges)
+#Preview("Last night") {
+    LastNightPage(snapshot: MockData.snapshotWithBadges)
 }
 
-#Preview("Recovery") {
-    RecoveryPage(snapshot: MockData.snapshotWithBadges)
+#Preview("Today") {
+    TodayPage(snapshot: MockData.snapshotWithBadges)
 }
 
-#Preview("Sleep") {
-    SleepPage(snapshot: MockData.snapshotWithBadges)
+/// The state the V9 spec asks for by name: when the phone reports it cannot
+/// stand behind the number, the watch says so rather than showing one.
+#Preview("Today - limited data") {
+    TodayPage(snapshot: {
+        var snapshot = MockData.snapshotWithBadges
+        snapshot.recoveryConfidence = MetricConfidence.insufficient.rawValue
+        return snapshot
+    }())
 }
 
 #Preview("More") {
@@ -533,6 +711,13 @@ struct WaitingPage: View {
 /// not -- and the finding is the block whose length Zoon does not control.
 #Preview("More - with a finding") {
     MorePage(snapshot: MockData.findingSnapshot)
+}
+
+/// The page the V9 spec insists exists: logging with a visible affordance,
+/// not only behind a long press.
+#Preview("Log") {
+    LogPage()
+        .environment(WatchLink())
 }
 
 #Preview("Waiting") {

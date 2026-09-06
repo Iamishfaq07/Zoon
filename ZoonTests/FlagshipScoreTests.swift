@@ -100,4 +100,44 @@ final class FlagshipScoreTests: XCTestCase {
         XCTAssertEqual(SleepIntelligenceScore.Band.forPercent(84), .good)
         XCTAssertEqual(SleepIntelligenceScore.Band.forPercent(85), .excellent)
     }
+
+    // MARK: - Declining to state a number
+
+    /// The watch shows a recovery number only when the phone says it can
+    /// stand behind one. `RecoveryScore` already separates the score from
+    /// the confidence in it (V9 item 4); before this, the watch took the
+    /// number and dropped the caveat on the way.
+    func testARecoveryScoreWithEnoughBehindItIsStated() {
+        for confidence in [MetricConfidence.low, .moderate, .high] {
+            var payload = snapshot(score: 70, intelligence: 70)
+            payload.recoveryConfidence = confidence.rawValue
+            XCTAssertTrue(payload.canStateRecovery, "\(confidence.rawValue) should still be shown")
+        }
+    }
+
+    /// `.insufficient` is the one band `RecoveryScore` itself says is not
+    /// enough to state. Below it the score is arithmetic over gaps.
+    func testAnInsufficientRecoveryScoreIsNotStated() {
+        var payload = snapshot(score: 70, intelligence: 70)
+        payload.recoveryConfidence = MetricConfidence.insufficient.rawValue
+        XCTAssertFalse(payload.canStateRecovery)
+    }
+
+    /// A snapshot written before the field existed came from a build that
+    /// showed the number unconditionally. Hiding it retroactively would read
+    /// on the wrist as lost data rather than as new honesty.
+    func testASnapshotFromBeforeTheFieldExistedStillShowsItsNumber() {
+        var payload = snapshot(score: 70, intelligence: 70)
+        payload.recoveryConfidence = ""
+        XCTAssertTrue(payload.canStateRecovery)
+    }
+
+    /// Anything the enum does not recognise is treated the same way as an
+    /// absent value: shown. A future writer sending a band this build has
+    /// never heard of is not evidence that the number is bad.
+    func testAnUnrecognisedConfidenceIsTreatedAsAbsentRatherThanAsInsufficient() {
+        var payload = snapshot(score: 70, intelligence: 70)
+        payload.recoveryConfidence = "provisional"
+        XCTAssertTrue(payload.canStateRecovery)
+    }
 }

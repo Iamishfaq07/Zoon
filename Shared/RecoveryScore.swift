@@ -306,7 +306,7 @@ extension RecoveryScore {
         /// a bare `Int` -- the widget/watch targets only ever have
         /// `SleepSnapshot.recoveryPercent`, not a full `RecoveryScore`, and
         /// re-deriving these cutoffs independently (as
-        /// `WatchRootView.RecoveryPage.tint` once did) is exactly how the
+        /// `WatchRootView`'s recovery ring once did) is exactly how the
         /// two silently drift apart.
         static func forPercent(_ percent: Int) -> Band {
             switch percent {

@@ -57,6 +57,7 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         snapshot.nextBadgeTitle = "Distinctive next badge"
         snapshot.nextBadgeProgress = 0.42
         snapshot.bodySignalsLabel = "Distinctive signals"
+        snapshot.recoveryConfidence = MetricConfidence.moderate.rawValue
         snapshot.isShiftWorkModeEnabled = true
         snapshot.tonightTargetLabel = "10:45 PM - 6:30 AM"
         snapshot.tonightTargetNote = "Aim for 20m earlier than usual tonight."
@@ -176,5 +177,6 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         XCTAssertEqual(decoded.headlineFindingText, "")
         XCTAssertEqual(decoded.badgeSymbol, "hexagon.fill")
         XCTAssertEqual(decoded.bodySignalsLabel, "Nothing unusual")
+        XCTAssertEqual(decoded.recoveryConfidence, "")
     }
 }
