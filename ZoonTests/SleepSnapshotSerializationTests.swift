@@ -58,6 +58,8 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         snapshot.nextBadgeProgress = 0.42
         snapshot.bodySignalsLabel = "Distinctive signals"
         snapshot.recoveryConfidence = MetricConfidence.moderate.rawValue
+        snapshot.questionTag = "distinctiveTag"
+        snapshot.questionText = "A distinctive question?"
         snapshot.isShiftWorkModeEnabled = true
         snapshot.tonightTargetLabel = "10:45 PM - 6:30 AM"
         snapshot.tonightTargetNote = "Aim for 20m earlier than usual tonight."
@@ -178,5 +180,28 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         XCTAssertEqual(decoded.badgeSymbol, "hexagon.fill")
         XCTAssertEqual(decoded.bodySignalsLabel, "Nothing unusual")
         XCTAssertEqual(decoded.recoveryConfidence, "")
+        // No question is the same empty state as a snapshot written before
+        // the field existed, and that is correct: both mean "nothing to ask".
+        XCTAssertEqual(decoded.questionTag, "")
+        XCTAssertEqual(decoded.questionText, "")
+    }
+
+    // MARK: - Tonight's one question (V9 item 39, watch half)
+
+    func testTheQuestionSurvivesTheRoundTrip() throws {
+        let data = try JSONEncoder().encode(fullyPopulated())
+        let decoded = try JSONDecoder().decode(SleepSnapshot.self, from: data)
+        XCTAssertEqual(decoded.questionTag, "distinctiveTag")
+        XCTAssertEqual(decoded.questionText, "A distinctive question?")
+    }
+
+    /// The watch needs both halves and can derive neither: the text to show
+    /// and the identifier to send back. A snapshot carrying one without the
+    /// other would render a question no answer could be attached to, so the
+    /// watch requires both to be non-empty before it shows anything.
+    func testAQuestionCarriesBothItsTextAndItsTag() {
+        let snapshot = fullyPopulated()
+        XCTAssertFalse(snapshot.questionTag.isEmpty)
+        XCTAssertFalse(snapshot.questionText.isEmpty)
     }
 }

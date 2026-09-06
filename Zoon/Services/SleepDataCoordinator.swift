@@ -212,8 +212,8 @@ final class SleepDataCoordinator {
         // a body evaluation is how you get a mutation-during-render loop.
         behaviors.migrateLegacyTags(from: journal.allEntries())
         watchLink.activate()
-        watchLink.onQuickAction = { [journal, naps] action in
-            Self.apply(action, journal: journal, naps: naps)
+        watchLink.onQuickAction = { [journal, naps, behaviors] action in
+            Self.apply(action, journal: journal, naps: naps, behaviors: behaviors)
         }
     }
 
@@ -222,11 +222,30 @@ final class SleepDataCoordinator {
     /// on `watchLink.onQuickAction` above is held by `WatchLink` for the
     /// coordinator's whole lifetime, and capturing `self` there would be a
     /// retain cycle (`watchLink` is itself a property of this coordinator).
-    private static func apply(_ action: WatchQuickAction, journal: JournalStore, naps: NapStore) {
+    private static func apply(
+        _ action: WatchQuickAction,
+        journal: JournalStore,
+        naps: NapStore,
+        behaviors: BehaviorObservationStore
+    ) {
         switch action {
         case .behaviorTag(let rawValue):
             guard let tag = BehaviorTag(rawValue: rawValue) else { return }
             journal.toggle(tag, on: .now)
+        case .behaviorAnswer(let rawValue, let happened):
+            guard let tag = BehaviorTag(rawValue: rawValue) else { return }
+            // The same two writes `setBehavior` makes, for the same reason:
+            // the observation is what every engine reads, and the legacy tag
+            // set is still what the journal badge counts and what the archive
+            // exports. This cannot call `setBehavior` itself -- that is an
+            // instance method, and this closure is deliberately static to
+            // avoid retaining the coordinator that owns the link.
+            let key = BehaviorObservationRecord.provisionalNightKey(for: .now)
+            behaviors.set(happened ? .yes : .no, for: tag, nightKey: key)
+            let entry = journal.entryOrCreate(for: .now, nightKey: nil)
+            if happened != entry.contains(tag) {
+                journal.toggle(tag, on: .now)
+            }
         case .morningFeeling(let rawValue):
             guard let feeling = MorningFeeling(rawValue: rawValue) else { return }
             journal.setFeeling(feeling, on: .now)
@@ -1045,6 +1064,22 @@ final class SleepDataCoordinator {
         if let headline = EvidenceNotebook.glanceHeadline(from: notebookEntries()) {
             snapshot.headlineFindingText = headline.headline
             snapshot.headlineFindingStrength = headline.strength.label
+        }
+
+        // Tonight's one question, so the watch can ask it without needing the
+        // ranking engine, the journal history or `BehaviorTag` -- none of
+        // which exist in that target. Behaviours already answered today are
+        // excluded here rather than on the wrist, so the watch never shows a
+        // question the phone would not.
+        let answeredToday = behaviorAnswers(on: .now, nightKey: nil)
+        if let question = AdaptiveJournal.question(
+            observations: journalObservations(),
+            activeExperimentTag: preferences.activeExperimentTag?.rawValue,
+            pinnedTags: Set(BehaviorTag.allCases.filter(preferences.isTracked)),
+            alreadyAnswered: Set(BehaviorTag.allCases.filter { answeredToday.state(for: $0) != .unknown })
+        ) {
+            snapshot.questionTag = question.tag.rawValue
+            snapshot.questionText = question.tag.question
         }
 
         // Badges are evaluated here rather than in the extension: the engine
