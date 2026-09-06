@@ -393,4 +393,125 @@ final class ContextForecastTests: XCTestCase {
         XCTAssertGreaterThan(prediction.lower, 70,
                              "the interval was read off the nights Zoon knows least about")
     }
+
+    // MARK: - Why this range
+
+    /// The whole point of the feature: a conditioned forecast must be able to
+    /// say what the matched nights had in common with tomorrow. A range with
+    /// no grounds is indistinguishable on screen from the unconditioned one.
+    func testAConditionedForecastReportsWhatTheMatchedNightsShared() {
+        let target = context(debt: 60, bedtime: 23, caffeine: 0, exercise: 30, previous: 430)
+        let samples = (0..<24).map { index in
+            ContextForecast.Sample(
+                context: context(
+                    debt: 60 + Double(index % 3) * 5,
+                    bedtime: 23 + Double(index % 3) * 0.1,
+                    caffeine: 0,
+                    exercise: 30,
+                    previous: 430
+                ),
+                outcome: 78 + Double(index % 7)
+            )
+        }
+
+        guard let prediction = ContextForecast.predict(for: target, from: samples) else {
+            return XCTFail("fixture must produce a forecast, or this asserts on nothing")
+        }
+        XCTAssertTrue(prediction.basis.isConditioned,
+                      "fixture must reach the matched branch, or the matches are trivially empty")
+        XCTAssertFalse(prediction.matches.isEmpty)
+        XCTAssertEqual(prediction.unsharedMatches.count, 0,
+                       "every night in this fixture sits on top of the target")
+        XCTAssertTrue(prediction.sharedMatches.contains { $0.feature == .bedtime })
+    }
+
+    /// A feature the neighbours scattered on is reported as mixed, not
+    /// dropped. Listing only the agreements would read as though the whole
+    /// context lined up.
+    func testAFeatureTheNeighboursScatteredOnIsReportedAsMixed() {
+        let target = context(debt: 60, bedtime: 23, caffeine: 0, exercise: 30, previous: 430)
+        // Bedtime alternates three hours either side, which is well past
+        // `featureTightness` on the bedtime scale, while everything else is
+        // identical -- so the nights still match overall.
+        let samples = (0..<24).map { index in
+            ContextForecast.Sample(
+                context: context(
+                    debt: 60,
+                    bedtime: index.isMultiple(of: 2) ? 21.5 : 0.5,
+                    caffeine: 0,
+                    exercise: 30,
+                    previous: 430
+                ),
+                outcome: 80
+            )
+        }
+
+        guard let prediction = ContextForecast.predict(for: target, from: samples) else {
+            return XCTFail("fixture must produce a forecast")
+        }
+        XCTAssertTrue(prediction.basis.isConditioned,
+                      "fixture must reach the matched branch, or this asserts on the fallback")
+        let bedtime = prediction.matches.first { $0.feature == .bedtime }
+        XCTAssertNotNil(bedtime, "bedtime was compared, so it must be reported one way or the other")
+        XCTAssertFalse(bedtime?.isShared ?? true)
+        XCTAssertEqual(bedtime?.phrase, "Mixed bedtime")
+    }
+
+    /// An absence and a disagreement must not print the same way. A feature
+    /// most matched nights never carried was not compared, so it is dropped
+    /// rather than scored zero -- zero would read as a finding about those
+    /// nights.
+    func testAFeatureMostMatchedNightsNeverCarriedIsNotReportedAtAll() {
+        let target = context(debt: 60, bedtime: 23, caffeine: 40, exercise: 30, previous: 430)
+        let samples = (0..<24).map { index in
+            ContextForecast.Sample(
+                context: context(
+                    debt: 60,
+                    bedtime: 23,
+                    caffeine: nil,
+                    exercise: 30,
+                    previous: 430
+                ),
+                outcome: 80 + Double(index % 5)
+            )
+        }
+
+        guard let prediction = ContextForecast.predict(for: target, from: samples) else {
+            return XCTFail("fixture must produce a forecast")
+        }
+        XCTAssertTrue(prediction.basis.isConditioned)
+        XCTAssertNil(prediction.matches.first { $0.feature == .lateCaffeine })
+    }
+
+    /// The fallback interval was conditioned on nothing. Attaching a shared
+    /// context to it would describe a match that never happened.
+    func testTheUnconditionedFallbackReportsNoSharedContext() {
+        let target = context(weekend: true, debt: 600, bedtime: 4, caffeine: 400, exercise: 300, previous: 120)
+        let samples = (0..<20).map { index in
+            ContextForecast.Sample(
+                context: context(debt: 0, bedtime: 22.5, caffeine: 0, exercise: 20, previous: 460),
+                outcome: 70 + Double(index % 9)
+            )
+        }
+
+        guard let prediction = ContextForecast.predict(for: target, from: samples) else {
+            return XCTFail("fixture must produce the fallback interval")
+        }
+        XCTAssertFalse(prediction.basis.isConditioned,
+                       "fixture must land on the fallback, or this asserts on the wrong branch")
+        XCTAssertTrue(prediction.matches.isEmpty)
+    }
+
+    /// Drawing the same forecast twice must list the same reasons in the same
+    /// order. Ties on agreement fall back to the feature's declaration order
+    /// rather than to `sorted`'s instability.
+    func testTheOrderOfTheReasonsIsStableAcrossTies() {
+        let target = context()
+        let neighbours = Array(repeating: context(), count: 18)
+        let first = ContextForecast.matches(of: target, against: neighbours)
+        let second = ContextForecast.matches(of: target, against: neighbours)
+        XCTAssertEqual(first.map(\.feature), second.map(\.feature))
+        XCTAssertEqual(first.map(\.feature), ContextForecast.Feature.allCases,
+                       "all six agree perfectly here, so declaration order must decide")
+    }
 }

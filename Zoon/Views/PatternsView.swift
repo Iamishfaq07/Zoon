@@ -254,6 +254,10 @@ struct PatternsView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                if !prediction.matches.isEmpty {
+                    whyThisRange(prediction)
+                }
+
                 Text(prediction.caveat)
                     .font(Theme.evidence)
                     .foregroundStyle(.tertiary)
@@ -266,6 +270,63 @@ struct PatternsView: View {
                 + prediction.confidence.label
             )
         }
+    }
+
+    /// The grounds for the range, behind a disclosure.
+    ///
+    /// Closed by default because the spec is explicit that statistical
+    /// internals do not belong on the default view -- the range and its
+    /// confidence are the answer, and this is the working. Open, it says
+    /// what the matched nights had in common with tomorrow, and what they
+    /// did not.
+    ///
+    /// The unshared features are shown too. A range built from nights that
+    /// differed on caffeine is a weaker answer to a question about caffeine,
+    /// and a list containing only agreements would read as though everything
+    /// lined up.
+    @ViewBuilder
+    private func whyThisRange(_ prediction: ContextForecast.Prediction) -> some View {
+        DisclosureGroup("Why this range?") {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(prediction.sharedMatches) { match in
+                    matchRow(match)
+                }
+                if !prediction.unsharedMatches.isEmpty {
+                    Divider().overlay(Theme.cardStroke)
+                    ForEach(prediction.unsharedMatches) { match in
+                        matchRow(match)
+                    }
+                    Text("Mixed means those nights did not agree with tomorrow on it, so the range says less about it.")
+                        .font(Theme.evidence)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 8)
+        }
+        .font(Theme.label(13, weight: .medium))
+        .tint(Theme.Family.sleep)
+    }
+
+    private func matchRow(_ match: ContextForecast.Match) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: match.feature.symbol)
+                .font(Theme.text(11))
+                .frame(width: 16)
+                .foregroundStyle(match.isShared ? Theme.Family.sleep : Color.secondary)
+            Text(match.phrase)
+                .font(Theme.text(12))
+                .foregroundStyle(match.isShared ? .primary : .secondary)
+            Spacer(minLength: 8)
+            Text("\(Int((match.agreement * 100).rounded()))%")
+                .font(Theme.evidence)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(match.phrase), \(Int((match.agreement * 100).rounded())) percent of the matched nights"
+        )
     }
 
     /// The night immediately before `night`, when there is one -- what
