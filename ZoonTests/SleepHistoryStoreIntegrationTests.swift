@@ -38,7 +38,7 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
     private func makeStore() throws -> SleepHistoryStore {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: SleepNightRecord.self, SleepEpisodeRecord.self,
+            for: SleepNightRecord.self, SleepEpisodeRecord.self, EvidenceRevisionRecord.self,
             configurations: config
         )
         // Retained above. A container that goes out of scope here takes the

@@ -69,7 +69,7 @@ final class WatchLink: NSObject {
     /// an action the watch sent. `WatchLink` itself has no business touching
     /// `JournalStore`/`NapStore` -- those are app-only types this file (built
     /// into the watch and widget targets too) can't depend on.
-    var onQuickAction: ((WatchQuickAction) -> Void)?
+    var onQuickAction: ((WatchActionEnvelope) -> Void)?
 
     override init() {
         super.init()
@@ -117,6 +117,7 @@ final class WatchLink: NSObject {
     /// tombstone. Watch side: `apply` removes both its in-memory value and the
     /// complication store before asking timelines to redraw.
     func clearSnapshot() {
+        WatchActionReceiptStore(defaults: .standard).erase()
         snapshot = nil
         pendingSnapshot = nil
         UserDefaults.standard.set(true, forKey: Self.pendingDeletionKey)
@@ -154,7 +155,7 @@ final class WatchLink: NSObject {
         guard session.activationState == .activated else { return }
 
         do {
-            let data = try JSONEncoder().encode(action)
+            let data = try JSONEncoder().encode(WatchActionEnvelope(action: action, snapshotDate: snapshot?.date))
             session.transferUserInfo([Self.quickActionKey: data])
         } catch {
             logger.error("Could not send quick action: \(error.localizedDescription, privacy: .public)")
@@ -233,8 +234,12 @@ extension WatchLink: WCSessionDelegate {
         Task { @MainActor in
             guard let data = userInfo[Self.quickActionKey] as? Data else { return }
             do {
-                let action = try JSONDecoder().decode(WatchQuickAction.self, from: data)
-                onQuickAction?(action)
+                // Untimestamped legacy packets cannot safely be assigned to a night.
+                let event = try JSONDecoder().decode(WatchActionEnvelope.self, from: data)
+                let receipts = WatchActionReceiptStore(defaults: .standard)
+                guard let onQuickAction, receipts.accepts(event) else { return }
+                onQuickAction(event)
+                receipts.record(event)
             } catch {
                 logger.error("Could not decode quick action: \(error.localizedDescription, privacy: .public)")
             }

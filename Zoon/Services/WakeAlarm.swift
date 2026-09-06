@@ -171,16 +171,22 @@ final class WakeAlarm {
         #endif
     }
 
-    func cancel() {
-        scheduledWakeTime = nil
+    @discardableResult
+    func cancel() -> Bool {
         #if canImport(AlarmKit)
-        guard #available(iOS 26.0, *) else { return }
+        guard #available(iOS 26.0, *) else { scheduledWakeTime = nil; return true }
         do {
-            try AlarmManager.shared.cancel(id: Self.alarmID)
+            // An absent alarm is already cancelled; do not treat that as an error.
+            if try AlarmManager.shared.alarms.contains(where: { $0.id == Self.alarmID }) {
+                try AlarmManager.shared.cancel(id: Self.alarmID)
+            }
         } catch {
             logger.error("Could not cancel wake alarm: \(error.localizedDescription, privacy: .public)")
+            return false
         }
         #endif
+        scheduledWakeTime = nil
+        return true
     }
 }
 

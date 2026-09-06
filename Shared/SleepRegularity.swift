@@ -41,6 +41,8 @@ struct SleepRegularity: Codable, Hashable, Sendable {
     let index: Double
     /// Nights the index was computed across.
     let nightCount: Int
+    /// Optional for archives created before pair coverage was recorded.
+    var validPairCount: Int? = nil
 
     /// Median sleep midpoint on work days, as hours from midnight
     /// (evening negative — 03:30 is 3.5, 23:30 is −0.5).
@@ -100,6 +102,7 @@ struct SleepRegularity: Codable, Hashable, Sendable {
 
         var agreements = 0
         var comparisons = 0
+        var validPairs = 0
 
         for (previous, next) in zip(sorted, sorted.dropFirst()) {
             // Only compare nights that are actually a day apart. A gap in the
@@ -108,6 +111,7 @@ struct SleepRegularity: Codable, Hashable, Sendable {
             // sleep.
             let gap = next.bedtime.timeIntervalSince(previous.bedtime)
             guard gap > day * 0.5, gap < day * 1.5 else { continue }
+            validPairs += 1
 
             // Walk the window covered by the earlier night, asking at each step
             // whether the state 24h later matches.
@@ -147,6 +151,7 @@ struct SleepRegularity: Codable, Hashable, Sendable {
         return SleepRegularity(
             index: index,
             nightCount: sorted.count,
+            validPairCount: validPairs,
             weekdayMidpoint: weekday,
             weekendMidpoint: weekend
         )
@@ -234,7 +239,7 @@ extension SleepRegularity {
         }
     }
 
-    var hasEnoughData: Bool { nightCount >= Self.minimumNights }
+    var hasEnoughData: Bool { nightCount >= Self.minimumNights && (validPairCount ?? 0) >= Self.minimumNights - 1 }
 
     var detail: String {
         guard hasEnoughData else {

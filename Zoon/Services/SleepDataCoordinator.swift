@@ -136,6 +136,8 @@ final class SleepDataCoordinator {
 
     private enum RefreshState { case idle, refreshing, refreshingWithPending }
     private var refreshState: RefreshState = .idle
+    private var refreshTask: Task<Void, Never>?
+    private var isErasing = false
     var isRefreshing: Bool { refreshState != .idle }
     /// Live daytime read, refreshed alongside everything else. `nil` until the
     /// first successful sample — a phone that's never queried HealthKit today
@@ -212,8 +214,9 @@ final class SleepDataCoordinator {
         // a body evaluation is how you get a mutation-during-render loop.
         behaviors.migrateLegacyTags(from: journal.allEntries())
         watchLink.activate()
-        watchLink.onQuickAction = { [journal, naps, behaviors] action in
-            Self.apply(action, journal: journal, naps: naps, behaviors: behaviors)
+        watchLink.onQuickAction = { [weak self] event in
+            guard let self, !isErasing, preferences.hasCompletedOnboarding else { return }
+            Self.apply(event, journal: journal, naps: naps, behaviors: behaviors)
         }
     }
 
@@ -223,35 +226,30 @@ final class SleepDataCoordinator {
     /// coordinator's whole lifetime, and capturing `self` there would be a
     /// retain cycle (`watchLink` is itself a property of this coordinator).
     private static func apply(
-        _ action: WatchQuickAction,
+        _ event: WatchActionEnvelope,
         journal: JournalStore,
         naps: NapStore,
         behaviors: BehaviorObservationStore
     ) {
-        switch action {
+        let date = event.targetDate
+        let key = BehaviorObservationRecord.provisionalNightKey(for: date, calendar: event.calendar)
+        switch event.action {
         case .behaviorTag(let rawValue):
             guard let tag = BehaviorTag(rawValue: rawValue) else { return }
-            journal.toggle(tag, on: .now)
+            journal.toggle(tag, on: date, nightKey: key)
+            let happened = journal.entryOrCreate(for: date, nightKey: key).contains(tag)
+            behaviors.set(happened ? .yes : .no, for: tag, nightKey: key)
         case .behaviorAnswer(let rawValue, let happened):
             guard let tag = BehaviorTag(rawValue: rawValue) else { return }
-            // The same two writes `setBehavior` makes, for the same reason:
-            // the observation is what every engine reads, and the legacy tag
-            // set is still what the journal badge counts and what the archive
-            // exports. This cannot call `setBehavior` itself -- that is an
-            // instance method, and this closure is deliberately static to
-            // avoid retaining the coordinator that owns the link.
-            let key = BehaviorObservationRecord.provisionalNightKey(for: .now)
             behaviors.set(happened ? .yes : .no, for: tag, nightKey: key)
-            let entry = journal.entryOrCreate(for: .now, nightKey: nil)
-            if happened != entry.contains(tag) {
-                journal.toggle(tag, on: .now)
-            }
+            let entry = journal.entryOrCreate(for: date, nightKey: key)
+            if happened != entry.contains(tag) { journal.toggle(tag, on: date, nightKey: key) }
         case .morningFeeling(let rawValue):
             guard let feeling = MorningFeeling(rawValue: rawValue) else { return }
-            journal.setFeeling(feeling, on: .now)
+            journal.setFeeling(feeling, on: date)
         case .nap(let minutes):
-            guard minutes > 0 else { return }
-            let end = Date.now
+            guard (1...720).contains(minutes) else { return }
+            let end = event.occurredAt
             naps.importNaps([NapStore.Nap(start: end.addingTimeInterval(-Double(minutes) * 60), end: end)])
         }
     }
@@ -420,31 +418,28 @@ final class SleepDataCoordinator {
     /// already in progress and bailing. `@MainActor` isolation already
     /// makes checking and setting `refreshState` here race-free.
     ///
-    /// A call that lands while another is already running doesn't bail
-    /// outright the way the old `guard !isRefreshing` did -- it marks
-    /// `.refreshingWithPending` and returns immediately (never blocking the
-    /// caller), and the in-flight pass runs itself again once before going
-    /// idle. That second pass picks up whatever the second caller wanted
-    /// fresher (new HealthKit samples an observer just reported, a goal
-    /// change) instead of that request being silently dropped until some
-    /// unrelated later trigger happened to come along.
+    /// Every observer waits for the shared refresh, including its pending pass.
+    /// HealthKit must not be acknowledged before those writes complete.
     func refresh() async {
-        switch refreshState {
-        case .idle:
-            refreshState = .refreshing
-        case .refreshing:
+        guard !isErasing else { return }
+        if let refreshTask {
             refreshState = .refreshingWithPending
-            return
-        case .refreshingWithPending:
+            await refreshTask.value
             return
         }
-
-        await performRefresh()
-        while refreshState == .refreshingWithPending {
-            refreshState = .refreshing
+        refreshState = .refreshing
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
             await performRefresh()
+            while refreshState == .refreshingWithPending && !isErasing {
+                refreshState = .refreshing
+                await performRefresh()
+            }
+            refreshState = .idle
+            refreshTask = nil
         }
-        refreshState = .idle
+        refreshTask = task
+        await task.value
     }
 
     private func performRefresh() async {
@@ -633,7 +628,9 @@ final class SleepDataCoordinator {
         for session in sessionsToRebuild {
             let nightDate = session.wakeDate
             let baseline = store.baseline(for: nightDate, goalMinutes: goal, manualNaps: naps.naps)
-            let result = await extractor.extract(from: session, baseline: baseline)
+            let previousWake = (priorFeaturesBeforeBatch + thisBatchFeaturesOldestFirst)
+                .map(\.wakeTime).filter { $0 < session.start }.max()
+            let result = await extractor.extract(from: session, baseline: baseline, previousWake: previousWake)
             var features = result.features
 
             // Frozen at first insert only (see SleepNightRecord.update's doc
@@ -771,6 +768,7 @@ final class SleepDataCoordinator {
     /// Reads the newest stored night back out, derives everything, updates state
     /// and hands a snapshot to the widget.
     private func publishLatest() async {
+        guard !isErasing else { return }
         let goal = preferences.sleepGoalMinutes
 
         guard let record = store.latestNight else {
@@ -815,6 +813,8 @@ final class SleepDataCoordinator {
         let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
         )
+
+        guard !isErasing else { return }
 
         // Generation is deferred into the builder rather than run above,
         // because the summary's opening grade has to come from Sleep
@@ -1413,7 +1413,16 @@ final class SleepDataCoordinator {
     /// derived copies outside SwiftData. HealthKit itself remains untouched.
     /// - Returns: `false` if any disk-backed deletion reported a failure.
     @discardableResult
-    func deleteAllData() -> Bool {
+    func deleteAllData() async -> Bool {
+        guard !isErasing else { return false }
+        isErasing = true
+        defer { isErasing = false }
+        healthKit.stopObserving()
+        // Drain the in-flight query before clearing stores; it cannot repopulate
+        // erased rows after this method returns.
+        await refreshTask?.value
+        let alarmDeleted = WakeAlarm().cancel()
+        ScheduleStateStore().clearAll()
         let nightsDeleted = store.deleteAll()
         let journalDeleted = journal.deleteAll()
         let behaviorsDeleted = behaviors.deleteAll()
@@ -1446,7 +1455,8 @@ final class SleepDataCoordinator {
         lastRefresh = nil
         WidgetCenter.shared.reloadAllTimelines()
 
-        return nightsDeleted
+        return alarmDeleted
+            && nightsDeleted
             && journalDeleted
             && behaviorsDeleted
             && snapshotDeleted

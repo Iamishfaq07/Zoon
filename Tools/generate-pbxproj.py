@@ -76,6 +76,7 @@ UITESTS_SRC = swift_files("ZoonUITests")
 # whether SwiftData itself can run at all in this unhosted test bundle before
 # trying a real store again. See SwiftDataProbeTests.swift's own doc comment.
 TESTS_EXTRA_APP_FILES = [
+    "Zoon/Models/EvidenceRevisionRecord.swift",
     "Zoon/Services/SleepSessionBuilder.swift",
     # Foundation/SwiftData only -- see the SwiftDataProbeTests doc comment
     # above for why this specific type, alone, is back in the test target.

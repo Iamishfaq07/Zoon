@@ -45,7 +45,7 @@ struct SettingsView: View {
             titleVisibility: .visible
         ) {
             Button("Delete Everything", role: .destructive) {
-                showingDeleteFailure = !coordinator.deleteAllData()
+                Task { showingDeleteFailure = !(await coordinator.deleteAllData()) }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
