@@ -275,8 +275,12 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
                 SleepNightFeatures.formatMinutes(goalMinutes),
                 SleepNightFeatures.formatMinutes(features.timeInBedMinutes)
             ),
+            // The amount, not the end of the night it comes from. Prescribing
+            // an earlier bedtime assumes the morning is fixed, which is true
+            // for many people and simply wrong for shift workers, travellers
+            // and anyone whose evening belongs to someone else.
             tip: String(
-                format: "Go to bed %@ earlier tonight — that alone closes most of the gap.",
+                format: "Finding %@ more sleep opportunity tonight closes most of the gap.",
                 SleepNightFeatures.formatMinutes(min(shortfall, 60))
             ),
             confidence: .high

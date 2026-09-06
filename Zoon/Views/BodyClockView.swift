@@ -71,7 +71,8 @@ struct BodyClockView: View {
 
     // MARK: - Travel
 
-    /// Travel Mode lives behind this screen rather than in the tab bar.
+    /// Travel Sleep Guidance lives behind this screen rather than in the
+    /// tab bar.
     ///
     /// The plan is expressed entirely in the numbers this screen draws --
     /// your onset, your wake, the morning window the Light card uses. Giving

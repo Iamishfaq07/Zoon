@@ -124,4 +124,51 @@ final class MorningInThreeTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - What it must not prescribe (V10 item 12)
+
+    /// "An earlier night beats a lie-in" is true of an office worker with a
+    /// fixed alarm and false of a night-shift nurse, someone mid-timezone
+    /// shift, a parent whose evening is not theirs, or anyone on a recovery
+    /// day. Zoon knows the shortfall; it does not know which end of the night
+    /// is available.
+    func testAShortfallNamesTheGoalRatherThanPrescribingAnEarlierBedtime() throws {
+        let behind = summary(debt: 95)
+        let raw = try XCTUnwrap(behind.today.detail)
+        let detail = raw.lowercased()
+
+        XCTAssertTrue(detail.contains("sleep opportunity"),
+                      "the shortfall line stopped naming what to protect: \(raw)")
+        for prescription in ["earlier night", "lie-in", "lie in", "go to bed earlier"] {
+            XCTAssertFalse(
+                detail.contains(prescription),
+                "prescribed a method the context may not allow: \(raw)"
+            )
+        }
+    }
+
+    /// The shortfall itself is still stated plainly -- this is about *how* to
+    /// close it, not about softening the fact that there is a gap.
+    func testTheShortfallIsStillStatedPlainly() {
+        let behind = summary(debt: 95)
+        XCTAssertTrue(behind.today.headline.lowercased().contains("behind"))
+    }
+
+    /// Every line, in every state, must leave the method to context.
+    func testNoLineEverPrescribesAnEarlierBedtime() {
+        let states = [
+            summary(debt: 0),
+            summary(debt: 95),
+            summary(debt: 260),
+            summary(needIsLearned: false),
+            summary(bodySignals: "Resting heart rate has been higher than usual.")
+        ]
+        for state in states {
+            for line in state.lines {
+                let text = (line.headline + " " + (line.detail ?? "")).lowercased()
+                XCTAssertFalse(text.contains("earlier night"), "prescribed in \(line.label)")
+                XCTAssertFalse(text.contains("lie-in"), "prescribed in \(line.label)")
+            }
+        }
+    }
 }

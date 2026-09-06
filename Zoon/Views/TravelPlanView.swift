@@ -1,7 +1,12 @@
 import SwiftUI
 
-/// Travel Mode: a schedule for moving the measured body clock across time
-/// zones.
+/// Travel Sleep Guidance: a schedule for moving the measured body clock
+/// across time zones.
+///
+/// Named guidance rather than a mode, deliberately. The plan is two rules of
+/// thumb and the arithmetic of two time zones; "mode" would imply Zoon
+/// switches into a travel-specific understanding of the person, and it does
+/// not.
 ///
 /// Reached from Body Clock rather than from the tab bar, on purpose. The plan
 /// is expressed entirely in terms of the clock that screen draws -- it is
@@ -66,7 +71,13 @@ struct TravelPlanView: View {
                 departure = trip.departure; arrival = trip.arrival
             }
         }
-        .navigationTitle("Travel")
+        // "Travel Sleep Guidance", not "Travel Mode". The V10 spec asks for
+        // the honest name until the model is phase-aware, and it is right:
+        // the plan is a schedule built from two rules of thumb and the
+        // arithmetic of two time zones. "Mode" implies the app switches into
+        // a different, travel-specific understanding of the person. It does
+        // not -- it gives guidance, from the same body clock as always.
+        .navigationTitle("Travel Sleep Guidance")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -187,7 +198,7 @@ struct TravelPlanView: View {
     }
 }
 
-#Preview("Travel") {
+#Preview("Travel Sleep Guidance") {
     NavigationStack { TravelPlanView() }
         .zoonPreviewEnvironment()
 }
