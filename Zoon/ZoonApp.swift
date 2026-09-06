@@ -36,6 +36,7 @@ struct ZoonApp: App {
             do {
                 container = try ModelContainer(
                     for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
+                    EvidenceRevisionRecord.self,
                     configurations: fallback
                 )
             } catch {

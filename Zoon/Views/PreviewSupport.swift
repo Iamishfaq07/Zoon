@@ -17,6 +17,7 @@ enum PreviewSupport {
         do {
             return try ModelContainer(
                 for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
+                EvidenceRevisionRecord.self,
                 configurations: configuration
             )
         } catch {

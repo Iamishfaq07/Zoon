@@ -167,6 +167,14 @@ struct JournalCorrelator {
         var isSickDay: Bool { exposureState(for: .sick) == .yes }
     }
 
+    /// Bumped whenever the matching or the statistics change.
+    ///
+    /// A recorded effect is only interpretable alongside the version that
+    /// produced it -- the same reason `SleepIntelligenceScore` carries one.
+    /// `EvidenceLedger` treats a version change as a new belief even at an
+    /// identical number, because it is one.
+    static let algorithmVersion = 1
+
     struct Finding: Identifiable, Hashable {
         let tag: BehaviorTag
         let metric: Metric
