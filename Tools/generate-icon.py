@@ -28,11 +28,26 @@ which is the exact icon every sleep and meditation app on the store already
 has -- it identified the category, not the product. This one is built from
 three decisions:
 
-**The cut is offset, not centred.** A band straight through the middle leaves
-two equal halves and reads as a prohibition sign, which is a strong shape
-carrying entirely the wrong meaning. Pushed off-centre it reads as what it is:
-something passing in front of a disc. Roughly 54% of the disc survives as the
-body, 25% as the cap above the cut.
+**The cut is offset far enough to survive downsampling.** A band straight
+through the middle leaves two equal halves and reads as a prohibition sign,
+which is a strong shape carrying entirely the wrong meaning. Pushed off-centre
+it reads as what it is: something passing in front of a disc.
+
+The first version of this mark offset the cut by 0.070, leaving 54% of the
+disc as the body and 30% as the cap. That is plainly asymmetric at 1024 and
+not asymmetric enough at 29. Rendered and looked at across the sizes the
+system actually uses, the two masses converge as the image shrinks -- by the
+Settings size the cap has thinned to a sliver, the eye reads the remaining
+bar as bisecting, and the prohibition sign is back. The offset was correct in
+principle and too small in practice.
+
+At 0.130 the split is roughly 62% body to 19% cap, which stays unmistakably
+unequal at 29px. Further still (0.150 was tried) thins the cap to a paring
+that disappears at small sizes and leaves a fussy notch, so this is the far
+end of the useful range rather than a step along it.
+
+The cut is also slightly wider (0.058) so the gap itself does not close up
+under the same downsampling that was eating the cap.
 
 **The cut descends to the left, which is the direction a Z's diagonal runs.**
 The body's straight upper edge, the diagonal gap, and the cap's straight lower
@@ -98,9 +113,11 @@ R_DISC = 0.30
 ANGLE = math.radians(38)
 DIR = (-math.cos(ANGLE), math.sin(ANGLE))       # y grows downward
 NORMAL = (-DIR[1], DIR[0])
-CUT_HALF_WIDTH = 0.052
-# Off-centre on purpose -- see the module docstring.
-CUT_OFFSET = 0.070
+CUT_HALF_WIDTH = 0.058
+# Off-centre on purpose, and by this much on purpose -- see the module
+# docstring. Chosen by rendering the mark at 180, 60, 40 and 29 and looking
+# at it, not by picking a pleasing number at full size.
+CUT_OFFSET = 0.130
 # On the cut's own axis, clear of the disc.
 DOT_DISTANCE = 0.368
 DOT_RADIUS = 0.029
