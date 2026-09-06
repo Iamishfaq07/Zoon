@@ -91,7 +91,14 @@ struct MorningInThree: Sendable, Hashable {
             today = Line(
                 label: "TODAY",
                 headline: "You're about \(SleepNightFeatures.formatMinutes(debtMinutes)) behind",
-                detail: "That's against your own estimated sleep need. An earlier night tonight would help more than a lie-in tomorrow."
+                // Names the goal, not the method. "An earlier night beats a
+                // lie-in" is true of an office worker with a fixed alarm and
+                // false of a night-shift nurse, someone mid-timezone-shift,
+                // a parent whose evening is not theirs, or anyone on a
+                // recovery day. Zoon knows the shortfall; it does not know
+                // which end of the night is available, so it says what to
+                // protect and leaves how to Autopilot, which does know.
+                detail: "That's against your own estimated sleep need. Protecting enough sleep opportunity tonight is what closes it."
             )
         } else {
             today = Line(
