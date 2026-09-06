@@ -48,6 +48,7 @@ struct TodayView: View {
     /// strip and the morning brief are the explanation, and they wait until
     /// asked for -- see `MorningInThree`.
     @State private var showsExplanation = false
+    @State private var setup = PersonalSetupStore.shared
 
     var body: some View {
         NavigationStack {
@@ -71,7 +72,18 @@ struct TodayView: View {
         case .idle, .loading:
             ZoonLoadingState(title: "Reading last night…")
         case let .loaded(context), let .mock(context):
-            loadedContent(context)
+            if setup.value.scoreLight && !showsExplanation {
+                VStack(alignment: .leading, spacing: 24) {
+                    Label("Your morning", systemImage: "moon.stars.fill").font(.title2.bold())
+                    Text("\(context.night.formattedTimeAsleep) asleep").font(.largeTitle.bold())
+                    Text(context.night.date, style: .date).foregroundStyle(.secondary)
+                    Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
+                        .font(.callout).foregroundStyle(.secondary)
+                    NavigationLink("Prepare for tonight") { TonightRoutineView() }.buttonStyle(.borderedProminent)
+                    NavigationLink("Morning check-in") { JournalView() }
+                    Button("Show scores and details") { showsExplanation = true }
+                }.padding(.vertical)
+            } else { loadedContent(context) }
         case let .empty(reason):
             emptyState(reason)
         case let .failed(message):
@@ -108,6 +120,9 @@ struct TodayView: View {
 
     private func loadedContent(_ context: DayContext) -> some View {
         VStack(alignment: .leading, spacing: 28) {
+            NavigationLink { TonightRoutineView() } label: {
+                Label("Prepare for tonight", systemImage: "moon.stars.fill")
+            }.buttonStyle(.bordered)
             if coordinator.recentNights.count <= 1 {
                 FirstNightCard(night: context.night).entrance(0)
             } else {
@@ -213,10 +228,10 @@ struct TodayView: View {
                 // Confidence and coverage are method, not answer. They stay,
                 // because a score without them is a stronger claim than the
                 // data supports -- but they belong with the explanation.
-                if showsExplanation {
+                Group {
                     Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
                         .font(Theme.evidence)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
             .entrance(2)

@@ -159,6 +159,10 @@ final class SleepDataCoordinator {
 
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
+    func nightsForRepair() -> [SleepNightFeatures] { store.historicalFeatures(goalMinutes: preferences.sleepGoalMinutes, manualNaps: naps.naps) }
+    private func applyLocalRepairs() {
+        store.excludedNightKeys = Set(PersonalSetupStore.shared.value.repairs.filter(\.excluded).map(\.nightKey))
+    }
     func evidenceHistoryForExport() -> [EvidenceLedger.Revision] { store.evidenceHistory() }
     let journal: JournalStore
     /// Durable per-behaviour answers. Injected alongside `journal` because
@@ -444,6 +448,7 @@ final class SleepDataCoordinator {
     }
 
     private func performRefresh() async {
+        applyLocalRepairs()
         #if DEBUG
         let startedAt = Date.now
         defer { syncMetrics.lastRefreshSeconds = Date.now.timeIntervalSince(startedAt) }
@@ -769,6 +774,7 @@ final class SleepDataCoordinator {
     /// Reads the newest stored night back out, derives everything, updates state
     /// and hands a snapshot to the widget.
     private func publishLatest() async {
+        applyLocalRepairs()
         guard !isErasing else { return }
         let goal = preferences.sleepGoalMinutes
 
@@ -798,7 +804,7 @@ final class SleepDataCoordinator {
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
         let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
-            .filter { $0.date < night.date }
+            .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) }
 
         let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
         // True RHR first (see SleepNightFeatures.restingHeartRate), falling
@@ -846,7 +852,7 @@ final class SleepDataCoordinator {
 
         store.attach(context.insight, to: record)
         state = .loaded(context)
-        recentNights = history + [night]
+        recentNights = (history + [night]).filter { !store.excludedNightKeys.contains($0.nightKey) }
         recordCurrentBeliefs()
         rebuildRecoveryHistory(goal: goal)
         publishSnapshot(context, goal: goal)
@@ -1106,6 +1112,7 @@ final class SleepDataCoordinator {
             snapshot.nextBadgeProgress = next.progress
         }
 
+        snapshot.scoreLightMode = PersonalSetupStore.shared.value.scoreLight
         SnapshotStore.write(snapshot)
         WidgetCenter.shared.reloadAllTimelines()
         // Same payload to the wrist. Cheap to call every refresh: the framework
@@ -1316,6 +1323,10 @@ final class SleepDataCoordinator {
         let restoredSnore = SnoreStore().importSummaries(archive.snoreSummaries ?? [])
         let restoredEpisodes = store.importEpisodes(archive.episodes ?? [])
         store.importEvidenceHistory(archive.evidenceHistory ?? [])
+        if var setup = archive.personalSetup, setup.isValid {
+            setup.session = nil
+            PersonalSetupStore.shared.value = setup
+        }
         let restoredExperiments = experiments.importOutcomes(archive.experiments ?? [])
         let restoredSoundEvents = SoundEventStore().importEvents(archive.soundEvents ?? [])
         // A V3 archive has no observations. They import as nothing rather
@@ -1424,6 +1435,9 @@ final class SleepDataCoordinator {
         // Drain the in-flight query before clearing stores; it cannot repopulate
         // erased rows after this method returns.
         await refreshTask?.value
+        TonightRoutineController.shared.stop()
+        PersonalSetupStore.shared.clearAll()
+        store.excludedNightKeys = []
         let alarmDeleted = WakeAlarm().cancel()
         ScheduleStateStore().clearAll()
         let nightsDeleted = store.deleteAll()

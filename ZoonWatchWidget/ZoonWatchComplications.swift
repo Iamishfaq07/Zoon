@@ -159,6 +159,9 @@ struct SleepIntelligenceComplicationView: View {
     private var band: String { entry.snapshot.flagshipBand }
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryInline:
             Text("Sleep \(percent)")
@@ -191,6 +194,7 @@ struct SleepIntelligenceComplicationView: View {
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
+        }
         }
     }
 }
@@ -233,6 +237,9 @@ struct BodySignalsComplicationView: View {
     private var summary: String { isNormal ? "Typical" : entry.snapshot.bodySignalsLabel }
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryInline:
             Text("Signals \(summary)")
@@ -262,6 +269,7 @@ struct BodySignalsComplicationView: View {
                     .font(.system(size: 11, weight: .semibold))
             }
             .privacySensitive()
+        }
         }
     }
 }
@@ -308,6 +316,9 @@ struct RecoveryComplicationView: View {
     private var canState: Bool { entry.snapshot.canStateRecovery }
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryInline:
             // Inline is a single line of system-styled text; no layout of our
@@ -359,6 +370,7 @@ struct RecoveryComplicationView: View {
                 .foregroundStyle(.secondary)
             }
         }
+        }
     }
 }
 
@@ -382,6 +394,9 @@ struct SleepBankComplicationView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryInline:
             Text("Slept \(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))")
@@ -417,6 +432,7 @@ struct SleepBankComplicationView: View {
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
+        }
         }
     }
 }
@@ -458,6 +474,9 @@ struct TonightComplicationView: View {
     private var hasPlan: Bool { !entry.snapshot.tonightTargetLabel.isEmpty }
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryInline:
             Text(hasPlan ? "Bed \(entry.snapshot.tonightTargetLabel)" : "No target yet")
@@ -493,6 +512,7 @@ struct TonightComplicationView: View {
                 }
             }
         }
+        }
     }
 }
 
@@ -518,6 +538,9 @@ struct BadgeComplicationView: View {
     private var hasBadge: Bool { !entry.snapshot.badgeTitle.isEmpty }
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryInline:
             Text("\(entry.snapshot.badgesUnlocked) badges")
@@ -549,6 +572,7 @@ struct BadgeComplicationView: View {
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
+        }
         }
     }
 }

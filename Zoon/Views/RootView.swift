@@ -20,6 +20,7 @@ struct RootView: View {
     /// Owned here rather than injected: this is the only place that re-arms
     /// the wake schedule, and `WakeAlarm` holds no state worth sharing --
     /// AlarmKit itself is the store of record for what's scheduled.
+    @State private var setup = PersonalSetupStore.shared
     @State private var wakeAlarm = WakeAlarm()
     /// What Zoon last actually scheduled. Without this, reconciliation
     /// has nothing to compare against and cannot tell "nothing is
@@ -87,6 +88,11 @@ struct RootView: View {
             await coordinator.start()
             await refreshReminders()
         }
+        .onChange(of: setup.value.plans) { _, _ in Task { await refreshReminders() } }
+        .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
+        .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
+        .onChange(of: preferences.smartWakeEnabled) { _, _ in Task { await refreshReminders() } }
+        .onChange(of: preferences.wakeAlarmEnabled) { _, _ in Task { await refreshReminders() } }
         .onAppear {
             // A launch argument is consumed once, on appear. It is not routed
             // through DeepLink's shared storage, which is for cross-process
@@ -155,6 +161,7 @@ struct RootView: View {
     /// 3. Nothing recorded what was scheduled, so Settings could only echo
     ///    the toggle back rather than say whether anything was armed.
     private func refreshReminders() async {
+        guard preferences.hasCompletedOnboarding else { return }
         await reminders.refreshAuthorization()
         let notificationsPermitted = reminders.authorization == .authorized
             || reminders.authorization == .provisional
@@ -170,7 +177,7 @@ struct RootView: View {
             .bedtime,
             wanted: bedtimeWanted,
             permitted: notificationsPermitted,
-            target: bedtimeWanted ? context?.targetBedtime() : nil,
+            target: bedtimeWanted ? (setup.value.nextWindow()?.start ?? context?.targetBedtime()) : nil,
             schedule: { await reminders.schedule(bedtime: $0) },
             cancel: { reminders.cancel() }
         )
@@ -179,7 +186,7 @@ struct RootView: View {
         // body-clock data as the bedtime nudge, but is its own toggle —
         // someone might want the bedtime nudge without a second alarm
         // layered on top of the one they already use.
-        let wakeTarget = context?.bodyClock?.window(for: .now)?.end
+        let wakeTarget = setup.value.nextWindow()?.end ?? context?.bodyClock?.window(for: .now)?.end
         let wakeWindowWanted = preferences.smartWakeEnabled
         await reconcile(
             .wakeWindow,

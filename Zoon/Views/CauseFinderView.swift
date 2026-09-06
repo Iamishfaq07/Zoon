@@ -338,6 +338,22 @@ private struct GuidedExperimentCard: View {
                 )
             }
 
+            DisclosureGroup("Logging plan and night coverage") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Answer Yes or No for \(tag.label.lowercased()) each day. Unanswered nights cannot count as a comparison. Log travel and illness so Zoon can match similar context.")
+                    Text("This is a personal association test. An inconclusive result means the data did not separate the possibilities.")
+                        .foregroundStyle(.secondary)
+                    ForEach(observations.filter { $0.date >= (startDate ?? .distantPast) }.sorted { $0.date > $1.date }, id: \.date) { observation in
+                        VStack(alignment: .leading) {
+                            Text(observation.date, style: .date)
+                            Text(observation.exposureState(for: tag) == .unknown ? "Not comparable: no explicit answer" : primaryMetric.value(from: observation) == nil ? "Not comparable: missing outcome" : "Answer and outcome recorded; matching still depends on context")
+                                .font(.caption).foregroundStyle(.secondary)
+                            if observation.isTravelDay { Text("Travel context").font(.caption) }
+                        }
+                    }
+                }.font(.callout)
+            }
+
             switch status {
             case .learning(let learning):
                 Text("Needs about \(learning.remainingNights.pluralized("more comparable night")) before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")

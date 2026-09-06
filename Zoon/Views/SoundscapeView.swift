@@ -15,6 +15,8 @@ struct SoundscapeView: View {
                     Text(message).font(.callout).accessibilityIdentifier("audioInterruption")
                 }
                 nowPlaying
+                NavigationLink("Mix and save scenes") { AudioStudioView() }
+                    .buttonStyle(.bordered)
                 grid
                 timerCard
                 explanation

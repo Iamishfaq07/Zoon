@@ -54,6 +54,8 @@ struct HypnogramV4: View {
         }
     }
 
+    @State private var narrator = OnDeviceNarrator()
+    @State private var replayHaptics = false
     @State private var overlays: Set<Overlay> = []
     @State private var scrubFraction: CGFloat?
     /// The window currently shown; `nil` means the whole night.
@@ -101,6 +103,26 @@ struct HypnogramV4: View {
             chart
             replayCaption
             controls
+            DisclosureGroup("Read or step through the night") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle("Event haptics", isOn: $replayHaptics)
+                    HStack {
+                        Button("Previous event") { selectMoment(max(0, (steppedMoment ?? 1) - 1)) }
+                        Spacer()
+                        Button("Next event") { selectMoment(min(moments.count - 1, (steppedMoment ?? -1) + 1)) }
+                    }.disabled(moments.isEmpty)
+                    Button("Read night summary aloud") {
+                        narrator.say(moments.map { "\($0.date.formatted(date: .omitted, time: .shortened)): \($0.caption)." }.joined(separator: " "))
+                    }
+                    Button("Stop narration") { narrator.stop() }
+                    ForEach(Array(moments.enumerated()), id: \.element.id) { index, moment in
+                        Button { selectMoment(index) } label: {
+                            Text("\(moment.date.formatted(date: .omitted, time: .shortened)) · \(moment.caption)")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }.padding(.vertical, 8)
+            }
             if !awakenings.isEmpty {
                 awakeningRow
             }
@@ -110,7 +132,7 @@ struct HypnogramV4: View {
         // fifteen minutes of it, and the moments it would narrate are no
         // longer the moments on screen.
         .onChange(of: zoom) { _, _ in stopReplay() }
-        .onDisappear { stopReplay() }
+        .onDisappear { stopReplay(); narrator.stop() }
     }
 
     // MARK: - Readout
@@ -390,12 +412,20 @@ struct HypnogramV4: View {
     /// becomes a dead button.
     private func stepReplay() {
         guard !moments.isEmpty else { return }
-        Haptics.select()
+        if replayHaptics { Haptics.select() }
         let next = steppedMoment.map { $0 + 1 } ?? 0
         let index = next < moments.count ? next : 0
         steppedMoment = index
         guard let fraction = SleepReplay.fraction(of: moments[index].date, in: shownSegments) else { return }
         scrubFraction = CGFloat(fraction)
+    }
+
+    private func selectMoment(_ index: Int) {
+        guard moments.indices.contains(index) else { return }
+        replay?.cancel(); isReplaying = false
+        steppedMoment = index
+        if replayHaptics { Haptics.select() }
+        if let fraction = SleepReplay.fraction(of: moments[index].date, in: shownSegments) { scrubFraction = CGFloat(fraction) }
     }
 
     // MARK: - Controls

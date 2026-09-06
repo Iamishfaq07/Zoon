@@ -86,6 +86,9 @@ final class SoundscapeEngine {
 
     // MARK: - Audio graph
 
+    private var scenePlayers: [SoundscapeEngine] = []
+    private var sceneLevels: [PersonalSetup.Layer] = []
+    private var playbackGeneration = UUID()
     private let audioOwner = UUID()
     private(set) var deadline: Date?
     private(set) var interruptionMessage: String?
@@ -104,8 +107,12 @@ final class SoundscapeEngine {
 
     // MARK: - Control
 
-    func play(_ sound: Sound) {
-        if playing == sound { stop(); return }
+    func play(_ sound: Sound, toggle: Bool = true) {
+        if playing == sound && toggle { stop(); return }
+        for layer in scenePlayers { layer.stop() }
+        scenePlayers = []
+        sceneLevels = []
+        playbackGeneration = UUID()
         let oldEngine = engine
         let oldPlayer = player
         crossfadeTask?.cancel()
@@ -163,7 +170,36 @@ final class SoundscapeEngine {
         }
     }
 
+    func playScene(_ scene: PersonalSetup.Scene) {
+        guard let first = scene.layers.first,
+              let sound = Sound(rawValue: first.sound), (1...3).contains(scene.layers.count) else { return }
+        play(sound, toggle: false)
+        guard isPlaying else { return }
+        sceneLevels = scene.layers
+        volume = Float(first.level) / 3
+        for layer in scene.layers.dropFirst() {
+            guard let sound = Sound(rawValue: layer.sound) else { continue }
+            let child = SoundscapeEngine()
+            child.volume = Float(layer.level) / 3
+            child.play(sound)
+            scenePlayers.append(child)
+        }
+    }
+
+    func updateSceneLevels(_ layers: [PersonalSetup.Layer]) {
+        guard isPlaying, layers.count == sceneLevels.count,
+              zip(layers, sceneLevels).allSatisfy({ $0.0.sound == $0.1.sound }) else { return }
+        sceneLevels = layers
+        volume = Float(layers[0].level) / 3
+        for (index, player) in scenePlayers.enumerated() {
+            player.volume = Float(layers[index + 1].level) / 3 * fadeMultiplier
+        }
+    }
+
     func stop() {
+        for layer in scenePlayers { layer.stop() }
+        scenePlayers = []
+        sceneLevels = []
         crossfadeTask?.cancel()
         crossfadeTask = nil
         for (engine, player) in retiringPlayers { player.stop(); engine.stop() }
@@ -222,6 +258,9 @@ final class SoundscapeEngine {
         if remainingSeconds <= fadeWindow {
             fadeMultiplier = Float(remainingSeconds) / Float(fadeWindow)
             player?.volume = volume * fadeMultiplier
+            for (index, player) in scenePlayers.enumerated() {
+                player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier
+            }
         }
     }
 
@@ -236,11 +275,12 @@ final class SoundscapeEngine {
     private func scheduleBuffer(_ sound: Sound, format: AVAudioFormat) {
         guard let player, let buffer = makeBuffer(sound, format: format) else { return }
 
+        let generation = playbackGeneration
         player.scheduleBuffer(buffer) { [weak self] in
             // Completion fires on an audio thread; hop back before touching
             // any of this actor's state.
             Task { @MainActor [weak self] in
-                guard let self, self.playing == sound, self.player === player else { return }
+                guard let self, self.playing == sound, self.playbackGeneration == generation else { return }
                 self.scheduleBuffer(sound, format: format)
             }
         }

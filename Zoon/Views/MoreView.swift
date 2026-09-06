@@ -13,6 +13,7 @@ struct MoreView: View {
     /// intent can push onto it before the sheet even opens.
     @Binding var path: NavigationPath
 
+    @State private var setup = PersonalSetupStore.shared
     @State private var exportURL: URL?
     @State private var isImporting = false
     @State private var importMessage: String?
@@ -21,8 +22,11 @@ struct MoreView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
-                    StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
-                        .entrance(0)
+                    if !setup.value.scoreLight {
+                        StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes).entrance(0)
+                    }
+                    navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
+                    navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
 
                     navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
                         AchievementsView()
@@ -188,7 +192,7 @@ struct MoreView: View {
             let url: URL
             if json {
                 let archive = DataExporter.archive(
-                    nights: coordinator.recentNights,
+                    nights: coordinator.nightsForRepair(),
                     journal: coordinator.journal.allEntries(),
                     naps: naps.naps,
                     goalMinutes: preferences.sleepGoalMinutes,
@@ -199,7 +203,8 @@ struct MoreView: View {
                     experiments: coordinator.experiments.outcomes,
                     soundEvents: SoundEventStore().recentEvents,
                     behaviorObservations: coordinator.behaviorObservationsForExport(),
-                    evidenceHistory: coordinator.evidenceHistoryForExport()
+                    evidenceHistory: coordinator.evidenceHistoryForExport(),
+                    personalSetup: setup.value
                 )
                 url = try DataExporter.writeTemporary(
                     try DataExporter.jsonData(archive),

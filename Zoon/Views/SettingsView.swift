@@ -14,6 +14,7 @@ struct SettingsView: View {
     /// `alarmStatusDescription` below) is mirrored through `UserDefaults`,
     /// so a second instance here reads the same answer `RootView`'s last
     /// successful schedule wrote rather than disagreeing with it.
+    @State private var setup = PersonalSetupStore.shared
     @State private var wakeAlarm = WakeAlarm()
 
     @State private var showingDeleteConfirmation = false
@@ -23,6 +24,14 @@ struct SettingsView: View {
         // Bindings are built by hand rather than with @Bindable because each
         // setter has to trigger a recompute, not just store a value.
         Form {
+            Section("Your experience") {
+                Toggle("Score-light mode", isOn: $setup.value.scoreLight)
+                    .accessibilityIdentifier("scoreLightToggle")
+                Text("Show sleep and timing first. Scores remain available when you choose to open details.").font(.caption)
+                NavigationLink("Tonight routine") { TonightRoutineView() }
+                NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
+                NavigationLink("Repair sleep data") { DataRepairView() }
+            }
             goalSection
             appearanceSection
             remindersSection

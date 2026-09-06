@@ -22,8 +22,8 @@ struct WatchRootView: View {
     var body: some View {
         TabView {
             if let snapshot = link.snapshot {
-                LastNightPage(snapshot: snapshot)
-                TodayPage(snapshot: snapshot)
+                if snapshot.scoreLightMode { ScoreLightSnapshotView(snapshot: snapshot) }
+                else { LastNightPage(snapshot: snapshot); TodayPage(snapshot: snapshot) }
                 // Tonight, not last night -- the only page here about a
                 // night that has not happened yet, which is why it sits
                 // after the two that grade the one that has. Gated on the
@@ -35,7 +35,7 @@ struct WatchRootView: View {
                     TonightPage(snapshot: snapshot)
                 }
                 LogPage()
-                MorePage(snapshot: snapshot)
+                if !snapshot.scoreLightMode { MorePage(snapshot: snapshot) }
             } else {
                 WaitingPage(isActivated: link.isActivated)
             }

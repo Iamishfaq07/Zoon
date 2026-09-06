@@ -11,6 +11,7 @@ import os
 @MainActor
 final class SleepHistoryStore {
 
+    var excludedNightKeys: Set<String> = []
     private let context: ModelContext
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "HistoryStore")
 
@@ -153,7 +154,7 @@ final class SleepHistoryStore {
                 )
             ))
 
-            priorNewestFirst.insert(record, at: 0)
+            if !excludedNightKeys.contains(record.features().nightKey) { priorNewestFirst.insert(record, at: 0) }
             if priorNewestFirst.count > 60 {
                 priorNewestFirst.removeLast(priorNewestFirst.count - 60)
             }
@@ -526,7 +527,7 @@ final class SleepHistoryStore {
     ///   - goalMinutes: the user's nightly sleep goal, for sleep debt.
     func baseline(for date: Date, goalMinutes: Double, manualNaps: [NapStore.Nap] = []) -> RollingBaseline {
         let history = allNights()
-        let priorNights = history.filter { $0.date < date }
+        let priorNights = history.filter { $0.date < date && !excludedNightKeys.contains($0.features().nightKey) }
 
         return makeBaseline(
             priorNightsNewestFirst: priorNights,

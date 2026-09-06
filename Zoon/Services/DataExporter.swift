@@ -62,6 +62,7 @@ enum DataExporter {
         /// reconstruction from the positive tags in `journal`.
         let behaviorObservations: [BehaviorObservationRecordExport]?
         var evidenceHistory: [EvidenceLedger.Revision]? = nil
+        var personalSetup: PersonalSetup? = nil
 
         struct EpisodeRecord: Codable {
             let id: String
@@ -191,7 +192,8 @@ enum DataExporter {
         experiments: [SleepExperimentStore.Outcome] = [],
         soundEvents: [SoundEvent] = [],
         behaviorObservations: [Archive.BehaviorObservationRecordExport] = [],
-        evidenceHistory: [EvidenceLedger.Revision] = []
+        evidenceHistory: [EvidenceLedger.Revision] = [],
+        personalSetup: PersonalSetup? = nil
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -240,7 +242,8 @@ enum DataExporter {
             experiments: experiments,
             soundEvents: soundEvents,
             behaviorObservations: behaviorObservations,
-            evidenceHistory: evidenceHistory
+            evidenceHistory: evidenceHistory,
+            personalSetup: personalSetup
         )
     }
 
@@ -363,6 +366,7 @@ enum DataExporter {
         guard archive.formatVersion > 0, archive.goalMinutes.isFinite,
               archive.nights.allSatisfy({ $0.bedtime < $0.wakeTime && $0.timeAsleepMinutes.isFinite && $0.timeAsleepMinutes >= 0 }),
               archive.naps.allSatisfy({ $0.start < $0.end }) else { throw ImportError.unreadable }
+        guard archive.personalSetup?.isValid != false else { throw ImportError.unreadable }
         return archive
     }
 }
