@@ -39,10 +39,10 @@ struct ZoonWhatIfLab: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// Levers a person can actually move. HRV and resting heart rate are
-    /// outcomes of the night, not choices about it, and sleep debt is a sum
-    /// of durations already offered.
-    private static let levers: [TrendEngine.Metric] = [.duration, .bedtime, .efficiency]
+    /// Levers a person can actually move -- see `ZoonTwin.levers`, which is
+    /// where this list now lives so the evidence ledger records projections
+    /// over the same set this screen offers.
+    private static let levers: [TrendEngine.Metric] = ZoonTwin.levers
 
     private var projections: [ZoonTwin.Projection] {
         Array(ZoonTwin.projectAll(nights: nights, lever: lever, direction: direction).prefix(3))

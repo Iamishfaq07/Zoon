@@ -165,6 +165,13 @@ TESTS_EXTRA_APP_FILES = [
     # SleepExperimentStore.Outcome above -- the pre-specified-metric and
     # adherence-tracking logic GuidedExperimentTests exists to pin down.
     "Zoon/Insights/GuidedExperiment.swift",
+    # Foundation only -- turns a finished SleepExperimentStore.Outcome into a
+    # ledger revision. App-side rather than in Shared/EvidenceClaims.swift for
+    # the plain reason that Outcome is app-side and Shared/ compiles into the
+    # widget and watch targets too. EvidenceClaimsTests asserts on the two
+    # guards it applies (adherence, then effect size), which are the whole
+    # difference between recording a result and recording a coincidence.
+    "Zoon/Insights/ExperimentEvidence.swift",
     # Foundation only -- the preference scalars DataExporter.Archive
     # snapshots and restores, needed to compile the Archive type below.
     "Zoon/Models/UserPreferences.swift",

@@ -35,13 +35,27 @@ enum EvidenceLedger {
     enum Status: String, Codable, CaseIterable, Hashable, Sendable {
         /// Seen, not yet enough matched nights to compare.
         case learning
+        /// Something moved in the person's own nights -- a level shifted, one
+        /// group of nights sat apart from another -- and that is all that has
+        /// been shown.
+        ///
+        /// Weaker than `associated` on purpose, and the gap is the whole
+        /// reason this case exists. An association comes from matched pairs,
+        /// which hold the obvious confounders still. An observation is a
+        /// contrast between two sets of real nights that differ in every
+        /// other way too, so it says a difference is there without saying
+        /// anything about what produced it. Recording both under one label
+        /// would let the weaker of the two borrow the stronger one's standing.
+        case observed
         /// A matched-pair association exists.
         case associated
         /// A pre-specified experiment is running.
         case testing
-        /// The experiment agreed with the association.
+        /// The experiment's hypothesis held up -- and, where an association
+        /// predicted it, agreed with that too.
         case supported
-        /// The experiment disagreed with it.
+        /// The experiment ran and the hypothesis did not hold up. Distinct
+        /// from `inconclusive`: this is an answer, not the absence of one.
         case notSupported
         /// Enough data to look, not enough signal to call it either way.
         case inconclusive
@@ -51,6 +65,7 @@ enum EvidenceLedger {
         var label: String {
             switch self {
             case .learning: "Learning"
+            case .observed: "Observed, not tested"
             case .associated: "Association detected"
             case .testing: "Experiment started"
             case .supported: "Supported"

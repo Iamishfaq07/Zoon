@@ -25,8 +25,13 @@ struct PatternsView: View {
     /// the outcome least redundant with the axes themselves. Scoring
     /// duration against a duration axis would report that longer nights are
     /// longer.
-    private let mapAxes = (x: TrendEngine.Metric.bedtime, y: TrendEngine.Metric.duration)
-    private let mapOutcome = TrendEngine.Metric.hrv
+    /// The one configuration the app draws and the ledger records -- see
+    /// `SleepMap.defaultConfiguration`, which is where it now lives so the
+    /// two cannot drift apart.
+    private let mapAxes = (
+        x: SleepMap.defaultConfiguration.x, y: SleepMap.defaultConfiguration.y
+    )
+    private let mapOutcome = SleepMap.defaultConfiguration.outcome
 
     var body: some View {
         ScrollView {

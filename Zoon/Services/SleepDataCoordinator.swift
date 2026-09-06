@@ -1491,14 +1491,55 @@ final class SleepDataCoordinator {
             && temporaryExportsDeleted
     }
 
-    /// Offers today's findings to the ledger. Most of the time nothing is
-    /// written, which is the intended behaviour.
+    /// Offers everything Zoon currently believes to the ledger. Most of the
+    /// time nothing is written, which is the intended behaviour.
+    ///
+    /// Five engines, four kinds of evidence, one append-only history. What
+    /// each of them contributes -- and, for the twin and the map, what is
+    /// deliberately left out -- is argued in `Shared/EvidenceClaims.swift`;
+    /// this only assembles the inputs.
     private func recordCurrentBeliefs() {
+        recordAssociations()
+        recordExperiments()
+
+        // Change points, twin splits and the sleep map are pure functions of
+        // `recentNights` and nothing else. With the same nights they cannot
+        // produce a revision the ledger would keep, so running them again is
+        // work with a guaranteed empty result -- and it is not cheap work:
+        // the map bootstraps an interval per region, and the twin scans every
+        // outcome for six lever/direction pairs. `hasMateriallyChanged`
+        // suppresses the *write*; this suppresses the computation, on a path
+        // that runs on the main actor at the end of every refresh.
+        //
+        // Keyed on the night set rather than its count: excluding one night
+        // and gaining another leaves the count identical and the inputs
+        // different.
+        let nights = recentNights.map(\.nightKey).sorted()
+        var hasher = Hasher()
+        hasher.combine(nights)
+        let fingerprint = hasher.finalize()
+        guard fingerprint != lastRecordedNightSet else { return }
+        lastRecordedNightSet = fingerprint
+
+        recordChangePoints()
+        recordObservedContrasts()
+    }
+
+    /// Hash of the night set the observation-tier claims were last computed
+    /// over.
+    ///
+    /// In memory only. A cached decision about work that produces no output
+    /// is not state worth persisting: a fresh launch recomputes once, writes
+    /// nothing because nothing materially changed, and cannot be wrong the
+    /// way a stale on-disk fingerprint could be.
+    private var lastRecordedNightSet: Int?
+
+    private func recordAssociations() {
         let findings = JournalCorrelator().topFindingPerTag(from: journalObservations())
         for finding in findings {
             store.recordBelief(
                 EvidenceLedger.Revision(
-                    claimID: "tag:\(finding.tag.rawValue)",
+                    claimID: EvidenceLedger.Claim.behaviour(tag: finding.tag.rawValue).id,
                     recordedAt: .now,
                     status: status(for: finding),
                     headline: finding.plainSentence,
@@ -1514,6 +1555,55 @@ final class SleepDataCoordinator {
                     provenance: "JournalCorrelator"
                 )
             )
+        }
+    }
+
+    /// The strongest claims the app can make, and the only ones the person
+    /// declared in advance.
+    private func recordExperiments() {
+        for outcome in experiments.outcomes {
+            store.recordBelief(EvidenceLedger.revision(for: outcome))
+        }
+    }
+
+    /// One claim per metric, keyed by the metric rather than by the shift's
+    /// date, so a re-dated shift revises the belief it already holds instead
+    /// of starting a second history beside it.
+    private func recordChangePoints() {
+        for result in ChangePointDetector.detectAll(nights: recentNights) {
+            store.recordBelief(EvidenceLedger.revision(for: result))
+        }
+    }
+
+    /// Contrasts between groups of the person's own nights: weaker than a
+    /// matched-pair association, and recorded as such.
+    ///
+    /// The configurations are fixed -- `ZoonTwin.levers` in both directions,
+    /// and the single map `SleepMap.defaultConfiguration` names -- not
+    /// whatever a screen last had selected. `EvidenceLedger.revision(for:)`
+    /// drops any projection below `twinMinimumConfidence` on top of that, so
+    /// most of these produce nothing on most days.
+    private func recordObservedContrasts() {
+        for lever in ZoonTwin.levers {
+            for direction in [ZoonTwin.Direction.more, .less] {
+                let projections = ZoonTwin.projectAll(
+                    nights: recentNights, lever: lever, direction: direction
+                )
+                for projection in projections {
+                    guard let revision = EvidenceLedger.revision(for: projection) else { continue }
+                    store.recordBelief(revision)
+                }
+            }
+        }
+
+        let configuration = SleepMap.defaultConfiguration
+        if let map = SleepMap.build(
+            nights: recentNights,
+            xAxis: configuration.x,
+            yAxis: configuration.y,
+            outcome: configuration.outcome
+        ), let revision = EvidenceLedger.revision(for: map) {
+            store.recordBelief(revision)
         }
     }
 

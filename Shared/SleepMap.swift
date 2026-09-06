@@ -70,6 +70,23 @@ enum SleepMap {
     // MARK: - Bands
 
     /// Which third of the person's own range a night sits in on one axis.
+    /// The map the app itself draws, and the only configuration the evidence
+    /// ledger records.
+    ///
+    /// Bedtime against duration, scored on HRV: the two axes are the two
+    /// things a person decides about a night, and the outcome is the one that
+    /// is measured rather than chosen. A map scored on duration with duration
+    /// as an axis would report that longer nights are longer.
+    ///
+    /// Fixed here rather than in the view because `SleepMap.build` will
+    /// happily bin any three metrics, and a ledger that recorded whichever
+    /// three a screen last had selected would be recording the screen, not a
+    /// belief. Anything else remains available to build ad hoc; it is simply
+    /// not written down.
+    static let defaultConfiguration: (
+        x: TrendEngine.Metric, y: TrendEngine.Metric, outcome: TrendEngine.Metric
+    ) = (x: .bedtime, y: .duration, outcome: .hrv)
+
     enum Band: Int, CaseIterable, Hashable, Sendable {
         case low, middle, high
 
