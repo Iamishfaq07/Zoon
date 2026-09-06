@@ -40,6 +40,7 @@ struct BodyClockView: View {
                     ring(bodyClock: bodyClock, night: night)
                     agendaCard(bodyClock: bodyClock, night: night)
                     stabilityCard(bodyClock)
+                    travelLink
                 } else {
                     ContentUnavailableView(
                         "Building your body clock",
@@ -66,6 +67,44 @@ struct BodyClockView: View {
             }
         }
         .sheet(isPresented: $showingMethod) { methodSheet }
+    }
+
+    // MARK: - Travel
+
+    /// Travel Mode lives behind this screen rather than in the tab bar.
+    ///
+    /// The plan is expressed entirely in the numbers this screen draws --
+    /// your onset, your wake, the morning window the Light card uses. Giving
+    /// it its own tab would present it as a second opinion about the same
+    /// body clock instead of that clock under travel conditions.
+    private var travelLink: some View {
+        NavigationLink {
+            TravelPlanView()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "airplane")
+                    .font(Theme.text(14, weight: .semibold))
+                    .foregroundStyle(Theme.Family.circadian)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Crossing time zones")
+                        .font(Theme.label(14, weight: .semibold))
+                    Text("A schedule for shifting this clock, built around where it sits now.")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Build a travel plan for crossing time zones")
     }
 
     // MARK: - Ring
