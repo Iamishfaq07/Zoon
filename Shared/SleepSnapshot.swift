@@ -74,6 +74,16 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// failing to render.
     var bodySignalsLabel: String = "Nothing unusual"
 
+    /// `MetricConfidence.rawValue` for the recovery score, or "" for a
+    /// snapshot written before this field existed.
+    ///
+    /// The percent alone is not enough to show on a watch. `RecoveryScore`
+    /// already separates the number from how much is behind it (V9 item 4),
+    /// and a watch face reporting "Recovery 66" off four nights and a half-
+    /// covered night states that as confidently as one off a month. The
+    /// watch needs the second half of that pair to be able to decline.
+    var recoveryConfidence: String = ""
+
     /// Mirrors `UserPreferences.isShiftWorkModeEnabled` as of the last
     /// publish. The widget extension never reads `UserPreferences` itself
     /// (it's a separate process with no HealthKit pipeline -- see this
@@ -155,6 +165,24 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// or a widget can hold a snapshot written before the phone was updated,
     /// and showing the older number is better than showing nothing -- but it
     /// is the older number, not a second opinion.
+    /// Whether the recovery percent is worth showing as a number.
+    ///
+    /// `.insufficient` is the one band `RecoveryScore` itself says is not
+    /// enough to state; below it the score is arithmetic over gaps. A `.low`
+    /// reading is still shown, because a number with a visible caveat beats
+    /// a blank -- the point is to stop the watch asserting more than the
+    /// phone does, not to make it mute.
+    var canStateRecovery: Bool {
+        guard let confidence = MetricConfidence(rawValue: recoveryConfidence) else {
+            // Written before this field existed. Those snapshots came from a
+            // build that showed the number unconditionally, and hiding it
+            // retroactively would read on the wrist as lost data rather than
+            // as new honesty.
+            return true
+        }
+        return confidence > .insufficient
+    }
+
     var flagshipScore: Int {
         hasSleepIntelligence ? sleepIntelligencePercent : score
     }
@@ -234,6 +262,7 @@ extension SleepSnapshot {
         nextBadgeTitle = try container.decodeIfPresent(String.self, forKey: .nextBadgeTitle) ?? ""
         nextBadgeProgress = try container.decodeIfPresent(Double.self, forKey: .nextBadgeProgress) ?? 0
         bodySignalsLabel = try container.decodeIfPresent(String.self, forKey: .bodySignalsLabel) ?? "Nothing unusual"
+        recoveryConfidence = try container.decodeIfPresent(String.self, forKey: .recoveryConfidence) ?? ""
         isShiftWorkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isShiftWorkModeEnabled) ?? false
 
         // Tonight's plan and tomorrow's range. Missing here until now, which
