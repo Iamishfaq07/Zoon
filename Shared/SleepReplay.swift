@@ -57,6 +57,59 @@ enum SleepReplay {
     /// A caption is a claim that something happened.
     static let minimumSoundConfidence = 0.6
 
+    /// One stretch of a single stage, after micro-runs have been resolved.
+    ///
+    /// The replay's own view of the night, deliberately coarser than the
+    /// stored hypnogram. Nothing here is written back: `SleepNightFeatures`
+    /// keeps every segment the source reported, and the chart still draws
+    /// them. This is only what the *narration* is built from.
+    struct Run: Hashable, Sendable {
+        let stage: SleepStage
+        let start: Date
+        let end: Date
+
+        var minutes: Double { end.timeIntervalSince(start) / 60 }
+    }
+
+    /// Collapses the stored segments into the runs worth narrating.
+    ///
+    /// ## The bug this replaces
+    ///
+    /// Events used to be derived straight from the segments, with short runs
+    /// skipped by `continue` -- but the loop updated `previousStage` in a
+    /// `defer`, which runs on the way out of *every* iteration including the
+    /// skipped ones. So an ignored two-minute Core between two stretches of
+    /// Deep still moved `previousStage` to Core, and the second stretch then
+    /// looked like a fresh transition:
+    ///
+    ///     Deep 30m, Core 2m, Deep 25m  ->  "Deep sleep", "Deep sleep"
+    ///
+    /// The run was ignored for captioning and obeyed for state, which is the
+    /// worst of both. Deciding what counts as a run *before* deriving any
+    /// event removes the possibility rather than patching it: there is no
+    /// longer a place where a segment can be half-ignored.
+    ///
+    /// A micro-run is absorbed into the stretch it interrupted, so the two
+    /// Deep stretches above become one 57-minute run and produce one event.
+    /// A micro-run before any run at all is simply dropped -- there is
+    /// nothing for it to interrupt.
+    static func significantRuns(from segments: [StageSegment]) -> [Run] {
+        var runs: [Run] = []
+        for segment in segments.sorted(by: { $0.start < $1.start }) {
+            if let last = runs.last, last.stage == segment.stage {
+                // Continues the current run, whatever its length.
+                runs[runs.count - 1] = Run(stage: last.stage, start: last.start, end: segment.end)
+            } else if segment.minutes >= minimumRunMinutes {
+                runs.append(Run(stage: segment.stage, start: segment.start, end: segment.end))
+            } else if let last = runs.last {
+                // Too short to be its own moment, so it belongs to the run it
+                // interrupted rather than ending it.
+                runs[runs.count - 1] = Run(stage: last.stage, start: last.start, end: segment.end)
+            }
+        }
+        return runs
+    }
+
     /// Every moment worth captioning, in chronological order.
     ///
     /// - Parameters:
@@ -79,30 +132,33 @@ enum SleepReplay {
             moments.append(Moment(date: onset.start, kind: .fellAsleep, caption: "Fell asleep"))
         }
 
-        // Stage changes, skipping runs too short to mean anything and the
-        // onset run already captioned above.
-        var previousStage: SleepStage?
-        for segment in ordered {
-            defer { previousStage = segment.stage }
-            guard segment.minutes >= minimumRunMinutes else { continue }
-            guard segment.stage != previousStage else { continue }
-            guard segment.start != moments.first?.date else { continue }
+        // Stage changes, one per significant run. Runs are already free of
+        // micro-interruptions and never repeat a stage back to back, so
+        // there is no previous-stage bookkeeping here to get wrong.
+        for run in significantRuns(from: ordered) {
+            guard run.start != moments.first?.date else { continue }
 
-            switch segment.stage {
+            switch run.stage {
             case .awake:
-                moments.append(Moment(date: segment.start, kind: .awoke, caption: "Awake"))
+                moments.append(Moment(
+                    date: run.start,
+                    kind: .awoke,
+                    caption: "Awake \(Int(run.minutes.rounded()))m"
+                ))
             case .core, .deep, .rem:
                 moments.append(Moment(
-                    date: segment.start,
+                    date: run.start,
                     kind: .stageChange,
-                    caption: segment.stage.displayName
+                    caption: run.stage.displayName
                 ))
             case .inBed, .unspecified:
                 // Neither is a transition anyone can act on: `inBed` is not
                 // sleep, and `unspecified` is what a source writes when it
                 // cannot tell you the stage at all. Captioning "Asleep" in
                 // the middle of a night would imply a change that the data
-                // does not claim.
+                // does not claim. The run still separates the stretches
+                // around it -- an hour Zoon cannot read is not nothing --
+                // it just carries no caption of its own.
                 continue
             }
         }
