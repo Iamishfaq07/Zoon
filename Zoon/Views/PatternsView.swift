@@ -52,6 +52,7 @@ struct PatternsView: View {
 
                 if showsData {
                     constellationSection.entrance(1)
+                    tomorrowSection.entrance(2)
                     forecastSection.entrance(2)
                     mapSection.entrance(2)
                     twinSection.entrance(3)
@@ -204,6 +205,71 @@ struct PatternsView: View {
             }
             .glassCard()
         }
+    }
+
+    // MARK: - Tomorrow, conditioned
+
+    /// The Recent Range narrowed by what tomorrow actually looks like.
+    ///
+    /// Sits above the range rather than replacing it, and only when it has
+    /// something the range does not. When `ContextForecast` falls back --
+    /// tomorrow resembles nothing in the history -- this renders nothing at
+    /// all, because a "forecast" that is the recent range under a different
+    /// heading is the range shown twice.
+    @ViewBuilder
+    private var tomorrowSection: some View {
+        let nights = coordinator.recentNights
+        let metric = TrendEngine.Metric.duration
+        let samples = ContextForecast.samples(from: nights) { metric.value(from: $0) }
+
+        if let latest = nights.max(by: { $0.date < $1.date }),
+           let prediction = ContextForecast.predict(
+               for: .describing(latest, previous: previousNight(before: latest, in: nights)),
+               from: samples
+           ),
+           prediction.basis.isConditioned {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("Tomorrow, if it looks like tonight", "sparkles", Theme.Family.sleep)
+
+                Text(prediction.rangeLabel(format: metric.formattedMagnitude))
+                    .font(Theme.numeral(30))
+                    .monospacedDigit()
+                    .foregroundStyle(tint(for: metric))
+
+                HStack(spacing: 6) {
+                    Text(metric.label.capitalizedFirst)
+                    Text("·")
+                    Text(prediction.confidence.label)
+                }
+                .font(Theme.text(12))
+                .foregroundStyle(.secondary)
+
+                Text(prediction.sentence(format: metric.formattedMagnitude))
+                    .font(Theme.text(12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(prediction.caveat)
+                    .font(Theme.evidence)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .glassCard()
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "\(metric.label) tomorrow, \(prediction.rangeLabel(format: metric.formattedMagnitude)), "
+                + prediction.confidence.label
+            )
+        }
+    }
+
+    /// The night immediately before `night`, when there is one -- what
+    /// `ContextForecast.Context` needs and cannot work out for itself.
+    private func previousNight(
+        before night: SleepNightFeatures,
+        in nights: [SleepNightFeatures]
+    ) -> SleepNightFeatures? {
+        nights.filter { $0.date < night.date }.max { $0.date < $1.date }
     }
 
     /// Each metric keeps the hue its family owns everywhere else in the app.

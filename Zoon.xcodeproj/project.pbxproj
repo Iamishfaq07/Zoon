@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		001798C43C0085DAFBE6F750 /* WatchRelevance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 592462799D1AFA46A04010FB /* WatchRelevance.swift */; };
+		005753F9D13D0C5B208E9B83 /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		006F7BB8DBF457147EEBAE36 /* NapCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4980E3BEBDBC7753D6697D62 /* NapCoach.swift */; };
 		00CB05416D217DF8AECE330F /* DataQualityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108B0FEC8C9B59DB9355E297 /* DataQualityView.swift */; };
 		00E200CB14336925459730FF /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
@@ -162,6 +163,7 @@
 		2D20CB229F145E3CC3E9CB54 /* StrainScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */; };
 		2D7DBF7601841C720F22717F /* NightDetective.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4A8155271E6F375B5123C3 /* NightDetective.swift */; };
 		2EB77683B3C27D55FD33D0B2 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
+		2F7780524E627B0E4E3949B9 /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		2F84511FA3AF3BAA1C4DC443 /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
 		2FA404B23DBAAB638380A2C4 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
 		2FFF20E0F22093891AC50EE5 /* JournalCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3143BC9E915F4D207693A /* JournalCorrelator.swift */; };
@@ -435,6 +437,7 @@
 		98B37C347E77AA62583CDB55 /* DiagnosticLanguageGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133EB3E89E56B82FF6F25EB8 /* DiagnosticLanguageGuard.swift */; };
 		991CAAD251CDFA58A37F1186 /* StressScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BFFA2C02EE15C5E13B57E9B /* StressScore.swift */; };
 		9930E3174D8C712F674AB9A3 /* ZoonUncertaintyBand.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0691CF614257AC914455309 /* ZoonUncertaintyBand.swift */; };
+		9940452F09F743271F5F2861 /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		99EF928D29360D6BA7202393 /* LearnedSleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 127E0E0C1644DEB364D02EAC /* LearnedSleepNeed.swift */; };
 		9A824EC21CE6D64719D96B16 /* SleepStoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E98A436D538AAC795E4E7A7E /* SleepStoryView.swift */; };
 		9AA5CD9B20F3F55A2D0EBBEE /* ArticlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5B8904E22CF71043BC097B5 /* ArticlesView.swift */; };
@@ -504,6 +507,7 @@
 		B6A3993E5E7B246F6BE4D839 /* MetricTrendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55689F01138157F979C6FBC7 /* MetricTrendView.swift */; };
 		B6C879863E0654B26F78152F /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
 		B862ACC47533B1C5DCECCD35 /* Pluralization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66AB7D457143EE80D839E0D /* Pluralization.swift */; };
+		B8EF455B7121C2130B279F64 /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		B95CF23D3F31346556325772 /* StatisticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6E6954AE9E93E1873800C5 /* StatisticsTests.swift */; };
 		BA1F64F194528E2F790F643E /* BodyClockAgenda.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACECF2891CE7CA2C7990B49 /* BodyClockAgenda.swift */; };
 		BA6CB9436CCAABA2DA57A9FF /* RuleBasedInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */; };
@@ -602,6 +606,7 @@
 		DCB62802C8C4F25B07B0830A /* DataEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C458C7D6817D45BFD7B0E390 /* DataEnvironment.swift */; };
 		DCDF0C16A2F5DB8F4641BCDD /* SleepDebtCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0732A886306E06A2516CD0B9 /* SleepDebtCalculator.swift */; };
 		DD223371A0B29FBE235BBC6B /* CardiovascularAge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580579B853CCD8F36BC2CF5A /* CardiovascularAge.swift */; };
+		DD3E19CEF586A462AD026253 /* ContextForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CF3AFB3F90453076AA3237 /* ContextForecastTests.swift */; };
 		DDAD93731E30FA94B44B769F /* CaffeineCutoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521868F4960E566A4B24993B /* CaffeineCutoffTests.swift */; };
 		DE877ECB17E3E70CC0E5174C /* SnoreSignalAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF6BCFC8B0ACCBC5470DF3C4 /* SnoreSignalAnalyzerTests.swift */; };
 		DEB765085C487BBC96E3C657 /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
@@ -676,6 +681,7 @@
 		F6A2C04D8B49679EEDB51129 /* NapWake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1A84A69DF140554FD8BBC3 /* NapWake.swift */; };
 		F7D50D4A2644F88D12CE6225 /* SleepDataCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E516994F630E303DD12E36 /* SleepDataCoordinator.swift */; };
 		F80123D855A4D20A724937D3 /* EnergyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E8412807D761D3BAC2CBF0 /* EnergyForecast.swift */; };
+		F9606C4254904484491DD60F /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		F975AEF960918955595FAD4C /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		F99A72CF0ABD1AC852FC9B39 /* RecoveryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBF13117CFB2BE353EB64293 /* RecoveryDetailView.swift */; };
 		FA6D15381D82A52A648ADE24 /* TonightsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C365D992738195A18CB7033A /* TonightsData.swift */; };
@@ -860,6 +866,7 @@
 		427D7648D38B1148AC3FFCDB /* HypnogramV4.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HypnogramV4.swift"; sourceTree = "<group>"; };
 		428FBEDA15967526E0AD1710 /* NightKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightKey.swift"; sourceTree = "<group>"; };
 		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		44354442EF56D3F66F5A44C9 /* ContextForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContextForecast.swift"; sourceTree = "<group>"; };
 		445F8A134A58B330BC70BD4E /* ZoonCoverageMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonCoverageMatrix.swift"; sourceTree = "<group>"; };
 		449A6ED264EB4AB017A39AF5 /* CyclePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CyclePhase.swift"; sourceTree = "<group>"; };
 		44CDDE704425E14E8BE8AC0C /* BreathingHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingHealthView.swift"; sourceTree = "<group>"; };
@@ -920,6 +927,7 @@
 		63E08C516566B6695A46B2A9 /* CalibrationLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CalibrationLedgerTests.swift"; sourceTree = "<group>"; };
 		64228777507BB45421BDB205 /* AdaptiveJournalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AdaptiveJournalTests.swift"; sourceTree = "<group>"; };
 		6425D1C6954F9488B9D5D255 /* DataExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataExporterTests.swift"; sourceTree = "<group>"; };
+		64CF3AFB3F90453076AA3237 /* ContextForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContextForecastTests.swift"; sourceTree = "<group>"; };
 		6625E612FBC59560157E62DB /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchLink.swift"; sourceTree = "<group>"; };
 		66E3F1F807708E82035C5C98 /* StressCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StressCard.swift"; sourceTree = "<group>"; };
 		67F357D0A5A2FCA6CE564D13 /* ZoonWatchComplications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWatchComplications.swift"; sourceTree = "<group>"; };
@@ -1407,6 +1415,7 @@
 				B1FF7AAD903CB3CDC6E894BC,
 				5DB3E61DB8C8F8D456A37728,
 				B2BD128902E142E91CEE3E96,
+				64CF3AFB3F90453076AA3237,
 				706F052B52B73EA14F1B1061,
 				275F0131A98765781C43B872,
 				6425D1C6954F9488B9D5D255,
@@ -1539,6 +1548,7 @@
 				580579B853CCD8F36BC2CF5A,
 				ADE7FA2FF9A6280968D97436,
 				80C6DE1836BDCAD99246CBE2,
+				44354442EF56D3F66F5A44C9,
 				C458C7D6817D45BFD7B0E390,
 				E6D958A9FD3398B01D9DC02A,
 				6E98EDB5E5022A03033E5A73,
@@ -1889,6 +1899,7 @@
 				9295A28E94455EEA676C8A61,
 				97D259B8A84AAD9EBF40FB1E,
 				1CFB29B458BD4653843BAC02,
+				B8EF455B7121C2130B279F64,
 				89A5D27A2AFF76E37F2C4E32,
 				FAC03DB6DB75BCB5293F549B,
 				5C56F1983FA33C97F71D8767,
@@ -2135,6 +2146,7 @@
 				DD223371A0B29FBE235BBC6B,
 				C7526E7A5D1F3DDE322689E4,
 				750943B37F3CC82E47294B51,
+				2F7780524E627B0E4E3949B9,
 				1C3753F429664F2B65BD6BE2,
 				98A23B492096217F0C6BB323,
 				15DA66C221A5C253C7265180,
@@ -2227,6 +2239,7 @@
 				127350D1EFDD818C34F178E4,
 				B63C6781CD843C0774DB058A,
 				3B0C292367CF066DFBF3933F,
+				9940452F09F743271F5F2861,
 				9D29EE1C8982EB648323CB49,
 				6B4F71EBEB7EB2468314E83C,
 				9F1E2011DC29C85276E7F855,
@@ -2314,6 +2327,7 @@
 				339F7237A2EE4493AEF079F1,
 				63E679066ED3A9A1735F58C6,
 				8109744446D552C9AE902E31,
+				DD3E19CEF586A462AD026253,
 				18078929F1E541BEC6DDDA87,
 				4F2E87506FDADC731060A171,
 				A56AFAF2E007425A268F496B,
@@ -2404,6 +2418,7 @@
 				0535EE578DDA779EBAFE742F,
 				B046FCAD0E8889632F9E4957,
 				A2D6A2C787C7A33E923D1055,
+				F9606C4254904484491DD60F,
 				DCB62802C8C4F25B07B0830A,
 				255936D0730FD39E27FBB0EE,
 				0AF77836D7B60E4B3E031F66,
@@ -2518,6 +2533,7 @@
 				1ED9A5367B3705AEEEB0B333,
 				B38548FA81B8265E4AB54F03,
 				4412C1937781F2DFFA6DC286,
+				005753F9D13D0C5B208E9B83,
 				9E40487DD792509692232997,
 				3F9D868BD23AF392F22E51C0,
 				C8ED74936C7A2AA9FB7D27A3,
