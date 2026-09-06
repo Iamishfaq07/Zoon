@@ -25,6 +25,18 @@ struct LunarOrbit: View {
     /// Shared with `LunarOrbitLegend` so a chip tap highlights the arc and an
     /// arc scrub highlights the chip.
     @Binding var selectedID: String?
+    /// Whether to draw the seven component arcs, or one calm ring.
+    ///
+    /// Default `true` so every existing call site is unchanged. Today passes
+    /// `false` until the reader asks why: seven coloured arcs are the
+    /// *explanation*, and showing them beside the answer makes the reader do
+    /// the summarising. One ring answers "how did I sleep"; the arcs answer
+    /// "why", and those are different questions asked at different moments.
+    ///
+    /// The geometry is untouched either way -- this chooses only how many
+    /// colours it is drawn in, so the ring still cannot show a confident arc
+    /// for data that was not there.
+    var showsComponents: Bool = true
 
     @State private var progress: Double = 0
     @State private var scrubFraction: CGFloat?
@@ -195,7 +207,9 @@ struct LunarOrbit: View {
     }
 
     private func color(for component: SleepIntelligenceScore.Component) -> Color {
-        Self.componentColors[component.label] ?? tint
+        // One tint for the whole ring until the reader asks why.
+        guard showsComponents else { return tint }
+        return Self.componentColors[component.label] ?? tint
     }
 
     private static func formattedPoints(_ value: Double) -> String {
