@@ -111,14 +111,18 @@ final class SleepMapTests: XCTestCase {
             nights: nights, xAxis: .duration, yAxis: .hrv, outcome: .restingHeartRate
         ))
 
+        // Compared on the shrunk value rather than the raw median, because
+        // that is what is now ranked. Taking the raw extremum was the old
+        // behaviour this release exists to fix: it lets a four-night cell
+        // that got lucky beat a twenty-night pattern.
         XCTAssertEqual(
-            try XCTUnwrap(higher.best?.medianOutcome),
-            try XCTUnwrap(higher.scoredRegions.compactMap(\.medianOutcome).max()),
+            try XCTUnwrap(higher.best?.shrunkOutcome),
+            try XCTUnwrap(higher.scoredRegions.compactMap(\.shrunkOutcome).max()),
             "HRV is better high, so the winner is the maximum"
         )
         XCTAssertEqual(
-            try XCTUnwrap(lower.best?.medianOutcome),
-            try XCTUnwrap(lower.scoredRegions.compactMap(\.medianOutcome).min()),
+            try XCTUnwrap(lower.best?.shrunkOutcome),
+            try XCTUnwrap(lower.scoredRegions.compactMap(\.shrunkOutcome).min()),
             "resting heart rate is better low, so the winner is the minimum"
         )
     }
@@ -281,5 +285,177 @@ final class SleepMapTests: XCTestCase {
         XCTAssertTrue(caveat.contains("already had"), caveat)
         XCTAssertFalse(caveat.contains("should"), caveat)
         XCTAssertFalse(caveat.contains("because"), caveat)
+    }
+
+    // MARK: - Winner-selection noise
+
+    /// The whole point of shrinkage. A thin region that got lucky must not
+    /// beat a deep region that did not: with four nights, the cell that wins
+    /// on a raw median is usually the cell that got the best draw, and it
+    /// will be a different cell next week.
+    func testShrinkagePullsAThinRegionTowardTheMiddle() {
+        let overall = 50.0
+        let thin = SleepMap.shrink(70, nightCount: 4, toward: overall)
+        let deep = SleepMap.shrink(70, nightCount: 40, toward: overall)
+
+        XCTAssertLessThan(thin, deep, "the thinner region should keep less of its own signal")
+        XCTAssertGreaterThan(thin, overall, "shrinkage pulls toward the middle, it does not erase")
+        XCTAssertLessThan(thin, 70)
+    }
+
+    func testShrinkageKeepsTheStatedFractionOfARegionsOwnSignal() {
+        // n / (n + k) with k = 8: four nights keep a third.
+        XCTAssertEqual(
+            SleepMap.shrink(80, nightCount: 4, toward: 20),
+            20 + (80 - 20) * (4 / (4 + SleepMap.shrinkageNights)),
+            accuracy: 0.0001
+        )
+    }
+
+    func testARegionAlreadyAtTheMiddleIsUnmoved() {
+        XCTAssertEqual(SleepMap.shrink(50, nightCount: 4, toward: 50), 50, accuracy: 0.0001)
+    }
+
+    /// A region with enough nights to score carries an interval, so the map
+    /// can say how sure it is rather than only what it found.
+    func testScoredRegionsCarryABootstrapInterval() throws {
+        let map = try buildGrid()
+        for region in map.scoredRegions {
+            let interval = try XCTUnwrap(region.interval, "\(region.id) scored but has no interval")
+            let median = try XCTUnwrap(region.medianOutcome)
+            XCTAssertLessThanOrEqual(interval.lower, median)
+            XCTAssertGreaterThanOrEqual(interval.upper, median)
+        }
+    }
+
+    func testAThinRegionCarriesNoInterval() throws {
+        let map = try buildGrid(lopsidedNights())
+        let thin = map.regions.filter { !$0.isScored }
+        XCTAssertTrue(thin.allSatisfy { $0.interval == nil })
+    }
+
+    // MARK: - Overlap
+
+    func testTwoIdenticalIntervalsOverlapCompletely() {
+        let a = SleepMap.Interval(lower: 10, upper: 20)
+        XCTAssertEqual(a.overlap(with: a), 1, accuracy: 0.0001)
+    }
+
+    func testDisjointIntervalsDoNotOverlap() {
+        let a = SleepMap.Interval(lower: 10, upper: 20)
+        let b = SleepMap.Interval(lower: 30, upper: 40)
+        XCTAssertEqual(a.overlap(with: b), 0)
+        XCTAssertEqual(b.overlap(with: a), 0)
+    }
+
+    /// Measured against the *narrower* interval: a wide interval that
+    /// swallows a narrow one whole has not distinguished anything, however
+    /// small the shared fraction of the wide one looks.
+    func testOverlapIsMeasuredAgainstTheNarrowerInterval() {
+        let wide = SleepMap.Interval(lower: 0, upper: 100)
+        let narrow = SleepMap.Interval(lower: 40, upper: 50)
+        XCTAssertEqual(wide.overlap(with: narrow), 1, accuracy: 0.0001)
+    }
+
+    /// Two point estimates that coincide overlap completely. Dividing by a
+    /// zero width would read as *no* overlap, the opposite of the truth.
+    func testCoincidingPointEstimatesOverlapCompletely() {
+        let a = SleepMap.Interval(lower: 5, upper: 5)
+        XCTAssertEqual(a.overlap(with: SleepMap.Interval(lower: 4, upper: 6)), 1, accuracy: 0.0001)
+    }
+
+    // MARK: - When the map refuses a headline
+
+    /// A clear winner is still called a winner.
+    func testAClearlySeparatedWinnerKeepsItsHeadline() throws {
+        let map = try buildGrid()
+        XCTAssertTrue(map.headlineIsSupported, map.sentence)
+        XCTAssertTrue(map.sentence.contains("Your best"), map.sentence)
+    }
+
+    /// The spec's own distinction: "this is your ideal zone" from four
+    /// nights is a claim; "your stronger nights cluster here" is an
+    /// observation.
+    func testOverlappingRegionsGetTheSofterSentence() throws {
+        // Every cell drawn from the same distribution, so no region is
+        // genuinely better than another.
+        var generator = SeededGenerator(seed: 5)
+        var nights: [SleepNightFeatures] = []
+        var day = 0
+        for asleep in [360.0, 450.0, 540.0] {
+            for rhr in [48.0, 54.0, 60.0] {
+                for _ in 0..<5 {
+                    day += 1
+                    let duration = asleep + generator.nextDouble(in: -12...12)
+                    nights.append(Fixture.night(
+                        daysAgo: day,
+                        timeAsleepMinutes: duration,
+                        timeInBedMinutes: duration / 0.9,
+                        // A hair of jitter so the tercile cuts can still be
+                        // made, but far too little for any cell to be
+                        // genuinely better than another.
+                        avgHRV: 52 + generator.nextDouble(in: -0.5...0.5),
+                        restingHeartRate: rhr + generator.nextDouble(in: -2...2)
+                    ))
+                }
+            }
+        }
+        let map = try XCTUnwrap(SleepMap.build(
+            nights: nights.sorted { $0.date < $1.date },
+            xAxis: .duration, yAxis: .restingHeartRate, outcome: .hrv
+        ))
+
+        XCTAssertFalse(map.headlineIsSupported, map.sentence)
+        XCTAssertTrue(map.sentence.contains("cluster around"), map.sentence)
+        XCTAssertFalse(map.sentence.contains("Your best"), map.sentence)
+    }
+
+    /// Absence of an interval is absence of evidence. The alternative lets
+    /// the thinnest regions on the map produce the most confident headlines.
+    func testARegionWithNoIntervalIsNeverSeparated() {
+        let withInterval = SleepMap.Region(
+            x: .low, y: .low, nightCount: 9, medianOutcome: 70,
+            shrunkOutcome: 70, interval: SleepMap.Interval(lower: 69, upper: 71)
+        )
+        let without = SleepMap.Region(
+            x: .high, y: .high, nightCount: 9, medianOutcome: 40, shrunkOutcome: 40
+        )
+        XCTAssertFalse(SleepMap.isSeparated([withInterval, without]))
+        XCTAssertFalse(SleepMap.isSeparated([without, withInterval]))
+    }
+
+    /// Two regions whose intervals sit on top of each other are describing
+    /// more of the same range than not.
+    func testMateriallyOverlappingRegionsAreNotSeparated() {
+        let a = SleepMap.Region(
+            x: .low, y: .low, nightCount: 9, medianOutcome: 60,
+            shrunkOutcome: 60, interval: SleepMap.Interval(lower: 55, upper: 65)
+        )
+        let b = SleepMap.Region(
+            x: .high, y: .high, nightCount: 9, medianOutcome: 58,
+            shrunkOutcome: 58, interval: SleepMap.Interval(lower: 54, upper: 64)
+        )
+        XCTAssertFalse(SleepMap.isSeparated([a, b]))
+    }
+
+    /// Touching at the edges is not material overlap.
+    func testBarelyTouchingRegionsAreStillSeparated() {
+        let a = SleepMap.Region(
+            x: .low, y: .low, nightCount: 9, medianOutcome: 70,
+            shrunkOutcome: 70, interval: SleepMap.Interval(lower: 65, upper: 75)
+        )
+        let b = SleepMap.Region(
+            x: .high, y: .high, nightCount: 9, medianOutcome: 60,
+            shrunkOutcome: 60, interval: SleepMap.Interval(lower: 56, upper: 66)
+        )
+        XCTAssertTrue(SleepMap.isSeparated([a, b]))
+    }
+
+    func testOneRegionAloneIsNeverSeparated() {
+        let only = SleepMap.Region(
+            x: .low, y: .low, nightCount: 9, medianOutcome: 70,
+            shrunkOutcome: 70, interval: SleepMap.Interval(lower: 69, upper: 71)
+        )
+        XCTAssertFalse(SleepMap.isSeparated([only]))
     }
 }
