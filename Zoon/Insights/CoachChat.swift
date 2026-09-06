@@ -147,12 +147,21 @@ final class CoachChat {
     /// enough history for one, `SleepDataCoordinator.coachContextDigest()`'s
     /// standing-pattern summary -- as context the model already has, so the
     /// first question doesn't have to restate them.
-    func start(nightSummary: String, contextDigest: String? = nil) {
+    /// - Parameter chartContext: `ChartQuestion.context` when the
+    ///   conversation was opened from a point on a chart. Typed facts, never
+    ///   an image of the chart: everything a model would have to guess from
+    ///   a picture -- what the axis means, where the baseline sits, how many
+    ///   nights it rests on -- is already computed and is handed over.
+    func start(nightSummary: String, contextDigest: String? = nil, chartContext: String? = nil) {
         messages = []
         #if canImport(FoundationModels)
         if #available(iOS 26.0, *) {
             session = LanguageModelSession(
-                instructions: Self.instructions(nightSummary: nightSummary, contextDigest: contextDigest)
+                instructions: Self.instructions(
+                    nightSummary: nightSummary,
+                    contextDigest: contextDigest,
+                    chartContext: chartContext
+                )
             )
         }
         #endif
@@ -239,7 +248,11 @@ final class CoachChat {
     /// has actually found. Without the digest, "has my recovery been
     /// improving?" had no honest answer available at all; the instructions
     /// below tell the model which questions each source can and can't settle.
-    private static func instructions(nightSummary: String, contextDigest: String?) -> String {
+    private static func instructions(
+        nightSummary: String,
+        contextDigest: String?,
+        chartContext: String? = nil
+    ) -> String {
         let digestSection = contextDigest.map {
             """
 
@@ -248,6 +261,18 @@ final class CoachChat {
             about trends, habits, or "usually"/"lately"; tonight's data above
             is still the only source for anything about last night
             specifically:
+            \($0)
+            """
+        } ?? ""
+
+        let chartSection = chartContext.map {
+            """
+
+
+            The user tapped a specific point on a chart. This is that point,
+            described in full -- it is the only description of it you have,
+            and every figure in it was measured, so do not restate it as an
+            estimate or add figures of your own:
             \($0)
             """
         } ?? ""
@@ -267,7 +292,7 @@ final class CoachChat {
         an essay.
 
         Tonight's data:
-        \(nightSummary)\(digestSection)
+        \(nightSummary)\(digestSection)\(chartSection)
         """
     }
 }
