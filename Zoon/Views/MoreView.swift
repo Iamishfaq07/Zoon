@@ -51,6 +51,11 @@ struct MoreView: View {
                         PatternsView()
                     }
                     .entrance(2)
+                    navRow("How well Zoon knows you", "Which parts are settled, and which are still forming",
+                            "square.stack.3d.up.fill", Theme.Metric.hrv) {
+                        ModelHealthView()
+                    }
+                    .entrance(2)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
