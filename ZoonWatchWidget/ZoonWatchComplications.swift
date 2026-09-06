@@ -23,10 +23,21 @@ import WidgetKit
 @main
 struct ZoonWatchComplications: WidgetBundle {
     var body: some Widget {
+        // The V9 spec's preferred set, in the order the day asks for them:
+        // Sleep Intelligence in the morning, Recovery through the day,
+        // Tonight in the evening, Body Signals contextually.
+        SleepIntelligenceComplication()
         RecoveryComplication()
-        SleepBankComplication()
         TonightComplication()
-        BadgeComplication()
+        BodySignalsComplication()
+        SleepBankComplication()
+        // `BadgeComplication` is deliberately absent. The spec: badges "can
+        // remain elsewhere but should not consume prime complication
+        // space". They are still on the watch's More page and in the phone
+        // app; what they no longer do is compete for a watch face slot with
+        // the four numbers that describe the body. The type is kept rather
+        // than deleted so restoring it is a one-line change if that call
+        // turns out to be wrong.
     }
 }
 
@@ -36,24 +47,48 @@ struct WatchComplicationEntry: TimelineEntry {
     let date: Date
     let snapshot: SleepSnapshot
     let isPlaceholder: Bool
+    /// Which complication this entry is for. Relevance is per-surface, so
+    /// the entry has to know which surface it belongs to.
+    var kind: WatchRelevance.Kind = .lastNight
 
-    /// Same reasoning as `SleepEntry.relevance` on the phone side: high for
-    /// a few hours after the snapshot was generated (closest available
-    /// proxy for "just after waking up"), low otherwise, so watchOS's own
-    /// Smart Stack has a signal for *when* this complication matters
-    /// instead of a flat score.
+    /// What the Smart Stack ranks this by.
+    ///
+    /// This used to be one score shared by every complication in the
+    /// bundle, computed from how recently the phone had synced. That is a
+    /// *freshness* signal, not a relevance one -- and with all four scoring
+    /// identically the Smart Stack had nothing to order them by, which is
+    /// the same as not implementing relevance at all.
+    ///
+    /// `WatchRelevance` decides the ordering; freshness still gates it,
+    /// because a stale number is not worth raising however well its hour
+    /// matches. The two are separate judgments and are kept separate.
     var relevance: TimelineEntryRelevance? {
         guard !isPlaceholder else { return TimelineEntryRelevance(score: 10) }
         let hoursSinceGenerated = date.timeIntervalSince(snapshot.generatedAt) / 3600
-        let recentlyRefreshed = hoursSinceGenerated >= 0 && hoursSinceGenerated < 4
-        return TimelineEntryRelevance(score: recentlyRefreshed ? 80 : 20, duration: 4 * 3600)
+        let isStale = hoursSinceGenerated < 0 || hoursSinceGenerated >= 24
+        // The watch widget extension has no way to observe a running nap --
+        // nothing in the snapshot carries one, and a nap surfaces today as
+        // a Live Activity on the phone. `WatchRelevance` handles the case
+        // and is tested for it; this call site simply has nothing to tell
+        // it yet, and says so rather than guessing.
+        let score = WatchRelevance.score(for: kind, at: date, isNapRunning: false)
+        return TimelineEntryRelevance(
+            score: isStale ? min(score, WatchRelevance.outOfWindowScore) : score,
+            duration: WatchRelevance.duration
+        )
     }
 }
 
 struct WatchComplicationProvider: TimelineProvider {
 
+    /// Which complication this provider feeds, so its entries can carry a
+    /// relevance that is about this surface rather than about the bundle.
+    let kind: WatchRelevance.Kind
+
     func placeholder(in context: Context) -> WatchComplicationEntry {
-        WatchComplicationEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true)
+        WatchComplicationEntry(
+            date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind
+        )
     }
 
     func getSnapshot(
@@ -78,9 +113,156 @@ struct WatchComplicationProvider: TimelineProvider {
 
     private func currentEntry() -> WatchComplicationEntry {
         if let snapshot = WatchSnapshotStore.load() {
-            return WatchComplicationEntry(date: .now, snapshot: snapshot, isPlaceholder: false)
+            return WatchComplicationEntry(
+                date: .now, snapshot: snapshot, isPlaceholder: false, kind: kind
+            )
         }
-        return WatchComplicationEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true)
+        return WatchComplicationEntry(
+            date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind
+        )
+    }
+}
+
+// MARK: - Sleep Intelligence
+
+/// The morning primary, and the pinnable "Last Night" widget of V9 item 34.
+///
+/// This is the number the phone's hero, the watch's first page and the
+/// widgets all lead with, so a face showing it is showing the same figure as
+/// every other surface. The rectangular family carries the spec's full
+/// line-up -- score, band, duration, debt -- because that family has the
+/// room and it is the one people pin.
+struct SleepIntelligenceComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(
+            kind: "ZoonSleepIntelligence",
+            provider: WatchComplicationProvider(kind: .lastNight)
+        ) { entry in
+            SleepIntelligenceComplicationView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Last Night")
+        .description("Your Sleep Intelligence score for last night.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
+    }
+}
+
+struct SleepIntelligenceComplicationView: View {
+
+    let entry: WatchComplicationEntry
+    @Environment(\.widgetFamily) private var family
+
+    /// `flagshipScore`, not `score`: a payload carrying Sleep Intelligence
+    /// shows it, and one written before Sleep Intelligence existed falls
+    /// back to the older sleep score rather than to a confident-looking 0.
+    private var percent: Int { entry.snapshot.flagshipScore }
+    private var band: String { entry.snapshot.flagshipBand }
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Text("Sleep \(percent)")
+                .privacySensitive()
+
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 1) {
+                Label("Last Night", systemImage: "moon.stars.fill")
+                    .font(Theme.text(13, weight: .semibold))
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text("\(percent)")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                    Text(entry.isPlaceholder ? "Sample" : band)
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                }
+                .privacySensitive()
+                Text("\(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))  ·  \(entry.snapshot.balanceLabel)")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+                    .privacySensitive()
+            }
+
+        default:
+            Gauge(value: Double(percent), in: 0...100) {
+                Image(systemName: "moon.stars.fill")
+            } currentValueLabel: {
+                Text("\(percent)").monospacedDigit()
+            }
+            .gaugeStyle(.accessoryCircular)
+            .privacySensitive()
+        }
+    }
+}
+
+// MARK: - Body Signals
+
+/// The contextual one: whether anything about the body is drifting from its
+/// own baseline.
+///
+/// Unlike the other three this is usually not news -- most days nothing is
+/// moving, and the complication says so plainly rather than manufacturing a
+/// number to justify its slot. That is why the spec files it as contextual:
+/// its value is that it is quiet until it isn't.
+struct BodySignalsComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(
+            kind: "ZoonBodySignals",
+            provider: WatchComplicationProvider(kind: .bodySignals)
+        ) { entry in
+            BodySignalsComplicationView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Body Signals")
+        .description("Whether any of your vitals are drifting from baseline.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
+    }
+}
+
+struct BodySignalsComplicationView: View {
+
+    let entry: WatchComplicationEntry
+    @Environment(\.widgetFamily) private var family
+
+    private var isNormal: Bool { entry.snapshot.bodySignalsLabel == "Nothing unusual" }
+    private var symbol: String { isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right" }
+
+    /// "Typical" rather than the stored "Nothing unusual": the complication
+    /// has one line, and the spec's own wording for the quiet state is the
+    /// shorter one.
+    private var summary: String { isNormal ? "Typical" : entry.snapshot.bodySignalsLabel }
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Text("Signals \(summary)")
+                .privacySensitive()
+
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 1) {
+                Label("Body Signals", systemImage: symbol)
+                    .font(Theme.text(13, weight: .semibold))
+                Text(summary)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .privacySensitive()
+                if entry.isPlaceholder {
+                    Text("Sample data")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+        default:
+            // No gauge: there is no percentage here, and a ring drawn at an
+            // arbitrary fill would imply a measurement that does not exist.
+            VStack(spacing: 1) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(isNormal ? "OK" : "Drift")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .privacySensitive()
+        }
     }
 }
 
@@ -88,7 +270,7 @@ struct WatchComplicationProvider: TimelineProvider {
 
 struct RecoveryComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonRecovery", provider: WatchComplicationProvider()) { entry in
+        StaticConfiguration(kind: "ZoonRecovery", provider: WatchComplicationProvider(kind: .recovery)) { entry in
             RecoveryComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -118,39 +300,64 @@ struct RecoveryComplicationView: View {
     /// wire field would be another thing to keep in sync with the decoder.
     private var band: String { RecoveryScore.Band.forPercent(percent).label }
 
+    /// The same refusal the phone and the watch's Today page make. A face
+    /// reading "Recovery 66" off four nights asserts exactly as firmly as
+    /// one off a month; `canStateRecovery` is how the phone says which it
+    /// is, and a complication that ignored it would be the one surface
+    /// still overstating the number.
+    private var canState: Bool { entry.snapshot.canStateRecovery }
+
     var body: some View {
         switch family {
         case .accessoryInline:
             // Inline is a single line of system-styled text; no layout of our
             // own survives here, so it says the least and says it plainly.
-            Text("Recovery \(percent)%")
+            Text(canState ? "Recovery \(percent)%" : "Recovery limited data")
                 .privacySensitive()
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
                 Label("Recovery", systemImage: "bolt.heart.fill")
                     .font(Theme.text(13, weight: .semibold))
-                Text("\(percent)%")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .privacySensitive()
-                Text(entry.isPlaceholder ? "Sample data" : band)
-                    .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
-                    .privacySensitive()
+                if canState {
+                    Text("\(percent)%")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .privacySensitive()
+                    Text(entry.isPlaceholder ? "Sample data" : band)
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                        .privacySensitive()
+                } else {
+                    Text("Limited data")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
             }
 
         default:
             // Covers both `.accessoryCorner` and `.accessoryCircular` -- the
             // two render identically here (a gauge has no room to say
             // anything else), so there's no reason to case them separately.
-            Gauge(value: Double(percent), in: 0...100) {
-                Image(systemName: "bolt.heart.fill")
-            } currentValueLabel: {
-                Text("\(percent)").monospacedDigit()
+            if canState {
+                Gauge(value: Double(percent), in: 0...100) {
+                    Image(systemName: "bolt.heart.fill")
+                } currentValueLabel: {
+                    Text("\(percent)").monospacedDigit()
+                }
+                .gaugeStyle(.accessoryCircular)
+                .privacySensitive()
+            } else {
+                // A ring drawn at 66% is a claim, and an empty one would read
+                // as a bad night rather than as an unanswerable question.
+                VStack(spacing: 1) {
+                    Image(systemName: "bolt.heart")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("--")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(.secondary)
             }
-            .gaugeStyle(.accessoryCircular)
-            .privacySensitive()
         }
     }
 }
@@ -159,7 +366,7 @@ struct RecoveryComplicationView: View {
 
 struct SleepBankComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonSleepBank", provider: WatchComplicationProvider()) { entry in
+        StaticConfiguration(kind: "ZoonSleepBank", provider: WatchComplicationProvider(kind: .lastNight)) { entry in
             SleepBankComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -230,7 +437,7 @@ struct SleepBankComplicationView: View {
 /// only show a clipped "23:4" would be worse than not offering one.
 struct TonightComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonTonight", provider: WatchComplicationProvider()) { entry in
+        StaticConfiguration(kind: "ZoonTonight", provider: WatchComplicationProvider(kind: .tonight)) { entry in
             TonightComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -293,7 +500,7 @@ struct TonightComplicationView: View {
 
 struct BadgeComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonWatchBadges", provider: WatchComplicationProvider()) { entry in
+        StaticConfiguration(kind: "ZoonWatchBadges", provider: WatchComplicationProvider(kind: .lastNight)) { entry in
             BadgeComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -384,4 +591,42 @@ struct BadgeComplicationView: View {
 } timeline: {
     WatchComplicationEntry(date: .now, snapshot: MockData.tonightSnapshot, isPlaceholder: false)
     WatchComplicationEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: false)
+}
+
+// The two complications the V9 spec added to the preferred set.
+
+#Preview("Last Night rectangular", as: .accessoryRectangular) {
+    SleepIntelligenceComplication()
+} timeline: {
+    WatchComplicationEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: false)
+}
+
+#Preview("Last Night circular", as: .accessoryCircular) {
+    SleepIntelligenceComplication()
+} timeline: {
+    WatchComplicationEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: false)
+}
+
+/// Both states, because the quiet one is the one people will actually see
+/// most days and is the easier of the two to get wrong.
+#Preview("Body Signals rectangular", as: .accessoryRectangular) {
+    BodySignalsComplication()
+} timeline: {
+    WatchComplicationEntry(date: .now, snapshot: MockData.snapshotWithBadges, isPlaceholder: false)
+    WatchComplicationEntry(date: .now, snapshot: {
+        var snapshot = MockData.snapshotWithBadges
+        snapshot.bodySignalsLabel = "Several signals moving"
+        return snapshot
+    }(), isPlaceholder: false)
+}
+
+/// The refusal, which is otherwise the state nobody ever looks at.
+#Preview("Recovery - limited data", as: .accessoryRectangular) {
+    RecoveryComplication()
+} timeline: {
+    WatchComplicationEntry(date: .now, snapshot: {
+        var snapshot = MockData.snapshotWithBadges
+        snapshot.recoveryConfidence = MetricConfidence.insufficient.rawValue
+        return snapshot
+    }(), isPlaceholder: false)
 }
