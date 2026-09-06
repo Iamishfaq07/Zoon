@@ -36,7 +36,9 @@ enum TrendEngine {
             switch self {
             case .duration: "average sleep duration"
             case .bedtime: "bedtime"
-            case .hrv: "HRV"
+            // Reads inside a sentence ("your recovery signal has been
+            // trending up"), where there is room for the plain name.
+            case .hrv: SleepVocabulary.hrv.plain.lowercased()
             case .restingHeartRate: "resting heart rate"
             case .efficiency: "sleep efficiency"
             case .sleepDebt: "sleep debt"

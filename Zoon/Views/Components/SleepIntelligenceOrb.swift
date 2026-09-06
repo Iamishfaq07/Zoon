@@ -40,7 +40,7 @@ struct SleepIntelligenceOrb: View {
         "Continuity": Theme.Metric.hrv,
         "Regularity": Theme.Metric.battery,
         "Recovery": Theme.Metric.recoveryHigh,
-        "Circadian": Theme.Metric.strain,
+        "Timing": Theme.Metric.strain,
         "Breathing": Theme.Metric.respiratory,
         "Stage Pattern": Theme.Metric.temperature
     ]

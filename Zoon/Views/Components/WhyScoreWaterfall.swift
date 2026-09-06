@@ -92,7 +92,7 @@ struct WhyScoreWaterfall: View {
         case "Duration": SleepNeedView()
         case "Regularity": RegularityDetailView()
         case "Recovery": RecoveryDetailView()
-        case "Circadian": BodyClockView()
+        case "Timing": BodyClockView()
         case "Breathing": BreathingHealthView()
         default: SleepDetailView(context: context)
         }
