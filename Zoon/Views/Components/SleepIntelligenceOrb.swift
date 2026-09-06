@@ -42,7 +42,7 @@ struct SleepIntelligenceOrb: View {
         "Recovery": Theme.Metric.recoveryHigh,
         "Circadian": Theme.Metric.strain,
         "Breathing": Theme.Metric.respiratory,
-        "Architecture": Theme.Metric.temperature
+        "Stage Pattern": Theme.Metric.temperature
     ]
 
     /// `score.components` only ever contains components that actually ran
