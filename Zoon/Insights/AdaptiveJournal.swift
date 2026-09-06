@@ -29,9 +29,15 @@ import Foundation
 /// wire it.
 enum AdaptiveJournal {
 
-    /// How many behaviours to ask about. The point is to shorten the list,
-    /// not to reorder twenty-three of them.
-    static let promptSize = 6
+    /// Default length of the *ranked list* `prompts` returns.
+    ///
+    /// Not how many questions get asked. The nightly ask is one question --
+    /// see `question(observations:...)`, which takes the top of this ranking
+    /// and may decide the honest number tonight is zero. This constant only
+    /// bounds the ranking itself, which stays useful at length for testing
+    /// the ordering and for any surface that wants to see more than the
+    /// single winner.
+    static let rankedListSize = 6
 
     /// How far back exposure is counted.
     static let window = 60
@@ -137,7 +143,7 @@ enum AdaptiveJournal {
         activeExperimentTag: String? = nil,
         pinnedTags: Set<BehaviorTag> = [],
         candidates: [BehaviorTag] = BehaviorTag.allCases,
-        limit: Int = promptSize
+        limit: Int = rankedListSize
     ) -> [Prompt] {
         guard limit > 0 else { return [] }
         let recent = Array(observations.sorted { $0.date < $1.date }.suffix(window))
@@ -202,5 +208,50 @@ enum AdaptiveJournal {
             }
             .prefix(limit)
             .map { $0 }
+    }
+
+    // MARK: - The one question
+
+    /// The single question worth asking tonight, or nothing at all.
+    ///
+    /// ## Why this can return nil
+    ///
+    /// `prompts` will always hand back something as long as any behaviour
+    /// has ever been logged, because its lowest-priority reason -- `.routine`
+    /// -- exists purely to fill a list of six. With a list of one there is
+    /// nothing to fill, and a routine question is one whose answer Zoon can
+    /// already predict from the fifty nights behind it. Asking it anyway
+    /// spends the person's willingness to answer on a night that teaches
+    /// nothing, and that willingness is the scarce resource here.
+    ///
+    /// So: ask when a trial needs tonight's adherence, when the person
+    /// pinned the behaviour themselves, or when one arm of a comparison is
+    /// genuinely short. Otherwise ask nothing.
+    ///
+    /// This is not a permanent silence. Exposure is counted over a rolling
+    /// window, so a behaviour that stops being asked about stops accumulating
+    /// answers, its arms thin out as older nights fall off the end, and it
+    /// becomes worth asking again on its own. The quiet is self-correcting.
+    ///
+    /// - Parameter alreadyAnswered: behaviours the person has already
+    ///   answered for tonight. Excluded outright -- re-asking something just
+    ///   answered is the exact fatigue this is meant to avoid.
+    static func question(
+        observations: [JournalCorrelator.Observation],
+        activeExperimentTag: String? = nil,
+        pinnedTags: Set<BehaviorTag> = [],
+        alreadyAnswered: Set<BehaviorTag> = [],
+        candidates: [BehaviorTag] = BehaviorTag.allCases
+    ) -> Prompt? {
+        let unanswered = candidates.filter { !alreadyAnswered.contains($0) }
+        let top = prompts(
+            observations: observations,
+            activeExperimentTag: activeExperimentTag,
+            pinnedTags: pinnedTags,
+            candidates: unanswered,
+            limit: 1
+        ).first
+        guard let top, top.reason != .routine else { return nil }
+        return top
     }
 }
