@@ -147,6 +147,161 @@ final class CalibrationLedgerTests: XCTestCase {
         XCTAssertEqual(result.verdict, .tooConfident)
     }
 
+    // MARK: - Saying nothing rather than saying "fine" (V10 item 9)
+
+    /// The defect this replaced: `matchesExpectation` was returned whenever
+    /// the interval failed to exclude the target, and at forty attempts the
+    /// interval is wide enough to contain the target, badly overconfident and
+    /// badly over-cautious all at once. Everyone who cleared fifteen nights
+    /// was told their forecast checked out, and what they were actually being
+    /// told was the length of their own history.
+    func testAnIntervalTooWideToExcludeAnythingSaysSoRatherThanClaimingAMatch() throws {
+        let result = try XCTUnwrap(
+            CalibrationLedger.backtest(metric: .duration, nights: nights(50))
+        )
+        XCTAssertGreaterThanOrEqual(result.attempts, CalibrationLedger.minimumAttempts)
+        XCTAssertTrue(
+            result.coverageLower <= result.expectedCoverage
+                && result.expectedCoverage <= result.coverageUpper,
+            "fixture must straddle the target, or this test is asserting on an exclusion branch"
+        )
+        XCTAssertGreaterThan(
+            result.coverageUpper - result.coverageLower, CalibrationLedger.decisiveWidth,
+            "fixture must be too wide to decide, or this test is asserting on the other branch"
+        )
+        XCTAssertEqual(result.verdict, .stillLearning)
+        XCTAssertFalse(result.verdict.isDecisive)
+    }
+
+    /// The other half: with enough nights the straddle becomes a real result,
+    /// because coverage has been placed near the target rather than merely
+    /// failing to be excluded from it.
+    func testALongSteadyHistoryEarnsTheMatch() throws {
+        let result = try XCTUnwrap(
+            CalibrationLedger.backtest(metric: .duration, nights: nights(300))
+        )
+        XCTAssertLessThanOrEqual(
+            result.coverageUpper - result.coverageLower, CalibrationLedger.decisiveWidth
+        )
+        // Not pinned to `.matchesExpectation` for the reason the steady-sleeper
+        // test above gives: the verdict is a test at 95%, and one seed may sit
+        // in the tail. What must hold is that this much history is never
+        // reported as still learning.
+        XCTAssertNotEqual(result.verdict, .stillLearning)
+        XCTAssertTrue(result.verdict.isDecisive)
+    }
+
+    /// An exclusion is informative however wide the interval that managed it,
+    /// so the width bar must not swallow the two verdicts worth acting on.
+    /// The drifting sleeper above is the case: 120 nights, a real trend, and
+    /// an interval that still excludes the target.
+    func testTheWidthBarDoesNotSwallowAnExclusion() throws {
+        var generator = SeededGenerator(seed: 77)
+        let drifting = (0..<120).map { index -> SleepNightFeatures in
+            let asleep = 380 + Double(index) * 3 + generator.nextDouble(in: -10...10)
+            return Fixture.night(
+                daysAgo: 120 - index,
+                timeAsleepMinutes: asleep,
+                timeInBedMinutes: asleep / 0.9
+            )
+        }.sorted { $0.date < $1.date }
+
+        let result = try XCTUnwrap(
+            CalibrationLedger.backtest(metric: .duration, nights: drifting)
+        )
+        XCTAssertEqual(result.verdict, .tooConfident)
+        XCTAssertTrue(result.verdict.isDecisive)
+    }
+
+    // MARK: - The five branches, without fixture luck
+
+    /// Reached through a backtest, three of the five verdicts are only
+    /// visible when a fixture happens to produce the right interval. These
+    /// drive the classifier directly, so a branch cannot quietly stop being
+    /// covered the day a fixture shifts.
+    func testTheClassifierCoversEveryBranch() {
+        let target = 0.727
+
+        XCTAssertEqual(
+            CalibrationLedger.verdict(attempts: 14, bounds: (0.6, 0.8), expected: target),
+            .notEnoughYet
+        )
+        XCTAssertEqual(
+            CalibrationLedger.verdict(attempts: 200, bounds: (0.40, 0.60), expected: target),
+            .tooConfident
+        )
+        XCTAssertEqual(
+            CalibrationLedger.verdict(attempts: 200, bounds: (0.80, 0.95), expected: target),
+            .tooCautious
+        )
+        XCTAssertEqual(
+            CalibrationLedger.verdict(attempts: 40, bounds: (0.52, 0.90), expected: target),
+            .stillLearning
+        )
+        XCTAssertEqual(
+            CalibrationLedger.verdict(attempts: 200, bounds: (0.68, 0.79), expected: target),
+            .matchesExpectation
+        )
+    }
+
+    /// The bar is on the width, and nothing else. The same centred straddle
+    /// is a match when it is tight and a wait when it is wide, at identical
+    /// attempt counts -- which is the entire behaviour change.
+    func testTheSameStraddleIsAMatchOrAWaitOnWidthAlone() {
+        let target = 0.727
+        let tight = CalibrationLedger.verdict(
+            attempts: 200, bounds: (target - 0.09, target + 0.09), expected: target
+        )
+        let wide = CalibrationLedger.verdict(
+            attempts: 200, bounds: (target - 0.11, target + 0.11), expected: target
+        )
+        XCTAssertEqual(tight, .matchesExpectation)
+        XCTAssertEqual(wide, .stillLearning)
+    }
+
+    /// An exclusion is checked before the width bar, so a wide interval that
+    /// still sits entirely on one side of the target stays a finding.
+    func testAWideIntervalThatStillExcludesTheTargetIsAFinding() {
+        let target = 0.727
+        XCTAssertEqual(
+            CalibrationLedger.verdict(attempts: 20, bounds: (0.10, 0.55), expected: target),
+            .tooConfident
+        )
+        XCTAssertGreaterThan(0.55 - 0.10, CalibrationLedger.decisiveWidth)
+    }
+
+    // MARK: - What it is called
+
+    func testEveryVerdictCanBeShownToSomeone() {
+        for verdict in CalibrationLedger.Verdict.allCases {
+            XCTAssertFalse(verdict.label.isEmpty, verdict.rawValue)
+            XCTAssertFalse(verdict.meaning.isEmpty, verdict.rawValue)
+        }
+    }
+
+    /// "Calibration" reads to everyone outside statistics as a device needing
+    /// adjustment, and "forecast" promises a prediction about tonight, which
+    /// is the one thing this does not make. Both were in the working name and
+    /// neither belongs on screen.
+    func testNothingShownToAPersonCallsThisForecastCalibration() {
+        let copy = [CalibrationLedger.title, CalibrationLedger.subtitle]
+            + CalibrationLedger.Verdict.allCases.flatMap { [$0.label, $0.meaning] }
+        for line in copy {
+            let lowered = line.lowercased()
+            XCTAssertFalse(lowered.contains("calibrat"), line)
+            XCTAssertFalse(lowered.contains("forecast"), line)
+            XCTAssertFalse(lowered.contains("coverage"), line)
+        }
+    }
+
+    /// The two waiting states must not read as findings, because a screen
+    /// that ranks or highlights verdicts would otherwise present "we have not
+    /// checked" alongside "we checked and it holds".
+    func testTheTwoWaitingStatesAreNotDecisive() {
+        XCTAssertFalse(CalibrationLedger.Verdict.notEnoughYet.isDecisive)
+        XCTAssertFalse(CalibrationLedger.Verdict.stillLearning.isDecisive)
+    }
+
     func testBacktestAllRanksByHowMuchItCouldScore() {
         let results = CalibrationLedger.backtestAll(nights: nights(120))
         XCTAssertFalse(results.isEmpty)
