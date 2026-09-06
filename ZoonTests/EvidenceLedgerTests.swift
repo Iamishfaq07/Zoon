@@ -175,7 +175,7 @@ final class EvidenceLedgerTests: XCTestCase {
             XCTAssertFalse(status.label.isEmpty, "\(status.rawValue) has no label")
         }
     }
-\n
+
     // MARK: - Why did this change?
 
     /// The spec's own worked example: an association at +3 minutes on low
