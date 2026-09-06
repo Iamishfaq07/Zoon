@@ -29,6 +29,12 @@ struct SensorTruthView: View {
         )
     }
 
+    /// Last night, and how each of its numbers was arrived at.
+    private var tonight: TonightsData? {
+        guard let night = coordinator.recentNights.last else { return nil }
+        return TonightsData.build(night: night, coverage: coverage)
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
@@ -44,8 +50,12 @@ struct SensorTruthView: View {
                     watchSection(coverage).entrance(1)
                 }
 
+                if let tonight, !tonight.populated.isEmpty {
+                    tonightSection(tonight).entrance(2)
+                }
+
                 ForEach(Array(SensorTruth.all.enumerated()), id: \.element.id) { index, fact in
-                    row(fact).entrance(min(index + 2, 6))
+                    row(fact).entrance(min(index + 3, 6))
                 }
             }
             .padding(.horizontal)
@@ -123,18 +133,39 @@ struct SensorTruthView: View {
     /// credit all of it to whichever source wrote the sleep samples. It stays
     /// silent when provenance was never recorded rather than guessing.
     private func providedRow(_ entry: SourceCoverage.Entry) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(entry.quantity.label)
                     .font(Theme.text(13))
                 Spacer(minLength: 8)
-                Text(entry.availability.label)
+                // The night count, not only a word. "Most nights" is the
+                // summary; "26 of 30" is the thing someone can check.
+                Text("\(entry.nightsWithValue) of \(entry.nightsConsidered)")
                     .font(Theme.text(11, weight: .semibold))
+                    .monospacedDigit()
                     .foregroundStyle(
                         entry.availability == .usually
                             ? Theme.Metric.recoveryHigh : Theme.Metric.strain
                     )
             }
+
+            // A bar rather than a coloured dot: the V9 audit asked for
+            // coverage to be legible at a glance *and* checkable, and a dot
+            // carries one bit while excluding anyone who cannot separate the
+            // two colours.
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.neutral(0.10))
+                    Capsule()
+                        .fill(
+                            entry.availability == .usually
+                                ? Theme.Metric.recoveryHigh : Theme.Metric.strain
+                        )
+                        .frame(width: max(2, geometry.size.width * entry.fraction))
+                }
+            }
+            .frame(height: 5)
+            .accessibilityHidden(true)
             if let note = entry.attributionNote {
                 Text(note)
                     .font(Theme.text(11))
@@ -142,6 +173,103 @@ struct SensorTruthView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    // MARK: - Tonight's data
+
+    /// Last night's numbers, each with where it came from.
+    ///
+    /// The section the V9 audit asked for and the reason this screen stops
+    /// being a glossary. Everything above is general -- what kind of claim a
+    /// REM figure is, what this watch has provided over a month. This is the
+    /// specific case: *this* number, last night, and the steps between the
+    /// samples and it.
+    ///
+    /// Every value here was already stored and none of it was shown. Which
+    /// device wrote each measurement has been recorded since per-metric
+    /// provenance landed; whether time in bed was measured or reconstructed
+    /// has been on `SleepNightFeatures` since V5 and never surfaced anywhere.
+    @ViewBuilder
+    private func tonightSection(_ data: TonightsData) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "moon.zzz.fill")
+                    .font(Theme.text(13, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+                Text("Last night, and how Zoon got it")
+                    .font(Theme.label(15, weight: .semibold))
+            }
+
+            ForEach(Array(data.populated.enumerated()), id: \.element.id) { index, row in
+                if index > 0 {
+                    Divider().overlay(Theme.neutral(0.10))
+                }
+                tonightRow(row)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
+    private func tonightRow(_ row: TonightsData.Row) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(row.quantity.label)
+                    .font(Theme.text(12))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Text(row.provenance.label)
+                    .font(Theme.text(10, weight: .semibold))
+                    .foregroundStyle(tint(row.provenance))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(tint(row.provenance).opacity(0.15), in: Capsule())
+            }
+
+            Text(row.value)
+                .font(Theme.numeral(24))
+                .monospacedDigit()
+
+            if !row.sourceNames.isEmpty {
+                Text(SourceCoverage.list(row.sourceNames))
+                    .font(Theme.text(11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let note = row.note {
+                Text(note)
+                    .font(Theme.text(11))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !row.derivation.isEmpty {
+                DisclosureGroup("How Zoon got this") {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(Array(row.derivation.enumerated()), id: \.offset) { step, text in
+                            HStack(alignment: .top, spacing: 6) {
+                                // The arrow says these are stages of one
+                                // pipeline rather than an unordered list of
+                                // facts, which is the whole point of showing
+                                // them.
+                                Text(step == 0 ? "•" : "↓")
+                                    .font(Theme.text(10))
+                                    .foregroundStyle(.tertiary)
+                                Text(text)
+                                    .font(Theme.text(11))
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
+                }
+                .font(Theme.text(11, weight: .medium))
+                .tint(Theme.Metric.sleep)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func missingRow(_ entry: SourceCoverage.Entry, note: String) -> some View {
