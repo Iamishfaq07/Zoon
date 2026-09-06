@@ -27,9 +27,16 @@ struct ZoonBodyClockOrbit: View {
     let energyMarks: [EnergyForecast.Window]
     /// 0...100 circadian alignment, computed by the caller.
     let alignment: Double
+    /// The named moments of the day, from `BodyClockAgenda`. The dial
+    /// names whichever one the finger is on; the caller lists them all.
+    var agenda: [BodyClockAgenda.Moment] = []
+    /// Where the dial is being inspected, 0...1, or `nil` for the resting
+    /// state. Owned by the caller so that tapping a moment in the list
+    /// moves the dial and dragging the dial highlights the moment -- two
+    /// views of one selection rather than two selections.
+    @Binding var inspectedFraction: Double?
 
     @State private var progress: Double = 0
-    @State private var inspectedFraction: Double?
     @State private var lastDetent: Int?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -221,6 +228,12 @@ struct ZoonBodyClockOrbit: View {
     /// night's actual sleep beats the usual window, which beats an energy
     /// mark, which beats plain "awake".
     private func stateLabel(atFraction fraction: Double) -> String {
+        // A named moment first. "Asleep last night" is true of eight hours
+        // and "Awake" of fourteen; "Best light window" is true of one, and
+        // is the thing the reader came to the dial to find.
+        if let moment = BodyClockAgenda.moment(atFraction: fraction, in: agenda) {
+            return moment.label
+        }
         if Self.contains(fraction, from: actualStart, to: actualEnd) {
             return "Asleep last night"
         }
@@ -285,6 +298,24 @@ struct ZoonBodyClockOrbit: View {
     }
 }
 
+private struct BodyClockOrbitPreviewHost: View {
+    let bodyClock: BodyClock
+    let night: SleepNightFeatures
+    let energyMarks: [EnergyForecast.Window]
+    @State private var inspected: Double?
+
+    var body: some View {
+        ZoonBodyClockOrbit(
+            bodyClock: bodyClock,
+            night: night,
+            energyMarks: energyMarks,
+            alignment: 82,
+            agenda: BodyClockAgenda.moments(bodyClock: bodyClock, energyMarks: energyMarks),
+            inspectedFraction: $inspected
+        )
+    }
+}
+
 #Preview("Body clock orbit") {
     let night = MockData.goodNight
     let clock = BodyClock.compute(nights: MockData.history) ?? BodyClock(
@@ -293,13 +324,12 @@ struct ZoonBodyClockOrbit: View {
     let forecast = EnergyForecast.compute(
         wakeTime: night.wakeTime, sleepDebtMinutes: 40, windDownHour: clock.onsetHour
     )
-    return ZoonBodyClockOrbit(
+    return BodyClockOrbitPreviewHost(
         bodyClock: clock,
         night: night,
         energyMarks: forecast.windows.filter {
             $0.kind == .morningPeak || $0.kind == .afternoonDip || $0.kind == .windDown
-        },
-        alignment: 88
+        }
     )
     .padding()
     .nightBackground()

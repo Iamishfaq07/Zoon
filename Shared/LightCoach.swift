@@ -33,6 +33,13 @@ enum LightCoach {
     /// measured progress beats generic advice that ignores it.
     static let meaningfulDaylightMinutes = 15.0
 
+    /// How long the morning light window stays open after waking.
+    ///
+    /// Named rather than left as a literal because `BodyClockAgenda` marks
+    /// this window on the dial, and a second copy of the number would let
+    /// the dial and this card disagree about when the window closes.
+    static let morningWindowMinutes = 90.0
+
     /// - Parameters:
     ///   - wakeTime: this morning's actual wake time.
     ///   - onsetHour: `BodyClock.onsetHour` when a usual-bedtime estimate
@@ -50,7 +57,7 @@ enum LightCoach {
         calendar: Calendar = .current
     ) -> Guidance? {
         let minutesSinceWake = now.timeIntervalSince(wakeTime) / 60
-        if minutesSinceWake >= 0, minutesSinceWake <= 90 {
+        if minutesSinceWake >= 0, minutesSinceWake <= morningWindowMinutes {
             if let todayDaylightMinutes, todayDaylightMinutes >= meaningfulDaylightMinutes {
                 return Guidance(
                     headline: "You've already gotten some daylight",
