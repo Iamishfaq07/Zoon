@@ -90,10 +90,25 @@ final class MorningInThreeTests: XCTestCase {
     /// measured is the sort of confident-sounding nonsense the rest of this
     /// app declines to print.
     func testNoShortfallIsClaimedBeforeTheNeedIsLearned() throws {
-        let result = summary(debt: 300, needIsLearned: false)
-        XCTAssertEqual(result.today.headline, "Still learning your sleep need")
-        XCTAssertFalse(result.today.headline.contains("behind"))
-        XCTAssertFalse(try XCTUnwrap(result.today.detail).contains("behind"))
+        // The property, rather than a word. With the need unlearned the line
+        // cannot vary with the debt -- if it did, it would be making a claim
+        // about a number nobody has measured.
+        //
+        // An earlier version of this test asserted the copy never contains
+        // "behind", which the copy fails and should: "how far ahead or behind
+        // you are" is a statement that Zoon *cannot* say yet, not a shortfall.
+        // Substring matching could not tell those apart. This can.
+        let none = summary(debt: 0, needIsLearned: false)
+        let large = summary(debt: 600, needIsLearned: false)
+        XCTAssertEqual(none.today, large.today)
+
+        XCTAssertEqual(large.today.headline, "Still learning your sleep need")
+        // No quantity is stated, which is what claiming a shortfall requires.
+        let detail = try XCTUnwrap(large.today.detail)
+        XCTAssertFalse(
+            detail.contains(where: \.isNumber),
+            "a shortfall was quantified against an unlearned need: \(detail)"
+        )
     }
 
     /// Whatever the state, TODAY always says something actionable or
