@@ -256,7 +256,7 @@ enum SleepMap {
         // back toward. Taken across every usable night rather than across
         // the region medians, so a single dense region cannot define
         // "typical" for the whole map.
-        let overallMedian = Statistics.median(usable.compactMap { outcome.value(from: $0) })
+        let overallMedian = Statistics.median(usable.map(\.outcome))
 
         var regions: [Region] = []
         for x in Band.allCases {
