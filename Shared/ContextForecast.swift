@@ -119,14 +119,27 @@ enum ContextForecast {
     /// that a very close weekday can still beat a distant weekend one.
     static let weekendMismatchPenalty = 0.75
 
+    /// How many numeric features a fully-described night can offer.
+    static let numericFeatureCount = 5
+
+    /// What ignorance costs.
+    ///
+    /// A night matched on two features and a night matched on five are not
+    /// equally good matches even when both match perfectly, and without this
+    /// term the sparser one is *mechanically better* -- see `Distance`.
+    /// Set to one full unit of mean difference: knowing nothing about a night
+    /// is about as bad as knowing everything and being wrong by one scale
+    /// unit on all of it.
+    static let missingCoveragePenalty = 1.0
+
     static func distance(from a: Context, to b: Context) -> Distance {
-        var total = a.isWeekend == b.isWeekend ? 0 : weekendMismatchPenalty
+        var difference = 0.0
         var compared = 0
 
         func compare(_ lhs: Double?, _ rhs: Double?, scale: Double) {
             guard let lhs, let rhs else { return }
             compared += 1
-            total += abs(lhs - rhs) / scale
+            difference += abs(lhs - rhs) / scale
         }
 
         compare(a.sleepDebtMinutes, b.sleepDebtMinutes, scale: debtScale)
@@ -137,10 +150,21 @@ enum ContextForecast {
         if let lhs = a.bedtimeHour, let rhs = b.bedtimeHour {
             compared += 1
             let raw = abs(lhs - rhs)
-            total += min(raw, 24 - raw) / bedtimeScale
+            difference += min(raw, 24 - raw) / bedtimeScale
         }
 
-        return Distance(value: total, comparedFeatures: compared)
+        // The mean, not the sum. A sum grows with the number of features that
+        // could be compared, so a night missing three of them scored lower
+        // simply by having less to disagree about -- and less information
+        // came out ranked as a better match.
+        let mean = compared > 0 ? difference / Double(compared) : 0
+        let uncovered = Double(numericFeatureCount - compared) / Double(numericFeatureCount)
+        let weekend = a.isWeekend == b.isWeekend ? 0 : weekendMismatchPenalty
+
+        return Distance(
+            value: weekend + mean + missingCoveragePenalty * uncovered,
+            comparedFeatures: compared
+        )
     }
 
     // MARK: - The forecast
@@ -165,7 +189,13 @@ enum ContextForecast {
     /// A neighbour further than this is not a match, whatever the ranking
     /// says. Without a ceiling, a person with 30 nights of history always has
     /// 18 "nearest" ones, however unlike tomorrow they all are.
-    static let maximumDistance = 2.4
+    ///
+    /// One, on the scale `distance` now produces: zero for an identical
+    /// context, and exactly 1.0 for a night that differs by one full scale
+    /// unit on every feature. The previous 2.4 belonged to the summed scale
+    /// and would admit roughly twice as much difference here -- a ceiling
+    /// carried across a units change is not a ceiling.
+    static let maximumDistance = 1.0
 
     /// At least this many numeric features must have been comparable for the
     /// match to count as conditioned at all.
@@ -309,13 +339,21 @@ enum ContextForecast {
         if ranked.count >= minimumNeighbours {
             let outcomes = ranked.map(\.outcome)
             if let interval = interval(of: outcomes) {
-                let meanDistance = ranked.reduce(0.0) { $0 + $1.distance.value } / Double(ranked.count)
+                let count = Double(ranked.count)
+                let meanDistance = ranked.reduce(0.0) { $0 + $1.distance.value } / count
+                let meanCoverage = ranked.reduce(0.0) {
+                    $0 + Double($1.distance.comparedFeatures) / Double(numericFeatureCount)
+                } / count
                 return Prediction(
                     typical: interval.typical,
                     lower: interval.lower,
                     upper: interval.upper,
                     basis: .matchedNights(outcomes.count),
-                    confidence: confidence(neighbours: outcomes.count, meanDistance: meanDistance)
+                    confidence: confidence(
+                        neighbours: outcomes.count,
+                        meanDistance: meanDistance,
+                        meanCoverage: meanCoverage
+                    )
                 )
             }
         }
@@ -342,18 +380,46 @@ enum ContextForecast {
         return (typical, min(lower, upper), max(lower, upper))
     }
 
-    /// Graded on both how many nights matched and how well they matched.
+    /// Graded on how many nights matched, how well they matched, and how much
+    /// was actually known about them.
     ///
-    /// Eighteen neighbours that all sit at the edge of `maximumDistance` are
-    /// not the same evidence as eighteen that sit right on top of the target,
-    /// and a count alone cannot tell those apart. The ceiling is `.high`; no
-    /// combination here reports certainty.
-    static func confidence(neighbours: Int, meanDistance: Double) -> MetricConfidence {
+    /// All three, because any two of them can look good while the third makes
+    /// the match worthless. Eighteen neighbours at the edge of
+    /// `maximumDistance` are not eighteen sitting on top of the target; and
+    /// eighteen close neighbours matched on two features out of five are not
+    /// eighteen matched on all five, however close they look -- the closeness
+    /// is measured over whatever happened to be known.
+    ///
+    /// `Distance` carried `comparedFeatures` from the start and this function
+    /// ignored it, which is the same omission as the summed distance one
+    /// level up: coverage was recorded and not used.
+    ///
+    /// The ceiling is `.high`; no combination here reports certainty.
+    ///
+    /// Not yet included, and named rather than quietly missing: temporal
+    /// recency, regime similarity, forecast variance and historical
+    /// calibration. The last needs `CalibrationLedger` to carry a
+    /// `ContextForecast` arm, which is V10.1 work.
+    static func confidence(
+        neighbours: Int,
+        meanDistance: Double,
+        meanCoverage: Double
+    ) -> MetricConfidence {
         guard neighbours >= minimumNeighbours else { return .insufficient }
+
+        // Matched on half the features or fewer: whatever the distance says,
+        // most of the night was never compared.
+        guard meanCoverage > 0.5 else { return .low }
+
         let close = meanDistance <= maximumDistance / 2
+        let wellCovered = meanCoverage >= 0.8
+
         switch neighbours {
-        case ..<15: return close ? .moderate : .low
-        default: return close ? .high : .moderate
+        case ..<15:
+            return close && wellCovered ? .moderate : .low
+        default:
+            if close && wellCovered { return .high }
+            return close || wellCovered ? .moderate : .low
         }
     }
 }
