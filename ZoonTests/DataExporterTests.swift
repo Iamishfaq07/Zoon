@@ -43,6 +43,8 @@ final class DataExporterTests: XCTestCase {
                 experimentHypothesis: "Skipping it helps",
                 experimentPrimaryMetric: "sleepPerformance",
                 experimentDirection: "avoid",
+                experimentDesign: "abba",
+                experimentDesignSeed: 12_345,
                 recoveryModeDate: Date(timeIntervalSince1970: 1_700_000_000)
             ),
             snoreSummaries: [],

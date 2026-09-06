@@ -28,6 +28,8 @@ final class UserPreferences {
         static let experimentHypothesis = "zoon.pref.experimentHypothesis"
         static let experimentPrimaryMetric = "zoon.pref.experimentPrimaryMetric"
         static let experimentDirection = "zoon.pref.experimentDirection"
+        static let experimentDesign = "zoon.pref.experimentDesign"
+        static let experimentDesignSeed = "zoon.pref.experimentDesignSeed"
         static let obligationWeekdays = "zoon.pref.obligationWeekdays"
         static let shiftWorkModeEnabled = "zoon.pref.shiftWorkModeEnabled"
         static let shiftWorkMode = "zoon.pref.shiftWorkMode"
@@ -350,17 +352,64 @@ final class UserPreferences {
         }
     }
 
+    /// How the trial is laid out over time. `nil` for a trial started before
+    /// designs existed, which reads as `.beforeAfter` -- true of every one of
+    /// them, since that is all there was.
+    private(set) var experimentDesign: ExperimentDesign? {
+        didSet {
+            if let experimentDesign {
+                defaults.set(experimentDesign.rawValue, forKey: Key.experimentDesign)
+            } else {
+                defaults.removeObject(forKey: Key.experimentDesign)
+            }
+        }
+    }
+
+    /// The seed the block order was drawn from, stored so the schedule is the
+    /// same every time it is regenerated.
+    ///
+    /// This is what makes a randomised crossover randomised rather than
+    /// merely shuffled: the order is fixed when the trial starts and cannot
+    /// be redrawn later, so nobody -- the person or the app -- can arrange
+    /// which weeks land in which arm after seeing how they went. Stored as
+    /// `Int` because `UserDefaults` has no unsigned integer, and read back
+    /// through `UInt64(bitPattern:)`, which round-trips every value.
+    private(set) var experimentDesignSeed: UInt64? {
+        didSet {
+            if let experimentDesignSeed {
+                defaults.set(Int(bitPattern: UInt(truncatingIfNeeded: experimentDesignSeed)), forKey: Key.experimentDesignSeed)
+            } else {
+                defaults.removeObject(forKey: Key.experimentDesignSeed)
+            }
+        }
+    }
+
+    /// The nights of the active trial, each with the arm it was assigned.
+    /// Empty when nothing is running, or when the running trial is a plain
+    /// before/after, which assigns nothing.
+    var experimentSchedule: [ExperimentDesign.Assignment] {
+        guard let design = experimentDesign, design.isControlled,
+              let start = experimentStartDate else { return [] }
+        return design.schedule(startingOn: start, seed: experimentDesignSeed ?? 0)
+    }
+
     func startExperiment(
         _ tag: BehaviorTag,
         hypothesis: String? = nil,
         primaryMetric: JournalCorrelator.Metric = .sleepPerformance,
-        direction: GuidedExperiment.Direction = .avoid
+        direction: GuidedExperiment.Direction = .avoid,
+        design: ExperimentDesign = .beforeAfter,
+        seed: UInt64 = UInt64.random(in: 0..<UInt64.max)
     ) {
         activeExperimentTag = tag
         experimentStartDate = .now
         experimentHypothesis = (hypothesis?.isEmpty ?? true) ? nil : hypothesis
         experimentPrimaryMetric = primaryMetric
         experimentDirection = direction
+        experimentDesign = design
+        // Drawn once, here, at the moment the trial begins -- before there is
+        // a single night to look at.
+        experimentDesignSeed = seed
     }
 
     /// Restores an in-progress experiment's state from a backup, preserving
@@ -375,13 +424,20 @@ final class UserPreferences {
         startDate: Date?,
         hypothesis: String?,
         primaryMetric: JournalCorrelator.Metric?,
-        direction: GuidedExperiment.Direction?
+        direction: GuidedExperiment.Direction?,
+        design: ExperimentDesign? = nil,
+        seed: UInt64? = nil
     ) {
         activeExperimentTag = tag
         experimentStartDate = tag == nil ? nil : startDate
         experimentHypothesis = tag == nil ? nil : hypothesis
         experimentPrimaryMetric = tag == nil ? nil : primaryMetric
         experimentDirection = tag == nil ? nil : direction
+        // Restored, not redrawn. Generating a fresh seed here would reshuffle
+        // a running crossover's remaining blocks, which is the one thing the
+        // seed exists to prevent.
+        experimentDesign = tag == nil ? nil : design
+        experimentDesignSeed = tag == nil ? nil : seed
     }
 
     func endExperiment() {
@@ -390,6 +446,8 @@ final class UserPreferences {
         experimentHypothesis = nil
         experimentPrimaryMetric = nil
         experimentDirection = nil
+        experimentDesign = nil
+        experimentDesignSeed = nil
     }
 
     /// Which insight engine to use. The LLM option is present but stubbed —
@@ -501,6 +559,12 @@ final class UserPreferences {
         self.experimentHypothesis = defaults.string(forKey: Key.experimentHypothesis)
         self.experimentPrimaryMetric = (defaults.string(forKey: Key.experimentPrimaryMetric)).flatMap(JournalCorrelator.Metric.init(rawValue:))
         self.experimentDirection = (defaults.string(forKey: Key.experimentDirection)).flatMap(GuidedExperiment.Direction.init(rawValue:))
+        self.experimentDesign = (defaults.string(forKey: Key.experimentDesign)).flatMap(ExperimentDesign.init(rawValue:))
+        // `object(forKey:)` rather than `integer(forKey:)`: the latter reports
+        // a missing key as 0, which is a perfectly valid seed, so an absent
+        // schedule would decode as a real one.
+        self.experimentDesignSeed = (defaults.object(forKey: Key.experimentDesignSeed) as? Int)
+            .map { UInt64(bitPattern: Int64($0)) }
         self.preferredSleepSourceName = defaults.string(forKey: Key.preferredSleepSourceName)
         self.preferredSleepSourceBundleIdentifier = defaults.string(forKey: Key.preferredSleepSourceBundleIdentifier)
         self.obligationWeekdays = (defaults.array(forKey: Key.obligationWeekdays) as? [Int]).map(Set.init)
@@ -545,6 +609,8 @@ final class UserPreferences {
         experimentHypothesis = nil
         experimentPrimaryMetric = nil
         experimentDirection = nil
+        experimentDesign = nil
+        experimentDesignSeed = nil
         preferredSleepSourceName = nil
         preferredSleepSourceBundleIdentifier = nil
         obligationWeekdays = Self.defaultObligationWeekdays
@@ -564,6 +630,8 @@ final class UserPreferences {
             Key.wakeAlarmEnabled,
             Key.appearance,
             Key.recoveryModeDate,
+            Key.experimentDesign,
+            Key.experimentDesignSeed,
             Key.experimentTag,
             Key.preferredSleepSourceName,
             Key.preferredSleepSourceBundleIdentifier,

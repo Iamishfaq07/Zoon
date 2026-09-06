@@ -144,6 +144,13 @@ enum GuidedExperiment {
         observations: [JournalCorrelator.Observation],
         calendar: Calendar = .current
     ) -> SleepExperimentStore.Outcome? {
+        // Defence in depth behind the picker's own filter. A stored
+        // preference, a restored backup or an experiment started before
+        // `BehaviorTag.ExposureControl` existed could all arrive here asking
+        // for a direction Zoon does not offer, and the summary is the last
+        // place that pairing could still reach a screen.
+        guard tag.testableDirections.contains(direction) else { return nil }
+
         let baselineStart = calendar.date(byAdding: .day, value: -baselineDays, to: startDate) ?? startDate
         let baseline = observations.filter { $0.date >= baselineStart && $0.date < startDate }
         let trial = observations.filter { $0.date >= startDate && $0.date <= endDate }
