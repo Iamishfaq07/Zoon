@@ -13,7 +13,7 @@ struct SleepScoreWidget: Widget {
     let kind = "ZoonSleepScoreWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SleepTimelineProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .lastNight)) { entry in
             SleepScoreWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
