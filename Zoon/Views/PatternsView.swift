@@ -13,6 +13,10 @@ import SwiftUI
 struct PatternsView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The charts start closed. See `noticedSection`.
+    @State private var showsData = false
 
     /// Bedtime against duration, scored on HRV.
     ///
@@ -27,10 +31,31 @@ struct PatternsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
-                constellationSection.entrance(0)
-                forecastSection.entrance(1)
-                mapSection.entrance(2)
-                twinSection.entrance(3)
+                noticedSection.entrance(0)
+
+                Button {
+                    Haptics.select()
+                    withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
+                        showsData.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(showsData ? "Hide the data" : "Explore the data")
+                        Image(systemName: showsData ? "chevron.up" : "chevron.down")
+                            .font(Theme.text(10, weight: .semibold))
+                    }
+                    .font(Theme.label(13, weight: .semibold))
+                    .foregroundStyle(Theme.Family.sleep)
+                }
+                .buttonStyle(.plain)
+                .entrance(1)
+
+                if showsData {
+                    constellationSection.entrance(1)
+                    forecastSection.entrance(2)
+                    mapSection.entrance(2)
+                    twinSection.entrance(3)
+                }
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -38,6 +63,75 @@ struct PatternsView: View {
         .nightBackground()
         .navigationTitle("Your patterns")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Strongest evidence first.
+    ///
+    /// `JournalCorrelator.Confidence` is a String-raw enum, so sorting on
+    /// `rawValue` orders them alphabetically -- high, low, moderate -- which
+    /// looks like a sort and is not one. This is the explicit order.
+    private static func rank(_ confidence: JournalCorrelator.Confidence) -> Int {
+        switch confidence {
+        case .high: 2
+        case .moderate: 1
+        case .low: 0
+        }
+    }
+
+    // MARK: - Things Zoon has noticed
+
+    /// The findings as sentences, before any visualisation of them.
+    ///
+    /// Everything below this used to be the whole screen: a constellation
+    /// graph, a forecast band, a 3x3 outcome grid, a twin. Each is a good
+    /// answer to a narrow question and all four are visualisations -- which
+    /// means the first thing the screen asked of someone was to read a chart
+    /// and work out the finding for themselves.
+    ///
+    /// The findings already existed; only their presentation was technical.
+    /// `JournalCorrelator` computes matched-pair comparisons with bootstrap
+    /// intervals, and `Finding.plainSentence` says what one of them found.
+    /// The charts are still here, one tap away, for the reader who wants to
+    /// check the working -- which is the point of keeping them.
+    @ViewBuilder
+    private var noticedSection: some View {
+        let findings = JournalCorrelator()
+            .topFindingPerTag(from: coordinator.journalObservations())
+            .sorted { Self.rank($0.confidence) > Self.rank($1.confidence) }
+
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("Things Zoon has noticed", "sparkles", Theme.Family.sleep)
+
+            if findings.isEmpty {
+                Text("Nothing yet. Log what you did on a few more nights and Zoon can start comparing them against each other.")
+                    .font(Theme.text(13))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ForEach(Array(findings.enumerated()), id: \.element.id) { index, finding in
+                    if index > 0 {
+                        Divider().overlay(Theme.neutral(0.10))
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(finding.tag.label)
+                            .font(Theme.label(14, weight: .semibold))
+                        Text(finding.plainSentence)
+                            .font(Theme.text(13))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        // The count is never hidden. A finding from 6 matched
+                        // nights and one from 60 read identically without it.
+                        Text(finding.supportLine)
+                            .font(Theme.evidence)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
     }
 
     // MARK: - Connections
