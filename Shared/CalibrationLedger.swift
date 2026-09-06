@@ -38,10 +38,37 @@ enum CalibrationLedger {
     /// flip as a finding.
     static let minimumAttempts = 15
 
+    /// The widest coverage interval that still counts as having checked
+    /// anything.
+    ///
+    /// This exists because "the interval straddles the target" is two very
+    /// different situations wearing one answer, and the old code gave both
+    /// the reassuring one.
+    ///
+    /// Straddling because the estimate is *tight* and centred near the target
+    /// is a real result: coverage has been localised, and miscalibration
+    /// worth caring about has been ruled out. Straddling because the estimate
+    /// spans forty percentage points is not a result at all -- an interval
+    /// that wide contains the target, and also contains badly overconfident
+    /// and badly over-cautious, and calling it a match reports the width of
+    /// the person's history as a property of the forecast.
+    ///
+    /// Twenty points, so a `matchesExpectation` means coverage has been
+    /// placed within about ten points either side. That takes roughly seventy
+    /// scored nights on the Wilson interval alone and more once the block
+    /// bootstrap widens it -- which is the honest price of the sentence, not
+    /// a bar set high for its own sake.
+    ///
+    /// Applies only to the straddling case. `tooConfident` and `tooCautious`
+    /// are reached by *excluding* the target, and an exclusion is informative
+    /// however wide the interval that managed it.
+    static let decisiveWidth = 0.20
+
     /// What the ledger concluded.
-    enum Verdict: String, Sendable {
+    enum Verdict: String, CaseIterable, Sendable {
         /// Observed coverage is indistinguishable from what this estimator
-        /// should produce. The common and correct answer for most people.
+        /// should produce -- and the estimate is tight enough for that to
+        /// mean something. See `decisiveWidth`.
         case matchesExpectation
         /// The interval contained the night less often than it should. The
         /// forecast is claiming more precision than it has.
@@ -49,9 +76,72 @@ enum CalibrationLedger {
         /// The interval contained the night more often than it should. Not
         /// harmful, but wider than it needs to be.
         case tooCautious
+        /// Enough scored nights to compute a coverage, not enough to rule
+        /// anything out with it.
+        ///
+        /// Distinct from `notEnoughYet`, which is "there is no number".
+        /// This is "there is a number, and it does not yet exclude anything",
+        /// which is the state most people are in for their first few months
+        /// and the state the previous version reported as a match.
+        case stillLearning
         /// Too few scored nights to say anything.
         case notEnoughYet
+
+        /// What this says, in the words the app uses for it.
+        ///
+        /// Deliberately about the *range*, not about "calibration". Nobody
+        /// outside statistics reads "well calibrated" as anything but a
+        /// grade, and this is not a grade -- it is whether the band Zoon
+        /// draws around tonight has been containing nights as often as it
+        /// claims to.
+        var label: String {
+            switch self {
+            case .matchesExpectation: "Holding up"
+            case .tooConfident: "Narrower than it should be"
+            case .tooCautious: "Wider than it needs to be"
+            case .stillLearning: "Still learning"
+            case .notEnoughYet: "Not enough scored nights"
+            }
+        }
+
+        /// One sentence on what to do about it, which for three of the five
+        /// is nothing.
+        var meaning: String {
+            switch self {
+            case .matchesExpectation:
+                "Your nights have been landing inside Zoon's range about as often as it says they will."
+            case .tooConfident:
+                "Your nights land outside the range more often than it claims. Read the band as narrower than your real spread."
+            case .tooCautious:
+                "Your nights land inside the range more often than it claims. The band is safe, and roomier than it needs to be."
+            case .stillLearning:
+                "There are enough nights to measure how often the range holds, and not yet enough to tell a good range from a poor one."
+            case .notEnoughYet:
+                "Zoon has not scored enough nights to check its own range yet."
+            }
+        }
+
+        /// Whether the sample actually ruled something out.
+        ///
+        /// True for the two exclusions and for a tight straddle, which has
+        /// ruled out miscalibration; false for the two that only say the
+        /// history is not long enough yet. A screen showing a verdict as a
+        /// finding should be showing one of the first three.
+        var isDecisive: Bool {
+            self == .tooConfident || self == .tooCautious || self == .matchesExpectation
+        }
     }
+
+    /// What this feature is called where a person can see it.
+    ///
+    /// Not "Forecast Calibration". "Calibration" is a term of art that reads
+    /// to everyone else as a device needing adjustment, and "forecast"
+    /// promises a prediction about tonight -- which is the one thing this
+    /// does not do. It grades the *range* Zoon has been drawing, against the
+    /// nights that actually followed.
+    static let title = "Recent Range Reliability"
+
+    static let subtitle = "How often your nights have landed inside the range Zoon drew for them."
 
     struct Result: Identifiable, Sendable {
         let metric: TrendEngine.Metric
@@ -294,19 +384,6 @@ enum CalibrationLedger {
         let expected = expectedSum / Double(attempts)
         let bounds = Dependence.combined(hits: hits, attempts: attempts, outcomes: outcomes)
 
-        let verdict: Verdict
-        if attempts < minimumAttempts {
-            verdict = .notEnoughYet
-        } else if bounds.upper < expected {
-            verdict = .tooConfident
-        } else if bounds.lower > expected {
-            verdict = .tooCautious
-        } else {
-            // The interval straddles the target: this sample cannot tell the
-            // two apart, so the ledger does not pretend it can.
-            verdict = .matchesExpectation
-        }
-
         return Result(
             metric: metric,
             attempts: attempts,
@@ -314,8 +391,45 @@ enum CalibrationLedger {
             expectedCoverage: expected,
             coverageLower: bounds.lower,
             coverageUpper: bounds.upper,
-            verdict: verdict
+            verdict: verdict(
+                attempts: attempts,
+                bounds: bounds,
+                expected: expected,
+                minimumAttempts: minimumAttempts
+            )
         )
+    }
+
+    /// Turns a scored coverage interval into what the app says about it.
+    ///
+    /// Separate from `backtest` so every branch can be exercised directly.
+    /// Reached through a backtest, three of the five are only visible when a
+    /// fixture happens to produce the right interval, and a branch tested by
+    /// luck is a branch that stops being tested the day the fixture shifts.
+    static func verdict(
+        attempts: Int,
+        bounds: (lower: Double, upper: Double),
+        expected: Double,
+        minimumAttempts: Int = minimumAttempts
+    ) -> Verdict {
+        // Order matters. The two exclusions are checked before the width bar,
+        // because an exclusion is informative however wide the interval that
+        // managed it -- an interval spanning forty points that still sits
+        // entirely below the target has found something.
+        if attempts < minimumAttempts { return .notEnoughYet }
+        if bounds.upper < expected { return .tooConfident }
+        if bounds.lower > expected { return .tooCautious }
+        if bounds.upper - bounds.lower > decisiveWidth {
+            // Straddling because the interval is too wide to exclude anything
+            // -- it contains the target, and also contains badly overconfident
+            // and badly over-cautious. Calling that a match reports the length
+            // of the person's history as a property of the forecast.
+            return .stillLearning
+        }
+        // Straddling with a tight interval is the real result: coverage has
+        // been placed near the target, not merely failed to be excluded from
+        // it.
+        return .matchesExpectation
     }
 
     /// Every metric that could be scored, most-attempted first.
