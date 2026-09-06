@@ -41,6 +41,19 @@ enum ZoonTwin {
     /// sized groups, not isolate a handful of extremes.
     static let leverThresholdZ = 0.5
 
+    /// The metrics a person can actually choose to move.
+    ///
+    /// HRV and resting heart rate are outcomes of a night, not decisions
+    /// about one, and sleep debt is a running sum of durations already on the
+    /// list. Splitting on any of those would produce a comparison nobody can
+    /// act on.
+    ///
+    /// Hoisted here from the What-If screen because the evidence ledger has
+    /// to record projections over the same set. Two lists would mean the
+    /// history and the screen were about different comparisons while both
+    /// looked complete -- the failure mode the ledger exists to prevent.
+    static let levers: [TrendEngine.Metric] = [.duration, .bedtime, .efficiency]
+
     enum Direction: String, Hashable, Sendable {
         /// Nights where the lever sat above the person's usual.
         case more

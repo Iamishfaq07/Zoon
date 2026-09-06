@@ -69,6 +69,22 @@ enum TrendEngine {
             }
         }
 
+        /// The unit an effect on this metric is measured in, on its own.
+        ///
+        /// `formattedMagnitude` renders a magnitude *with* its unit and is the
+        /// right call almost everywhere. This exists for the one caller that
+        /// has to render the sign itself -- `EvidenceLedger.Change.formatted`
+        /// puts a leading + or - on the number, because in a ledger the sign
+        /// is the finding -- and so needs the unit as a separate string.
+        var unitLabel: String {
+            switch self {
+            case .duration, .bedtime, .sleepDebt: "min"
+            case .hrv: "ms"
+            case .restingHeartRate: "bpm"
+            case .efficiency: "%"
+            }
+        }
+
         func formattedMagnitude(_ magnitude: Double) -> String {
             switch self {
             case .duration, .bedtime, .sleepDebt:

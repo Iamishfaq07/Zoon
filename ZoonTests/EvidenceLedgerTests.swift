@@ -93,6 +93,53 @@ final class EvidenceLedgerTests: XCTestCase {
         XCTAssertEqual(moved.count, 2)
     }
 
+    /// The interval test cannot run for a claim that honestly has no interval,
+    /// and three of the four engines writing here are in that position -- a
+    /// change point reports separation in standard errors, a twin split
+    /// reports two spreads rather than an interval on their difference, an
+    /// experiment's before/after medians have no standard error at all.
+    /// Without the relative fallback an effect that doubled would sit
+    /// unrecorded behind a row saying something else.
+    func testAnEffectThatMovesWithoutAnIntervalToJudgeItIsStillANewBelief() {
+        let history = EvidenceLedger.recording(
+            revision(at: 30, effect: 6, lower: nil, upper: nil), into: []
+        )
+        let moved = EvidenceLedger.recording(
+            revision(at: 1, effect: 9, lower: nil, upper: nil), into: history
+        )
+        XCTAssertEqual(moved.count, 2, "6 to 9 is half again -- a changed belief")
+    }
+
+    func testASmallEffectMoveWithoutAnIntervalIsNotANewBelief() {
+        let history = EvidenceLedger.recording(
+            revision(at: 30, effect: 6, lower: nil, upper: nil), into: []
+        )
+        let nudged = EvidenceLedger.recording(
+            revision(at: 1, effect: 6.6, lower: nil, upper: nil), into: history
+        )
+        XCTAssertEqual(nudged.count, 1, "10% is the wobble of a median gaining a night")
+    }
+
+    /// An effect of exactly zero has no scale to be relative to, and any move
+    /// off it is a claim where there was none.
+    func testAMoveOffZeroIsMaterialAndStayingAtZeroIsNot() {
+        XCTAssertTrue(EvidenceLedger.Revision.hasShifted(from: 0, to: 0.4))
+        XCTAssertFalse(EvidenceLedger.Revision.hasShifted(from: 0, to: 0))
+    }
+
+    /// The interval is the better test and stays the first choice. A reading
+    /// that doubled but landed inside the previous interval is the same claim
+    /// with more data, and the relative fallback must not override that.
+    func testTheIntervalStillWinsWhenThereIsOne() {
+        let history = EvidenceLedger.recording(
+            revision(at: 30, effect: 6, lower: 2, upper: 18), into: []
+        )
+        let doubled = EvidenceLedger.recording(
+            revision(at: 1, effect: 12, lower: 2, upper: 18), into: history
+        )
+        XCTAssertEqual(doubled.count, 1)
+    }
+
     // MARK: - Materially more evidence
 
     func testHalfAsMuchDataAgainIsWorthRecording() {

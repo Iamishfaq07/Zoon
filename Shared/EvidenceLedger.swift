@@ -35,13 +35,27 @@ enum EvidenceLedger {
     enum Status: String, Codable, CaseIterable, Hashable, Sendable {
         /// Seen, not yet enough matched nights to compare.
         case learning
+        /// Something moved in the person's own nights -- a level shifted, one
+        /// group of nights sat apart from another -- and that is all that has
+        /// been shown.
+        ///
+        /// Weaker than `associated` on purpose, and the gap is the whole
+        /// reason this case exists. An association comes from matched pairs,
+        /// which hold the obvious confounders still. An observation is a
+        /// contrast between two sets of real nights that differ in every
+        /// other way too, so it says a difference is there without saying
+        /// anything about what produced it. Recording both under one label
+        /// would let the weaker of the two borrow the stronger one's standing.
+        case observed
         /// A matched-pair association exists.
         case associated
         /// A pre-specified experiment is running.
         case testing
-        /// The experiment agreed with the association.
+        /// The experiment's hypothesis held up -- and, where an association
+        /// predicted it, agreed with that too.
         case supported
-        /// The experiment disagreed with it.
+        /// The experiment ran and the hypothesis did not hold up. Distinct
+        /// from `inconclusive`: this is an answer, not the absence of one.
         case notSupported
         /// Enough data to look, not enough signal to call it either way.
         case inconclusive
@@ -51,6 +65,7 @@ enum EvidenceLedger {
         var label: String {
             switch self {
             case .learning: "Learning"
+            case .observed: "Observed, not tested"
             case .associated: "Association detected"
             case .testing: "Experiment started"
             case .supported: "Supported"
@@ -106,6 +121,26 @@ enum EvidenceLedger {
         /// lands in the same place.
         static let materialSampleGrowth = 1.5
 
+        /// How far an effect must move, as a fraction of the previous one, to
+        /// count as a changed belief when there is no interval to judge it
+        /// against.
+        ///
+        /// The interval test below is the better one and stays the first
+        /// choice: it asks whether the new reading is somewhere the old one
+        /// said it would not be, which is exactly what "changed its mind"
+        /// means. But three of the four engines that write here honestly
+        /// carry no interval -- a change point reports separation in standard
+        /// errors, a twin split reports two spreads rather than an interval on
+        /// their difference, an experiment's before/after medians have no
+        /// standard error at all. Without this fallback those claims could
+        /// only ever be revised by a status change or a half-again bigger
+        /// sample, and an effect that doubled would sit unrecorded behind a
+        /// row saying something else.
+        ///
+        /// A quarter, which is well outside the wobble of a median gaining a
+        /// few nights and well inside a genuine reversal.
+        static let materialEffectShift = 0.25
+
         /// Whether this belief differs from `previous` enough to be worth
         /// keeping as its own revision.
         ///
@@ -116,9 +151,11 @@ enum EvidenceLedger {
         /// 2. The algorithm changed. An effect computed by a different model
         ///    is a different claim even at the same number, which is why
         ///    `SleepIntelligenceScore.currentVersion` exists at all.
-        /// 3. The effect moved outside the previous uncertainty interval.
-        ///    Inside it, the two readings are the same claim with more data;
-        ///    outside it, Zoon has changed its mind about the size.
+        /// 3. The effect moved outside the previous uncertainty interval --
+        ///    or, for a claim that honestly carries no interval, moved by
+        ///    more than `materialEffectShift`. Inside, the two readings are
+        ///    the same claim with more data; outside, Zoon has changed its
+        ///    mind about the size.
         /// 4. The sample grew by half again. Same conclusion, materially more
         ///    evidence behind it.
         ///
@@ -132,13 +169,26 @@ enum EvidenceLedger {
                sampleSize > previous.sampleSize {
                 return true
             }
-            if let effect,
-               let lower = previous.uncertaintyLower,
-               let upper = previous.uncertaintyUpper,
-               effect < lower || effect > upper {
-                return true
+            if let effect, let previousEffect = previous.effect {
+                if let lower = previous.uncertaintyLower, let upper = previous.uncertaintyUpper {
+                    if effect < lower || effect > upper { return true }
+                } else if Self.hasShifted(from: previousEffect, to: effect) {
+                    return true
+                }
             }
             return false
+        }
+
+        /// The no-interval fallback for rule 3. Relative to the previous
+        /// effect, because "moved by 3" means nothing without knowing whether
+        /// the previous reading was 4 or 400.
+        ///
+        /// A previous effect of exactly zero has no scale to be relative to,
+        /// and any move off zero is a claim where there was none -- so that
+        /// case is material whenever the new effect is not zero too.
+        static func hasShifted(from previous: Double, to current: Double) -> Bool {
+            guard previous != 0 else { return current != 0 }
+            return abs(current - previous) / abs(previous) >= materialEffectShift
         }
     }
 
