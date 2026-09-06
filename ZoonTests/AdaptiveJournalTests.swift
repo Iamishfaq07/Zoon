@@ -232,3 +232,61 @@ final class AdaptiveJournalTests: XCTestCase {
         XCTAssertFalse(first.isEmpty)
     }
 }
+
+// MARK: - Why Zoon is asking
+
+/// V9 item 39. The spec's example: "Why Zoon is asking: We have 15 YES
+/// nights but only 3 NO nights."
+///
+/// Both arm counts were already being computed and then discarded in favour
+/// of their minimum, so the prompt knew exactly how short the comparison was
+/// and declined to say.
+extension AdaptiveJournalTests {
+
+    private func prompt(
+        reason: AdaptiveJournal.Reason,
+        yes: Int,
+        no: Int
+    ) -> AdaptiveJournal.Prompt {
+        AdaptiveJournal.Prompt(
+            tag: .caffeineLate, reason: reason,
+            unknownNights: 0, yesNights: yes, noNights: no
+        )
+    }
+
+    func testAShortComparisonSaysHowShortItIs() {
+        let note = prompt(reason: .nearlyAnswerable, yes: 15, no: 3).note
+        XCTAssertTrue(note.contains("15 nights with it"), note)
+        XCTAssertTrue(note.contains("3 without"), note)
+    }
+
+    func testTheBarelySeenCaseAlsoGivesCounts() {
+        let note = prompt(reason: .barelySeen, yes: 4, no: 0).note
+        XCTAssertTrue(note.contains("4 nights with it"), note)
+        XCTAssertTrue(note.contains("0 without"), note)
+    }
+
+    func testASingleNightReadsAsSingular() {
+        let note = prompt(reason: .barelySeen, yes: 1, no: 9).note
+        XCTAssertTrue(note.contains("1 night with it"), note)
+        XCTAssertFalse(note.contains("1 nights"), note)
+    }
+
+    /// The reasons that are already complete sentences do not get numbers
+    /// bolted on. "You're testing this right now" is the whole reason, and
+    /// appending counts would be numbers for their own sake.
+    func testTheOtherReasonsAreLeftAlone() {
+        for reason in [AdaptiveJournal.Reason.underExperiment, .pinnedByUser, .routine] {
+            let note = prompt(reason: reason, yes: 15, no: 3).note
+            XCTAssertEqual(note, reason.note, "\(reason) should keep its own wording")
+            XCTAssertFalse(note.contains("15"), note)
+        }
+    }
+
+    /// `thinnerArmNights` is derived from the two arms now rather than
+    /// stored beside them, so the three can never disagree.
+    func testTheThinnerArmIsTheSmallerOfTheTwo() {
+        XCTAssertEqual(prompt(reason: .routine, yes: 15, no: 3).thinnerArmNights, 3)
+        XCTAssertEqual(prompt(reason: .routine, yes: 2, no: 20).thinnerArmNights, 2)
+    }
+}
