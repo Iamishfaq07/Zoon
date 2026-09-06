@@ -23,7 +23,7 @@ import os
 @Observable
 final class SoundscapeEngine {
 
-    enum Sound: String, CaseIterable, Identifiable, Sendable {
+    enum Sound: String, Codable, CaseIterable, Identifiable, Sendable {
         case brownNoise
         case pinkNoise
         case whiteNoise
@@ -86,6 +86,14 @@ final class SoundscapeEngine {
 
     // MARK: - Audio graph
 
+    private var scenePlayers: [SoundscapeEngine] = []
+    private var sceneLevels: [PersonalSetup.Layer] = []
+    private var playbackGeneration = UUID()
+    private let audioOwner = UUID()
+    private(set) var deadline: Date?
+    private(set) var interruptionMessage: String?
+    private var crossfadeTask: Task<Void, Never>?
+    private var retiringPlayers: [(AVAudioEngine, AVAudioPlayerNode)] = []
     private var engine: AVAudioEngine?
     private var player: AVAudioPlayerNode?
     private var timerTask: Task<Void, Never>?
@@ -99,17 +107,27 @@ final class SoundscapeEngine {
 
     // MARK: - Control
 
-    func play(_ sound: Sound) {
-        if playing == sound { stop(); return }
-        stop()
+    func play(_ sound: Sound, toggle: Bool = true) {
+        if playing == sound && toggle { stop(); return }
+        for layer in scenePlayers { layer.stop() }
+        scenePlayers = []
+        sceneLevels = []
+        playbackGeneration = UUID()
+        let oldEngine = engine
+        let oldPlayer = player
+        crossfadeTask?.cancel()
+        for (engine, player) in retiringPlayers { player.stop(); engine.stop() }
+        retiringPlayers = []
+        interruptionMessage = nil
 
         do {
             // `.playback` with `.mixWithOthers` so a soundscape doesn't kill a
             // podcast someone is already falling asleep to, and keeps running
             // when the screen locks.
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
+            try AudioSessionCoordinator.shared.acquire(audioOwner) { [weak self] in
+                self?.stop()
+                self?.interruptionMessage = "Playback stopped after an interruption or audio route change. Tap a sound to resume."
+            }
 
             let engine = AVAudioEngine()
             let player = AVAudioPlayerNode()
@@ -123,7 +141,7 @@ final class SoundscapeEngine {
             engine.connect(player, to: engine.mainMixerNode, format: format)
             try engine.start()
 
-            player.volume = volume * fadeMultiplier
+            player.volume = 0
             player.play()
 
             self.engine = engine
@@ -133,13 +151,60 @@ final class SoundscapeEngine {
             // Prime with a few buffers, then keep the queue topped up as each
             // one finishes. Scheduling one at a time would gap on a slow frame.
             for _ in 0..<3 { scheduleBuffer(sound, format: format) }
+            if let oldEngine, let oldPlayer { retiringPlayers = [(oldEngine, oldPlayer)] }
+            crossfadeTask = Task { [weak self] in
+                for step in 1...20 {
+                    do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
+                    guard let self else { return }
+                    let fraction = Float(step) / 20
+                    player.volume = volume * fadeMultiplier * fraction
+                    oldPlayer?.volume = volume * fadeMultiplier * (1 - fraction)
+                }
+                oldPlayer?.stop()
+                oldEngine?.stop()
+                self?.retiringPlayers = []
+            }
         } catch {
             logger.error("Audio start failed: \(error.localizedDescription, privacy: .public)")
             stop()
         }
     }
 
+    func playScene(_ scene: PersonalSetup.Scene) {
+        guard let first = scene.layers.first,
+              let sound = Sound(rawValue: first.sound), (1...3).contains(scene.layers.count) else { return }
+        play(sound, toggle: false)
+        guard isPlaying else { return }
+        sceneLevels = scene.layers
+        volume = Float(first.level) / 3
+        for layer in scene.layers.dropFirst() {
+            guard let sound = Sound(rawValue: layer.sound) else { continue }
+            let child = SoundscapeEngine()
+            child.volume = Float(layer.level) / 3
+            child.play(sound)
+            scenePlayers.append(child)
+        }
+    }
+
+    func updateSceneLevels(_ layers: [PersonalSetup.Layer]) {
+        guard isPlaying, layers.count == sceneLevels.count,
+              zip(layers, sceneLevels).allSatisfy({ $0.0.sound == $0.1.sound }) else { return }
+        sceneLevels = layers
+        volume = Float(layers[0].level) / 3
+        for (index, player) in scenePlayers.enumerated() {
+            player.volume = Float(layers[index + 1].level) / 3 * fadeMultiplier
+        }
+    }
+
     func stop() {
+        for layer in scenePlayers { layer.stop() }
+        scenePlayers = []
+        sceneLevels = []
+        crossfadeTask?.cancel()
+        crossfadeTask = nil
+        for (engine, player) in retiringPlayers { player.stop(); engine.stop() }
+        retiringPlayers = []
+        deadline = nil
         timerTask?.cancel()
         timerTask = nil
         player?.stop()
@@ -150,7 +215,7 @@ final class SoundscapeEngine {
         timerMinutes = nil
         remainingSeconds = 0
         fadeMultiplier = 1
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        AudioSessionCoordinator.shared.release(audioOwner)
     }
 
     /// Auto-stop after `minutes`, with a fade over the final 60 seconds.
@@ -160,6 +225,7 @@ final class SoundscapeEngine {
     func setTimer(minutes: Int?) {
         timerTask?.cancel()
         timerMinutes = minutes
+        deadline = minutes.map { Date.now.addingTimeInterval(Double(max(0, $0)) * 60) }
         fadeMultiplier = 1
         player?.volume = volume
 
@@ -185,13 +251,16 @@ final class SoundscapeEngine {
 
     private func tick() {
         guard remainingSeconds > 0 else { return }
-        remainingSeconds -= 1
+        remainingSeconds = max(0, Int(ceil(deadline?.timeIntervalSinceNow ?? 0)))
 
         // Linear fade across the last minute.
         let fadeWindow = 60
         if remainingSeconds <= fadeWindow {
             fadeMultiplier = Float(remainingSeconds) / Float(fadeWindow)
             player?.volume = volume * fadeMultiplier
+            for (index, player) in scenePlayers.enumerated() {
+                player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier
+            }
         }
     }
 
@@ -206,11 +275,12 @@ final class SoundscapeEngine {
     private func scheduleBuffer(_ sound: Sound, format: AVAudioFormat) {
         guard let player, let buffer = makeBuffer(sound, format: format) else { return }
 
+        let generation = playbackGeneration
         player.scheduleBuffer(buffer) { [weak self] in
             // Completion fires on an audio thread; hop back before touching
             // any of this actor's state.
             Task { @MainActor [weak self] in
-                guard let self, self.playing == sound else { return }
+                guard let self, self.playing == sound, self.playbackGeneration == generation else { return }
                 self.scheduleBuffer(sound, format: format)
             }
         }

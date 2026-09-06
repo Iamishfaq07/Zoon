@@ -38,7 +38,7 @@ struct FeatureExtractor {
     /// - Parameter baseline: rolling context from stored history. Passing `nil`
     ///   yields a record with no comparative fields — valid, just less useful,
     ///   which is exactly what the first few nights look like.
-    func extract(from session: SleepSession, baseline: RollingBaseline?) async -> Result {
+    func extract(from session: SleepSession, baseline: RollingBaseline?, previousWake: Date? = nil) async -> Result {
         // Scoped to the night's actual asleep intervals, not the in-bed
         // envelope (session.start...session.end): a session with 20 minutes
         // awake at the start would otherwise fold pre-sleep HR into "average
@@ -152,9 +152,11 @@ struct FeatureExtractor {
         }
 
         let workoutHours = await lastWorkoutContext(before: session.start)
-        let exercisePrevious = await exerciseMinutes(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
-        let measuredAlcoholicBeverages = await alcoholicBeverages(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
-        let measuredLateCaffeineMg = await lateCaffeineMg(onDayOf: session.start, timeZoneIdentifier: session.timeZoneIdentifier)
+        let waking = SleepContextWindow.waking(before: session.start, previousWake: previousWake)
+        let measuredAlcoholicBeverages = try? await healthKit.sum(.numberOfAlcoholicBeverages, unit: .count(), in: waking)
+        let exercisePrevious = try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: waking)
+        let measuredLateCaffeineMg = try? await healthKit.sum(.dietaryCaffeine, unit: .gramUnit(with: .milli),
+            in: SleepContextWindow.lateCaffeine(before: session.start, waking: waking))
 
         let wristTemp = wristTempOutcome.value
 
@@ -324,45 +326,7 @@ struct FeatureExtractor {
         return hours >= 0 ? hours : nil
     }
 
-    /// Apple Exercise minutes accumulated on the day the user went to bed,
-    /// up to bedtime. Uses the session's own recorded timezone rather than
-    /// the device's current one, so re-syncing a historical night after
-    /// traveling still resolves "the day of" against that night's own zone.
-    private func exerciseMinutes(onDayOf bedtime: Date, timeZoneIdentifier: String) async -> Double? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
-        let dayStart = calendar.startOfDay(for: bedtime)
-        guard dayStart < bedtime else { return nil }
-        let interval = DateInterval(start: dayStart, end: bedtime)
-        return try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)
-    }
 
-    /// Alcoholic beverages logged on the day of bedtime, up to bedtime --
-    /// same day-boundary convention as `exerciseMinutes`. Nil whether
-    /// nothing was logged or the Lifestyle Insights type was never
-    /// authorized; both look identical to a query, by HealthKit's design
-    /// (see `HealthKitManager`'s own doc comment on read-permission
-    /// opacity), so this can't and doesn't try to tell them apart.
-    private func alcoholicBeverages(onDayOf bedtime: Date, timeZoneIdentifier: String) async -> Double? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
-        let dayStart = calendar.startOfDay(for: bedtime)
-        guard dayStart < bedtime else { return nil }
-        let interval = DateInterval(start: dayStart, end: bedtime)
-        return try? await healthKit.sum(.numberOfAlcoholicBeverages, unit: .count(), in: interval)
-    }
-
-    /// Caffeine logged after 4pm on the day of bedtime, up to bedtime --
-    /// "late" is the behaviourally relevant window for sleep (matches
-    /// `BehaviorTag.caffeineLate`'s own framing), not the day's total intake.
-    private func lateCaffeineMg(onDayOf bedtime: Date, timeZoneIdentifier: String) async -> Double? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
-        guard let afternoon = calendar.date(bySettingHour: 16, minute: 0, second: 0, of: bedtime),
-              afternoon < bedtime else { return nil }
-        let interval = DateInterval(start: afternoon, end: bedtime)
-        return try? await healthKit.sum(.dietaryCaffeine, unit: .gramUnit(with: .milli), in: interval)
-    }
 }
 
 // MARK: - Units

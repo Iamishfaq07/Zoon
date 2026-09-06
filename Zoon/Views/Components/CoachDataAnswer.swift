@@ -26,7 +26,7 @@ struct CoachDataAnswer: View {
     /// The question the user asked, used only to pick a metric.
     let question: String
 
-    @Environment(SleepDataCoordinator.self) private var coordinator
+    let evidence: CoachEvidence
 
     var body: some View {
         if let kind = Self.metric(in: question), let metric = metric(for: kind) {
@@ -43,7 +43,7 @@ struct CoachDataAnswer: View {
     // MARK: - Chart
 
     private func metric(for kind: VitalsStatus.Kind) -> VitalsStatus.Metric? {
-        coordinator.state.context?.vitals.metrics.first { $0.kind == kind && $0.value != nil }
+        evidence.vitals.metrics.first { $0.kind == kind && $0.value != nil }
     }
 
     /// Reuses `ZoonBaselineLane` rather than drawing a Coach-specific chart:
@@ -69,7 +69,7 @@ struct CoachDataAnswer: View {
     /// none, the lane stands alone rather than inventing a comparison.
     private func evidence(for kind: VitalsStatus.Kind) -> TrendEngine.Result? {
         guard let trendMetric = Self.trendMetric(for: kind) else { return nil }
-        return TrendEngine.detect(nights: coordinator.recentNights)
+        return TrendEngine.detect(nights: evidence.history + [evidence.night])
             .first { $0.metric == trendMetric }
     }
 
@@ -98,7 +98,7 @@ struct CoachDataAnswer: View {
     static func metric(in question: String) -> VitalsStatus.Kind? {
         let text = question.lowercased()
         let table: [(needles: [String], kind: VitalsStatus.Kind)] = [
-            (["heart rate variability", "hrv"], .hrv),
+            (["heart rate variability", "hrv", "recovery signal"], .hrv),
             (["resting heart rate", "resting hr", "heart rate", "pulse", "bpm"], .restingHeartRate),
             (["respiratory", "respiration", "breathing rate", "breaths"], .respiratoryRate),
             (["blood oxygen", "oxygen", "spo2", "saturation"], .oxygenSaturation),
@@ -124,12 +124,13 @@ struct CoachDataAnswer: View {
 }
 
 #Preview("Coach data answer") {
+    let sample = CoachEvidence(night: MockData.history.last!, history: MockData.history)
     ScrollView {
         VStack(alignment: .leading, spacing: 24) {
-            CoachDataAnswer(question: "Is my HRV falling?")
-            CoachDataAnswer(question: "What about my resting heart rate?")
+            CoachDataAnswer(question: "Is my HRV falling?", evidence: sample)
+            CoachDataAnswer(question: "What about my resting heart rate?", evidence: sample)
             // No metric in the question: renders nothing, by design.
-            CoachDataAnswer(question: "Should I train today?")
+            CoachDataAnswer(question: "Should I train today?", evidence: sample)
         }
         .padding()
     }

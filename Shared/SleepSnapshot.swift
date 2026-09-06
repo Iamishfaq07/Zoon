@@ -18,6 +18,7 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     let goalMinutes: Double
     let insightSummary: String
     let generatedAt: Date
+    var scoreLightMode = false
 
     /// Added after the first release, so a snapshot written by an older build
     /// must still decode — the widget must never fail to render because the
@@ -260,6 +261,7 @@ extension SleepSnapshot {
         goalMinutes = try container.decode(Double.self, forKey: .goalMinutes)
         insightSummary = try container.decode(String.self, forKey: .insightSummary)
         generatedAt = try container.decode(Date.self, forKey: .generatedAt)
+        scoreLightMode = try container.decodeIfPresent(Bool.self, forKey: .scoreLightMode) ?? false
 
         // Added later. Each falls back to the same default declared above.
         recoveryPercent = try container.decodeIfPresent(Int.self, forKey: .recoveryPercent) ?? 0

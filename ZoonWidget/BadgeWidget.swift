@@ -50,11 +50,15 @@ struct BadgeWidgetView: View {
     private var hasBadge: Bool { !snapshot.badgeTitle.isEmpty }
 
     var body: some View {
+        if snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: snapshot)
+        } else {
         switch family {
         case .accessoryCircular: circular
         case .accessoryRectangular: rectangular
         case .systemMedium: medium
         default: small
+        }
         }
     }
 

@@ -304,10 +304,12 @@ final class HealthKitManager {
                     )
                 }
             } else {
-                Task { await onChange() }
+                Task {
+                    await onChange()
+                    completionHandler()
+                }
+                return
             }
-            // MUST be called, even on error. HealthKit will stop delivering
-            // updates to an observer that doesn't acknowledge them.
             completionHandler()
         }
 

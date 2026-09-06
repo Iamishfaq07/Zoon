@@ -20,6 +20,7 @@ struct CoachChatView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var chat = CoachChat()
+    @State private var evidence: CoachEvidence?
     @State private var input = ""
     @FocusState private var inputFocused: Bool
     /// Guards against re-sending `initialPrompt` if `.task` reruns on this
@@ -42,20 +43,23 @@ struct CoachChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let reason = chat.unavailabilityReason {
-                unavailable(reason)
-            } else {
-                transcript
-                composer
+            if chat.unavailabilityReason != nil {
+                Text("Local answers · sleep, timing, HRV and heart rate")
+                    .font(.caption).foregroundStyle(.secondary).padding(8)
             }
+            transcript
+            composer
         }
         .nightBackground()
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
         .task {
+            let frozen = CoachEvidence(night: night, history: coordinator.recentNights)
+            evidence = frozen
+            chat.evidence = frozen
             chat.start(
                 nightSummary: night.summaryForLLM,
-                contextDigest: coordinator.coachContextDigest(),
+                contextDigest: frozen.promptCatalog,
                 chartContext: chartQuestion?.context
             )
             // The chart's own question wins over a tapped suggestion: this
@@ -149,13 +153,13 @@ struct CoachChatView: View {
                     // Confidence, the third of the redesign spec's four
                     // structured elements -- computed by CoachChat.Message,
                     // not self-reported by the model
-                    // (see its doc comment for why). "Grounded" vs "General"
+                    // (see its doc comment for why). "Recorded evidence" vs "General"
                     // rather than a numeric score: the only thing this can
                     // honestly claim to know is whether the answer is tied
                     // to one of your own numbers, not how right it is.
                     if let confidence = message.confidence {
                         StatusPill(
-                            text: confidence == .grounded ? "Grounded" : "General",
+                            text: confidence == .grounded ? "Recorded evidence" : "General",
                             tint: confidence == .grounded ? Theme.Metric.sleep : .secondary
                         )
                     }
@@ -171,7 +175,7 @@ struct CoachChatView: View {
                 // shows rather than describing it in words. Draws nothing
                 // when the question wasn't about a tracked metric.
                 if let question {
-                    CoachDataAnswer(question: question)
+                    CoachDataAnswer(question: question, evidence: evidence ?? CoachEvidence(night: night, history: []))
                 }
                 // Evidence: which number in tonight's data (or the standing-
                 // pattern digest) the answer is actually grounded in, set

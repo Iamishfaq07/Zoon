@@ -35,6 +35,7 @@ import os
 @MainActor
 @Observable
 final class SnoreDetector {
+    private let audioOwner = UUID()
 
     private(set) var isRunning = false
     private(set) var monitoredSeconds: Double = 0
@@ -83,9 +84,9 @@ final class SnoreDetector {
     func start() throws {
         guard !isRunning else { return }
 
-        let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .measurement, options: [])
-        try session.setActive(true)
+        try AudioSessionCoordinator.shared.acquire(audioOwner, recording: true) { [weak self] in
+            _ = self?.stop()
+        }
 
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
@@ -130,7 +131,7 @@ final class SnoreDetector {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         soundClassifier.stop()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        AudioSessionCoordinator.shared.release(audioOwner)
         isRunning = false
         logger.info("Snore detection stopped")
 

@@ -193,15 +193,7 @@ jobs:
 
       - name: Run ZoonUITests
         id: uitest
-        # Non-blocking for now: this is the first CI run this target has ever
-        # had, and a black-box UI test on a shared macOS runner (simulator
-        # boot time, animation settling, first-launch timing) is a genuinely
-        # different reliability profile than ZoonTests' in-process logic
-        # tests. Flip to a hard failure once it's proven stable over a few
-        # real runs rather than gating every PR on an unproven step from day
-        # one.
         if: steps.build.outcome == 'success'
-        continue-on-error: true
         run: |
           set -o pipefail
           UDID=$(xcrun simctl list devices available -j \

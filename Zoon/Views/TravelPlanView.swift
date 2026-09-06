@@ -18,6 +18,7 @@ struct TravelPlanView: View {
     /// schedule shown either collapsed or day by day. Nothing is hidden in
     /// the simple form -- the preparation steps are summarised into a line
     /// that still says how many days, rather than truncated.
+    @State private var setup = PersonalSetupStore.shared
     @State private var detailed = false
     @State private var destination = TimeZone.current
     @State private var departure = Calendar.current.date(byAdding: .day, value: 5, to: .now) ?? .now
@@ -43,6 +44,8 @@ struct TravelPlanView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 tripCard
+                Button("Save this trip") { setup.value.trip = .init(destination: destination.identifier, departure: departure, arrival: arrival) }
+                NavigationLink("Choose sleep times for this trip") { SavedSleepPlansView() }
                 if let bodyClock {
                     planSection(bodyClock: bodyClock)
                 } else {
@@ -57,6 +60,12 @@ struct TravelPlanView: View {
             .padding()
         }
         .nightBackground()
+        .onAppear {
+            if let trip = setup.value.trip {
+                destination = TimeZone(identifier: trip.destination) ?? .current
+                departure = trip.departure; arrival = trip.arrival
+            }
+        }
         .navigationTitle("Travel")
         .navigationBarTitleDisplayMode(.inline)
     }

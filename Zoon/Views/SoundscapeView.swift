@@ -11,7 +11,12 @@ struct SoundscapeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
+                if let message = engine.interruptionMessage {
+                    Text(message).font(.callout).accessibilityIdentifier("audioInterruption")
+                }
                 nowPlaying
+                NavigationLink("Mix and save scenes") { AudioStudioView() }
+                    .buttonStyle(.bordered)
                 grid
                 timerCard
                 explanation
@@ -204,6 +209,7 @@ struct SoundscapeView: View {
 /// real output buffer to drive it would mean an audio-thread read on every frame
 /// for a decoration nobody is looking at while asleep.
 struct AudioWaveform: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isActive: Bool
 
     @State private var phase: Double = 0
@@ -211,9 +217,9 @@ struct AudioWaveform: View {
     private let barCount = 28
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 20, paused: !isActive)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 20, paused: !isActive || reduceMotion)) { timeline in
             Canvas { context, size in
-                let time = timeline.date.timeIntervalSinceReferenceDate
+                let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
                 let barWidth = size.width / CGFloat(barCount) * 0.55
                 let spacing = size.width / CGFloat(barCount)
 

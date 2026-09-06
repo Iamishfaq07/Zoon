@@ -13,16 +13,25 @@ struct MoreView: View {
     /// intent can push onto it before the sheet even opens.
     @Binding var path: NavigationPath
 
+    @State private var setup = PersonalSetupStore.shared
     @State private var exportURL: URL?
     @State private var isImporting = false
+    @State private var encryptBackup = false
+    @State private var archivePassphrase = ""
+    @State private var pendingArchive: DataExporter.Archive?
+    @State private var showingRestorePreview = false
+    @State private var restoring = false
     @State private var importMessage: String?
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: Theme.stackSpacing) {
-                    StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
-                        .entrance(0)
+                    if !setup.value.scoreLight {
+                        StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes).entrance(0)
+                    }
+                    navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
+                    navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
 
                     navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
                         AchievementsView()
@@ -94,6 +103,25 @@ struct MoreView: View {
             ) { result in
                 handleImport(result)
             }
+            .confirmationDialog("Restore this backup?", isPresented: $showingRestorePreview, titleVisibility: .visible) {
+                Button("Restore and merge") {
+                    guard let archive = pendingArchive else { return }
+                    restoring = true
+                    Task {
+                        importMessage = await coordinator.importArchive(archive)
+                        pendingArchive = nil
+                        archivePassphrase = ""
+                        restoring = false
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingArchive = nil }
+            } message: {
+                if let archive = pendingArchive {
+                    let existing = Set(coordinator.nightsForRepair().map(\.nightKey))
+                    let conflicts = archive.nights.filter { existing.contains($0.nightKey) }.count
+                    Text("Format \(archive.formatVersion), exported \(archive.exportedAt.formatted()). \(archive.nights.count) nights (\(conflicts) existing nights updated), \(archive.journal.count) journal entries, \(archive.evidenceHistory?.count ?? 0) evidence revisions. Preferences and saved setup in this backup replace current settings. Other nights are kept. No audio starts automatically.")
+                }
+            }
             .alert("Import", isPresented: .constant(importMessage != nil)) {
                 Button("OK") { importMessage = nil }
             } message: {
@@ -137,6 +165,11 @@ struct MoreView: View {
                 systemImage: "square.and.arrow.up"
             )
 
+            Toggle("Encrypt JSON backup", isOn: $encryptBackup)
+            SecureField("Backup passphrase (for export or import)", text: $archivePassphrase)
+                .textContentType(.password)
+            Text("Encrypted backups need this passphrase to restore. Zoon does not save it.").font(.caption).foregroundStyle(.secondary)
+            if restoring { ProgressView("Restoring backup…") }
             if let url = exportURL {
                 ShareLink(item: url) {
                     actionRow("Share export", "Ready — tap to send", "square.and.arrow.up.fill", Theme.Metric.battery)
@@ -188,7 +221,7 @@ struct MoreView: View {
             let url: URL
             if json {
                 let archive = DataExporter.archive(
-                    nights: coordinator.recentNights,
+                    nights: coordinator.nightsForRepair(),
                     journal: coordinator.journal.allEntries(),
                     naps: naps.naps,
                     goalMinutes: preferences.sleepGoalMinutes,
@@ -198,10 +231,14 @@ struct MoreView: View {
                     episodes: coordinator.episodesForExport(),
                     experiments: coordinator.experiments.outcomes,
                     soundEvents: SoundEventStore().recentEvents,
-                    behaviorObservations: coordinator.behaviorObservationsForExport()
+                    behaviorObservations: coordinator.behaviorObservationsForExport(),
+                    evidenceHistory: coordinator.evidenceHistoryForExport(),
+                    personalSetup: setup.value
                 )
+                let plain = try DataExporter.jsonData(archive)
+                let data = encryptBackup ? try ArchiveCipher.seal(plain, passphrase: archivePassphrase) : plain
                 url = try DataExporter.writeTemporary(
-                    try DataExporter.jsonData(archive),
+                    data,
                     filename: DataExporter.defaultFilename(extension: "json")
                 )
             } else {
@@ -229,12 +266,11 @@ struct MoreView: View {
             }
             defer { url.stopAccessingSecurityScopedResource() }
 
-            let archive = try DataExporter.decode(try Data(contentsOf: url))
-            Task {
-                let summary = await coordinator.importArchive(archive)
-                importMessage = summary
-                Haptics.success()
-            }
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
+            guard data.count <= 64 * 1024 * 1024 else { throw DataExporter.ImportError.unreadable }
+            let plain = ArchiveCipher.isEncrypted(data) ? try ArchiveCipher.open(data, passphrase: archivePassphrase) : data
+            pendingArchive = try DataExporter.decode(plain)
+            showingRestorePreview = true
         } catch {
             importMessage = error.localizedDescription
         }

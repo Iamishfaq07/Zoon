@@ -11,11 +11,32 @@ import os
 @MainActor
 final class SleepHistoryStore {
 
+    var excludedNightKeys: Set<String> = []
     private let context: ModelContext
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "HistoryStore")
 
     init(context: ModelContext) {
         self.context = context
+    }
+
+    func evidenceHistory() -> [EvidenceLedger.Revision] {
+        ((try? context.fetch(FetchDescriptor<EvidenceRevisionRecord>())) ?? []).map(\.revision)
+    }
+
+    @discardableResult
+    func importEvidenceHistory(_ revisions: [EvidenceLedger.Revision]) -> Int {
+        var known = Set(evidenceHistory())
+        let additions = revisions.filter { known.insert($0).inserted }
+        for revision in additions { context.insert(EvidenceRevisionRecord(revision)) }
+        do { try context.save(); return additions.count }
+        catch { context.rollback(); return 0 }
+    }
+
+    func recordBelief(_ revision: EvidenceLedger.Revision) {
+        let history = evidenceHistory()
+        guard EvidenceLedger.recording(revision, into: history).count > history.count else { return }
+        context.insert(EvidenceRevisionRecord(revision))
+        save()
     }
 
     // MARK: - Reads
@@ -133,7 +154,7 @@ final class SleepHistoryStore {
                 )
             ))
 
-            priorNewestFirst.insert(record, at: 0)
+            if !excludedNightKeys.contains(record.features().nightKey) { priorNewestFirst.insert(record, at: 0) }
             if priorNewestFirst.count > 60 {
                 priorNewestFirst.removeLast(priorNewestFirst.count - 60)
             }
@@ -343,25 +364,16 @@ final class SleepHistoryStore {
             predicate: #Predicate { $0.nightKey == nightKey }
         )
         let episodes = (try? context.fetch(descriptor)) ?? []
-        let autoEpisodes = episodes.map {
-            SleepDaySummary.AutoEpisode(
-                isNap: $0.episodeType == .nap,
+        let day = SleepContextWindow.napDay(before: wakeDate, timeZone: timeZone)
+        // A split main sleep belongs to its night key. Naps belong to their
+        // occurrence interval, regardless of which source recorded them.
+        let autoEpisodes = episodes.filter { $0.episodeType != .nap }.map {
+            SleepDaySummary.AutoEpisode(isNap: false,
                 interval: DateInterval(start: $0.startDate, end: $0.endDate),
-                asleepMinutes: $0.asleepMinutes
-            )
-        }
-
-        // Manual naps are attributed to the day before the night they
-        // credit -- the same convention `NapStore.minutesBefore(night:)`
-        // and `SleepDataCoordinator.deduplicatedNapMinutes` already use,
-        // now including their same `timeZone` parameter: the night's own
-        // recorded timezone, not the device's current one, so which
-        // calendar day a nap counts toward doesn't shift after travel.
-        var calendar = Calendar.current
-        calendar.timeZone = timeZone
-        let previousDay = calendar.date(byAdding: .day, value: -1, to: wakeDate) ?? wakeDate
+                asleepMinutes: $0.asleepMinutes)
+        } + autoDetectedNaps(in: day)
         let manualEpisodes = manualNaps
-            .filter { calendar.isDate($0.start, inSameDayAs: previousDay) }
+            .filter { $0.start >= day.start && $0.start < day.end }
             .map { SleepDaySummary.ManualNap(interval: DateInterval(start: $0.start, end: $0.end), minutes: $0.minutes) }
 
         return SleepDaySummary.compute(
@@ -436,6 +448,7 @@ final class SleepHistoryStore {
         do {
             try context.delete(model: SleepNightRecord.self)
             try context.delete(model: SleepEpisodeRecord.self)
+            try context.delete(model: EvidenceRevisionRecord.self)
             try context.save()
             AnchorStore.clear()
             return true
@@ -514,7 +527,7 @@ final class SleepHistoryStore {
     ///   - goalMinutes: the user's nightly sleep goal, for sleep debt.
     func baseline(for date: Date, goalMinutes: Double, manualNaps: [NapStore.Nap] = []) -> RollingBaseline {
         let history = allNights()
-        let priorNights = history.filter { $0.date < date }
+        let priorNights = history.filter { $0.date < date && !excludedNightKeys.contains($0.features().nightKey) }
 
         return makeBaseline(
             priorNightsNewestFirst: priorNights,

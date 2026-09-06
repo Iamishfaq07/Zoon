@@ -37,12 +37,16 @@ struct SleepDebtWidgetView: View {
     let entry: SleepEntry
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryCircular: circular
         case .accessoryInline: inline
         case .accessoryRectangular: rectangular
         case .systemMedium: medium
         default: small
+        }
         }
     }
 

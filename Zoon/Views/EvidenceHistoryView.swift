@@ -65,7 +65,6 @@ struct EvidenceHistoryView: View {
         .navigationTitle("How this changed")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            recordCurrentBeliefs()
             history = ledger.allRevisions()
         }
     }
@@ -143,41 +142,7 @@ struct EvidenceHistoryView: View {
         return parts.joined(separator: " · ")
     }
 
-    /// Offers today's findings to the ledger. Most of the time nothing is
-    /// written, which is the intended behaviour.
-    private func recordCurrentBeliefs() {
-        let findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
-        for finding in findings {
-            ledger.record(
-                EvidenceLedger.Revision(
-                    claimID: "tag:\(finding.tag.rawValue)",
-                    recordedAt: .now,
-                    status: status(for: finding),
-                    headline: finding.plainSentence,
-                    effect: finding.delta,
-                    effectUnit: finding.metric.shortLabel,
-                    uncertaintyLower: finding.confidenceIntervalLower,
-                    uncertaintyUpper: finding.confidenceIntervalUpper,
-                    sampleSize: finding.matchedPairCount,
-                    windowStart: finding.pairs.map(\.date).min(),
-                    windowEnd: finding.pairs.map(\.date).max(),
-                    algorithmVersion: JournalCorrelator.algorithmVersion,
-                    sourceFeature: finding.metric.rawValue,
-                    provenance: "JournalCorrelator"
-                )
-            )
-        }
-    }
 
-    /// A matched-pair finding is an association, never a tested result --
-    /// only a pre-specified experiment earns `.supported`, and this engine
-    /// does not run one. Low confidence is still learning.
-    private func status(for finding: JournalCorrelator.Finding) -> EvidenceLedger.Status {
-        switch finding.confidence {
-        case .low: .learning
-        case .moderate, .high: .associated
-        }
-    }
 }
 
 #Preview("How this changed") {

@@ -33,6 +33,9 @@ final class BreathingCoach: NSObject {
     private let restSeconds: Double = 2
 
     var totalCycles = 4
+    var voiceEnabled = true
+    var hapticsEnabled = false
+    private let audioOwner = UUID()
 
     private let synthesizer = AVSpeechSynthesizer()
     private var timer: Timer?
@@ -44,7 +47,10 @@ final class BreathingCoach: NSObject {
         stop()
         totalCycles = cycles
         cyclesCompleted = 0
-        speak("Let's begin. Find a comfortable position, and breathe with me.")
+        if voiceEnabled {
+            do { try AudioSessionCoordinator.shared.acquire(audioOwner) { [weak self] in self?.stop() } }
+            catch { voiceEnabled = false }
+        }
         runCycle()
     }
 
@@ -52,6 +58,7 @@ final class BreathingCoach: NSObject {
         timer?.invalidate()
         timer = nil
         synthesizer.stopSpeaking(at: .immediate)
+        AudioSessionCoordinator.shared.release(audioOwner)
         phase = .idle
         phaseProgress = 0
     }
@@ -69,6 +76,8 @@ final class BreathingCoach: NSObject {
 
     private func enter(_ next: Phase, duration: Double, say line: String) {
         phase = next
+        phaseProgress = 0
+        if hapticsEnabled { Haptics.tap() }
         phaseDuration = duration
         phaseStart = .now
         speak(line)
@@ -101,11 +110,12 @@ final class BreathingCoach: NSObject {
     }
 
     private func speak(_ line: String) {
-        guard !line.isEmpty else { return }
+        synthesizer.stopSpeaking(at: .immediate)
+        guard voiceEnabled, !line.isEmpty else { return }
         let utterance = AVSpeechUtterance(string: line)
         // Slower and a touch lower than the default — the point is to sound
         // like the pace being asked for, not to sound urgent.
-        utterance.rate = AVSpeechUtteranceMinimumSpeechRate + 0.05
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         utterance.pitchMultiplier = 0.92
         utterance.postUtteranceDelay = 0.1
         synthesizer.speak(utterance)

@@ -38,11 +38,15 @@ struct SleepScoreWidgetView: View {
     }
 
     var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
         switch family {
         case .accessoryRectangular: rectangular
         case .systemMedium: medium
         case .systemLarge: large
         default: small
+        }
         }
     }
 

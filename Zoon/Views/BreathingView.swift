@@ -30,6 +30,10 @@ struct BreathingView: View {
             }
 
             Spacer(minLength: 0)
+            Toggle("Voice guidance", isOn: $coach.voiceEnabled)
+                .padding(.horizontal, 28)
+            Toggle("Phase haptics", isOn: $coach.hapticsEnabled)
+                .padding(.horizontal, 28)
 
             Button {
                 Haptics.tap()
@@ -96,7 +100,7 @@ struct BreathingView: View {
                 .stroke(Theme.Metric.sleep.opacity(0.5), lineWidth: 1.5)
         }
         .frame(width: 220, height: 220)
-        .scaleEffect(scale)
+        .scaleEffect(reduceMotion ? 0.85 : scale)
         .animation(
             reduceMotion ? nil : .easeInOut(duration: 0.1),
             value: scale
