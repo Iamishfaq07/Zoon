@@ -84,6 +84,22 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// watch needs the second half of that pair to be able to decline.
     var recoveryConfidence: String = ""
 
+    /// Tonight's one question, as the phone chose it.
+    ///
+    /// Two fields rather than one because the watch needs both halves and can
+    /// derive neither: the text to show, and the identifier to send back.
+    /// `BehaviorTag` lives in an app-only file this type cannot import (see
+    /// `WatchQuickAction`'s note on the same constraint), so the tag travels
+    /// as its raw value and the phone re-resolves it.
+    ///
+    /// Empty means there is no question tonight -- which is a real answer,
+    /// not a missing value. `AdaptiveJournal.question` returns nothing when
+    /// the best available ask is one whose answer Zoon can already predict,
+    /// and the watch renders nothing rather than a card announcing its own
+    /// emptiness.
+    var questionTag: String = ""
+    var questionText: String = ""
+
     /// Mirrors `UserPreferences.isShiftWorkModeEnabled` as of the last
     /// publish. The widget extension never reads `UserPreferences` itself
     /// (it's a separate process with no HealthKit pipeline -- see this
@@ -279,6 +295,12 @@ extension SleepSnapshot {
         // The strongest claim, for the watch. Same story.
         headlineFindingText = try container.decodeIfPresent(String.self, forKey: .headlineFindingText) ?? ""
         headlineFindingStrength = try container.decodeIfPresent(String.self, forKey: .headlineFindingStrength) ?? ""
+
+        // Tonight's one question. Absent on any snapshot written before this
+        // existed, and absent on a night with nothing worth asking -- the
+        // same empty state, which is correct: both mean "no question".
+        questionTag = try container.decodeIfPresent(String.self, forKey: .questionTag) ?? ""
+        questionText = try container.decodeIfPresent(String.self, forKey: .questionText) ?? ""
     }
 
     init(

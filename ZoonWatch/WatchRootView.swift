@@ -443,6 +443,7 @@ struct TodayPage: View {
 /// faster once you know it. It is no longer the only way in.
 struct LogPage: View {
 
+    @Environment(WatchLink.self) private var link
     @State private var showsFullLog = false
 
     var body: some View {
@@ -452,6 +453,11 @@ struct LogPage: View {
                     .font(Theme.label(9, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let snapshot = link.snapshot,
+                   !snapshot.questionTag.isEmpty, !snapshot.questionText.isEmpty {
+                    OneQuestionCard(tag: snapshot.questionTag, question: snapshot.questionText)
+                }
 
                 QuickLogActions()
 
@@ -470,6 +476,69 @@ struct LogPage: View {
         .sheet(isPresented: $showsFullLog) {
             QuickLogView()
         }
+    }
+}
+
+/// Tonight's one question, answerable in one tap.
+///
+/// The phone decides what to ask -- the ranking engine, the journal history
+/// and `BehaviorTag` itself all live in the app target, none of which exist
+/// here -- and sends the question text and the tag identifier on the
+/// snapshot. This renders them and sends the answer back.
+///
+/// Yes and No both send, rather than No being a second press of Yes. The
+/// watch does not know what state the tag is currently in, and a toggle would
+/// therefore record whichever answer the phone's existing state implied
+/// rather than the one that was pressed.
+///
+/// Nothing renders when there is no question, which is a state the phone
+/// reaches deliberately: `AdaptiveJournal.question` returns nothing when the
+/// only thing left to ask is one whose answer Zoon can already predict.
+struct OneQuestionCard: View {
+
+    let tag: String
+    let question: String
+
+    @Environment(WatchLink.self) private var link
+    @State private var answered: Bool?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(question)
+                .font(Theme.text(13, weight: .medium))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let answered {
+                Text(answered ? "Logged: yes" : "Logged: no")
+                    .font(Theme.label(11, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+            } else {
+                HStack(spacing: 5) {
+                    answerButton("Yes", happened: true)
+                    answerButton("No", happened: false)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Theme.neutral(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(.bottom, 2)
+    }
+
+    private func answerButton(_ title: String, happened: Bool) -> some View {
+        Button {
+            WKInterfaceDevice.current().play(.click)
+            link.sendQuickAction(.behaviorAnswer(rawValue: tag, happened: happened))
+            answered = happened
+        } label: {
+            Text(title)
+                .font(Theme.label(12, weight: .semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 5)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityLabel("\(title), \(question)")
     }
 }
 

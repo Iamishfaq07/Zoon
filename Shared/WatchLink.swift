@@ -266,6 +266,16 @@ enum WatchQuickAction: Codable, Sendable {
     /// Toggle a behaviour tag on today's journal entry. `rawValue` matches
     /// `BehaviorTag.rawValue` (e.g. "alcohol", "caffeineLate").
     case behaviorTag(rawValue: String)
+    /// Answer tonight's one question outright, yes or no.
+    ///
+    /// Distinct from `behaviorTag` rather than reusing it, because the two
+    /// mean different things on the wire. A toggle advances whatever state
+    /// the tag is already in, which is right for a quick-log button whose
+    /// label is a noun; a question with Yes and No beside it has to record
+    /// the answer that was pressed, and "no" cannot be expressed as a toggle
+    /// without the watch first knowing the current state -- which it does
+    /// not, and which would race the phone if it did.
+    case behaviorAnswer(rawValue: String, happened: Bool)
     /// Set today's Morning Check-In feeling. `rawValue` matches
     /// `MorningFeeling.rawValue` (1...5).
     case morningFeeling(rawValue: Int)
