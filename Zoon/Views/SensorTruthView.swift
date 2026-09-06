@@ -35,6 +35,14 @@ struct SensorTruthView: View {
         return TonightsData.build(night: night, coverage: coverage)
     }
 
+    /// How often the range Zoon draws has actually contained the night.
+    ///
+    /// State rather than a computed property, and filled in a task, because
+    /// `backtestAll` rebuilds a forecast for every night of history on every
+    /// metric -- it is the most expensive thing on this screen by a wide
+    /// margin, and a computed property would re-run it on every render.
+    @State private var reliability: [CalibrationLedger.Result] = []
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
@@ -54,12 +62,23 @@ struct SensorTruthView: View {
                     tonightSection(tonight).entrance(2)
                 }
 
+                if !reliability.isEmpty {
+                    reliabilitySection.entrance(3)
+                }
+
                 ForEach(Array(SensorTruth.all.enumerated()), id: \.element.id) { index, fact in
-                    row(fact).entrance(min(index + 3, 6))
+                    row(fact).entrance(min(index + 4, 6))
                 }
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
+        }
+        .task(id: coordinator.recentNights.count) {
+            // Off the main actor: `SleepNightFeatures` is `Sendable` and the
+            // ledger is pure, so the whole backtest can run away from the
+            // render thread and land back here as a plain array.
+            let nights = coordinator.recentNights
+            reliability = await Task.detached { CalibrationLedger.backtestAll(nights: nights) }.value
         }
         .nightBackground()
         .navigationTitle("Where the numbers come from")
@@ -172,6 +191,148 @@ struct SensorTruthView: View {
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    // MARK: - Has the range been holding?
+
+    /// The third question, and the one nothing in the app answered until now.
+    ///
+    /// The two sections above are about *inputs*: what kind of claim each
+    /// number is, and whether this watch supplies it. This is about Zoon's
+    /// own output. Every night it draws a range it expects tonight to land
+    /// inside; `CalibrationLedger` walks the history, rebuilds each of those
+    /// ranges from the nights before it only, and counts how often the night
+    /// actually landed inside.
+    ///
+    /// It belongs on this screen rather than a new one because it answers the
+    /// same question the screen exists for -- how much of this should I
+    /// believe -- about the last thing that had no answer.
+    @ViewBuilder
+    private var reliabilitySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "target")
+                    .font(Theme.text(13, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+                Text(CalibrationLedger.title)
+                    .font(Theme.label(15, weight: .semibold))
+            }
+
+            Text(CalibrationLedger.subtitle)
+                .font(Theme.text(12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(Array(reliability.enumerated()), id: \.element.id) { index, result in
+                if index > 0 {
+                    Divider().overlay(Theme.neutral(0.10))
+                }
+                reliabilityRow(result)
+            }
+
+            Text("Scored by rebuilding each range from the nights before it, so no night helped predict itself.")
+                .font(Theme.text(11))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
+    private func reliabilityRow(_ result: CalibrationLedger.Result) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(result.metric.label.capitalizedFirst)
+                    .font(Theme.text(13))
+                Spacer(minLength: 8)
+                // The counts, not only the verdict. Same reasoning as the
+                // "26 of 30" in the coverage rows above: the word is the
+                // summary, the pair is the thing someone can check.
+                Text("\(result.hits) of \(result.attempts)")
+                    .font(Theme.text(11, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+
+            reliabilityBar(result)
+
+            Text(result.verdict.label)
+                .font(Theme.text(11, weight: .semibold))
+                .foregroundStyle(tint(result.verdict))
+
+            Text(result.verdict.meaning)
+                .font(Theme.text(11))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(result.metric.label). \(result.verdict.label). "
+                + "Landed inside the range on \(result.hits) of \(result.attempts) scored nights. "
+                + result.verdict.meaning
+        )
+    }
+
+    /// Where coverage actually landed, against where it should be.
+    ///
+    /// A band and a target rather than a percentage, because the width is the
+    /// finding as much as the position is. "Still learning" is not a hedge to
+    /// be taken on trust here -- it is visibly a band wide enough to sit over
+    /// the target and over most of the axis at the same time, which is what
+    /// having too few nights looks like. A single number could not show that,
+    /// and a single number is what made the old verdict read as a pass.
+    private func reliabilityBar(_ result: CalibrationLedger.Result) -> some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let lower = clampedFraction(result.coverageLower)
+            let upper = clampedFraction(result.coverageUpper)
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.neutral(0.10))
+
+                // The interval.
+                Capsule()
+                    .fill(tint(result.verdict).opacity(0.55))
+                    .frame(width: max(2, (upper - lower) * width))
+                    .offset(x: lower * width)
+
+                // Where it should be. Drawn over the band on purpose: a
+                // target inside the band is the picture of "cannot be ruled
+                // out", and a target outside it is the picture of a finding.
+                Rectangle()
+                    .fill(Theme.neutral(0.85))
+                    .frame(width: 1.5)
+                    .offset(x: clampedFraction(result.expectedCoverage) * width)
+            }
+        }
+        .frame(height: 8)
+        .accessibilityHidden(true)
+    }
+
+    /// The axis is a proportion. Both bounds are already inside 0...1 by
+    /// construction -- Wilson is bounded there, and the block bootstrap takes
+    /// percentiles of rates that are -- so this is a guard against a future
+    /// estimator, not a fix for the present one. `CalibrationLedgerTests`
+    /// holds the invariant on the ledger's side; drawing off the end of a
+    /// track is a poor way to find out it broke.
+    private func clampedFraction(_ value: Double) -> Double {
+        min(1, max(0, value))
+    }
+
+    private func tint(_ verdict: CalibrationLedger.Verdict) -> Color {
+        switch verdict {
+        case .matchesExpectation: Theme.Family.recovery
+        // Amber, and the only verdict that gets it. This is the one that
+        // asks the reader to do something -- read the band as narrower than
+        // their real spread -- and the palette's muted attention colour is
+        // exactly its weight. `tooCautious` is a roomier band than needed,
+        // which is not a problem, so it stays in the ordinary sleep hue.
+        case .tooConfident: Theme.Family.attention
+        case .tooCautious: Theme.Family.sleep
+        // The two waiting states share one neutral. They are not findings,
+        // and colouring them would put them in the same visual language as
+        // the three that are.
+        case .stillLearning, .notEnoughYet: Theme.neutral(0.55)
         }
     }
 

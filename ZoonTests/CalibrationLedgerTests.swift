@@ -270,6 +270,31 @@ final class CalibrationLedgerTests: XCTestCase {
         XCTAssertGreaterThan(0.55 - 0.10, CalibrationLedger.decisiveWidth)
     }
 
+    /// Both bounds are proportions and must stay inside 0...1.
+    ///
+    /// Wilson is bounded there by construction and the block bootstrap takes
+    /// percentiles of rates that are, so this holds today for reasons rather
+    /// than by luck. It is pinned because `SensorTruthView` draws the pair on
+    /// a 0...1 track, and an estimator added later that could overshoot would
+    /// show up as a bar running off the end of its container rather than as
+    /// anything a reader could interpret.
+    func testCoverageBoundsStayInsideTheAxisTheyAreDrawnOn() throws {
+        for count in [30, 60, 120, 300] {
+            for metric in [TrendEngine.Metric.duration, .efficiency, .hrv] {
+                guard let result = CalibrationLedger.backtest(
+                    metric: metric, nights: nights(count)
+                ) else { continue }
+                XCTAssertGreaterThanOrEqual(result.coverageLower, 0, "\(metric) at \(count)")
+                XCTAssertLessThanOrEqual(result.coverageUpper, 1, "\(metric) at \(count)")
+                XCTAssertLessThanOrEqual(
+                    result.coverageLower, result.coverageUpper, "\(metric) at \(count)"
+                )
+                XCTAssertGreaterThanOrEqual(result.expectedCoverage, 0)
+                XCTAssertLessThanOrEqual(result.expectedCoverage, 1)
+            }
+        }
+    }
+
     // MARK: - What it is called
 
     func testEveryVerdictCanBeShownToSomeone() {
