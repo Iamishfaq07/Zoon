@@ -243,6 +243,27 @@ final class SourceCoverageTests: XCTestCase {
                        "Also written by Apple Watch on 6 of 10 attributed nights.")
     }
 
+    /// Two sources that never wrote the same night -- one watch for a
+    /// fortnight, then the other. Still `.shared`, because both contributed
+    /// across the window, but nothing was *co*-written, so the count-based
+    /// copy would read "on 0 of 20 nights". CI caught exactly this: an
+    /// existing test held the older sentence, and it was right to.
+    func testAlternatingSourcesAreSharedWithoutBeingCoWritten() throws {
+        let mine = (0..<10).map { hrvNight(daysAgo: $0, sleepSource: "Garmin", hrvWriters: ["Garmin"]) }
+        let theirs = (10..<20).map { hrvNight(daysAgo: $0, sleepSource: "Garmin", hrvWriters: ["Apple Watch"]) }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: mine + theirs,
+            sourceName: "Garmin",
+            bundleIdentifier: "com.garmin.health",
+            window: 40
+        ))
+        let entry = try XCTUnwrap(report.entries.first { $0.quantity == .hrv })
+
+        XCTAssertEqual(entry.attribution, .shared(["Apple Watch"]))
+        XCTAssertEqual(entry.nightsSharedWithOthers, 0, "no night was written by both")
+        XCTAssertEqual(entry.attributionNote, "Some nights from Apple Watch.")
+    }
+
     func testFullSharingSaysEveryNight() throws {
         let entry = try hrvEntry(hrvWriters: ["Garmin", "Apple Watch"])
         XCTAssertEqual(entry.attributionNote,

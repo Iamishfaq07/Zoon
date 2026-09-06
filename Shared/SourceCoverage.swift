@@ -159,11 +159,20 @@ enum SourceCoverage {
                 return "Arriving from \(SourceCoverage.list(names)), not from this watch."
             case .shared(let names):
                 guard !names.isEmpty else { return nil }
-                // Specific, now that the counts mean something. Before the
-                // co-writer fix this branch could only be reached by a night
-                // *nobody else* wrote, so "some nights" was the only claim
-                // available; it can now distinguish a second device worn
-                // throughout from one worn occasionally.
+                // Three shapes hide under one `.shared`, and they want
+                // different sentences.
+                //
+                // With no night written by both, the two sources alternated
+                // across the window -- one watch for a fortnight, then the
+                // other -- and "some nights from the other one" is exactly
+                // right. That was the only shape this branch could ever
+                // reach before same-night co-authorship was detected at all,
+                // which is why it was the only sentence here.
+                guard nightsSharedWithOthers > 0 else {
+                    return "Some nights from \(SourceCoverage.list(names))."
+                }
+                // Genuine co-authorship: both wrote the same nights. Either
+                // throughout, or on a countable subset.
                 if nightsExclusiveToThisSource == 0 {
                     return "Also written by \(SourceCoverage.list(names)) on every night Zoon could attribute."
                 }
