@@ -20,6 +20,33 @@ struct MeasurementSource: Codable, Hashable, Sendable {
     }
 }
 
+/// What one source contributed to one measurement, and who else contributed.
+///
+/// Deliberately not a Bool. "Did my Garmin write the HRV" and "did only my
+/// Garmin write the HRV" are different questions, and a Bool answers the
+/// first while every user-facing sentence needs the second.
+struct SourceContribution: Hashable, Sendable {
+    /// The source being asked about wrote at least one of this night's
+    /// samples for this quantity.
+    let targetPresent: Bool
+    /// Every *other* writer of the same quantity on the same night. Empty
+    /// when the target was the only one -- which is the only case where
+    /// naming a single device is honest.
+    let otherSources: [MeasurementSource]
+
+    /// Both the target and somebody else wrote it. Real on a wrist wearing
+    /// two devices, and the case that used to be reported as the target's
+    /// alone.
+    var isShared: Bool { targetPresent && !otherSources.isEmpty }
+
+    /// Somebody wrote it and it was not the target.
+    var isExclusivelyOther: Bool { !targetPresent && !otherSources.isEmpty }
+
+    var otherSourceNames: [String] {
+        Set(otherSources.map(\.name)).sorted()
+    }
+}
+
 /// Who wrote each of a night's measurements.
 ///
 /// ## Why this has to be stored per metric
@@ -71,9 +98,57 @@ struct NightMeasurementSources: Codable, Hashable, Sendable {
         byQuantity[quantity.rawValue]
     }
 
+    /// What one source contributed to one quantity, *and who else did*.
+    ///
+    /// The distinction `wasWritten` cannot make. A Bool answers "did this
+    /// watch write it", which silently discards the fact that another device
+    /// wrote it on the same night -- and a caller counting only that Bool
+    /// therefore reports a co-written metric as exclusively this source's.
+    /// That is the whole over-claim this file exists to prevent, rebuilt one
+    /// layer up.
+    ///
+    /// The four states a caller needs to tell apart are all recoverable here:
+    ///
+    /// | `targetPresent` | `otherSources` | means |
+    /// |---|---|---|
+    /// | true | empty | only this source |
+    /// | true | non-empty | this source and others |
+    /// | false | non-empty | only other sources |
+    /// | — | — | `nil`: nothing recorded, say nothing |
+    ///
+    /// - Returns: `nil` when provenance was never recorded for this quantity,
+    ///   which is not the same as "nobody wrote it".
+    func contribution(
+        of bundleIdentifier: String?,
+        orNamed name: String?,
+        for quantity: SensorTruth.Quantity
+    ) -> SourceContribution? {
+        guard let sources = byQuantity[quantity.rawValue] else { return nil }
+
+        // Bundle identifier first, name only as a fallback -- a renamed watch
+        // must not read as a different device. Whichever key matched decides
+        // which entries are "the target", so the remainder are the others.
+        func isTarget(_ source: MeasurementSource) -> Bool {
+            if let bundleIdentifier, !bundleIdentifier.isEmpty,
+               !source.bundleIdentifier.isEmpty {
+                return source.bundleIdentifier == bundleIdentifier
+            }
+            guard let name, !name.isEmpty else { return false }
+            return source.name == name
+        }
+
+        let target = sources.filter(isTarget)
+        let others = sources.filter { !isTarget($0) }
+        return SourceContribution(targetPresent: !target.isEmpty, otherSources: others)
+    }
+
     /// Whether the named source contributed to this quantity. `nil` when
     /// provenance was never recorded for it, so the caller can decline to
     /// answer rather than guess.
+    ///
+    /// Kept for callers that genuinely only need the yes/no. Anything that
+    /// reports *attribution* to a person wants `contribution(of:orNamed:for:)`
+    /// instead -- see its doc comment.
     func wasWritten(
         by bundleIdentifier: String?,
         orNamed name: String?,

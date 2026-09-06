@@ -159,4 +159,148 @@ final class SourceCoverageTests: XCTestCase {
         XCTAssertTrue(report.missingBecauseAppleOnly.isEmpty)
         XCTAssertTrue(report.missingFromSource.contains { $0.quantity == .wristTemperature })
     }
+
+    // MARK: - Who actually wrote it (V10 item 1)
+
+    private func source(_ name: String) -> MeasurementSource {
+        MeasurementSource(name: name, bundleIdentifier: "com.\(name.lowercased()).health")
+    }
+
+    /// A night whose HRV was written by exactly these sources.
+    private func hrvNight(daysAgo: Int, sleepSource: String, hrvWriters: [String]) -> SleepNightFeatures {
+        Fixture.night(
+            daysAgo: daysAgo,
+            sourceName: sleepSource,
+            sourceBundleIdentifier: "com.\(sleepSource.lowercased()).health",
+            measurementSources: NightMeasurementSources([.hrv: hrvWriters.map(source)])
+        )
+    }
+
+    private func hrvEntry(
+        sleepSource: String = "Garmin",
+        hrvWriters: [String],
+        nights: Int = 10
+    ) throws -> SourceCoverage.Entry {
+        let history = (0..<nights).map {
+            hrvNight(daysAgo: $0, sleepSource: sleepSource, hrvWriters: hrvWriters)
+        }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: history,
+            sourceName: sleepSource,
+            bundleIdentifier: "com.\(sleepSource.lowercased()).health"
+        ))
+        return try XCTUnwrap(report.entries.first { $0.quantity == .hrv })
+    }
+
+    func testOnlyTheTargetSourceWroteIt() throws {
+        let entry = try hrvEntry(hrvWriters: ["Garmin"])
+        XCTAssertEqual(entry.attribution, .thisSource)
+        XCTAssertTrue(entry.otherSourceNames.isEmpty)
+        XCTAssertEqual(entry.nightsSharedWithOthers, 0)
+        XCTAssertEqual(entry.nightsExclusiveToThisSource, 10)
+    }
+
+    func testOnlyAnotherSourceWroteIt() throws {
+        let entry = try hrvEntry(hrvWriters: ["Apple Watch"])
+        XCTAssertEqual(entry.attribution, .anotherSource(["Apple Watch"]))
+        XCTAssertTrue(entry.isSuppliedElsewhere)
+    }
+
+    /// **The regression.** Both devices wrote the HRV on every night. The
+    /// previous implementation collected other writers only on nights the
+    /// target wrote nothing, so this reported `.thisSource` -- "your Garmin
+    /// provides HRV" about samples an Apple Watch also supplied.
+    func testBothSourcesWroteItOnTheSameNights() throws {
+        let entry = try hrvEntry(hrvWriters: ["Garmin", "Apple Watch"])
+        XCTAssertEqual(entry.attribution, .shared(["Apple Watch"]))
+        XCTAssertEqual(entry.nightsFromThisSource, 10)
+        XCTAssertEqual(entry.nightsSharedWithOthers, 10)
+        XCTAssertEqual(entry.nightsExclusiveToThisSource, 0)
+        XCTAssertNotEqual(entry.attribution, .thisSource,
+                          "a co-written metric must never read as this source's alone")
+    }
+
+    func testThreeWritersAreAllNamed() throws {
+        let entry = try hrvEntry(hrvWriters: ["Garmin", "Apple Watch", "Oura"])
+        XCTAssertEqual(entry.attribution, .shared(["Apple Watch", "Oura"]))
+    }
+
+    /// A second device worn only some nights is a different claim from one
+    /// worn throughout, and the copy has to be able to tell them apart.
+    func testPartialSharingIsCountedSeparately() throws {
+        let both = (0..<6).map { hrvNight(daysAgo: $0, sleepSource: "Garmin", hrvWriters: ["Garmin", "Apple Watch"]) }
+        let solo = (6..<10).map { hrvNight(daysAgo: $0, sleepSource: "Garmin", hrvWriters: ["Garmin"]) }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: both + solo, sourceName: "Garmin", bundleIdentifier: "com.garmin.health"
+        ))
+        let entry = try XCTUnwrap(report.entries.first { $0.quantity == .hrv })
+
+        XCTAssertEqual(entry.attribution, .shared(["Apple Watch"]))
+        XCTAssertEqual(entry.nightsFromThisSource, 10)
+        XCTAssertEqual(entry.nightsSharedWithOthers, 6)
+        XCTAssertEqual(entry.nightsExclusiveToThisSource, 4)
+        XCTAssertEqual(entry.attributionNote,
+                       "Also written by Apple Watch on 6 of 10 attributed nights.")
+    }
+
+    func testFullSharingSaysEveryNight() throws {
+        let entry = try hrvEntry(hrvWriters: ["Garmin", "Apple Watch"])
+        XCTAssertEqual(entry.attributionNote,
+                       "Also written by Apple Watch on every night Zoon could attribute.")
+    }
+
+    /// History recorded before per-metric provenance existed. Saying nothing
+    /// is the correct output; assuming the sleep source wrote everything is
+    /// the assumption that was wrong in the first place.
+    func testNightsWithNoRecordedProvenanceSayNothing() throws {
+        let history = (0..<10).map {
+            Fixture.night(daysAgo: $0, sourceName: "Garmin", sourceBundleIdentifier: "com.garmin.health")
+        }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: history, sourceName: "Garmin", bundleIdentifier: "com.garmin.health"
+        ))
+        let entry = try XCTUnwrap(report.entries.first { $0.quantity == .hrv })
+        XCTAssertEqual(entry.attribution, .unknown)
+        XCTAssertNil(entry.attributionNote)
+    }
+
+    /// Too few attributed nights to name a writer: one night of a second
+    /// device left charging on the nightstand must not reassign a metric.
+    func testTooFewAttributedNightsStaysUnknown() throws {
+        let attributed = (0..<3).map {
+            hrvNight(daysAgo: $0, sleepSource: "Garmin", hrvWriters: ["Garmin", "Apple Watch"])
+        }
+        let bare = (3..<10).map {
+            Fixture.night(daysAgo: $0, sourceName: "Garmin", sourceBundleIdentifier: "com.garmin.health")
+        }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: attributed + bare, sourceName: "Garmin", bundleIdentifier: "com.garmin.health"
+        ))
+        let entry = try XCTUnwrap(report.entries.first { $0.quantity == .hrv })
+        XCTAssertEqual(entry.attribution, .unknown)
+    }
+
+    /// Two devices sharing a display name are still two devices. Matching
+    /// prefers the bundle identifier precisely so a rename cannot merge them.
+    func testSameDisplayNameDifferentBundlesAreDifferentSources() throws {
+        let writers = [
+            MeasurementSource(name: "Watch", bundleIdentifier: "com.apple.health"),
+            MeasurementSource(name: "Watch", bundleIdentifier: "com.garmin.health")
+        ]
+        let history = (0..<10).map { index in
+            Fixture.night(
+                daysAgo: index,
+                sourceName: "Watch",
+                sourceBundleIdentifier: "com.garmin.health",
+                measurementSources: NightMeasurementSources([.hrv: writers])
+            )
+        }
+        let report = try XCTUnwrap(SourceCoverage.report(
+            nights: history, sourceName: "Watch", bundleIdentifier: "com.garmin.health"
+        ))
+        let entry = try XCTUnwrap(report.entries.first { $0.quantity == .hrv })
+        XCTAssertEqual(entry.attribution, .shared(["Watch"]),
+                       "the other bundle is a separate writer even under the same name")
+        XCTAssertEqual(entry.nightsSharedWithOthers, 10)
+    }
 }
