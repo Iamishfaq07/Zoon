@@ -39,6 +39,7 @@ struct MetricTrendView: View {
                     )
                     .padding(.top, 40)
                 }
+                evidenceCard
             }
             .padding()
         }
@@ -55,7 +56,10 @@ struct MetricTrendView: View {
             Text(currentMetric?.formattedValue ?? "—")
                 .font(Theme.numeral(40))
                 .monospacedDigit()
-            if let metric = currentMetric {
+            // Only once there is a baseline: "Typical" is the fallback state
+            // for a reading with no history behind it, and showing it as a
+            // pill turns that fallback into a verdict.
+            if let metric = currentMetric, metric.baseline != nil {
                 StatusPill(text: metric.state.label, tint: tint(for: metric.state))
             }
             if let range = currentMetric?.formattedRange {
@@ -122,6 +126,73 @@ struct MetricTrendView: View {
         guard let selectedDate, let point = sorted.nearest(toDay: selectedDate, keyPath: \.date) else { return nil }
         let day = point.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
         return "\(day): \(kind.format(point.value))"
+    }
+
+    /// The third tier of the Body Signals disclosure: what the typical range
+    /// was actually built from.
+    ///
+    /// The first two tiers say what the signal means and what it reads. This
+    /// one says how much is behind that -- how many nights, how far they can
+    /// be trusted, and what the band literally is -- because "your typical
+    /// range" from eight nights and from eighty are different claims wearing
+    /// the same words. It is always shown, including when there is not enough
+    /// history to chart, since that is exactly when the count matters most.
+    private var evidenceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("How this is measured", systemImage: "info.circle")
+                .font(Theme.label(12, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 6) {
+                evidenceRow("Nights behind the baseline", sampleDescription)
+                if let confidence = currentMetric?.confidence {
+                    evidenceRow("Confidence", confidence.label)
+                }
+                if let baseline = currentMetric?.baseline {
+                    evidenceRow("Your average", kind.format(baseline))
+                }
+                if let range = currentMetric?.formattedRange {
+                    evidenceRow("Typical range", range)
+                }
+            }
+
+            Text(method)
+                .font(Theme.text(10))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .glassCard()
+    }
+
+    private func evidenceRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(Theme.text(12))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(Theme.evidence)
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Says "not recorded" rather than "0 nights" when the count is missing,
+    /// which happens for a status decoded from a backup written before the
+    /// count was stored. Those are different facts.
+    private var sampleDescription: String {
+        guard let count = currentMetric?.sampleCount else { return "Not recorded" }
+        return count == 1 ? "1 night" : "\(count) nights"
+    }
+
+    private var method: String {
+        """
+        Your typical range is the average of the last \(VitalsStatus.minimumNights)+ nights that carried a \
+        \(kind.label.lowercased()) reading, plus or minus one standard deviation of those same nights. Nights \
+        without a reading are left out rather than filled in. A value outside the band is an observation about \
+        your own history, not a clinical finding.
+        """
     }
 
     private func tint(for state: VitalsStatus.State) -> Color {
