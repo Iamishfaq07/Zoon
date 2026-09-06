@@ -47,19 +47,33 @@ final class ContextForecastTests: XCTestCase {
             from: context(bedtime: 23.5), to: context(bedtime: 22.5)
         )
         XCTAssertEqual(late.value, same.value, accuracy: 1e-9)
-        XCTAssertEqual(late.value, 1 / ContextForecast.bedtimeScale, accuracy: 1e-9)
+        // One hour of bedtime difference, averaged over the five features
+        // that were comparable. The magnitude moved when distance became a
+        // mean; the equality above is the claim this test is really making.
+        XCTAssertEqual(
+            late.value,
+            (1 / ContextForecast.bedtimeScale) / Double(ContextForecast.numericFeatureCount),
+            accuracy: 1e-9
+        )
     }
 
-    /// A missing feature is skipped, never imputed. Filling a nil sleep debt
-    /// with zero would assert the person was rested, which is a claim.
-    func testAMissingFeatureIsSkippedRatherThanTreatedAsZero() {
+    /// A missing feature is never *imputed* -- filling a nil sleep debt with
+    /// zero would assert the person was rested, which is a claim nobody made.
+    /// But it is no longer free either: not knowing costs coverage, or a
+    /// night Zoon knows nothing about becomes its own best match.
+    func testAMissingFeatureIsNotImputedButStillCostsCoverage() {
         let known = context(debt: 240)
         let unknown = context(debt: nil)
         let distance = ContextForecast.distance(from: known, to: unknown)
 
         XCTAssertEqual(distance.comparedFeatures, 4)
-        XCTAssertEqual(distance.value, 0, accuracy: 1e-9,
-                       "the unknown debt must not contribute distance in either direction")
+        // Not 240 minutes of disagreement, and not nothing either: exactly
+        // the coverage penalty for one absent feature out of five.
+        XCTAssertEqual(
+            distance.value,
+            ContextForecast.missingCoveragePenalty / Double(ContextForecast.numericFeatureCount),
+            accuracy: 1e-9
+        )
     }
 
     func testDistanceScalesAreComparableAcrossFeatures() {
@@ -188,20 +202,41 @@ final class ContextForecastTests: XCTestCase {
 
     // MARK: - Confidence
 
-    func testConfidenceNeedsBothEnoughNeighboursAndCloseOnes() {
+    func testConfidenceNeedsEnoughNeighboursCloseOnesAndKnownOnes() {
         let near = ContextForecast.maximumDistance / 4
         let far = ContextForecast.maximumDistance * 0.9
+        let full = 1.0
 
-        XCTAssertEqual(ContextForecast.confidence(neighbours: 5, meanDistance: near), .insufficient)
-        XCTAssertEqual(ContextForecast.confidence(neighbours: 13, meanDistance: near), .moderate)
-        XCTAssertEqual(ContextForecast.confidence(neighbours: 13, meanDistance: far), .low)
-        XCTAssertEqual(ContextForecast.confidence(neighbours: 18, meanDistance: near), .high)
-        XCTAssertEqual(ContextForecast.confidence(neighbours: 18, meanDistance: far), .moderate)
+        XCTAssertEqual(ContextForecast.confidence(neighbours: 5, meanDistance: near, meanCoverage: full), .insufficient)
+        XCTAssertEqual(ContextForecast.confidence(neighbours: 13, meanDistance: near, meanCoverage: full), .moderate)
+        XCTAssertEqual(ContextForecast.confidence(neighbours: 13, meanDistance: far, meanCoverage: full), .low)
+        XCTAssertEqual(ContextForecast.confidence(neighbours: 18, meanDistance: near, meanCoverage: full), .high)
+        XCTAssertEqual(ContextForecast.confidence(neighbours: 18, meanDistance: far, meanCoverage: full), .moderate)
     }
 
     func testManyDistantNeighboursNeverReachHighConfidence() {
         XCTAssertLessThan(
-            ContextForecast.confidence(neighbours: 400, meanDistance: ContextForecast.maximumDistance),
+            ContextForecast.confidence(
+                neighbours: 400,
+                meanDistance: ContextForecast.maximumDistance,
+                meanCoverage: 1.0
+            ),
+            .high
+        )
+    }
+
+    /// The omission this release fixed one level down, at this level too:
+    /// closeness is measured over whatever happened to be known, so plenty of
+    /// close neighbours matched on two features out of five is not strong
+    /// evidence however good the distance looks.
+    func testManyCloseButSparselyMatchedNeighboursNeverReachHighConfidence() {
+        let near = ContextForecast.maximumDistance / 4
+        XCTAssertEqual(
+            ContextForecast.confidence(neighbours: 30, meanDistance: near, meanCoverage: 0.4),
+            .low
+        )
+        XCTAssertLessThan(
+            ContextForecast.confidence(neighbours: 30, meanDistance: near, meanCoverage: 0.6),
             .high
         )
     }
@@ -253,5 +288,109 @@ final class ContextForecastTests: XCTestCase {
             night.timeAsleepMinutes > 0 ? nil : night.timeAsleepMinutes
         }
         XCTAssertTrue(samples.isEmpty)
+    }
+
+    // MARK: - Less information must not look like a better match (V10 item 4)
+
+    /// The bug, stated exactly as the spec states it. A candidate matching
+    /// perfectly on two known features used to score 0 -- because distance was
+    /// a *sum* and it had less to disagree about -- and therefore outranked a
+    /// candidate matching closely on all five.
+    func testTwoPerfectFeaturesDoNotBeatFiveGoodOnes() {
+        let target = context()
+        let sparse = ContextForecast.Context(
+            isWeekend: false,
+            sleepDebtMinutes: target.sleepDebtMinutes,
+            bedtimeHour: target.bedtimeHour,
+            lateCaffeineMg: nil,
+            exerciseMinutesPreviousDay: nil,
+            previousNightAsleepMinutes: nil
+        )
+        let rich = context(debt: 12, bedtime: 23.1, caffeine: 10, exercise: 36, previous: 449)
+
+        let sparseDistance = ContextForecast.distance(from: target, to: sparse)
+        let richDistance = ContextForecast.distance(from: target, to: rich)
+
+        XCTAssertEqual(sparseDistance.comparedFeatures, 2)
+        XCTAssertEqual(richDistance.comparedFeatures, 5)
+        XCTAssertLessThan(
+            richDistance.value, sparseDistance.value,
+            "knowing less about a night made it look more comparable"
+        )
+    }
+
+    /// Knowing nothing comparable is the worst case, not the best one.
+    func testAFullyUnknownContextIsMaximallyDistant() {
+        let unknown = ContextForecast.Context(
+            isWeekend: false,
+            sleepDebtMinutes: nil,
+            bedtimeHour: nil,
+            lateCaffeineMg: nil,
+            exerciseMinutesPreviousDay: nil,
+            previousNightAsleepMinutes: nil
+        )
+        let distance = ContextForecast.distance(from: context(), to: unknown)
+
+        XCTAssertEqual(distance.comparedFeatures, 0)
+        XCTAssertEqual(distance.value, ContextForecast.missingCoveragePenalty, accuracy: 1e-9)
+        XCTAssertGreaterThanOrEqual(distance.value, ContextForecast.maximumDistance,
+                                    "a night with nothing to compare must not survive the ceiling")
+    }
+
+    /// Coverage degrades smoothly: each absent feature costs the same slice.
+    func testEachMissingFeatureCostsAnEqualShareOfCoverage() {
+        let step = ContextForecast.missingCoveragePenalty / Double(ContextForecast.numericFeatureCount)
+        let one = ContextForecast.distance(from: context(), to: context(debt: nil))
+        let two = ContextForecast.distance(from: context(), to: context(debt: nil, caffeine: nil))
+
+        XCTAssertEqual(one.value, step, accuracy: 1e-9)
+        XCTAssertEqual(two.value, 2 * step, accuracy: 1e-9)
+    }
+
+    /// An identical, fully-known night is still a perfect match -- the
+    /// penalty must not leak into the case it is not about.
+    func testAFullyKnownIdenticalNightIsStillZero() {
+        XCTAssertEqual(ContextForecast.distance(from: context(), to: context()).value, 0, accuracy: 1e-9)
+    }
+
+    /// A partially-described night is usable, just penalised -- it is not
+    /// excluded outright, since some real nights genuinely lack a field.
+    func testAPartiallyDescribedNightIsStillEligible() {
+        let partial = ContextForecast.distance(from: context(), to: context(caffeine: nil))
+        XCTAssertLessThan(partial.value, ContextForecast.maximumDistance)
+        XCTAssertGreaterThanOrEqual(partial.comparedFeatures, ContextForecast.minimumComparedFeatures)
+    }
+
+    /// End to end: the ranking prefers the well-described neighbours, so the
+    /// interval is read off nights Zoon actually knows something about.
+    func testTheForecastPrefersWellDescribedNeighbours() throws {
+        // Twenty sparse nights that agree perfectly on what little they have,
+        // and twenty fully-described ones that agree closely on everything.
+        let sparse = (0..<20).map { index in
+            ContextForecast.Sample(
+                context: ContextForecast.Context(
+                    isWeekend: false,
+                    sleepDebtMinutes: 0,
+                    bedtimeHour: 23,
+                    lateCaffeineMg: nil,
+                    exerciseMinutesPreviousDay: nil,
+                    previousNightAsleepMinutes: nil
+                ),
+                outcome: 40 + Double(index % 3)
+            )
+        }
+        let described = (0..<20).map { index in
+            ContextForecast.Sample(
+                context: self.context(debt: 4, bedtime: 23.05, caffeine: 2, exercise: 31, previous: 442),
+                outcome: 80 + Double(index % 3)
+            )
+        }
+
+        let prediction = try XCTUnwrap(
+            ContextForecast.predict(for: context(), from: sparse + described)
+        )
+        XCTAssertTrue(prediction.basis.isConditioned)
+        XCTAssertGreaterThan(prediction.lower, 70,
+                             "the interval was read off the nights Zoon knows least about")
     }
 }
