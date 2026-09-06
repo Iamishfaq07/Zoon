@@ -42,6 +42,10 @@ struct TodayView: View {
     @State private var checkInDetails: [CheckInDimension: Int] = [:]
     /// Shared between the orbit and its legend so either can drive selection.
     @State private var selectedComponentID: String?
+    /// Today opens with the answer. The orbit, the component arcs, the health
+    /// strip and the morning brief are the explanation, and they wait until
+    /// asked for -- see `MorningInThree`.
+    @State private var showsExplanation = false
 
     var body: some View {
         NavigationStack {
@@ -105,11 +109,24 @@ struct TodayView: View {
             if coordinator.recentNights.count <= 1 {
                 FirstNightCard(night: context.night).entrance(0)
             } else {
+                MorningInThreeCard(
+                    summary: morningSummary(context),
+                    isExplanationShown: showsExplanation,
+                    onToggleExplanation: {
+                        Haptics.select()
+                        withAnimation(ZoonMotion.standard) { showsExplanation.toggle() }
+                    }
+                )
+                .entrance(0)
+
                 hero(context)
-                HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
-                    .entrance(2)
-                MorningBrief(context: context)
-                    .entrance(3)
+
+                if showsExplanation {
+                    HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
+                        .entrance(2)
+                    MorningBrief(context: context)
+                        .entrance(3)
+                }
             }
 
             WorthNoticing(
@@ -179,25 +196,54 @@ struct TodayView: View {
             }
             .entrance(0)
 
-            LunarOrbit(score: context.sleepIntelligence, selectedID: $selectedComponentID)
-                .entrance(1)
+            LunarOrbit(
+                score: context.sleepIntelligence,
+                selectedID: $selectedComponentID,
+                showsComponents: showsExplanation
+            )
+            .entrance(1)
 
             VStack(spacing: 4) {
                 Text("\(context.night.formattedTimeAsleep) asleep")
                     .font(Theme.label(15, weight: .medium))
-                Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
-                    .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                // Confidence and coverage are method, not answer. They stay,
+                // because a score without them is a stronger claim than the
+                // data supports -- but they belong with the explanation.
+                if showsExplanation {
+                    Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
+                        .font(Theme.evidence)
+                        .foregroundStyle(.tertiary)
+                }
             }
             .entrance(2)
 
-            LunarOrbitLegend(score: context.sleepIntelligence, selectedID: $selectedComponentID)
-                .entrance(2)
+            if showsExplanation {
+                LunarOrbitLegend(score: context.sleepIntelligence, selectedID: $selectedComponentID)
+                    .entrance(2)
+            }
 
             sleepNeedDebtRow(context)
                 .entrance(2)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// The three lines Today opens with.
+    ///
+    /// Assembled in `Shared` rather than here because each one makes a claim
+    /// with a threshold behind it, and a threshold living in a `Text(...)` is
+    /// a threshold nobody tests.
+    private func morningSummary(_ context: DayContext) -> MorningInThree {
+        MorningInThree.build(
+            timeAsleepMinutes: context.night.timeAsleepMinutes,
+            flagshipScore: context.sleepIntelligence.percent,
+            flagshipBand: context.sleepIntelligence.band.label,
+            bodySignalsHeadline: context.healthRadar.isActive ? context.healthRadar.headline : nil,
+            debtMinutes: context.night.sleepDebtMinutes ?? 0,
+            // While the need is still the Settings default rather than
+            // something learned, no claim is made about being behind it.
+            hasEnoughHistoryForNeed: context.learnedSleepNeed.confidence != .insufficient
+        )
     }
 
     private var greeting: String {
