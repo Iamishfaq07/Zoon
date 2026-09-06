@@ -121,6 +121,16 @@ final class SleepNightRecord {
     /// launch. Regenerated whenever the night is re-processed.
     var insightSummary: String?
     var insightLikelyCause: String?
+    /// The general-population half of the insight, kept apart from
+    /// `insightLikelyCause` for the reason `SleepInsight.generalContext`
+    /// gives: a fact about people and a measurement about this person read
+    /// identically once they are in one string.
+    ///
+    /// Optional and defaulted, so nights stored before it existed load with
+    /// nothing in it rather than failing the fetch -- which is also what a
+    /// night written by an engine that does not separate the two should look
+    /// like.
+    var insightGeneralContext: String?
     var insightTip: String?
 
     var createdAt: Date
@@ -174,6 +184,7 @@ final class SleepNightRecord {
         self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
         self.insightLikelyCause = insight?.likelyCause
+        self.insightGeneralContext = insight?.generalContext
         self.insightTip = insight?.actionableTip
         self.createdAt = .now
     }
@@ -269,6 +280,7 @@ final class SleepNightRecord {
     func apply(_ insight: SleepInsight) {
         insightSummary = insight.summary
         insightLikelyCause = insight.likelyCause
+        insightGeneralContext = insight.generalContext
         insightTip = insight.actionableTip
     }
 }
@@ -345,6 +357,7 @@ extension SleepNightRecord {
         return SleepInsight(
             summary: insightSummary,
             likelyCause: insightLikelyCause,
+            generalContext: insightGeneralContext,
             actionableTip: insightTip
         )
     }

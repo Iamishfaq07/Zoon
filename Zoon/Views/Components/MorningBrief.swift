@@ -25,11 +25,32 @@ struct MorningBrief: View {
                 .font(.title3.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let cause = context.insight.likelyCause, context.insight.confidence > .low {
-                Text(cause)
-                    .font(Theme.text(14))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            if context.insight.confidence > .low {
+                if let cause = context.insight.likelyCause {
+                    Text(cause)
+                        .font(Theme.text(14))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Labelled and quieter, for the reason `InsightCard` spells
+                // out: a fact about people and a measurement about this person
+                // read identically when they are set in the same voice, and
+                // separating them in the model changes nothing if the screen
+                // puts them back together.
+                if let general = context.insight.generalContext {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("IN GENERAL, NOT MEASURED IN YOU")
+                            .font(Theme.label(10, weight: .semibold))
+                            .tracking(0.6)
+                            .foregroundStyle(.tertiary)
+                        Text(general)
+                            .font(Theme.text(13))
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
 
             VStack(alignment: .leading, spacing: 4) {
