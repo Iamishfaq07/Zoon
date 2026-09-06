@@ -27,62 +27,79 @@ struct WhatChangedStream: View {
     private var previousWeek: [SleepNightFeatures] { Array(nights.dropLast(7).suffix(7)) }
 
     var changes: [Change] {
-        guard currentWeek.count == 7, previousWeek.count == 7 else { return [] }
-        var result: [Change] = []
+        // One engine, shared with `WhatChangedCard`. These four comparisons
+        // used to be computed here and there independently -- "lifted
+        // verbatim" is not the same as shared, and the two had already
+        // drifted to different "no change" tests.
+        WeekOverWeek.compare(nights: nights, goalMinutes: goalMinutes)
+            .prefix(3)
+            .map { change in
+                Change(
+                    id: change.id,
+                    title: change.title,
+                    sentence: sentence(for: change),
+                    technical: technical(for: change),
+                    // Bedtime steadiness is drawn as "taller = steadier", so
+                    // the bars take the spread inverted while the sentence
+                    // above takes the real numbers.
+                    before: change.id == "bedtime" ? max(0, 120 - change.before) : change.before,
+                    after: change.id == "bedtime" ? max(0, 120 - change.after) : change.after,
+                    tint: tint(for: change.id),
+                    isImprovement: change.isImprovement
+                )
+            }
+    }
 
-        let sleepBefore = average(previousWeek.map(\.timeAsleepMinutes))
-        let sleepAfter = average(currentWeek.map(\.timeAsleepMinutes))
-        let sleepDelta = sleepAfter - sleepBefore
-        result.append(Change(
-            id: "sleep", title: "Time asleep",
-            sentence: sleepDelta == 0 ? "About the same as last week" : "\(Self.minutes(abs(sleepDelta))) \(sleepDelta > 0 ? "more" : "less") per night than last week",
-            technical: "\(Self.minutes(sleepAfter)) vs \(Self.minutes(sleepBefore)) average",
-            before: sleepBefore, after: sleepAfter,
-            tint: Theme.Family.sleep, isImprovement: sleepDelta == 0 ? nil : sleepDelta > 0
-        ))
-
-        let hrvBefore = previousWeek.compactMap(\.avgHRV)
-        let hrvAfter = currentWeek.compactMap(\.avgHRV)
-        if hrvBefore.count >= 2, hrvAfter.count >= 2 {
-            let b = average(hrvBefore), a = average(hrvAfter)
-            let delta = a - b
-            result.append(Change(
-                id: "hrv", title: "HRV",
-                sentence: abs(delta) < 1 ? "Steady against last week" : "\(delta > 0 ? "Up" : "Down") \(Int(abs(delta).rounded())) ms from last week",
-                technical: "\(Int(a.rounded())) vs \(Int(b.rounded())) ms average",
-                before: b, after: a,
-                tint: Theme.Family.bodySignals, isImprovement: abs(delta) < 1 ? nil : delta > 0
-            ))
+    /// What the cell says.
+    ///
+    /// A move that did not clear the bars is reported as steady rather than
+    /// as a signed number in a neutral colour -- "Up 3 ms from last week" in
+    /// grey still reads as something that happened, and the point is that it
+    /// has not been shown to have.
+    private func sentence(for change: WeekOverWeek.Change) -> String {
+        guard change.isMeaningful else {
+            switch change.id {
+            case "bedtime": return "As consistent as last week"
+            case "debt": return "About where it was last week"
+            default: return "About the same as last week"
+            }
         }
-
-        let sdBefore = bedtimeStandardDeviationMinutes(previousWeek)
-        let sdAfter = bedtimeStandardDeviationMinutes(currentWeek)
-        let consistencyDelta = sdBefore - sdAfter
-        result.append(Change(
-            id: "bedtime", title: "Bedtime",
-            sentence: abs(consistencyDelta) < 1 ? "As consistent as last week" : "\(Int(abs(consistencyDelta).rounded()))m \(consistencyDelta > 0 ? "more consistent" : "more scattered") than last week",
-            technical: "±\(Int(sdAfter.rounded()))m vs ±\(Int(sdBefore.rounded()))m spread",
-            // Lower spread is better, so flip for the bars: taller = steadier.
-            before: max(0, 120 - sdBefore), after: max(0, 120 - sdAfter),
-            tint: Theme.Family.circadian, isImprovement: abs(consistencyDelta) < 1 ? nil : consistencyDelta > 0
-        ))
-
-        let series = SleepDebtCalculator.debtSeries(
-            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: nights.map { $0.sleepNeedBaselineMinutes ?? goalMinutes }
-        )
-        if series.count >= 14, let debtNow = series.last, let debtWeekAgo = series.dropLast(7).last {
-            let delta = debtNow - debtWeekAgo
-            result.append(Change(
-                id: "debt", title: "Sleep debt",
-                sentence: abs(delta) < 1 ? "Unchanged from last week" : "\(delta < 0 ? "Down" : "Up") \(Self.minutes(abs(delta))) from last week",
-                technical: "\(Self.minutes(debtNow)) owed now, \(Self.minutes(debtWeekAgo)) a week ago",
-                before: debtWeekAgo, after: debtNow,
-                tint: Theme.Family.attention, isImprovement: abs(delta) < 1 ? nil : delta < 0
-            ))
+        switch change.id {
+        case "hrv":
+            return "\(change.delta > 0 ? "Up" : "Down") \(Int(abs(change.delta).rounded())) ms from last week"
+        case "bedtime":
+            let word = change.delta < 0 ? "more consistent" : "more scattered"
+            return "\(Int(abs(change.delta).rounded()))m \(word) than last week"
+        case "debt":
+            return "\(change.delta < 0 ? "Down" : "Up") \(Self.minutes(abs(change.delta))) from last week"
+        default:
+            return "\(Self.minutes(abs(change.delta))) \(change.delta > 0 ? "more" : "less") per night than last week"
         }
+    }
 
-        return Array(result.prefix(3))
+    /// The numbers behind the sentence, shown whether or not the move cleared
+    /// the bars -- the readings are real either way, and seeing them is how
+    /// someone checks that "about the same" was fair.
+    private func technical(for change: WeekOverWeek.Change) -> String {
+        switch change.id {
+        case "hrv":
+            return "\(Int(change.after.rounded())) vs \(Int(change.before.rounded())) ms average"
+        case "bedtime":
+            return "±\(Int(change.after.rounded()))m vs ±\(Int(change.before.rounded()))m spread"
+        case "debt":
+            return "\(Self.minutes(change.after)) owed now, \(Self.minutes(change.before)) a week ago"
+        default:
+            return "\(Self.minutes(change.after)) vs \(Self.minutes(change.before)) average"
+        }
+    }
+
+    private func tint(for id: String) -> Color {
+        switch id {
+        case "hrv": Theme.Family.bodySignals
+        case "bedtime": Theme.Family.circadian
+        case "debt": Theme.Family.attention
+        default: Theme.Family.sleep
+        }
     }
 
     var body: some View {
@@ -105,29 +122,11 @@ struct WhatChangedStream: View {
         }
     }
 
-    private func average(_ values: [Double]) -> Double {
-        guard !values.isEmpty else { return 0 }
-        return values.reduce(0, +) / Double(values.count)
-    }
-
     private static func minutes(_ value: Double) -> String {
         SleepNightFeatures.formatMinutes(value)
     }
 
-    /// Same convention as `WhatChangedCard` and `ConsistencyChartCard`.
-    private func bedtimeStandardDeviationMinutes(_ week: [SleepNightFeatures]) -> Double {
-        var calendar = Calendar.current
-        let minutesFromMidnight = week.map { night -> Double in
-            calendar.timeZone = night.timeZone
-            let components = calendar.dateComponents([.hour, .minute], from: night.bedtime)
-            let minutes = Double(components.hour ?? 0) * 60 + Double(components.minute ?? 0)
-            return minutes >= 18 * 60 ? minutes - 24 * 60 : minutes
-        }
-        guard minutesFromMidnight.count > 1 else { return 0 }
-        let mean = average(minutesFromMidnight)
-        let variance = minutesFromMidnight.reduce(0) { $0 + pow($1 - mean, 2) } / Double(minutesFromMidnight.count)
-        return variance.squareRoot()
-    }
+
 }
 
 /// One cell of the stream: title, two-bar before/after signature, sentence,
