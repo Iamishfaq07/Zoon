@@ -152,8 +152,8 @@ final class WidgetRelevanceTests: XCTestCase {
     /// not change whether a running nap or a stale reading outrank it.
     func testShiftWorkDoesNotOverrideANapOrStaleness() {
         XCTAssertLessThan(
-            score(.lastNight, hour: 15, shiftWork: true, nap: true),
-            score(.lastNight, hour: 15, shiftWork: true, nap: false)
+            score(.lastNight, hour: 15, nap: true, shiftWork: true),
+            score(.lastNight, hour: 15, nap: false, shiftWork: true)
         )
         XCTAssertLessThanOrEqual(
             Float(score(.lastNight, hour: 15, staleHours: WidgetRelevance.staleAfterHours + 1, shiftWork: true)),
