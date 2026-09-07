@@ -228,8 +228,23 @@ enum ContextForecast {
         let upper: Double
         let basis: Basis
         let confidence: MetricConfidence
+        /// What the matched nights actually had in common with tomorrow, most
+        /// agreed-upon first. Empty on a `.recentRange` basis, because that
+        /// interval was conditioned on nothing and listing a shared context
+        /// under it would be a claim about a match that was never made.
+        var matches: [Match] = []
 
         var spread: Double { upper - lower }
+
+        /// The features the neighbours broadly agreed with tomorrow on.
+        var sharedMatches: [Match] { matches.filter(\.isShared) }
+
+        /// Features tomorrow has that the matched nights did *not* broadly
+        /// share. Shown with the shared ones rather than hidden: a range
+        /// built from nights that differed on caffeine is a weaker answer to
+        /// a question about caffeine, and only saying what agreed would hide
+        /// exactly that.
+        var unsharedMatches: [Match] { matches.filter { !$0.isShared } }
 
         /// How a bare outcome value is written out.
         ///
@@ -315,6 +330,10 @@ enum ContextForecast {
     private struct Neighbour {
         let outcome: Double
         let distance: Distance
+        /// Kept so the forecast can say *what* the matched nights had in
+        /// common with tomorrow, not only how many there were. The distance
+        /// is a single number and cannot be taken apart again afterwards.
+        let context: Context
     }
 
     /// Forecasts one night.
@@ -330,7 +349,13 @@ enum ContextForecast {
         guard samples.count >= minimumNights else { return nil }
 
         let ranked = samples
-            .map { Neighbour(outcome: $0.outcome, distance: distance(from: target, to: $0.context)) }
+            .map {
+                Neighbour(
+                    outcome: $0.outcome,
+                    distance: distance(from: target, to: $0.context),
+                    context: $0.context
+                )
+            }
             .filter { $0.distance.value <= maximumDistance
                 && $0.distance.comparedFeatures >= minimumComparedFeatures }
             .sorted { $0.distance.value < $1.distance.value }
@@ -353,7 +378,8 @@ enum ContextForecast {
                         neighbours: outcomes.count,
                         meanDistance: meanDistance,
                         meanCoverage: meanCoverage
-                    )
+                    ),
+                    matches: matches(of: target, against: ranked.map(\.context))
                 )
             }
         }
@@ -420,6 +446,185 @@ enum ContextForecast {
         default:
             if close && wellCovered { return .high }
             return close || wellCovered ? .moderate : .low
+        }
+    }
+}
+
+// MARK: - Why this range?
+
+/// What the matched nights had in common with tomorrow.
+///
+/// The interval alone answers "how much", and the V10 spec asks the forecast
+/// to also answer "on what grounds" -- *Similar bedtime. Similar recent debt.
+/// Similar weekday.* Without it, a conditioned range and an unconditioned one
+/// look identical on screen, and the person has no way to judge whether the
+/// nights behind the number resemble the night they are about to have.
+///
+/// One property of the list worth knowing when reading it: day shape is
+/// shared in very nearly every forecast, because `weekendMismatchPenalty` is
+/// large enough that a night of the wrong shape rarely survives into the
+/// neighbour set at all. It confirms rather than discriminates. The other
+/// five each land shared in roughly half to four fifths of forecasts on
+/// simulated histories, which is what makes them worth printing.
+///
+/// Two things this deliberately does not say. It does not rank the features
+/// by influence: agreement is measured against tomorrow, over the neighbours
+/// the interval was actually built from, and says nothing about which feature
+/// moved the outcome. And it never reports a feature that was not compared --
+/// see `featureCoverage`.
+extension ContextForecast {
+
+    /// One thing a night can be similar on. The same six `Context` carries,
+    /// named as a person would say them.
+    enum Feature: String, Hashable, Sendable, CaseIterable {
+        case dayShape
+        case sleepDebt
+        case bedtime
+        case lateCaffeine
+        case exercise
+        case previousNight
+
+        /// Reads after "Similar": *Similar bedtime*, *Similar recent debt*.
+        var label: String {
+            switch self {
+            case .dayShape: "weekday shape"
+            case .sleepDebt: "recent sleep debt"
+            case .bedtime: "bedtime"
+            case .lateCaffeine: "late caffeine"
+            case .exercise: "training the day before"
+            case .previousNight: "sleep the night before"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .dayShape: "calendar"
+            case .sleepDebt: "hourglass"
+            case .bedtime: "moon.stars"
+            case .lateCaffeine: "cup.and.saucer"
+            case .exercise: "figure.run"
+            case .previousNight: "bed.double"
+            }
+        }
+
+        /// Whether the night carries this feature at all. A missing feature
+        /// is not a zero -- `Context` is explicit about that -- so it cannot
+        /// be compared and is not reported either way.
+        func isPresent(in context: ContextForecast.Context) -> Bool {
+            switch self {
+            case .dayShape: true
+            case .sleepDebt: context.sleepDebtMinutes != nil
+            case .bedtime: context.bedtimeHour != nil
+            case .lateCaffeine: context.lateCaffeineMg != nil
+            case .exercise: context.exerciseMinutesPreviousDay != nil
+            case .previousNight: context.previousNightAsleepMinutes != nil
+            }
+        }
+
+        /// The same scaled difference `ContextForecast.distance` computes,
+        /// for this one feature. Shares the scales rather than inventing
+        /// second ones, so "similar" here means what "close" means there.
+        ///
+        /// Returns nil when either night is missing the feature.
+        func scaledDifference(
+            _ a: ContextForecast.Context,
+            _ b: ContextForecast.Context
+        ) -> Double? {
+            func gap(_ lhs: Double?, _ rhs: Double?, scale: Double) -> Double? {
+                guard let lhs, let rhs else { return nil }
+                return abs(lhs - rhs) / scale
+            }
+
+            switch self {
+            case .dayShape:
+                return a.isWeekend == b.isWeekend ? 0 : 1
+            case .sleepDebt:
+                return gap(a.sleepDebtMinutes, b.sleepDebtMinutes, scale: ContextForecast.debtScale)
+            case .bedtime:
+                guard let lhs = a.bedtimeHour, let rhs = b.bedtimeHour else { return nil }
+                let raw = abs(lhs - rhs)
+                return min(raw, 24 - raw) / ContextForecast.bedtimeScale
+            case .lateCaffeine:
+                return gap(a.lateCaffeineMg, b.lateCaffeineMg, scale: ContextForecast.caffeineScale)
+            case .exercise:
+                return gap(
+                    a.exerciseMinutesPreviousDay,
+                    b.exerciseMinutesPreviousDay,
+                    scale: ContextForecast.exerciseScale
+                )
+            case .previousNight:
+                return gap(
+                    a.previousNightAsleepMinutes,
+                    b.previousNightAsleepMinutes,
+                    scale: ContextForecast.previousSleepScale
+                )
+            }
+        }
+    }
+
+    /// How much the matched nights agreed with tomorrow on one feature.
+    struct Match: Hashable, Sendable, Identifiable {
+        let feature: Feature
+        /// Neighbours close to tomorrow on this feature, as a fraction of the
+        /// neighbours that carried it.
+        let agreement: Double
+
+        var id: String { feature.rawValue }
+
+        var isShared: Bool { agreement >= ContextForecast.sharedAgreement }
+
+        /// "Similar bedtime" / "Mixed bedtime". Never "bedtime caused this".
+        var phrase: String {
+            "\(isShared ? "Similar" : "Mixed") \(feature.label)"
+        }
+    }
+
+    /// How close two nights must sit on one feature to count as similar on
+    /// it. Half a scale unit -- an hour of bedtime, an hour of sleep debt,
+    /// half a coffee -- which is comfortably inside `maximumDistance` and
+    /// still a difference a person would call small.
+    static let featureTightness = 0.5
+
+    /// How many of the neighbours must agree before the feature is described
+    /// as shared. Two thirds: a bare majority of eighteen nights is ten, and
+    /// ten agreeing while eight differ is not something to print under the
+    /// heading "why this range".
+    static let sharedAgreement = 2.0 / 3.0
+
+    /// How many of the neighbours must have *carried* the feature before it
+    /// is reported at all.
+    ///
+    /// Below this the feature is dropped rather than scored zero. Zero
+    /// agreement reads as "those nights differed from yours on caffeine",
+    /// which is a finding; "most of them had no caffeine reading" is an
+    /// absence, and the two must not print the same way.
+    static let featureCoverage = 0.5
+
+    /// What tomorrow and its matched nights share, most agreed-upon first.
+    ///
+    /// - Parameter neighbours: the contexts of the nights the interval was
+    ///   read off -- not every night in the history. Reporting agreement over
+    ///   nights that did not contribute would describe a different match.
+    static func matches(of target: Context, against neighbours: [Context]) -> [Match] {
+        guard !neighbours.isEmpty else { return [] }
+
+        return Feature.allCases.compactMap { feature -> Match? in
+            guard feature.isPresent(in: target) else { return nil }
+
+            let differences = neighbours.compactMap { feature.scaledDifference(target, $0) }
+            guard Double(differences.count) / Double(neighbours.count) >= featureCoverage,
+                  !differences.isEmpty else { return nil }
+
+            let close = differences.filter { $0 <= featureTightness }.count
+            return Match(feature: feature, agreement: Double(close) / Double(differences.count))
+        }
+        .sorted { lhs, rhs in
+            // Ties broken by the feature's own declaration order rather than
+            // left to `sorted`'s instability, so the same forecast lists the
+            // same reasons in the same order every time it is drawn.
+            if lhs.agreement != rhs.agreement { return lhs.agreement > rhs.agreement }
+            let order = Feature.allCases
+            return (order.firstIndex(of: lhs.feature) ?? 0) < (order.firstIndex(of: rhs.feature) ?? 0)
         }
     }
 }
