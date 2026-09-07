@@ -1,42 +1,37 @@
 import Foundation
 import HealthKit
 
-/// Where in the cycle a given date falls, and how recovery/sleep compare
-/// across phases.
+/// A broad, calendar-estimated part of a recorded cycle.
 ///
-/// Oura and Whoop both correlate cycle phase with readiness; the luteal phase
-/// in particular is well-documented to run with elevated resting heart rate
-/// and suppressed HRV in many people, which otherwise looks exactly like the
-/// Health Radar's illness-drift pattern with no illness behind it. Reading
-/// cycle data is what lets Zoon tell those two apart instead of flagging a
-/// normal luteal shift as something to worry about.
+/// These are deliberately timing bands, not physiological phase or ovulation
+/// claims. Apple Health gives Zoon recorded period starts, not evidence that
+/// ovulation happened on a particular date.
 ///
 /// Entirely opt-in — see `HealthKitManager.requestCycleTrackingAuthorization`.
 /// Nothing here is read, computed, or shown unless the user turns it on.
 enum CyclePhase: String, Codable, Sendable, CaseIterable {
-    case menstrual, follicular, ovulation, luteal
+    case periodDays, earlier, middle, later
 
     var label: String {
         switch self {
-        case .menstrual: "Menstrual"
-        case .follicular: "Follicular"
-        case .ovulation: "Ovulation"
-        case .luteal: "Luteal"
+        case .periodDays: "Days 1–5"
+        case .earlier: "Earlier cycle"
+        case .middle: "Middle cycle"
+        case .later: "Later cycle"
         }
     }
 
-    /// Textbook day ranges for a idealised 28-day cycle. Real cycles vary —
-    /// this positions each night approximately, which is honest about the
-    /// limits of what a handful of logged period-start dates can support.
-    /// Zoon does not attempt ovulation prediction from temperature; that's a
-    /// different, harder claim than "roughly where in the cycle was this".
-    static func phase(forCycleDay day: Int) -> CyclePhase {
-        switch day {
-        case ..<6: .menstrual
-        case 6..<13: .follicular
-        case 13..<16: .ovulation
-        default: .luteal
-        }
+    /// Divides a person's observed typical cycle into broad timing bands.
+    /// A caller must first establish a stable personal cycle length; there is
+    /// intentionally no textbook 28-day fallback.
+    static func phase(forCycleDay day: Int, typicalCycleLength: Int) -> CyclePhase? {
+        guard day > 0, typicalCycleLength >= 21, typicalCycleLength <= 45,
+              day <= typicalCycleLength + 7 else { return nil }
+        if day <= 5 { return .periodDays }
+        let position = Double(day - 1) / Double(typicalCycleLength)
+        if position < 0.45 { return .earlier }
+        if position < 0.65 { return .middle }
+        return .later
     }
 }
 
@@ -45,7 +40,6 @@ struct CycleContext: Sendable {
     /// 1-based day within the current cycle, or `nil` before the first
     /// logged start.
     let cycleDay: Int?
-    var phase: CyclePhase? { cycleDay.map(CyclePhase.phase(forCycleDay:)) }
 
     /// Finds the most recent period start on or before `date` and returns the
     /// day offset. `starts` need not be sorted.
@@ -69,6 +63,24 @@ struct CycleContext: Sendable {
                 : nil
         }
     }
+
+    /// Median interval between recorded starts when the history is stable
+    /// enough to support broad calendar context. Highly variable histories
+    /// stay as cycle-day data only rather than receiving misleading bands.
+    static func typicalCycleLength(starts: [Date], calendar: Calendar = .current) -> Int? {
+        let ordered = Array(Set(starts.map { calendar.startOfDay(for: $0) })).sorted()
+        let intervals = zip(ordered, ordered.dropFirst()).compactMap { pair -> Int? in
+            let (start, end) = pair
+            guard let days = calendar.dateComponents([.day], from: start, to: end).day,
+                  (21...45).contains(days) else { return nil }
+            return days
+        }
+        guard intervals.count >= 2,
+              let shortest = intervals.min(), let longest = intervals.max(),
+              longest - shortest <= 9 else { return nil }
+        let sorted = intervals.sorted()
+        return sorted[sorted.count / 2]
+    }
 }
 
 /// Mean recovery and sleep performance grouped by cycle phase, for the Trends
@@ -90,13 +102,17 @@ struct CyclePhaseCorrelation: Identifiable, Sendable {
         periodStarts: [Date],
         calendar: Calendar = .current
     ) -> [CyclePhaseCorrelation] {
-        guard !periodStarts.isEmpty else { return [] }
+        guard let typicalLength = CycleContext.typicalCycleLength(
+            starts: periodStarts, calendar: calendar
+        ) else { return [] }
 
         var byPhase: [CyclePhase: [(Int, Double)]] = [:]
         for night in nights {
             guard let day = CycleContext.compute(date: night.date, starts: periodStarts, calendar: calendar).cycleDay
             else { continue }
-            let phase = CyclePhase.phase(forCycleDay: day)
+            guard let phase = CyclePhase.phase(
+                forCycleDay: day, typicalCycleLength: typicalLength
+            ) else { continue }
             byPhase[phase, default: []].append((night.recoveryPercent, night.sleepPerformance))
         }
 

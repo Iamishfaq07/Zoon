@@ -152,7 +152,7 @@ enum AchievementEngine {
             out.append(Achievement(
                 id: "regularity-80",
                 title: "Clockwork",
-                detail: "Reach a sleep regularity index of 80.",
+                detail: "Reach a timing consistency score of 80.",
                 symbol: "clock.badge.checkmark.fill",
                 category: .consistency,
                 tier: .gold,

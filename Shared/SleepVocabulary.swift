@@ -93,8 +93,8 @@ enum SleepVocabulary {
 
     static let regularity = Term(
         plain: "Schedule consistency",
-        technical: "Sleep Regularity Index",
-        meaning: "How closely each day's sleep timing matches the day before. Deliberately never shown as \"SRI\" -- see SleepRegularity."
+        technical: "Timing consistency",
+        meaning: "How closely each day's sleep timing matches the day before."
     )
 
     static let all: [Term] = [

@@ -254,6 +254,7 @@
 		4DC45855F9747BD4C9EC970D /* LifestyleInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E0BB7B287F3739433EC5B8 /* LifestyleInsights.swift */; };
 		4E2A594FC6EE5B9F868E389A /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */; };
 		4E4F2E23C21B2B9EF1376A11 /* MorningInThree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC1633667837266E354EB2A /* MorningInThree.swift */; };
+		4E7EB3F8D27E76CE7A4117CB /* CycleContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B737B1F7FDB18E09C5DA47F /* CycleContextTests.swift */; };
 		4EF58D8227C0F1706874FD57 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
 		4F02093C10C2B543DA384526 /* SleepReplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE0980BAD4F97A00BC192866 /* SleepReplay.swift */; };
 		4F2E87506FDADC731060A171 /* DataEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 275F0131A98765781C43B872 /* DataEnvironmentTests.swift */; };
@@ -355,7 +356,6 @@
 		6EC36998922928FAEB7435C7 /* LightCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 114E81F4B55221C012C41429 /* LightCoach.swift */; };
 		6ECC1047025F2A06CDC53D75 /* SyncRange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1B6C018B5F60F2D07DFDFB /* SyncRange.swift */; };
 		6EDF62F26038C1B55C641086 /* SleepNightFeaturesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3533F8BC0469D5CA49CFA9 /* SleepNightFeaturesTests.swift */; };
-		6F8596E0B9C5B12994746EBB /* LabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AB0A83CFAFA73CE6FA67AF /* LabsView.swift */; };
 		6FA4F5D814372916F43390DB /* SeededGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD50E712746E68436F3A59B /* SeededGenerator.swift */; };
 		70228E7E5C695A83CB011B17 /* SpotlightIndexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DFB342C78C5CB4CA3AB5943 /* SpotlightIndexerTests.swift */; };
 		70C27F39E9CB248EDAEFDC1E /* LightCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 114E81F4B55221C012C41429 /* LightCoach.swift */; };
@@ -1074,6 +1074,7 @@
 		890C0E2A92FB4929DA9077A2 /* ScoreMeaningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScoreMeaningTests.swift"; sourceTree = "<group>"; };
 		8A1B41B351A84AFEB312B3AB /* AnchorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AnchorStore.swift"; sourceTree = "<group>"; };
 		8A8AE2D45055DCC9C281205C /* ShiftWorkMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftWorkMode.swift"; sourceTree = "<group>"; };
+		8B737B1F7FDB18E09C5DA47F /* CycleContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CycleContextTests.swift"; sourceTree = "<group>"; };
 		8E116B8901D148D29DCD2EC7 /* TonightRoutineController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TonightRoutineController.swift"; sourceTree = "<group>"; };
 		8E6C44D626E3E751E1F6F625 /* AudioStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioStudioView.swift"; sourceTree = "<group>"; };
 		8F1B6C018B5F60F2D07DFDFB /* SyncRange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncRange.swift"; sourceTree = "<group>"; };
@@ -1156,7 +1157,6 @@
 		C04C95F7B4CAD642DA384A03 /* SleepDebtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtView.swift"; sourceTree = "<group>"; };
 		C0887F9713290374B9C122DD /* TonightWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TonightWidget.swift"; sourceTree = "<group>"; };
 		C18237AF80A96726E915E09D /* BadgeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BadgeWidget.swift"; sourceTree = "<group>"; };
-		C1AB0A83CFAFA73CE6FA67AF /* LabsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LabsView.swift"; sourceTree = "<group>"; };
 		C306D669251A84B1C8762BF5 /* BreathingCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingCoach.swift"; sourceTree = "<group>"; };
 		C365D992738195A18CB7033A /* TonightsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TonightsData.swift"; sourceTree = "<group>"; };
 		C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchSnapshotStore.swift"; sourceTree = "<group>"; };
@@ -1534,6 +1534,7 @@
 				B2BD128902E142E91CEE3E96,
 				64CF3AFB3F90453076AA3237,
 				706F052B52B73EA14F1B1061,
+				8B737B1F7FDB18E09C5DA47F,
 				275F0131A98765781C43B872,
 				6425D1C6954F9488B9D5D255,
 				EE9B5F417E53291DB0A4770F,
@@ -1791,7 +1792,6 @@
 				200AF56E3BA9B27B1BF5A0F5,
 				C546564B72FB82E5F2273989,
 				198401AD6CC208D4D6138629,
-				C1AB0A83CFAFA73CE6FA67AF,
 				55689F01138157F979C6FBC7,
 				28D33E57B11E26A089C4D79C,
 				97851BDC0CB8EE6780A3E49D,
@@ -2269,7 +2269,6 @@
 				ABBA4E9E3E5E76ED340598D8,
 				0102704614FA1A59431C3D1C,
 				47EF1E15A3967BBBDDE1EAAF,
-				6F8596E0B9C5B12994746EBB,
 				B6A3993E5E7B246F6BE4D839,
 				F5CED6A67360D7149E6DF689,
 				DFB5C693F73E21AC169D52A2,
@@ -2517,6 +2516,7 @@
 				8109744446D552C9AE902E31,
 				DD3E19CEF586A462AD026253,
 				18078929F1E541BEC6DDDA87,
+				4E7EB3F8D27E76CE7A4117CB,
 				4F2E87506FDADC731060A171,
 				A56AFAF2E007425A268F496B,
 				EC31392EB0C37EB00F820C17,
@@ -2932,7 +2932,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon never writes anything to Health -- it only reads your sleep and vitals. This permission is requested only because the app's HealthKit entitlement requires it; no data is ever saved back.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
@@ -3132,7 +3131,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon never writes anything to Health -- it only reads your sleep and vitals. This permission is requested only because the app's HealthKit entitlement requires it; no data is ever saved back.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
