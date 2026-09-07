@@ -15,7 +15,10 @@ enum PersonalLearning {
             case .hrv: "HRV"
             }
         }
-        var sentence: String { "(title) usually returned to your recent range in (nights) (nights == 1 ? "night" : "nights")." }
+        var sentence: String {
+            let unit = nights == 1 ? "night" : "nights"
+            return "\(title) usually returned to your recent range in \(nights) \(unit)."
+        }
     }
 
     struct CircadianResponse: Equatable {
