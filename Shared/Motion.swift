@@ -202,30 +202,48 @@ struct BreathingModifier: ViewModifier {
     let tint: Color
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @State private var phase = false
 
     func body(content: Content) -> some View {
         content
             .shadow(color: tint.opacity(active && phase ? 0.55 : 0.18), radius: phase ? 16 : 8)
             .onChange(of: active) { _, isActive in
-                guard isActive, !reduceMotion else {
-                    phase = false
-                    return
-                }
-                start()
+                isActive ? start() : stop()
             }
-            .onAppear {
-                guard active, !reduceMotion else { return }
-                start()
+            .onAppear { start() }
+            // A `repeatForever` animation does not stop on its own. Without
+            // these two it keeps cycling behind a backgrounded app and behind
+            // whatever the person navigated to next -- for a pacer attached
+            // to a nap or a sleep session, that is potentially all night.
+            // The V10 spec asks for exactly this: pause when the screen is
+            // off, when the app is backgrounded, and when the view is
+            // offscreen.
+            .onDisappear { stop() }
+            .onChange(of: scenePhase) { _, newPhase in
+                newPhase == .active ? start() : stop()
             }
     }
 
     private func start() {
+        guard active, !reduceMotion, scenePhase == .active else { return }
         // ~4 seconds per cycle, which is close to a slow resting breath. The
         // rate is the point: it is the pace you want someone to settle to.
         withAnimation(.easeInOut(duration: 3.8).repeatForever(autoreverses: true)) {
             phase = true
         }
+    }
+
+    /// Cuts the repeating animation rather than animating back to rest.
+    ///
+    /// Assigning `phase = false` inside the still-running `repeatForever`
+    /// leaves the animation attached to the property, so the glow keeps
+    /// cycling toward a target that has moved. Disabling animations for this
+    /// one transaction detaches it, which is what stopping means here.
+    private func stop() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { phase = false }
     }
 }
 
