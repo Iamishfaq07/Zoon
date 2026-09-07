@@ -46,12 +46,12 @@ final class ModelHealthTests: XCTestCase {
     /// wrong thing: a model with a hole in it is not "moderately
     /// personalised", it is a model with a hole.
     func testTheOverallStageIsTheWeakestAreaAndNotTheAverage() {
-        let assessments = assess(nights: 120, claims: 12, pairs: 40, coverage: 0.99)
+        let assessments = assess(nights: 120, coverage: 0.99, claims: 12, pairs: 40)
         XCTAssertEqual(ModelHealth.overall(assessments), .wellEstablished,
                        "fixture must top out, or the next assertion proves nothing")
 
         // One thin area, everything else unchanged.
-        let holed = assess(nights: 120, recovery: 3, claims: 12, pairs: 40, coverage: 0.99)
+        let holed = assess(nights: 120, recovery: 3, coverage: 0.99, claims: 12, pairs: 40)
         XCTAssertEqual(ModelHealth.overall(holed), .learning)
         XCTAssertTrue(ModelHealth.headline(holed).contains("recovery baseline"))
     }
