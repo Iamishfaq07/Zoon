@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Recovery and sleep performance, averaged by cycle phase.
+/// Recovery and sleep performance, averaged by estimated cycle timing.
 ///
 /// Only ever shown when the user has opted into cycle tracking and logged at
 /// least one period start in Health — both gates live in the caller, not
@@ -11,8 +11,8 @@ struct CycleCorrelationCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
-                title: "By Cycle Phase",
-                subtitle: "Recovery and sleep, averaged within each phase.",
+                title: "Estimated Cycle Context",
+                subtitle: "Broad timing bands based on your recorded cycle history.",
                 systemImage: "circle.hexagongrid.circle"
             )
 
@@ -45,7 +45,7 @@ struct CycleCorrelationCard: View {
                 }
             }
 
-            Text("A dip in the luteal phase is common and not the same signal Body Signals watches for — that's exactly why this exists.")
+            Text("These are calendar estimates, not detected physiological phases or ovulation. Irregular histories remain unclassified.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -75,10 +75,10 @@ struct CycleCorrelationCard: View {
 
 #Preview("Cycle Correlation") {
     CycleCorrelationCard(correlations: [
-        CyclePhaseCorrelation(phase: .menstrual, nightCount: 4, avgRecoveryPercent: 52, avgSleepPerformance: 78),
-        CyclePhaseCorrelation(phase: .follicular, nightCount: 8, avgRecoveryPercent: 71, avgSleepPerformance: 88),
-        CyclePhaseCorrelation(phase: .ovulation, nightCount: 3, avgRecoveryPercent: 68, avgSleepPerformance: 84),
-        CyclePhaseCorrelation(phase: .luteal, nightCount: 10, avgRecoveryPercent: 58, avgSleepPerformance: 75)
+        CyclePhaseCorrelation(phase: .periodDays, nightCount: 4, avgRecoveryPercent: 52, avgSleepPerformance: 78),
+        CyclePhaseCorrelation(phase: .earlier, nightCount: 8, avgRecoveryPercent: 71, avgSleepPerformance: 88),
+        CyclePhaseCorrelation(phase: .middle, nightCount: 3, avgRecoveryPercent: 68, avgSleepPerformance: 84),
+        CyclePhaseCorrelation(phase: .later, nightCount: 10, avgRecoveryPercent: 58, avgSleepPerformance: 75)
     ])
     .padding()
     .nightBackground()

@@ -76,6 +76,9 @@ UITESTS_SRC = swift_files("ZoonUITests")
 # whether SwiftData itself can run at all in this unhosted test bundle before
 # trying a real store again. See SwiftDataProbeTests.swift's own doc comment.
 TESTS_EXTRA_APP_FILES = [
+    # HealthKit + Foundation -- the conservative cycle-context grouping and
+    # personal-history gating exercised by CycleContextTests.
+    "Zoon/Models/CyclePhase.swift",
     "Zoon/Models/EvidenceRevisionRecord.swift",
     "Zoon/Services/SleepSessionBuilder.swift",
     # Foundation/SwiftData only -- see the SwiftDataProbeTests doc comment
@@ -695,12 +698,6 @@ emit("PBXProject",
 HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen "
                "and wrist temperature to explain how you slept. Everything is processed "
                "on this device and never leaves it.")
-# Apple's App Store Connect validation requires this purpose string whenever
-# an app carries the HealthKit background-delivery entitlement, regardless of
-# whether the app actually writes to Health -- Zoon never does.
-HEALTH_UPDATE_DESC = ("Zoon never writes anything to Health -- it only reads your sleep "
-                      "and vitals. This permission is requested only because the app's "
-                      "HealthKit entitlement requires it; no data is ever saved back.")
 MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
             "patterns. Audio is processed in short bursts and never saved or sent "
             "anywhere -- only a minutes-snoring count is kept.")
@@ -775,7 +772,6 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "{ALARM_DESC}";
 				INFOPLIST_KEY_UIBackgroundModes = audio;

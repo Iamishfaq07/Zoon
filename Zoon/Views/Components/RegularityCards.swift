@@ -35,7 +35,7 @@ struct RegularityCard: View {
                     symbol: "repeat",
                     tint: tint,
                     explanation: [
-                        "Measures how consistent your sleep and wake times are night to night, on a 0-100 scale -- it's about rhythm, not duration. This approximates the academic Sleep Regularity Index but only samples the hours around your actual sleep, not a full 24-hour day, so it isn't presented as that exact metric.",
+                        "Measures how consistent your sleep and wake times are night to night, on a 0-100 scale. It describes timing, not duration.",
                         "Social jetlag is the gap between your work-day and free-day sleep midpoints. A large gap behaves physiologically a lot like crossing time zones, even without travelling."
                     ],
                     relatedArticleID: "sleep-consistency"
@@ -231,109 +231,11 @@ struct HealthRadarCard: View {
     }
 }
 
-/// Cardiovascular age.
-struct CardiovascularAgeCard: View {
-
-    let cvAge: CardiovascularAge
-
-    private var tint: Color {
-        switch cvAge.standing {
-        case .younger: Theme.Metric.recoveryHigh
-        case .aligned: Theme.Metric.battery
-        case .older: Theme.Metric.recoveryMid
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .top) {
-                SectionHeader(title: "Cardiovascular Age", systemImage: "heart.circle")
-                Spacer(minLength: 8)
-                // A tertiary-colored disclaimer at the bottom of the card is
-                // easy to skim past on a number this large and this
-                // confident-looking. This sits right next to the title
-                // instead, where it's read first.
-                StatusPill(text: "Experimental", tint: .secondary)
-                MetricInfoButton(
-                    title: "Cardiovascular Age",
-                    symbol: "heart.circle",
-                    tint: tint,
-                    explanation: [
-                        "An estimate derived from your resting heart rate and HRV relative to population norms for your age -- not a clinical or lab-based measurement, and not validated against any reference standard.",
-                        "Treat the direction (younger, aligned, older than your actual age) as more meaningful than the exact number, which will vary night to night."
-                    ]
-                )
-            }
-
-            HStack(alignment: .center, spacing: 18) {
-                VStack(spacing: -2) {
-                    Text(cvAge.displayAge)
-                        .font(Theme.numeral(46))
-                        .monospacedDigit()
-                        .foregroundStyle(tint)
-                    Text("estimated")
-                        .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
-                }
-
-                // A short axis showing where the estimate sits relative to
-                // actual age — the comparison is the whole point, and two bare
-                // numbers side by side don't communicate it.
-                VStack(alignment: .leading, spacing: 6) {
-                    GeometryReader { geo in
-                        let span = 20.0
-                        let position = (cvAge.deltaYears + span / 2) / span
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Theme.neutral(0.08))
-                            Capsule()
-                                .fill(Theme.Metric.battery.opacity(0.3))
-                                .frame(width: geo.size.width * 0.5)
-                                .offset(x: geo.size.width * 0.25)
-                            Circle()
-                                .fill(tint)
-                                .frame(width: 10, height: 10)
-                                .shadow(color: tint.opacity(0.8), radius: 5)
-                                .offset(x: geo.size.width * min(max(position, 0), 1) - 5)
-                        }
-                    }
-                    .frame(height: 10)
-
-                    HStack {
-                        Text("−10y").font(Theme.text(9)).foregroundStyle(.tertiary)
-                        Spacer()
-                        Text("age \(cvAge.chronologicalAge)").font(Theme.text(9)).foregroundStyle(.secondary)
-                        Spacer()
-                        Text("+10y").font(Theme.text(9)).foregroundStyle(.tertiary)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-
-            Text(cvAge.summary)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(CardiovascularAge.disclaimer)
-                .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .glassCard()
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Cardiovascular age")
-        .accessibilityValue("\(cvAge.displayAge), \(cvAge.standing.label)")
-    }
-}
-
 #Preview("New cards") {
     let context = AppMockData.dayContext()
     return ScrollView {
         VStack(spacing: 16) {
             RegularityCard(regularity: context.regularity)
-            if let cv = context.cardiovascularAge {
-                CardiovascularAgeCard(cvAge: cv)
-            }
             HealthRadarCard(radar: AppMockData.activeRadar)
         }
         .padding()

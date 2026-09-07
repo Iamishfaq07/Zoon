@@ -143,7 +143,7 @@ struct TrendsView: View {
         .pickerStyle(.segmented)
     }
 
-    /// The three destinations that have no section of their own to be
+    /// Destinations that have no section of their own to be
     /// reached from, as a single row of text links -- not five glass rows.
     /// Cause Finder and Sleep Story are linked from Discoveries and the
     /// Sleep tab's story moments respectively; Need, Debt, Body Clock and
@@ -155,7 +155,6 @@ struct TrendsView: View {
                 exploreLink("Sleep Story", "clock.arrow.circlepath") { SleepStoryView() }
                 exploreLink("Sleep Playbook", "checklist") { SleepPlaybookView() }
                 exploreLink("Year in Sleep", "square.grid.3x3.fill") { YearHeatmapView() }
-                exploreLink("Labs", "flask") { LabsView() }
             }
         }
     }
