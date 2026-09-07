@@ -1383,7 +1383,9 @@ final class SleepDataCoordinator {
                 startDate: restored.experimentStartDate,
                 hypothesis: restored.experimentHypothesis,
                 primaryMetric: restored.experimentPrimaryMetric.flatMap(JournalCorrelator.Metric.init(rawValue:)),
-                direction: restored.experimentDirection.flatMap(GuidedExperiment.Direction.init(rawValue:))
+                direction: restored.experimentDirection.flatMap(GuidedExperiment.Direction.init(rawValue:)),
+                design: restored.experimentDesign.flatMap(ExperimentDesign.init(rawValue:)),
+                seed: restored.experimentDesignSeed.map { UInt64(bitPattern: Int64($0)) }
             )
             preferences.restoreRecoveryModeDate(restored.recoveryModeDate)
             engine = Self.makeEngine(for: preferences.preferredEngine)

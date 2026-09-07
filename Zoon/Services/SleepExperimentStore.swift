@@ -46,6 +46,27 @@ final class SleepExperimentStore {
         /// non-compliant night as one that never got tagged at all.
         var trialCompliantNightCount: Int?
 
+        /// The trial's nights split three ways, the way the V10 spec asks
+        /// for: adherent, non-adherent, unknown.
+        ///
+        /// All three were already stored -- adherence was recorded as one
+        /// rate, and "went the other way" and "never logged" were folded into
+        /// the same denominator. They are different facts. A trial where six
+        /// nights broke the plan says the plan was hard to keep; one where
+        /// six nights went unlogged says nothing about the plan at all, and
+        /// both used to print as the same percentage.
+        ///
+        /// nil for outcomes recorded before the counts existed, rather than
+        /// zeroed: an unrecorded count and a count of zero are not the same.
+        var adherenceBreakdown: ExperimentDesign.Adherence? {
+            guard let trialCompliantNightCount, let trialKnownNightCount else { return nil }
+            return ExperimentDesign.Adherence(
+                adherent: trialCompliantNightCount,
+                nonAdherent: max(0, trialKnownNightCount - trialCompliantNightCount),
+                unknown: max(0, trialNightCount - trialKnownNightCount)
+            )
+        }
+
         var delta: Double { trialMedian - baselineMedian }
         var isImprovement: Bool { higherIsBetter ? delta > 0 : delta < 0 }
         /// Fraction (0...1) of trial nights that were actually compliant

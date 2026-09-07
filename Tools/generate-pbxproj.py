@@ -165,6 +165,13 @@ TESTS_EXTRA_APP_FILES = [
     # SleepExperimentStore.Outcome above -- the pre-specified-metric and
     # adherence-tracking logic GuidedExperimentTests exists to pin down.
     "Zoon/Insights/GuidedExperiment.swift",
+    # Foundation only -- the trial layouts (AB/BA/ABBA/randomised crossover),
+    # the schedule they generate before a trial starts, and the three-way
+    # adherence they read back. App-side because BehaviorTag and
+    # JournalCorrelator.ExposureState are, and Shared/ compiles into the
+    # widget and watch targets. ExperimentDesignTests asserts on the block
+    # orders, the seeded schedule and the refusals.
+    "Zoon/Insights/ExperimentDesign.swift",
     # Foundation only -- turns a finished SleepExperimentStore.Outcome into a
     # ledger revision. App-side rather than in Shared/EvidenceClaims.swift for
     # the plain reason that Outcome is app-side and Shared/ compiles into the

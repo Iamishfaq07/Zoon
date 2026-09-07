@@ -94,6 +94,11 @@ enum ExperimentPlanner {
         let effort: Effort
         let exposedNights: Int
         let unexposedNights: Int
+        /// The directions this behaviour may actually be tested in. Carried
+        /// on the proposal so the screen that acts on it cannot offer a
+        /// direction the planner would never have proposed -- see
+        /// `BehaviorTag.ExposureControl`.
+        let testableDirections: [GuidedExperiment.Direction]
         /// Calendar nights the trial is likely to take, inflated for how
         /// often this person actually logs.
         let estimatedNights: Int
@@ -148,7 +153,11 @@ enum ExperimentPlanner {
         guard journaled.count >= minimumJournaledNights else { return [] }
 
         var proposals: [Proposal] = []
-        for tag in candidates where !settledTags.contains(tag.rawValue) {
+        // Behaviours nobody assigns themselves are not proposed in either
+        // direction. Suggesting a trial of being unwell, or of travelling,
+        // is proposing a condition the person cannot take up.
+        for tag in candidates where !settledTags.contains(tag.rawValue)
+            && !tag.testableDirections.isEmpty {
             // Counted through `exposureState` rather than `tags.contains`
             // so the planner inherits the yes/no/unknown semantics instead
             // of keeping a second copy of them that could drift.
@@ -170,6 +179,7 @@ enum ExperimentPlanner {
                 effort: effort(exposed: exposed, unexposed: unexposed),
                 exposedNights: exposed,
                 unexposedNights: unexposed,
+                testableDirections: tag.testableDirections,
                 estimatedNights: estimatedNights(
                     journaled: journaled.count, ofRecent: recent.count
                 )

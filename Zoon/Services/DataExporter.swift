@@ -154,6 +154,17 @@ enum DataExporter {
             let experimentHypothesis: String?
             let experimentPrimaryMetric: String?
             let experimentDirection: String?
+            /// How the running trial is laid out, and the seed its block
+            /// order was drawn from. Optional and added without a format
+            /// bump, the same way `recoveryModeDate` below was: an older
+            /// backup decodes them as nil, which restores as a plain
+            /// before/after -- true of every trial that existed before
+            /// designs did. Both travel because a design without its seed
+            /// would have to redraw the order on restore, and a restored
+            /// crossover that reshuffles its remaining blocks is exactly what
+            /// the seed exists to prevent.
+            let experimentDesign: String?
+            let experimentDesignSeed: Int?
             /// The date Recovery Mode was turned on, if it was on at export
             /// time. Optional -- added after format 4 shipped, so an earlier
             /// backup decodes it as `nil`. Not a version bump: unlike the
@@ -229,6 +240,9 @@ enum DataExporter {
                 experimentHypothesis: preferences.experimentHypothesis,
                 experimentPrimaryMetric: preferences.experimentPrimaryMetric?.rawValue,
                 experimentDirection: preferences.experimentDirection?.rawValue,
+                experimentDesign: preferences.experimentDesign?.rawValue,
+                experimentDesignSeed: preferences.experimentDesignSeed
+                    .map { Int(bitPattern: UInt(truncatingIfNeeded: $0)) },
                 recoveryModeDate: preferences.recoveryModeDateForBackup
             ),
             snoreSummaries: snoreSummaries,

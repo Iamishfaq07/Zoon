@@ -60,8 +60,11 @@ struct CauseFinderView: View {
         .navigationTitle("Cause Finder")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingExperimentPicker) {
-            ExperimentPickerSheet { tag, hypothesis, primaryMetric, direction in
-                preferences.startExperiment(tag, hypothesis: hypothesis, primaryMetric: primaryMetric, direction: direction)
+            ExperimentPickerSheet { tag, hypothesis, primaryMetric, direction, design in
+                preferences.startExperiment(
+                    tag, hypothesis: hypothesis, primaryMetric: primaryMetric,
+                    direction: direction, design: design
+                )
                 showingExperimentPicker = false
             }
         }
@@ -78,6 +81,12 @@ struct CauseFinderView: View {
                 tag: tag,
                 startDate: preferences.experimentStartDate,
                 direction: preferences.experimentDirection ?? .avoid,
+                // Which arm tonight belongs to, decided when the trial
+                // started. A crossover whose plan lives only in the database
+                // is a crossover nobody can follow.
+                tonight: preferences.experimentSchedule.first {
+                    Calendar.current.isDateInToday($0.date)
+                },
                 status: GuidedExperiment.status(for: tag, observations: observations, since: preferences.experimentStartDate),
                 observations: observations,
                 primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
@@ -302,6 +311,10 @@ private struct GuidedExperimentCard: View {
     let tag: BehaviorTag
     let startDate: Date?
     let direction: GuidedExperiment.Direction
+    /// Tonight's assignment, when the trial has a schedule. `nil` for a
+    /// before/after trial, which assigns nothing, and once the planned
+    /// stretches have run out.
+    var tonight: ExperimentDesign.Assignment?
     let status: GuidedExperiment.Status
     let observations: [JournalCorrelator.Observation]
     let primaryMetric: JournalCorrelator.Metric
@@ -325,6 +338,19 @@ private struct GuidedExperimentCard: View {
                     Text("Judged on \(primaryMetric.shortLabel)")
                         .font(Theme.text(11))
                         .foregroundStyle(.secondary)
+                    if let tonight {
+                        // The whole value of assigning nights in advance is
+                        // that the person can read tonight's off a screen
+                        // instead of deciding it in the moment.
+                        Label(
+                            tonight.arm == .with
+                                ? "Tonight: with \(tag.label.lowercased())"
+                                : "Tonight: without \(tag.label.lowercased())",
+                            systemImage: tonight.arm == .with ? "checkmark.circle" : "circle.slash"
+                        )
+                        .font(Theme.text(11, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                    }
                 }
                 Spacer()
             }
@@ -394,15 +420,28 @@ private struct GuidedExperimentCard: View {
 }
 
 private struct ExperimentPickerSheet: View {
-    let onSelect: (BehaviorTag, String?, JournalCorrelator.Metric, GuidedExperiment.Direction) -> Void
+    let onSelect: (BehaviorTag, String?, JournalCorrelator.Metric, GuidedExperiment.Direction, ExperimentDesign) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var hypothesis: String = ""
     @State private var primaryMetric: JournalCorrelator.Metric = .sleepPerformance
     @State private var direction: GuidedExperiment.Direction = .avoid
+    /// Four stretches in a fixed-in-advance order is the design worth
+    /// defaulting to: it is the only one on the list that cancels a steady
+    /// drift out of the answer, and it costs the same weeks as the others.
+    @State private var design: ExperimentDesign = .abba
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Picker("Shape of the trial", selection: $design) {
+                        ForEach(ExperimentDesign.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
+                    }
+                } footer: {
+                    Text(design.rationale + " About \(design.plannedNights()) nights.")
+                }
                 Section {
                     Picker("This experiment is about", selection: $direction) {
                         ForEach(GuidedExperiment.Direction.allCases, id: \.self) { direction in
@@ -411,7 +450,7 @@ private struct ExperimentPickerSheet: View {
                     }
                     .pickerStyle(.segmented)
                 } footer: {
-                    Text("What counts as a compliant night depends on this -- a night you had a drink is a broken trial for cutting back, but a successful one for doing more of something.")
+                    Text("What counts as a compliant night depends on this -- a night you had a drink is a broken trial for cutting back, but a successful one for doing more of something. Some behaviours can only be tested one way: Zoon will help you cut back on alcohol, nicotine, cannabis, late caffeine and sleep aids, but will not ask you to have more of them.")
                 }
                 Section {
                     TextField("What do you expect to find? (optional)", text: $hypothesis, axis: .vertical)
@@ -428,14 +467,22 @@ private struct ExperimentPickerSheet: View {
                 } footer: {
                     Text("Chosen now, before there's any data to look at -- picking whichever metric moved the most afterward would just be noise dressed up as a finding.")
                 }
+                // Only behaviours this direction may be tested in. Zoon does
+                // not ask anybody to drink, smoke or take more of a sleep aid
+                // to see what it does -- and it does not offer a trial of
+                // being unwell or of travelling, which nobody assigns
+                // themselves either way. See `BehaviorTag.ExposureControl`.
                 ForEach(BehaviorTag.Category.allCases) { category in
-                    Section(category.label) {
-                        ForEach(category.tags) { tag in
-                            Button {
-                                onSelect(tag, hypothesis, primaryMetric, direction)
-                            } label: {
-                                Label(tag.label, systemImage: tag.symbol)
-                                    .foregroundStyle(.primary)
+                    let testable = category.tags.filter { $0.testableDirections.contains(direction) }
+                    if !testable.isEmpty {
+                        Section(category.label) {
+                            ForEach(testable) { tag in
+                                Button {
+                                    onSelect(tag, hypothesis, primaryMetric, direction, design)
+                                } label: {
+                                    Label(tag.label, systemImage: tag.symbol)
+                                        .foregroundStyle(.primary)
+                                }
                             }
                         }
                     }
@@ -510,9 +557,19 @@ private struct PastExperimentRow: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if let adherenceRate = outcome.adherenceRate, let compliant = outcome.trialCompliantNightCount, let direction = outcome.direction {
-                        Text("\(direction == .avoid ? "Stuck to it" : "Followed through") \(compliant) of \(outcome.trialNightCount) trial nights (\(Int((adherenceRate * 100).rounded()))%) -- the rest either went the other way or never got logged.")
-                            .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
+                        // "The rest" used to be one bucket. It is two, and
+                        // they mean different things: a night that broke the
+                        // plan says the plan was hard to keep, a night nobody
+                        // logged says nothing about the plan at all.
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(direction == .avoid ? "Stuck to it" : "Followed through") \(compliant) of \(outcome.trialNightCount) trial nights (\(Int((adherenceRate * 100).rounded()))%).")
+                            if let breakdown = outcome.adherenceBreakdown {
+                                Text(breakdown.sentence.capitalizedFirst + ".")
+                            }
+                        }
+                        .font(Theme.text(10))
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
                     } else if let known = outcome.trialKnownNightCount {
                         Text("Logged \(known) of \(outcome.trialNightCount) trial nights either way -- the rest never got tagged, so the result rests on the ones that did.")
                             .font(Theme.text(10))

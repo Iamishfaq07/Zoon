@@ -46,6 +46,74 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// Whether Zoon may ever propose *increasing* this, and whether it is
+    /// something a person elects at all.
+    ///
+    /// The V10 spec states the rule plainly: *never ask users to increase
+    /// harmful exposures.* Until now the experiment picker offered "Doing
+    /// more of it" for every one of these tags, alcohol and nicotine
+    /// included -- and an app that proposes a fortnight of more drinking to
+    /// see what it does to your sleep has crossed a line no amount of
+    /// statistical care redeems.
+    ///
+    /// Three states rather than a boolean, because two different things are
+    /// being ruled out. Some of these are choices with a known harm, so only
+    /// the reducing direction may be tested. Others are not choices at all
+    /// -- proposing either direction means asking somebody to arrange being
+    /// ill, or to travel on a schedule that suits a trial.
+    enum ExposureControl: Hashable, Sendable {
+        /// Testing more of it or less of it is equally reasonable.
+        case eitherDirection
+        /// Only reducing may be proposed.
+        case reduceOnly
+        /// Not something the person chooses. No trial is proposed either way.
+        case notChosen
+    }
+
+    var exposureControl: ExposureControl {
+        switch self {
+        // Known harms. A trial that cuts these back is a fair question; one
+        // that increases them is not a question Zoon gets to ask.
+        case .alcohol, .nicotine, .cannabis, .caffeineLate, .sleepAid:
+            .reduceOnly
+        // Not chosen. Being unwell, travelling and a hard day happen to
+        // people; they are context to record, not conditions to assign.
+        case .sick, .travelled, .stressfulDay:
+            .notChosen
+        // Everything else -- eating, training, temperature, screens, reading,
+        // hydration, sauna, stretching -- is a genuine choice a person can
+        // reasonably be asked to make either way for a couple of weeks.
+        case .magnesium, .lateMeal, .largeDinner, .fasted, .hydrated,
+             .hardTraining, .lateTraining, .restDay, .sauna, .coldPlunge,
+             .stretching, .screenBeforeBed, .readBeforeBed, .sharedBed, .coolRoom:
+            .eitherDirection
+        }
+    }
+
+    /// The directions an experiment on this behaviour may take. Empty for a
+    /// behaviour nobody elects, which is a refusal rather than an oversight.
+    var testableDirections: [GuidedExperiment.Direction] {
+        switch exposureControl {
+        case .eitherDirection: [.avoid, .pursue]
+        case .reduceOnly: [.avoid]
+        case .notChosen: []
+        }
+    }
+
+    /// Why a direction is not offered, in the person's own terms. `nil` when
+    /// the pairing is allowed.
+    func refusal(for direction: GuidedExperiment.Direction) -> String? {
+        guard !testableDirections.contains(direction) else { return nil }
+        switch exposureControl {
+        case .eitherDirection:
+            return nil
+        case .reduceOnly:
+            return "Zoon will help you test cutting back on \(label.lowercased()), but it will not ask you to have more of it."
+        case .notChosen:
+            return "\(label) is not something you choose, so there is nothing here to assign. Zoon still records it and uses it when it looks at your nights."
+        }
+    }
+
     var label: String {
         switch self {
         case .alcohol: "Alcohol"
