@@ -15,6 +15,9 @@ struct JournalView: View {
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var findings: [JournalCorrelator.Finding] = []
     @State private var note: String = ""
+    @State private var naturalText: String = ""
+    @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
+    @State private var selectedNaturalTags: Set<BehaviorTag> = []
     @FocusState private var noteFieldFocused: Bool
 
     // The source of truth for what each chip shows. Read from the stores
@@ -50,6 +53,7 @@ struct JournalView: View {
                     dayPicker
                     lifestyleInsightsCard
                     tonightsAsk
+                    naturalJournalCard
                     tagSections
                     noteCard
                     correlationsSection
@@ -192,6 +196,89 @@ struct JournalView: View {
         .padding(.vertical, 8)
         .background(Theme.neutral(0.06), in: Capsule())
         .foregroundStyle(.secondary)
+    }
+
+    // MARK: - Natural Journal
+
+    private var naturalJournalCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "Say it naturally",
+                subtitle: "Type or dictate a short note. Zoon proposes tags, then waits for your confirmation.",
+                systemImage: "waveform.and.mic"
+            )
+
+            TextField("Two coffees, gym at 7, and ate late…", text: $naturalText, axis: .vertical)
+                .lineLimit(2...4)
+                .textFieldStyle(.plain)
+                .padding(12)
+                .background(Theme.neutral(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityHint("You can use the keyboard microphone to dictate.")
+
+            if naturalProposals.isEmpty {
+                Button("Find observations") { parseNaturalJournal() }
+                    .buttonStyle(.bordered)
+                    .disabled(naturalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            } else {
+                Text("Confirm what Zoon understood")
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+
+                FlowLayout(spacing: 8) {
+                    ForEach(naturalProposals) { proposal in
+                        let selected = selectedNaturalTags.contains(proposal.tag)
+                        Button {
+                            if selected { selectedNaturalTags.remove(proposal.tag) }
+                            else { selectedNaturalTags.insert(proposal.tag) }
+                        } label: {
+                            Label(proposal.tag.label, systemImage: selected ? "checkmark.circle.fill" : "circle")
+                                .font(Theme.label(12, weight: .medium))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(selected ? Theme.Metric.sleep.opacity(0.22) : Theme.neutral(0.06), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityValue(selected ? "Selected" : "Not selected")
+                    }
+                }
+
+                HStack {
+                    Button("Start over") {
+                        naturalProposals = []
+                        selectedNaturalTags = []
+                    }
+                    .buttonStyle(.bordered)
+                    Spacer()
+                    Button("Confirm and save") { confirmNaturalJournal() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(selectedNaturalTags.isEmpty)
+                }
+            }
+
+            Text("Parsing happens on this device. Proposed observations are not saved or used as evidence until you tap Confirm and save.")
+                .font(Theme.evidence)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .glassCard()
+    }
+
+    private func parseNaturalJournal() {
+        naturalProposals = NaturalJournalParser.proposals(from: naturalText)
+        selectedNaturalTags = Set(naturalProposals.map(\.tag))
+        Haptics.tap()
+    }
+
+    private func confirmNaturalJournal() {
+        for tag in selectedNaturalTags {
+            coordinator.setBehavior(.yes, for: tag, on: selectedDate, nightKey: selectedNightKey)
+        }
+        answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        naturalText = ""
+        naturalProposals = []
+        selectedNaturalTags = []
+        Haptics.success()
     }
 
     // MARK: - Tags

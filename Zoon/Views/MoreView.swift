@@ -56,6 +56,11 @@ struct MoreView: View {
                         ModelHealthView()
                     }
                     .entrance(2)
+                    navRow("Personal learning", "Resilience, light response and alertness checks",
+                            "sparkles.rectangle.stack.fill", Theme.Family.sleep) {
+                        PersonalLearningView()
+                    }
+                    .entrance(2)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()

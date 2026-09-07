@@ -160,6 +160,13 @@ TESTS_EXTRA_APP_FILES = [
     # takes no sleep outcome at all, and AdaptiveJournalTests exists to hold
     # that line.
     "Zoon/Insights/AdaptiveJournal.swift",
+    # Deterministic, on-device parsing and longitudinal personal-learning
+    # logic. Both are pure Foundation and have release-facing trust gates.
+    "Zoon/Insights/NaturalJournalParser.swift",
+    "Zoon/Insights/PersonalLearning.swift",
+    # Local optional alertness-result persistence; tested with an isolated
+    # UserDefaults suite so no app or notification runtime is required.
+    "Zoon/Services/AlertnessCheckStore.swift",
     # Foundation only (the @Observable macro needs the system Observation
     # framework, not SwiftUI) -- the Outcome record GuidedExperiment.summarize
     # builds and GuidedExperimentTests asserts on.

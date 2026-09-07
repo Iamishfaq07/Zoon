@@ -32,6 +32,13 @@ for path in user_surfaces:
     if "Sleep Regularity Index" in source or "sleep regularity index" in source:
         violations.append(f"Partial timing metric is presented as SRI in {path.relative_to(ROOT)}")
 
+journal_ui = read("Zoon/Views/JournalView.swift")
+if "Confirm and save" not in journal_ui or "confirmNaturalJournal" not in journal_ui:
+    violations.append("Natural Journal must show an explicit confirmation step before saving observations.")
+parser = read("Zoon/Insights/NaturalJournalParser.swift")
+if "late coffee" not in parser or "Rule(tag: .caffeine, phrases:" not in parser:
+    violations.append("Natural Journal must keep generic caffeine separate from explicitly late caffeine.")
+
 if violations:
     print("Release trust audit failed:")
     for violation in violations:
