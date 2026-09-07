@@ -35,10 +35,19 @@ final class ExperimentPlannerTests: XCTestCase {
     }
 
     /// 30 journaled nights. `alcohol` on every third (10 nights, so it varies
-    /// naturally and clears the matched-pair floor), `travelled` on four
+    /// naturally and clears the matched-pair floor), `lateMeal` on four
     /// (enough to be a candidate, too few for matched pairs), `coolRoom` on
     /// all but one (so one arm has to be manufactured), `sauna` on two (below
     /// the candidate floor).
+    ///
+    /// The rarely-logged slot used to be `travelled`. It is `lateMeal` now
+    /// because travelling is not a condition anybody assigns themselves, so
+    /// the planner no longer proposes it in either direction -- see
+    /// `BehaviorTag.ExposureControl` and
+    /// `testABehaviourNobodyChoosesIsNeverProposed` below. The property this
+    /// fixture exists to exercise is "logged too rarely for matched pairs",
+    /// which `lateMeal` carries just as well and without also testing the
+    /// exclusion by accident.
     private func history(journaledNights: Int = 30, ofTotal total: Int? = nil)
         -> [JournalCorrelator.Observation] {
         let total = total ?? journaledNights
@@ -48,7 +57,7 @@ final class ExperimentPlannerTests: XCTestCase {
             }
             var tags: Set<BehaviorTag> = []
             if index % 3 == 0 { tags.insert(.alcohol) }
-            if index < 4 { tags.insert(.travelled) }
+            if index < 4 { tags.insert(.lateMeal) }
             if index != 7 { tags.insert(.coolRoom) }
             if index < 2 { tags.insert(.sauna) }
             return observation(daysAgo: total - index, tags: tags)
@@ -86,10 +95,28 @@ final class ExperimentPlannerTests: XCTestCase {
     /// A behaviour logged too rarely for matched pairs is where a deliberate
     /// trial adds contrast that observation cannot.
     func testARarelyLoggedBehaviourCreatesMissingContrast() throws {
-        let travelled = try proposal(for: .travelled)
-        XCTAssertLessThan(travelled.exposedNights, JournalCorrelator.minimumMatchedPairs,
+        let rare = try proposal(for: .lateMeal)
+        XCTAssertLessThan(rare.exposedNights, JournalCorrelator.minimumMatchedPairs,
                           "precondition: too few nights for the matched-pair engine")
-        XCTAssertEqual(travelled.value, .createsMissingContrast)
+        XCTAssertEqual(rare.value, .createsMissingContrast)
+    }
+
+    /// Travelling is logged on four of these nights, which used to be enough
+    /// to be proposed. Proposing it means asking somebody to travel, or not
+    /// to, on a schedule that suits a trial -- so it is not proposed at all,
+    /// in either direction.
+    func testABehaviourNobodyChoosesIsNeverProposed() {
+        let proposals = ExperimentPlanner.plan(observations: history())
+        XCTAssertFalse(proposals.contains { $0.tag == .travelled }, "\(proposals.map(\.id))")
+        XCTAssertTrue(proposals.allSatisfy { !$0.testableDirections.isEmpty })
+    }
+
+    /// And the reducing half of the same rule: a behaviour Zoon will only
+    /// help you cut back on is still proposed, carrying the one direction it
+    /// may be tested in.
+    func testAHarmIsStillProposedButOnlyInTheReducingDirection() throws {
+        let alcohol = try proposal(for: .alcohol)
+        XCTAssertEqual(alcohol.testableDirections, [.avoid])
     }
 
     /// Observation had its chance on a heavily logged behaviour with no
