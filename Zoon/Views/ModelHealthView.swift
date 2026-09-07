@@ -50,7 +50,29 @@ struct ModelHealthView: View {
                     .first { $0.verdict.isDecisive }?
                     .verdict
             }.value
-            assessments = build(calibration: verdict)
+            // The best-supported matched comparison across the levers, or
+            // nil when none is supported. `estimate` refuses far more often
+            // than it succeeds by design, and a refusal here is the honest
+            // reading: Zoon cannot yet find nights like yours to compare.
+            // Six estimates -- three levers, two directions -- each with its
+            // own matching pass and bootstrap. Detached and keyed on the
+            // night count, so this runs when a night arrives and not on a
+            // redraw.
+            let pairs = await Task.detached { () -> Int? in
+                var best: Int?
+                for lever in ZoonTwin.levers {
+                    for direction in [ZoonTwin.Direction.more, .less] {
+                        let result = ZoonTwinV2.estimate(
+                            nights: nights, lever: lever, direction: direction
+                        )
+                        if let count = result.estimate?.pairs {
+                            best = max(best ?? 0, count)
+                        }
+                    }
+                }
+                return best
+            }.value
+            assessments = build(calibration: verdict, pairs: pairs)
         }
     }
 
@@ -174,7 +196,10 @@ struct ModelHealthView: View {
     /// Reads the counts off the coordinator. Nothing is recomputed here --
     /// see `ModelHealth`'s doc comment on why this must not become a second
     /// opinion.
-    private func build(calibration: CalibrationLedger.Verdict?) -> [ModelHealth.Assessment] {
+    private func build(
+        calibration: CalibrationLedger.Verdict?,
+        pairs: Int?
+    ) -> [ModelHealth.Assessment] {
         let nights = coordinator.recentNights
         guard !nights.isEmpty else { return [] }
 
@@ -197,11 +222,7 @@ struct ModelHealthView: View {
             coverage: coverage(of: nights),
             settledClaims: settled,
             calibration: calibration,
-            // Not wired yet: the matched-comparison estimator lands in its own
-            // change, and reporting a stage for it from nothing here would be
-            // inventing one. It reads as "still learning" with a basis line
-            // that says why, which is true of every install today.
-            matchedPairs: nil
+            matchedPairs: pairs
         )
     }
 
