@@ -732,6 +732,7 @@
 		ED7ED29F1723170A18B51711 /* SleepIntelligenceScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6868DEFF98DF1C38239CDC19 /* SleepIntelligenceScore.swift */; };
 		EDBD5AEB57E7332D2FA553F8 /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		EE4815DA4108F59735C1CC29 /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
+		EEC1146F223019B3EB453008 /* CyclePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 449A6ED264EB4AB017A39AF5 /* CyclePhase.swift */; };
 		EF4827F9DEB3898B7733F8DE /* DayContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C432B8295F6810E7F975CEE /* DayContextBuilder.swift */; };
 		EFA48CEC0DF65B27F7CB0AFC /* ExperimentPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E7C7D9E2871356A6863BF2 /* ExperimentPlanner.swift */; };
 		EFB5BD739BBC8D2723BF3091 /* BodyClockAgenda.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACECF2891CE7CA2C7990B49 /* BodyClockAgenda.swift */; };
@@ -2696,6 +2697,7 @@
 				9FA907C5D339677F4C2F2251,
 				1FB34652CFE1F0BA16F33F57,
 				FE2519DB52EDE5D719C62A8C,
+				EEC1146F223019B3EB453008,
 				0ADC7CB52B6C723FE0321F49,
 				D82BBBFA0333215822EA5D08,
 				8764AE483BC7BC2959EBEAB3,
