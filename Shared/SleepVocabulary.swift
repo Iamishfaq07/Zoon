@@ -85,6 +85,12 @@ enum SleepVocabulary {
         meaning: "The share of your time in bed that you were actually asleep."
     )
 
+    static let stagePattern = Term(
+        plain: "Stage pattern",
+        technical: "Sleep architecture",
+        meaning: "How tonight's split between deep, REM and light sleep compares with your own usual split. A night far from your pattern in either direction is worth noticing; it is not a mark out of ten."
+    )
+
     static let regularity = Term(
         plain: "Schedule consistency",
         technical: "Sleep Regularity Index",
@@ -93,6 +99,6 @@ enum SleepVocabulary {
 
     static let all: [Term] = [
         hrv, restingHeartRate, core, waso, sleepDebt,
-        circadianAlignment, sleepEfficiency, regularity
+        circadianAlignment, sleepEfficiency, stagePattern, regularity
     ]
 }

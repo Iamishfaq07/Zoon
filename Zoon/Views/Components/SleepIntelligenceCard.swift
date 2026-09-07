@@ -37,7 +37,12 @@ struct SleepIntelligenceCard: View {
                     symbol: "brain.head.profile",
                     tint: tint,
                     explanation: [
-                        "Combines seven components -- Duration, Continuity, Regularity, Recovery, Circadian timing, Breathing, and Sleep Architecture -- each measured against your own recent history, not a fixed target.",
+                        // Named as the score itself names them. This sentence still said
+                        // "Circadian timing" and "Sleep Architecture" after the
+                        // components were renamed to "Timing" and "Stage Pattern",
+                        // so the one place explaining the score used two words for
+                        // it that appear nowhere else in the app.
+                        "Combines seven components -- Duration, Continuity, Regularity, Recovery, Timing, Breathing, and Stage Pattern -- each measured against your own recent history, not a fixed target.",
                         "A component with no data tonight (no HRV sensor, not enough history for a body clock yet) is left out and the rest are reweighted to fill 100% -- missing data never counts against you."
                     ]
                 )

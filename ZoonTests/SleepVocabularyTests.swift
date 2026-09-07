@@ -69,6 +69,35 @@ final class SleepVocabularyTests: XCTestCase {
         XCTAssertEqual(SleepVocabulary.circadianAlignment.technical, "Circadian alignment")
     }
 
+    /// The same rename, one component over, and the gap it left behind.
+    ///
+    /// `stagePatternComponent` and the weight table were renamed away from
+    /// "Architecture" some releases ago, but the sentence explaining the
+    /// score to people still listed "Sleep Architecture" -- so the one place
+    /// that defines the components used a word appearing nowhere else in the
+    /// app. This pins both halves: the component's name, and the fact that
+    /// the old word survives only as the alias on the vocabulary entry.
+    func testTheComponentIsCalledStagePattern() {
+        XCTAssertTrue(
+            SleepIntelligenceScore.nominalWeights.contains { $0.component == "Stage Pattern" }
+        )
+        XCTAssertFalse(
+            SleepIntelligenceScore.nominalWeights.contains { $0.component.contains("Architecture") }
+        )
+        XCTAssertEqual(SleepVocabulary.stagePattern.plain, "Stage pattern")
+        XCTAssertEqual(SleepVocabulary.stagePattern.technical, "Sleep architecture")
+    }
+
+    /// Every term has to carry both halves and a definition, or the table is
+    /// not doing the job it exists for.
+    func testEveryTermIsComplete() {
+        for term in SleepVocabulary.all {
+            XCTAssertFalse(term.plain.isEmpty, "\(term)")
+            XCTAssertFalse(term.meaning.isEmpty, "\(term.plain) has no definition")
+            XCTAssertFalse(term.plain == term.technical, "\(term.plain) aliases itself")
+        }
+    }
+
     /// A rename is not a model change. The score has to be identical, or the
     /// version would have to move with it.
     func testRenamingTheComponentDidNotMoveTheScore() {
