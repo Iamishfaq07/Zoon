@@ -22,6 +22,18 @@ struct WatchRootView: View {
     var body: some View {
         TabView {
             if let snapshot = link.snapshot {
+                // First while it runs, and absent otherwise. Every other page
+                // here grades a night that has already happened; this is the
+                // only one about something in progress, and a timer someone
+                // has to swipe past three pages to find has failed at the one
+                // job a timer has.
+                //
+                // The complication has shown a running nap since the Smart
+                // Stack surface was added. Tapping it opened an app with
+                // nothing to say about the nap, which is the gap this closes.
+                if snapshot.isNapRunning() {
+                    NapPage(snapshot: snapshot)
+                }
                 if snapshot.scoreLightMode { ScoreLightSnapshotView(snapshot: snapshot) }
                 else { LastNightPage(snapshot: snapshot); TodayPage(snapshot: snapshot) }
                 // Tonight, not last night -- the only page here about a
@@ -52,6 +64,57 @@ struct WatchRootView: View {
         .sheet(isPresented: $showsQuickLog) {
             QuickLogView()
         }
+    }
+}
+
+/// A nap in progress, on the wrist.
+///
+/// Reads only what the snapshot already carries. `napStartedAt` and
+/// `napTargetEnd` are absolute instants, stored that way so any surface can
+/// re-decide the state at its own moment rather than inherit the phone's --
+/// the same property the complication relies on.
+///
+/// The countdown is `Text(timerInterval:)` rather than a computed number:
+/// the system ticks it between renders, and a nap timer that updates only
+/// when the view happens to redraw is a timer showing the wrong time.
+struct NapPage: View {
+    let snapshot: SleepSnapshot
+
+    private var countdown: ClosedRange<Date>? {
+        guard let end = snapshot.napTargetEnd, end > .now else { return nil }
+        return Date.now...end
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Label("Nap", systemImage: "powersleep")
+                .font(Theme.label(13, weight: .semibold))
+                .foregroundStyle(Theme.Metric.sleep)
+
+            if let countdown {
+                Text(timerInterval: countdown, countsDown: true)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .privacySensitive()
+                Text("until your target")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+            } else {
+                // Past the target but still inside the believable window --
+                // see `SleepSnapshot.napBelievableAfterTarget`. Saying the
+                // target has passed is honest; a negative countdown is not.
+                Text("Past your target")
+                    .font(Theme.label(15, weight: .semibold))
+                Text("Still counted as a nap for a little longer.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, 6)
+        .accessibilityElement(children: .combine)
     }
 }
 
