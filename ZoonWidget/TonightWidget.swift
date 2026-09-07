@@ -19,7 +19,7 @@ struct TonightWidget: Widget {
     let kind = "ZoonTonightWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: SleepTimelineProvider()) { entry in
+        StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .tonight)) { entry in
             TonightWidgetView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
