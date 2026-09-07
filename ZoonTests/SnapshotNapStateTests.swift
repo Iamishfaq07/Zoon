@@ -2,7 +2,7 @@ import XCTest
 
 /// A nap in flight, as the watch sees it.
 ///
-/// `WatchRelevance` has always handled a running nap and been tested for it.
+/// `SurfaceRelevance` has always handled a running nap and been tested for it.
 /// What was missing was anything to tell it: the production call site in the
 /// watch widget passed a literal `false`, so `.napTimer` scored zero forever
 /// and the entire path was dead on a real wrist. These tests cover the state
@@ -103,15 +103,15 @@ final class SnapshotNapStateTests: XCTestCase {
     /// zero the moment it is not.
     func testTheNapSurfaceOutranksEverythingElseWhileRunning() {
         let mid = noon.addingTimeInterval(10 * 60)
-        let score = WatchRelevance.score(
+        let score = SurfaceRelevance.score(
             for: .napTimer, at: mid, isNapRunning: running.isNapRunning(at: mid)
         )
-        XCTAssertEqual(score, WatchRelevance.activeNapScore)
+        XCTAssertEqual(score, SurfaceRelevance.activeNapScore)
 
-        for kind in WatchRelevance.Kind.allCases where kind != .napTimer {
+        for kind in SurfaceRelevance.Kind.allCases where kind != .napTimer {
             XCTAssertLessThan(
-                WatchRelevance.score(for: kind, at: mid, isNapRunning: true),
-                WatchRelevance.activeNapScore
+                SurfaceRelevance.score(for: kind, at: mid, isNapRunning: true),
+                SurfaceRelevance.activeNapScore
             )
         }
     }
@@ -120,7 +120,7 @@ final class SnapshotNapStateTests: XCTestCase {
         let over = noon.addingTimeInterval(20 * 60)
             .addingTimeInterval(SleepSnapshot.napBelievableAfterTarget + 60)
         XCTAssertEqual(
-            WatchRelevance.score(for: .napTimer, at: over, isNapRunning: running.isNapRunning(at: over)),
+            SurfaceRelevance.score(for: .napTimer, at: over, isNapRunning: running.isNapRunning(at: over)),
             0
         )
     }
