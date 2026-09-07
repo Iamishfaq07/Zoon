@@ -403,7 +403,7 @@ struct RecoveryComplicationView: View {
 
 struct SleepBankComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonSleepBank", provider: WatchComplicationProvider(kind: .lastNight)) { entry in
+        StaticConfiguration(kind: "ZoonSleepBank", provider: WatchComplicationProvider(kind: .sleepDebt)) { entry in
             SleepBankComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -664,7 +664,7 @@ struct NapTimerComplicationView: View {
 
 struct BadgeComplication: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "ZoonWatchBadges", provider: WatchComplicationProvider(kind: .lastNight)) { entry in
+        StaticConfiguration(kind: "ZoonWatchBadges", provider: WatchComplicationProvider(kind: .bodySignals)) { entry in
             BadgeComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }

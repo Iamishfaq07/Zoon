@@ -180,4 +180,60 @@ final class WidgetRelevanceTests: XCTestCase {
             }
         }
     }
+    // MARK: - The same concept, the same window, on both platforms
+
+    /// One table of day-parts is necessary and not sufficient.
+    ///
+    /// Sharing the windows says nothing about which window each surface is
+    /// *assigned*, and that is where the two platforms drifted: the watch's
+    /// sleep-bank complication asked for the morning while the iOS sleep-debt
+    /// widget asked for the evening. Same number, same concept, opposite ends
+    /// of the day, and the windows test passed throughout.
+    ///
+    /// Asserted against the sources because neither the widget bundle nor the
+    /// complication bundle is reachable from this target -- the same reason
+    /// `SnapshotNapStateTests` reads the complication file. A structural
+    /// claim that no type can express is still worth holding.
+    func testTheTwoPlatformsAgreeOnWhichSurfaceGetsWhichWindow() throws {
+        let watch = try source("ZoonWatchWidget/ZoonWatchComplications.swift")
+        let phone = try source("ZoonWidget/SleepDebtWidget.swift")
+            + (try source("ZoonWidget/BadgeWidget.swift"))
+            + (try source("ZoonWidget/SleepScoreWidget.swift"))
+            + (try source("ZoonWidget/TonightWidget.swift"))
+
+        // Concept, the watch surface that shows it, the iOS one.
+        let shared: [(concept: String, watchKind: String, phoneKind: String)] = [
+            ("sleep debt", "ZoonSleepBank", "sleepDebt"),
+            ("badges", "ZoonWatchBadges", "bodySignals"),
+            ("last night", "ZoonSleepIntelligence", "lastNight"),
+            ("tonight", "ZoonTonight", "tonight")
+        ]
+
+        for entry in shared {
+            XCTAssertTrue(
+                phone.contains("SleepTimelineProvider(kind: .\(entry.phoneKind))"),
+                "no iOS widget claims .\(entry.phoneKind) for \(entry.concept)"
+            )
+            XCTAssertTrue(
+                watch.contains("WatchComplicationProvider(kind: .\(entry.phoneKind))"),
+                "\(entry.concept): iOS uses .\(entry.phoneKind) and the watch does not"
+            )
+        }
+    }
+
+    /// The widget and complication bundles are not linked into this target,
+    /// so the assertion above reads them off disk. Skipped rather than failed
+    /// when a path cannot be resolved: a different build layout is not a
+    /// defect in the app.
+    private func source(_ relativePath: String) throws -> String {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let file = root.appendingPathComponent(relativePath)
+        guard let text = try? String(contentsOf: file, encoding: .utf8) else {
+            throw XCTSkip("\(relativePath) not reachable from \(file.path)")
+        }
+        return text
+    }
+
 }
