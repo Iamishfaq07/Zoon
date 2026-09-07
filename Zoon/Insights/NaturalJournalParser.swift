@@ -40,8 +40,8 @@ enum NaturalJournalParser {
 
     static func proposals(from text: String) -> [Proposal] {
         let normalized = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
-        var matches = rules.compactMap { rule in
-            guard let phrase = rule.phrases.first(where: normalized.contains) else { return nil }
+        var matches: [Proposal] = rules.compactMap { (rule: Rule) -> Proposal? in
+            guard let phrase = rule.phrases.first(where: { normalized.contains($0) }) else { return nil }
             return Proposal(tag: rule.tag, matchedText: phrase)
         }
         // A specifically timed caffeine observation subsumes the generic one.
