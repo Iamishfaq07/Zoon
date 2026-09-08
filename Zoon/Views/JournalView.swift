@@ -17,7 +17,7 @@ struct JournalView: View {
     @State private var note: String = ""
     @State private var naturalText: String = ""
     @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
-    @State private var selectedNaturalTags: Set<BehaviorTag> = []
+    @State private var naturalStates: [BehaviorTag: BehaviorObservationState] = [:]
     @FocusState private var noteFieldFocused: Bool
 
     // The source of truth for what each chip shows. Read from the stores
@@ -226,32 +226,31 @@ struct JournalView: View {
 
                 FlowLayout(spacing: 8) {
                     ForEach(naturalProposals) { proposal in
-                        let selected = selectedNaturalTags.contains(proposal.tag)
                         Button {
-                            if selected { selectedNaturalTags.remove(proposal.tag) }
-                            else { selectedNaturalTags.insert(proposal.tag) }
+                            naturalStates[proposal.tag] = nextNaturalState(from: naturalStates[proposal.tag] ?? proposal.state)
                         } label: {
-                            Label(proposal.tag.label, systemImage: selected ? "checkmark.circle.fill" : "circle")
+                            let state = naturalStates[proposal.tag] ?? proposal.state
+                            Label("\(proposal.tag.label) · \(naturalStateLabel(state))", systemImage: naturalStateSymbol(state))
                                 .font(Theme.label(12, weight: .medium))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
-                                .background(selected ? Theme.Metric.sleep.opacity(0.22) : Theme.neutral(0.06), in: Capsule())
+                                .background(state == .unknown ? Theme.neutral(0.06) : Theme.Metric.sleep.opacity(0.22), in: Capsule())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityValue(selected ? "Selected" : "Not selected")
+                        .accessibilityHint("Tap to cycle yes, no, and unknown")
                     }
                 }
 
                 HStack {
                     Button("Start over") {
                         naturalProposals = []
-                        selectedNaturalTags = []
+                        naturalStates = [:]
                     }
                     .buttonStyle(.bordered)
                     Spacer()
                     Button("Confirm and save") { confirmNaturalJournal() }
                         .buttonStyle(.borderedProminent)
-                        .disabled(selectedNaturalTags.isEmpty)
+                        .disabled(naturalStates.values.allSatisfy { $0 == .unknown })
                 }
             }
 
@@ -265,20 +264,32 @@ struct JournalView: View {
 
     private func parseNaturalJournal() {
         naturalProposals = NaturalJournalParser.proposals(from: naturalText)
-        selectedNaturalTags = Set(naturalProposals.map(\.tag))
+        naturalStates = Dictionary(uniqueKeysWithValues: naturalProposals.map { ($0.tag, $0.state) })
         Haptics.tap()
     }
 
     private func confirmNaturalJournal() {
-        for tag in selectedNaturalTags {
-            coordinator.setBehavior(.yes, for: tag, on: selectedDate, nightKey: selectedNightKey)
+        for (tag, state) in naturalStates where state != .unknown {
+            coordinator.setBehavior(state, for: tag, on: selectedDate, nightKey: selectedNightKey)
         }
         answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
         findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
         naturalText = ""
         naturalProposals = []
-        selectedNaturalTags = []
+        naturalStates = [:]
         Haptics.success()
+    }
+
+    private func nextNaturalState(from state: BehaviorObservationState) -> BehaviorObservationState {
+        switch state { case .yes: .no; case .no: .unknown; case .unknown: .yes }
+    }
+
+    private func naturalStateLabel(_ state: BehaviorObservationState) -> String {
+        switch state { case .yes: "Yes"; case .no: "No"; case .unknown: "Unknown" }
+    }
+
+    private func naturalStateSymbol(_ state: BehaviorObservationState) -> String {
+        switch state { case .yes: "checkmark.circle.fill"; case .no: "xmark.circle.fill"; case .unknown: "questionmark.circle" }
     }
 
     // MARK: - Tags
