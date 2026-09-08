@@ -17,7 +17,7 @@ enum NaturalJournalParser {
 
     private static let rules: [Rule] = [
         Rule(tag: .caffeine, phrases: ["coffee", "coffees", "caffeine", "espresso", "tea"]),
-        Rule(tag: .lateMeal, phrases: ["ate late", "late meal", "late dinner", "dinner late"]),
+        Rule(tag: .lateMeal, phrases: ["ate late", "eat late", "late meal", "late dinner", "dinner late"]),
         Rule(tag: .largeDinner, phrases: ["large dinner", "big dinner", "heavy meal"]),
         Rule(tag: .hardTraining, phrases: ["hard workout", "hard training", "gym", "workout", "long run", "intense workout", "exercised"]),
         Rule(tag: .alcohol, phrases: ["alcohol", "beer", "wine", "cocktail", "drinks"]),
@@ -43,7 +43,12 @@ enum NaturalJournalParser {
         let lower = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current).lowercased()
         var output: [Proposal] = []
         for rule in rules {
-            guard let phrase = rule.phrases.first(where: { lower.contains($0) }) else { continue }
+            guard var phrase = rule.phrases.first(where: { lower.contains($0) }) else { continue }
+            // "Tea but no coffee" still contains a positive caffeine source;
+            // choose the positive entity instead of letting the negated coffee
+            // token erase the tea observation.
+            if rule.tag == .caffeine, phrase == "coffee", lower.contains("tea"), state(for: phrase, in: lower) == .no,
+               state(for: "tea", in: lower) == .yes { phrase = "tea" }
             let state = state(for: phrase, in: lower)
             let timing = timeNear(phrase: phrase, in: lower)
             let isLateCaffeine = rule.tag == .caffeine && (lower.contains("late coffee") || lower.contains("coffee late") || timing.map { $0 >= 15 } == true)

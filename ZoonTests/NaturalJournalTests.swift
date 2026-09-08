@@ -36,6 +36,8 @@ final class NaturalJournalTests: XCTestCase {
         XCTAssertEqual(proposals.first(where: { $0.tag == .caffeine })?.state, .no)
         XCTAssertEqual(proposals.first(where: { $0.tag == .alcohol })?.state, .no)
         XCTAssertEqual(proposals.first(where: { $0.tag == .stressfulDay })?.state, .no)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "I had tea but no coffee").first?.state, .yes)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "I didn't eat late").first?.state, .no)
     }
 
     func testExplicitLateCaffeineKeepsEntityAndTime() {
