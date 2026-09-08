@@ -15,6 +15,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
 
     // Substances
     case alcohol
+    case caffeine
     case caffeineLate
     case nicotine
     case cannabis
@@ -34,6 +35,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
     case sauna
     case coldPlunge
     case stretching
+    case morningDaylight
 
     // Environment & state
     case screenBeforeBed
@@ -74,7 +76,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         // Known harms. A trial that cuts these back is a fair question; one
         // that increases them is not a question Zoon gets to ask.
-        case .alcohol, .nicotine, .cannabis, .caffeineLate, .sleepAid:
+        case .alcohol, .nicotine, .cannabis, .caffeine, .caffeineLate, .sleepAid:
             .reduceOnly
         // Not chosen. Being unwell, travelling and a hard day happen to
         // people; they are context to record, not conditions to assign.
@@ -85,7 +87,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
         // reasonably be asked to make either way for a couple of weeks.
         case .magnesium, .lateMeal, .largeDinner, .fasted, .hydrated,
              .hardTraining, .lateTraining, .restDay, .sauna, .coldPlunge,
-             .stretching, .screenBeforeBed, .readBeforeBed, .sharedBed, .coolRoom:
+             .stretching, .morningDaylight, .screenBeforeBed, .readBeforeBed, .sharedBed, .coolRoom:
             .eitherDirection
         }
     }
@@ -117,6 +119,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
     var label: String {
         switch self {
         case .alcohol: "Alcohol"
+        case .caffeine: "Caffeine"
         case .caffeineLate: "Caffeine after 4pm"
         case .nicotine: "Nicotine"
         case .cannabis: "Cannabis"
@@ -132,6 +135,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
         case .sauna: "Sauna"
         case .coldPlunge: "Cold plunge"
         case .stretching: "Stretched"
+        case .morningDaylight: "Morning daylight"
         case .screenBeforeBed: "Screens in bed"
         case .readBeforeBed: "Read before bed"
         case .stressfulDay: "Stressful day"
@@ -152,6 +156,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
     var question: String {
         switch self {
         case .alcohol: "Did you drink alcohol today?"
+        case .caffeine: "Did you have caffeine today?"
         case .caffeineLate: "Did you have caffeine after 4pm today?"
         case .nicotine: "Did you use nicotine today?"
         case .cannabis: "Did you use cannabis today?"
@@ -167,6 +172,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
         case .sauna: "Did you use a sauna today?"
         case .coldPlunge: "Did you take a cold plunge today?"
         case .stretching: "Did you stretch today?"
+        case .morningDaylight: "Did you spend time outdoors this morning?"
         case .screenBeforeBed: "Were you on a screen in bed tonight?"
         case .readBeforeBed: "Did you read before bed tonight?"
         case .stressfulDay: "Was today stressful?"
@@ -180,6 +186,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
     var symbol: String {
         switch self {
         case .alcohol: "wineglass"
+        case .caffeine: "cup.and.saucer.fill"
         case .caffeineLate: "cup.and.saucer"
         case .nicotine: "smoke"
         case .cannabis: "leaf"
@@ -195,6 +202,7 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
         case .sauna: "flame"
         case .coldPlunge: "snowflake"
         case .stretching: "figure.flexibility"
+        case .morningDaylight: "sun.max"
         case .screenBeforeBed: "iphone"
         case .readBeforeBed: "book"
         case .stressfulDay: "exclamationmark.triangle"
@@ -207,11 +215,11 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var category: Category {
         switch self {
-        case .alcohol, .caffeineLate, .nicotine, .cannabis, .sleepAid, .magnesium:
+        case .alcohol, .caffeine, .caffeineLate, .nicotine, .cannabis, .sleepAid, .magnesium:
             .substances
         case .lateMeal, .largeDinner, .fasted, .hydrated:
             .food
-        case .hardTraining, .lateTraining, .restDay, .sauna, .coldPlunge, .stretching:
+        case .hardTraining, .lateTraining, .restDay, .sauna, .coldPlunge, .stretching, .morningDaylight:
             .activity
         case .screenBeforeBed, .readBeforeBed, .stressfulDay, .travelled, .sharedBed, .coolRoom, .sick:
             .environment

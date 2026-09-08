@@ -167,6 +167,12 @@ struct TodayView: View {
             )
             .entrance(4)
 
+            ProactiveZoonCard(items: PersonalLearning.proactiveItems(
+                nights: coordinator.recentNights,
+                radar: context.healthRadar
+            ))
+            .entrance(4)
+
             energySection(context).entrance(5)
 
             TonightSection(context: context, autopilot: autopilotPlan(context))

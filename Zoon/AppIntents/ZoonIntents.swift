@@ -107,6 +107,7 @@ extension BehaviorTag: AppEnum {
     static var caseDisplayRepresentations: [BehaviorTag: DisplayRepresentation] {
         [
             .alcohol: DisplayRepresentation(title: "Alcohol"),
+            .caffeine: DisplayRepresentation(title: "Caffeine"),
             .caffeineLate: DisplayRepresentation(title: "Caffeine after 4pm"),
             .nicotine: DisplayRepresentation(title: "Nicotine"),
             .cannabis: DisplayRepresentation(title: "Cannabis"),
@@ -124,6 +125,7 @@ extension BehaviorTag: AppEnum {
             .stretching: DisplayRepresentation(title: "Stretched"),
             .screenBeforeBed: DisplayRepresentation(title: "Screens in bed"),
             .readBeforeBed: DisplayRepresentation(title: "Read before bed"),
+            .morningDaylight: DisplayRepresentation(title: "Morning daylight"),
             .stressfulDay: DisplayRepresentation(title: "Stressful day"),
             .travelled: DisplayRepresentation(title: "Travelled"),
             .sharedBed: DisplayRepresentation(title: "Shared bed"),

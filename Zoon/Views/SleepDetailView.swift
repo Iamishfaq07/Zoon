@@ -76,6 +76,18 @@ struct SleepDetailView: View {
                     StatusPill(text: "Sample", systemImage: "wand.and.stars", tint: .secondary)
                 }
             }
+
+            NavigationLink {
+                CoachChatView(
+                    night: context.night,
+                    initialPrompt: "What stands out about this night, what may have mattered, and how certain are you?"
+                )
+            } label: {
+                Label("Ask about this night", systemImage: "bubble.left.and.text.bubble.right")
+                    .font(Theme.label(12, weight: .semibold))
+            }
+            .buttonStyle(.bordered)
+            .accessibilityHint("Passes this night's structured measurements to Ask Zoon")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
@@ -134,6 +146,18 @@ struct SleepDetailView: View {
                             .monospacedDigit()
                     }
                 }
+
+                NavigationLink {
+                    CoachChatView(
+                        night: context.night,
+                        initialPrompt: "Explain the awakenings and marked events in this night. Separate measurements from possible explanations."
+                    )
+                } label: {
+                    Label("Ask about these events", systemImage: "bubble.left.and.text.bubble.right")
+                        .font(Theme.label(11, weight: .semibold))
+                        .foregroundStyle(Theme.Metric.sleep)
+                }
+                .buttonStyle(.plain)
 
                 if story.events.count > events.count {
                     NavigationLink {
