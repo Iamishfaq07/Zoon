@@ -27,7 +27,7 @@ final class AlertnessCheckStore {
     func save(reactions: [TimeInterval], subjectiveAlertness: Int, date: Date = .now) {
         guard reactions.count >= 4 else { return }
         let milliseconds = reactions.map { $0 * 1_000 }.sorted()
-        let median = milliseconds[milliseconds.count / 2]
+        guard let median = Statistics.median(milliseconds) else { return }
         let result = Result(
             id: UUID(), date: date,
             medianReactionMilliseconds: Int(median.rounded()),

@@ -2,6 +2,12 @@ import Foundation
 
 /// Personal, observational learning that stays outside Zoon's scored metrics.
 enum PersonalLearning {
+    struct DisruptionEpisode: Equatable {
+        let start: Date
+        let end: Date
+        let dayCount: Int
+    }
+
     struct Resilience: Identifiable, Equatable {
         enum Metric: String { case sleepTiming, sleepDebt, hrv }
         let metric: Metric
@@ -50,11 +56,8 @@ enum PersonalLearning {
         calendar: Calendar = .current
     ) -> [Resilience] {
         let ordered = nights.sorted { $0.date < $1.date }
-        guard ordered.count >= 12, disruptionDates.count >= 2 else { return [] }
-
-        func isDisruption(_ date: Date) -> Bool {
-            disruptionDates.contains { calendar.isDate($0, inSameDayAs: date) }
-        }
+        let episodes = disruptionEpisodes(from: disruptionDates, calendar: calendar)
+        guard ordered.count >= 12, episodes.count >= 2 else { return [] }
         func median(_ values: [Double]) -> Double? { Statistics.median(values) }
         func bedtimeMinute(_ night: SleepNightFeatures) -> Double {
             let zone = TimeZone(identifier: night.timeZoneIdentifier) ?? calendar.timeZone
@@ -66,7 +69,11 @@ enum PersonalLearning {
         }
 
         var timing: [Int] = [], debt: [Int] = [], hrv: [Int] = []
-        for index in ordered.indices where isDisruption(ordered[index].date) && index >= 5 {
+        // Use the last night of each episode as the recovery origin. Consecutive
+        // travel/illness/stress days are one disruption, not several independent
+        // experiments with overlapping recovery windows.
+        for episode in episodes {
+            guard let index = ordered.indices.last(where: { calendar.isDate(ordered[$0].date, inSameDayAs: episode.end) }), index >= 5 else { continue }
             let baseline = Array(ordered[(index - 5)..<index])
             let future = Array(ordered.dropFirst(index + 1).prefix(7))
             guard future.count >= 2 else { continue }
@@ -89,6 +96,25 @@ enum PersonalLearning {
             guard values.count >= 2, let typical = Statistics.median(values.map(Double.init)) else { return nil }
             return Resilience(metric: metric, nights: Int(typical.rounded()), disruptions: values.count)
         }
+    }
+
+    static func disruptionEpisodes(from dates: Set<Date>, calendar: Calendar = .current) -> [DisruptionEpisode] {
+        let days = dates.map { calendar.startOfDay(for: $0) }.sorted()
+        guard let first = days.first else { return [] }
+        var episodes: [DisruptionEpisode] = []
+        var start = first
+        var end = first
+        var count = 1
+        for day in days.dropFirst() {
+            if (calendar.dateComponents([.day], from: end, to: day).day ?? 99) <= 1 {
+                end = day; count += 1
+            } else {
+                episodes.append(.init(start: start, end: end, dayCount: count))
+                start = day; end = day; count = 1
+            }
+        }
+        episodes.append(.init(start: start, end: end, dayCount: count))
+        return episodes
     }
 
     private static func firstStableIndex(_ withinRange: [Bool]) -> Int? {
