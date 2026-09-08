@@ -705,6 +705,11 @@ emit("PBXProject",
 HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen "
                "and wrist temperature to explain how you slept. Everything is processed "
                "on this device and never leaves it.")
+# Apple requires an update-purpose string when the app invokes HealthKit's
+# authorization API, even when the share set is empty. Zoon remains strictly
+# read-only; this text makes that boundary explicit to users and App Review.
+HEALTH_UPDATE_DESC = ("Zoon uses HealthKit to build sleep insights from data you choose to share. "
+                      "Zoon never writes to or changes your Health data.")
 MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
             "patterns. Audio is processed in short bursts and never saved or sent "
             "anywhere -- only a minutes-snoring count is kept.")
@@ -779,6 +784,7 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "{ALARM_DESC}";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
