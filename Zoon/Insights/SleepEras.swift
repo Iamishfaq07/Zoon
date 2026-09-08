@@ -24,7 +24,7 @@ enum SleepEras {
             if current.isEmpty { current = [night]; continue }
             let reference = current.suffix(minimumNights)
             let timing = abs(circularDelta(minutes(night.bedtime), medianMinutes(reference.map { minutes($0.bedtime) })))
-            let duration = abs(night.timeAsleepMinutes - Statistics.median(reference.map(\.timeAsleepMinutes)))
+            let duration = abs(night.timeAsleepMinutes - (Statistics.median(reference.map(\.timeAsleepMinutes)) ?? 0))
             if current.count >= minimumNights && (timing >= 45 || duration >= 60) {
                 groups.append(current)
                 current = [night]
@@ -55,7 +55,7 @@ enum SleepEras {
                 medianBedtime: dateFromMinutes(bed, reference: group[0].bedtime),
                 averageSleepMinutes: group.map(\.timeAsleepMinutes).reduce(0, +) / Double(group.count),
                 timingShiftMinutes: previousBed.map { Int(circularDelta(bed, $0).rounded()) },
-                durationShiftMinutes: previousDuration.map { Int((Statistics.median(group.map(\.timeAsleepMinutes)) - $0).rounded()) }
+                durationShiftMinutes: previousDuration.map { Int(((Statistics.median(group.map(\.timeAsleepMinutes)) ?? 0) - $0).rounded()) }
             )
         }
     }
@@ -64,7 +64,7 @@ enum SleepEras {
         let c = Calendar.current.dateComponents([.hour, .minute], from: date)
         return Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
     }
-    private static func medianMinutes(_ values: [Double]) -> Double { Statistics.median(values) }
+    private static func medianMinutes(_ values: [Double]) -> Double { Statistics.median(values) ?? 0 }
     private static func circularDelta(_ a: Double, _ b: Double) -> Double {
         let d = (a - b).truncatingRemainder(dividingBy: 1440)
         return d > 720 ? d - 1440 : (d < -720 ? d + 1440 : d)

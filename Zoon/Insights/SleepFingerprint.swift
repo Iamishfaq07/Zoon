@@ -17,16 +17,16 @@ struct SleepFingerprint: Equatable {
         let timingMAD = circularMAD(bedtimes)
         let durations = sample.map(\.timeAsleepMinutes)
         let durationMAD = Statistics.medianAbsoluteDeviation(durations) ?? 0
-        let durationMedian = max(1, Statistics.median(durations))
+        let durationMedian = max(1, Statistics.median(durations) ?? 0)
 
         let efficiency = sample.map(\.sleepEfficiencyPercent).filter { $0.isFinite }
-        let continuity = min(1, max(0, (Statistics.median(efficiency.isEmpty ? [0] : efficiency)) / 100))
+        let continuity = min(1, max(0, (Statistics.median(efficiency.isEmpty ? [0] : efficiency) ?? 0) / 100))
 
         let body = sample.compactMap { night -> Double? in
             guard let value = night.avgHRV, value.isFinite, value > 0 else { return nil }
             return value
         }
-        let bodyMAD = body.count >= 2 ? (Statistics.medianAbsoluteDeviation(body) ?? 0) / max(1, Statistics.median(body)) : 0.5
+        let bodyMAD = body.count >= 2 ? (Statistics.medianAbsoluteDeviation(body) ?? 0) / max(1, Statistics.median(body) ?? 0) : 0.5
 
         return SleepFingerprint(
             sampleCount: sample.count,
