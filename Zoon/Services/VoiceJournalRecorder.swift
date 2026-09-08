@@ -24,7 +24,7 @@ final class VoiceJournalRecorder {
             let request = SFSpeechAudioBufferRecognitionRequest(); self.request = request
             let input = audioEngine.inputNode
             input.removeTap(onBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { [weak self] buffer, _ in request.append(buffer) }
+            input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in request.append(buffer) }
             audioEngine.prepare(); try audioEngine.start(); isRecording = true
             task = recognizer?.recognitionTask(with: request) { [weak self] result, error in
                 Task { @MainActor in if let result { self?.transcript = result.bestTranscription.formattedString }; if error != nil { self?.stop() } }
@@ -35,7 +35,7 @@ final class VoiceJournalRecorder {
     private func requestPermissions() async -> Bool {
         let speech = await withCheckedContinuation { continuation in SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) } }
         let mic = await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) }
+            AVAudioApplication.requestRecordPermission { granted in continuation.resume(returning: granted) }
         }
         return speech && mic
     }
