@@ -35,7 +35,16 @@ struct SleepScore: Codable, Hashable, Sendable {
     /// - Parameter goalMinutes: the user's nightly sleep goal. Duration is scored
     ///   against the user's own target, not a population average — someone whose
     ///   goal is 7h shouldn't be marked down for not hitting 8.
-    static func compute(for features: SleepNightFeatures, goalMinutes: Double) -> SleepScore {
+    /// - Parameter demographic: optional age/sex/BMI prior. When present, Deep
+    ///   (and REM) are scored against that prior so a typical older night is
+    ///   not marked down for physiology the person cannot change. `nil`
+    ///   keeps the original adult 18% / 22% targets, which is what every
+    ///   existing call site and test still uses.
+    static func compute(
+        for features: SleepNightFeatures,
+        goalMinutes: Double,
+        demographic: DemographicBaseline? = nil
+    ) -> SleepScore {
         var components: [Component] = []
 
         // Duration: linear ramp to goal, full credit at or above it.
@@ -47,13 +56,30 @@ struct SleepScore: Codable, Hashable, Sendable {
         components.append(.init(label: "Efficiency", normalized: efficiency, weight: efficiencyWeight))
 
         if features.hasStageBreakdown {
-            // Deep: ~13–23% of total sleep is typical adult range. Full credit at 18%.
-            let deepPct = features.deepPercentOfAsleep ?? 0
-            components.append(.init(label: "Deep", normalized: clamp01(deepPct / 18), weight: deepWeight))
-
-            // REM: ~20–25% typical. Full credit at 22%.
-            let remPct = features.remPercentOfAsleep ?? 0
-            components.append(.init(label: "REM", normalized: clamp01(remPct / 22), weight: remWeight))
+            let deepNormalized: Double
+            let remNormalized: Double
+            if let demographic {
+                deepNormalized = demographic.deepSleepScoreContribution(
+                    asleepMinutes: features.timeAsleepMinutes,
+                    deepMinutes: features.deepMinutes
+                ) ?? clamp01((features.deepPercentOfAsleep ?? 0) / 18)
+                let remRatio: Double = {
+                    guard features.timeAsleepMinutes > 0 else { return 0 }
+                    let expected = demographic.expectedRemFraction * features.timeAsleepMinutes
+                    guard expected > 0 else { return 0 }
+                    return min(1, max(0, features.remMinutes / expected))
+                }()
+                remNormalized = remRatio
+            } else {
+                // Deep: ~13–23% of total sleep is typical adult range. Full credit at 18%.
+                let deepPct = features.deepPercentOfAsleep ?? 0
+                deepNormalized = clamp01(deepPct / 18)
+                // REM: ~20–25% typical. Full credit at 22%.
+                let remPct = features.remPercentOfAsleep ?? 0
+                remNormalized = clamp01(remPct / 22)
+            }
+            components.append(.init(label: "Deep", normalized: deepNormalized, weight: deepWeight))
+            components.append(.init(label: "REM", normalized: remNormalized, weight: remWeight))
         } else {
             // No staging from this source. Rather than zeroing those components —
             // which would permanently cap an iPhone-only user around 75 — we

@@ -324,14 +324,20 @@ struct SleepSessionBuilder {
     /// A modest thumb on the scale for a source Apple measures on-device,
     /// deliberately smaller than any single data-driven term above.
     ///
-    /// `productType` is only ever populated for a sample written by a paired
-    /// Apple Watch (e.g. "Watch7,4"); every other source, Apple's own iPhone
-    /// Sleep Schedule included, leaves it nil.
+    /// Delegates the ladder itself to `SourcePriority`: Watch hardware
+    /// (productType / hardwareVersion containing `"Watch"`) is Priority 1,
+    /// a recognised third-party wearable is Priority 2, phone Sleep Schedule
+    /// and manual entry are Priority 3. Quality still dominates -- this bonus
+    /// is multiplied by 0.5 in `qualityScore` -- so a broken Watch night
+    /// still loses to a clean Garmin one.
     private static func provenanceBonus(for samples: [HKCategorySample]) -> Double {
         guard let sample = samples.first else { return 0 }
-        if sample.sourceRevision.productType != nil { return 1.0 }
-        if sample.sourceRevision.source.bundleIdentifier.hasPrefix("com.apple.health") { return 0.5 }
-        return 0
+        let revision = sample.sourceRevision
+        return SourcePriority.classify(
+            hardwareVersion: revision.productType,
+            bundleIdentifier: revision.source.bundleIdentifier,
+            sourceName: revision.source.name
+        ).provenanceBonus
     }
 
     // MARK: - Session assembly

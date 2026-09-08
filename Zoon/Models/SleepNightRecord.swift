@@ -87,6 +87,12 @@ final class SleepNightRecord {
         set { breathingDisturbancesClassificationRaw = newValue?.rawValue }
     }
 
+    /// Count of Apple's sleep-apnea category events overnight. Optional so
+    /// SwiftData adds the column without a migration; `nil` on every row
+    /// written before this existed, which reads as *unknown* rather than
+    /// *zero* -- see `SleepApneaEventSummary`.
+    var sleepApneaEventCount: Int?
+
     var lastWorkoutHoursBeforeBed: Double?
     var exerciseMinutesPreviousDay: Double?
     /// See `SleepNightFeatures.alcoholicBeverages`/`.lateCaffeineMg`.
@@ -174,6 +180,7 @@ final class SleepNightRecord {
         // init can't go through a computed property's setter until every
         // stored property has a value, and this line runs before that.
         self.breathingDisturbancesClassificationRaw = features.breathingDisturbancesClassification?.rawValue
+        self.sleepApneaEventCount = features.sleepApneaEventCount
         self.lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         self.exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
         self.alcoholicBeverages = features.alcoholicBeverages
@@ -257,6 +264,9 @@ final class SleepNightRecord {
             breathingDisturbancesClassification = features.breathingDisturbancesClassification
         } else if confirmedAbsent.contains(.breathingDisturbances) {
             breathingDisturbancesClassification = nil
+        }
+        if let count = features.sleepApneaEventCount {
+            sleepApneaEventCount = count
         }
         lastWorkoutHoursBeforeBed = features.lastWorkoutHoursBeforeBed
         exerciseMinutesPreviousDay = features.exerciseMinutesPreviousDay
@@ -343,7 +353,8 @@ extension SleepNightRecord {
             // nil for the first week of any install because the baseline it
             // subtracts does not exist yet, and reading availability off it
             // would report a working temperature sensor as absent.
-            wristTempMeasured: wristTempAbsoluteC != nil
+            wristTempMeasured: wristTempAbsoluteC != nil,
+            sleepApneaEventCount: sleepApneaEventCount
         )
     }
 

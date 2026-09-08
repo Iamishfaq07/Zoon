@@ -50,6 +50,13 @@ enum SurfaceRelevance {
         /// them, which is a far better position than four surfaces sharing
         /// one score and the system picking at random all day.
         case sleepDebt
+        /// Live circadian-phase label ("Peak focus", "Wind down", …).
+        ///
+        /// A clock, not a report: it is about *now*, so it stays in-window
+        /// across the waking day and through the sleep window itself. The
+        /// small hours that every other surface sits out are exactly when
+        /// "Sleep window" is the honest answer.
+        case circadianPhase
     }
 
     /// Windows, in local hours. Half-open: `start..<end`.
@@ -86,6 +93,7 @@ enum SurfaceRelevance {
         // nap is running and irrelevant the rest of the time, which is a
         // fact about the nap, not about the clock.
         case .napTimer: false
+        case .circadianPhase: true
         }
     }
 

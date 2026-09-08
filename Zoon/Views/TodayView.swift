@@ -57,12 +57,27 @@ struct TodayView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 28)
             }
-            .nightBackground()
+            .zoonTypography()
+            .background { todayBackdrop }
             .navigationTitle("Today")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .zoonGlobalToolbar()
             .refreshable { await coordinator.refresh() }
+        }
+    }
+
+    @ViewBuilder
+    private var todayBackdrop: some View {
+        switch coordinator.state {
+        case let .loaded(context), let .mock(context):
+            RecoveryMeshBackground(recoveryPercent: context.recovery.percent)
+        default:
+            ZStack(alignment: .top) {
+                Theme.background
+                Theme.heroGlow
+            }
+            .ignoresSafeArea()
         }
     }
 

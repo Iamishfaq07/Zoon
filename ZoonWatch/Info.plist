@@ -43,6 +43,15 @@
 	<string>com.zoon.sleep</string>
 	<key>WKRunsIndependentlyOfCompanionApp</key>
 	<false/>
+	<!--
+	  Self-care extended runtime so OvernightRuntimeSession can keep the
+	  watch process alive through a wind-down. Not a HealthKit pipeline.
+	  See OvernightRuntimeSession.swift.
+	-->
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>self-care</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

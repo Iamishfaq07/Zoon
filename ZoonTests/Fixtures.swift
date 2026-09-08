@@ -47,6 +47,10 @@ enum Fixture {
         /// way a source that reports no stages does. Not the same as a short
         /// night: the sleep is all there, the structure is not.
         staged: Bool = true,
+        /// Overrides the default 18/22 split when a test needs a specific
+        /// stage mix (demographic-prior scoring, for example).
+        deepMinutes: Double? = nil,
+        remMinutes: Double? = nil,
         /// Whether a raw wrist-temperature reading arrived. Defaults to
         /// following `wristTempDeltaC`, which is what a night with enough
         /// history behind it looks like -- pass `true` with a nil delta to
@@ -70,9 +74,9 @@ enum Fixture {
             timeAsleepMinutes: timeAsleepMinutes,
             sleepEfficiencyPercent: timeInBedMinutes > 0
                 ? min(100, timeAsleepMinutes / timeInBedMinutes * 100) : 0,
-            coreMinutes: staged ? timeAsleepMinutes * 0.55 : 0,
-            deepMinutes: staged ? timeAsleepMinutes * 0.18 : 0,
-            remMinutes: staged ? timeAsleepMinutes * 0.22 : 0,
+            coreMinutes: staged ? max(0, timeAsleepMinutes - (deepMinutes ?? timeAsleepMinutes * 0.18) - (remMinutes ?? timeAsleepMinutes * 0.22)) : 0,
+            deepMinutes: staged ? (deepMinutes ?? timeAsleepMinutes * 0.18) : 0,
+            remMinutes: staged ? (remMinutes ?? timeAsleepMinutes * 0.22) : 0,
             unspecifiedAsleepMinutes: staged ? 0 : timeAsleepMinutes,
             awakeMinutes: max(0, timeInBedMinutes - timeAsleepMinutes),
             wakeCount: wakeCount,

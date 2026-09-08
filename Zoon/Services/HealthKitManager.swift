@@ -73,7 +73,22 @@ final class HealthKitManager {
         // from iOS 16; on hardware that can't measure it the queries simply
         // return nothing, which the extractor handles as `nil`.
         types.insert(HKQuantityType(.appleSleepingWristTemperature))
+        // Sleep-apnea *events* are a separate iOS 18 category stream, written
+        // only on Series 9 / Ultra 2+ with the feature enabled. Looked up by
+        // raw identifier so this compiles against an SDK that predates the
+        // typed `HKCategoryTypeIdentifier.sleepApneaEvent` case; a missing
+        // type just isn't requested.
+        if let apnea = Self.sleepApneaEventType {
+            types.insert(apnea)
+        }
         return types
+    }
+
+    /// Apple's `HKCategoryTypeIdentifierSleepApneaEvent`, if this SDK/OS
+    /// knows the type. `nil` everywhere else -- FeatureExtractor treats
+    /// that as "not recorded", never as zero events.
+    static var sleepApneaEventType: HKCategoryType? {
+        HKObjectType.categoryType(forIdentifier: HKCategoryTypeIdentifier(rawValue: "HKCategoryTypeIdentifierSleepApneaEvent"))
     }
 
     // MARK: - Authorization
@@ -259,7 +274,7 @@ final class HealthKitManager {
     /// dietary caffeine) are deliberately absent -- an observer for something
     /// no night depends on is a wake-up that buys nothing.
     private var observedTypes: [HKSampleType] {
-        [
+        var types: [HKSampleType] = [
             HKCategoryType(.sleepAnalysis),
             HKQuantityType(.restingHeartRate),
             HKQuantityType(.heartRateVariabilitySDNN),
@@ -268,6 +283,10 @@ final class HealthKitManager {
             HKQuantityType(.appleSleepingBreathingDisturbances),
             HKQuantityType(.appleSleepingWristTemperature),
         ]
+        if let apnea = Self.sleepApneaEventType {
+            types.append(apnea)
+        }
+        return types
     }
 
     /// Registers observers for sleep and for the physiology that arrives after
@@ -399,6 +418,41 @@ final class HealthKitManager {
                     continuation.resume(throwing: error)
                 } else {
                     continuation.resume(returning: (samples as? [HKCategorySample]) ?? [])
+                }
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Category samples overlapping any of `intervals`. Used for the
+    /// sleep-apnea event stream, which is a count of discrete events rather
+    /// than a quantity statistic.
+    ///
+    /// Returns an empty array when nothing was written -- that is a real
+    /// zero, distinct from a thrown query (the extractor must not clear a
+    /// stored count on a transient failure).
+    func categorySamples(
+        _ type: HKCategoryType,
+        in intervals: [DateInterval]
+    ) async throws -> [HKCategorySample] {
+        guard !intervals.isEmpty else { return [] }
+        let start = intervals.map(\.start).min() ?? .distantPast
+        let end = intervals.map(\.end).max() ?? .distantFuture
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    let matches = (samples as? [HKCategorySample] ?? []).filter { sample in
+                        intervals.contains { $0.intersects(DateInterval(start: sample.startDate, end: sample.endDate)) }
+                    }
+                    continuation.resume(returning: matches)
                 }
             }
             store.execute(query)

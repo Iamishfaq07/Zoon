@@ -19,7 +19,13 @@ struct ZoonWatchApp: App {
         WindowGroup {
             WatchRootView()
                 .environment(link)
-                .task { link.activate() }
+                .task {
+                    link.activate()
+                    // Keep-alive only. The watch does not read HealthKit;
+                    // this exists so Double Tap can still fire after the
+                    // screen blanks. See OvernightRuntimeSession.
+                    OvernightRuntimeSession.shared.start()
+                }
         }
     }
 }

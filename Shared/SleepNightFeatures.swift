@@ -201,6 +201,13 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// rather than overstates.
     var wristTempMeasured: Bool = false
 
+    /// Overnight count of Apple's `sleepApneaEvent` category samples, if
+    /// the type was queried at all. `nil` is not zero -- it means the
+    /// category was not recorded (older hardware, feature off, or a query
+    /// that failed). Zero means the watch wrote the stream and it was empty.
+    /// See `SleepApneaEventSummary`.
+    var sleepApneaEventCount: Int? = nil
+
     /// True when this record is synthetic sample data rather than real HealthKit
     /// output. Views badge these so a Simulator screenshot is never mistaken for
     /// a real night.
@@ -269,7 +276,8 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         stageSegments: [StageSegment] = [],
         timeZoneIdentifier: String = TimeZone.current.identifier,
         measurementSources: NightMeasurementSources = .empty,
-        wristTempMeasured: Bool = false
+        wristTempMeasured: Bool = false,
+        sleepApneaEventCount: Int? = nil
     ) {
         self.date = date
         self.bedtime = bedtime
@@ -309,6 +317,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         self.timeZoneIdentifier = timeZoneIdentifier
         self.measurementSources = measurementSources
         self.wristTempMeasured = wristTempMeasured
+        self.sleepApneaEventCount = sleepApneaEventCount
     }
 
     // MARK: - Decoding
@@ -373,6 +382,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
             NightMeasurementSources.self, forKey: .measurementSources
         ) ?? .empty
         wristTempMeasured = try c.decodeIfPresent(Bool.self, forKey: .wristTempMeasured) ?? false
+        sleepApneaEventCount = try c.decodeIfPresent(Int.self, forKey: .sleepApneaEventCount)
     }
 }
 

@@ -104,4 +104,29 @@ enum SleepDebtCalculator {
         }
         return series
     }
+
+    /// The spec's 14-night weighted-window form of the same shortfall.
+    ///
+    /// An *audit* of the recurrence above, not a replacement. Each night's
+    /// shortfall is weighted by `decayPerNight^t` with `t = 0` for the most
+    /// recent night, and surplus still contributes 0. Truncating at 14 nights
+    /// is what makes this sit *below* the infinite geometric series the
+    /// recurrence converges to; `CognitiveDebtAuditTests` asserts that
+    /// relationship so the two cannot silently drift.
+    ///
+    /// Missing nights are simply not in the input, same contract as `debt`.
+    static func weightedWindow(
+        timeAsleepMinutesNewestFirst nights: [Double],
+        goalMinutes: Double,
+        window: Int = 14
+    ) -> Double {
+        let slice = nights.prefix(max(1, window))
+        var total = 0.0
+        var weight = 1.0
+        for minutes in slice {
+            total += max(0, goalMinutes - minutes) * weight
+            weight *= decayPerNight
+        }
+        return total
+    }
 }

@@ -76,6 +76,7 @@ struct FeatureExtractor {
         async let spo2Task = attributedAverage(.oxygenSaturation, unit: .percent(), in: intervals)
         async let wristTempTask = attributedAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: intervals)
         async let breathingTask = attributedAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: intervals)
+        async let apneaTask = apneaEvents(in: intervals)
 
         let avgHRMeasurement = await avgHRTask
         let avgHROutcome = avgHRMeasurement.outcome
@@ -94,6 +95,7 @@ struct FeatureExtractor {
         let wristTempOutcome = wristTempMeasurement.outcome
         let breathingMeasurement = await breathingTask
         let breathingRaw = breathingMeasurement.outcome
+        let apneaSummary = await apneaTask
 
         // Who wrote each measurement, recorded only where HealthKit actually
         // said. A metric with no value gets no entry: an empty source list
@@ -241,7 +243,8 @@ struct FeatureExtractor {
             measurementSources: measurementSources,
             // The raw reading arrived, whether or not a baseline existed to
             // turn it into a delta -- see `wristTempMeasured`'s doc comment.
-            wristTempMeasured: wristTemp != nil
+            wristTempMeasured: wristTemp != nil,
+            sleepApneaEventCount: apneaSummary?.eventCount
         )
 
         return Result(
@@ -333,7 +336,25 @@ struct FeatureExtractor {
         return hours >= 0 ? hours : nil
     }
 
-
+    /// Overnight sleep-apnea *events*, if the type exists on this OS.
+    ///
+    /// `nil` means "not recorded" (type unknown, or the query failed).
+    /// A summary with `eventCount == 0` means the watch wrote the stream
+    /// and it was empty. Those two must not collapse -- see
+    /// `SleepApneaEventSummary`.
+    private func apneaEvents(in intervals: [DateInterval]) async -> SleepApneaEventSummary? {
+        guard let type = HealthKitManager.sleepApneaEventType else { return nil }
+        do {
+            let samples = try await healthKit.categorySamples(type, in: intervals)
+            return SleepApneaEventSummary(
+                eventCount: samples.count,
+                firstEvent: samples.first?.startDate,
+                lastEvent: samples.last?.startDate
+            )
+        } catch {
+            return nil
+        }
+    }
 }
 
 // MARK: - Units

@@ -256,6 +256,16 @@ final class SleepDataCoordinator {
             guard (1...720).contains(minutes) else { return }
             let end = event.occurredAt
             naps.importNaps([NapStore.Nap(start: end.addingTimeInterval(-Double(minutes) * 60), end: end)])
+        case .midnightAwakening:
+            let hour = event.calendar.component(.hour, from: event.occurredAt)
+            let minute = event.calendar.component(.minute, from: event.occurredAt)
+            let stamp = String(format: "Midnight awakening at %02d:%02d", hour, minute)
+            let existing = journal.entryOrCreate(for: date, nightKey: key).note
+            let combined = [existing, stamp]
+                .compactMap { $0 }
+                .filter { !$0.isEmpty }
+                .joined(separator: "\n")
+            journal.setNote(combined, on: date, nightKey: key)
         }
     }
 

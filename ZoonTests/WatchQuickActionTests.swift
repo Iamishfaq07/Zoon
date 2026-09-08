@@ -69,6 +69,12 @@ final class WatchQuickActionTests: XCTestCase {
         } else {
             XCTFail("nap did not survive")
         }
+        if case .midnightAwakening = try roundTrip(.midnightAwakening) {
+            // Encoded as a distinct case so a Double Tap cannot be
+            // misread as a nap or a behaviour toggle.
+        } else {
+            XCTFail("midnightAwakening did not survive")
+        }
     }
 
     /// Every tag the phone can ask about must be expressible as an answer.

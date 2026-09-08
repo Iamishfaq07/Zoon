@@ -3,18 +3,35 @@ import Foundation
 
 /// Playback shares ownership; recording is exclusive to avoid classifying
 /// synthesized sounds as room noise. Losing headphones never enables speakers.
+///
+/// Interruptions (a call, an alarm, Siri) pause owners; when the system says
+/// the session may resume, each owner is asked to start again. A route change
+/// that *removes* the output device is still a hard stop -- there is nowhere
+/// to resume to -- and is not treated as a recoverable interruption.
 @MainActor
 final class AudioSessionCoordinator {
     static let shared = AudioSessionCoordinator()
-    private var owners: [UUID: (recording: Bool, stop: () -> Void)] = [:]
+    private var owners: [UUID: Owner] = [:]
     private var observers: [NSObjectProtocol] = []
+
+    private struct Owner {
+        var recording: Bool
+        var stop: () -> Void
+        var resume: (() -> Void)?
+    }
 
     private init() {
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
             let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-            guard raw == AVAudioSession.InterruptionType.began.rawValue else { return }
-            Task { @MainActor in self?.interrupt() }
+            if raw == AVAudioSession.InterruptionType.began.rawValue {
+                Task { @MainActor in self?.interrupt() }
+                return
+            }
+            guard raw == AVAudioSession.InterruptionType.ended.rawValue else { return }
+            let optionsRaw = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsRaw)
+            Task { @MainActor in self?.resumeInterrupted(shouldResume: options.contains(.shouldResume)) }
         })
         observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
@@ -26,7 +43,12 @@ final class AudioSessionCoordinator {
         })
     }
 
-    func acquire(_ id: UUID, recording: Bool = false, onInterrupt: @escaping () -> Void) throws {
+    func acquire(
+        _ id: UUID,
+        recording: Bool = false,
+        onInterrupt: @escaping () -> Void,
+        onResume: (() -> Void)? = nil
+    ) throws {
         let others = owners.filter { $0.key != id }
         guard !others.values.contains(where: { $0.recording }) && (!recording || others.isEmpty) else {
             throw NSError(domain: "ZoonAudio", code: 1, userInfo: [NSLocalizedDescriptionKey:
@@ -38,7 +60,7 @@ final class AudioSessionCoordinator {
                 mode: recording ? .measurement : .default, options: recording ? [] : [.mixWithOthers])
             try session.setActive(true)
         }
-        owners[id] = (recording, onInterrupt)
+        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume)
     }
 
     func release(_ id: UUID) {
@@ -49,5 +71,11 @@ final class AudioSessionCoordinator {
     private func interrupt() {
         let callbacks = owners.values.map(\.stop)
         for stop in callbacks { stop() }
+    }
+
+    private func resumeInterrupted(shouldResume: Bool) {
+        guard shouldResume else { return }
+        let callbacks = owners.values.compactMap(\.resume)
+        for resume in callbacks { resume() }
     }
 }

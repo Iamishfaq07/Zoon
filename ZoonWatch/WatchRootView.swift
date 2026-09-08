@@ -54,6 +54,7 @@ struct WatchRootView: View {
         }
         .tabViewStyle(.verticalPage)
         .containerBackground(Theme.watchBackground, for: .tabView)
+        .modifier(MidnightAwakeningShortcut())
         // Retained as a shortcut from any page, not as the only way in --
         // see `LogPage`. A gesture with no affordance is not a route
         // someone discovers.
@@ -63,6 +64,40 @@ struct WatchRootView: View {
         }
         .sheet(isPresented: $showsQuickLog) {
             QuickLogView()
+        }
+    }
+}
+
+/// Double Tap (watchOS 11 `handGestureShortcut`) logs a midnight awakening
+/// without looking at the screen. The button is visually empty on purpose:
+/// the affordance is the gesture, and a visible control on every page would
+/// steal the glance. VoiceOver still gets a name.
+private struct MidnightAwakeningShortcut: ViewModifier {
+    @Environment(WatchLink.self) private var link
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .bottom) {
+            Button {
+                WKInterfaceDevice.current().play(.click)
+                link.sendQuickAction(.midnightAwakening)
+            } label: {
+                Color.clear.frame(width: 1, height: 1)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Log midnight awakening")
+            .modifier(PrimaryHandGesture())
+        }
+    }
+}
+
+/// Isolated so the rest of the watch app still compiles against an SDK
+/// that predates `handGestureShortcut`.
+private struct PrimaryHandGesture: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(watchOS 11.0, *) {
+            content.handGestureShortcut(.primaryAction)
+        } else {
+            content
         }
     }
 }
@@ -190,6 +225,9 @@ struct QuickLogView: View {
                     }
                     logRow(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
                         link.sendQuickAction(.behaviorTag(rawValue: "caffeineLate"))
+                    }
+                    logRow(id: "awakening", label: "Awakening", symbol: "moon.zzz") {
+                        link.sendQuickAction(.midnightAwakening)
                     }
                 }
 
