@@ -61,6 +61,16 @@ struct MoreView: View {
                         PersonalLearningView()
                     }
                     .entrance(2)
+                    navRow("Sleep fingerprint", "Your recent sleep signature at a glance",
+                            "circle.hexagongrid.fill", Theme.Family.recovery) {
+                        SleepFingerprintView()
+                    }
+                    .entrance(2)
+                    navRow("Sleep eras", "Stable stretches and meaningful shifts over time",
+                            "timeline.selection", Theme.Family.hrv) {
+                        SleepErasView()
+                    }
+                    .entrance(2)
 
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
