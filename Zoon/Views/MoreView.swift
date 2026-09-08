@@ -67,7 +67,7 @@ struct MoreView: View {
                     }
                     .entrance(2)
                     navRow("Sleep eras", "Stable stretches and meaningful shifts over time",
-                            "timeline.selection", Theme.Family.hrv) {
+                            "timeline.selection", Theme.Family.sleep) {
                         SleepErasView()
                     }
                     .entrance(2)
