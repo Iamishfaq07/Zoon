@@ -37,7 +37,7 @@ enum NaturalJournalParser {
         Rule(tag: .restDay, phrases: ["rest day"])
     ]
 
-    private static let negations = ["no ", "didn't ", "did not ", "without ", "avoided ", "skipped ", "not "]
+    private static let negations = ["no", "didn't", "without", "avoided", "skipped", "not"]
 
     static func proposals(from text: String) -> [Proposal] {
         let lower = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current).lowercased()
@@ -57,8 +57,9 @@ enum NaturalJournalParser {
 
     private static func state(for phrase: String, in text: String) -> BehaviorObservationState {
         guard let index = text.range(of: phrase)?.lowerBound else { return .unknown }
-        let prefix = String(text[..<index]).split(separator: " ").suffix(4).joined(separator: " ")
-        return negations.contains(where: { prefix.contains($0) }) ? .no : .yes
+        let tokens = String(text[..<index]).split(separator: " ").suffix(5).map(String.init)
+        let hasDidNot = tokens.contains("did") && tokens.contains("not")
+        return negations.contains(where: { tokens.contains($0) }) || hasDidNot ? .no : .yes
     }
 
     /// Finds a clock hour only when it is attached to the matched entity.
