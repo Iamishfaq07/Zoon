@@ -15,10 +15,10 @@ def read(relative: str) -> str:
 violations: list[str] = []
 project = read("Zoon.xcodeproj/project.pbxproj")
 
-if "NSHealthUpdateUsageDescription" in project:
-    violations.append(
-        "The read-only app declares NSHealthUpdateUsageDescription; only add it if Zoon starts writing Health data."
-    )
+if "INFOPLIST_KEY_NSHealthUpdateUsageDescription" not in project:
+    violations.append("The app archive must declare Apple's required HealthKit update purpose string.")
+elif "never writes to or changes your Health data" not in project:
+    violations.append("The HealthKit update purpose string must make Zoon's read-only boundary explicit.")
 
 user_surfaces = [
     path

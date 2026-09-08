@@ -2964,6 +2964,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
@@ -3163,6 +3164,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only while Snore Check is running, to estimate snoring from sound patterns. Audio is processed in short bursts and never saved or sent anywhere -- only a minutes-snoring count is kept.";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
