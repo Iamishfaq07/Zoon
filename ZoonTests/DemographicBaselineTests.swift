@@ -6,8 +6,16 @@ final class DemographicBaselineTests: XCTestCase {
         let young = DemographicBaseline(ageYears: 25, sex: .unspecified, bodyMassIndex: nil)
         let older = DemographicBaseline(ageYears: 55, sex: .unspecified, bodyMassIndex: nil)
         XCTAssertGreaterThan(young.expectedDeepFraction, older.expectedDeepFraction)
-        // ~2 percentage points per decade after 30: 25 years is a 0.04 gap.
-        XCTAssertEqual(young.expectedDeepFraction - older.expectedDeepFraction, 0.04, accuracy: 0.005)
+        // Decline starts after 30. Age 25 is still 20%; age 55 is 25 years
+        // past 30 × 0.2 pp/year = 5 percentage points, not 4. (25→30 does
+        // not count; the spec is "~2% per decade after age 30".)
+        XCTAssertEqual(young.expectedDeepFraction - older.expectedDeepFraction, 0.05, accuracy: 0.005)
+    }
+
+    func testTwoDecadesAfterThirtyIsFourPercentagePoints() {
+        let atThirty = DemographicBaseline(ageYears: 30, sex: .unspecified, bodyMassIndex: nil)
+        let atFifty = DemographicBaseline(ageYears: 50, sex: .unspecified, bodyMassIndex: nil)
+        XCTAssertEqual(atThirty.expectedDeepFraction - atFifty.expectedDeepFraction, 0.04, accuracy: 0.005)
     }
 
     func testATypicalOlderNightIsNotPenalised() {

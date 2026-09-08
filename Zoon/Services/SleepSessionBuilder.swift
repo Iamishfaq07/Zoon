@@ -251,6 +251,13 @@ struct SleepSessionBuilder {
     /// Merging *across* sources is never an option: two trackers disagree
     /// about stage boundaries, and any union of them produces a night neither
     /// device reported and the Health app never shows.
+    ///
+    /// Interval-level gap filling (Watch keeps the overlap, phone/wearable
+    /// keeps minutes the Watch did not cover, UUID identity, no stage
+    /// blending) lives in `SleepSourceArbitration`. That engine is opt-in
+    /// and tested without a fake `sourceRevision`; this picker still emits
+    /// one source's samples so a broken Watch night cannot be "repaired"
+    /// into a chimera.
     private func canonicalCandidates(in group: [Candidate]) -> [Candidate] {
         let bySource = Dictionary(grouping: group, by: \.sourceBundleIdentifier)
         guard bySource.count > 1 else { return group }

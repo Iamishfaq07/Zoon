@@ -31,7 +31,9 @@ import Foundation
 /// night-to-night signal this metric exists to surface. That's a
 /// correctness regression dressed up as a completeness improvement, not a
 /// genuine one. The honest path (never presenting this as the real metric)
-/// stays the fix.
+/// stays the fix. The textbook 24-hour formula lives next door as
+/// `SleepRegularityIndex`, for exports and tests that want the academic
+/// number; it is not shown as "SRI" on any user-facing screen.
 ///
 /// The computation needs the actual asleep intervals, not just totals, which is
 /// why this lives alongside `StageSegment` rather than in the score file.
