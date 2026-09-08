@@ -46,7 +46,7 @@ enum SleepEras {
                 guard index > 0 else { return nil }; return groups[index - 1]
             }
             let previousBed = previous.map { medianMinutes($0.map { minutes($0.bedtime) }) }
-            let previousDuration = previous.map { Statistics.median($0.map(\.timeAsleepMinutes)) }
+            let previousDuration = previous.flatMap { Statistics.median($0.map(\.timeAsleepMinutes)) }
             return SleepEra(
                 id: "\(group[0].date.timeIntervalSince1970)-\(group.count)",
                 start: group[0].date,
