@@ -15,6 +15,25 @@ name: TestFlight
 # create and download whatever certificates and profiles it needs on the
 # runner, so nothing is manually exported, base64-encoded, or kept in sync
 # by hand — the classic way this kind of workflow rots.
+#
+# One thing that mechanism cannot do anything about: a signing *certificate*
+# has a private key, and that key is generated locally at creation time and
+# never leaves the machine that made it -- Apple only ever sees and stores
+# the public half. Every run here starts on a brand-new, disposable runner
+# with an empty keychain, so with nothing else in place it has no choice but
+# to mint a fresh certificate every single time, and the previous run's
+# certificate is orphaned forever the moment its runner is destroyed
+# (Apple still lists it as valid; nothing can ever use it again). Do that
+# enough times and the account hits Apple's cap on live certificates, and
+# every run fails at Archive with "Choose a certificate to revoke" --
+# which is what happened here on 2026-09-08.
+#
+# The fifth, optional secret below breaks that cycle: after the first run
+# that creates a certificate, this workflow exports it and lets
+# actions/cache persist it, so every later run imports the *same* identity
+# instead of minting a new one. Omit IOS_P12_PASSWORD and the workflow
+# behaves exactly as before -- one new certificate per run -- which still
+# works, right up until the account fills up again.
 
 on:
   workflow_dispatch:
@@ -36,6 +55,12 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 45
 
+    # Job-level so the caching steps' `if:` conditions below can read
+    # env.IOS_P12_PASSWORD directly, and so the steps that need the value
+    # itself don't each have to redeclare it.
+    env:
+      IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -43,6 +68,10 @@ jobs:
         # Fails in seconds with a clear message, instead of failing 20
         # minutes into an archive with a cryptic signing error. Every secret
         # is named so a missing one is obvious from the log alone.
+        #
+        # IOS_P12_PASSWORD is deliberately not checked here -- it's optional
+        # (see the file header), and its absence should never block a run
+        # that would otherwise work.
         run: |
           missing=""
           [ -z "${{ secrets.APPSTORE_ISSUER_ID }}" ] && missing="$missing APPSTORE_ISSUER_ID"
@@ -53,6 +82,9 @@ jobs:
             echo "::error::Missing repo secret(s):$missing"
             echo "See BUILDING-WITHOUT-A-MAC.md → 'TestFlight from CI' for how to create each one."
             exit 1
+          fi
+          if [ -z "${{ secrets.IOS_P12_PASSWORD }}" ]; then
+            echo "::notice::IOS_P12_PASSWORD is not set -- this run will mint a fresh signing certificate rather than reusing a cached one. See BUILDING-WITHOUT-A-MAC.md → 'TestFlight from CI' if you want to stop that from eventually filling up your account's certificate limit."
           fi
 
       - name: Install the App Store Connect API key
@@ -96,6 +128,48 @@ jobs:
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             2>&1 | tee test.log
 
+      - name: Restore the cached signing identity
+        # Skipped entirely (silently -- actions/cache no-ops with an empty
+        # key) when IOS_P12_PASSWORD isn't set, so a repo that hasn't opted
+        # into caching sees no change in behaviour. The key is a fixed
+        # string, not hashed from anything: there is exactly one identity to
+        # remember, and it changes only when this key is bumped on purpose
+        # (see the comment on the save step below) or the cache is cleared
+        # from the repo's Actions settings.
+        id: signing-cache
+        if: env.IOS_P12_PASSWORD != ''
+        uses: actions/cache@v4
+        with:
+          path: build/signing/identity.p12
+          key: ios-signing-identity-v1
+
+      - name: Import the cached signing identity
+        # Only on a cache hit -- on a miss there is nothing to import yet,
+        # and Archive below falls back to -allowProvisioningUpdates minting
+        # a fresh one, exactly as it always has.
+        #
+        # A dedicated keychain rather than the runner's default login
+        # keychain: security import writes into whichever keychain is
+        # named, and creating this run's identity in one we control (added
+        # to the search list, never assumed) is more predictable than
+        # guessing what state the default keychain starts a runner in.
+        # The empty passwords are deliberate -- this keychain exists for
+        # the ~20 minutes of one job on an ephemeral, single-tenant runner,
+        # and never leaves it.
+        if: steps.signing-cache.outputs.cache-hit == 'true'
+        run: |
+          set -o pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p "" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "" "$KEYCHAIN"
+          security import build/signing/identity.p12 -k "$KEYCHAIN" -P "$IOS_P12_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
+          existing=$(security list-keychains -d user | sed 's/"//g')
+          security list-keychains -d user -s "$KEYCHAIN" $existing
+          echo "Imported the cached signing identity into $KEYCHAIN"
+
       - name: Archive
         run: |
           set -o pipefail
@@ -114,6 +188,34 @@ jobs:
             CODE_SIGN_STYLE=Automatic \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             2>&1 | tee archive.log
+
+      - name: Cache the signing identity for future runs
+        # Only on a cache miss (the identity we just used was newly minted
+        # by Archive above, not imported) and only once Archive has actually
+        # succeeded -- there is no point persisting a certificate tied to a
+        # broken configuration.
+        #
+        # Exports every identity in the runner's default login keychain.
+        # Safe specifically because this is a fresh, single-tenant runner:
+        # the only certificate that can be in there is the one
+        # -allowProvisioningUpdates just created a few seconds ago while
+        # signing this same archive.
+        #
+        # actions/cache writes under `key` only on a miss and a key can
+        # never be overwritten -- if a cached identity is ever revoked (as
+        # happened on 2026-09-08, clearing space for a fresh one to be made
+        # by hand) the next run will still try to import the now-invalid
+        # cached copy and fail. Recovery is bumping the key here and on the
+        # restore step above (v1 -> v2), or clearing the cache from the
+        # repo's Actions settings -- either forces a fresh certificate to be
+        # minted and cached in its place.
+        if: env.IOS_P12_PASSWORD != '' && steps.signing-cache.outputs.cache-hit != 'true'
+        run: |
+          set -o pipefail
+          mkdir -p build/signing
+          security export -k login.keychain-db -t identities -f pkcs12 \
+            -P "$IOS_P12_PASSWORD" -o build/signing/identity.p12
+          echo "Exported this run's signing identity for actions/cache to persist."
 
       - name: Write the export options
         # method=app-store-connect (not the older "app-store") is what
