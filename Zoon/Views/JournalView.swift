@@ -215,6 +215,13 @@ struct JournalView: View {
                 .background(Theme.neutral(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .accessibilityHint("You can use the keyboard microphone to dictate.")
 
+            NavigationLink {
+                VoiceJournalView()
+            } label: {
+                Label("Open voice journal", systemImage: "mic.circle")
+            }
+            .buttonStyle(.bordered)
+
             if naturalProposals.isEmpty {
                 Button("Find observations") { parseNaturalJournal() }
                     .buttonStyle(.bordered)
