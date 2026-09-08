@@ -76,6 +76,10 @@ UITESTS_SRC = swift_files("ZoonUITests")
 # whether SwiftData itself can run at all in this unhosted test bundle before
 # trying a real store again. See SwiftDataProbeTests.swift's own doc comment.
 TESTS_EXTRA_APP_FILES = [
+    # Pure, explainable history summaries exercised by SleepFingerprintTests.
+    "Zoon/Insights/SleepFingerprint.swift",
+    "Zoon/Insights/SleepEras.swift",
+    "Zoon/Insights/ChartRequest.swift",
     # HealthKit + Foundation -- the conservative cycle-context grouping and
     # personal-history gating exercised by CycleContextTests.
     "Zoon/Models/CyclePhase.swift",
@@ -786,6 +790,7 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "{ALARM_DESC}";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

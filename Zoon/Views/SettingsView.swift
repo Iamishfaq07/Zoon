@@ -31,6 +31,7 @@ struct SettingsView: View {
                 NavigationLink("Tonight routine") { TonightRoutineView() }
                 NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
                 NavigationLink("Repair sleep data") { DataRepairView() }
+                NavigationLink("Custom behaviours") { CustomBehaviorsView() }
             }
             goalSection
             appearanceSection

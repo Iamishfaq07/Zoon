@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-/// Trends over 7 or 30 days.
+/// Trends over multiple useful windows.
 ///
 /// Charts read from `coordinator.recentNights`, which is stored history — so
 /// this screen works offline, instantly, with no HealthKit round trip.
@@ -15,9 +15,20 @@ struct TrendsView: View {
     enum Window: String, CaseIterable, Identifiable {
         case week = "7 Days"
         case month = "30 Days"
+        case quarter = "90 Days"
+        case halfYear = "180 Days"
+        case year = "365 Days"
 
         var id: String { rawValue }
-        var days: Int { self == .week ? 7 : 30 }
+        var days: Int {
+            switch self {
+            case .week: return 7
+            case .month: return 30
+            case .quarter: return 90
+            case .halfYear: return 180
+            case .year: return 365
+            }
+        }
     }
 
     private var nights: [SleepNightFeatures] {
@@ -103,12 +114,15 @@ struct TrendsView: View {
                     if nights.count < 2 {
                         notEnoughData
                     } else {
-                        VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+                    VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                             ZoonSectionHeader("Over time") { windowPicker.frame(maxWidth: 160) }
                             DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
                             HRVChartCard(nights: nights, tagsByDate: tagsByDate)
                             SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
                             ConsistencyChartCard(nights: nights)
+                            if let fingerprint = SleepFingerprint.make(from: coordinator.recentNights, days: window.days) {
+                                FingerprintSummaryCard(fingerprint: fingerprint)
+                            }
                             if let correlations = cycleCorrelations {
                                 CycleCorrelationCard(correlations: correlations)
                             }
@@ -122,6 +136,17 @@ struct TrendsView: View {
             .nightBackground()
             .navigationTitle("Insights")
             .zoonGlobalToolbar()
+        }
+    }
+
+    private struct FingerprintSummaryCard: View {
+        let fingerprint: SleepFingerprint
+        var body: some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack { Text("Fingerprint").font(.headline); Spacer(); Text("\(fingerprint.sampleCount) nights").font(.caption).foregroundStyle(.secondary) }
+                Text("Timing \(Int(fingerprint.timingStability * 100))% · continuity \(Int(fingerprint.continuity * 100))% · duration \(Int(fingerprint.durationStability * 100))%")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }.glassCard()
         }
     }
 
