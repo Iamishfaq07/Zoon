@@ -714,9 +714,9 @@ HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood 
 # read-only; this text makes that boundary explicit to users and App Review.
 HEALTH_UPDATE_DESC = ("Zoon uses HealthKit to build sleep insights from data you choose to share. "
                       "Zoon never writes to or changes your Health data.")
-MIC_DESC = ("Used only while Snore Check is running, to estimate snoring from sound "
-            "patterns. Audio is processed in short bursts and never saved or sent "
-            "anywhere -- only a minutes-snoring count is kept.")
+MIC_DESC = ("Used only when you start Snore Check or Voice Journal. Snore Check "
+            "processes short audio bursts and Voice Journal transcribes speech on "
+            "this device; audio is never saved or sent anywhere.")
 # AlarmKit (iOS 26+) refuses to schedule without this string. Only requested
 # when the wake alarm is switched on -- see WakeAlarm and UserPreferences
 # .wakeAlarmEnabled, which is off by default precisely because an alarm rings
