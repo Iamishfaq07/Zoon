@@ -109,6 +109,7 @@ jobs:
           python3 Tools/generate-pbxproj.py
           git diff --exit-code -- Zoon.xcodeproj/project.pbxproj Zoon.xcodeproj/xcshareddata/xcschemes/Zoon.xcscheme
           python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
+          python3 Tools/asc_free_certificate_slot.py --self-test
 
       - name: Run release-gate tests
         run: |
@@ -209,6 +210,23 @@ jobs:
           echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
           echo "SIGNING_KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
           echo "Created $KEYCHAIN and made it the default for this job."
+
+      - name: Free a signing-certificate slot
+        # On a cache miss we are about to mint. The private keys of every
+        # Development/Distribution certificate already on the account died
+        # with previous runners, and they still count against Apple's cap.
+        # Runs 66 and 67 (the crash-fix TestFlights) died here:
+        # "Choose a certificate to revoke." The same API key Archive already
+        # uses can delete them. Already-installed TestFlight builds keep
+        # working; Apple does not yank a build because the cert that signed
+        # it was later revoked. Skipped on a cache hit -- that identity is
+        # the one we would otherwise be deleting.
+        if: steps.signing-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 Tools/asc_free_certificate_slot.py \
+            --key-id "${{ secrets.APPSTORE_KEY_ID }}" \
+            --issuer-id "${{ secrets.APPSTORE_ISSUER_ID }}" \
+            --key-path "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
 
       - name: Archive
         run: |
