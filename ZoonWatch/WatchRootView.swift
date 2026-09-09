@@ -868,11 +868,12 @@ struct WaitingPage: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: "iphone.gen3.radiowaves.left.and.right")
-                .font(Theme.text(26))
+            Image(systemName: "moonphase.waxing.crescent")
+                .font(Theme.text(34))
                 .foregroundStyle(Theme.Metric.sleep)
+                .symbolRenderingMode(.hierarchical)
 
-            Text("Waiting for your phone")
+            Text("Gathering last night")
                 .font(Theme.label(13, weight: .semibold))
                 .multilineTextAlignment(.center)
 

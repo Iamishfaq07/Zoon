@@ -195,7 +195,7 @@ struct SleepIntelligenceComplicationView: View {
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                Label("Last Night", systemImage: "moon.stars.fill")
+                Label("Last Night", systemImage: "moonphase.waxing.crescent")
                     .font(Theme.text(13, weight: .semibold))
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text("\(percent)")
@@ -214,7 +214,7 @@ struct SleepIntelligenceComplicationView: View {
 
         default:
             Gauge(value: Double(percent), in: 0...100) {
-                Image(systemName: "moon.stars.fill")
+                Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
                 Text("\(percent)").monospacedDigit()
             }
@@ -434,7 +434,7 @@ struct SleepBankComplicationView: View {
                 // SleepScoreWidget makes on isShiftWorkModeEnabled.
                 Label(
                     entry.snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night",
-                    systemImage: "moon.stars.fill"
+                    systemImage: "moonphase.waxing.crescent"
                 )
                     .font(Theme.text(13, weight: .semibold))
                 Text(SleepNightFeatures.formatMinutes(entry.snapshot.timeAsleepMinutes))
@@ -452,7 +452,7 @@ struct SleepBankComplicationView: View {
             // fills a gauge honestly, where "7h 32m" has no natural maximum to
             // draw an arc against.
             Gauge(value: Double(entry.snapshot.flagshipScore), in: 0...100) {
-                Image(systemName: "moon.stars.fill")
+                Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
                 Text("\(entry.snapshot.flagshipScore)").monospacedDigit()
             }

@@ -65,6 +65,7 @@
 		0B3EF4FD64E6C12332435919 /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		0B5E0EA0222BE74098093C8F /* SleepMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94863AD57BC6DF42B748A3BB /* SleepMap.swift */; };
 		0BA4B48EE518B586B2E80979 /* RuleBasedInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */; };
+		0BD1D7951306FDFB56C38D7F /* WidgetNightGround.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0874606FEAB1FC4798DFA236 /* WidgetNightGround.swift */; };
 		0BD6057B30683F667F670D4D /* TonightRoutineController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E116B8901D148D29DCD2EC7 /* TonightRoutineController.swift */; };
 		0BFD587316B7C688C3E4FD8E /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
 		0C6E5C510F861E9529B304E8 /* PersonalSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73634D1D1625805E420C39B /* PersonalSetup.swift */; };
@@ -636,6 +637,7 @@
 		B4BB22675B95F0CE8305794D /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF82749F8685C8D51B42E20 /* Motion.swift */; };
 		B514262AD6C6921C774E3FEA /* SnapshotFreshness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD0ECB430F8370B1B7BC0A8 /* SnapshotFreshness.swift */; };
 		B53D04ECFAA36CDDC1E8D509 /* SurfaceRelevance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3D7832F1D8903A3FCD06ED /* SurfaceRelevance.swift */; };
+		B54848619BD4F5A6C8F9072C /* NightShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73443451125A51F9AF49E2B /* NightShareCard.swift */; };
 		B57947EE18F753015E7DB86B /* SyncRange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1B6C018B5F60F2D07DFDFB /* SyncRange.swift */; };
 		B585B10F3F6E1577B46B1220 /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234D49A75ED10560B53A2024 /* UserPreferences.swift */; };
 		B63C6781CD843C0774DB058A /* ChangePointDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE7FA2FF9A6280968D97436 /* ChangePointDetector.swift */; };
@@ -992,6 +994,7 @@
 		06902ACD41EC18AE77E3413F /* NaturalJournalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NaturalJournalTests.swift"; sourceTree = "<group>"; };
 		0732A886306E06A2516CD0B9 /* SleepDebtCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDebtCalculator.swift"; sourceTree = "<group>"; };
 		07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepRegularity.swift"; sourceTree = "<group>"; };
+		0874606FEAB1FC4798DFA236 /* WidgetNightGround.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetNightGround.swift"; sourceTree = "<group>"; };
 		08A3630C62C77D88D24D1330 /* PersonalSetupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersonalSetupTests.swift"; sourceTree = "<group>"; };
 		0A3D7832F1D8903A3FCD06ED /* SurfaceRelevance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SurfaceRelevance.swift"; sourceTree = "<group>"; };
 		0ACECF2891CE7CA2C7990B49 /* BodyClockAgenda.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClockAgenda.swift"; sourceTree = "<group>"; };
@@ -1401,6 +1404,7 @@
 		E66E48E18B3180010F25B98A /* ClinicianReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClinicianReportView.swift"; sourceTree = "<group>"; };
 		E6D958A9FD3398B01D9DC02A /* DataQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataQuality.swift"; sourceTree = "<group>"; };
 		E70815EE58261F22EC9FEB7C /* garden.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "garden.mp3"; sourceTree = "<group>"; };
+		E73443451125A51F9AF49E2B /* NightShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightShareCard.swift"; sourceTree = "<group>"; };
 		E73BEB434231B334F39AD3E1 /* SoundEventClusterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundEventClusterTests.swift"; sourceTree = "<group>"; };
 		E7CAE69D8521F6EE716F7F7D /* CognitiveDebtAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CognitiveDebtAuditTests.swift"; sourceTree = "<group>"; };
 		E7FB7ED912EC5DA6CCB20F99 /* ArchiveCipher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArchiveCipher.swift"; sourceTree = "<group>"; };
@@ -1536,6 +1540,7 @@
 				1D1890339F09B39454113525,
 				86B73D68A2DABAB452A03AC3,
 				E2A69E6C004133830D026EA3,
+				E73443451125A51F9AF49E2B,
 				6DC9B4657137BA5F3066D5E1,
 				5DF81B66203884E4C36BE4D2,
 				FBA68EDD0820A539DCB0B786,
@@ -1705,6 +1710,7 @@
 				A9F17278E812BF344A4F336E,
 				2FB1A978A10EA12B9D48DB4D,
 				C0887F9713290374B9C122DD,
+				0874606FEAB1FC4798DFA236,
 				02F963BC4B2CA2A8F04DCD42,
 				4423A4E415346D2848DCFF7D,
 				A7DD50B071385AA818850F2E,
@@ -2562,6 +2568,7 @@
 				01EA5C0C3C7DF959D12CA20D,
 				10C5A8851CF03E9EB322DFEB,
 				8FA9AD6B3FD89F4112814E7E,
+				B54848619BD4F5A6C8F9072C,
 				A65C6C041C034DB1996AD127,
 				41BEA2D9EBB8D252072C79FF,
 				C773D4AF2F15394933066A75,
@@ -2747,6 +2754,7 @@
 				54A550E8B72A295F8711315C,
 				1E9CA31043BE3458E6F3BD44,
 				5948445D4DF6EFB9285F4A04,
+				0BD1D7951306FDFB56C38D7F,
 				1392657BC356A10710540C9C,
 				AC4602FA79C1F06E37161F87,
 				528C7C5C9AFC2F8501558D8E,

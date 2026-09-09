@@ -139,6 +139,12 @@ struct TodayView: View {
 
             hero(context)
 
+            ShareLastNightButton(
+                night: context.night,
+                line: context.insight.summary
+            )
+            .entrance(1)
+
             if showsExplanation {
                 HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
                     .entrance(2)

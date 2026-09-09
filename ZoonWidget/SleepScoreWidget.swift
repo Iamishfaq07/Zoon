@@ -15,7 +15,7 @@ struct SleepScoreWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .lastNight)) { entry in
             SleepScoreWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) { WidgetNightGround() }
         }
         .configurationDisplayName("Last Night")
         .description("Your sleep score and how the night went.")
@@ -116,7 +116,7 @@ struct SleepScoreWidgetView: View {
     private var small: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Label(lastNightLabel, systemImage: "bed.double.fill")
+                Label(lastNightLabel, systemImage: "moonphase.waxing.crescent")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -195,7 +195,7 @@ struct SleepScoreWidgetView: View {
 
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label(lastNightLabel, systemImage: "bed.double.fill")
+            Label(lastNightLabel, systemImage: "moonphase.waxing.crescent")
                 .font(.caption2)
                 .widgetAccentable()
             // `.privacySensitive()` -- the score and its interpretation are
@@ -219,7 +219,7 @@ struct SleepScoreWidgetView: View {
 
     private var circular: some View {
         Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
-            Image(systemName: "moon.stars.fill")
+            Image(systemName: "moonphase.waxing.crescent")
         } currentValueLabel: {
             Text("\(snapshot.flagshipScore)")
                 .font(.system(.body, design: .rounded).weight(.semibold))
@@ -231,7 +231,7 @@ struct SleepScoreWidgetView: View {
     private var inline: some View {
         Label(
             "\(snapshot.flagshipScore) · \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))",
-            systemImage: "moon.stars.fill"
+            systemImage: "moonphase.waxing.crescent"
         )
         .privacySensitive()
     }
