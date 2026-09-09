@@ -54,6 +54,33 @@ final class SoundscapeEngine {
             }
         }
 
+        /// Locate a recorded bed in the app bundle.
+        ///
+        /// Copy Bundle Resources of a yellow group copies files to the
+        /// bundle **root**, not `Sounds/`. A folder reference would keep
+        /// the subdirectory. Build 68 looked only in `Sounds/`, missed
+        /// every file, and fell through to the noise generator — which is
+        /// why Rain / Ocean / Wind still sounded synthesised after the
+        /// recordings shipped.
+        func recordedURL(in bundle: Bundle = .main) -> URL? {
+            guard let name = fileName else { return nil }
+            if let url = bundle.url(forResource: name, withExtension: "mp3", subdirectory: "Sounds") {
+                return url
+            }
+            if let url = bundle.url(forResource: name, withExtension: "mp3") {
+                return url
+            }
+            let fm = FileManager.default
+            if let root = bundle.resourceURL {
+                let nested = root.appendingPathComponent("Sounds", isDirectory: true)
+                    .appendingPathComponent("\(name).mp3", isDirectory: false)
+                if fm.fileExists(atPath: nested.path) { return nested }
+                let flat = root.appendingPathComponent("\(name).mp3", isDirectory: false)
+                if fm.fileExists(atPath: flat.path) { return flat }
+            }
+            return nil
+        }
+
         var label: String {
             switch self {
             case .brownNoise: "Brown Noise"
@@ -168,6 +195,9 @@ final class SoundscapeEngine {
     private let audioOwner = UUID()
     private(set) var deadline: Date?
     private(set) var interruptionMessage: String?
+    /// Set when a recorded bed is selected but the mp3 is not in the bundle.
+    /// Shown on Sleep Sounds so a miss is visible instead of fake noise.
+    private(set) var loadError: String?
     private var crossfadeTask: Task<Void, Never>?
     private var retiringPlayers: [(AVAudioEngine, AVAudioPlayerNode)] = []
     private var engine: AVAudioEngine?
@@ -208,6 +238,7 @@ final class SoundscapeEngine {
         retiringFilePlayer?.stop()
         retiringFilePlayer = oldFile
         interruptionMessage = nil
+        loadError = nil
 
         do {
             // `.playback` with `.mixWithOthers` so a soundscape doesn't kill a
@@ -219,30 +250,42 @@ final class SoundscapeEngine {
                 self?.resumeAfterInterruption()
             }
 
-            if let name = sound.fileName,
-               let url = Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "Sounds") {
-                let recorded = try AVAudioPlayer(contentsOf: url)
-                recorded.numberOfLoops = -1
-                recorded.volume = 0
-                recorded.prepareToPlay()
-                recorded.play()
+            if sound.fileName != nil {
+                if let url = sound.recordedURL() {
+                    let recorded = try AVAudioPlayer(contentsOf: url)
+                    recorded.numberOfLoops = -1
+                    recorded.volume = 0
+                    recorded.prepareToPlay()
+                    recorded.play()
+                    oldPlayer?.stop()
+                    oldEngine?.stop()
+                    self.engine = nil
+                    self.player = nil
+                    self.filePlayer = recorded
+                    self.playing = sound
+                    logger.info("Playing recorded bed \(sound.rawValue, privacy: .public) from \(url.lastPathComponent, privacy: .public)")
+                    crossfadeTask = Task { [weak self] in
+                        for step in 1...20 {
+                            do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
+                            guard let self else { return }
+                            let fraction = Float(step) / 20
+                            recorded.volume = volume * fadeMultiplier * biometricAttenuation * fraction
+                            oldFile?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
+                        }
+                        oldFile?.stop()
+                        self?.retiringFilePlayer = nil
+                    }
+                    return
+                }
+                logger.error("Recorded bed \(sound.rawValue, privacy: .public) missing from bundle; not synthesizing")
+                loadError = "Couldn't load \(sound.label). The recording isn't in this build."
                 oldPlayer?.stop()
                 oldEngine?.stop()
+                oldFile?.stop()
                 self.engine = nil
                 self.player = nil
-                self.filePlayer = recorded
-                self.playing = sound
-                crossfadeTask = Task { [weak self] in
-                    for step in 1...20 {
-                        do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
-                        guard let self else { return }
-                        let fraction = Float(step) / 20
-                        recorded.volume = volume * fadeMultiplier * biometricAttenuation * fraction
-                        oldFile?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
-                    }
-                    oldFile?.stop()
-                    self?.retiringFilePlayer = nil
-                }
+                self.filePlayer = nil
+                self.playing = nil
                 return
             }
 
@@ -474,9 +517,12 @@ final class SoundscapeEngine {
     private var brownState: Float = 0
     private var pinkRows = [Float](repeating: 0, count: 7)
     private var lowpassState: Float = 0
-    private var phase: Double = 0
 
     private func makeBuffer(_ sound: Sound, format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        // Recorded beds never share this generator. A missing file stops in
+        // `play()` rather than becoming brown noise.
+        guard sound.fileName == nil else { return nil }
+
         let frameCount = AVAudioFrameCount(sampleRate * bufferSeconds)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
               let channels = buffer.floatChannelData else { return nil }
@@ -504,42 +550,8 @@ final class SoundscapeEngine {
                 brownState = (brownState + white * 0.02) * 0.995
                 sample = brownState * 2.4
 
-            case .rain:
-                // Bright filtered noise plus sparse transients for droplets.
-                let filtered = lowpass(white, coefficient: 0.55)
-                let droplet = Float.random(in: 0...1) > 0.9992 ? white * 0.5 : 0
-                sample = (filtered * 0.28 + droplet)
-
-            case .ocean:
-                // Brown-ish noise amplitude-modulated by a slow swell. ~11s
-                // period, which is roughly real ocean and slow enough to breathe
-                // with rather than count.
-                brownState = (brownState + white * 0.02) * 0.995
-                phase += 1 / (sampleRate * 11)
-                if phase > 1 { phase -= 1 }
-                let swell = Float(pow(sin(phase * 2 * .pi) * 0.5 + 0.5, 2.5))
-                sample = brownState * 2.6 * (0.25 + swell * 0.9)
-
-            case .wind:
-                // Lowpassed noise with a slowly wandering cutoff.
-                phase += 1 / (sampleRate * 7)
-                if phase > 1 { phase -= 1 }
-                let cutoff = Float(0.06 + 0.05 * (sin(phase * 2 * .pi) * 0.5 + 0.5))
-                sample = lowpass(white, coefficient: cutoff) * 3.2
-
-            case .fan:
-                // Motor hum: heavily lowpassed noise with a shallow rotational
-                // amplitude beat.
-                phase += 1 / (sampleRate * 0.14)
-                if phase > 1 { phase -= 1 }
-                let beat = Float(0.88 + 0.12 * sin(phase * 2 * .pi))
-                sample = lowpass(white, coefficient: 0.08) * 3.0 * beat
-
             default:
-                // Recorded beds never reach here. Keep a brown fallback so a
-                // missing file still produces a quiet rumble instead of silence.
-                brownState = (brownState + white * 0.02) * 0.995
-                sample = brownState * 2.4
+                return nil
             }
 
             sample = max(-1, min(1, sample))

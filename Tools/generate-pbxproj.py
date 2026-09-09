@@ -253,6 +253,10 @@ WATCH_EXT_PRIVACY = "ZoonWatchWidget/PrivacyInfo.xcprivacy"
 
 
 def sound_files():
+    # Individual files in a yellow PBXGroup copy to the **bundle root**,
+    # not Zoon/Sounds/. SoundscapeEngine.Sound.recordedURL looks in both
+    # Sounds/ and the root so a layout mismatch cannot resurrect the
+    # synthesised-noise fallback.
     folder = os.path.join(ROOT, "Zoon", "Sounds")
     if not os.path.isdir(folder):
         return []
