@@ -74,6 +74,7 @@ struct TodayView: View {
             RecoveryMeshBackground(recoveryPercent: context.recovery.percent)
         default:
             ZoonNightGround()
+        }
     }
 
     @ViewBuilder
