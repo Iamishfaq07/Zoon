@@ -23,41 +23,34 @@ struct ZoonApp: App {
         let preferences = UserPreferences()
         let container: ModelContainer?
         let storeOpeningError: String?
+        let openedDisk: Bool
 
         do {
             container = try PersistentStore.open()
             storeOpeningError = nil
+            openedDisk = true
         } catch {
-            // Preserve the unreadable store and mount only a recovery screen.
-            // The normal app never sees this in-memory container, so it cannot
-            // mistake the failure for empty history or overwrite the disk.
+            // Preserve the unreadable store. Do not replace it with an
+            // in-memory one the rest of the app could mistake for empty
+            // history. Recovery is a screen, not a second database.
             let openingError = error.localizedDescription
-            let fallback = ModelConfiguration(isStoredInMemoryOnly: true)
+            // Probe the schema in memory so the recovery screen can say
+            // whether the file is the problem or the models themselves are.
+            // Used to be `fatalError` when this threw -- build 65 hit that
+            // on a real device (EXC_BREAKPOINT inside App.main(), before any
+            // window existed). #300 already stopped killing the process;
+            // this path still must not construct the coordinator against
+            // a throwaway container, because `start()` fetches models.
             do {
-                // PersistentStore.schema, never a hand-repeated list: the two
-                // had drifted, and a recovery container missing a model the
-                // app immediately fetches traps instead of recovering.
-                container = try ModelContainer(
-                    for: PersistentStore.schema, configurations: fallback
-                )
+                _ = try PersistentStore.makeRecoveryContainer()
                 storeOpeningError = openingError
             } catch {
-                // Both containers failed. This used to be `fatalError`, and on
-                // 2026-09-09 build 65 hit it on a real device: EXC_BREAKPOINT
-                // on the main thread inside App.main(), before any window
-                // existed. That is the worst shape a bug can take -- the app
-                // dies instantly, every launch, showing nothing and saying
-                // nothing, and the only way anyone learned why was reading a
-                // .ips off the phone by hand.
-                //
-                // Nothing here is worth killing the process for. A scene that
-                // needs no ModelContainer at all can still put both errors on
-                // screen, where the person holding the phone can read them.
-                container = nil
                 storeOpeningError = openingError
                     + "\n\nThe in-memory recovery store also failed: "
                     + error.localizedDescription
             }
+            container = nil
+            openedDisk = false
         }
 
         self.modelContainer = container
@@ -70,30 +63,36 @@ struct ZoonApp: App {
         _naps = State(initialValue: naps)
         _soundscape = State(initialValue: SoundscapeEngine())
         _reminders = State(initialValue: reminders)
-        // No container means no stores to build -- and nothing that needs
-        // them, because the only scene mounted in that case is the recovery
-        // one. Building them anyway is what turned an unopenable store into
-        // a crash.
-        _coordinator = State(initialValue: container.map { container in
-            SleepDataCoordinator(
-                healthKit: HealthKitManager(),
-                store: SleepHistoryStore(context: container.mainContext),
-                journal: JournalStore(context: container.mainContext),
-                behaviors: BehaviorObservationStore(context: container.mainContext),
-                naps: naps,
-                preferences: preferences,
-                reminders: reminders
+        // Coordinator reads the store on `start()`. Build it only against a
+        // container `open()` actually mounted. Build 65 constructed it against
+        // the recovery container (and, when that container's schema had
+        // drifted, against a fetch for a model that wasn't in it) -- `try?`
+        // does not catch a SwiftData trap, so an unopenable store became a
+        // silent repeating launch crash. #300 skipped the coordinator when
+        // *both* containers failed; this also skips it for the in-memory
+        // recovery container, which exists only as a diagnostic.
+        if openedDisk, let container {
+            _coordinator = State(
+                initialValue: SleepDataCoordinator(
+                    healthKit: HealthKitManager(),
+                    store: SleepHistoryStore(context: container.mainContext),
+                    journal: JournalStore(context: container.mainContext),
+                    behaviors: BehaviorObservationStore(context: container.mainContext),
+                    naps: naps,
+                    preferences: preferences,
+                    reminders: reminders
+                )
             )
-        })
+        } else {
+            _coordinator = State(initialValue: nil)
+        }
     }
 
     var body: some Scene {
         WindowGroup {
-            if let modelContainer, let coordinator {
+            if let modelContainer, let coordinator, storeOpeningError == nil {
                 Group {
-                    if let storeOpeningError {
-                        StoreRecoveryView(message: storeOpeningError)
-                    } else if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
+                    if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
                         RootView()
                     } else {
                         OnboardingView()
@@ -109,8 +108,8 @@ struct ZoonApp: App {
                 .environment(presentation)
                 .modelContainer(modelContainer)
             } else {
-                // Deliberately carries no .modelContainer and no environment:
-                // this is the scene for when there is no container to give it.
+                // Deliberately carries no .modelContainer and no coordinator:
+                // this is the scene for when there is no store to give it.
                 StoreRecoveryView(
                     message: storeOpeningError ?? "The data store could not be opened."
                 )

@@ -13,13 +13,8 @@ enum PreviewSupport {
     /// In-memory container — created once and reused. Building a fresh
     /// `ModelContainer` per preview is slow enough to be noticeable.
     static let container: ModelContainer = {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
-            return try ModelContainer(
-                for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-                EvidenceRevisionRecord.self,
-                configurations: configuration
-            )
+            return try PersistentStore.makeRecoveryContainer()
         } catch {
             // A preview container that can't be built is a programmer error in
             // the schema, and there's no graceful degradation worth having here.

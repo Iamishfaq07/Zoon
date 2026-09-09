@@ -145,6 +145,11 @@ TESTS_EXTRA_APP_FILES = [
     # BehaviorObservationStoreTests, the same way JournalStore above is by
     # JournalStoreIntegrationTests.
     "Zoon/Services/BehaviorObservationStore.swift",
+    # Foundation/SwiftData/os only -- the schema list and the configuration
+    # PersistentStore.open() actually uses. PersistentStoreSchemaTests asserts
+    # the entity names without constructing a ModelContainer (that still
+    # crashes this unhosted bundle -- see SwiftDataProbeTests).
+    "Zoon/Services/PersistentStore.swift",
     # Pure logic over Observation/BehaviorTag plus Statistics (already
     # Shared) -- the matched-pair engine behind Cause Finder, and exactly
     # the exposure-state semantics JournalCorrelatorTests exists to pin down.

@@ -26,4 +26,16 @@ final class SoundscapeCatalogTests: XCTestCase {
             )
         }
     }
+
+    func testSiriDisplayRepresentationsCoverEveryCase() {
+        let representations = SoundscapeSound.caseDisplayRepresentations
+        for sound in SoundscapeSound.allCases {
+            XCTAssertNotNil(
+                representations[sound],
+                "Siri case \(sound.rawValue) has no display representation"
+            )
+        }
+        XCTAssertEqual(representations.count, SoundscapeSound.allCases.count)
+    }
 }
+
