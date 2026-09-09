@@ -7,6 +7,8 @@ final class CoachEvidenceTests: XCTestCase {
         let reply = CoachEvidence(night: night, history: []).reply(to: "Am I behind on sleep?")
         XCTAssertTrue(reply.text.lowercased().contains("yes"))
         XCTAssertTrue(reply.text.contains("1h 30m") || reply.text.contains("90"))
+        XCTAssertTrue(reply.text.lowercased().contains("recent nights"))
+        XCTAssertFalse(reply.text.lowercased().contains("last night left"))
         XCTAssertNotNil(reply.evidence)
         XCTAssertNotNil(reply.action)
         XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text))

@@ -90,7 +90,7 @@ struct CoachEvidence: Sendable {
         let debt = night.sleepDebtMinutes ?? 0
         if debt >= 45 {
             return Reply(
-                text: "Yes — last night left about \(SleepNightFeatures.formatMinutes(debt)) of unpaid sleep. That's a running shortfall across recent nights, not a verdict on how you will feel today.",
+                text: "Yes — you're carrying about \(SleepNightFeatures.formatMinutes(debt)) of unpaid sleep across recent nights. That's a running shortfall, not a verdict on how you will feel today.",
                 evidence: catalog["debt"] ?? catalog["sleep"],
                 action: "Aim for an earlier wind-down tonight so the next night can repay some of it."
             )
