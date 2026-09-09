@@ -166,24 +166,62 @@ struct ZoonEmptyState: View {
     }
 }
 
-/// Layout-preserving loading state: a title line and a subtle indeterminate
-/// bar, never a giant spinner and never a fake percentage.
+/// Layout-preserving loading state: a moon gathering last night,
+/// never a giant spinner and never a fake percentage.
 struct ZoonLoadingState: View {
-    var title: String = "Updating last night…"
+    var title: String = "Gathering last night"
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweep = false
 
     var body: some View {
-        VStack(spacing: 12) {
-            Text(title)
-                .font(Theme.label(14, weight: .medium))
-                .foregroundStyle(.secondary)
-            ProgressView()
-                .progressViewStyle(.linear)
-                .tint(Theme.Family.sleep)
-                .frame(maxWidth: 180)
+        VStack(spacing: 22) {
+            ZStack {
+                NightSky(starCount: 36)
+                    .frame(height: 220)
+                    .clipShape(Circle())
+                    .padding(12)
+
+                Circle()
+                    .stroke(Theme.neutral(0.12), lineWidth: 5)
+                    .frame(width: 148, height: 148)
+
+                Circle()
+                    .trim(from: 0, to: reduceMotion ? 0.62 : (sweep ? 1 : 0.12))
+                    .stroke(
+                        Theme.Metric.sleep,
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                    )
+                    .frame(width: 148, height: 148)
+                    .rotationEffect(.degrees(-90))
+                    .animation(
+                        reduceMotion
+                            ? nil
+                            : .easeInOut(duration: 2.1).repeatForever(autoreverses: true),
+                        value: sweep
+                    )
+
+                Image(systemName: "moonphase.waxing.crescent")
+                    .font(.system(size: 46, weight: .light))
+                    .foregroundStyle(Color(white: 0.96))
+                    .symbolRenderingMode(.hierarchical)
+            }
+            .frame(height: 244)
+
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(Theme.numeral(22))
+                    .multilineTextAlignment(.center)
+                Text("From Health on this phone")
+                    .font(Theme.label(13, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 90)
+        .padding(.top, 36)
+        .onAppear { sweep = true }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
     }
 }
 

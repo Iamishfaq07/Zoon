@@ -80,7 +80,7 @@ struct TodayView: View {
     private var content: some View {
         switch coordinator.state {
         case .idle, .loading:
-            ZoonLoadingState(title: "Reading last night…")
+            ZoonLoadingState(title: "Gathering last night")
         case let .loaded(context), let .mock(context):
             loadedContent(context)
         case let .empty(reason):
