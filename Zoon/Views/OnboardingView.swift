@@ -25,14 +25,14 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var goalHours: Double = 8
     @State private var isRequestingHealth = false
-    @State private var moonGlow = false
 
     private let pageCount = 3
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-            Theme.heroGlow.ignoresSafeArea().allowsHitTesting(false)
+            NightSky()
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 TabView(selection: $page) {
@@ -58,37 +58,30 @@ struct OnboardingView: View {
 
     private var welcome: some View {
         page(
-            art: moon,
-            title: "Zoon",
-            // The Kashmiri word is right-to-left, and a bare RTL run inside an
-            // LTR sentence drags the neighbouring punctuation with it — this
-            // line rendered as ".moon in Kashmiri — زوٗن" until the isolate was
-            // added. U+2068 FIRST STRONG ISOLATE / U+2069 POP DIRECTIONAL
-            // ISOLATE fence the run off so the bidi algorithm resolves the rest
-            // of the line as LTR. Caught from a CI screenshot; it is invisible
-            // in source, where the characters are stored in logical order.
-            subtitle: "\u{2068}زوٗن\u{2069} — *moon* in Kashmiri",
+            art: InteractiveMoon(size: 236),
+            kicker: "\u{2068}زوٗن\u{2069}",
+            title: "The night, in one look",
+            subtitle: "Move the moon. This is not another tracker.",
             body: """
-                Zoon reads the sleep your Apple Watch already records and explains \
-                why last night went the way it did — not just how long it lasted.
+                Zoon reads the sleep your Watch already kept and tells the story \
+                of last night — why it went the way it did, not just how long it lasted.
                 """
         )
     }
 
     private var privacy: some View {
         page(
-            art: shield,
-            title: "It stays on your phone",
+            art: privacyMark,
+            kicker: "On this phone",
+            title: "It never leaves",
             subtitle: "No account. No server. No network code.",
             body: """
-                Zoon reads from Health and never writes to it. Everything — every \
-                score, every insight, every sound — is computed on this device.
+                Zoon reads from Health and never writes to it. Everything is computed here.
 
                 Next, iOS will ask twice: first for Sleep, which Zoon cannot \
-                function without at all, then for heart rate, HRV, breathing and \
-                the rest, which sharpen Recovery, Body Signals and the other \
-                scores but aren't required to get started. Leave everything on if \
-                you can — Zoon cannot tell afterward if a switch got turned off.
+                function without, then for heart rate, HRV, breathing and the rest, \
+                which sharpen Recovery and Body Signals. Leave everything on if you can \
+                — Zoon cannot tell afterward if a switch got turned off.
                 """
         )
     }
@@ -98,10 +91,10 @@ struct OnboardingView: View {
             Spacer(minLength: 8)
             goalDial
             VStack(spacing: 8) {
-                Text("How much sleep do you want?")
+                Text("How long do you want to sleep?")
                     .font(Theme.numeral(31))
                     .multilineTextAlignment(.center)
-                Text("Everything is measured against this, not an average.")
+                Text("Every comparison uses this number, not a crowd average.")
                     .font(Theme.label(14, weight: .medium))
                     .foregroundStyle(Theme.Metric.sleep)
                     .multilineTextAlignment(.center)
@@ -170,53 +163,26 @@ struct OnboardingView: View {
 
     // MARK: - Art
 
-    private var moon: some View {
+    private var privacyMark: some View {
         ZStack {
             Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Theme.Metric.sleep.opacity(0.55), .clear],
-                        center: .center, startRadius: 8, endRadius: 130
-                    )
-                )
-                .frame(width: 260, height: 260)
-                // Settles at 1.0 rather than overshooting to 1.06: this now
-                // resolves once (see `onAppear`), so the end state is the
-                // resting state, not one end of a cycle.
-                .scaleEffect(moonGlow || reduceMotion ? 1 : 0.9)
-
-            Image(systemName: "moon.stars.fill")
-                .font(Theme.text(88, weight: .light))
+                .stroke(Theme.neutral(0.14), lineWidth: 1)
+                .frame(width: 168, height: 168)
+            Circle()
+                .stroke(Theme.neutral(0.22), lineWidth: 1)
+                .frame(width: 124, height: 124)
+            Image(systemName: "lock.shield.fill")
+                .font(Theme.text(46, weight: .light))
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color(white: 0.99), Theme.Metric.sleep],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
+                        colors: [Color(white: 0.96), Theme.Metric.sleep],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                 )
         }
-        .onAppear {
-            guard !reduceMotion else { return }
-            // Resolves once, and stops. It used to pulse on
-            // `.repeatForever`, which kept a 260pt radial gradient
-            // animating for as long as onboarding was open -- including
-            // behind pages two and three, where it wasn't even visible.
-            // The redesign's motion rule is that animation explains
-            // something; a permanent pulse on a static illustration
-            // explains nothing and only teaches people to ignore motion.
-            withAnimation(Motion.hero) { moonGlow = true }
-        }
-    }
-
-    private var shield: some View {
-        Image(systemName: "lock.shield.fill")
-            .font(Theme.text(78, weight: .light))
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [Theme.Metric.recoveryHigh, Theme.Metric.battery],
-                    startPoint: .top, endPoint: .bottom
-                )
-            )
-            .frame(height: 260)
+        .frame(height: 236)
+        .accessibilityHidden(true)
     }
 
     private var goalDial: some View {
@@ -229,7 +195,8 @@ struct OnboardingView: View {
                     .stroke(
                         LinearGradient(
                             colors: [Theme.Metric.sleep, Theme.Metric.battery],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         ),
                         style: StrokeStyle(lineWidth: 12, lineCap: .round)
                     )
@@ -247,32 +214,37 @@ struct OnboardingView: View {
             }
             .frame(width: 150, height: 150)
 
-            // Quarter-hour steps: finer is false precision for a target, and
-            // coarser can't express 7h30m, which is a very common answer.
             Slider(value: $goalHours, in: 5...11, step: 0.25)
                 .tint(Theme.Metric.sleep)
                 .padding(.horizontal, 40)
         }
-        .frame(height: 260)
+        .frame(height: 236)
     }
 
     // MARK: - Chrome
 
     private func page(
         art: some View,
+        kicker: String,
         title: String,
         subtitle: LocalizedStringKey,
         body: String
     ) -> some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             Spacer(minLength: 8)
             art
             VStack(spacing: 8) {
+                Text(kicker)
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+                    .textCase(.uppercase)
+                    .tracking(1.6)
                 Text(title)
                     .font(Theme.numeral(31))
+                    .multilineTextAlignment(.center)
                 Text(subtitle)
                     .font(Theme.label(14, weight: .medium))
-                    .foregroundStyle(Theme.Metric.sleep)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             Text(body)
@@ -280,7 +252,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 28)
             Spacer(minLength: 8)
         }
     }
@@ -310,23 +282,18 @@ struct OnboardingView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
-            .background(
-                LinearGradient(
-                    colors: [Theme.Metric.sleep, Theme.Metric.battery],
-                    startPoint: .leading, endPoint: .trailing
-                ),
-                in: RoundedRectangle(cornerRadius: 15, style: .continuous)
-            )
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             .foregroundStyle(.black)
         }
         .disabled(isRequestingHealth)
+        .scaleEffect(isRequestingHealth ? 0.98 : 1)
     }
 
     private var buttonTitle: String {
         switch page {
-        case 0: "Get started"
+        case 0: "Begin"
         case 1: "Connect Health"
-        default: "Start"
+        default: "Open Zoon"
         }
     }
 
@@ -336,8 +303,6 @@ struct OnboardingView: View {
             withAnimation { page = 1 }
 
         case 1:
-            // The system sheet is the next thing on screen, which is the whole
-            // point of the page before it.
             isRequestingHealth = true
             Task {
                 await coordinator.requestHealthAccess()

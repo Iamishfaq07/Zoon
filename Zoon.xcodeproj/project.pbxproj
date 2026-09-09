@@ -591,6 +591,7 @@
 		A5B9DDDAA9AFBC64268EF060 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
 		A5D1D9C870BCA2F0798E3AC8 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625E612FBC59560157E62DB /* WatchLink.swift */; };
 		A5D89B4BAF339CE4F8AFBA4D /* harbor.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8135A3405E0C2B74EDDE28B9 /* harbor.mp3 */; };
+		A65C6C041C034DB1996AD127 /* NightSky.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DC9B4657137BA5F3066D5E1 /* NightSky.swift */; };
 		A6A9D3E2060799C1C6F5FE2C /* SleepDebtWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7F6F54B2365B0030755EB2 /* SleepDebtWidget.swift */; };
 		A736FAF868932C1CD8AEAADF /* CognitiveEnergyCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BBFAB53A49DC06328276E /* CognitiveEnergyCurve.swift */; };
 		A7D88A8FDA11B60174187EAD /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6625E612FBC59560157E62DB /* WatchLink.swift */; };
@@ -1185,6 +1186,7 @@
 		6B58B225F6FBD0F9D1AB4582 /* SleepContextWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepContextWindow.swift"; sourceTree = "<group>"; };
 		6D2F15BCC2EEE83CC473EA89 /* SleepFingerprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFingerprintTests.swift"; sourceTree = "<group>"; };
 		6D31C7DE63B4080D06AF6341 /* MetricConfidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricConfidenceTests.swift"; sourceTree = "<group>"; };
+		6DC9B4657137BA5F3066D5E1 /* NightSky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightSky.swift"; sourceTree = "<group>"; };
 		6DE8982C23D4D9CA3E186C1E /* SensorTruthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensorTruthView.swift"; sourceTree = "<group>"; };
 		6E407BFB2B97A928A2461870 /* CircadianPhaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CircadianPhaseTests.swift"; sourceTree = "<group>"; };
 		6E73BF56BE184A76A17FDF61 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
@@ -1534,6 +1536,7 @@
 				1D1890339F09B39454113525,
 				86B73D68A2DABAB452A03AC3,
 				E2A69E6C004133830D026EA3,
+				6DC9B4657137BA5F3066D5E1,
 				5DF81B66203884E4C36BE4D2,
 				FBA68EDD0820A539DCB0B786,
 				8CC74EF2BD00BB4165DE7DCE,
@@ -2559,6 +2562,7 @@
 				01EA5C0C3C7DF959D12CA20D,
 				10C5A8851CF03E9EB322DFEB,
 				8FA9AD6B3FD89F4112814E7E,
+				A65C6C041C034DB1996AD127,
 				41BEA2D9EBB8D252072C79FF,
 				C773D4AF2F15394933066A75,
 				111DA79A18EB6D2FD6AEF92B,
