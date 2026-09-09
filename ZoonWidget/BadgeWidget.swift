@@ -14,7 +14,7 @@ struct BadgeWidget: Widget {
                 // Matches the other widgets: the system material, not the
                 // app's gradient. A widget that paints its own dark background
                 // fights the home screen's tinting rather than sitting in it.
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) { WidgetNightGround() }
         }
         .configurationDisplayName("Badges")
         .description("Your latest badge and the one you're closest to.")

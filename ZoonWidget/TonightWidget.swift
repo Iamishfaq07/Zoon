@@ -21,7 +21,7 @@ struct TonightWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .tonight)) { entry in
             TonightWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) { WidgetNightGround() }
         }
         .configurationDisplayName("Tonight")
         .description("Tonight's bed and wake target, and where tomorrow is likely to land.")
@@ -69,7 +69,7 @@ struct TonightWidgetView: View {
 
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Tonight", systemImage: "bed.double.fill")
+            Label("Tonight", systemImage: "moonphase.waxing.crescent")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -101,7 +101,7 @@ struct TonightWidgetView: View {
     private var medium: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Tonight", systemImage: "bed.double.fill")
+                Label("Tonight", systemImage: "moonphase.waxing.crescent")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -198,7 +198,7 @@ struct TonightWidgetView: View {
 
     private var circular: some View {
         VStack(spacing: 1) {
-            Image(systemName: "bed.double.fill")
+            Image(systemName: "moonphase.waxing.crescent")
                 .font(.caption2)
                 .widgetAccentable()
             Text(hasPlan ? snapshot.tonightTargetLabel : "—")

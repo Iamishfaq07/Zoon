@@ -52,6 +52,9 @@ struct OnboardingView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            goalHours = preferences.sleepGoalMinutes / 60
+        }
     }
 
     // MARK: - Pages
@@ -61,7 +64,7 @@ struct OnboardingView: View {
             art: InteractiveMoon(size: 236),
             kicker: "\u{2068}زوٗن\u{2069}",
             title: "The night, in one look",
-            subtitle: "Move the moon. This is not another tracker.",
+            subtitle: "\u{2068}راتھ\u{2069}  ·  Move the moon. This is not another tracker.",
             body: """
                 Zoon reads the sleep your Watch already kept and tells the story \
                 of last night — why it went the way it did, not just how long it lasted.
@@ -91,6 +94,10 @@ struct OnboardingView: View {
             Spacer(minLength: 8)
             goalDial
             VStack(spacing: 8) {
+                Text("\u{2068}نِندر\u{2069}")
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.sleep)
+                    .tracking(3)
                 Text("How long do you want to sleep?")
                     .font(Theme.numeral(31))
                     .multilineTextAlignment(.center)

@@ -32,75 +32,63 @@ struct MoreView: View {
                     if !setup.value.scoreLight {
                         StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes).entrance(0)
                     }
-                    navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
-                    navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
 
+                    sectionLabel("This week")
+                    navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
                     navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
                         AchievementsView()
                     }
-                    .entrance(1)
+                    navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
+                        ReportView()
+                    }
+                    navRow("Settings", "Goal, engine, privacy, replay first night", "gearshape.fill", .secondary) {
+                        SettingsView()
+                    }
+
+                    sectionLabel("Later")
+                    navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
                     navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
                         ArticlesView()
                     }
-                    .entrance(2)
                     navRow("What Zoon knows", "Every claim, ranked by how it was found",
                             "checkmark.seal.fill", Theme.Metric.recoveryHigh) {
                         EvidenceView()
                     }
-                    .entrance(2)
                     navRow("Your patterns", "Where your good nights sit, and tomorrow's range",
                             "square.grid.3x3.fill", Theme.Metric.sleep) {
                         PatternsView()
                     }
-                    .entrance(2)
                     navRow("How well Zoon knows you", "Which parts are settled, and which are still forming",
                             "square.stack.3d.up.fill", Theme.Metric.hrv) {
                         ModelHealthView()
                     }
-                    .entrance(2)
                     navRow("Personal learning", "Resilience, light response and alertness checks",
                             "sparkles.rectangle.stack.fill", Theme.Family.sleep) {
                         PersonalLearningView()
                     }
-                    .entrance(2)
                     navRow("Sleep fingerprint", "Your recent sleep signature at a glance",
                             "circle.hexagongrid.fill", Theme.Family.recovery) {
                         SleepFingerprintView()
                     }
-                    .entrance(2)
                     navRow("Sleep eras", "Stable stretches and meaningful shifts over time",
                             "timeline.selection", Theme.Family.sleep) {
                         SleepErasView()
                     }
-                    .entrance(2)
                     navRow("Chart builder", "Ask for a transparent local chart",
                             "chart.xyaxis.line", Theme.Family.sleep) {
                         ChartBuilderView()
                     }
-                    .entrance(2)
                     navRow("Voice journal", "Speak a note and review the transcript",
                             "mic.circle.fill", Theme.Family.sleep) {
                         VoiceJournalView()
                     }
-                    .entrance(2)
                     navRow("Custom behaviours", "Track signals unique to your routine",
                             "plus.circle.fill", Theme.Family.sleep) {
                         CustomBehaviorsView()
                     }
-                    .entrance(2)
-
-                    navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
-                        ReportView()
-                    }
-                    .entrance(3)
                     navRow("Clinician Report", "7/30/90-day PDF summary to share", "doc.text.fill", Theme.Metric.hrv) {
                         ClinicianReportView()
                     }
-                    .entrance(3)
-                    navRow("Settings", "Goal, engine, privacy", "gearshape.fill", .secondary) {
-                        SettingsView()
-                    }
-                    .entrance(4)
 
                     dataCard.entrance(5)
                     privacyCard.entrance(6)
@@ -190,6 +178,15 @@ struct MoreView: View {
             .glassCard()
         }
         .buttonStyle(PressableStyle())
+    }
+
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(Theme.label(12, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 10)
+            .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: - Data

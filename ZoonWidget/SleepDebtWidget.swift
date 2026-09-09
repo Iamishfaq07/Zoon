@@ -18,7 +18,7 @@ struct SleepDebtWidget: Widget {
                 // Required from iOS 17: widgets no longer draw their own
                 // background, the system does, and omitting this makes the
                 // widget render with a broken-looking transparent panel.
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) { WidgetNightGround() }
         }
         .configurationDisplayName("Sleep Debt")
         .description("How much sleep you owe yourself over the last two weeks.")

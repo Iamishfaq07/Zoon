@@ -116,10 +116,14 @@ struct SettingsView: View {
                 }
             }
             .pickerStyle(.segmented)
+            Button("Replay the first night") {
+                preferences.hasCompletedOnboarding = false
+            }
+            .accessibilityIdentifier("replayFirstNight")
         } header: {
             Text("Appearance")
         } footer: {
-            Text("Zoon was built dark-first for a bedroom screen. Light follows the same palette in daylight tones.")
+            Text("Replay shows the star field and moon again. Nights, journal and Health access stay. Zoon was built dark-first for a bedroom screen.")
         }
     }
 

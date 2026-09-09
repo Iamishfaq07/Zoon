@@ -44,7 +44,7 @@ struct AudioStudioView: View {
                 if engine.timerMinutes != nil { Text("Remaining: \(engine.formattedRemaining)").monospacedDigit() }
             }
             Section {
-                Text("All layers are synthesized on this device. Levels are mixed at reduced gain. Switching mixes keeps the timer's original end time.")
+                Text("Brown, pink and white are generated so they never seam. Rain, wind, fire and the rest are the recorded loops bundled in the app. Levels mix at reduced gain. Switching scenes keeps the timer's original end time.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
