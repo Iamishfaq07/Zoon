@@ -135,7 +135,7 @@ struct HypnogramView: View {
                             p.move(to: CGPoint(x: x, y: from.midY))
                             p.addLine(to: CGPoint(x: x, y: to.midY))
                         }
-                        context.stroke(path, with: .color(.white.opacity(0.18)), lineWidth: 1)
+                        context.stroke(path, with: .color(Theme.neutral(0.18)), lineWidth: 1)
                     }
 
                     for segment in ordered {
@@ -191,7 +191,7 @@ struct HypnogramView: View {
                             p.move(to: CGPoint(x: x, y: 0))
                             p.addLine(to: CGPoint(x: x, y: size.height))
                         }
-                        context.stroke(path, with: .color(.white.opacity(0.4)), lineWidth: 1)
+                        context.stroke(path, with: .color(Theme.dialMarker.opacity(0.55)), lineWidth: 1)
                     }
                 }
                 .frame(width: geo.size.width, height: height)

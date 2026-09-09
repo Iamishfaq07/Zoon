@@ -73,12 +73,7 @@ struct TodayView: View {
         case let .loaded(context), let .mock(context):
             RecoveryMeshBackground(recoveryPercent: context.recovery.percent)
         default:
-            ZStack(alignment: .top) {
-                Theme.background
-                Theme.heroGlow
-            }
-            .ignoresSafeArea()
-        }
+            ZoonNightGround()
     }
 
     @ViewBuilder

@@ -169,7 +169,7 @@ struct YearHeatmapView: View {
             .overlay {
                 if isSelected {
                     RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .strokeBorder(.white, lineWidth: 1.5)
+                        .strokeBorder(Theme.dialMarker, lineWidth: 1.5)
                 }
             }
             .animation(reduceMotion ? nil : Motion.tap, value: isSelected)
