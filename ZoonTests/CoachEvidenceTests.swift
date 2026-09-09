@@ -22,12 +22,11 @@ final class CoachEvidenceTests: XCTestCase {
     }
 
     func testHRVComparesAgainstSevenDayAverage() {
+        // Fixture copies avgHRV into hrv7DayAvg, so 42 vs 42 is "close to".
         let night = Fixture.night(avgHRV: 42)
-        // Fixture copies avgHRV into hrv7DayAvg. Rebuild a quieter night against a higher baseline.
-        let quiet = Fixture.night(avgHRV: 42)
-        // Direct reply still works when both values exist and 42 vs 42 is "close to".
-        let close = CoachEvidence(night: quiet, history: []).reply(to: "Why was my HRV low last night?")
+        let close = CoachEvidence(night: night, history: []).reply(to: "Why was my HRV low last night?")
         XCTAssertTrue(close.text.contains("42"))
+        XCTAssertTrue(close.text.lowercased().contains("close to"))
         XCTAssertEqual(close.evidence, "HRV: 42 ms")
     }
 
