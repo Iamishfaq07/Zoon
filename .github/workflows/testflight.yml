@@ -153,19 +153,25 @@ jobs:
         # named, and creating this run's identity in one we control (added
         # to the search list, never assumed) is more predictable than
         # guessing what state the default keychain starts a runner in.
-        # The empty passwords are deliberate -- this keychain exists for
-        # the ~20 minutes of one job on an ephemeral, single-tenant runner,
-        # and never leaves it.
+        #
+        # A random keychain password, not a blank one -- generated fresh
+        # here, used only to unlock this keychain for the rest of this same
+        # job, and never written anywhere it would need to be remembered.
+        # An empty password is a common shortcut in scripts like this one
+        # and probably would have worked, but nothing here depends on it
+        # working, so there's no reason to depend on a macOS security-policy
+        # detail that could differ across runner images or Xcode versions.
         if: steps.signing-cache.outputs.cache-hit == 'true'
         run: |
           set -o pipefail
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
-          security create-keychain -p "" "$KEYCHAIN"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "" "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security import build/signing/identity.p12 -k "$KEYCHAIN" -P "$IOS_P12_PASSWORD" \
             -T /usr/bin/codesign -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           existing=$(security list-keychains -d user | sed 's/"//g')
           security list-keychains -d user -s "$KEYCHAIN" $existing
           echo "Imported the cached signing identity into $KEYCHAIN"
