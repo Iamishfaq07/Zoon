@@ -48,7 +48,6 @@ struct TodayView: View {
     /// strip and the morning brief are the explanation, and they wait until
     /// asked for -- see `MorningInThree`.
     @State private var showsExplanation = false
-    @State private var setup = PersonalSetupStore.shared
 
     var body: some View {
         NavigationStack {
@@ -83,18 +82,7 @@ struct TodayView: View {
         case .idle, .loading:
             ZoonLoadingState(title: "Reading last night…")
         case let .loaded(context), let .mock(context):
-            if setup.value.scoreLight && !showsExplanation {
-                VStack(alignment: .leading, spacing: 24) {
-                    Label("Your morning", systemImage: "moon.stars.fill").font(.title2.bold())
-                    Text("\(context.night.formattedTimeAsleep) asleep").font(.largeTitle.bold())
-                    Text(context.night.date, style: .date).foregroundStyle(.secondary)
-                    Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
-                        .font(.callout).foregroundStyle(.secondary)
-                    NavigationLink("Prepare for tonight") { TonightRoutineView() }.buttonStyle(.borderedProminent)
-                    NavigationLink("Morning check-in") { JournalView() }
-                    Button("Show scores and details") { showsExplanation = true }
-                }.padding(.vertical)
-            } else { loadedContent(context) }
+            loadedContent(context)
         case let .empty(reason):
             emptyState(reason)
         case let .failed(message):
@@ -136,27 +124,26 @@ struct TodayView: View {
             }.buttonStyle(.bordered)
             if coordinator.recentNights.count <= 1 {
                 FirstNightCard(night: context.night).entrance(0)
-            } else {
-                MorningInThreeCard(
-                    summary: morningSummary(context),
-                    isExplanationShown: showsExplanation,
-                    onToggleExplanation: {
-                        Haptics.select()
-                        withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
-                            showsExplanation.toggle()
-                        }
+            }
+            MorningInThreeCard(
+                summary: morningSummary(context),
+                isExplanationShown: showsExplanation,
+                onToggleExplanation: {
+                    Haptics.select()
+                    withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
+                        showsExplanation.toggle()
                     }
-                )
-                .entrance(0)
-
-                hero(context)
-
-                if showsExplanation {
-                    HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
-                        .entrance(2)
-                    MorningBrief(context: context)
-                        .entrance(3)
                 }
+            )
+            .entrance(0)
+
+            hero(context)
+
+            if showsExplanation {
+                HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
+                    .entrance(2)
+                MorningBrief(context: context)
+                    .entrance(3)
             }
 
             WorthNoticing(
