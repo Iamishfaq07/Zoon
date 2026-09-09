@@ -224,6 +224,19 @@ def main(path):
         print(plist_error)
         return 1
 
+    # ZoonTests is a standalone library bundle: no TEST_HOST, no
+    # BUNDLE_LOADER, so there is no "Zoon" module for @testable to import and
+    # the target fails with "unable to resolve module dependency: 'Zoon'".
+    # App-side code reaches these tests by being listed in
+    # TESTS_EXTRA_APP_FILES (generate-pbxproj.py), which compiles it directly
+    # into the bundle -- so the symbols are already visible with no import at
+    # all. This has now cost two separate ~10-minute macOS runs; catching it
+    # here costs milliseconds, on Linux, before anything is compiled.
+    testable_error = check_no_testable_import(os.path.dirname(os.path.dirname(path)))
+    if testable_error:
+        print(testable_error)
+        return 1
+
     isas = {}
     for oid, obj in objects.items():
         if isinstance(obj, dict):
@@ -234,6 +247,34 @@ def main(path):
     for isa, n in sorted(isas.items()):
         print(f"    {n:3d}  {isa}")
     return 0
+
+
+
+def check_no_testable_import(root):
+    """Reject `@testable import Zoon` anywhere under ZoonTests/."""
+    folder = os.path.join(root, 'ZoonTests')
+    if not os.path.isdir(folder):
+        return None
+    offenders = []
+    for dirpath, dirnames, filenames in os.walk(folder):
+        for name in sorted(filenames):
+            if not name.endswith('.swift'):
+                continue
+            full = os.path.join(dirpath, name)
+            with open(full, encoding='utf-8') as handle:
+                for number, line in enumerate(handle, 1):
+                    if line.strip() == '@testable import Zoon':
+                        rel = os.path.relpath(full, root)
+                        offenders.append(f"{rel}:{number}")
+    if not offenders:
+        return None
+    listed = '\n  '.join(offenders)
+    return ("`@testable import Zoon` cannot work in ZoonTests -- the target "
+            "has no TEST_HOST, so no Zoon module exists to import:\n  "
+            f"{listed}\n"
+            "Delete the line. If the symbol it was reaching for is app-side, "
+            "add that file to TESTS_EXTRA_APP_FILES in "
+            "Tools/generate-pbxproj.py and regenerate.")
 
 
 PLACEHOLDER_REQUIRED = [

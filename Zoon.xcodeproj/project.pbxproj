@@ -357,6 +357,7 @@
 		62A596C0DE59727DD689D1AD /* WeekOverWeek.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC86AAF5AF3281FE0FDFE01F /* WeekOverWeek.swift */; };
 		62B395821C6E23990CD0B783 /* CognitiveEnergyCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BBFAB53A49DC06328276E /* CognitiveEnergyCurve.swift */; };
 		62BE9440E1AFA7ECC4F6DBBB /* StatisticsBootstrapCITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0F64610736F9E59D4939B3 /* StatisticsBootstrapCITests.swift */; };
+		63603BA0E2F4DF02361E3452 /* SoundscapeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 710B9A0DBC682D2A2A6A1F4E /* SoundscapeEngine.swift */; };
 		63C0C306002158B02EA497E5 /* SleepScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BBBECC2713C3FCF9065786 /* SleepScore.swift */; };
 		63CDD25F11C4BC5543DCBFB9 /* SnoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED7225BE24ECD0414B324C9 /* SnoreStore.swift */; };
 		63E5D4209DB615B5CDCBE371 /* JournalEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4244633C56362A14F2ABE898 /* JournalEntry.swift */; };
@@ -554,6 +555,7 @@
 		9C6FFF40259684BD6FB394E8 /* ZoonIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8B4D93DD23601661ABF27 /* ZoonIcons.swift */; };
 		9C8709E92001899175705B2E /* CognitiveEnergyCurveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8893FEADB992DD685D86F75E /* CognitiveEnergyCurveTests.swift */; };
 		9C8F915D0A51DA415BC7EC23 /* SnoreSignalAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B96C01BFB4A1B54D4ABEEE07 /* SnoreSignalAnalyzer.swift */; };
+		9CA8EE72E77CFCC9F0B821F8 /* SoundscapeSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE60545E37A1FA38FA95079 /* SoundscapeSound.swift */; };
 		9CB66CD7D00DFFCE2FB8C036 /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		9CD3DDB3A0126A58BFE4A041 /* ICloudArchiveSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A73E488AC8141BEEEE48659 /* ICloudArchiveSyncTests.swift */; };
 		9D002A8E9DE089DAAF8DEC73 /* EvidenceNotebook.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86F4E642A185C699DD6A3F0 /* EvidenceNotebook.swift */; };
@@ -771,6 +773,7 @@
 		DD36B23A9ABA9BC42B58F480 /* brook.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 25C8287E7DDB1A72F2C2EF5A /* brook.mp3 */; };
 		DD3E19CEF586A462AD026253 /* ContextForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CF3AFB3F90453076AA3237 /* ContextForecastTests.swift */; };
 		DDAD93731E30FA94B44B769F /* CaffeineCutoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521868F4960E566A4B24993B /* CaffeineCutoffTests.swift */; };
+		DDB31A760C94229400268E9E /* SoundscapeSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE60545E37A1FA38FA95079 /* SoundscapeSound.swift */; };
 		DE877ECB17E3E70CC0E5174C /* SnoreSignalAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF6BCFC8B0ACCBC5470DF3C4 /* SnoreSignalAnalyzerTests.swift */; };
 		DEB765085C487BBC96E3C657 /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
 		DED414C9ECE598E408A289D5 /* ModelHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBD54449FE143D276EBFEF54 /* ModelHealthTests.swift */; };
@@ -819,6 +822,7 @@
 		E7E68658D923ECD0BD14401E /* InsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45237B7D4C6548BAEC55290F /* InsightCard.swift */; };
 		E7E7C0142F441A71C212CB3F /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		E7F4FE786866EA1680038DD2 /* ArchiveCipher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7FB7ED912EC5DA6CCB20F99 /* ArchiveCipher.swift */; };
+		E803BF5B87A1E69F54B045F4 /* AudioSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3A56B5A89CF6121E0FF4E9 /* AudioSessionCoordinator.swift */; };
 		E8743E49268A2EF60DD227EA /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */; };
 		E8CD5DE8F6C971086E35FD03 /* ScoreLightSnapshotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0278D14480A795D4342D056A /* ScoreLightSnapshotView.swift */; };
 		E8D4DAF25EB06021F18AD8C5 /* ZoonBaselineLane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006E64082F1EF426B9BF8089 /* ZoonBaselineLane.swift */; };
@@ -1140,6 +1144,7 @@
 		5C432B8295F6810E7F975CEE /* DayContextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DayContextBuilder.swift"; sourceTree = "<group>"; };
 		5C6FD7CE0766096CAE5D60F2 /* BodyClockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClockView.swift"; sourceTree = "<group>"; };
 		5CB15B2930CDA0CED202C925 /* EvidenceLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceLedgerTests.swift"; sourceTree = "<group>"; };
+		5CE60545E37A1FA38FA95079 /* SoundscapeSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundscapeSound.swift"; sourceTree = "<group>"; };
 		5CF8A3FDEA744A3C1FD02525 /* NightDetectiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightDetectiveTests.swift"; sourceTree = "<group>"; };
 		5DB3E61DB8C8F8D456A37728 /* ChangePointDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChangePointDetectorTests.swift"; sourceTree = "<group>"; };
 		5DF81B66203884E4C36BE4D2 /* PairedDotPlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PairedDotPlot.swift"; sourceTree = "<group>"; };
@@ -1860,6 +1865,7 @@
 			isa = PBXGroup;
 			children = (
 				80EB230A0227CB13495CEA75,
+				5CE60545E37A1FA38FA95079,
 				BADFBFF192F82BF1AF28487A,
 			);
 			path = AppIntents;
@@ -2431,6 +2437,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				029E9FE1F49891915607D833,
+				9CA8EE72E77CFCC9F0B821F8,
 				1108CAF7451794712C1E8EBB,
 				5576B51153477F740C14D9BC,
 				F9061A1B41637857E5AAD1D6,
@@ -3098,6 +3105,9 @@
 				D993EF29ECD2D4B5886F9012,
 				19EE5AB89454ED3FA48663FB,
 				75C138FAD0641153A091A476,
+				63603BA0E2F4DF02361E3452,
+				E803BF5B87A1E69F54B045F4,
+				DDB31A760C94229400268E9E,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
