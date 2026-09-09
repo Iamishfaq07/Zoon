@@ -18,11 +18,11 @@ struct RecoveryMeshBackground: View {
         let light = colorScheme == .light
         switch recoveryPercent {
         case 85...:
-            light ? Self.lightHigh : Self.darkHigh
+            return light ? Self.lightHigh : Self.darkHigh
         case 40..<85:
-            light ? Self.lightMid : Self.darkMid
+            return light ? Self.lightMid : Self.darkMid
         default:
-            light ? Self.lightLow : Self.darkLow
+            return light ? Self.lightLow : Self.darkLow
         }
     }
 

@@ -742,7 +742,7 @@ struct ZoonAmbientBackground: View {
         let light = colorScheme == .light
         switch band {
         case .morning:
-            light
+            return light
                 ? [
                     Color(red: 0.996, green: 0.925, blue: 0.878),
                     Color(red: 0.976, green: 0.929, blue: 0.902),
@@ -754,7 +754,7 @@ struct ZoonAmbientBackground: View {
                     Color(red: 0.051, green: 0.063, blue: 0.141)
                 ]
         case .day:
-            light
+            return light
                 ? [
                     Color(red: 0.918, green: 0.929, blue: 0.976),
                     Color(red: 0.929, green: 0.925, blue: 0.976),
@@ -766,7 +766,7 @@ struct ZoonAmbientBackground: View {
                     Color(red: 0.063, green: 0.055, blue: 0.161)
                 ]
         case .evening:
-            light
+            return light
                 ? [
                     Color(red: 0.882, green: 0.867, blue: 0.945),
                     Color(red: 0.906, green: 0.878, blue: 0.949),
@@ -778,7 +778,7 @@ struct ZoonAmbientBackground: View {
                     Color(red: 0.086, green: 0.055, blue: 0.184)
                 ]
         case .night:
-            []
+            return []
         }
     }
 }
