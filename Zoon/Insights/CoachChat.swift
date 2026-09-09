@@ -145,10 +145,13 @@ final class CoachChat {
     var isTransientlyUnavailable: Bool { Self.isTransientlyUnavailable }
 
     private func appendLocalAnswer(_ question: String) {
-        let answer = evidence?.answer(to: question)
-        messages.append(Message(role: .assistant,
-            text: answer?.text ?? "Choose a recorded night to explore its sleep, timing, HRV, or resting heart rate.",
-            groundedIn: answer?.evidence))
+        let reply = evidence?.reply(to: question)
+        messages.append(Message(
+            role: .assistant,
+            text: reply?.text ?? "Choose a recorded night to explore its sleep, timing, HRV, or resting heart rate.",
+            groundedIn: reply?.evidence,
+            bestAction: reply?.action
+        ))
     }
 
     /// Starts a new session with tonight's numbers -- and, when there's
@@ -163,7 +166,12 @@ final class CoachChat {
     func start(nightSummary: String, contextDigest: String? = nil, chartContext: String? = nil) {
         messages = []
         #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
+        // Only open a model session when Apple Intelligence is actually
+        // available. Creating one on an ineligible device (or while the
+        // model is still downloading) made every send() throw and show
+        // "Couldn't generate a response" even though local answers were
+        // ready — that's the Coach tab the user hit.
+        if isAvailable, #available(iOS 26.0, *) {
             session = LanguageModelSession(
                 instructions: Self.instructions(
                     nightSummary: nightSummary,
@@ -171,6 +179,8 @@ final class CoachChat {
                     chartContext: chartContext
                 )
             )
+        } else {
+            session = nil
         }
         #endif
     }
@@ -184,7 +194,7 @@ final class CoachChat {
         defer { isResponding = false }
 
         #if canImport(FoundationModels)
-        guard #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
+        guard isAvailable, #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
             appendLocalAnswer(trimmed)
             return
         }
@@ -221,11 +231,8 @@ final class CoachChat {
             // rule-based conversation to hand off to -- so it shows a plain
             // refusal instead of the raw response.
             guard !answer.isEmpty, CoachEvidence.allowsGeneratedProse(answer + " " + bestAction), !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
-                logger.notice("Chat response was empty or failed the diagnostic-language check; not shown")
-                messages.append(Message(
-                    role: .assistant,
-                    text: "I can't help with that one -- ask me something about tonight's numbers instead."
-                ))
+                logger.notice("Chat response was empty or failed the diagnostic-language check; using the local reply")
+                appendLocalAnswer(trimmed)
                 return
             }
 
@@ -237,10 +244,7 @@ final class CoachChat {
             ))
         } catch {
             logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
-            messages.append(Message(
-                role: .assistant,
-                text: "Couldn't generate a response just then. Try asking again."
-            ))
+            appendLocalAnswer(trimmed)
         }
         #else
         appendLocalAnswer(trimmed)

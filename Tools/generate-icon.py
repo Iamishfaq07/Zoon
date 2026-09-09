@@ -1,84 +1,14 @@
 #!/usr/bin/env python3
-"""Draw Zoon's app icon: the ZOON ECLIPSE mark.
+"""Draw Zoon's app icon: a waxing crescent you can read as a moon.
 
-The icon is generated rather than committed as an opaque binary so it has
-provenance: the palette below is the same one `Theme.swift` uses, and changing
-the app's colours means changing two files that visibly agree rather than
-hoping someone re-exports a PNG.
+The previous mark cut a diagonal band through a disc (a Z-shaped eclipse).
+At 29px that read as a banana or a C, not the moon the first-run screen
+uses. This file draws a dim full sphere first, then a thick bright limb
+on the right — the same geometry as the in-app crescent.
 
-Pure standard library -- no Pillow on the runner, and adding a dependency to
-draw two circles would be a poor trade. PNG is a simple enough container to
-write directly: filter-0 scanlines, zlib-deflated, three chunks.
-
-Rendered at 4x and box-downsampled, which is what gives the disc a clean edge;
-there is no path rasteriser here to anti-alias for us.
+Pure standard library. Rendered at 4x and box-downsampled.
 
     python3 Tools/generate-icon.py
-
-Writes the iPhone icon in three appearances (default, dark, tinted) and the
-Watch icon.
-
-## The mark
-
-A bold lunar disc with one diagonal band cut out of it, and one small point
-off its upper right.
-
-The previous icon was a crescent moon over nine stars on a purple gradient,
-which is the exact icon every sleep and meditation app on the store already
-has -- it identified the category, not the product. This one is built from
-three decisions:
-
-**The cut is offset far enough to survive downsampling.** A band straight
-through the middle leaves two equal halves and reads as a prohibition sign,
-which is a strong shape carrying entirely the wrong meaning. Pushed off-centre
-it reads as what it is: something passing in front of a disc.
-
-The first version of this mark offset the cut by 0.070, leaving 54% of the
-disc as the body and 30% as the cap. That is plainly asymmetric at 1024 and
-not asymmetric enough at 29. Rendered and looked at across the sizes the
-system actually uses, the two masses converge as the image shrinks -- by the
-Settings size the cap has thinned to a sliver, the eye reads the remaining
-bar as bisecting, and the prohibition sign is back. The offset was correct in
-principle and too small in practice.
-
-At 0.130 the split is roughly 62% body to 19% cap, which stays unmistakably
-unequal at 29px. Further still (0.150 was tried) thins the cap to a paring
-that disappears at small sizes and leaves a fussy notch, so this is the far
-end of the useful range rather than a step along it.
-
-The cut is also slightly wider (0.058) so the gap itself does not close up
-under the same downsampling that was eating the cap.
-
-**The cut descends to the left, which is the direction a Z's diagonal runs.**
-The body's straight upper edge, the diagonal gap, and the cap's straight lower
-edge trace the three strokes of a Z. It is meant to be noticed second, not
-first, so nothing is distorted to strengthen it.
-
-**One point, not a field of stars.** It sits on the cut's own axis, so it
-reads as something in orbit rather than decoration, and it is the only place
-the app's violet appears.
-
-There is no text, no thin decorative linework, no baked glass or refraction,
-and no gradient inside the mark -- all of which disappear below about 60pt
-and none of which survive the tinted appearance at all. The silhouette is two
-solid shapes, so it is the same mark at 1024, at 180, at 60, and in the Watch
-grid.
-
-## Appearances
-
-iOS 18 asks for three, and they are not the same image recoloured:
-
-- **Default** -- the bright disc on Zoon's night ground.
-- **Dark** -- the same mark on a much deeper ground. Home screens in dark
-  mode sit on dark wallpaper, and the default ground floats there as a
-  visible bright square.
-- **Tinted** -- greyscale by luminance, which is what the system re-colours
-  with the user's chosen tint. Any hue here would be thrown away, so the
-  violet point becomes the one mid-grey value instead and still separates
-  from the disc.
-
-The images are full-bleed and square: the system applies the rounded-rect
-mask, and baking one in produces a visibly wrong icon with dark corners.
 """
 import math
 import os
@@ -86,55 +16,26 @@ import struct
 import zlib
 
 SIZE = 1024
-SS = 4                      # supersampling factor
+SS = 4
 W = SIZE * SS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Theme.background, top to bottom. Kept in sync with Shared/Theme.swift.
-SKY = [
-    (0.024, 0.031, 0.078),
-    (0.051, 0.063, 0.141),
-    (0.078, 0.063, 0.200),
-]
-# The dark appearance sits on a much deeper version of the same three stops,
-# so the two icons are recognisably one mark rather than two designs.
-SKY_DARK = [tuple(c * 0.34 for c in stop) for stop in SKY]
-
-# Theme.Metric.sleep -- the app's primary hue. The orbital point only.
-ACCENT = (0.482, 0.380, 1.00)
-DISC = (0.97, 0.955, 0.925)
-
-# MARK: - Geometry, shared by every appearance.
-
-CX = CY = 0.5
-R_DISC = 0.30
-# The cut descends to the left, like a Z's diagonal.
-ANGLE = math.radians(38)
-DIR = (-math.cos(ANGLE), math.sin(ANGLE))       # y grows downward
-NORMAL = (-DIR[1], DIR[0])
-CUT_HALF_WIDTH = 0.058
-# Off-centre on purpose, and by this much on purpose -- see the module
-# docstring. Chosen by rendering the mark at 180, 60, 40 and 29 and looking
-# at it, not by picking a pleasing number at full size.
-CUT_OFFSET = 0.130
-# On the cut's own axis, clear of the disc.
-DOT_DISTANCE = 0.368
-DOT_RADIUS = 0.029
+SKY = (0.024, 0.031, 0.067)
+SKY_DARK = (0.012, 0.016, 0.035)
+# Unlit face — bright enough that the full disc reads at 29px.
+DIM = (0.46, 0.51, 0.62)
+DISC = (0.97, 0.975, 0.99)
+LIMB = (0.84, 0.88, 1.00)
 
 
 def lerp(a, b, t):
     return a + (b - a) * t
 
 
-def sky_at(y, stops):
-    """Vertical gradient through the three sky stops."""
-    t = y / (W - 1)
-    if t < 0.5:
-        u = t / 0.5
-        return tuple(lerp(stops[0][i], stops[1][i], u) for i in range(3))
-    u = (t - 0.5) / 0.5
-    return tuple(lerp(stops[1][i], stops[2][i], u) for i in range(3))
+def mix(c1, c2, t):
+    t = max(0.0, min(1.0, t))
+    return tuple(lerp(c1[i], c2[i], t) for i in range(3))
 
 
 def luminance(colour):
@@ -142,50 +43,52 @@ def luminance(colour):
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def render(ground, disc, accent):
-    """One appearance, as a list of PNG scanlines.
-
-    Accumulates at the supersampled width one row at a time, folding each
-    block of SS rows down immediately. Holding a 4096x4096 RGB buffer would be
-    ~200 MB of Python floats; this keeps it to a few megabytes.
-    """
-    cx, cy = CX * W, CY * W
-    r_disc = R_DISC * W
-    half = CUT_HALF_WIDTH * W
-    offset = CUT_OFFSET * W
-    dot_x = cx - DIR[0] * DOT_DISTANCE * W
-    dot_y = cy - DIR[1] * DOT_DISTANCE * W
-    dot_r = DOT_RADIUS * W
+def render(ground, dim, disc, limb):
+    """Full moon disc, then a waxing crescent on top, then a thin rim."""
+    cx = cy = 0.5 * W
+    r_moon = 0.34 * W
+    ox = cx - 0.12 * W
+    oy = cy - 0.01 * W
+    r_occ = 0.325 * W
+    r_occ2 = r_occ * r_occ
+    rim = r_moon * 0.04
 
     rows = []
     acc = [[0.0, 0.0, 0.0] for _ in range(SIZE)]
 
     for y in range(W):
-        base = sky_at(y, ground)
         dy = y - cy
+        ody = y - oy
         for x in range(W):
-            r, g, b = base
+            colour = ground
             dx = x - cx
+            dist2 = dx * dx + dy * dy
+            outer = r_moon + rim
+            if dist2 <= outer * outer:
+                dist = math.sqrt(dist2)
+                if dist > r_moon:
+                    fade = 1.0 - (dist - r_moon) / rim
+                    colour = mix(ground, mix(dim, disc, 0.4), fade * 0.85)
+                else:
+                    nr = dist / r_moon
+                    light = 0.62 + 0.38 * max(0.0, (-dx * 0.28 - dy * 0.5) / r_moon + 0.2)
+                    colour = mix(mix(ground, dim, 0.72), dim, min(1.0, light))
+                    colour = mix(colour, dim, 0.4 + 0.6 * (1.0 - nr * 0.3))
 
-            # The disc, minus the band cut out of it.
-            if dx * dx + dy * dy < r_disc * r_disc:
-                signed = dx * NORMAL[0] + dy * NORMAL[1]
-                if abs(signed - offset) >= half:
-                    r, g, b = disc
-
-            # The orbital point, drawn last so it is never eaten by the disc.
-            if math.hypot(x - dot_x, y - dot_y) < dot_r:
-                r, g, b = accent
+                    odx = x - ox
+                    if odx * odx + ody * ody > r_occ2:
+                        shine = mix(disc, limb, min(1.0, nr * 0.35))
+                        colour = mix(colour, shine, 0.92)
 
             cell = acc[x // SS]
-            cell[0] += r
-            cell[1] += g
-            cell[2] += b
+            cell[0] += colour[0]
+            cell[1] += colour[1]
+            cell[2] += colour[2]
 
         if (y + 1) % SS == 0:
             n = SS * SS
             row = bytearray()
-            row.append(0)  # filter type 0 (None)
+            row.append(0)
             for cell in acc:
                 for c in cell:
                     row.append(int(round(min(1.0, max(0.0, c / n)) * 255)))
@@ -200,15 +103,11 @@ def write_png(path, rows):
         return (struct.pack('>I', len(data)) + tag + data
                 + struct.pack('>I', zlib.crc32(tag + data) & 0xFFFFFFFF))
 
-    # Colour type 2 (truecolour, no alpha). App icons must be fully opaque --
-    # an alpha channel is a submission rejection, and the mark has no
-    # transparent region anyway.
     ihdr = struct.pack('>IIBBBBB', SIZE, SIZE, 8, 2, 0, 0, 0)
     png = (b'\x89PNG\r\n\x1a\n'
            + chunk(b'IHDR', ihdr)
            + chunk(b'IDAT', zlib.compress(b''.join(rows), 9))
            + chunk(b'IEND', b''))
-
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as handle:
         handle.write(png)
@@ -219,21 +118,15 @@ def main():
     ios = os.path.join(ROOT, 'Zoon', 'Assets.xcassets', 'AppIcon.appiconset')
     watch = os.path.join(ROOT, 'ZoonWatch', 'Assets.xcassets', 'AppIcon.appiconset')
 
-    default_rows = render(SKY, DISC, ACCENT)
+    default_rows = render(SKY, DIM, DISC, LIMB)
     write_png(os.path.join(ios, 'icon-1024.png'), default_rows)
-    # The Watch icon is the default appearance: watchOS has no dark or tinted
-    # variant, and the mark is centred so the circular crop takes nothing.
     write_png(os.path.join(watch, 'icon-1024.png'), default_rows)
-
     write_png(os.path.join(ios, 'icon-1024-dark.png'),
-              render(SKY_DARK, DISC, ACCENT))
+              render(SKY_DARK, mix(DIM, SKY_DARK, 0.12), DISC, LIMB))
 
-    # Greyscale by luminance. The accent's own luminance is close enough to
-    # the ground to vanish, so the point is given an explicit mid value --
-    # it has to stay visible against the disc *and* the ground.
-    grey_ground = [(luminance(stop),) * 3 for stop in SKY_DARK]
+    grey_ground = (luminance(SKY_DARK),) * 3
     write_png(os.path.join(ios, 'icon-1024-tinted.png'),
-              render(grey_ground, (luminance(DISC),) * 3, (0.52, 0.52, 0.52)))
+              render(grey_ground, (0.42, 0.42, 0.42), (0.96, 0.96, 0.96), (0.78, 0.78, 0.78)))
 
 
 if __name__ == '__main__':
