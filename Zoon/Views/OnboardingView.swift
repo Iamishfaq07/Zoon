@@ -94,15 +94,78 @@ struct OnboardingView: View {
     }
 
     private var goal: some View {
-        page(
-            art: goalDial,
-            title: "How much sleep do you want?",
-            subtitle: "Everything is measured against this, not an average.",
-            body: """
-                Sleep debt, sleep performance, tonight's bedtime — all of it is \
-                relative to your target. Change it any time in Settings.
-                """
-        )
+        VStack(spacing: 18) {
+            Spacer(minLength: 8)
+            goalDial
+            VStack(spacing: 8) {
+                Text("How much sleep do you want?")
+                    .font(Theme.numeral(31))
+                    .multilineTextAlignment(.center)
+                Text("Everything is measured against this, not an average.")
+                    .font(Theme.label(14, weight: .medium))
+                    .foregroundStyle(Theme.Metric.sleep)
+                    .multilineTextAlignment(.center)
+            }
+            profilePickers
+            Spacer(minLength: 8)
+        }
+    }
+
+    /// Age / sex / BMI belong here rather than a fourth lecture: they now
+    /// change the deep-sleep prior, and burying them in Settings means most
+    /// people never set them. All three stay optional.
+    private var profilePickers: some View {
+        VStack(spacing: 10) {
+            Text("Optional — used only to pick a demographic deep-sleep prior, so a typical older night is not marked down against a young-adult target.")
+                .font(Theme.text(11))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 28)
+
+            HStack(spacing: 10) {
+                Picker(
+                    "Age",
+                    selection: Binding(
+                        get: { preferences.age ?? 0 },
+                        set: { preferences.age = $0 > 0 ? $0 : nil }
+                    )
+                ) {
+                    Text("Age").tag(0)
+                    ForEach(16...90, id: \.self) { age in
+                        Text("\(age)").tag(age)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Picker(
+                    "Sex",
+                    selection: Binding(
+                        get: { preferences.biologicalSex },
+                        set: { preferences.biologicalSex = $0 }
+                    )
+                ) {
+                    Text("Sex").tag(DemographicBaseline.Sex.unspecified)
+                    Text("Female").tag(DemographicBaseline.Sex.female)
+                    Text("Male").tag(DemographicBaseline.Sex.male)
+                }
+                .pickerStyle(.menu)
+
+                Picker(
+                    "BMI",
+                    selection: Binding(
+                        get: { preferences.bodyMassIndex.map { Int($0.rounded()) } ?? 0 },
+                        set: { preferences.bodyMassIndex = $0 > 0 ? Double($0) : nil }
+                    )
+                ) {
+                    Text("BMI").tag(0)
+                    ForEach(16...45, id: \.self) { bmi in
+                        Text("\(bmi)").tag(bmi)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            .padding(.horizontal, 20)
+        }
     }
 
     // MARK: - Art

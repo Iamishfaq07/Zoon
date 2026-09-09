@@ -870,6 +870,14 @@ final class SleepDataCoordinator {
         publishSnapshot(context, goal: goal)
     }
 
+    /// Widgets and the watch only see a nap after `publishSnapshot`.
+    /// Start/stop used to wait for the next HealthKit refresh, which is
+    /// minutes later if the app stays in the foreground.
+    func republishGlanceSurfaces() {
+        guard let context = state.context else { return }
+        publishSnapshot(context, goal: preferences.sleepGoalMinutes)
+    }
+
     /// Nap credit for the night ending `night`, combining manually-logged
     /// naps with HealthKit-auto-detected ones without double-crediting a nap
     /// caught by both.
@@ -1377,6 +1385,7 @@ final class SleepDataCoordinator {
                 rawValue: restored.appearance
             ) ?? .dark
             preferences.bedtimeRemindersEnabled = restored.bedtimeRemindersEnabled
+            preferences.morningBriefEnabled = restored.morningBriefEnabled ?? false
             preferences.cycleTrackingEnabled = restored.cycleTrackingEnabled
             preferences.lifestyleInsightsEnabled = restored.lifestyleInsightsEnabled ?? false
             preferences.smartWakeEnabled = restored.smartWakeEnabled

@@ -216,6 +216,11 @@ TESTS_EXTRA_APP_FILES = [
     # no UIKit runtime dependency) -- the backup Archive format itself,
     # exactly what DataExporterTests exists to round-trip.
     "Zoon/Services/DataExporter.swift",
+    "Zoon/Services/ICloudArchiveSync.swift",
+    # UIKit PDF layout plus pure row builders. The row builders are what
+    # ClinicianReportRowsTests asserts; the generator has to come along
+    # because those helpers live on the same type.
+    "Zoon/Services/ClinicianReportGenerator.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"

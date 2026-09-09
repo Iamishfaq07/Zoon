@@ -62,6 +62,95 @@ struct LogSleepTagIntent: AppIntent {
     }
 }
 
+struct StartNapIntent: AppIntent {
+    static var title: LocalizedStringResource = "Start a Nap"
+    static var description = IntentDescription("Start Zoon's nap timer.")
+    static var openAppWhenRun = true
+
+    @Parameter(title: "Minutes", default: 20)
+    var minutes: Int
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Start a \(\.$minutes)-minute nap in Zoon")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let bounded = min(90, max(10, minutes))
+        DeepLink.pending = .nap
+        DeepLink.pendingNapMinutes = bounded
+        return .result(dialog: "Starting a \(bounded)-minute nap.")
+    }
+}
+
+struct StartSoundscapeIntent: AppIntent {
+    static var title: LocalizedStringResource = "Start Sleep Sounds"
+    static var description = IntentDescription("Open Zoon's generated soundscapes.")
+    static var openAppWhenRun = true
+
+    @Parameter(title: "Sound", default: .brownNoise)
+    var sound: SoundscapeSound
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Play \(\.$sound) in Zoon")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        DeepLink.pending = .soundscapes
+        DeepLink.pendingSound = sound.rawValue
+        return .result(dialog: "Opening \(sound.label) in Zoon.")
+    }
+}
+
+struct GetBedtimeIntent: AppIntent {
+    static var title: LocalizedStringResource = "Get Tonight's Bedtime"
+    static var description = IntentDescription("Tonight's bed and wake target from Zoon.")
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let snapshot = SnapshotStore.read(), !snapshot.tonightTargetLabel.isEmpty else {
+            return .result(dialog: "I don't have a bedtime target yet — a week of nights and Zoon can suggest one.")
+        }
+        if snapshot.isTonightTargetHolding {
+            return .result(dialog: "Hold \(snapshot.tonightTargetLabel). \(snapshot.tonightTargetNote)")
+        }
+        return .result(dialog: "Aim for \(snapshot.tonightTargetLabel). \(snapshot.tonightTargetNote)")
+    }
+}
+
+/// Soundscape names Siri can say. Duplicates `SoundscapeEngine.Sound` labels
+/// rather than importing the engine: App Intents metadata is analysed at
+/// build time and cannot see a computed dictionary the way the compiler can.
+enum SoundscapeSound: String, AppEnum {
+    case brownNoise, pinkNoise, whiteNoise, rain, ocean, wind, fan
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "Sleep Sound" }
+
+    static var caseDisplayRepresentations: [SoundscapeSound: DisplayRepresentation] {
+        [
+            .brownNoise: DisplayRepresentation(title: "Brown Noise"),
+            .pinkNoise: DisplayRepresentation(title: "Pink Noise"),
+            .whiteNoise: DisplayRepresentation(title: "White Noise"),
+            .rain: DisplayRepresentation(title: "Rain"),
+            .ocean: DisplayRepresentation(title: "Ocean"),
+            .wind: DisplayRepresentation(title: "Wind"),
+            .fan: DisplayRepresentation(title: "Fan")
+        ]
+    }
+
+    var label: String {
+        switch self {
+        case .brownNoise: "Brown Noise"
+        case .pinkNoise: "Pink Noise"
+        case .whiteNoise: "White Noise"
+        case .rain: "Rain"
+        case .ocean: "Ocean"
+        case .wind: "Wind"
+        case .fan: "Fan"
+        }
+    }
+}
+
 /// Registers the phrases Siri matches to each intent, and gives Shortcuts a
 /// curated set to suggest rather than requiring the user to search for them.
 struct ZoonShortcuts: AppShortcutsProvider {
@@ -93,13 +182,40 @@ struct ZoonShortcuts: AppShortcutsProvider {
             shortTitle: "Log Habit",
             systemImageName: "square.and.pencil"
         )
+        AppShortcut(
+            intent: StartNapIntent(),
+            phrases: [
+                "Start a nap in \(.applicationName)",
+                "Nap in \(.applicationName)"
+            ],
+            shortTitle: "Start Nap",
+            systemImageName: "powersleep"
+        )
+        AppShortcut(
+            intent: StartSoundscapeIntent(),
+            phrases: [
+                "Start sleep sounds in \(.applicationName)",
+                "Play white noise in \(.applicationName)"
+            ],
+            shortTitle: "Sleep Sounds",
+            systemImageName: "waveform"
+        )
+        AppShortcut(
+            intent: GetBedtimeIntent(),
+            phrases: [
+                "What's my bedtime in \(.applicationName)",
+                "When should I sleep in \(.applicationName)"
+            ],
+            shortTitle: "Tonight's Bedtime",
+            systemImageName: "bed.double.fill"
+        )
     }
 }
 
 extension BehaviorTag: AppEnum {
     static var typeDisplayRepresentation: TypeDisplayRepresentation { "Sleep Habit" }
 
-    // The AppIntents metadata processor statically analyses this property at
+    // The App Intents metadata processor statically analyses this property at
     // build time to generate Siri's vocabulary -- it can't evaluate a
     // `Dictionary(uniqueKeysWithValues: allCases.map { ... })` the way the
     // compiler can, only a literal dictionary. Duplicates the text `.label`

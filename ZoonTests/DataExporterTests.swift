@@ -47,7 +47,8 @@ final class DataExporterTests: XCTestCase {
                 experimentDirection: "avoid",
                 experimentDesign: "abba",
                 experimentDesignSeed: 12_345,
-                recoveryModeDate: Date(timeIntervalSince1970: 1_700_000_000)
+                recoveryModeDate: Date(timeIntervalSince1970: 1_700_000_000),
+                morningBriefEnabled: true
             ),
             snoreSummaries: [],
             wristTemperatures: [],
@@ -323,6 +324,7 @@ final class DataExporterTests: XCTestCase {
             decoded.preferences?.recoveryModeDate,
             Date(timeIntervalSince1970: 1_700_000_000)
         )
+        XCTAssertEqual(decoded.preferences?.morningBriefEnabled, true)
     }
 
     /// The field was added after format 4 shipped, so a format-4 file written

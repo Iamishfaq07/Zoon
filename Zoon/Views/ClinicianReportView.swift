@@ -11,7 +11,7 @@ struct ClinicianReportView: View {
     @State private var reportURL: URL?
     @State private var errorMessage: String?
 
-    private let rangeOptions = [30, 90]
+    private let rangeOptions = [7, 30, 90]
 
     var body: some View {
         ScrollView {
@@ -126,7 +126,10 @@ struct ClinicianReportView: View {
             nights: coordinator.recentNights,
             sections: selectedSections,
             rangeDays: rangeDays,
-            goalMinutes: preferences.sleepGoalMinutes
+            goalMinutes: preferences.sleepGoalMinutes,
+            age: preferences.age,
+            biologicalSex: preferences.biologicalSex,
+            bodyMassIndex: preferences.bodyMassIndex
         )
         do {
             reportURL = try DataExporter.writeTemporary(
