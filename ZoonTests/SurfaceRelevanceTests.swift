@@ -54,17 +54,22 @@ final class SurfaceRelevanceTests: XCTestCase {
         }
     }
 
-    /// The small hours belong to no window on purpose. Someone looking at
-    /// their watch at 3am is not being served by a cheerful recovery score,
+    /// The small hours belong to no *report* window on purpose. Someone looking
+    /// at their watch at 3am is not being served by a cheerful recovery score,
     /// and last night's is not finished being slept yet.
+    ///
+    /// `circadianPhase` is the exception: it is a live clock, and "Sleep
+    /// window" is the honest label for 3am. `napTimer` is already excluded
+    /// by scoring 0 when no nap is running.
     func testTheSmallHoursRaiseNothing() {
         for hour in 0..<5 {
-            for kind in SurfaceRelevance.Kind.allCases {
+            for kind in SurfaceRelevance.Kind.allCases where kind != .circadianPhase {
                 XCTAssertNotEqual(
                     score(kind, hour: hour), SurfaceRelevance.inWindowScore,
                     "\(kind.rawValue) claims 0\(hour):00"
                 )
             }
+            XCTAssertEqual(score(.circadianPhase, hour: hour), SurfaceRelevance.inWindowScore)
         }
     }
 

@@ -288,4 +288,9 @@ enum WatchQuickAction: Codable, Sendable {
     /// run a live countdown that also survives the app being backgrounded,
     /// so this logs a completed nap retroactively rather than starting one.
     case nap(minutes: Int)
+    /// Hands-free log of a midnight awakening / disruption, fired from the
+    /// watchOS Double Tap (primary hand gesture) without looking at the
+    /// screen. The phone records the wall-clock time as a journal note;
+    /// HealthKit stays read-only.
+    case midnightAwakening
 }

@@ -75,7 +75,7 @@ final class SoundscapeEngine {
 
     private(set) var playing: Sound?
     var volume: Float = 0.6 {
-        didSet { player?.volume = volume * fadeMultiplier }
+        didSet { player?.volume = volume * fadeMultiplier * biometricAttenuation }
     }
 
     /// Minutes until auto-stop. `nil` = no timer.
@@ -98,6 +98,13 @@ final class SoundscapeEngine {
     private var player: AVAudioPlayerNode?
     private var timerTask: Task<Void, Never>?
     private var fadeMultiplier: Float = 1
+    /// 1 = full presence; drops toward 0.45 as overnight HR falls below
+    /// resting, which is the sleep-onset cue this engine listens for.
+    private var biometricAttenuation: Float = 1
+    /// 1 = unfiltered; lower values strip high harmonics as sleep deepens.
+    private var harmonicPresence: Float = 1
+    private var pausedSound: Sound?
+    private var wasInterrupted = false
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Soundscape")
 
     private let sampleRate: Double = 44_100
@@ -125,8 +132,9 @@ final class SoundscapeEngine {
             // podcast someone is already falling asleep to, and keeps running
             // when the screen locks.
             try AudioSessionCoordinator.shared.acquire(audioOwner) { [weak self] in
-                self?.stop()
-                self?.interruptionMessage = "Playback stopped after an interruption or audio route change. Tap a sound to resume."
+                self?.pauseForInterruption()
+            } onResume: { [weak self] in
+                self?.resumeAfterInterruption()
             }
 
             let engine = AVAudioEngine()
@@ -157,8 +165,8 @@ final class SoundscapeEngine {
                     do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
                     guard let self else { return }
                     let fraction = Float(step) / 20
-                    player.volume = volume * fadeMultiplier * fraction
-                    oldPlayer?.volume = volume * fadeMultiplier * (1 - fraction)
+                    player.volume = volume * fadeMultiplier * biometricAttenuation * fraction
+                    oldPlayer?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
                 }
                 oldPlayer?.stop()
                 oldEngine?.stop()
@@ -215,7 +223,54 @@ final class SoundscapeEngine {
         timerMinutes = nil
         remainingSeconds = 0
         fadeMultiplier = 1
+        biometricAttenuation = 1
+        harmonicPresence = 1
+        pausedSound = nil
+        wasInterrupted = false
         AudioSessionCoordinator.shared.release(audioOwner)
+    }
+
+    /// Pause without releasing the session, so an interruption can resume
+    /// the same sound rather than leaving the user with a silent night.
+    private func pauseForInterruption() {
+        guard let playing else { return }
+        pausedSound = playing
+        wasInterrupted = true
+        interruptionMessage = "Playback paused. It will resume when the interruption ends, or tap a sound to start again."
+        player?.pause()
+        for layer in scenePlayers { layer.player?.pause() }
+    }
+
+    private func resumeAfterInterruption() {
+        guard wasInterrupted else { return }
+        wasInterrupted = false
+        interruptionMessage = nil
+        if let player, playing != nil {
+            player.play()
+            for layer in scenePlayers { layer.player?.play() }
+            return
+        }
+        guard let pausedSound else { return }
+        play(pausedSound, toggle: false)
+    }
+
+    /// Sleep-onset cue: as overnight HR falls below resting, turn the
+    /// soundscape down and strip high harmonics so it recedes with the
+    /// body rather than staying a constant presence.
+    ///
+    /// A larger dip is a healthier overnight recovery signal; the
+    /// attenuation is bounded so a noisy reading cannot mute the engine.
+    func followHeartRate(currentBPM: Double, restingBPM: Double) {
+        guard restingBPM > 0, isPlaying else { return }
+        let dip = max(0, restingBPM - currentBPM)
+        let progress = min(1, dip / 12)
+        biometricAttenuation = Float(1 - 0.55 * progress)
+        harmonicPresence = Float(1 - 0.7 * progress)
+        player?.volume = volume * fadeMultiplier * biometricAttenuation
+        for (index, player) in scenePlayers.enumerated() where index + 1 < sceneLevels.count {
+            player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier * biometricAttenuation
+            player.harmonicPresence = harmonicPresence
+        }
     }
 
     /// Auto-stop after `minutes`, with a fade over the final 60 seconds.
@@ -227,7 +282,7 @@ final class SoundscapeEngine {
         timerMinutes = minutes
         deadline = minutes.map { Date.now.addingTimeInterval(Double(max(0, $0)) * 60) }
         fadeMultiplier = 1
-        player?.volume = volume
+        player?.volume = volume * biometricAttenuation
 
         guard let minutes else {
             remainingSeconds = 0
@@ -257,9 +312,9 @@ final class SoundscapeEngine {
         let fadeWindow = 60
         if remainingSeconds <= fadeWindow {
             fadeMultiplier = Float(remainingSeconds) / Float(fadeWindow)
-            player?.volume = volume * fadeMultiplier
+            player?.volume = volume * fadeMultiplier * biometricAttenuation
             for (index, player) in scenePlayers.enumerated() {
-                player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier
+                player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier * biometricAttenuation
             }
         }
     }
@@ -353,6 +408,14 @@ final class SoundscapeEngine {
             }
 
             sample = max(-1, min(1, sample))
+            if harmonicPresence < 0.999 {
+                // Extra pole on top of each sound's own filter: as HR dips,
+                // the remaining high-frequency content is stripped so the
+                // soundscape recedes rather than staying bright at the
+                // pillow.
+                let coefficient = 0.08 + 0.45 * harmonicPresence
+                sample = lowpass(sample, coefficient: coefficient)
+            }
 
             // Slight stereo decorrelation. Identical channels image as a point
             // inside your head, which is fatiguing; a touch of difference makes

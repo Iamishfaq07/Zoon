@@ -182,7 +182,13 @@ struct DayContextBuilder {
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedNeed,
-            sleepScore: SleepScore.compute(for: night, goalMinutes: inputs.goalMinutes),
+            sleepScore: SleepScore.compute(
+                for: night,
+                goalMinutes: inputs.goalMinutes,
+                demographic: inputs.age.map {
+                    DemographicBaseline(ageYears: $0, sex: .unspecified, bodyMassIndex: nil)
+                }
+            ),
             sleepIntelligence: sleepIntelligence,
             strain: inputs.todayStrain,
             bodyBattery: bodyBattery,

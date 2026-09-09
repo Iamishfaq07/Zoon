@@ -85,6 +85,9 @@ TESTS_EXTRA_APP_FILES = [
     "Zoon/Models/CyclePhase.swift",
     "Zoon/Models/EvidenceRevisionRecord.swift",
     "Zoon/Services/SleepSessionBuilder.swift",
+    # HealthKit sample factory for CI / Simulator tests -- Foundation +
+    # HealthKit only, same import surface as SleepSessionBuilder.
+    "Zoon/Services/MockHealthKitStore.swift",
     # Foundation/SwiftData only -- see the SwiftDataProbeTests doc comment
     # above for why this specific type, alone, is back in the test target.
     "Zoon/Models/SleepNightRecord.swift",

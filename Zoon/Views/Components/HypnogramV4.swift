@@ -56,6 +56,7 @@ struct HypnogramV4: View {
 
     @State private var narrator = OnDeviceNarrator()
     @State private var replayHaptics = false
+    @State private var stageHaptics = HypnogramHaptics()
     @State private var overlays: Set<Overlay> = []
     @State private var scrubFraction: CGFloat?
     /// The window currently shown; `nil` means the whole night.
@@ -242,6 +243,17 @@ struct HypnogramV4: View {
                 Color.clear
                     .zoonScrubbable(fraction: $scrubFraction, detent: segmentDetent)
                     .padding(.leading, 50)
+            }
+            .onChange(of: scrubFraction) { _, fraction in
+                guard !reduceMotion else { return }
+                guard let fraction, let shownSpan, shownSpan.duration > 0 else {
+                    stageHaptics.stop()
+                    return
+                }
+                let time = shownSpan.start.addingTimeInterval(shownSpan.duration * Double(fraction))
+                if let stage = segment(at: time)?.stage {
+                    stageHaptics.play(for: stage)
+                }
             }
 
             axis

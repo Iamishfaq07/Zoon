@@ -31,6 +31,7 @@ struct ZoonWatchComplications: WidgetBundle {
         TonightComplication()
         BodySignalsComplication()
         SleepBankComplication()
+        CircadianPhaseComplication()
         // The only surface here about something happening *now*. It scores
         // 100 while a nap runs and 0 otherwise, so it takes the stack's slot
         // for the duration and is invisible the rest of the time.
@@ -717,6 +718,80 @@ struct BadgeComplicationView: View {
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
         }
+        }
+    }
+}
+
+// MARK: - Circadian Phase
+
+/// Live "where in the day" label plus sleep debt, for the Smart Stack.
+///
+/// Computed at render from the entry's own `date` so a timeline entry an
+/// hour out does not inherit the phase of an hour ago. The watch has no
+/// body-clock history; `CircadianPhase.at` falls back to the wall clock
+/// when the snapshot has no wake time, which is the same honest fallback
+/// the type documents.
+struct CircadianPhaseComplication: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(
+            kind: "ZoonCircadianPhase",
+            provider: WatchComplicationProvider(kind: .circadianPhase)
+        ) { entry in
+            CircadianPhaseComplicationView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
+        }
+        .configurationDisplayName("Circadian Phase")
+        .description("Where in the day you are, and the sleep you still owe.")
+        .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
+    }
+}
+
+struct CircadianPhaseComplicationView: View {
+    let entry: WatchComplicationEntry
+    @Environment(\.widgetFamily) private var family
+
+    private var phase: CircadianPhase {
+        CircadianPhase.at(now: entry.date, wakeTime: nil, onsetHour: nil)
+    }
+
+    private var debtLabel: String {
+        let minutes = entry.snapshot.sleepDebtMinutes
+        if minutes <= 0 { return "Caught up" }
+        return SleepNightFeatures.formatMinutes(minutes) + " debt"
+    }
+
+    var body: some View {
+        if entry.snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: entry.snapshot)
+        } else {
+            switch family {
+            case .accessoryInline:
+                Text("\(phase.label) · \(debtLabel)")
+                    .privacySensitive()
+
+            case .accessoryRectangular:
+                VStack(alignment: .leading, spacing: 1) {
+                    Label(phase.label, systemImage: phase.symbol)
+                        .font(Theme.text(13, weight: .semibold))
+                    Text(debtLabel)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .privacySensitive()
+                    Text(entry.isPlaceholder ? "Sample data" : "Now")
+                        .font(Theme.text(11))
+                        .foregroundStyle(.secondary)
+                }
+
+            default:
+                VStack(spacing: 1) {
+                    Image(systemName: phase.symbol)
+                    Text(phase.label)
+                        .font(.caption2)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+                .privacySensitive()
+            }
         }
     }
 }
