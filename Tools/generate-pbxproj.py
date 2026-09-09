@@ -230,6 +230,20 @@ APP_PRIVACY = "Zoon/PrivacyInfo.xcprivacy"
 EXT_PRIVACY = "ZoonWidget/PrivacyInfo.xcprivacy"
 WATCH_PRIVACY = "ZoonWatch/PrivacyInfo.xcprivacy"
 WATCH_EXT_PRIVACY = "ZoonWatchWidget/PrivacyInfo.xcprivacy"
+
+
+def sound_files():
+    folder = os.path.join(ROOT, "Zoon", "Sounds")
+    if not os.path.isdir(folder):
+        return []
+    return sorted(
+        f"Zoon/Sounds/{name}"
+        for name in os.listdir(folder)
+        if name.endswith(".mp3")
+    )
+
+
+SOUND_FILES = sound_files()
 DOCS = ["README.md", "SETUP.md", "PRIVACY.md", "LICENSE", ".gitignore"]
 
 # ---------------------------------------------------------------- objects
@@ -256,6 +270,8 @@ def file_ref(path, ftype=None, name=None):
             ftype = "text.yaml"
         elif base.endswith(".xcprivacy"):
             ftype = "text.xml"
+        elif base.endswith(".mp3"):
+            ftype = "audio.mp3"
         else:
             ftype = "text"
     emit("PBXFileReference",
@@ -268,7 +284,7 @@ refs = {}
 for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + TESTS_SRC + UITESTS_SRC + [
     APP_ASSETS, EXT_ASSETS, WATCH_ASSETS,
     APP_PRIVACY, EXT_PRIVACY, WATCH_PRIVACY, WATCH_EXT_PRIVACY,
-] + DOCS:
+] + DOCS + SOUND_FILES:
     refs[p] = file_ref(p)
 
 APP_PRODUCT = uid("product:app")
@@ -345,7 +361,9 @@ def resource_file(path, target):
     return bid
 
 
-app_resources = [resource_file(APP_ASSETS, APP), resource_file(APP_PRIVACY, APP)]
+app_resources = [resource_file(APP_ASSETS, APP), resource_file(APP_PRIVACY, APP)] + [
+    resource_file(p, APP) for p in SOUND_FILES
+]
 ext_resources = [resource_file(EXT_ASSETS, EXT), resource_file(EXT_PRIVACY, EXT)]
 watch_resources = [resource_file(WATCH_ASSETS, WATCH), resource_file(WATCH_PRIVACY, WATCH)]
 watch_ext_resources = [resource_file(WATCH_EXT_PRIVACY, WATCH_EXT)]
@@ -409,7 +427,9 @@ def tree_groups(prefix, files, extra=()):
 
 
 shared_group = tree_groups("Shared", SHARED)
-app_group = tree_groups("Zoon", APP_SRC, extra=[refs[APP_ASSETS], refs[APP_PRIVACY]])
+sounds_group = group("Zoon/Sounds", "Sounds", [refs[p] for p in SOUND_FILES], path="Sounds") if SOUND_FILES else None
+app_extra = [refs[APP_ASSETS], refs[APP_PRIVACY]] + ([sounds_group] if sounds_group else [])
+app_group = tree_groups("Zoon", APP_SRC, extra=app_extra)
 ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS], refs[EXT_PRIVACY]])
 watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS], refs[WATCH_PRIVACY]])
 watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC, extra=[refs[WATCH_EXT_PRIVACY]])

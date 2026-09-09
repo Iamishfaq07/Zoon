@@ -2,37 +2,57 @@ import Foundation
 import AVFoundation
 import os
 
-/// Sleep sounds, synthesised in real time.
+/// Sleep sounds: generated noise plus bundled recorded loops.
 ///
-/// Every soundscape here is **generated**, not played back from a file. That's
-/// unusual, and it's the right call for three reasons:
+/// Brown, pink and white stay **synthesised** so they never seam and add
+/// nothing to the download. Weather, night and room beds are **recorded**
+/// ~90s loops bundled on device — nothing is streamed, nothing phones home.
+/// The loops are loudness-matched and crossfaded at the join.
 ///
-/// 1. **No assets.** A decent sleep-sound library is 50–200 MB of loops. This is
-///    a few hundred lines of DSP and adds nothing to the download.
-/// 2. **No loop seam.** Recorded ambience repeats every few minutes and, once
-///    you notice the seam, you cannot un-notice it. Noise generated per-buffer
-///    never repeats.
-/// 3. **It fits the app's promise.** No network, no bundled media, nothing
-///    phoning home for a stream.
-///
-/// The synthesis is deliberately simple — filtered noise, not physical modelling.
-/// Brown noise for rumble, filtered and amplitude-modulated noise for rain and
-/// waves. It sounds convincing at sleep volume, which is the only volume it will
-/// ever be heard at.
+/// Sleep onset still drops volume (and, for generated noise, high harmonics)
+/// as overnight heart rate falls below resting.
 @MainActor
 @Observable
 final class SoundscapeEngine {
 
     enum Sound: String, Codable, CaseIterable, Identifiable, Sendable {
-        case brownNoise
-        case pinkNoise
-        case whiteNoise
-        case rain
-        case ocean
-        case wind
-        case fan
+        case brownNoise, pinkNoise, whiteNoise
+        case rain, rainfall, window, tent, storm, thunder, drizzle, street
+        case ocean, harbor, waterfall, wind, blizzard, stream, brook
+        case forest, jungle, evening, garden, crickets, insects, pond, mountain
+        case fan, fire, embers, purr
 
         var id: String { rawValue }
+
+        enum Group: String, CaseIterable, Sendable {
+            case noise, weather, night, room
+            var label: String {
+                switch self {
+                case .noise: "Noise"
+                case .weather: "Weather"
+                case .night: "Night"
+                case .room: "Room"
+                }
+            }
+        }
+
+        var group: Group {
+            switch self {
+            case .brownNoise, .pinkNoise, .whiteNoise: .noise
+            case .rain, .rainfall, .window, .tent, .storm, .thunder, .drizzle, .street,
+                 .ocean, .harbor, .waterfall, .wind, .blizzard, .stream, .brook: .weather
+            case .forest, .jungle, .evening, .garden, .crickets, .insects, .pond, .mountain: .night
+            case .fan, .fire, .embers, .purr: .room
+            }
+        }
+
+        /// Bundled loop. `nil` means generated noise.
+        var fileName: String? {
+            switch self {
+            case .brownNoise, .pinkNoise, .whiteNoise: nil
+            default: rawValue
+            }
+        }
 
         var label: String {
             switch self {
@@ -40,21 +60,67 @@ final class SoundscapeEngine {
             case .pinkNoise: "Pink Noise"
             case .whiteNoise: "White Noise"
             case .rain: "Rain"
+            case .rainfall: "Shower"
+            case .window: "Window"
+            case .tent: "Tent"
+            case .storm: "Storm"
+            case .thunder: "Thunder"
+            case .drizzle: "Drizzle"
+            case .street: "Street"
             case .ocean: "Ocean"
+            case .harbor: "Harbor"
+            case .waterfall: "Falls"
             case .wind: "Wind"
+            case .blizzard: "Blizzard"
+            case .stream: "Stream"
+            case .brook: "Brook"
+            case .forest: "Forest"
+            case .jungle: "Jungle"
+            case .evening: "Evening"
+            case .garden: "Garden"
+            case .crickets: "Crickets"
+            case .insects: "Insects"
+            case .pond: "Pond"
+            case .mountain: "Ridge"
             case .fan: "Fan"
+            case .fire: "Fire"
+            case .embers: "Embers"
+            case .purr: "Purr"
             }
         }
 
         var detail: String {
             switch self {
-            case .brownNoise: "Deep, low rumble. The most masking of the three noises."
-            case .pinkNoise: "Balanced hiss. Often the most natural-sounding."
-            case .whiteNoise: "Bright and flat. Best at masking sharp sounds."
-            case .rain: "Steady rainfall with irregular gusts."
-            case .ocean: "Slow swell, breaking roughly every ten seconds."
-            case .wind: "Distant, shifting wind."
-            case .fan: "Low motor hum with a soft rotational beat."
+            case .brownNoise: "Deep, low rumble. Generated so it never seams."
+            case .pinkNoise: "Balanced hiss. Generated so it never seams."
+            case .whiteNoise: "Bright and flat. Generated so it never seams."
+            case .rain: "Gentle overnight rain."
+            case .rainfall: "Soft rainfall."
+            case .window: "Drops on glass."
+            case .tent: "Rain on canvas in a forest."
+            case .storm: "Rain and distant thunder."
+            case .thunder: "Rumble through a storm."
+            case .drizzle: "Green-noise rain."
+            case .street: "Midnight rain on pavement."
+            case .ocean: "Waves on the coast."
+            case .harbor: "Small waves on rocks."
+            case .waterfall: "Close waterfall."
+            case .wind: "Open desert air."
+            case .blizzard: "Wind through a cold night."
+            case .stream: "Running water."
+            case .brook: "Long water bed."
+            case .forest: "Frogs and crickets."
+            case .jungle: "Calm storm in the trees."
+            case .evening: "Birds, crickets, distant dogs."
+            case .garden: "Soft wind, birds, crickets."
+            case .crickets: "Night field."
+            case .insects: "Night forest chorus."
+            case .pond: "Water and night insects."
+            case .mountain: "Wind on a high ridge."
+            case .fan: "Machine hush."
+            case .fire: "Campfire and night wind."
+            case .embers: "Close crackle."
+            case .purr: "A cat, close."
             }
         }
 
@@ -63,10 +129,20 @@ final class SoundscapeEngine {
             case .brownNoise: "waveform.path"
             case .pinkNoise: "waveform"
             case .whiteNoise: "waveform.badge.plus"
-            case .rain: "cloud.rain.fill"
-            case .ocean: "water.waves"
-            case .wind: "wind"
+            case .rain, .rainfall, .drizzle: "cloud.rain.fill"
+            case .window: "window.casement.closed"
+            case .tent: "tent.fill"
+            case .storm, .thunder, .jungle: "cloud.bolt.rain.fill"
+            case .street: "building.2.fill"
+            case .ocean, .harbor: "water.waves"
+            case .waterfall, .stream, .brook: "drop.fill"
+            case .wind, .blizzard, .mountain: "wind"
+            case .forest, .garden: "tree.fill"
+            case .evening, .pond: "moon.stars.fill"
+            case .crickets, .insects: "ant.fill"
             case .fan: "fan.fill"
+            case .fire, .embers: "flame.fill"
+            case .purr: "cat.fill"
             }
         }
     }
@@ -75,7 +151,7 @@ final class SoundscapeEngine {
 
     private(set) var playing: Sound?
     var volume: Float = 0.6 {
-        didSet { player?.volume = volume * fadeMultiplier * biometricAttenuation }
+        didSet { applyOutputVolume() }
     }
 
     /// Minutes until auto-stop. `nil` = no timer.
@@ -96,6 +172,8 @@ final class SoundscapeEngine {
     private var retiringPlayers: [(AVAudioEngine, AVAudioPlayerNode)] = []
     private var engine: AVAudioEngine?
     private var player: AVAudioPlayerNode?
+    private var filePlayer: AVAudioPlayer?
+    private var retiringFilePlayer: AVAudioPlayer?
     private var timerTask: Task<Void, Never>?
     private var fadeMultiplier: Float = 1
     /// 1 = full presence; drops toward 0.45 as overnight HR falls below
@@ -122,9 +200,13 @@ final class SoundscapeEngine {
         playbackGeneration = UUID()
         let oldEngine = engine
         let oldPlayer = player
+        let oldFile = filePlayer
+        filePlayer = nil
         crossfadeTask?.cancel()
         for (engine, player) in retiringPlayers { player.stop(); engine.stop() }
         retiringPlayers = []
+        retiringFilePlayer?.stop()
+        retiringFilePlayer = oldFile
         interruptionMessage = nil
 
         do {
@@ -135,6 +217,33 @@ final class SoundscapeEngine {
                 self?.pauseForInterruption()
             } onResume: { [weak self] in
                 self?.resumeAfterInterruption()
+            }
+
+            if let name = sound.fileName,
+               let url = Bundle.main.url(forResource: name, withExtension: "mp3", subdirectory: "Sounds") {
+                let recorded = try AVAudioPlayer(contentsOf: url)
+                recorded.numberOfLoops = -1
+                recorded.volume = 0
+                recorded.prepareToPlay()
+                recorded.play()
+                oldPlayer?.stop()
+                oldEngine?.stop()
+                self.engine = nil
+                self.player = nil
+                self.filePlayer = recorded
+                self.playing = sound
+                crossfadeTask = Task { [weak self] in
+                    for step in 1...20 {
+                        do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
+                        guard let self else { return }
+                        let fraction = Float(step) / 20
+                        recorded.volume = volume * fadeMultiplier * biometricAttenuation * fraction
+                        oldFile?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
+                    }
+                    oldFile?.stop()
+                    self?.retiringFilePlayer = nil
+                }
+                return
             }
 
             let engine = AVAudioEngine()
@@ -155,6 +264,8 @@ final class SoundscapeEngine {
             self.engine = engine
             self.player = player
             self.playing = sound
+            oldFile?.stop()
+            self.retiringFilePlayer = nil
 
             // Prime with a few buffers, then keep the queue topped up as each
             // one finishes. Scheduling one at a time would gap on a slow frame.
@@ -219,6 +330,10 @@ final class SoundscapeEngine {
         engine?.stop()
         player = nil
         engine = nil
+        filePlayer?.stop()
+        filePlayer = nil
+        retiringFilePlayer?.stop()
+        retiringFilePlayer = nil
         playing = nil
         timerMinutes = nil
         remainingSeconds = 0
@@ -238,16 +353,24 @@ final class SoundscapeEngine {
         wasInterrupted = true
         interruptionMessage = "Playback paused. It will resume when the interruption ends, or tap a sound to start again."
         player?.pause()
-        for layer in scenePlayers { layer.player?.pause() }
+        filePlayer?.pause()
+        for layer in scenePlayers {
+            layer.player?.pause()
+            layer.filePlayer?.pause()
+        }
     }
 
     private func resumeAfterInterruption() {
         guard wasInterrupted else { return }
         wasInterrupted = false
         interruptionMessage = nil
-        if let player, playing != nil {
-            player.play()
-            for layer in scenePlayers { layer.player?.play() }
+        if playing != nil, player != nil || filePlayer != nil {
+            player?.play()
+            filePlayer?.play()
+            for layer in scenePlayers {
+                layer.player?.play()
+                layer.filePlayer?.play()
+            }
             return
         }
         guard let pausedSound else { return }
@@ -266,7 +389,7 @@ final class SoundscapeEngine {
         let progress = min(1, dip / 12)
         biometricAttenuation = Float(1 - 0.55 * progress)
         harmonicPresence = Float(1 - 0.7 * progress)
-        player?.volume = volume * fadeMultiplier * biometricAttenuation
+        applyOutputVolume()
         for (index, player) in scenePlayers.enumerated() where index + 1 < sceneLevels.count {
             player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier * biometricAttenuation
             player.harmonicPresence = harmonicPresence
@@ -282,7 +405,7 @@ final class SoundscapeEngine {
         timerMinutes = minutes
         deadline = minutes.map { Date.now.addingTimeInterval(Double(max(0, $0)) * 60) }
         fadeMultiplier = 1
-        player?.volume = volume * biometricAttenuation
+        applyOutputVolume()
 
         guard let minutes else {
             remainingSeconds = 0
@@ -312,7 +435,7 @@ final class SoundscapeEngine {
         let fadeWindow = 60
         if remainingSeconds <= fadeWindow {
             fadeMultiplier = Float(remainingSeconds) / Float(fadeWindow)
-            player?.volume = volume * fadeMultiplier * biometricAttenuation
+            applyOutputVolume()
             for (index, player) in scenePlayers.enumerated() {
                 player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier * biometricAttenuation
             }
@@ -323,6 +446,12 @@ final class SoundscapeEngine {
         let minutes = remainingSeconds / 60
         let seconds = remainingSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private func applyOutputVolume() {
+        let v = volume * fadeMultiplier * biometricAttenuation
+        player?.volume = v
+        filePlayer?.volume = v
     }
 
     // MARK: - Synthesis
@@ -405,6 +534,12 @@ final class SoundscapeEngine {
                 if phase > 1 { phase -= 1 }
                 let beat = Float(0.88 + 0.12 * sin(phase * 2 * .pi))
                 sample = lowpass(white, coefficient: 0.08) * 3.0 * beat
+
+            default:
+                // Recorded beds never reach here. Keep a brown fallback so a
+                // missing file still produces a quiet rumble instead of silence.
+                brownState = (brownState + white * 0.02) * 0.995
+                sample = brownState * 2.4
             }
 
             sample = max(-1, min(1, sample))

@@ -90,12 +90,22 @@ struct SoundscapeView: View {
     // MARK: - Grid
 
     private var grid: some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-            spacing: 12
-        ) {
-            ForEach(SoundscapeEngine.Sound.allCases) { sound in
-                soundTile(sound)
+        VStack(alignment: .leading, spacing: 18) {
+            ForEach(SoundscapeEngine.Sound.Group.allCases, id: \.self) { group in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(group.label)
+                        .font(Theme.label(12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                        spacing: 12
+                    ) {
+                        ForEach(SoundscapeEngine.Sound.allCases.filter { $0.group == group }) { sound in
+                            soundTile(sound)
+                        }
+                    }
+                }
             }
         }
     }
@@ -193,13 +203,13 @@ struct SoundscapeView: View {
 
     private var explanation: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Generated on device", systemImage: "cpu")
+            Label("On this device", systemImage: "internaldrive")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.Metric.battery)
             Text("""
-                Every sound here is synthesised in real time rather than streamed or \
-                played from a file. Nothing is downloaded, and because the audio is \
-                generated continuously there's no loop to notice.
+                Brown, pink and white are generated so they never seam. Weather, \
+                night and room are recorded loops bundled in the app — nothing is \
+                streamed. Sleep onset still drops volume as overnight heart rate falls.
                 """)
                 .font(.caption)
                 .foregroundStyle(.secondary)
