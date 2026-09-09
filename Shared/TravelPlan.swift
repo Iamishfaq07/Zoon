@@ -186,10 +186,29 @@ enum TravelPlan {
                         + (preparationDays == 1 ? "day" : "days") + "."
                 ))
             }
-            simple.append(contentsOf: steps.filter {
-                if case .before = $0.phase { return false }
-                return true
-            })
+            simple.append(contentsOf: steps.filter { $0.phase == .flight })
+
+            // The destination phase is several steps now: the light advice,
+            // then one line per Autopilot-capped repayment night. Same rule
+            // as the preparation days above -- collapsed into a line that
+            // still says how many nights and how far each one moves, rather
+            // than truncated away. Simple is one line per phase, not a
+            // shorter prefix of the detailed plan.
+            let atDestination = steps.filter { $0.phase == .destination }
+            if let light = atDestination.first {
+                let nights = atDestination.count - 1
+                if nights > 0 {
+                    let cap = Int(SleepAutopilot.maximumNightlyShift.rounded())
+                    simple.append(Step(
+                        phase: .destination,
+                        when: light.when,
+                        action: light.action + " Then move bedtime \(cap) minutes per night "
+                            + "for \(nights) " + (nights == 1 ? "night" : "nights") + "."
+                    ))
+                } else {
+                    simple.append(light)
+                }
+            }
             return simple
         }
 

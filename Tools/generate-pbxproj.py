@@ -221,6 +221,21 @@ TESTS_EXTRA_APP_FILES = [
     # ClinicianReportRowsTests asserts; the generator has to come along
     # because those helpers live on the same type.
     "Zoon/Services/ClinicianReportGenerator.swift",
+    # Foundation/AVFoundation/os only -- the sound catalogue itself. Only the
+    # nested Sound enum is exercised (which beds exist, which stay synthesised,
+    # which name a bundled file); nothing here starts an audio engine. App-side
+    # rather than Shared/ because the widget and watch targets play no audio.
+    "Zoon/Services/SoundscapeEngine.swift",
+    # Foundation/AVFoundation only -- the session owner SoundscapeEngine holds.
+    # Required, not optional: the engine references the type, so the test target
+    # cannot compile SoundscapeEngine without it.
+    "Zoon/Services/AudioSessionCoordinator.swift",
+    # AppIntents only -- the Siri-facing sound names, split out of
+    # ZoonIntents.swift (which needs SwiftData, SnapshotStore and
+    # PersistentStore) precisely so this one enum is compilable here. It is a
+    # hand-maintained duplicate of SoundscapeEngine.Sound's cases, and
+    # SoundscapeCatalogTests exists to catch the two drifting apart.
+    "Zoon/AppIntents/SoundscapeSound.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"

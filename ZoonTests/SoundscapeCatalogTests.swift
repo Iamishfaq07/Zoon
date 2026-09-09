@@ -1,5 +1,4 @@
 import XCTest
-@testable import Zoon
 
 final class SoundscapeCatalogTests: XCTestCase {
     func testEveryGroupHasSoundsAndNoiseStaysGenerated() {

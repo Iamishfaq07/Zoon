@@ -268,7 +268,24 @@ final class TravelPlanTests: XCTestCase {
         XCTAssertEqual(
             plan.simpleSteps.filter { $0.phase != .flight && $0.phase != .destination }.count, 1
         )
-        XCTAssertEqual(plan.steps.last, plan.simpleSteps.last)
+        // The flight line is carried through untouched.
+        XCTAssertEqual(
+            plan.steps.first { $0.phase == .flight },
+            plan.simpleSteps.first { $0.phase == .flight }
+        )
+        // `plan.steps.last` used to be the destination step, and this
+        // asserted identity against it. It is a repayment night now, so the
+        // check names the step it always meant: the destination line keeps
+        // its light advice verbatim and *appends* a summary of the repayment
+        // nights. Summarised, not truncated -- the count must survive.
+        let detailed = try XCTUnwrap(plan.steps.first { $0.phase == .destination })
+        let simple = try XCTUnwrap(plan.simpleSteps.last)
+        XCTAssertEqual(simple.when, detailed.when)
+        XCTAssertTrue(simple.action.hasPrefix(detailed.action))
+        XCTAssertTrue(
+            simple.action.contains("\(TravelPlan.destinationRepaymentNights) nights"),
+            "the simple plan must say how many repayment nights, not drop them"
+        )
     }
 
     func testWithNoPreparationTheSimplePlanIsJustTheFlightAndDestination() throws {
