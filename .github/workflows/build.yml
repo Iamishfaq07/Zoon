@@ -38,6 +38,8 @@ jobs:
           git diff --exit-code -- Zoon.xcodeproj/project.pbxproj Zoon.xcodeproj/xcshareddata/xcschemes/Zoon.xcscheme
       - name: Parse project.pbxproj
         run: python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
+      - name: Check App Store Connect cert-slot helper
+        run: python3 Tools/asc_free_certificate_slot.py --self-test
       - name: Enforce release trust gates
         run: python3 Tools/release-audit.py
 

@@ -186,15 +186,19 @@ summary, nothing is broken — that build uploaded fine, and the next run will
 mint a fresh certificate the way every run did before caching existed.
 
 *(If you're reading this because a run just failed with exactly that
-error: go to
-[developer.apple.com/account/resources/certificates/list](https://developer.apple.com/account/resources/certificates/list),
-revoke one old "Apple Development" certificate to free a slot, then run the
-workflow again — that unblocks you immediately, independent of whether
-`IOS_P12_PASSWORD` is set. If it's already set and the error still happens,
-the *cached* certificate itself is the one that got revoked somewhere; open
-`.github/workflows/testflight.yml` and bump `ios-signing-identity-v1` to
-`-v2` in both places it appears, which forces a fresh certificate to be
-minted and cached again under the new key.)*
+error: the TestFlight workflow now revokes the orphaned Development and
+Distribution certificates itself, on a cache miss, before Archive -- those
+private keys died with previous runners and only the public halves were
+still occupying slots. Re-run the workflow. If it still fails with the
+same message, the API key does not have permission to manage certificates;
+go to
+[developer.apple.com/account/resources/certificates/list](https://developer.apple.com/account/resources/certificates/list)
+and revoke one old "Apple Development" certificate by hand, then run it
+again. If `IOS_P12_PASSWORD` is set and the error still happens after a
+cache *hit*, the cached certificate itself is the one that got revoked
+somewhere; bump `ios-signing-identity-v1` to `-v2` in both places it
+appears in `.github/workflows/testflight.yml`, which forces a fresh
+certificate to be minted and cached again under the new key.)*
 
 **Every time after that:** **Actions** tab → **TestFlight** → **Run workflow**.
 ~15–20 minutes — archiving a Release build is slower than the Debug builds
