@@ -3,7 +3,7 @@ import XCTest
 final class CoachEvidenceTests: XCTestCase {
 
     func testBehindOnSleepUsesDebtNotAGenericDurationLine() {
-        let night = Fixture.night(sleepDebtMinutes: 90, timeAsleepMinutes: 390)
+        let night = Fixture.night(timeAsleepMinutes: 390, sleepDebtMinutes: 90)
         let reply = CoachEvidence(night: night, history: []).reply(to: "Am I behind on sleep?")
         XCTAssertTrue(reply.text.lowercased().contains("yes"))
         XCTAssertTrue(reply.text.contains("1h 30m") || reply.text.contains("90"))
@@ -15,7 +15,7 @@ final class CoachEvidenceTests: XCTestCase {
     }
 
     func testCaughtUpNightIsNotBehind() {
-        let night = Fixture.night(sleepDebtMinutes: 0, timeAsleepMinutes: 480)
+        let night = Fixture.night(timeAsleepMinutes: 480, sleepDebtMinutes: 0)
         let reply = CoachEvidence(night: night, history: []).reply(to: "Am I behind on sleep?")
         XCTAssertTrue(reply.text.lowercased().contains("no"))
         XCTAssertFalse(reply.text.lowercased().contains("unpaid"))
@@ -47,7 +47,7 @@ final class CoachEvidenceTests: XCTestCase {
     }
 
     func testWakeCountIsGrounded() {
-        let night = Fixture.night(wakeCount: 4, timeAsleepMinutes: 400, timeInBedMinutes: 480)
+        let night = Fixture.night(timeAsleepMinutes: 400, timeInBedMinutes: 480, wakeCount: 4)
         let reply = CoachEvidence(night: night, history: []).reply(to: "Why did I wake up so much?")
         XCTAssertTrue(reply.text.contains("4"))
         XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text + (reply.action ?? "")))
