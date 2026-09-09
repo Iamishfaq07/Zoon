@@ -26,6 +26,8 @@ final class ClinicianReportRowsTests: XCTestCase {
         let rows = ClinicianReportGenerator.demographicRows(
             age: nil, sex: .male, bodyMassIndex: nil
         )
-        XCTAssertEqual(rows, [("Sex (self-reported)", "Male")])
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.0, "Sex (self-reported)")
+        XCTAssertEqual(rows.first?.1, "Male")
     }
 }

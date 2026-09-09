@@ -143,7 +143,7 @@ struct BodyBatteryChart: View {
 /// Small line for trend cards — no axes, no labels, just shape.
 struct Sparkline: View {
     let values: [Double]
-    var tint: Color = .white
+    var tint: Color = Color.primary
     var height: CGFloat = 34
     var filled: Bool = true
 

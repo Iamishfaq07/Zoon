@@ -629,13 +629,7 @@ extension View {
     /// remembered.
     func nightBackground() -> some View {
         zoonTypography()
-        .background {
-            ZStack(alignment: .top) {
-                Theme.background
-                Theme.heroGlow
-            }
-            .ignoresSafeArea()
-        }
+        .background { ZoonNightGround() }
     }
 
     /// Time-of-day-aware ground, for screens (the Today hero in particular)
@@ -646,6 +640,55 @@ extension View {
         zoonTypography()
         .background { ZoonAmbientBackground() }
     }
+}
+
+/// Page ground that actually follows Light/Dark.
+///
+/// `Theme.background` is a `LinearGradient` of `UIColor(dynamicProvider:)`
+/// colours. SwiftUI has been observed to resolve those stops once and keep
+/// the first scheme's RGB after `.preferredColorScheme` flips — Light then
+/// paints dark type onto a still-dark gradient, which is the "all text
+/// disappeared" report. Reading `\.colorScheme` here and handing the
+/// gradient plain sRGB triples forces a redraw on the flip. The RGB values
+/// are the same ones `Theme.background` already declared.
+struct ZoonNightGround: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            LinearGradient(
+                colors: colorScheme == .light ? Self.light : Self.dark,
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            RadialGradient(
+                colors: [
+                    Color(
+                        red: colorScheme == .light ? 0.45 : 0.30,
+                        green: colorScheme == .light ? 0.55 : 0.40,
+                        blue: 0.92
+                    ).opacity(colorScheme == .light ? 0.16 : 0.26),
+                    .clear
+                ],
+                center: .top,
+                startRadius: 10,
+                endRadius: 420
+            )
+        }
+        .ignoresSafeArea()
+    }
+
+    private static let dark: [Color] = [
+        Color(red: 0.024, green: 0.031, blue: 0.070),
+        Color(red: 0.043, green: 0.055, blue: 0.118),
+        Color(red: 0.055, green: 0.070, blue: 0.160)
+    ]
+
+    private static let light: [Color] = [
+        Color(red: 0.980, green: 0.973, blue: 0.961),
+        Color(red: 0.957, green: 0.961, blue: 0.973),
+        Color(red: 0.929, green: 0.937, blue: 0.957)
+    ]
 }
 
 /// Picks the ground from `Theme.morningBackground`/`dayBackground`/
@@ -661,6 +704,7 @@ extension View {
 /// the view appears.
 struct ZoonAmbientBackground: View {
     @State private var band = Band.current()
+    @Environment(\.colorScheme) private var colorScheme
 
     enum Band {
         case morning, day, evening, night
@@ -675,22 +719,67 @@ struct ZoonAmbientBackground: View {
         }
     }
 
-    private var gradient: LinearGradient {
-        switch band {
-        case .morning: Theme.morningBackground
-        case .day: Theme.dayBackground
-        case .evening: Theme.eveningBackground
-        case .night: Theme.background
-        }
+    var body: some View {
+        ZoonNightGround()
+            .onAppear { band = .current() }
+            // Night ground is the default; morning/day/evening overlay a
+            // second static gradient so Light/Dark still redraws. The band
+            // is identity only — it does not reintroduce the dynamic-colour
+            // LinearGradient freeze that blanked Light mode.
+            .overlay {
+                if band != .night {
+                    LinearGradient(
+                        colors: stops,
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+                }
+            }
     }
 
-    var body: some View {
-        ZStack(alignment: .top) {
-            gradient
-            Theme.heroGlow
+    private var stops: [Color] {
+        let light = colorScheme == .light
+        switch band {
+        case .morning:
+            return light
+                ? [
+                    Color(red: 0.996, green: 0.925, blue: 0.878),
+                    Color(red: 0.976, green: 0.929, blue: 0.902),
+                    Color(red: 0.949, green: 0.925, blue: 0.976)
+                ]
+                : [
+                    Color(red: 0.086, green: 0.078, blue: 0.161),
+                    Color(red: 0.067, green: 0.071, blue: 0.157),
+                    Color(red: 0.051, green: 0.063, blue: 0.141)
+                ]
+        case .day:
+            return light
+                ? [
+                    Color(red: 0.918, green: 0.929, blue: 0.976),
+                    Color(red: 0.929, green: 0.925, blue: 0.976),
+                    Color(red: 0.945, green: 0.925, blue: 0.973)
+                ]
+                : [
+                    Color(red: 0.043, green: 0.063, blue: 0.129),
+                    Color(red: 0.055, green: 0.071, blue: 0.161),
+                    Color(red: 0.063, green: 0.055, blue: 0.161)
+                ]
+        case .evening:
+            return light
+                ? [
+                    Color(red: 0.882, green: 0.867, blue: 0.945),
+                    Color(red: 0.906, green: 0.878, blue: 0.949),
+                    Color(red: 0.925, green: 0.878, blue: 0.945)
+                ]
+                : [
+                    Color(red: 0.035, green: 0.039, blue: 0.098),
+                    Color(red: 0.055, green: 0.051, blue: 0.145),
+                    Color(red: 0.086, green: 0.055, blue: 0.184)
+                ]
+        case .night:
+            return []
         }
-        .ignoresSafeArea()
-        .onAppear { band = .current() }
     }
 }
 
@@ -777,7 +866,7 @@ extension ZoonSectionHeader where Accessory == EmptyView {
 struct StatusPill: View {
     let text: String
     var systemImage: String?
-    var tint: Color = .white
+    var tint: Color = Theme.dialMarker
 
     var body: some View {
         HStack(spacing: 4) {
