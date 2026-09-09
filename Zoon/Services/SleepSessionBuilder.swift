@@ -135,8 +135,9 @@ struct SleepSessionBuilder {
             .map(Candidate.init)
 
         return Self.overlapGroups(in: candidates)
-            .flatMap { canonicalCandidates(in: $0) }
-            .compactMap { makeSession(from: $0.samples) }
+            .flatMap { group in
+                canonicalCandidates(in: group).compactMap { makeSession(from: $0, group: group) }
+            }
             // An in-bed schedule with no asleep sample is not a sleep episode.
             // Letting it through can make a long empty span beat the user's
             // actual staged night when the coordinator chooses one row per day.
@@ -348,6 +349,78 @@ struct SleepSessionBuilder {
     }
 
     // MARK: - Session assembly
+
+    /// Builds a session from the winning source, then gap-fills from rival
+    /// sources via `SleepSourceArbitration.fillGaps`. Single-source groups
+    /// take the original path unchanged — the fusion engine is a no-op
+    /// when there is nothing to fill.
+    private func makeSession(from winner: Candidate, group: [Candidate]) -> SleepSession? {
+        guard let base = makeSession(from: winner.samples) else { return nil }
+        let rivals = group.filter { $0.sourceBundleIdentifier != winner.sourceBundleIdentifier }
+        guard !rivals.isEmpty else { return base }
+
+        let winnerRecords = winner.samples.compactMap(Self.record(from:))
+        let rivalRecords = rivals.flatMap(\.samples).compactMap(Self.record(from:))
+        let fused = SleepSourceArbitration.fillGaps(winner: winnerRecords, candidates: rivalRecords)
+        guard fused.count > winnerRecords.count else { return base }
+        return makeSession(fromRecords: fused, provenance: base)
+    }
+
+    private static func record(from sample: HKCategorySample) -> SleepSampleRecord? {
+        guard let stage = SleepStage(sampleValue: sample.value),
+              sample.endDate > sample.startDate else { return nil }
+        let revision = sample.sourceRevision
+        return SleepSampleRecord(
+            id: sample.uuid,
+            start: sample.startDate,
+            end: sample.endDate,
+            stage: stage,
+            priority: SourcePriority.classify(
+                hardwareVersion: revision.productType,
+                bundleIdentifier: revision.source.bundleIdentifier,
+                sourceName: revision.source.name
+            ),
+            sourceBundleIdentifier: revision.source.bundleIdentifier
+        )
+    }
+
+    private func makeSession(fromRecords records: [SleepSampleRecord], provenance: SleepSession) -> SleepSession? {
+        guard !records.isEmpty else { return nil }
+
+        var intervals: [SleepStage: [DateInterval]] = [:]
+        for record in records {
+            guard record.end > record.start else { continue }
+            intervals[record.stage, default: []].append(record.interval)
+        }
+
+        let merged = intervals.mapValues { Self.mergeOverlapping($0) }
+        let minutes = merged.mapValues { $0.reduce(0) { $0 + $1.duration } / 60 }
+
+        guard let start = records.map(\.start).min(),
+              let end = records.map(\.end).max() else { return nil }
+
+        let asleepIntervals = SleepStage.asleepStages.flatMap { merged[$0] ?? [] }
+        let mergedAsleep = Self.mergeOverlapping(asleepIntervals)
+        let segments = merged
+            .filter { $0.key != .inBed }
+            .flatMap { stage, intervals in
+                intervals.map { StageSegment(stage: stage, start: $0.start, end: $0.end) }
+            }
+            .sorted { $0.start < $1.start }
+
+        return SleepSession(
+            start: start,
+            end: end,
+            stageMinutes: minutes,
+            asleepIntervals: mergedAsleep,
+            inBedIntervals: merged[.inBed] ?? [],
+            awakeIntervals: merged[.awake] ?? [],
+            segments: segments,
+            sourceName: provenance.sourceName,
+            sourceBundleIdentifier: provenance.sourceBundleIdentifier,
+            timeZoneIdentifier: provenance.timeZoneIdentifier
+        )
+    }
 
     private func makeSession(from samples: [HKCategorySample]) -> SleepSession? {
         guard !samples.isEmpty else { return nil }

@@ -30,6 +30,15 @@ struct DayContext: Equatable {
     /// Carried through so views (e.g. the hypnogram's HR overlay) can reuse
     /// it rather than each running their own HealthKit query.
     let hourlyHeartRate: [(date: Date, bpm: Double)]
+    /// Hourly cognitive-energy amplitude from last night's HRV, HR dip,
+    /// and REM/Deep mix. Shape still comes from `EnergyForecast`; this is
+    /// how high the peak sits and how deep the slump goes.
+    let cognitiveEnergy: CognitiveEnergyCurve
+    /// Textbook 24-hour SRI. Not shown as the on-screen regularity number
+    /// — see `SleepRegularity` — and carried so Regularity's detail screen
+    /// and a clinician export can quote the academic figure without
+    /// recomputing it from a different window.
+    let academicSleepRegularity: SleepRegularityIndex
 
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
@@ -58,7 +67,9 @@ struct DayContext: Equatable {
             healthRadar: healthRadar,
             cardiovascularAge: cardiovascularAge,
             bodyClock: bodyClock,
-            hourlyHeartRate: hourlyHeartRate
+            hourlyHeartRate: hourlyHeartRate,
+            cognitiveEnergy: cognitiveEnergy,
+            academicSleepRegularity: academicSleepRegularity
         )
     }
 

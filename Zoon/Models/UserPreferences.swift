@@ -15,6 +15,8 @@ final class UserPreferences {
         static let hasCompletedOnboarding = "zoon.pref.hasCompletedOnboarding"
         static let preferredEngine = "zoon.pref.preferredEngine"
         static let age = "zoon.pref.age"
+        static let biologicalSex = "zoon.pref.biologicalSex"
+        static let bodyMassIndex = "zoon.pref.bodyMassIndex"
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
         static let focusSilencesBedtimeNudges = "zoon.pref.focusSilencesBedtimeNudges"
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
@@ -231,10 +233,28 @@ final class UserPreferences {
     }
 
     /// Used only to estimate maximum heart rate, which sets the heart-rate
-    /// reserve that strain zones and body battery drain are scaled against.
-    /// `nil` falls back to a generic 190 bpm ceiling.
+    /// reserve that strain zones and body battery drain are scaled against,
+    /// and — when set — to pick a demographic deep-sleep prior so a typical
+    /// older night is not marked down against a young-adult target.
+    /// `nil` falls back to a generic 190 bpm ceiling and skips the prior.
     var age: Int? {
         didSet { defaults.set(age ?? 0, forKey: Key.age) }
+    }
+
+    /// Feeds `DemographicBaseline`. Unspecified leaves the sex adjustment off.
+    var biologicalSex: DemographicBaseline.Sex {
+        didSet { defaults.set(biologicalSex.rawValue, forKey: Key.biologicalSex) }
+    }
+
+    /// kg / m². `nil` leaves the demographic prior unadjusted for BMI.
+    var bodyMassIndex: Double? {
+        didSet {
+            if let bodyMassIndex {
+                defaults.set(bodyMassIndex, forKey: Key.bodyMassIndex)
+            } else {
+                defaults.removeObject(forKey: Key.bodyMassIndex)
+            }
+        }
     }
 
     /// The date Recovery Mode was manually turned on, if any -- not a plain
@@ -550,6 +570,11 @@ final class UserPreferences {
         ) ?? .dark
         let storedAge = defaults.integer(forKey: Key.age)
         self.age = storedAge > 0 ? storedAge : nil
+        self.biologicalSex = DemographicBaseline.Sex(
+            rawValue: defaults.string(forKey: Key.biologicalSex) ?? ""
+        ) ?? .unspecified
+        let storedBMI = defaults.double(forKey: Key.bodyMassIndex)
+        self.bodyMassIndex = storedBMI > 0 ? storedBMI : nil
         self.preferredEngine = EngineChoice(
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
         ) ?? .ruleBased
@@ -602,6 +627,8 @@ final class UserPreferences {
         wakeAlarmEnabled = false
         appearance = .dark
         age = nil
+        biologicalSex = .unspecified
+        bodyMassIndex = nil
         preferredEngine = .ruleBased
         recoveryModeDate = nil
         activeExperimentTag = nil
@@ -622,6 +649,8 @@ final class UserPreferences {
             Key.hasCompletedOnboarding,
             Key.preferredEngine,
             Key.age,
+            Key.biologicalSex,
+            Key.bodyMassIndex,
             Key.bedtimeRemindersEnabled,
             Key.focusSilencesBedtimeNudges,
             Key.cycleTrackingEnabled,

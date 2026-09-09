@@ -45,6 +45,8 @@ struct EnergyDetailView: View {
                 }
 
                 EnergyForecastCard(forecast: forecast).entrance(4)
+
+                CognitiveEnergyCard(curve: context.cognitiveEnergy).entrance(5)
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -98,6 +100,86 @@ struct EnergyDetailView: View {
             )
         }
         .glassCard()
+    }
+}
+
+/// Amplitude of today's energy curve: last night's HRV, overnight HR dip,
+/// and REM/Deep mix. The horizon above is the *shape*; this is how high
+/// the peak sits and how deep the slump goes. Explicitly an estimate.
+private struct CognitiveEnergyCard: View {
+    let curve: CognitiveEnergyCurve
+
+    private var peak: CognitiveEnergyCurve.Hour? {
+        curve.hours.filter { $0.band == .peakFocus }.max(by: { $0.level < $1.level })
+    }
+
+    private var slump: CognitiveEnergyCurve.Hour? {
+        curve.hours.filter { $0.band == .slump }.min(by: { $0.level < $1.level })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "Cognitive energy",
+                subtitle: missingLine,
+                systemImage: "brain.head.profile"
+            )
+
+            HStack(alignment: .bottom, spacing: 3) {
+                ForEach(curve.hours) { hour in
+                    Capsule()
+                        .fill(tint(for: hour.band).opacity(0.85))
+                        .frame(maxWidth: .infinity, maxHeight: 64)
+                        .frame(height: max(4, 64 * hour.level))
+                        .accessibilityLabel("\(hour.band.label), hour \(hour.offset)")
+                }
+            }
+            .frame(height: 64, alignment: .bottom)
+
+            HStack {
+                if let peak {
+                    stat("+\(peak.offset)h", peak.band.label, Theme.Metric.recoveryHigh)
+                }
+                if let slump {
+                    stat("+\(slump.offset)h", slump.band.label, Theme.Metric.recoveryMid)
+                }
+            }
+
+            Text("Estimated from last night's HRV, the overnight heart-rate dip, and REM/Deep mix. Nothing on a wrist measures cognition.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .glassCard()
+    }
+
+    private var missingLine: String {
+        if curve.missing.isEmpty {
+            return "Amplitude from last night, not a measurement"
+        }
+        return "Missing " + curve.missing.joined(separator: ", ") + " — treated as average"
+    }
+
+    private func tint(for band: CognitiveEnergyCurve.Band) -> Color {
+        switch band {
+        case .peakFocus: Theme.Metric.recoveryHigh
+        case .steady: Theme.Metric.battery
+        case .slump: Theme.Metric.recoveryMid
+        case .windDown: Theme.Metric.sleep
+        }
+    }
+
+    private func stat(_ value: String, _ label: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(Theme.label(15, weight: .semibold))
+                .foregroundStyle(tint)
+                .monospacedDigit()
+            Text(label)
+                .font(Theme.text(11))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

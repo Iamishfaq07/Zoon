@@ -61,6 +61,11 @@ struct DayContextBuilder {
         let bedtimeConsistencyMinutes: Double?
         /// For cardiovascular age. Nil disables that card rather than guessing.
         let age: Int?
+        /// Sex/BMI feed the demographic deep-sleep prior. Defaults keep every
+        /// existing call site compiling; unspecified/nil leaves the prior
+        /// unadjusted on those axes.
+        var sex: DemographicBaseline.Sex = .unspecified
+        var bodyMassIndex: Double? = nil
         /// `Calendar.component(.weekday:)` values counted as obligation days,
         /// for `SleepRegularity`'s work/free split -- see
         /// `UserPreferences.obligationWeekdays`.
@@ -158,7 +163,20 @@ struct DayContextBuilder {
         let habitWindow = Array(fullHistory.suffix(Self.habitWindow))
 
         let regularity = SleepRegularity.compute(nights: habitWindow, obligationWeekdays: inputs.obligationWeekdays)
+        let academicSRI = SleepRegularityIndex.compute(nights: habitWindow)
         let bodyClock = BodyClock.compute(nights: habitWindow)
+
+        let cognitiveEnergy = CognitiveEnergyCurve.compute(
+            wakeTime: night.wakeTime,
+            hrvSDNN: night.avgHRV,
+            hrvBaseline: night.hrv7DayAvg,
+            restingHeartRate: night.restingHeartRate ?? restingHR,
+            minOvernightHeartRate: night.minHeartRate,
+            remMinutes: night.remMinutes,
+            deepMinutes: night.deepMinutes,
+            asleepMinutes: night.timeAsleepMinutes,
+            sleepDebtMinutes: night.sleepDebtMinutes ?? 0
+        )
 
         let sleepIntelligence = SleepIntelligenceScore.compute(.init(
             night: night,
@@ -186,7 +204,7 @@ struct DayContextBuilder {
                 for: night,
                 goalMinutes: inputs.goalMinutes,
                 demographic: inputs.age.map {
-                    DemographicBaseline(ageYears: $0, sex: .unspecified, bodyMassIndex: nil)
+                    DemographicBaseline(ageYears: $0, sex: inputs.sex, bodyMassIndex: inputs.bodyMassIndex)
                 }
             ),
             sleepIntelligence: sleepIntelligence,
@@ -201,7 +219,9 @@ struct DayContextBuilder {
                 nights: fullHistory, chronologicalAge: inputs.age
             ),
             bodyClock: bodyClock,
-            hourlyHeartRate: inputs.hourlyHeartRate
+            hourlyHeartRate: inputs.hourlyHeartRate,
+            cognitiveEnergy: cognitiveEnergy,
+            academicSleepRegularity: academicSRI
         )
     }
 

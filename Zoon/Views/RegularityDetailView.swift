@@ -12,7 +12,10 @@ struct RegularityDetailView: View {
         ScrollView {
             VStack(spacing: Theme.stackSpacing) {
                 if let context {
-                    RegularityCard(regularity: context.regularity)
+                    RegularityCard(
+                        regularity: context.regularity,
+                        academic: context.academicSleepRegularity
+                    )
                 } else {
                     ContentUnavailableView("No night yet", systemImage: "moon.zzz")
                         .padding(.top, 60)

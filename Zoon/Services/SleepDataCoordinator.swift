@@ -857,6 +857,8 @@ final class SleepDataCoordinator {
             napMinutes: deduplicatedNapMinutes(before: night.date, timeZone: night.timeZone),
             bedtimeConsistencyMinutes: baseline.bedtimeConsistencyMinutes,
             age: preferences.age,
+            sex: preferences.biologicalSex,
+            bodyMassIndex: preferences.bodyMassIndex,
             obligationWeekdays: preferences.obligationWeekdays
         ))
 
@@ -1264,6 +1266,8 @@ final class SleepDataCoordinator {
             napMinutes: 0,
             bedtimeConsistencyMinutes: 38,
             age: preferences.age ?? 34,
+            sex: preferences.biologicalSex,
+            bodyMassIndex: preferences.bodyMassIndex,
             obligationWeekdays: preferences.obligationWeekdays
         ))
 
@@ -1365,6 +1369,10 @@ final class SleepDataCoordinator {
         }
         if let restored = archive.preferences {
             preferences.age = restored.age
+            if let sex = restored.biologicalSex.flatMap(DemographicBaseline.Sex.init(rawValue:)) {
+                preferences.biologicalSex = sex
+            }
+            preferences.bodyMassIndex = restored.bodyMassIndex
             preferences.appearance = UserPreferences.AppearancePreference(
                 rawValue: restored.appearance
             ) ?? .dark

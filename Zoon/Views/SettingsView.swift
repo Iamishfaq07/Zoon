@@ -468,12 +468,43 @@ struct SettingsView: View {
                     Text("\(age)").tag(age)
                 }
             }
+            Picker(
+                "Sex",
+                selection: Binding(
+                    get: { preferences.biologicalSex },
+                    set: { newValue in
+                        preferences.biologicalSex = newValue
+                        Task { await coordinator.recomputeDerivedValues() }
+                    }
+                )
+            ) {
+                Text("Not set").tag(DemographicBaseline.Sex.unspecified)
+                Text("Female").tag(DemographicBaseline.Sex.female)
+                Text("Male").tag(DemographicBaseline.Sex.male)
+            }
+            Picker(
+                "BMI",
+                selection: Binding(
+                    get: { preferences.bodyMassIndex.map { Int($0.rounded()) } ?? 0 },
+                    set: { newValue in
+                        preferences.bodyMassIndex = newValue > 0 ? Double(newValue) : nil
+                        Task { await coordinator.recomputeDerivedValues() }
+                    }
+                )
+            ) {
+                Text("Not set").tag(0)
+                ForEach(16...45, id: \.self) { bmi in
+                    Text("\(bmi)").tag(bmi)
+                }
+            }
         } header: {
             Text("Profile")
         } footer: {
             Text("""
-                Used only to estimate your maximum heart rate, which sets the zones behind \
-                Daily Load and Energy Reserve. Nothing else reads it, and it never leaves the device.
+                Age estimates maximum heart rate for Daily Load and Energy Reserve. \
+                Age, sex, and BMI also pick a demographic deep-sleep prior so a typical \
+                older night is not marked down against a young-adult target. Nothing \
+                else reads these, and they never leave the device.
                 """)
         }
     }
