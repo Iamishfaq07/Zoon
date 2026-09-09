@@ -61,9 +61,10 @@ all of them locally.
   risers so the night reads as one continuous trace.
 - **Sleep Need** (Whoop-style) — baseline + debt payback + yesterday's strain −
   nap credit, as a stacked bar against what you actually slept.
-- **Sleep sounds** — seven soundscapes **synthesised in real time**: brown, pink
-  and white noise, rain, ocean, wind, fan. No audio files, no download, no loop
-  seam. Sleep timer fades over the final minute rather than cutting.
+- **Sleep sounds** — brown, pink and white **generated** so they never seam;
+  weather, night and room as **bundled recorded loops** (rain, ocean, fire,
+  purr, and the rest). Nothing is streamed. Sleep timer fades over the final
+  minute rather than cutting.
 - **Naps** — timer with sleep-architecture-aware presets; logged naps credit
   against tonight's need.
 - **Bedtime countdown** — the time to be asleep by, derived from your own wake
