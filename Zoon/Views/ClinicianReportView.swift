@@ -126,7 +126,10 @@ struct ClinicianReportView: View {
             nights: coordinator.recentNights,
             sections: selectedSections,
             rangeDays: rangeDays,
-            goalMinutes: preferences.sleepGoalMinutes
+            goalMinutes: preferences.sleepGoalMinutes,
+            age: preferences.age,
+            biologicalSex: preferences.biologicalSex,
+            bodyMassIndex: preferences.bodyMassIndex
         )
         do {
             reportURL = try DataExporter.writeTemporary(

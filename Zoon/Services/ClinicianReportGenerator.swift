@@ -34,7 +34,10 @@ enum ClinicianReportGenerator {
         nights: [SleepNightFeatures],
         sections: Set<Section>,
         rangeDays: Int,
-        goalMinutes: Double
+        goalMinutes: Double,
+        age: Int? = nil,
+        biologicalSex: DemographicBaseline.Sex = .unspecified,
+        bodyMassIndex: Double? = nil
     ) -> Data {
         let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792) // US Letter, 72dpi
         let margin: CGFloat = 44
@@ -92,7 +95,11 @@ enum ClinicianReportGenerator {
             draw("Sleep Report", font: .boldSystemFont(ofSize: 26), spacingAfter: 6)
             draw("\(rangeDays)-day summary, generated \(Date.now.formatted(.dateTime.day().month().year()))",
                  font: .systemFont(ofSize: 13), color: .darkGray, spacingAfter: 4)
-            draw("\(windowed.count) nights with data in this range", font: .systemFont(ofSize: 12), color: .darkGray, spacingAfter: 12)
+            draw("\(windowed.count) nights with data in this range", font: .systemFont(ofSize: 12), color: .darkGray, spacingAfter: 8)
+            for row in demographicRows(age: age, sex: biologicalSex, bodyMassIndex: bodyMassIndex) {
+                drawRow(row.0, row.1)
+            }
+            cursor += 10
 
             guard !windowed.isEmpty else {
                 draw("No nights recorded in this range.", font: .systemFont(ofSize: 13), color: .darkGray)
@@ -281,5 +288,26 @@ enum ClinicianReportGenerator {
 
     static func filename(rangeDays: Int) -> String {
         "Sleep_Report_\(ISO8601DateFormatter.dayOnly.string(from: .now))_\(rangeDays)_Days.pdf"
+    }
+
+    /// Self-reported profile for the title page. Omitted rows stay off the
+    /// document rather than printing "Not set" — a clinician report should
+    /// not look like a missing-data form.
+    static func demographicRows(
+        age: Int?,
+        sex: DemographicBaseline.Sex,
+        bodyMassIndex: Double?
+    ) -> [(String, String)] {
+        var rows: [(String, String)] = []
+        if let age {
+            rows.append(("Age (self-reported)", "\(age)"))
+        }
+        if sex != .unspecified {
+            rows.append(("Sex (self-reported)", sex.rawValue.capitalized))
+        }
+        if let bodyMassIndex {
+            rows.append(("BMI (self-reported)", String(format: "%.0f", bodyMassIndex)))
+        }
+        return rows
     }
 }

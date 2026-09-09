@@ -158,10 +158,14 @@ final class BedtimeReminder {
     ///
     /// Fires `leadMinutes` after the usual wake time so it arrives once
     /// someone is actually up, not while they are still asleep. The body
-    /// names no duration, score, or debt — those numbers belong on the
-    /// brief card, not on a lock screen anyone in the room can read.
+    /// is run through `MorningBriefCopy` so a duration or score cannot
+    /// leak onto a lock screen anyone in the room can read.
     @discardableResult
-    func scheduleMorningBrief(wakeTime: Date, leadMinutes: Int = Self.morningBriefLeadMinutes) async -> Bool {
+    func scheduleMorningBrief(
+        wakeTime: Date,
+        leadMinutes: Int = Self.morningBriefLeadMinutes,
+        actionableTip: String = ""
+    ) async -> Bool {
         center.removePendingNotificationRequests(withIdentifiers: [ID.morningBrief])
 
         guard authorization == .authorized || authorization == .provisional else { return false }
@@ -172,8 +176,8 @@ final class BedtimeReminder {
 
         return await add(
             id: ID.morningBrief,
-            title: "Morning brief",
-            body: "Open Zoon for the three-line version of last night. Numbers stay off the lock screen.",
+            title: MorningBriefCopy.title,
+            body: MorningBriefCopy.body(actionableTip: actionableTip),
             components: components
         )
     }

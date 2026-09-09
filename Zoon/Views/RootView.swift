@@ -225,7 +225,10 @@ struct RootView: View {
             permitted: notificationsPermitted,
             target: morningBriefWanted ? wakeTarget : nil,
             schedule: {
-                await reminders.scheduleMorningBrief(wakeTime: $0)
+                await reminders.scheduleMorningBrief(
+                    wakeTime: $0,
+                    actionableTip: coordinator.state.context?.insight.actionableTip ?? ""
+                )
             },
             cancel: { reminders.cancelMorningBrief() }
         )
