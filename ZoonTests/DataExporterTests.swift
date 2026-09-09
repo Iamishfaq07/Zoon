@@ -24,6 +24,8 @@ final class DataExporterTests: XCTestCase {
             naps: [],
             preferences: DataExporter.Archive.PreferencesRecord(
                 age: 34,
+                biologicalSex: "female",
+                bodyMassIndex: 22,
                 preferredEngine: "ruleBased",
                 appearance: "dark",
                 bedtimeRemindersEnabled: true,
@@ -110,6 +112,8 @@ final class DataExporterTests: XCTestCase {
         XCTAssertEqual(decoded.formatVersion, DataExporter.formatVersion)
 
         XCTAssertEqual(decoded.preferences?.wakeAlarmEnabled, true)
+        XCTAssertEqual(decoded.preferences?.biologicalSex, "female")
+        XCTAssertEqual(decoded.preferences?.bodyMassIndex, 22)
         XCTAssertEqual(decoded.preferences?.focusSilencesBedtimeNudges, true)
         XCTAssertEqual(decoded.preferences?.preferredSleepSourceName, "Apple Watch")
         XCTAssertEqual(decoded.preferences?.preferredSleepSourceBundleIdentifier, "com.apple.health.watch")

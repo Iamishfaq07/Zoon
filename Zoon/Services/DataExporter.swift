@@ -121,6 +121,10 @@ enum DataExporter {
 
         struct PreferencesRecord: Codable {
             let age: Int?
+            /// `DemographicBaseline.Sex.rawValue`. Optional — older backups decode nil.
+            let biologicalSex: String?
+            /// kg / m². Optional — older backups decode nil.
+            let bodyMassIndex: Double?
             let preferredEngine: String
             let appearance: String
             let bedtimeRemindersEnabled: Bool
@@ -221,6 +225,8 @@ enum DataExporter {
             naps: naps,
             preferences: Archive.PreferencesRecord(
                 age: preferences.age,
+                biologicalSex: preferences.biologicalSex == .unspecified ? nil : preferences.biologicalSex.rawValue,
+                bodyMassIndex: preferences.bodyMassIndex,
                 preferredEngine: preferences.preferredEngine.rawValue,
                 appearance: preferences.appearance.rawValue,
                 bedtimeRemindersEnabled: preferences.bedtimeRemindersEnabled,

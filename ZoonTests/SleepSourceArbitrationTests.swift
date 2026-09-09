@@ -132,5 +132,38 @@ final class SleepSourceArbitrationTests: XCTestCase {
         let watchMinutes = fused.filter { $0.priority == .appleWatch }.reduce(0.0) { $0 + $1.duration }
         XCTAssertEqual(watchMinutes, 8 * 3600, accuracy: 0.5)
         XCTAssertEqual(fused.filter { $0.stage == .deep }.count, 1)
+        // The whole point of fillGaps vs fuse(winner + candidates): the
+        // winner's records keep their original identity. fuse() mints new
+        // UUIDs for remnants and would fail this.
+        XCTAssertEqual(fused.first { $0.priority == .appleWatch }?.id, watch.id)
+    }
+
+    func testFillGapsDoesNotReArbitrateTheWinnerAgainstItself() {
+        // A Watch sample that is *shorter* than a overlapping Garmin sample.
+        // fuse() would let the longer same-window sample punch a hole if
+        // priorities were equal; with a higher-priority short winner, fuse()
+        // still keeps Watch on the overlap — but it would split the winner
+        // into a remnant with a new id. fillGaps must keep the original
+        // Watch record intact and only add Garmin on either side.
+        let watch = sample(
+            start: instant(23, minute: 30),
+            end: instant(23, minute: 30).addingTimeInterval(6 * 3600),
+            stage: .deep,
+            priority: .appleWatch
+        )
+        let garmin = sample(
+            start: instant(23),
+            end: instant(23).addingTimeInterval(8 * 3600),
+            stage: .rem,
+            priority: .thirdPartyWearable
+        )
+        let filled = SleepSourceArbitration.fillGaps(winner: [watch], candidates: [garmin])
+        let watchHits = filled.filter { $0.id == watch.id }
+        XCTAssertEqual(watchHits.count, 1)
+        XCTAssertEqual(watchHits[0].start, watch.start)
+        XCTAssertEqual(watchHits[0].end, watch.end)
+        XCTAssertEqual(watchHits[0].stage, .deep)
+        XCTAssertTrue(filled.contains { $0.priority == .thirdPartyWearable && $0.end == watch.start })
+        XCTAssertTrue(filled.contains { $0.priority == .thirdPartyWearable && $0.start == watch.end })
     }
 }

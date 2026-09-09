@@ -8,6 +8,10 @@ import SwiftUI
 struct RegularityCard: View {
 
     let regularity: SleepRegularity
+    /// Textbook 24-hour SRI. Optional because the on-screen metric is the
+    /// night-windowed `SleepRegularity`; this is the academic figure for
+    /// the detail screen and clinician export, never labelled "SRI" here.
+    var academic: SleepRegularityIndex? = nil
 
     @State private var animated = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -83,6 +87,19 @@ struct RegularityCard: View {
                     Image(systemName: "airplane")
                         .font(.caption2)
                         .foregroundStyle(Theme.Metric.strain)
+                }
+            }
+
+            if let academic, academic.hasEnoughData {
+                Divider().overlay(Theme.cardStroke)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("24-hour regularity \(Int(academic.index.rounded()))")
+                        .font(Theme.label(13, weight: .semibold))
+                        .monospacedDigit()
+                    Text("Academic formula over full calendar days, including daytime. Not the timing number above — daytime awake-to-awake agreement would flatten that one.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

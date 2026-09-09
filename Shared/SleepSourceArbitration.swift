@@ -106,12 +106,48 @@ enum SleepSourceArbitration {
     }
 
     /// After a winning source has been chosen, fill any holes in its
-    /// coverage with lower-priority samples. Does not rewrite the winner:
-    /// overlapping minutes stay the winner's stage.
+    /// coverage with lower-priority samples. Does **not** rewrite the
+    /// winner: overlapping minutes stay the winner's stage, and winner
+    /// records keep their original identity. `fuse` would re-arbitrate
+    /// the winner against itself, which is wrong once a source has
+    /// already been picked.
     static func fillGaps(
         winner: [SleepSampleRecord],
         candidates: [SleepSampleRecord]
     ) -> [SleepSampleRecord] {
-        fuse(winner + candidates)
+        let kept = winner.filter { $0.end > $0.start }
+        var occupied = DateInterval.merging(kept.map(\.interval))
+        var seen = Set(kept.map(\.sourceUUID))
+        var extras: [SleepSampleRecord] = []
+
+        let ordered = candidates
+            .filter { $0.end > $0.start && !seen.contains($0.sourceUUID) }
+            .sorted { a, b in
+                if a.priority != b.priority { return a.priority < b.priority }
+                if a.start != b.start { return a.start < b.start }
+                return a.duration > b.duration
+            }
+
+        for sample in ordered {
+            if seen.contains(sample.sourceUUID) { continue }
+            seen.insert(sample.sourceUUID)
+            let remnants = DateInterval.subtracting(occupied, from: sample.interval)
+            for remnant in remnants where remnant.duration > 0 {
+                extras.append(
+                    SleepSampleRecord(
+                        id: UUID(),
+                        sourceUUID: sample.sourceUUID,
+                        start: remnant.start,
+                        end: remnant.end,
+                        stage: sample.stage,
+                        priority: sample.priority,
+                        sourceBundleIdentifier: sample.sourceBundleIdentifier
+                    )
+                )
+            }
+            occupied = DateInterval.merging(occupied + remnants)
+        }
+
+        return (kept + extras).sorted { $0.start < $1.start }
     }
 }
