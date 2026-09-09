@@ -127,6 +127,11 @@ enum TravelPlan {
     /// which is where the light is anyway.
     static let maximumTotalShiftMinutes = 120.0
 
+    /// Nights of destination repayment, each capped at Autopilot's nightly
+    /// shift so the plan and Tonight cannot disagree about how far a night
+    /// is allowed to move.
+    static let destinationRepaymentNights = 3
+
     /// Past this, light guidance is withheld rather than guessed.
     static let lightGuidanceLimitHours = 8.0
 
@@ -266,6 +271,7 @@ enum TravelPlan {
         steps.append(destinationStep(
             eastward: eastward, bodyClock: bodyClock, withheld: withheld
         ))
+        steps.append(contentsOf: repaymentSteps(eastward: eastward, bodyClock: bodyClock))
 
         return Plan(
             shiftHours: shift,
@@ -331,5 +337,27 @@ enum TravelPlan {
                 : "Get outside in the late afternoon and keep the evening bright. "
                     + "Late light is what holds the clock later."
         )
+    }
+
+    /// Three destination nights, each moved by Autopilot's 20-minute cap.
+    ///
+    /// The pre-trip rate is a rule of thumb (40/60 min/day). Once someone
+    /// has landed, Tonight already refuses to move more than
+    /// `SleepAutopilot.maximumNightlyShift` in a night, and a plan that
+    /// asked for 40 would put two different answers on two screens.
+    private static func repaymentSteps(eastward: Bool, bodyClock: BodyClock) -> [Step] {
+        let cap = Int(SleepAutopilot.maximumNightlyShift.rounded())
+        return (1...destinationRepaymentNights).map { night in
+            let shifted = cap * night
+            let hour = bodyClock.onsetHour + (eastward ? -1.0 : 1.0) * Double(shifted) / 60
+            return Step(
+                phase: .destination,
+                when: night == 1 ? "First night there" : "Night \(night) there",
+                action: "Move bedtime \(cap) minutes "
+                    + (eastward ? "earlier" : "later")
+                    + " than last night — around \(BodyClock.formatted(hour: hour)). "
+                    + "That's Autopilot's nightly cap, not a faster push."
+            )
+        }
     }
 }

@@ -36,6 +36,7 @@ final class BedtimeReminder {
         static let windDown = "zoon.reminder.winddown"
         static let bedtime = "zoon.reminder.bedtime"
         static let wakeWindow = "zoon.reminder.wakewindow"
+        static let morningBrief = "zoon.reminder.morningbrief"
     }
 
     /// How long before target bedtime the wind-down nudge fires.
@@ -44,6 +45,13 @@ final class BedtimeReminder {
     /// light and caffeine stops being a nudge and starts being a countdown —
     /// and because a warning that arrives five minutes before is useless.
     static let windDownLeadMinutes = 30
+
+    /// How long after usual wake the morning-brief nudge fires.
+    ///
+    /// Half an hour: early enough that the brief is still the first thing
+    /// people would have opened the app for, late enough that it is not
+    /// another alarm.
+    static let morningBriefLeadMinutes = 30
 
     init(center: UNUserNotificationCenter = .current()) {
         self.center = center
@@ -146,8 +154,36 @@ final class BedtimeReminder {
         )
     }
 
+    /// A lock-screen-safe nudge pointing at Today's morning brief.
+    ///
+    /// Fires `leadMinutes` after the usual wake time so it arrives once
+    /// someone is actually up, not while they are still asleep. The body
+    /// names no duration, score, or debt — those numbers belong on the
+    /// brief card, not on a lock screen anyone in the room can read.
+    @discardableResult
+    func scheduleMorningBrief(wakeTime: Date, leadMinutes: Int = Self.morningBriefLeadMinutes) async -> Bool {
+        center.removePendingNotificationRequests(withIdentifiers: [ID.morningBrief])
+
+        guard authorization == .authorized || authorization == .provisional else { return false }
+
+        let calendar = Calendar.current
+        let fire = wakeTime.addingTimeInterval(Double(leadMinutes) * 60)
+        let components = calendar.dateComponents([.hour, .minute], from: fire)
+
+        return await add(
+            id: ID.morningBrief,
+            title: "Morning brief",
+            body: "Open Zoon for the three-line version of last night. Numbers stay off the lock screen.",
+            components: components
+        )
+    }
+
     func cancelWakeWindow() {
         center.removePendingNotificationRequests(withIdentifiers: [ID.wakeWindow])
+    }
+
+    func cancelMorningBrief() {
+        center.removePendingNotificationRequests(withIdentifiers: [ID.morningBrief])
     }
 
     func cancel() {

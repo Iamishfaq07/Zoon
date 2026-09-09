@@ -134,9 +134,9 @@ final class TravelPlanTests: XCTestCase {
             if case .before = $0.phase { return true }
             return false
         })
-        // The flight and destination steps still apply — the trip is still
-        // happening.
-        XCTAssertEqual(plan.steps.count, 2)
+        // Flight, destination light, then three Autopilot-capped nights.
+        XCTAssertEqual(plan.steps.count, 2 + TravelPlan.destinationRepaymentNights)
+        XCTAssertEqual(plan.steps.first?.when, "On the flight")
     }
 
     /// A small shift should not be handed a four-day preparation schedule.
@@ -159,7 +159,7 @@ final class TravelPlanTests: XCTestCase {
         XCTAssertTrue(plan.lightGuidanceWithheld)
         XCTAssertNotNil(plan.lightCaveat)
 
-        let destination = try XCTUnwrap(plan.steps.last)
+        let destination = try XCTUnwrap(plan.steps.first { $0.when == "At the destination" })
         XCTAssertFalse(destination.action.lowercased().contains("light"),
                        "gave light advice it said it was withholding")
     }
@@ -180,7 +180,10 @@ final class TravelPlanTests: XCTestCase {
         ))
         XCTAssertFalse(plan.lightGuidanceWithheld)
         XCTAssertNil(plan.lightCaveat)
-        XCTAssertTrue(try XCTUnwrap(plan.steps.last).action.lowercased().contains("light"))
+        XCTAssertTrue(
+            plan.steps.contains { $0.action.lowercased().contains("light") },
+            "a moderate shift should still get destination light advice"
+        )
     }
 
     func testEveryPlanCarriesTheRuleOfThumbCaveat() throws {
@@ -204,6 +207,21 @@ final class TravelPlanTests: XCTestCase {
         XCTAssertNotNil(learning.estimateCaveat)
         XCTAssertFalse(settled.anchoredToEstimate)
         XCTAssertNil(settled.estimateCaveat)
+    }
+
+    func testDestinationRepaymentUsesAutopilotCapForThreeNights() throws {
+        let plan = try XCTUnwrap(TravelPlan.plan(
+            for: trip(to: tokyo), bodyClock: clock(), now: date(day: 1)
+        ))
+        let repayment = plan.steps.filter {
+            $0.when == "First night there" || $0.when.hasPrefix("Night ")
+        }
+        XCTAssertEqual(repayment.count, TravelPlan.destinationRepaymentNights)
+        let cap = Int(SleepAutopilot.maximumNightlyShift.rounded())
+        for step in repayment {
+            XCTAssertTrue(step.action.contains("\(cap) minutes"))
+            XCTAssertTrue(step.action.contains("Autopilot"))
+        }
     }
 
     // MARK: - The flight

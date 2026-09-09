@@ -19,7 +19,10 @@ struct SleepScoreWidget: Widget {
         }
         .configurationDisplayName("Last Night")
         .description("Your sleep score and how the night went.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            .accessoryRectangular, .accessoryCircular, .accessoryInline
+        ])
     }
 }
 
@@ -43,6 +46,8 @@ struct SleepScoreWidgetView: View {
         } else {
         switch family {
         case .accessoryRectangular: rectangular
+        case .accessoryCircular: circular
+        case .accessoryInline: inline
         case .systemMedium: medium
         case .systemLarge: large
         default: small
@@ -210,6 +215,25 @@ struct SleepScoreWidgetView: View {
                 .privacySensitive()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var circular: some View {
+        Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
+            Image(systemName: "moon.stars.fill")
+        } currentValueLabel: {
+            Text("\(snapshot.flagshipScore)")
+                .font(.system(.body, design: .rounded).weight(.semibold))
+        }
+        .gaugeStyle(.accessoryCircular)
+        .privacySensitive()
+    }
+
+    private var inline: some View {
+        Label(
+            "\(snapshot.flagshipScore) · \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))",
+            systemImage: "moon.stars.fill"
+        )
+        .privacySensitive()
     }
 
     private func stat(_ label: String, _ value: String) -> some View {

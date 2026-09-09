@@ -216,6 +216,7 @@ TESTS_EXTRA_APP_FILES = [
     # no UIKit runtime dependency) -- the backup Archive format itself,
     # exactly what DataExporterTests exists to round-trip.
     "Zoon/Services/DataExporter.swift",
+    "Zoon/Services/ICloudArchiveSync.swift",
 ]
 
 APP_ASSETS = "Zoon/Assets.xcassets"

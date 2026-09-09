@@ -29,7 +29,8 @@ struct TonightWidget: Widget {
             .systemSmall,
             .systemMedium,
             .accessoryRectangular,
-            .accessoryInline
+            .accessoryInline,
+            .accessoryCircular
         ])
     }
 }
@@ -42,6 +43,7 @@ struct TonightWidgetView: View {
         switch family {
         case .accessoryInline: inline
         case .accessoryRectangular: rectangular
+        case .accessoryCircular: circular
         case .systemMedium: medium
         default: small
         }
@@ -192,6 +194,19 @@ struct TonightWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var circular: some View {
+        VStack(spacing: 1) {
+            Image(systemName: "bed.double.fill")
+                .font(.caption2)
+                .widgetAccentable()
+            Text(hasPlan ? snapshot.tonightTargetLabel : "—")
+                .font(.system(.caption2, design: .rounded).weight(.semibold))
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .privacySensitive()
+        }
     }
 
     private var placeholderBadge: some View {

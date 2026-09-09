@@ -23,6 +23,7 @@ final class UserPreferences {
         static let lifestyleInsightsEnabled = "zoon.pref.lifestyleInsightsEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
         static let wakeAlarmEnabled = "zoon.pref.wakeAlarmEnabled"
+        static let morningBriefEnabled = "zoon.pref.morningBriefEnabled"
         static let appearance = "zoon.pref.appearance"
         static let recoveryModeDate = "zoon.pref.recoveryModeDate"
         static let experimentTag = "zoon.pref.experimentTag"
@@ -196,6 +197,15 @@ final class UserPreferences {
     /// woken by an app because they updated it.
     var wakeAlarmEnabled: Bool {
         didSet { defaults.set(wakeAlarmEnabled, forKey: Key.wakeAlarmEnabled) }
+    }
+
+    /// A lock-screen-safe nudge after usual wake time pointing at Today.
+    ///
+    /// The body never carries a duration, score, or debt figure — those
+    /// belong on the Morning Brief card, not on a lock screen. Off by
+    /// default, requested from Settings the same way bedtime reminders are.
+    var morningBriefEnabled: Bool {
+        didSet { defaults.set(morningBriefEnabled, forKey: Key.morningBriefEnabled) }
     }
 
     /// System / Dark / Light. Defaults to Dark, not System: the palette was
@@ -565,6 +575,7 @@ final class UserPreferences {
         self.lifestyleInsightsEnabled = defaults.bool(forKey: Key.lifestyleInsightsEnabled)
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
         self.wakeAlarmEnabled = defaults.bool(forKey: Key.wakeAlarmEnabled)
+        self.morningBriefEnabled = defaults.bool(forKey: Key.morningBriefEnabled)
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: Key.appearance) ?? ""
         ) ?? .dark
@@ -625,6 +636,7 @@ final class UserPreferences {
         lifestyleInsightsEnabled = false
         smartWakeEnabled = false
         wakeAlarmEnabled = false
+        morningBriefEnabled = false
         appearance = .dark
         age = nil
         biologicalSex = .unspecified
@@ -657,6 +669,7 @@ final class UserPreferences {
             Key.lifestyleInsightsEnabled,
             Key.smartWakeEnabled,
             Key.wakeAlarmEnabled,
+            Key.morningBriefEnabled,
             Key.appearance,
             Key.recoveryModeDate,
             Key.experimentDesign,

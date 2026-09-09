@@ -27,5 +27,23 @@
 	<array>
 		<string>group.com.zoon.sleep.shared</string>
 	</array>
+	<!--
+	  Optional encrypted backup of the local archive into the user's iCloud
+	  Drive. Not a Zoon server: FileManager talks to Apple's ubiquity daemon.
+	  Off until the user taps Back up now. Unsigned CI still compiles this
+	  entitlement; the container is nil without an iCloud account.
+	-->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.zoon.sleep</string>
+	</array>
+	<key>com.apple.developer.ubiquity-container-identifiers</key>
+	<array>
+		<string>iCloud.com.zoon.sleep</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudDocuments</string>
+	</array>
 </dict>
 </plist>

@@ -11,7 +11,7 @@ struct ClinicianReportView: View {
     @State private var reportURL: URL?
     @State private var errorMessage: String?
 
-    private let rangeOptions = [30, 90]
+    private let rangeOptions = [7, 30, 90]
 
     var body: some View {
         ScrollView {

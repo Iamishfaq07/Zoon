@@ -91,6 +91,7 @@ struct RootView: View {
         .onChange(of: setup.value.plans) { _, _ in Task { await refreshReminders() } }
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
         .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
+        .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.smartWakeEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.wakeAlarmEnabled) { _, _ in Task { await refreshReminders() } }
         .onAppear {
@@ -216,6 +217,18 @@ struct RootView: View {
             schedule: { await wakeAlarm.schedule(at: $0) },
             cancel: { wakeAlarm.cancel() }
         )
+
+        let morningBriefWanted = preferences.morningBriefEnabled
+        await reconcile(
+            .morningBrief,
+            wanted: morningBriefWanted,
+            permitted: notificationsPermitted,
+            target: morningBriefWanted ? wakeTarget : nil,
+            schedule: {
+                await reminders.scheduleMorningBrief(wakeTime: $0)
+            },
+            cancel: { reminders.cancelMorningBrief() }
+        )
     }
 
     /// One slot: decide, act, record.
@@ -263,6 +276,10 @@ struct RootView: View {
 
     private func consumeDeepLink() {
         guard let destination = DeepLink.consume() else { return }
+        if destination == .nap, let minutes = DeepLink.consumeNapMinutes() {
+            naps.start(targetMinutes: minutes)
+            coordinator.republishGlanceSurfaces()
+        }
         push(destination)
     }
 

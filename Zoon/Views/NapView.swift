@@ -173,6 +173,7 @@ struct NapView: View {
             HStack(spacing: 12) {
                 Button {
                     naps.cancel()
+                    coordinator.republishGlanceSurfaces()
                 } label: {
                     Text("Cancel")
                         .font(Theme.label(14, weight: .semibold))
@@ -183,6 +184,7 @@ struct NapView: View {
 
                 Button {
                     naps.finish()
+                    coordinator.republishGlanceSurfaces()
                     Haptics.success()
                 } label: {
                     Label("I'm awake", systemImage: "sun.max.fill")
@@ -296,6 +298,7 @@ struct NapView: View {
     private var startButton: some View {
         Button {
             naps.start(targetMinutes: selectedMinutes)
+            coordinator.republishGlanceSurfaces()
             Haptics.tap()
         } label: {
             Label("Start nap", systemImage: "play.fill")

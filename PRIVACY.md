@@ -28,6 +28,10 @@ Data remains on the user's devices until it is replaced by newer rolling data, d
 
 Delete Everything removes Zoon's local sleep and journal database rows, preferences, naps, snore summaries, widget snapshot files, pending deep links, Spotlight search entries, on-device insight cache, temporary export artefacts, reminders, live activities, and the latest Watch snapshot context. It does not delete the original data in Apple Health.
 
+## Optional iCloud backup
+
+Zoon can copy an encrypted archive into the user's own iCloud Drive when the user taps Back up now. The passphrase is never stored. This uses Apple's iCloud Documents container, not a Zoon server, and is off until asked for. Turning it off does not delete a file already in iCloud Drive.
+
 ## Tracking and collection
 
 Zoon does not track users across apps or websites. Zoon does not sell personal data. Zoon does not collect data on a developer-operated server.

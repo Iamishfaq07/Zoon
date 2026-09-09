@@ -269,6 +269,28 @@ struct SettingsView: View {
                 .disabled(!wakeAlarm.isAvailable)
             }
 
+            Toggle(isOn: Binding(
+                get: { preferences.morningBriefEnabled },
+                set: { wantsOn in
+                    Task {
+                        if wantsOn {
+                            let granted = await reminders.requestAuthorization()
+                            preferences.morningBriefEnabled = granted
+                        } else {
+                            preferences.morningBriefEnabled = false
+                            reminders.cancelMorningBrief()
+                        }
+                    }
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Morning brief")
+                    Text("Nudge \(BedtimeReminder.morningBriefLeadMinutes) minutes after your usual wake. Names no numbers — open the app for those.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if reminders.authorization == .denied {
                 Label(reminders.statusDescription, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)

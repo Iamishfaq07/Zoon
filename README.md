@@ -157,9 +157,11 @@ otherwise arrive as the same sentence on the same kind of card.
 
 ### Everything else
 - Lock-screen, home-screen, and **watch-face** widgets, plus a companion Apple
-  Watch app. Of the engines above, only Sleep Autopilot and Uncertainty
-  Forecast reach the wrist and the widgets — they are the two about the night
-  *ahead*, which is what earns a glance surface; the rest are reading material.
+  Watch app. Last Night is on circular and inline lock-screen families;
+  Tonight is on circular as well as rectangular and inline. Of the engines
+  above, only Sleep Autopilot and Uncertainty Forecast reach the wrist and
+  the widgets — they are the two about the night *ahead*, which is what
+  earns a glance surface; the rest are reading material.
 - **Badges** — 13 of them, every one cumulative or best-ever. Nothing here can
   be lost to one bad night, on purpose.
 - **Stress today** — the one live, daytime number in an app otherwise built
@@ -173,9 +175,25 @@ otherwise arrive as the same sentence on the same kind of card.
   audio is processed in short bursts and never saved, only a minutes count
 - **Wake window** notification, honestly scoped: nudges within your usual
   wake time from historical data, not a live sleep-stage alarm
+- **Morning brief** notification, off by default: fires 30 minutes after
+  usual wake and names no numbers, so a lock screen anyone in the room can
+  read never carries duration, score, or debt
+- **Siri / Shortcuts** — recovery, last night, log a habit, start a nap,
+  play a soundscape, and tonight's bedtime. Nap and soundscape open the app
+  through a one-shot deep link rather than a second store
 - **Streaks** and goal-met counts, kept modest — a streak that punishes one bad
   night is actively harmful in a sleep app
 - **Export** to JSON (complete, re-importable) or CSV (one row per night)
+- **Optional iCloud backup** — an encrypted `ZoonBackup.json` in the user's
+  own iCloud Drive Documents, off until tapped, passphrase never stored.
+  Not a Zoon server
+- **Travel repayment** — three destination nights, each moved by Autopilot's
+  20-minute cap, so Tonight and the jet-lag plan cannot disagree
+- **Clinician report** — 7/30/90-day PDF with nights meeting goal, longest /
+  shortest, and median sleep. Not a diagnosis
+- **Onboarding profile** — optional age, sex, and BMI on the sleep-goal page,
+  the same pickers Settings already had, so the deep-sleep prior is not
+  buried
 - **Data Quality & Privacy** — freshness, per-sensor coverage, storage details,
   permission access, and the full local-data policy in one screen
 - Insight engine written as a protocol with a complete rule-based implementation
@@ -333,12 +351,9 @@ has run this against a real Health store:
   registered and associated with all four App IDs in the Apple Developer portal.
 - Background delivery needs the HealthKit background-delivery capability.
   Without it the app still refreshes on foreground.
-- The **Body Clock "now" markers** are a hardcoded white dot on both the card
-  and the full screen. Every other non-adapting colour in the view layer has
-  been either fixed or justified (medal colours are physical materials; watchOS
-  has no light appearance), but whether white still separates from a
-  light-theme dial is a question about appearance rather than about code, and
-  it was left alone rather than changed unseen.
+- Optional iCloud backup needs the iCloud Documents container
+  `iCloud.com.zoon.sleep` associated with the App ID. Without it, Back up to
+  iCloud reports that iCloud is unavailable and Export still works.
 
 ## Not medical advice
 

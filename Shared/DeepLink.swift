@@ -46,6 +46,8 @@ enum DeepLink {
     }
 
     private static let key = "zoon.deeplink.pending"
+    private static let napMinutesKey = "zoon.deeplink.napMinutes"
+    private static let soundKey = "zoon.deeplink.sound"
 
     private static var defaults: UserDefaults {
         AppGroup.containerURL != nil
@@ -79,10 +81,54 @@ enum DeepLink {
         return value
     }
 
+    /// Minutes for a nap Siri asked to start. Consumed with the destination
+    /// so a leftover value cannot start a second nap on the next launch.
+    static var pendingNapMinutes: Int? {
+        get {
+            let value = defaults.object(forKey: napMinutesKey) as? Int
+            return (value ?? 0) > 0 ? value : nil
+        }
+        set {
+            if let newValue, newValue > 0 {
+                defaults.set(newValue, forKey: napMinutesKey)
+            } else {
+                defaults.removeObject(forKey: napMinutesKey)
+            }
+        }
+    }
+
+    static func consumeNapMinutes() -> Int? {
+        let value = pendingNapMinutes
+        pendingNapMinutes = nil
+        return value
+    }
+
+    /// Soundscape Siri asked to start. Empty means "open the screen".
+    static var pendingSound: String? {
+        get { defaults.string(forKey: soundKey) }
+        set {
+            if let newValue, !newValue.isEmpty {
+                defaults.set(newValue, forKey: soundKey)
+            } else {
+                defaults.removeObject(forKey: soundKey)
+            }
+        }
+    }
+
+    static func consumeSound() -> String? {
+        let value = pendingSound
+        pendingSound = nil
+        return value
+    }
+
     /// Clears both possible stores so changing App Group configuration cannot
     /// resurrect a destination written by an older build.
     static func clear() {
         UserDefaults.standard.removeObject(forKey: key)
+        UserDefaults.standard.removeObject(forKey: napMinutesKey)
+        UserDefaults.standard.removeObject(forKey: soundKey)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: key)
+        UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: napMinutesKey)
+        UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: soundKey)
     }
 }

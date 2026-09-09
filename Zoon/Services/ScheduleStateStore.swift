@@ -26,12 +26,14 @@ final class ScheduleStateStore {
         case bedtime
         case wakeWindow
         case wakeAlarm
+        case morningBrief
 
         var label: String {
             switch self {
             case .bedtime: "Bedtime reminder"
             case .wakeWindow: "Wake window"
             case .wakeAlarm: "Wake alarm"
+            case .morningBrief: "Morning brief"
             }
         }
     }

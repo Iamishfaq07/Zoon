@@ -176,6 +176,9 @@ enum DataExporter {
             /// expires on its own, so a V4 file restoring without it loses
             /// nothing that would still have applied.
             let recoveryModeDate: Date?
+            /// Optional -- added without a format bump. An older backup
+            /// decodes as `nil` and restores as off, which is the default.
+            let morningBriefEnabled: Bool?
         }
 
         struct WristTemperatureRecord: Codable {
@@ -249,7 +252,8 @@ enum DataExporter {
                 experimentDesign: preferences.experimentDesign?.rawValue,
                 experimentDesignSeed: preferences.experimentDesignSeed
                     .map { Int(bitPattern: UInt(truncatingIfNeeded: $0)) },
-                recoveryModeDate: preferences.recoveryModeDateForBackup
+                recoveryModeDate: preferences.recoveryModeDateForBackup,
+                morningBriefEnabled: preferences.morningBriefEnabled
             ),
             snoreSummaries: snoreSummaries,
             wristTemperatures: wristTemperatures.map {
