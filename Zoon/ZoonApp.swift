@@ -9,10 +9,10 @@ import SwiftData
 @MainActor
 struct ZoonApp: App {
 
-    private let modelContainer: ModelContainer
+    private let modelContainer: ModelContainer?
     private let storeOpeningError: String?
 
-    @State private var coordinator: SleepDataCoordinator
+    @State private var coordinator: SleepDataCoordinator?
     @State private var preferences: UserPreferences
     @State private var naps: NapStore
     @State private var soundscape: SoundscapeEngine
@@ -21,7 +21,7 @@ struct ZoonApp: App {
 
     init() {
         let preferences = UserPreferences()
-        let container: ModelContainer
+        let container: ModelContainer?
         let storeOpeningError: String?
 
         do {
@@ -31,7 +31,7 @@ struct ZoonApp: App {
             // Preserve the unreadable store and mount only a recovery screen.
             // The normal app never sees this in-memory container, so it cannot
             // mistake the failure for empty history or overwrite the disk.
-            storeOpeningError = error.localizedDescription
+            let openingError = error.localizedDescription
             let fallback = ModelConfiguration(isStoredInMemoryOnly: true)
             do {
                 // PersistentStore.schema, never a hand-repeated list: the two
@@ -40,8 +40,23 @@ struct ZoonApp: App {
                 container = try ModelContainer(
                     for: PersistentStore.schema, configurations: fallback
                 )
+                storeOpeningError = openingError
             } catch {
-                fatalError("Could not create recovery container: \(error)")
+                // Both containers failed. This used to be `fatalError`, and on
+                // 2026-09-09 build 65 hit it on a real device: EXC_BREAKPOINT
+                // on the main thread inside App.main(), before any window
+                // existed. That is the worst shape a bug can take -- the app
+                // dies instantly, every launch, showing nothing and saying
+                // nothing, and the only way anyone learned why was reading a
+                // .ips off the phone by hand.
+                //
+                // Nothing here is worth killing the process for. A scene that
+                // needs no ModelContainer at all can still put both errors on
+                // screen, where the person holding the phone can read them.
+                container = nil
+                storeOpeningError = openingError
+                    + "\n\nThe in-memory recovery store also failed: "
+                    + error.localizedDescription
             }
         }
 
@@ -55,8 +70,12 @@ struct ZoonApp: App {
         _naps = State(initialValue: naps)
         _soundscape = State(initialValue: SoundscapeEngine())
         _reminders = State(initialValue: reminders)
-        _coordinator = State(
-            initialValue: SleepDataCoordinator(
+        // No container means no stores to build -- and nothing that needs
+        // them, because the only scene mounted in that case is the recovery
+        // one. Building them anyway is what turned an unopenable store into
+        // a crash.
+        _coordinator = State(initialValue: container.map { container in
+            SleepDataCoordinator(
                 healthKit: HealthKitManager(),
                 store: SleepHistoryStore(context: container.mainContext),
                 journal: JournalStore(context: container.mainContext),
@@ -65,30 +84,38 @@ struct ZoonApp: App {
                 preferences: preferences,
                 reminders: reminders
             )
-        )
+        })
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if let storeOpeningError {
-                    StoreRecoveryView(message: storeOpeningError)
-                } else if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
-                    RootView()
-                } else {
-                    OnboardingView()
-                        .transition(.opacity)
+            if let modelContainer, let coordinator {
+                Group {
+                    if let storeOpeningError {
+                        StoreRecoveryView(message: storeOpeningError)
+                    } else if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
+                        RootView()
+                    } else {
+                        OnboardingView()
+                            .transition(.opacity)
+                    }
                 }
+                .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
+                .environment(coordinator)
+                .environment(preferences)
+                .environment(naps)
+                .environment(soundscape)
+                .environment(reminders)
+                .environment(presentation)
+                .modelContainer(modelContainer)
+            } else {
+                // Deliberately carries no .modelContainer and no environment:
+                // this is the scene for when there is no container to give it.
+                StoreRecoveryView(
+                    message: storeOpeningError ?? "The data store could not be opened."
+                )
             }
-            .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
-            .environment(coordinator)
-            .environment(preferences)
-            .environment(naps)
-            .environment(soundscape)
-            .environment(reminders)
-            .environment(presentation)
         }
-        .modelContainer(modelContainer)
     }
 }
 

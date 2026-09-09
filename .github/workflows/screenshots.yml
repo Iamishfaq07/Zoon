@@ -306,6 +306,43 @@ jobs:
           shoot sleepDetail largeText || FAILED=1
           shoot trends largeText || FAILED=1
           xcrun simctl ui "$UDID" content_size medium || true
+
+          # --- Launch once WITHOUT demo mode -------------------------------
+          #
+          # Every capture above passes -zoonDemo YES, which forces the mock
+          # dataset and skips HealthKit outright. That is correct for
+          # screenshots -- the Simulator has a Health store but no sleep in it
+          # and nobody to tap the permission sheet -- but it means the real
+          # HealthKit path has never been launched by CI at any point, and a
+          # crash reported on a device (build 65, 2026-09-09) did not
+          # reproduce in any captured screen.
+          #
+          # So: one plain launch, no arguments, purely to see whether the
+          # process survives. It is expected to stop on the authorization
+          # sheet, and a live process sitting on that sheet is a pass -- the
+          # only thing being asked here is "does it still exist".
+          #
+          # Never fails the job. A screenshot run that goes red because a
+          # diagnostic probe is inconclusive would cost more than it explains;
+          # the crash report it prints is the entire deliverable.
+          echo "Launching once without -zoonDemo to exercise the real HealthKit path"
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+          xcrun simctl launch --terminate-running-process "$UDID" "$BUNDLE_ID" \
+            >/dev/null 2>&1 || true
+          sleep 8
+          xcrun simctl io "$UDID" screenshot "screenshots/liveHealthKit.png" || true
+          live=$(xcrun simctl spawn "$UDID" launchctl list || true)
+          if printf '%s' "$live" | grep -q "$BUNDLE_ID"; then
+            echo "Survived a non-demo launch (most likely sitting on the Health sheet)."
+          else
+            echo "::warning::Zoon died on a non-demo launch -- this is the device crash reproducing."
+            for report in "$CRASH_DIR"/Zoon*.ips; do
+              [ -e "$report" ] || continue
+              echo "--- $(basename "$report") ---"
+              cat "$report"
+            done
+          fi
+
           exit $FAILED
 
       - name: Summarise
