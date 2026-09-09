@@ -34,10 +34,11 @@ struct ZoonApp: App {
             storeOpeningError = error.localizedDescription
             let fallback = ModelConfiguration(isStoredInMemoryOnly: true)
             do {
+                // PersistentStore.schema, never a hand-repeated list: the two
+                // had drifted, and a recovery container missing a model the
+                // app immediately fetches traps instead of recovering.
                 container = try ModelContainer(
-                    for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-                    EvidenceRevisionRecord.self,
-                    configurations: fallback
+                    for: PersistentStore.schema, configurations: fallback
                 )
             } catch {
                 fatalError("Could not create recovery container: \(error)")

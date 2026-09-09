@@ -176,6 +176,40 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" $existing
           echo "Imported the cached signing identity into $KEYCHAIN"
 
+      - name: Prepare a keychain for a newly minted identity
+        # The other half of the caching story, and the reason caching has
+        # never actually worked once.
+        #
+        # On a cache *hit* the step above creates a keychain whose password
+        # this job generated, so the identity in it is exportable. On a
+        # *miss* -- which is every run so far -- Archive minted the identity
+        # into the runner's login keychain instead, whose password is not
+        # ours to know. `security export` then blocked on a GUI
+        # authorization prompt that cannot be answered on a headless runner,
+        # which is what hung run 63 on 2026-09-09.
+        #
+        # Creating a keychain we control and making it the default gives a
+        # newly minted identity somewhere exportable to land. Whether Xcode
+        # honours the default keychain for this is not something this
+        # workflow should bet on, so the export step after the upload tries
+        # the login keychain as well -- if the identity lands there anyway,
+        # nothing is lost.
+        if: env.IOS_P12_PASSWORD != '' && steps.signing-cache.outputs.cache-hit != 'true'
+        run: |
+          set -o pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          existing=$(security list-keychains -d user | sed 's/"//g')
+          security list-keychains -d user -s "$KEYCHAIN" $existing
+          security default-keychain -s "$KEYCHAIN"
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "SIGNING_KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
+          echo "Created $KEYCHAIN and made it the default for this job."
+
       - name: Archive
         run: |
           set -o pipefail
@@ -194,34 +228,6 @@ jobs:
             CODE_SIGN_STYLE=Automatic \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             2>&1 | tee archive.log
-
-      - name: Cache the signing identity for future runs
-        # Only on a cache miss (the identity we just used was newly minted
-        # by Archive above, not imported) and only once Archive has actually
-        # succeeded -- there is no point persisting a certificate tied to a
-        # broken configuration.
-        #
-        # Exports every identity in the runner's default login keychain.
-        # Safe specifically because this is a fresh, single-tenant runner:
-        # the only certificate that can be in there is the one
-        # -allowProvisioningUpdates just created a few seconds ago while
-        # signing this same archive.
-        #
-        # actions/cache writes under `key` only on a miss and a key can
-        # never be overwritten -- if a cached identity is ever revoked (as
-        # happened on 2026-09-08, clearing space for a fresh one to be made
-        # by hand) the next run will still try to import the now-invalid
-        # cached copy and fail. Recovery is bumping the key here and on the
-        # restore step above (v1 -> v2), or clearing the cache from the
-        # repo's Actions settings -- either forces a fresh certificate to be
-        # minted and cached in its place.
-        if: env.IOS_P12_PASSWORD != '' && steps.signing-cache.outputs.cache-hit != 'true'
-        run: |
-          set -o pipefail
-          mkdir -p build/signing
-          security export -k login.keychain-db -t identities -f pkcs12 \
-            -P "$IOS_P12_PASSWORD" -o build/signing/identity.p12
-          echo "Exported this run's signing identity for actions/cache to persist."
 
       - name: Write the export options
         # method=app-store-connect (not the older "app-store") is what
@@ -259,6 +265,98 @@ jobs:
             -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
             -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
             2>&1 | tee export.log
+
+      - name: Cache the signing identity for future runs
+        # Runs AFTER the upload, deliberately. This is an optimisation for
+        # *future* runs -- it must never stand between a successful archive
+        # and the build reaching a phone. It sat before the export once, and
+        # on the first run that actually executed it (2026-09-09, the first
+        # run after IOS_P12_PASSWORD was set) it hung the job with a finished
+        # archive that was never uploaded.
+        #
+        # Why it hung: the identity -allowProvisioningUpdates had just minted
+        # carries an ACL that does not permit non-interactive export, so
+        # `security export` blocked on a GUI authorization prompt that cannot
+        # appear on a headless runner. set-key-partition-list below grants
+        # /usr/bin/security access up front; `timeout` and `|| true` make
+        # certain that a prompt, a locked keychain or any other surprise
+        # costs this run nothing. Failing to cache is survivable -- it just
+        # means the next run mints a fresh certificate, which is exactly what
+        # every run did before caching existed. Hanging is not.
+        #
+        # Only on a cache miss (the identity we just used was newly minted by
+        # Archive, not imported) and only once the upload has succeeded --
+        # there is no point persisting a certificate tied to a broken
+        # configuration.
+        #
+        # Exports every identity in the runner's default login keychain.
+        # Safe specifically because this is a fresh, single-tenant runner:
+        # the only certificate that can be in there is the one
+        # -allowProvisioningUpdates created a few minutes ago while signing
+        # this same archive.
+        #
+        # actions/cache writes under `key` only on a miss and a key can
+        # never be overwritten -- if a cached identity is ever revoked (as
+        # happened on 2026-09-08, clearing space for a fresh one to be made
+        # by hand) the next run will still try to import the now-invalid
+        # cached copy and fail. Recovery is bumping the key here and on the
+        # restore step above (v1 -> v2), or clearing the cache from the
+        # repo's Actions settings -- either forces a fresh certificate to be
+        # minted and cached in its place.
+        if: env.IOS_P12_PASSWORD != '' && steps.signing-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          # No -e: a failed export on the first keychain must fall through to
+          # the second, not abandon the step.
+          set +e
+          mkdir -p build/signing
+          exported=""
+
+          for keychain in "$SIGNING_KEYCHAIN" login.keychain-db; do
+            [ -n "$keychain" ] || continue
+            if [ "$keychain" = "login.keychain-db" ]; then
+              # The login keychain on a hosted runner is already unlocked and
+              # its password is not ours to know, so an empty one is the only
+              # thing worth trying and its failure is not interesting.
+              keychain_password=""
+            else
+              keychain_password="$SIGNING_KEYCHAIN_PASSWORD"
+            fi
+
+            security set-key-partition-list -S apple-tool:,apple:,codesign: \
+              -s -k "$keychain_password" "$keychain" >/dev/null 2>&1
+
+            # A plain shell watchdog rather than `timeout`: macOS ships no
+            # timeout(1), only gtimeout(1) if coreutils happens to be
+            # present, and this must not depend on that. Redirecting stdin is
+            # not enough on its own -- the prompt that hung run 63 is a GUI
+            # authorization dialog, not a read from the terminal -- so
+            # killing the process is the only reliable escape.
+            security export -k "$keychain" -t identities -f pkcs12 \
+              -P "$IOS_P12_PASSWORD" -o build/signing/identity.p12 </dev/null &
+            export_pid=$!
+            ( sleep 60; kill -9 "$export_pid" 2>/dev/null ) &
+            watchdog_pid=$!
+            wait "$export_pid"
+            rc=$?
+            kill "$watchdog_pid" 2>/dev/null
+
+            if [ "$rc" -eq 0 ] && [ -s build/signing/identity.p12 ]; then
+              exported="$keychain"
+              break
+            fi
+            rm -f build/signing/identity.p12
+          done
+
+          if [ -n "$exported" ]; then
+            echo "Exported this run's signing identity from $exported for actions/cache to persist."
+          else
+            echo "Could not export the signing identity from any keychain, so nothing"
+            echo "is cached and the next run will mint a fresh certificate, exactly as"
+            echo "every run did before caching existed. The build itself is already"
+            echo "uploaded and is unaffected by this."
+          fi
+          exit 0
 
       - name: Summarise
         if: always()

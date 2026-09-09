@@ -175,6 +175,16 @@ and the workflow instead exports the certificate the *first* time it makes
 one, and every later run reuses that same exported copy instead of minting
 a new one — so the account never fills up from normal use.
 
+That export is deliberately **best-effort, and runs after the upload**. It
+is an optimisation for later runs, so it must never stand between a
+finished archive and the build reaching your phone. Exporting a private key
+the runner just minted can block on a keychain authorization prompt that no
+one is there to answer, which is exactly what happened the first time this
+step ran for real; it is now killed after two minutes and the run carries on
+regardless. If you see "Could not export the signing identity" in a run
+summary, nothing is broken — that build uploaded fine, and the next run will
+mint a fresh certificate the way every run did before caching existed.
+
 *(If you're reading this because a run just failed with exactly that
 error: go to
 [developer.apple.com/account/resources/certificates/list](https://developer.apple.com/account/resources/certificates/list),
