@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import os
 
 /// Opens the same `ModelContainer` configuration the app uses, so anything
 /// running outside `ZoonApp`'s own process lifetime -- an App Intent invoked
@@ -7,6 +8,7 @@ import SwiftData
 /// rather than a second, silently diverging one.
 enum PersistentStore {
     private static let migrationKey = "zoon.store.didMigrateToAppGroup"
+    private static let logger = Logger(subsystem: "com.zoon.sleep", category: "PersistentStore")
 
     /// Every model the app persists, in one place.
     ///
@@ -27,20 +29,85 @@ enum PersistentStore {
 
     @MainActor
     static func open() throws -> ModelContainer {
-        let configuration: ModelConfiguration
-        if let groupURL = AppGroup.containerURL {
-            configuration = ModelConfiguration(
-                url: groupURL.appendingPathComponent("Zoon.store")
-            )
-        } else {
-            configuration = ModelConfiguration()
-        }
-
+        let configuration = diskConfiguration()
         let container = try ModelContainer(for: schema, configurations: configuration)
         if AppGroup.isConfigured {
-            try migrateLegacyStoreIfNeeded(into: container)
+            // A failed copy leaves the legacy store in place (the flag is
+            // not set and the files are not erased on throw). Failing
+            // *launch* because the old store couldn't be read would turn a
+            // one-time migration into a crash every time, with a working
+            // destination already in hand.
+            do {
+                try migrateLegacyStoreIfNeeded(into: container)
+            } catch {
+                logger.error(
+                    "Legacy store migration skipped: \(error.localizedDescription, privacy: .public)"
+                )
+            }
         }
         return container
+    }
+
+    /// In-memory container with the same schema as disk. Used by the launch
+    /// recovery path as a diagnostic (can the schema even load?) and never
+    /// as a store the rest of the app writes to.
+    @MainActor
+    static func makeRecoveryContainer() throws -> ModelContainer {
+        try ModelContainer(for: schema, configurations: memoryConfiguration())
+    }
+
+    /// File-backed configuration. Always the same schema, never CloudKit.
+    ///
+    /// iCloud Drive (the encrypted JSON archive) is a separate entitlement
+    /// and a separate code path. `cloudKitDatabase` defaults to `.automatic`
+    /// on the no-URL initializer, which would try to put these models on
+    /// CloudKit the moment the iCloud container identifiers are present --
+    /// `@Attribute(.unique)` on a SwiftData model is enough for that path
+    /// to trap inside `DefaultMigrationManager` rather than throw. The URL
+    /// initializer already defaults to `.none`; passing it anyway so a
+    /// future edit cannot silently revert.
+    ///
+    /// The schema is passed into the configuration, not only into
+    /// `ModelContainer(for:)`. A configuration created without one has been
+    /// observed to disagree with the container's schema during lightweight
+    /// migration, which is the other way `DefaultMigrationManager` ends up
+    /// on a launch crash stack.
+    private static func diskConfiguration() -> ModelConfiguration {
+        if let groupURL = AppGroup.containerURL {
+            return ModelConfiguration(
+                schema: schema,
+                url: groupURL.appendingPathComponent("Zoon.store"),
+                cloudKitDatabase: .none
+            )
+        }
+        return ModelConfiguration(
+            "Zoon",
+            schema: schema,
+            groupContainer: .none,
+            cloudKitDatabase: .none
+        )
+    }
+
+    private static func memoryConfiguration() -> ModelConfiguration {
+        ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: true,
+            groupContainer: .none,
+            cloudKitDatabase: .none
+        )
+    }
+
+    /// The default Application Support store, not the App Group one.
+    /// `ModelConfiguration()` with an App Group entitlement uses
+    /// `groupContainer: .automatic` and can open the *same* store `open()`
+    /// just mounted -- two `ModelContainer`s on one file is a SwiftData trap.
+    private static func legacyDiskConfiguration() -> ModelConfiguration {
+        ModelConfiguration(
+            "Zoon",
+            schema: schema,
+            groupContainer: .none,
+            cloudKitDatabase: .none
+        )
     }
 
     /// Migrates records when App Groups are enabled after the app has already
@@ -80,9 +147,9 @@ enum PersistentStore {
             return
         }
 
-        // Complete today, but a fourth hand-copied list is a fourth chance to
-        // drift, which is the whole defect this consolidation exists to close.
-        let legacy = try ModelContainer(for: schema, configurations: ModelConfiguration())
+        let legacy = try ModelContainer(
+            for: schema, configurations: legacyDiskConfiguration()
+        )
         // If this throws, it propagates out of this function before reaching
         // the migrationKey/eraseLegacyStoreFiles() calls below, so a failed
         // copy never marks the migration done or deletes the source -- the

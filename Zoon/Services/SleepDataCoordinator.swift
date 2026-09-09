@@ -210,24 +210,18 @@ final class SleepDataCoordinator {
         // selected implementation here so the displayed preference and the
         // engine doing the work cannot diverge after a relaunch.
         self.engine = Self.makeEngine(for: preferences.preferredEngine)
-        // One-time forward-fill of legacy positive tags into the
-        // observation store. Guarded by its own UserDefaults flag, which
-        // it checks before touching the store, so every launch after the
-        // first costs a single Bool read. Runs here rather than lazily on
-        // a read path because `journalObservations()` is called from
-        // several SwiftUI view bodies, and a write triggered from inside
-        // a body evaluation is how you get a mutation-during-render loop.
-        behaviors.migrateLegacyTags(from: journal.allEntries())
-        watchLink.activate()
-        watchLink.onQuickAction = { [weak self] event in
-            guard let self, !isErasing, preferences.hasCompletedOnboarding else { return }
-            Self.apply(event, journal: journal, naps: naps, behaviors: behaviors)
-        }
+        // SwiftData fetches and WatchConnectivity used to run here. Build 65
+        // constructed this coordinator from `ZoonApp.init` against a recovery
+        // container whose schema had drifted, and `migrateLegacyTags` trapped
+        // on the fetch -- `try?` does not catch a SwiftData trap -- before
+        // any window existed. `start()` is the first moment a view asked for
+        // this work anyway (RootView `.task`), and a write from a view body
+        // is still avoided because `start()` is not a body.
     }
 
     /// Applies a quick action logged from the watch. `static` and passed its
     /// dependencies explicitly rather than a `self` method: the closure set
-    /// on `watchLink.onQuickAction` above is held by `WatchLink` for the
+    /// on `watchLink.onQuickAction` in `start()` is held by `WatchLink` for the
     /// coordinator's whole lifetime, and capturing `self` there would be a
     /// retain cycle (`watchLink` is itself a property of this coordinator).
     private static func apply(
@@ -401,6 +395,26 @@ final class SleepDataCoordinator {
     /// visit involved. Removing the call here closes that gap without
     /// changing anything about the request onboarding already makes.
     func start() async {
+        // One-time forward-fill of legacy positive tags into the
+        // observation store. Guarded by its own UserDefaults flag, which
+        // it checks before touching the store, so every launch after the
+        // first costs a single Bool read. Runs here rather than lazily on
+        // a read path because `journalObservations()` is called from
+        // several SwiftUI view bodies, and a write triggered from inside
+        // a body evaluation is how you get a mutation-during-render loop.
+        behaviors.migrateLegacyTags(from: journal.allEntries())
+        watchLink.activate()
+        // Captures the stores, not `self`, for the same reason `init` used
+        // to: `watchLink` is a property of this coordinator, so a closure
+        // it holds that captured `self` would cycle.
+        let journal = journal
+        let naps = naps
+        let behaviors = behaviors
+        watchLink.onQuickAction = { [weak self] event in
+            guard let self, !isErasing, preferences.hasCompletedOnboarding else { return }
+            Self.apply(event, journal: journal, naps: naps, behaviors: behaviors)
+        }
+
         // Screenshot/demo runs take no permission sheet, run no queries, and
         // wait for nothing; the Simulator and any device without Health go
         // straight to mock data so the whole UI stays explorable, which is the

@@ -84,6 +84,7 @@
 		10C5A8851CF03E9EB322DFEB /* MorningCheckInCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B73D68A2DABAB452A03AC3 /* MorningCheckInCard.swift */; };
 		1108CAF7451794712C1E8EBB /* ZoonIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADFBFF192F82BF1AF28487A /* ZoonIntents.swift */; };
 		111DA79A18EB6D2FD6AEF92B /* RecoveryMeshBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC74EF2BD00BB4165DE7DCE /* RecoveryMeshBackground.swift */; };
+		1120114EC0F30EA48C6D834F /* PersistentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753455C5E45B0F317E8996AE /* PersistentStore.swift */; };
 		112F2AE90A83A00B85976AA3 /* StressDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988C7859742E07AD3373E321 /* StressDetailView.swift */; };
 		1197DE8D940B97D85A58692F /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		1209AD7C72CC0DF78D801683 /* PersistentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753455C5E45B0F317E8996AE /* PersistentStore.swift */; };
@@ -434,6 +435,7 @@
 		7AF1579D18B7897BAF402EA0 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
 		7BA1298E55AD9747F8AD12ED /* SensorTruthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4A8F4C33D6ED860E4481578 /* SensorTruthTests.swift */; };
 		7BA35F34F2D0077749956BCA /* SleepFingerprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2F15BCC2EEE83CC473EA89 /* SleepFingerprintTests.swift */; };
+		7BC71BAD5A461D772CCF20CD /* PersistentStoreSchemaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F2F230F51470A733C4F90BD /* PersistentStoreSchemaTests.swift */; };
 		7BCBA7AFE584E7B829C0FDED /* SensorTruth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E074F4F2EE237C68FD6FDD1 /* SensorTruth.swift */; };
 		7BD74E0AA147B8EEBB8B8D3A /* ScheduleStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2737914DCB7E7960D6E8862E /* ScheduleStateStore.swift */; };
 		7C5124798E7CB248FBA0DC5B /* CognitiveEnergyCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BBFAB53A49DC06328276E /* CognitiveEnergyCurve.swift */; };
@@ -1113,6 +1115,7 @@
 		4EB2899FEFAB02125453DC8F /* SleepReplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepReplayTests.swift"; sourceTree = "<group>"; };
 		4EC1FF35F8179A094C3AB745 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme.swift"; sourceTree = "<group>"; };
 		4EE4A990528A240EACB4B9AB /* SourceCoverage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SourceCoverage.swift"; sourceTree = "<group>"; };
+		4F2F230F51470A733C4F90BD /* PersistentStoreSchemaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersistentStoreSchemaTests.swift"; sourceTree = "<group>"; };
 		4F45BBBF4616D56128379987 /* SnapshotFreshnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnapshotFreshnessTests.swift"; sourceTree = "<group>"; };
 		4FB4B171A15A7BE8F3599BC6 /* MorningBriefCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningBriefCopy.swift"; sourceTree = "<group>"; };
 		50CF9DD82140B1DCFD4BCC5B /* SoundEventStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundEventStore.swift"; sourceTree = "<group>"; };
@@ -1783,6 +1786,7 @@
 				06902ACD41EC18AE77E3413F,
 				5CF8A3FDEA744A3C1FD02525,
 				61D956F040253B0CA1FB34BE,
+				4F2F230F51470A733C4F90BD,
 				08A3630C62C77D88D24D1330,
 				CE191264FB836AC4CAD15978,
 				AC2598BE02E91A9C95109E77,
@@ -2905,6 +2909,7 @@
 				C1996F2547CD476775D58F63,
 				C1F173421CCF2617E80B07AA,
 				3D19938F41400805F90D63FA,
+				7BC71BAD5A461D772CCF20CD,
 				5FA0BDE136096552D75BA7D4,
 				8D97CC1A03164A983BD15302,
 				E46DAC3B1BE6879273091E86,
@@ -3086,6 +3091,7 @@
 				30E5AF233E194415274098D9,
 				5AEB023AF9A06BCF5A6337A2,
 				5FD483E0FF8C627A8E1F8F44,
+				1120114EC0F30EA48C6D834F,
 				2FFF20E0F22093891AC50EE5,
 				54ACE99A59A5D986A90A045E,
 				5B77417787005F1346C20C5A,
