@@ -163,7 +163,7 @@ final class BedtimeReminder {
     @discardableResult
     func scheduleMorningBrief(
         wakeTime: Date,
-        leadMinutes: Int = Self.morningBriefLeadMinutes,
+        leadMinutes: Int = 30, // same value as morningBriefLeadMinutes; default args cannot mention Self
         actionableTip: String = ""
     ) async -> Bool {
         center.removePendingNotificationRequests(withIdentifiers: [ID.morningBrief])
