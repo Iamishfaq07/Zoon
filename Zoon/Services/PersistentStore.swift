@@ -8,6 +8,23 @@ import SwiftData
 enum PersistentStore {
     private static let migrationKey = "zoon.store.didMigrateToAppGroup"
 
+    /// Every model the app persists, in one place.
+    ///
+    /// Not a stylistic tidy-up: `ZoonApp`'s in-memory recovery container used
+    /// to repeat this list by hand and had drifted, missing
+    /// `BehaviorObservationRecord`. SwiftData traps on a fetch for a model the
+    /// container's schema does not contain -- `try?` does not catch it -- so
+    /// `BehaviorObservationStore` crashed the app the moment the recovery
+    /// screen was built. The one path that exists to survive a broken store
+    /// was itself the thing that could not survive one, and only on a real
+    /// device: the Simulator has no App Group entitlement, so `open()` uses a
+    /// different store URL there and CI never reaches the recovery path at
+    /// all. Both containers now build from this.
+    static let schema = Schema([
+        SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
+        BehaviorObservationRecord.self, EvidenceRevisionRecord.self
+    ])
+
     @MainActor
     static func open() throws -> ModelContainer {
         let configuration: ModelConfiguration
@@ -19,11 +36,7 @@ enum PersistentStore {
             configuration = ModelConfiguration()
         }
 
-        let container = try ModelContainer(
-            for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-            BehaviorObservationRecord.self, EvidenceRevisionRecord.self,
-            configurations: configuration
-        )
+        let container = try ModelContainer(for: schema, configurations: configuration)
         if AppGroup.isConfigured {
             try migrateLegacyStoreIfNeeded(into: container)
         }
@@ -67,11 +80,9 @@ enum PersistentStore {
             return
         }
 
-        let legacy = try ModelContainer(
-            for: SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-            BehaviorObservationRecord.self, EvidenceRevisionRecord.self,
-            configurations: ModelConfiguration()
-        )
+        // Complete today, but a fourth hand-copied list is a fourth chance to
+        // drift, which is the whole defect this consolidation exists to close.
+        let legacy = try ModelContainer(for: schema, configurations: ModelConfiguration())
         // If this throws, it propagates out of this function before reaching
         // the migrationKey/eraseLegacyStoreFiles() calls below, so a failed
         // copy never marks the migration done or deletes the source -- the
