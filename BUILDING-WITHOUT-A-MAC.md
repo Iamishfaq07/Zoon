@@ -159,6 +159,33 @@ into an archive.
 | `APPSTORE_PRIVATE_KEY` | The full contents of the `.p8` file, pasted as-is (including the `-----BEGIN/END PRIVATE KEY-----` lines) |
 | `APPLE_TEAM_ID` | The 10-character Team ID from step 5 |
 
+**One more secret, optional but worth adding before your second run:**
+`IOS_P12_PASSWORD` — any password you choose, used only to protect the
+signing certificate this workflow caches between runs (see next paragraph).
+Without it the workflow still works exactly as described above; it just
+mints a brand-new signing certificate on every single run, because each
+GitHub Actions runner starts from an empty keychain and — this is not a
+detail this workflow can work around — a certificate's private key is
+generated locally and never leaves the machine that created it, so a
+runner destroyed at the end of one job takes that key with it forever. Do
+that enough times and your Apple account fills up: Apple caps how many
+certificates can be active at once, and every run after that fails at
+Archive with **"Choose a certificate to revoke."** Set `IOS_P12_PASSWORD`
+and the workflow instead exports the certificate the *first* time it makes
+one, and every later run reuses that same exported copy instead of minting
+a new one — so the account never fills up from normal use.
+
+*(If you're reading this because a run just failed with exactly that
+error: go to
+[developer.apple.com/account/resources/certificates/list](https://developer.apple.com/account/resources/certificates/list),
+revoke one old "Apple Development" certificate to free a slot, then run the
+workflow again — that unblocks you immediately, independent of whether
+`IOS_P12_PASSWORD` is set. If it's already set and the error still happens,
+the *cached* certificate itself is the one that got revoked somewhere; open
+`.github/workflows/testflight.yml` and bump `ios-signing-identity-v1` to
+`-v2` in both places it appears, which forces a fresh certificate to be
+minted and cached again under the new key.)*
+
 **Every time after that:** **Actions** tab → **TestFlight** → **Run workflow**.
 ~15–20 minutes — archiving a Release build is slower than the Debug builds
 Build and Screenshots use. Apple then takes a few more minutes to process the
