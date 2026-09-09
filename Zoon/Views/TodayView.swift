@@ -1,34 +1,19 @@
 import SwiftUI
 import UIKit
 
-/// The morning screen, V8: one question -- *how am I today?* -- answered in
-/// the first screenful, with everything else one tap deeper.
+/// The morning screen: last night, in one look.
 ///
-/// Reads top to bottom as a story rather than a stack of cards:
+/// 1. **Hero** -- night sky, waxing crescent, asleep vs need as a ring.
+///    Tap the moon for stages. Same moon as first-run and the home icon.
+/// 2. **Tracks** -- Sleep / Need / Debt as filled bars, each a destination.
+/// 3. **Morning brief** -- always on the page, not hidden behind a toggle.
+/// 4. **Worth noticing** -- only when something actually moved.
+/// 5. **Energy** -- scrubbable curve with a now marker.
+/// 6. **Tonight** -- one timeline. No second "Prepare for tonight" button.
+/// 7. **Check-in** -- how last night felt.
 ///
-/// 1. **Hero** -- greeting, the Sleep Intelligence orbit, last night's
-///    duration, and Sleep / Need / Debt in one typographic row. No card.
-/// 2. **Health Pulse** -- four domain glances between two hairlines.
-/// 3. **Morning Brief** -- one insight, one action, "Why?" on demand.
-/// 4. **Worth noticing** -- the single most notable conditional item, or
-///    nothing at all on an ordinary day.
-/// 5. **Energy Horizon** -- one scrubbable curve for the day ahead.
-/// 6. **Tonight** -- the plan as a timeline with the autopilot folded in.
-/// 7. **Check-in** -- the one remaining card, because it is an input.
-///
-/// Fourteen cards became one. Every value shown still comes from
-/// `DayContext`; every card that left this screen is reachable from the
-/// thing that replaced it (see `docs/V8-UI-AUDIT.md` for the map):
-///
-/// - `SleepSummaryStrip` leads the Sleep tab; it was a duplicate here.
-/// - `BedtimeCountdownCard`, `TonightTimelineCard`, `AutopilotCard` are
-///   folded into `TonightSection`.
-/// - `EnergyForecastCard`, `BodyBatteryCard`, the Daily Load row,
-///   `TodayWorkoutsCard`, `LightCoachCard` live in `EnergyDetailView`.
-/// - `StressCard`, `HealthRadarCard`, `RecoveryModeCard`,
-///   `PersonalizationProgressCard` are ranked by `WorthNoticing`.
-/// - `InsightCard`, the brief card and `WhyScoreWaterfall` are `MorningBrief`.
-/// - `FloatingMetricCluster` is the typographic Sleep / Need / Debt row.
+/// Score-light mode (Settings) hides the intelligence ring and the pulse
+/// strip so Today stays duration, need, debt, and the brief.
 struct TodayView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
@@ -44,10 +29,10 @@ struct TodayView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var selectedComponentID: String?
-    /// Today opens with the answer. The orbit, the component arcs, the health
-    /// strip and the morning brief are the explanation, and they wait until
-    /// asked for -- see `MorningInThree`.
     @State private var showsExplanation = false
+    @State private var setup = PersonalSetupStore.shared
+
+    private var scoreLight: Bool { setup.value.scoreLight }
 
     var body: some View {
         NavigationStack {
@@ -68,12 +53,8 @@ struct TodayView: View {
 
     @ViewBuilder
     private var todayBackdrop: some View {
-        switch coordinator.state {
-        case let .loaded(context), let .mock(context):
-            RecoveryMeshBackground(recoveryPercent: context.recovery.percent)
-        default:
-            ZoonNightGround()
-        }
+        ZoonNightGround()
+            .overlay { NightSky(starCount: 40).opacity(0.55).allowsHitTesting(false) }
     }
 
     @ViewBuilder
@@ -119,36 +100,46 @@ struct TodayView: View {
 
     private func loadedContent(_ context: DayContext) -> some View {
         VStack(alignment: .leading, spacing: 28) {
-            NavigationLink { TonightRoutineView() } label: {
-                Label("Prepare for tonight", systemImage: "moon.stars.fill")
-            }.buttonStyle(.bordered)
-            if coordinator.recentNights.count <= 1 {
-                FirstNightCard(night: context.night).entrance(0)
-            }
-            MorningInThreeCard(
-                summary: morningSummary(context),
-                isExplanationShown: showsExplanation,
-                onToggleExplanation: {
+            TodayNightHero(
+                context: context,
+                greeting: greeting,
+                scoreLight: scoreLight
+            )
+            .entrance(0)
+
+            TodayNeedTracks(context: context)
+                .entrance(1)
+
+            MorningBrief(context: context)
+                .entrance(2)
+
+            if !scoreLight {
+                Button {
                     Haptics.select()
                     withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
                         showsExplanation.toggle()
                     }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(showsExplanation ? "Hide the breakdown" : "Explore why")
+                        Image(systemName: showsExplanation ? "chevron.up" : "chevron.down")
+                            .font(Theme.text(10, weight: .semibold))
+                    }
+                    .font(Theme.label(13, weight: .semibold))
+                    .foregroundStyle(Theme.Family.sleep)
                 }
-            )
-            .entrance(0)
+                .buttonStyle(.plain)
+            }
 
-            hero(context)
-
-            ShareLastNightButton(
-                night: context.night,
-                line: context.insight.summary
-            )
-            .entrance(1)
-
-            if showsExplanation {
+            if showsExplanation && !scoreLight {
+                LunarOrbit(
+                    score: context.sleepIntelligence,
+                    selectedID: $selectedComponentID,
+                    showsComponents: true
+                )
+                .entrance(3)
+                LunarOrbitLegend(score: context.sleepIntelligence, selectedID: $selectedComponentID)
                 HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
-                    .entrance(2)
-                MorningBrief(context: context)
                     .entrance(3)
             }
 
@@ -204,76 +195,17 @@ struct TodayView: View {
                 }
             }
 
+            ShareLastNightButton(
+                night: context.night,
+                line: context.insight.summary
+            )
+            .entrance(8)
+
             footer(context).entrance(8)
         }
     }
 
-    // MARK: - Hero
-
-    /// Greeting → orbit → duration → legend → Sleep / Need / Debt. Full width,
-    /// no card. The orbit and its legend share `selectedComponentID` so a chip
-    /// tap highlights the arc and a scrub highlights the chip.
-    private func hero(_ context: DayContext) -> some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 6) {
-                if context.isMock {
-                    StatusPill(text: "Sample data", systemImage: "wand.and.stars", tint: Theme.Family.sleep)
-                }
-                Text(greeting)
-                    .font(Theme.label(15, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-            .entrance(0)
-
-            LunarOrbit(
-                score: context.sleepIntelligence,
-                selectedID: $selectedComponentID,
-                showsComponents: showsExplanation
-            )
-            .entrance(1)
-
-            VStack(spacing: 4) {
-                Text("\(context.night.formattedTimeAsleep) asleep")
-                    .font(Theme.label(15, weight: .medium))
-                // Confidence and coverage are method, not answer. They stay,
-                // because a score without them is a stronger claim than the
-                // data supports -- but they belong with the explanation.
-                Group {
-                    Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
-                        .font(Theme.evidence)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .entrance(2)
-
-            if showsExplanation {
-                LunarOrbitLegend(score: context.sleepIntelligence, selectedID: $selectedComponentID)
-                    .entrance(2)
-            }
-
-            sleepNeedDebtRow(context)
-                .entrance(2)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    /// The three lines Today opens with.
-    ///
-    /// Assembled in `Shared` rather than here because each one makes a claim
-    /// with a threshold behind it, and a threshold living in a `Text(...)` is
-    /// a threshold nobody tests.
-    private func morningSummary(_ context: DayContext) -> MorningInThree {
-        MorningInThree.build(
-            timeAsleepMinutes: context.night.timeAsleepMinutes,
-            flagshipScore: context.sleepIntelligence.percent,
-            flagshipBand: context.sleepIntelligence.band.label,
-            bodySignalsHeadline: context.healthRadar.isActive ? context.healthRadar.headline : nil,
-            debtMinutes: context.night.sleepDebtMinutes ?? 0,
-            // While the need is still the Settings default rather than
-            // something learned, no claim is made about being behind it.
-            hasEnoughHistoryForNeed: context.learnedSleepNeed.confidence != .insufficient
-        )
-    }
+    // MARK: - Hero helpers
 
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
@@ -282,32 +214,6 @@ struct TodayView: View {
         case 17..<22: "Good evening"
         default: "Good night"
         }
-    }
-
-    /// The three numbers that used to be `FloatingMetricCluster`'s glass
-    /// pills, as a typographic row with the same three destinations.
-    private func sleepNeedDebtRow(_ context: DayContext) -> some View {
-        let debt = context.night.sleepDebtMinutes ?? 0
-        return ZoonMetricRow<AnyView>(items: [
-            .init(
-                id: "sleep", label: "Sleep",
-                value: SleepNightFeatures.formatMinutes(context.night.timeAsleepMinutes),
-                tint: Theme.Family.sleep,
-                destination: { AnyView(SleepDetailView(context: context)) }
-            ),
-            .init(
-                id: "need", label: "Need",
-                value: SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes),
-                destination: { AnyView(SleepNeedView()) }
-            ),
-            .init(
-                id: "debt", label: "Debt",
-                value: debt > 1 ? SleepNightFeatures.formatMinutes(debt) : "None",
-                tint: debt > 1 ? Theme.Family.attention : Theme.Family.recovery,
-                destination: { AnyView(SleepDebtView()) }
-            )
-        ])
-        .padding(.top, 6)
     }
 
     // MARK: - Energy
