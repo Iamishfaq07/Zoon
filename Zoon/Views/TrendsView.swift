@@ -11,6 +11,7 @@ struct TrendsView: View {
     @Environment(UserPreferences.self) private var preferences
 
     @State private var window: Window = .week
+    @State private var selectedNight: SleepNightFeatures?
 
     enum Window: String, CaseIterable, Identifiable {
         case week = "7 Days"
@@ -92,6 +93,26 @@ struct TrendsView: View {
                 // single quiet "More to explore" row at the end.
                 VStack(alignment: .leading, spacing: 28) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
+                    WeekMoonStrip(
+                        nights: Array(coordinator.recentNights.suffix(7)),
+                        goalMinutes: preferences.sleepGoalMinutes,
+                        selected: $selectedNight
+                    )
+                    if let selectedNight {
+                        NavigationLink {
+                            PastNightDetailView(night: selectedNight)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedNight.date, format: .dateTime.weekday(.wide).month(.abbreviated).day())
+                                    .font(Theme.label(15, weight: .semibold))
+                                Text(selectedNight.formattedTimeAsleep + " asleep")
+                                    .font(Theme.text(13))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     WhatChangedStream(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
                     if let context = coordinator.state.context {
                         VStack(alignment: .leading, spacing: 12) {
