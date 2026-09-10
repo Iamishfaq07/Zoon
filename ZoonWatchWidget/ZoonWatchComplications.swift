@@ -408,8 +408,8 @@ struct SleepBankComplication: Widget {
             SleepBankComplicationView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Sleep Bank")
-        .description("Last night, and what you owe yourself.")
+        .configurationDisplayName("Sleep Shortfall")
+        .description("Last night and your recent estimated shortfall.")
         .supportedFamilies([.accessoryCircular, .accessoryInline, .accessoryRectangular])
     }
 }
@@ -724,7 +724,7 @@ struct BadgeComplicationView: View {
 
 // MARK: - Circadian Phase
 
-/// Live "where in the day" label plus sleep debt, for the Smart Stack.
+/// Live "where in the day" label plus recent sleep shortfall, for the Smart Stack.
 ///
 /// Computed at render from the entry's own `date` so a timeline entry an
 /// hour out does not inherit the phase of an hour ago. The watch has no
@@ -741,7 +741,7 @@ struct CircadianPhaseComplication: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Circadian Phase")
-        .description("Where in the day you are, and the sleep you still owe.")
+        .description("Where in the day you are, with recent sleep shortfall.")
         .supportedFamilies([.accessoryCircular, .accessoryCorner, .accessoryInline, .accessoryRectangular])
     }
 }
@@ -757,7 +757,7 @@ struct CircadianPhaseComplicationView: View {
     private var debtLabel: String {
         let minutes = entry.snapshot.sleepDebtMinutes
         if minutes <= 0 { return "Caught up" }
-        return SleepNightFeatures.formatMinutes(minutes) + " debt"
+        return SleepNightFeatures.formatMinutes(minutes) + " shortfall"
     }
 
     var body: some View {

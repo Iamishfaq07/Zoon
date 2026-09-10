@@ -4,18 +4,16 @@ import Foundation
 /// Score, Oura's Sleep Score, and Whoop's Sleep Performance all are, but with
 /// every point traceable to a cause instead of handed down from a black box.
 ///
-/// Seven components, each scored 0–1 against **this person's own recent
+/// Five sleep-period components, each scored 0–1 against **this person's own recent
 /// history** using robust statistics (median/MAD, not mean/SD — see
 /// `Statistics`), then weighted and summed:
 ///
 /// | Component | Weight | What it measures |
 /// |---|---|---|
-/// | Duration | 25% | Tonight's sleep vs. tonight's estimated need |
-/// | Continuity | 20% | Efficiency, WASO, and awakening rate |
-/// | Regularity | 15% | Bedtime/wake consistency (reuses `SleepRegularity`) |
-/// | Recovery | 15% | HRV, resting HR, and temperature vs. baseline |
-/// | Circadian | 10% | Tonight's midpoint vs. your habitual `BodyClock` |
-/// | Breathing | 10% | Respiratory rate deviation + disturbances |
+/// | Duration | 40% | Tonight's sleep vs. tonight's estimated need |
+/// | Continuity | 30% | Efficiency, WASO, and awakening rate |
+/// | Regularity | 20% | Bedtime/wake consistency (reuses `SleepRegularity`) |
+/// | Timing | 5% | Tonight's midpoint vs. your habitual `BodyClock` |
 /// | Stage Pattern | 5% | How close tonight's deep/REM split is to your own |
 ///
 /// A missing component (no HRV sensor, no `BodyClock` yet, a source with no
@@ -28,13 +26,13 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// Bumped whenever the anchor tables or weights change, so a score
     /// computed under an old version stays interpretable as such rather than
     /// silently meaning something different after an app update.
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     let percent: Int
     let scoringVersion: Int
     let components: [Component]
     let confidence: Confidence
-    /// What fraction of the full seven-component model actually had enough
+    /// What fraction of the full five-component model actually had enough
     /// data to run tonight, as a percent 0–100.
     let dataCompletenessPercent: Int
 
@@ -129,8 +127,8 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// the algorithm-transparency screen can show the real table rather than
     /// a hand-copied duplicate that could drift out of sync with it.
     static let nominalWeights: [(component: String, weight: Double)] = [
-        ("Duration", 0.25), ("Continuity", 0.20), ("Regularity", 0.15),
-        ("Recovery", 0.15), ("Timing", 0.10), ("Breathing", 0.10), ("Stage Pattern", 0.05)
+        ("Duration", 0.40), ("Continuity", 0.30), ("Regularity", 0.20),
+        ("Timing", 0.05), ("Stage Pattern", 0.05)
     ]
     private static let nominalWeightsByName = Dictionary(
         uniqueKeysWithValues: nominalWeights.map { ($0.component, $0.weight) }
@@ -173,7 +171,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             // helpful -- which is what the curve has always said. Sleeping
             // past your need does not buy anything back.
             expectedNeutral: durationScore(deltaMinutes: 0) / 100
-        ), nominalWeightsByName["Duration"]!))
+        ), nominalWeightsByName["Duration"] ?? 0))
 
         // --- Continuity ------------------------------------------------------
         if night.timeAsleepMinutes > 0 {
@@ -201,7 +199,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 normalized: continuityNormalized,
                 weightUsed: 0,
                 expectedNeutral: Self.continuityNeutral
-            ), nominalWeightsByName["Continuity"]!))
+            ), nominalWeightsByName["Continuity"] ?? 0))
         }
 
         // --- Regularity ------------------------------------------------------
@@ -216,18 +214,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 // reasonably regular sleeper runs at -- see
                 // `typicalRegularityIndex`.
                 expectedNeutral: Self.typicalRegularityIndex / 100
-            ), nominalWeightsByName["Regularity"]!))
-        }
-
-        // --- Recovery (HRV, resting HR, temperature) -----------------------
-        if let recovery = recoveryComponent(night: night, history: history) {
-            raw.append((Component(
-                label: "Recovery",
-                detail: recoveryDetail(night: night, history: history),
-                normalized: recovery.normalized,
-                weightUsed: 0,
-                expectedNeutral: recovery.expectedNeutral
-            ), nominalWeightsByName["Recovery"]!))
+            ), nominalWeightsByName["Regularity"] ?? 0))
         }
 
         // --- Timing ----------------------------------------------------------
@@ -255,18 +242,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 normalized: circadianNormalized,
                 weightUsed: 0,
                 expectedNeutral: Self.circadianNeutral
-            ), nominalWeightsByName["Timing"]!))
-        }
-
-        // --- Breathing -------------------------------------------------------
-        if let breathing = breathingComponent(night: night, history: history) {
-            raw.append((Component(
-                label: "Breathing",
-                detail: breathingDetail(night: night),
-                normalized: breathing.normalized,
-                weightUsed: 0,
-                expectedNeutral: breathing.expectedNeutral
-            ), nominalWeightsByName["Breathing"]!))
+            ), nominalWeightsByName["Timing"] ?? 0))
         }
 
         // --- Stage Pattern -----------------------------------------------------
@@ -277,7 +253,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 normalized: stagePattern.normalized,
                 weightUsed: 0,
                 expectedNeutral: stagePattern.expectedNeutral
-            ), nominalWeightsByName["Stage Pattern"]!))
+            ), nominalWeightsByName["Stage Pattern"] ?? 0))
         }
 
         // --- Renormalize -----------------------------------------------------

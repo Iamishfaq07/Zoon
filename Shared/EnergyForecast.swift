@@ -49,6 +49,18 @@ struct EnergyForecast: Codable, Hashable, Sendable {
     /// but a less personalized one than usual.
     let isGenericWindDown: Bool
 
+    /// The curve is a heuristic with broad timing uncertainty, even when a
+    /// personal body-clock anchor exists. Exact clock times imply precision
+    /// the inputs cannot support.
+    var confidenceLabel: String { isGenericWindDown ? "Low confidence" : "Moderate confidence" }
+
+    func timeRangeLabel(for window: Window, calendar: Calendar = .current) -> String {
+        let radiusMinutes = isGenericWindDown ? 75 : 45
+        let start = window.time.addingTimeInterval(Double(-radiusMinutes * 60))
+        let end = window.time.addingTimeInterval(Double(radiusMinutes * 60))
+        return start.formatted(.dateTime.hour().minute()) + "–" + end.formatted(.dateTime.hour().minute())
+    }
+
     /// Relative alertness (0...1, not a physical unit) at each named window --
     /// the shape the curve actually needs to hit, not just the dot labels.
     private static func level(for kind: Window.Kind) -> Double {

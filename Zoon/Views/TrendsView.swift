@@ -229,8 +229,9 @@ struct DurationChartCard: View {
                             : Color.orange.opacity(0.85)
                     )
                     .cornerRadius(3)
-                    .opacity(selectedDate == nil
-                             || Calendar.current.isDate(night.date, inSameDayAs: selectedDate!) ? 1 : 0.35)
+                    .opacity(selectedDate.map {
+                        Calendar.current.isDate(night.date, inSameDayAs: $0) ? 1 : 0.35
+                    } ?? 1)
                 }
 
                 RuleMark(y: .value("Goal", goalMinutes / 60))

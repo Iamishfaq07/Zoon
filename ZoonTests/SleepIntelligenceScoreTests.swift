@@ -66,4 +66,11 @@ final class SleepIntelligenceScoreTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(score.percent, 0)
         XCTAssertLessThanOrEqual(score.percent, 100)
     }
+
+    func testCanonicalWeightsPrioritizeDurationAndContinuity() {
+        let weights = Dictionary(uniqueKeysWithValues: SleepIntelligenceScore.nominalWeights)
+        XCTAssertEqual(weights["Duration"], 0.40)
+        XCTAssertEqual(weights["Continuity"], 0.30)
+        XCTAssertEqual(weights.values.reduce(0, +), 1.0, accuracy: 0.0001)
+    }
 }

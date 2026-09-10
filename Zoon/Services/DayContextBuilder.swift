@@ -177,7 +177,7 @@ struct DayContextBuilder {
             wakeTime: night.wakeTime,
             hrvSDNN: night.avgHRV,
             hrvBaseline: night.hrv7DayAvg,
-            restingHeartRate: night.restingHeartRate ?? restingHR,
+            restingHeartRate: night.restingHeartRate ?? restingInput?.value,
             minOvernightHeartRate: night.minHeartRate,
             remMinutes: night.remMinutes,
             deepMinutes: night.deepMinutes,

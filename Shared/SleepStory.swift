@@ -158,7 +158,7 @@ struct SleepStory: Sendable {
         for group in soundGroups {
             guard let first = group.first else { continue }
             var detail = group.count > 1
-                ? "\(group.count) times over \(SleepNightFeatures.formatMinutes(group.last!.date.timeIntervalSince(first.date) / 60))"
+                ? group.last.map { "\(group.count) times over \(SleepNightFeatures.formatMinutes($0.date.timeIntervalSince(first.date) / 60))" }
                 : nil
 
             if midNightAwakenings.contains(where: { abs($0.start.timeIntervalSince(first.date)) < 10 * 60 }) {

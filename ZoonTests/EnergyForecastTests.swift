@@ -23,6 +23,17 @@ final class EnergyForecastTests: XCTestCase {
     func testComputeUsesPersonalWindDownHourWhenProvided() {
         let forecast = EnergyForecast.compute(wakeTime: wake, sleepDebtMinutes: 0, windDownHour: -0.5)
         XCTAssertFalse(forecast.isGenericWindDown)
+        XCTAssertEqual(forecast.confidenceLabel, "Moderate confidence")
+    }
+
+    func testGenericForecastDisclosesLowerConfidenceAndWiderRanges() {
+        let generic = EnergyForecast.compute(wakeTime: wake, sleepDebtMinutes: 0, windDownHour: nil)
+        let personalized = EnergyForecast.compute(wakeTime: wake, sleepDebtMinutes: 0, windDownHour: -0.5)
+        XCTAssertEqual(generic.confidenceLabel, "Low confidence")
+        XCTAssertNotEqual(
+            generic.timeRangeLabel(for: generic.windows[0]),
+            personalized.timeRangeLabel(for: personalized.windows[0])
+        )
     }
 
     func testComputePullsAfternoonDipEarlierWithHigherSleepDebt() {

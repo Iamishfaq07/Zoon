@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Today's estimated energy curve — RISE's daily schedule, in one row.
+/// Today's estimated alertness curve, shown with honest timing ranges.
 struct EnergyForecastCard: View {
     let forecast: EnergyForecast
 
@@ -13,13 +13,13 @@ struct EnergyForecastCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 SectionHeader(
-                    title: "Today's Energy",
-                    subtitle: "Estimated from your wake time" + (forecast.isGenericWindDown ? "" : " and body clock"),
+                    title: "Estimated Alertness",
+                    subtitle: forecast.confidenceLabel + " · from wake time" + (forecast.isGenericWindDown ? "" : " and body clock"),
                     systemImage: "chart.line.uptrend.xyaxis"
                 )
                 Spacer(minLength: 8)
                 MetricInfoButton(
-                    title: "Today's Energy",
+                    title: "Estimated Alertness",
                     symbol: "chart.line.uptrend.xyaxis",
                     tint: Theme.Metric.battery,
                     explanation: [
@@ -37,9 +37,10 @@ struct EnergyForecastCard: View {
                         Image(systemName: window.kind.symbol)
                             .font(Theme.text(15))
                             .foregroundStyle(tint(for: window.kind))
-                        Text(window.time, format: .dateTime.hour().minute())
+                        Text(forecast.timeRangeLabel(for: window))
                             .font(Theme.label(11, weight: .semibold))
                             .monospacedDigit()
+                            .minimumScaleFactor(0.7)
                         Text(window.kind.label)
                             .font(Theme.text(8))
                             .foregroundStyle(.tertiary)
@@ -122,7 +123,7 @@ struct EnergyForecastCard: View {
                         let level = Self.interpolate(time, in: samples)
                         ChartSelectionBadge(
                             title: time.formatted(.dateTime.hour().minute()),
-                            lines: [("Energy", "\(Int((level * 100).rounded()))%", Theme.Metric.battery)]
+                            lines: [("Relative alertness", "\(Int((level * 100).rounded()))%", Theme.Metric.battery)]
                         )
                         .offset(x: min(max(0, x - 60), geo.size.width - 120), y: -6)
                     }

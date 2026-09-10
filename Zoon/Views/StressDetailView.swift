@@ -76,7 +76,7 @@ struct StressDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
                 title: "What's driving it",
-                subtitle: "Each signal measured against your own rolling baseline, so far today.",
+                subtitle: "Today compared with your rolling overnight baseline.",
                 systemImage: "waveform.path.ecg"
             )
 
@@ -128,7 +128,7 @@ struct StressDetailView: View {
                     Text("\(String(format: "%.0f", today)) \(unit) today")
                         .font(Theme.text(11))
                         .foregroundStyle(.primary)
-                    Text("usual \(String(format: "%.0f", baseline)) \(unit)")
+                    Text("overnight baseline \(String(format: "%.0f", baseline)) \(unit)")
                         .font(Theme.text(10))
                         .foregroundStyle(.tertiary)
                 }

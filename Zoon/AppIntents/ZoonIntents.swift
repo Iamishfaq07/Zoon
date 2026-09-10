@@ -31,14 +31,14 @@ struct GetRecoveryIntent: AppIntent {
 
 struct GetSleepSummaryIntent: AppIntent {
     static var title: LocalizedStringResource = "Get Last Night's Sleep"
-    static var description = IntentDescription("How long you slept and your sleep score for last night.")
+    static var description = IntentDescription("How long you slept and your Sleep Intelligence result for last night.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read() else {
             return .result(dialog: "I don't have last night's data yet — open Zoon once to get started.")
         }
         let duration = SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)
-        return .result(dialog: "You slept \(duration) last night, a sleep score of \(snapshot.flagshipScore).")
+        return .result(dialog: "You slept \(duration) last night. Your Sleep Intelligence was \(snapshot.flagshipScore).")
     }
 }
 
