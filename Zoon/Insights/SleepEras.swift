@@ -23,7 +23,7 @@ enum SleepEras {
         for night in ordered {
             if current.isEmpty { current = [night]; continue }
             let reference = current.suffix(minimumNights)
-            let timing = abs(circularDelta(minutes(night.bedtime), medianMinutes(reference.map { minutes($0.bedtime) })))
+            let timing = abs(circularDelta(minutes(night), medianMinutes(reference.map { minutes($0) })))
             let duration = abs(night.timeAsleepMinutes - (Statistics.median(reference.map(\.timeAsleepMinutes)) ?? 0))
             if current.count >= minimumNights && (timing >= 45 || duration >= 60) {
                 groups.append(current)
@@ -41,18 +41,18 @@ enum SleepEras {
         }
 
         return groups.map { group in
-            let bed = medianMinutes(group.map { minutes($0.bedtime) })
+            let bed = medianMinutes(group.map { minutes($0) })
             let previous = groups.firstIndex(where: { $0.first?.date == group.first?.date }).flatMap { index -> [SleepNightFeatures]? in
                 guard index > 0 else { return nil }; return groups[index - 1]
             }
-            let previousBed = previous.map { medianMinutes($0.map { minutes($0.bedtime) }) }
+            let previousBed = previous.map { medianMinutes($0.map { minutes($0) }) }
             let previousDuration = previous.flatMap { Statistics.median($0.map(\.timeAsleepMinutes)) }
             return SleepEra(
                 id: "\(group[0].date.timeIntervalSince1970)-\(group.count)",
                 start: group[0].date,
                 end: group[group.count - 1].date,
                 nights: group.count,
-                medianBedtime: dateFromMinutes(bed, reference: group[0].bedtime),
+                medianBedtime: dateFromMinutes(bed, reference: group[0]),
                 averageSleepMinutes: group.map(\.timeAsleepMinutes).reduce(0, +) / Double(group.count),
                 timingShiftMinutes: previousBed.map { Int(circularDelta(bed, $0).rounded()) },
                 durationShiftMinutes: previousDuration.map { Int(((Statistics.median(group.map(\.timeAsleepMinutes)) ?? 0) - $0).rounded()) }
@@ -60,17 +60,30 @@ enum SleepEras {
         }
     }
 
-    private static func minutes(_ date: Date) -> Double {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
-        return Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
+    /// Bedtime as signed minutes from midnight, folded the way
+    /// `Statistics.circularMinutesFromMidnight` does (18:00 and later are
+    /// negative). A linear 0..1439 scale put 23:50 and 00:10 at opposite ends,
+    /// so an even-sized era straddling midnight averaged its two middle
+    /// values to noon. Uses the night's own timezone, not the device's
+    /// current one -- see `SleepNightFeatures.timeZoneIdentifier`.
+    private static func minutes(_ night: SleepNightFeatures) -> Double {
+        Statistics.circularMinutesFromMidnight(night.bedtime, calendar: nightCalendar(for: night))
+    }
+    private static func nightCalendar(for night: SleepNightFeatures) -> Calendar {
+        var calendar = Calendar.current
+        calendar.timeZone = night.timeZone
+        return calendar
     }
     private static func medianMinutes(_ values: [Double]) -> Double { Statistics.median(values) ?? 0 }
     private static func circularDelta(_ a: Double, _ b: Double) -> Double {
         let d = (a - b).truncatingRemainder(dividingBy: 1440)
         return d > 720 ? d - 1440 : (d < -720 ? d + 1440 : d)
     }
-    private static func dateFromMinutes(_ value: Double, reference: Date) -> Date {
-        let day = Calendar.current.startOfDay(for: reference)
+    /// Places folded minutes onto the reference night: `date` is the morning
+    /// the night is filed under, so negative minutes land on the evening
+    /// before it and positive ones on that morning.
+    private static func dateFromMinutes(_ value: Double, reference: SleepNightFeatures) -> Date {
+        let day = nightCalendar(for: reference).startOfDay(for: reference.date)
         return day.addingTimeInterval(value * 60)
     }
 }

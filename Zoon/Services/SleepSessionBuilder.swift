@@ -393,7 +393,7 @@ struct SleepSessionBuilder {
             intervals[record.stage, default: []].append(record.interval)
         }
 
-        let merged = intervals.mapValues { Self.mergeOverlapping($0) }
+        let merged = Self.resolvingStageOverlap(intervals.mapValues { Self.mergeOverlapping($0) })
         let minutes = merged.mapValues { $0.reduce(0) { $0 + $1.duration } / 60 }
 
         guard let start = records.map(\.start).min(),
@@ -435,7 +435,7 @@ struct SleepSessionBuilder {
             intervals[stage, default: []].append(DateInterval(start: sample.startDate, end: sample.endDate))
         }
 
-        let merged = intervals.mapValues { Self.mergeOverlapping($0) }
+        let merged = Self.resolvingStageOverlap(intervals.mapValues { Self.mergeOverlapping($0) })
         let minutes = merged.mapValues { $0.reduce(0) { $0 + $1.duration } / 60 }
 
         // Session bounds span every sample, including inBed and awake.
@@ -472,6 +472,33 @@ struct SleepSessionBuilder {
                 return identifier
             }.first ?? TimeZone.current.identifier
         )
+    }
+
+    /// Resolves overlap *between* stages from one source, after each stage
+    /// has been merged within itself.
+    ///
+    /// Per-stage merging kills duplicate samples of the same stage, but a
+    /// single source can still write labels that contradict each other in
+    /// time: an `awake` sample inside a longer `asleepUnspecified` block, or
+    /// an undifferentiated asleep block alongside the core/deep/REM it was
+    /// later refined into. Counting both sides credits minutes the source
+    /// itself said were awake, or counts the same asleep minute twice.
+    /// Awake wins over every asleep stage; staged sleep wins over
+    /// `unspecified`. `inBed` is left alone -- it spans the night by design.
+    static func resolvingStageOverlap(_ merged: [SleepStage: [DateInterval]]) -> [SleepStage: [DateInterval]] {
+        var resolved = merged
+        let awake = merged[.awake] ?? []
+        if !awake.isEmpty {
+            for stage in SleepStage.asleepStages {
+                guard let intervals = resolved[stage] else { continue }
+                resolved[stage] = intervals.flatMap { DateInterval.subtracting(awake, from: $0) }
+            }
+        }
+        let staged = [SleepStage.core, .deep, .rem].flatMap { resolved[$0] ?? [] }
+        if !staged.isEmpty, let unspecified = resolved[.unspecified] {
+            resolved[.unspecified] = unspecified.flatMap { DateInterval.subtracting(staged, from: $0) }
+        }
+        return resolved
     }
 
     /// Classic sweep-and-merge. Sorted by start, extend the open interval while
@@ -563,6 +590,9 @@ struct SleepSession {
     /// When the user actually fell asleep — start of the first asleep interval.
     var sleepOnset: Date? { asleepIntervals.first?.start }
 
+    /// When the user last stopped sleeping — end of the last asleep interval.
+    var lastAsleepEnd: Date? { asleepIntervals.map(\.end).max() }
+
     /// Minutes from first in-bed record to sleep onset.
     ///
     /// `nil` when the source writes no `inBed` samples. Apple Watch does not, so
@@ -595,11 +625,18 @@ struct SleepSession {
     /// Tossing around before you fall asleep is not fragmentation, and counting
     /// it inflates a number the insight engine reads as a signal. Neither is a
     /// momentary classification flicker -- see
-    /// `meaningfulAwakeningThreshold`.
+    /// `meaningfulAwakeningThreshold`. Nor is the terminal awake stretch
+    /// between the last asleep interval and getting up: an awakening is
+    /// something you fell back asleep after, so the stretch must end no
+    /// later than the last asleep interval does.
     var wakeCountAfterOnset: Int {
-        guard let onset = sleepOnset else { return 0 }
+        guard let onset = sleepOnset, let lastAsleepEnd else { return 0 }
         return awakeIntervals
-            .filter { $0.start > onset && $0.duration >= Self.meaningfulAwakeningThreshold }
+            .filter {
+                $0.start > onset
+                    && $0.end <= lastAsleepEnd
+                    && $0.duration >= Self.meaningfulAwakeningThreshold
+            }
             .count
     }
 

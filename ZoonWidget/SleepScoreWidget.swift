@@ -88,8 +88,11 @@ struct SleepScoreWidgetView: View {
             HStack(spacing: 18) {
                 stat("Asleep", SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))
                 stat("Debt", snapshot.balanceLabel)
-                stat("Recovery", "\(snapshot.recoveryPercent)")
-                stat("Energy", "\(snapshot.bodyBattery)")
+                // Recovery and energy default to 0 when the snapshot predates
+                // them or the reading could not be made -- the same gate the
+                // watch uses, so a missing score reads as missing, not as 0.
+                stat("Recovery", snapshot.canStateRecovery ? "\(snapshot.recoveryPercent)" : "—")
+                stat("Energy", snapshot.hasRecovery ? "\(snapshot.bodyBattery)" : "—")
                 if !snapshot.sleepIntelligenceBand.isEmpty {
                     stat("Sleep Intel", "\(snapshot.sleepIntelligencePercent)")
                 }

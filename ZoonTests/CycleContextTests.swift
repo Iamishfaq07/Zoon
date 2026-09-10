@@ -28,4 +28,21 @@ final class CycleContextTests: XCTestCase {
         XCTAssertEqual(CyclePhase.phase(forCycleDay: 17, typicalCycleLength: 32), .middle)
         XCTAssertEqual(CyclePhase.phase(forCycleDay: 27, typicalCycleLength: 32), .later)
     }
+
+    /// A start logged at 14:00 on day X is day 1 for the night dated X 00:00.
+    /// Compared on raw instants the start sat after the night and was
+    /// skipped, so that night read as the previous cycle's tail.
+    func testAStartLoggedLaterTheSameDayStillCountsAsDayOne() {
+        let start = calendar.date(byAdding: .hour, value: 14, to: date(10))!
+        XCTAssertEqual(CycleContext.compute(date: date(10), starts: [start], calendar: calendar).cycleDay, 1)
+        XCTAssertEqual(CycleContext.compute(date: date(11), starts: [start], calendar: calendar).cycleDay, 2)
+        XCTAssertNil(CycleContext.compute(date: date(9), starts: [start], calendar: calendar).cycleDay)
+    }
+
+    /// Intervals of 27 and 29 days: the true median is 28. Picking the
+    /// upper-middle element said 29.
+    func testTypicalLengthIsTheTrueMedianOfAnEvenHistory() {
+        let starts = [date(1), date(28), date(57)]
+        XCTAssertEqual(CycleContext.typicalCycleLength(starts: starts, calendar: calendar), 28)
+    }
 }

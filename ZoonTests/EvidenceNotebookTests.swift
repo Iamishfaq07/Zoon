@@ -6,14 +6,20 @@ final class EvidenceNotebookTests: XCTestCase {
         Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
     }
 
-    private func outcome(daysAgo: Int, tag: String = "alcohol") -> SleepExperimentStore.Outcome {
+    /// Fifteen trial nights, fourteen of them compliant by default, so the
+    /// ledger reads the fixture as `.supported` -- the notebook takes its
+    /// verdict from `EvidenceLedger.experimentStatus(for:)`.
+    private func outcome(
+        daysAgo: Int, tag: String = "alcohol", compliantNights: Int? = 14
+    ) -> SleepExperimentStore.Outcome {
         SleepExperimentStore.Outcome(
             id: UUID(), tag: tag, hypothesis: nil,
             startDate: day(daysAgo + 14), endDate: day(daysAgo),
             metricLabel: "sleep sufficiency",
             baselineMedian: 78, trialMedian: 86,
-            baselineNightCount: 14, trialNightCount: 14,
-            higherIsBetter: true, trialKnownNightCount: 14
+            baselineNightCount: 14, trialNightCount: 15,
+            higherIsBetter: true, trialKnownNightCount: 15,
+            direction: .avoid, trialCompliantNightCount: compliantNights
         )
     }
 
@@ -177,6 +183,21 @@ final class EvidenceNotebookTests: XCTestCase {
         XCTAssertEqual(entry.strength, .tested)
         XCTAssertTrue(entry.headline.contains("Alcohol"), entry.headline)
         XCTAssertTrue(entry.headline.contains("improved"), entry.headline)
+    }
+
+    /// The notebook uses the ledger's verdict, not the sign of the median
+    /// difference. A trial kept to on three nights in fifteen improved
+    /// nothing, whichever way its medians fell.
+    func testAPoorlyAdheredExperimentIsNotReportedAsImproved() throws {
+        let poorlyKept = outcome(daysAgo: 5, compliantNights: 3)
+        XCTAssertEqual(poorlyKept.adherenceRate ?? 0, 0.2, accuracy: 0.001, "precondition")
+        XCTAssertEqual(EvidenceLedger.experimentStatus(for: poorlyKept), .inconclusive, "precondition")
+
+        let entry = try XCTUnwrap(EvidenceNotebook.compile(experiments: [poorlyKept]).first)
+        XCTAssertEqual(entry.strength, .tested)
+        XCTAssertFalse(entry.headline.contains("improved"), entry.headline)
+        XCTAssertFalse(entry.headline.contains("worsened"), entry.headline)
+        XCTAssertTrue(entry.headline.contains("did not separate"), entry.headline)
     }
 
     /// An unrecognised stored tag must degrade to its raw identifier rather

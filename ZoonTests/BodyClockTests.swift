@@ -107,4 +107,36 @@ final class BodyClockTests: XCTestCase {
         XCTAssertEqual(dstCalendar.component(.hour, from: wake), 3)
         XCTAssertEqual(dstCalendar.component(.minute, from: wake), 45)
     }
+
+    // MARK: - Drift across midnight
+
+    /// Midpoint 03:00 (+3), 8-hour duration: onsetHour -1 (23:00), wakeHour +7 (07:00).
+    private let elevenPM = BodyClock(midpoint: 3, spreadHours: 0.3, nightCount: 21, typicalDurationMinutes: 480)
+
+    /// A 00:30 bedtime belongs to the night that began the evening before,
+    /// so it must be compared against *that* night's 23:00 onset (+90), not
+    /// the following night's (-1350).
+    func testDriftOfAPostMidnightBedtimeUsesThePreviousEveningsWindow() throws {
+        let bedtime = date(2026, 3, 11, 0, 30)
+        let drift = try XCTUnwrap(elevenPM.drift(of: bedtime))
+        XCTAssertEqual(drift, 90, accuracy: 1)
+    }
+
+    /// An evening bedtime before the onset is simply early, by the plain
+    /// wall-clock difference.
+    func testDriftOfAnEarlyEveningBedtimeIsNegative() throws {
+        let bedtime = date(2026, 3, 10, 22, 30)
+        let drift = try XCTUnwrap(elevenPM.drift(of: bedtime))
+        XCTAssertEqual(drift, -30, accuracy: 1)
+    }
+
+    /// A night-owl window whose onset is itself after midnight (01:00): a
+    /// 02:00 bedtime is one hour late against the previous evening's night.
+    func testDriftOfAPostMidnightBedtimeAgainstAPostMidnightOnset() throws {
+        // Midpoint 05:00 (+5), 8-hour duration: onsetHour +1 (01:00).
+        let nightOwl = BodyClock(midpoint: 5, spreadHours: 0.3, nightCount: 21, typicalDurationMinutes: 480)
+        let bedtime = date(2026, 3, 11, 2, 0)
+        let drift = try XCTUnwrap(nightOwl.drift(of: bedtime))
+        XCTAssertEqual(drift, 60, accuracy: 1)
+    }
 }

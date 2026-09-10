@@ -136,6 +136,9 @@ final class SleepSourceArbitrationTests: XCTestCase {
         // winner's records keep their original identity. fuse() mints new
         // UUIDs for remnants and would fail this.
         XCTAssertEqual(fused.first { $0.priority == .appleWatch }?.id, watch.id)
+        // The phone's extra hour before the Watch night is outside the
+        // winner's span, so it is not a gap to fill.
+        XCTAssertEqual(fused.count, 1)
     }
 
     func testFillGapsDoesNotReArbitrateTheWinnerAgainstItself() {
@@ -144,7 +147,8 @@ final class SleepSourceArbitrationTests: XCTestCase {
         // priorities were equal; with a higher-priority short winner, fuse()
         // still keeps Watch on the overlap — but it would split the winner
         // into a remnant with a new id. fillGaps must keep the original
-        // Watch record intact and only add Garmin on either side.
+        // Watch record intact. The Garmin minutes on either side fall
+        // outside the winner's span and must not be added.
         let watch = sample(
             start: instant(23, minute: 30),
             end: instant(23, minute: 30).addingTimeInterval(6 * 3600),
@@ -163,7 +167,57 @@ final class SleepSourceArbitrationTests: XCTestCase {
         XCTAssertEqual(watchHits[0].start, watch.start)
         XCTAssertEqual(watchHits[0].end, watch.end)
         XCTAssertEqual(watchHits[0].stage, .deep)
-        XCTAssertTrue(filled.contains { $0.priority == .thirdPartyWearable && $0.end == watch.start })
-        XCTAssertTrue(filled.contains { $0.priority == .thirdPartyWearable && $0.start == watch.end })
+        XCTAssertFalse(filled.contains { $0.priority == .thirdPartyWearable })
+        XCTAssertEqual(filled.count, 1)
+    }
+
+    func testFillGapsFillsAnInteriorGapAndTrimsTheEdges() {
+        // Watch 23:00–03:00 and 04:00–07:00, with an hour of lost coverage
+        // between. Phone claims 22:00–08:00. Only the interior hour is a
+        // gap; the phone's hour before and after the Watch night is clipped.
+        let watchFirst = sample(
+            start: instant(23), end: instant(23).addingTimeInterval(4 * 3600),
+            stage: .core, priority: .appleWatch
+        )
+        let watchSecond = sample(
+            start: instant(23).addingTimeInterval(5 * 3600),
+            end: instant(23).addingTimeInterval(8 * 3600),
+            stage: .core, priority: .appleWatch
+        )
+        let phone = sample(
+            start: instant(22), end: instant(23).addingTimeInterval(9 * 3600),
+            stage: .unspecified, priority: .phoneOrManual
+        )
+        let filled = SleepSourceArbitration.fillGaps(
+            winner: [watchFirst, watchSecond], candidates: [phone]
+        )
+
+        XCTAssertEqual(filled.count, 3)
+        let phoneHits = filled.filter { $0.priority == .phoneOrManual }
+        XCTAssertEqual(phoneHits.count, 1)
+        XCTAssertEqual(phoneHits.first?.start, watchFirst.end)
+        XCTAssertEqual(phoneHits.first?.end, watchSecond.start)
+        XCTAssertEqual(phoneHits.first?.stage, .unspecified)
+        XCTAssertEqual(filled.map(\.start).min(), watchFirst.start)
+        XCTAssertEqual(filled.map(\.end).max(), watchSecond.end)
+    }
+
+    func testFillGapsDoesNotExtendTheWinnerSpan() {
+        // The regression: a phone in-bed block 22:00–08:00 used to stretch a
+        // Watch night of 23:00–07:00 into a ten-hour session.
+        let watch = sample(
+            start: instant(23), end: instant(23).addingTimeInterval(8 * 3600),
+            stage: .core, priority: .appleWatch
+        )
+        let phone = sample(
+            start: instant(22), end: instant(23).addingTimeInterval(9 * 3600),
+            stage: .inBed, priority: .phoneOrManual
+        )
+        let filled = SleepSourceArbitration.fillGaps(winner: [watch], candidates: [phone])
+
+        XCTAssertEqual(filled.count, 1)
+        XCTAssertEqual(filled.first?.id, watch.id)
+        XCTAssertEqual(filled.map(\.start).min(), watch.start)
+        XCTAssertEqual(filled.map(\.end).max(), watch.end)
     }
 }

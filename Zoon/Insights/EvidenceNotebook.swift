@@ -136,7 +136,16 @@ enum EvidenceNotebook {
 
         for outcome in experiments {
             let tag = BehaviorTag(rawValue: outcome.tag)?.label ?? outcome.tag
-            let direction = outcome.isImprovement ? "improved" : "worsened"
+            // The same verdict the ledger records, not the raw sign of the
+            // median difference: a trial nobody kept to, or one that moved
+            // the metric by a rounding error, "improved" nothing. See
+            // `EvidenceLedger.experimentStatus(for:)`.
+            let direction: String
+            switch EvidenceLedger.experimentStatus(for: outcome) {
+            case .supported: direction = "improved"
+            case .notSupported: direction = "worsened"
+            default: direction = "did not separate"
+            }
             entries.append(Entry(
                 id: "experiment-\(outcome.id.uuidString)",
                 date: outcome.endDate,

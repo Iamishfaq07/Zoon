@@ -45,6 +45,14 @@ final class SleepExperimentStore {
         /// that got tagged but went the wrong way is exactly as much a
         /// non-compliant night as one that never got tagged at all.
         var trialCompliantNightCount: Int?
+        /// 95% bootstrap interval on `delta` (trial median minus baseline
+        /// median), computed by `GuidedExperiment.medianDifferenceInterval`
+        /// when the outcome was recorded. `nil` for outcomes recorded before
+        /// the interval existed; `EvidenceLedger.experimentStatus` only
+        /// applies its interval gate when both bounds are present, so those
+        /// older outcomes keep the reading they were given at the time.
+        var uncertaintyLower: Double?
+        var uncertaintyUpper: Double?
 
         /// The trial's nights split three ways, the way the V10 spec asks
         /// for: adherent, non-adherent, unknown.

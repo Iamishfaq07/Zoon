@@ -224,7 +224,7 @@ jobs:
               PASSED=$(grep -c "Test Case.*passed" uitest.log || true)
               echo "${PASSED} test(s) passed."
             else
-              echo "Failed (non-blocking). Relevant lines:"
+              echo "Failed. Relevant lines:"
               echo ""
               echo '```'
               grep -E "error:|Test Case.*failed|fatal error" uitest.log | sort -u || true
@@ -242,17 +242,37 @@ jobs:
         # fail to build at all — or be dropped from the scheme entirely — and
         # this step would still report green, which is precisely the silent
         # failure it exists to catch.
-        if: steps.build.outcome == 'success'
+        #
+        # The match is anchored on the path separator (`/Name.swift`), not the
+        # bare basename: `grep "EvidenceLedger.swift"` also matches
+        # `ZoonEvidenceLedger.swift`, `RootView.swift` matches
+        # `WatchRootView.swift`, and so on, so a dropped file whose name is a
+        # suffix of another file's name used to pass silently.
+        #
+        # Runs on red builds too (unless the run was cancelled): the list of
+        # sources the compiler did or did not reach is useful diagnosis when
+        # the build fails part-way. A failed build is already the failure,
+        # so in that case this step reports but does not add a second one;
+        # and when there is no build.log at all it has nothing to say.
+        if: ${{ !cancelled() }}
         run: |
+          if [ ! -s build.log ]; then
+            echo "No build.log -- the build step did not run, so there is nothing to verify."
+            exit 0
+          fi
           MISSING=""
           for f in $(find Shared Zoon ZoonWidget ZoonWatch ZoonWatchWidget -name '*.swift' | sort); do
             base=$(basename "$f")
-            grep -q -- "$base" build.log || MISSING="$MISSING $base"
+            grep -q -F -- "/$base" build.log || MISSING="$MISSING $base"
           done
+          COUNT=$(find Shared Zoon ZoonWidget ZoonWatch ZoonWatchWidget -name '*.swift' | wc -l | tr -d ' ')
           {
             echo "### Sources"
+            if [ "${{ steps.build.outcome }}" != "success" ]; then
+              echo ""
+              echo "Build did not succeed, so this list is expected to be incomplete."
+            fi
             if [ -z "$MISSING" ]; then
-              COUNT=$(find Shared Zoon ZoonWidget ZoonWatch ZoonWatchWidget -name '*.swift' | wc -l | tr -d ' ')
               echo ""
               echo "All ${COUNT} Swift files reached the compiler."
             else
@@ -266,7 +286,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$MISSING" ]; then
             echo "Sources missing from the build: $MISSING"
-            exit 1
+            # Only fail when the build itself was green; a red build is
+            # already red, and an incomplete log is not a second bug.
+            if [ "${{ steps.build.outcome }}" = "success" ]; then
+              exit 1
+            fi
           fi
 
       - name: Summarise errors

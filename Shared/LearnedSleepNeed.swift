@@ -123,7 +123,17 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     static let restrictionEfficiencyPercent = 95.0
 
     /// Debt above which a night is a repayment rather than a baseline.
-    static let repaymentDebtMinutes = 60.0
+    ///
+    /// Units matter here: `sleepDebtMinutes` is `SleepDebtCalculator`'s
+    /// *decayed cumulative* figure, not last night's shortfall. Its steady
+    /// state under a constant nightly shortfall is shortfall / (1 - 0.933),
+    /// about fifteen times the nightly figure -- so a chronic 15-minute
+    /// shortfall sits near 225. At the old 60 that disqualified every night
+    /// of anyone with a small, steady deficit, and the learned need could
+    /// never accumulate a qualifying night. 240 is four hours of decayed
+    /// shortfall: a real backlog (roughly 15 minutes a night sustained, or
+    /// one genuinely short night still fading), not background noise.
+    static let repaymentDebtMinutes = 240.0
 
     /// A night that ended because the opportunity ran out, not because the
     /// sleeper was done.

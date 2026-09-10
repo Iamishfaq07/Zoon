@@ -339,6 +339,23 @@ struct JournalCorrelator {
             }
         }
 
+        /// Absolute floor under `minimumEffectPercent`, for metrics whose
+        /// medians are small integers. Awakenings sit at two or three a
+        /// night, so any nonzero pair-delta median cleared 20% of them and
+        /// the percentage gate was no gate at all; a shift smaller than one
+        /// awakening is not a pattern anyone can act on. Zero elsewhere:
+        /// the percentage already does the work on continuous metrics.
+        var minimumAbsoluteEffect: Double {
+            self == .wakeCount ? 1 : 0
+        }
+
+        /// The metric a behaviour's headline association is read from when
+        /// it has one -- see `topFindingPerTag`. Sleep sufficiency, because
+        /// it is the outcome the app's own sleep-need model is built
+        /// around, and because it is available on every night while stage
+        /// minutes and recovery are not.
+        static let primaryForAssociations: Metric = .sleepPerformance
+
         func format(_ value: Double) -> String {
             switch self {
             case .recovery, .sleepPerformance, .efficiency:
@@ -382,7 +399,8 @@ struct JournalCorrelator {
                       matchedMedian != 0 else { continue }
 
                 let percentChange = abs(pairDeltaMedian / abs(matchedMedian) * 100)
-                guard percentChange >= metric.minimumEffectPercent else { continue }
+                guard percentChange >= metric.minimumEffectPercent,
+                      abs(pairDeltaMedian) >= metric.minimumAbsoluteEffect else { continue }
 
                 let ci = Statistics.pairedBootstrapCI(deltas: pairDeltas)
 
@@ -430,13 +448,43 @@ struct JournalCorrelator {
             .sorted { $0.loggedNights > $1.loggedNights }
     }
 
-    /// The strongest finding per tag, so one behaviour doesn't fill the screen
-    /// with six near-identical rows.
+    /// One finding per tag, so one behaviour doesn't fill the screen with
+    /// six near-identical rows.
+    ///
+    /// Which one is not "whichever moved most". Six metrics are tested per
+    /// tag, and the largest mover among six is the multiple-comparisons
+    /// trap `GuidedExperiment.summarize` refuses for the same reason: some
+    /// of six will drift by chance, and the biggest of them is the noisiest
+    /// estimate on the list. So the headline row is the pre-specified
+    /// `Metric.primaryForAssociations` whenever it cleared the bars, and
+    /// only when it did not does the largest remaining mover stand in --
+    /// still a real finding by `findings`' own thresholds, just a post-hoc
+    /// one. `findings` itself is unchanged: every metric that cleared the
+    /// bar is still there for a screen that shows them all.
     func topFindingPerTag(from observations: [Observation]) -> [Finding] {
-        var seen = Set<BehaviorTag>()
-        return findings(from: observations).filter { finding in
-            seen.insert(finding.tag).inserted
+        let all = findings(from: observations)
+        var chosen: [BehaviorTag: Finding] = [:]
+        for finding in all {
+            let isPrimary = finding.metric == Metric.primaryForAssociations
+            if let existing = chosen[finding.tag],
+               existing.metric == Metric.primaryForAssociations || !isPrimary {
+                continue
+            }
+            chosen[finding.tag] = finding
         }
+        // `all` is strongest-first; keeping its order ranks tags by the
+        // finding actually shown.
+        return all.filter { chosen[$0.tag]?.id == $0.id }
+    }
+
+    /// The largest matched-pair pool any metric currently offers for `tag`
+    /// -- what a withdrawn association's sample size should say, since "how
+    /// many comparable nights are there now" is the question `findings`
+    /// asks before it will report anything.
+    func matchedPairCount(for tag: BehaviorTag, observations: [Observation]) -> Int {
+        Metric.allCases
+            .map { matchedPairs(tag: tag, metric: $0, observations: observations)?.count ?? 0 }
+            .max() ?? 0
     }
 
     /// Behaviours that actually got a fair test -- enough comparable nights

@@ -30,7 +30,7 @@ These are build and architecture measurements, not runtime performance. Instrume
 - SwiftData stores extracted nights, journal/behavior observations and evidence locally.
 - App Group snapshots are shared only with Zoon extensions.
 - WatchConnectivity transfers the derived snapshot and explicit quick-log actions to the paired Watch.
-- Optional backup writes a passphrase-encrypted archive to the user’s iCloud Drive only after a direct action. The passphrase is not stored.
+- Export (More → Data) writes a local file only after a direct action and hands it to the share sheet. With the encrypt toggle on, the JSON is sealed with AES-GCM under a PBKDF2-derived key; otherwise it is plain JSON. The passphrase is not stored. There is no iCloud container and no cloud backup.
 - Spotlight receives only feature names, descriptions and routing keywords.
 - Exports are user initiated and visibly leave the sandbox through the share flow.
 
@@ -49,7 +49,7 @@ These are build and architecture measurements, not runtime performance. Instrume
 
 ### Delete Everything
 
-The coordinator deletion path must clear SwiftData rows, preferences, naps, snore summaries, snapshots, pending deep links, Spotlight entries, AI cache, temporary exports, reminders, Live Activities and the latest Watch context. Original Health data and an already-created user iCloud Drive archive are outside local deletion and are named in the product/privacy copy. The release checklist requires a post-delete inspection of each store and extension surface.
+The coordinator deletion path must clear SwiftData rows, preferences, naps, snore summaries, snapshots, pending deep links, Spotlight entries, AI cache, temporary exports, reminders, Live Activities and the latest Watch context. Original Health data and any export file the user has already shared out of the app are outside local deletion and are named in the product/privacy copy. The release checklist requires a post-delete inspection of each store and extension surface.
 
 ## App Store review checklist
 
@@ -59,7 +59,7 @@ The coordinator deletion path must clear SwiftData rows, preferences, naps, snor
 - Sleep Intelligence, Recovery, Sleep Shortfall, Physiological Load Experimental and Estimated Alertness have distinct names and confidence/provenance.
 - No screen treats a missing score as zero.
 - Screenshots must come from the exact release commit and show real or clearly marked sample data.
-- Review notes should explain read-only HealthKit, local processing, optional microphone, AlarmKit fallback, Watch snapshot transfer and encrypted user-owned backup.
+- Review notes should explain read-only HealthKit, local processing, optional microphone, AlarmKit fallback, Watch snapshot transfer and the optional passphrase-encrypted local export.
 - Sound and image provenance/licenses require human review before upload.
 
 ## Release blockers requiring external evidence

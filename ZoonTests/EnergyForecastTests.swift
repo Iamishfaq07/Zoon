@@ -61,6 +61,26 @@ final class EnergyForecastTests: XCTestCase {
         XCTAssertEqual(zero.windows.map(\.time), negative.windows.map(\.time))
     }
 
+    /// A 13:00 wake puts the wake-anchored second wind at midnight, after
+    /// a 23:30 wind-down. The anchors must still run strictly forward in
+    /// time, or the curve doubles back on itself.
+    func testLateWakeKeepsAnchorsStrictlyChronological() throws {
+        let lateWake = try XCTUnwrap(Calendar.current.date(bySettingHour: 13, minute: 0, second: 0, of: .now))
+        let forecast = EnergyForecast.compute(wakeTime: lateWake, sleepDebtMinutes: 0, windDownHour: -0.5)
+
+        let times = forecast.windows.map(\.time)
+        for (earlier, later) in zip(times, times.dropFirst()) {
+            XCTAssertLessThan(earlier, later)
+        }
+        XCTAssertEqual(forecast.windows.last?.kind, .windDown)
+        // Clamping the second wind to an hour before wind-down is enough
+        // here; nothing needs dropping.
+        XCTAssertEqual(forecast.windows.count, 5)
+        let secondWind = try XCTUnwrap(forecast.windows.first { $0.kind == .eveningRise })
+        let windDown = try XCTUnwrap(forecast.windows.first { $0.kind == .windDown })
+        XCTAssertEqual(windDown.time.timeIntervalSince(secondWind.time), 3600, accuracy: 1)
+    }
+
     // MARK: - resolve (via windDownHour)
 
     func testResolveNegativeHourLandsOnTheEveningOfWakeDay() {

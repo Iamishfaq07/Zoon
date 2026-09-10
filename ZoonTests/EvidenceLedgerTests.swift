@@ -345,4 +345,62 @@ final class EvidenceLedgerTests: XCTestCase {
     func testAnEffectWithNoUnitIsStillReadable() {
         XCTAssertEqual(EvidenceLedger.Change.formatted(5, unit: nil), "+5")
     }
+
+    // MARK: - Withdrawing a claim
+
+    /// The engines only offer current beliefs, so a finding that stops being
+    /// produced says nothing, and its last "Association detected" stands
+    /// until something withdraws it.
+    func testAStandingAssociationNoLongerFoundIsOwedARetraction() {
+        let history = [revision(at: 30, status: .learning), revision(at: 10, status: .associated)]
+        let owed = EvidenceLedger.associationsToRetract(
+            in: history, currentClaimIDs: ["tag:alcohol"], provenance: "JournalCorrelator"
+        )
+        XCTAssertEqual(owed.map(\.claimID), [claim])
+        XCTAssertEqual(owed.first?.status, .associated)
+    }
+
+    func testAssociationsStillFoundNeverMadeOrAlreadyWithdrawnAreLeftAlone() {
+        let stillFound = EvidenceLedger.associationsToRetract(
+            in: [revision(at: 10)], currentClaimIDs: [claim], provenance: "JournalCorrelator"
+        )
+        XCTAssertTrue(stillFound.isEmpty)
+
+        let onlyLearning = EvidenceLedger.associationsToRetract(
+            in: [revision(at: 10, status: .learning)], currentClaimIDs: [], provenance: "JournalCorrelator"
+        )
+        XCTAssertTrue(onlyLearning.isEmpty, "learning asserts nothing there is to withdraw")
+
+        let alreadyWithdrawn = EvidenceLedger.associationsToRetract(
+            in: [revision(at: 10), revision(at: 1, status: .inconclusive)],
+            currentClaimIDs: [], provenance: "JournalCorrelator"
+        )
+        XCTAssertTrue(alreadyWithdrawn.isEmpty, "the latest revision decides, not any earlier one")
+
+        let otherEngine = EvidenceLedger.associationsToRetract(
+            in: [revision(at: 10)], currentClaimIDs: [], provenance: "ZoonTwin"
+        )
+        XCTAssertTrue(otherEngine.isEmpty, "one engine cannot withdraw another's claim")
+    }
+
+    /// A retraction carries no effect -- there is no finding to take one
+    /// from -- and lands as a status change, which the ledger always keeps.
+    func testARetractionCarriesNoEffectAndIsRecordedAsAStatusChange() throws {
+        let standing = revision(at: 10)
+        let retraction = EvidenceLedger.retraction(
+            of: standing, status: .inconclusive, sampleSize: 21,
+            at: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        XCTAssertEqual(retraction.claimID, claim)
+        XCTAssertEqual(retraction.status, .inconclusive)
+        XCTAssertNil(retraction.effect)
+        XCTAssertEqual(retraction.sampleSize, 21)
+        XCTAssertEqual(retraction.provenance, standing.provenance)
+        XCTAssertTrue(retraction.headline.contains("washed out"), retraction.headline)
+
+        let history = EvidenceLedger.recording(retraction, into: [standing])
+        XCTAssertEqual(history.count, 2)
+        let change = try XCTUnwrap(EvidenceLedger.change(to: retraction, in: history))
+        XCTAssertTrue(change.whyLine.contains("Association detected became Inconclusive"), change.whyLine)
+    }
 }

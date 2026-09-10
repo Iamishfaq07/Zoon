@@ -99,18 +99,21 @@ struct StressScore: Codable, Hashable, Sendable {
 
         var points: [Double] = []
 
-        // HR component: higher than baseline reads as more stressed.
+        // HR component: higher than baseline reads as more stressed. Maps
+        // ±20% around baseline onto 0…1 (so +10% → 0.75, +20% → 1.0); the
+        // divisor is the full width of that band, the same convention
+        // `RecoveryScore` uses.
         if let hr = avgHeartRate, let base = hrBaseline, base > 0 {
             let deviation = (hr - base) / base
-            points.append(clamp01(0.5 + deviation / 0.20))
+            points.append(clamp01(0.5 + deviation / 0.40))
         }
 
         // HRV component: inverted — lower than baseline reads as more
-        // stressed. HRV is the more sensitive of the two, so it gets the
-        // narrower band.
+        // stressed. HRV is the noisier of the two, so it gets the wider
+        // band: ±35% around baseline onto 0…1 (−35% → 1.0).
         if let hrv = avgHRV, let base = hrvBaseline, base > 0 {
             let deviation = (hrv - base) / base
-            points.append(clamp01(0.5 - deviation / 0.35))
+            points.append(clamp01(0.5 - deviation / 0.70))
         }
 
         // Neither baseline is available yet: there is nothing to compare

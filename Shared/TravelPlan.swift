@@ -286,11 +286,21 @@ enum TravelPlan {
             ))
         }
 
+        // Hours already banked before takeoff: the night before departure
+        // has moved by `preparationDays` days' worth, and the destination
+        // nights carry on from there rather than starting over.
+        let preparationShiftHours = Double(preparationDays) * ratePerDay / 60
+
         steps.append(flightStep(for: trip, bodyClock: bodyClock, calendar: calendar))
         steps.append(destinationStep(
             eastward: eastward, bodyClock: bodyClock, withheld: withheld
         ))
-        steps.append(contentsOf: repaymentSteps(eastward: eastward, bodyClock: bodyClock))
+        steps.append(contentsOf: repaymentSteps(
+            eastward: eastward,
+            bodyClock: bodyClock,
+            shiftHours: shift,
+            preparationShiftHours: preparationShiftHours
+        ))
 
         return Plan(
             shiftHours: shift,
@@ -364,11 +374,41 @@ enum TravelPlan {
     /// has landed, Tonight already refuses to move more than
     /// `SleepAutopilot.maximumNightlyShift` in a night, and a plan that
     /// asked for 40 would put two different answers on two screens.
-    private static func repaymentSteps(eastward: Bool, bodyClock: BodyClock) -> [Step] {
+    ///
+    /// The clock time printed is a *destination-local* bedtime. The body
+    /// still wants to sleep at its home `onsetHour`; `shiftHours` is how far
+    /// the destination clock is *ahead* of home, so that same instant reads
+    /// `onsetHour + shiftHours` there. From that starting point the bedtime
+    /// is moved toward the destination's own `onsetHour` by everything
+    /// already shifted -- the preparation nights, plus `cap` minutes for
+    /// each destination night -- and never past it:
+    ///
+    ///     remaining = max(0, |shiftHours| - preparationShiftHours - cap * night / 60)
+    ///     bedtime   = onsetHour + (eastward ? remaining : -remaining)
+    ///
+    /// Worked example, London -> Tokyo in July (shift +8, eastward) for a
+    /// 23:00 sleeper (`onsetHour` -1) with three preparation days at 40
+    /// minutes (2 h): unshifted, 23:00 London is 07:00 Tokyo. Two hours of
+    /// preparation bring that to 05:00, and the first night's 20 minutes
+    /// to 04:40, then 04:20, then 04:00 -- each step closer to a 23:00
+    /// Tokyo bedtime, never beyond it. Westward the sign flips: 23:00
+    /// London is 18:00 New York (shift -5); two hours of preparation make
+    /// it 20:00 and the first night 20:20. The old form printed
+    /// `onsetHour -/+ cap * night` -- 22:40, 22:20, 22:00 for Tokyo -- a
+    /// home-clock time with no conversion and no credit for the
+    /// preparation, which for that trip meant asking someone to sleep at
+    /// what their body felt as 14:40.
+    private static func repaymentSteps(
+        eastward: Bool,
+        bodyClock: BodyClock,
+        shiftHours: Double,
+        preparationShiftHours: Double
+    ) -> [Step] {
         let cap = Int(SleepAutopilot.maximumNightlyShift.rounded())
         return (1...destinationRepaymentNights).map { night in
-            let shifted = cap * night
-            let hour = bodyClock.onsetHour + (eastward ? -1.0 : 1.0) * Double(shifted) / 60
+            let moved = preparationShiftHours + Double(cap * night) / 60
+            let remaining = max(0, abs(shiftHours) - moved)
+            let hour = bodyClock.onsetHour + (eastward ? 1.0 : -1.0) * remaining
             return Step(
                 phase: .destination,
                 when: night == 1 ? "First night there" : "Night \(night) there",

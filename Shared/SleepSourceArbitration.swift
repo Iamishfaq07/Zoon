@@ -111,11 +111,21 @@ enum SleepSourceArbitration {
     /// records keep their original identity. `fuse` would re-arbitrate
     /// the winner against itself, which is wrong once a source has
     /// already been picked.
+    ///
+    /// Only *interior* gaps are filled. Every rival remnant is clipped to
+    /// the winner's span (first start to last end): a phone `inBed`
+    /// 22:00–08:00 must not stretch a Watch night of 23:00–07:00 into ten
+    /// hours, because the minutes outside the winner's span are exactly
+    /// the ones the winner said were not the night. Remnants entirely
+    /// outside the span are dropped; those straddling an edge are trimmed.
     static func fillGaps(
         winner: [SleepSampleRecord],
         candidates: [SleepSampleRecord]
     ) -> [SleepSampleRecord] {
         let kept = winner.filter { $0.end > $0.start }
+        guard let spanStart = kept.map(\.start).min(),
+              let spanEnd = kept.map(\.end).max() else { return kept }
+        let span = DateInterval(start: spanStart, end: spanEnd)
         var occupied = DateInterval.merging(kept.map(\.interval))
         var seen = Set(kept.map(\.sourceUUID))
         var extras: [SleepSampleRecord] = []
@@ -131,7 +141,9 @@ enum SleepSourceArbitration {
         for sample in ordered {
             if seen.contains(sample.sourceUUID) { continue }
             seen.insert(sample.sourceUUID)
-            let remnants = DateInterval.subtracting(occupied, from: sample.interval)
+            guard let clipped = sample.interval.intersection(with: span),
+                  clipped.duration > 0 else { continue }
+            let remnants = DateInterval.subtracting(occupied, from: clipped)
             for remnant in remnants where remnant.duration > 0 {
                 extras.append(
                     SleepSampleRecord(

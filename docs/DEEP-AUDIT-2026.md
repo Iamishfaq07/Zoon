@@ -56,7 +56,7 @@ No open P0 code defect was found. Physical-device release gates remain mandatory
 - Journal text/dictation with local deterministic parsing and confirmation; local on-device Foundation Models coach/insight fallback on supported iPhone hardware.
 - AlarmKit wake alarm with fallback, bedtime reminders, naps with Live Activity, breathing, snore summaries, soundscapes and saved mixes.
 - Watch quick logging and snapshots; iPhone widgets; Watch complications and Smart Stack relevance.
-- CSV/JSON/PDF export, encrypted user-initiated iCloud Drive backup, complete local deletion, no account, ads, analytics, or developer server.
+- CSV/JSON/PDF export, optional passphrase-encrypted local JSON export (AES-GCM, PBKDF2-derived key; plain JSON when the encrypt toggle is off) with matching import, complete local deletion, no account, ads, analytics, cloud backup, or developer server.
 
 ### System surfaces
 

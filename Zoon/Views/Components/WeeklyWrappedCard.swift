@@ -146,7 +146,7 @@ enum WeeklyWrappedExporter {
         renderer.scale = 3
         guard let uiImage = renderer.uiImage, let data = uiImage.pngData() else { return nil }
         return try? DataExporter.writeTemporary(
-            data, filename: "zoon-week-\(ISO8601DateFormatter.dayOnly.string(from: report.periodEnd)).png"
+            data, filename: "zoon-week-\(ISO8601DateFormatter.dayString(for: report.periodEnd, timeZone: .current)).png"
         )
     }
 }

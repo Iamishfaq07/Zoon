@@ -20,13 +20,26 @@ if "INFOPLIST_KEY_NSHealthUpdateUsageDescription" not in project:
 elif "never writes to or changes your Health data" not in project:
     violations.append("The HealthKit update purpose string must make Zoon's read-only boundary explicit.")
 
+# Shared/ is scanned too: its types are compiled into every target, so a
+# banned string there reaches the UI just as surely as one in Zoon/. Comment
+# lines are skipped -- the engines in Shared/ legitimately *name* the
+# academic Sleep Regularity Index and Oura's Cardiovascular Age in their
+# doc comments to explain what they are and are not.
 user_surfaces = [
     path
-    for folder in ("Zoon", "ZoonWidget", "ZoonWatch", "ZoonWatchWidget")
+    for folder in ("Zoon", "ZoonWidget", "ZoonWatch", "ZoonWatchWidget", "Shared")
     for path in (ROOT / folder).rglob("*.swift")
 ]
+
+
+def code_lines(source: str) -> str:
+    return "\n".join(
+        line for line in source.splitlines() if not line.lstrip().startswith("//")
+    )
+
+
 for path in user_surfaces:
-    source = path.read_text(encoding="utf-8")
+    source = code_lines(path.read_text(encoding="utf-8"))
     if "Cardiovascular Age" in source or "CardiovascularAgeCard" in source:
         violations.append(f"Unvalidated cardiovascular-age UI remains in {path.relative_to(ROOT)}")
     if "Sleep Regularity Index" in source or "sleep regularity index" in source:

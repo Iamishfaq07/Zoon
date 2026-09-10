@@ -30,19 +30,38 @@ struct JournalView: View {
     @State private var answers: BehaviorAnswers = .none
 
     private var entry: JournalEntry {
-        coordinator.journal.entryOrCreate(for: selectedDate, nightKey: selectedNightKey)
+        coordinator.journal.entryOrCreate(for: targetNightDate, nightKey: selectedNightKey)
     }
 
-    /// The stored night's own `nightKey` for whichever day the picker has
-    /// selected, when one exists -- `nil` for a day with no recorded night
-    /// yet (today, before it's slept, or a gap in history). See
+    /// The night the selected day's behaviours belong to.
+    ///
+    /// Every question on this screen is about the day ("Did you drink
+    /// alcohol today?"), and a day's behaviours affect the sleep that
+    /// *follows* it. `JournalEntry.date` and `SleepNightRecord.date` are both
+    /// keyed by the morning the person woke up, so the entry for the
+    /// behaviours of day D is the one dated D+1 -- see `JournalEntry.date`.
+    /// Writing them against D, as this screen used to, put every answer on
+    /// the night that had already happened, one night too early.
+    ///
+    /// This view records no morning feeling; if it ever does, that write
+    /// belongs on `selectedDate`, not here -- a feeling is about the morning
+    /// that already happened, which is the night dated D.
+    private var targetNightDate: Date { nightDate(after: selectedDate) }
+
+    private func nightDate(after day: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day
+    }
+
+    /// The stored night's own `nightKey` for the night the picker's day
+    /// leads into, when one exists -- `nil` for a night not recorded yet,
+    /// which is the normal case for today (tonight has not been slept). See
     /// `JournalEntry.nightKey`'s doc comment for why this is worth carrying
-    /// through at all: `selectedDate` alone is a `Calendar.current` day
+    /// through at all: `targetNightDate` alone is a `Calendar.current` day
     /// picked on this device right now, which is exactly the value that can
     /// drift from a night's own recorded timezone after travel.
     private var selectedNightKey: String? {
         coordinator.recentNights.first {
-            Calendar.current.isDate($0.date, inSameDayAs: selectedDate)
+            Calendar.current.isDate($0.date, inSameDayAs: targetNightDate)
         }?.nightKey
     }
 
@@ -90,7 +109,7 @@ struct JournalView: View {
             .onChange(of: selectedDate) { _, _ in reload() }
             .onChange(of: noteFieldFocused) { wasFocused, isFocused in
                 if wasFocused, !isFocused {
-                    coordinator.journal.setNote(note, on: selectedDate, nightKey: selectedNightKey)
+                    coordinator.journal.setNote(note, on: targetNightDate, nightKey: selectedNightKey)
                 }
             }
         }
@@ -99,16 +118,33 @@ struct JournalView: View {
     // MARK: - Day picker
 
     private var dayPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                // Last two weeks, newest first. Beyond that, recall is poor
-                // enough that the data would be noise.
-                ForEach(recentDays, id: \.self) { day in
-                    dayChip(day)
+        VStack(alignment: .leading, spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // Last two weeks, newest first. Beyond that, recall is poor
+                    // enough that the data would be noise.
+                    ForEach(recentDays, id: \.self) { day in
+                        dayChip(day)
+                    }
                 }
+                .padding(.vertical, 4)
             }
-            .padding(.vertical, 4)
+            // Says which night the chosen day's answers are about, because
+            // the chips name a day and the data is keyed by the night after
+            // it -- see `targetNightDate`.
+            Text(dayScopeCaption)
+                .font(Theme.text(11))
+                .foregroundStyle(.secondary)
         }
+    }
+
+    private var dayScopeCaption: String {
+        if Calendar.current.isDateInToday(selectedDate) {
+            return "Today → tonight's sleep"
+        }
+        let day = selectedDate.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        let night = targetNightDate.formatted(.dateTime.day().month(.abbreviated))
+        return "\(day) → the night into \(night)"
     }
 
     private var recentDays: [Date] {
@@ -119,7 +155,9 @@ struct JournalView: View {
 
     private func dayChip(_ day: Date) -> some View {
         let isSelected = Calendar.current.isDate(day, inSameDayAs: selectedDate)
-        let hasTags = !(coordinator.journal.entry(for: day)?.tagIdentifiers.isEmpty ?? true)
+        // The entry for a day's behaviours is dated the morning after it --
+        // see `targetNightDate`.
+        let hasTags = !(coordinator.journal.entry(for: nightDate(after: day))?.tagIdentifiers.isEmpty ?? true)
 
         return Button {
             selectedDate = day
@@ -281,9 +319,9 @@ struct JournalView: View {
 
     private func confirmNaturalJournal() {
         for (tag, state) in naturalStates where state != .unknown {
-            coordinator.setBehavior(state, for: tag, on: selectedDate, nightKey: selectedNightKey)
+            coordinator.setBehavior(state, for: tag, on: targetNightDate, nightKey: selectedNightKey)
         }
-        answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+        answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
         findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
         naturalText = ""
         naturalProposals = []
@@ -385,8 +423,8 @@ struct JournalView: View {
         for tag: BehaviorTag
     ) -> some View {
         Button {
-            coordinator.setBehavior(state, for: tag, on: selectedDate, nightKey: selectedNightKey)
-            answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+            coordinator.setBehavior(state, for: tag, on: targetNightDate, nightKey: selectedNightKey)
+            answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
             findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
             Haptics.tap()
         } label: {
@@ -489,8 +527,8 @@ struct JournalView: View {
         }
 
         return Button {
-            coordinator.cycleBehavior(for: tag, on: selectedDate, nightKey: selectedNightKey)
-            answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+            coordinator.cycleBehavior(for: tag, on: targetNightDate, nightKey: selectedNightKey)
+            answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
             findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
             // Selection is a physical act here — the haptic confirms the tap
             // landed without needing to look for a colour change.
@@ -568,9 +606,9 @@ struct JournalView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Button {
                     coordinator.answerRemainingBehaviorsNo(
-                        on: selectedDate, nightKey: selectedNightKey, candidates: tracked
+                        on: targetNightDate, nightKey: selectedNightKey, candidates: tracked
                     )
-                    answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+                    answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
                     findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
                     Haptics.tap()
                 } label: {
@@ -611,7 +649,7 @@ struct JournalView: View {
                 .submitLabel(.done)
         }
         .glassCard()
-        .onDisappear { coordinator.journal.setNote(note, on: selectedDate, nightKey: selectedNightKey) }
+        .onDisappear { coordinator.journal.setNote(note, on: targetNightDate, nightKey: selectedNightKey) }
     }
 
     // MARK: - Correlations
@@ -645,7 +683,7 @@ struct JournalView: View {
 
     private func reload() {
         note = entry.note ?? ""
-        answers = coordinator.behaviorAnswers(on: selectedDate, nightKey: selectedNightKey)
+        answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
         findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
     }
 }

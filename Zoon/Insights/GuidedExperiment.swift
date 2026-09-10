@@ -187,8 +187,11 @@ enum GuidedExperiment {
         // compliant nights out of fourteen isn't one to report as settled.
         let adherentTrial = trial.filter { $0.exposureState(for: tag) == direction.compliantExposureState }
         guard adherentTrial.count >= minimumPeriodNights else { return nil }
-        guard let baselineMedian = Statistics.median(baseline.compactMap(primaryMetric.value(from:))),
-              let trialMedian = Statistics.median(adherentTrial.compactMap(primaryMetric.value(from:))) else { return nil }
+        let baselineValues = baseline.compactMap(primaryMetric.value(from:))
+        let trialValues = adherentTrial.compactMap(primaryMetric.value(from:))
+        guard let baselineMedian = Statistics.median(baselineValues),
+              let trialMedian = Statistics.median(trialValues) else { return nil }
+        let interval = medianDifferenceInterval(baseline: baselineValues, trial: trialValues)
 
         return SleepExperimentStore.Outcome(
             id: UUID(),
@@ -204,7 +207,154 @@ enum GuidedExperiment {
             higherIsBetter: primaryMetric.higherIsBetter,
             trialKnownNightCount: trialKnownNightCount,
             direction: direction,
-            trialCompliantNightCount: trialCompliantNightCount
+            trialCompliantNightCount: trialCompliantNightCount,
+            uncertaintyLower: interval?.lower,
+            uncertaintyUpper: interval?.upper
         )
+    }
+
+    // MARK: - Controlled designs
+
+    /// Reads a finished controlled trial (`ExperimentDesign.isControlled`)
+    /// against the schedule it was given, and records it in the same shape
+    /// `summarize` produces so the store, the ledger and the notebook need
+    /// no second path.
+    ///
+    /// The two arms are the two "periods". The arm that does what the
+    /// experiment asks (`without` for `.avoid`, `with` for `.pursue`) is the
+    /// trial; the other arm is its baseline -- planned and interleaved with
+    /// it, which is the whole advantage over the fortnight-before that
+    /// `summarize` has to use. Each side's median is the median of its
+    /// blocks' medians, exactly as `ExperimentDesign.analyse` takes the
+    /// difference, so the two readings agree.
+    ///
+    /// Adherence covers the whole trial, both arms: a crossover whose "with"
+    /// stretch was never actually performed is as broken as one whose
+    /// "without" stretch was not, and `EvidenceLedger.experimentStatus`
+    /// reads one rate. `baselineNightCount` is the baseline arm's followed
+    /// nights -- the ones its median rests on -- and `trialNightCount` is
+    /// every assigned night, so `adherenceRate` is followed over assigned.
+    ///
+    /// nil when `analyse` refused (a stretch too thin, one arm only).
+    /// `Unusable` carries the reason for a screen; a stored outcome has
+    /// nowhere honest to put "there was no result".
+    static func summarizeCrossover(
+        tag: BehaviorTag,
+        hypothesis: String?,
+        primaryMetric: JournalCorrelator.Metric,
+        direction: Direction,
+        schedule: [ExperimentDesign.Assignment],
+        endDate: Date,
+        observations: [JournalCorrelator.Observation],
+        calendar: Calendar = .current
+    ) -> SleepExperimentStore.Outcome? {
+        guard tag.testableDirections.contains(direction),
+              let startDate = schedule.map(\.date).min() else { return nil }
+
+        // Assignments are start-of-day dates and so are nights; joined on
+        // the day rather than the instant in case either side was
+        // normalised in a different timezone.
+        let byDay = Dictionary(
+            observations.map { (calendar.startOfDay(for: $0.date), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let analysed = ExperimentDesign.analyse(
+            schedule: schedule,
+            value: { byDay[calendar.startOfDay(for: $0)].flatMap(primaryMetric.value(from:)) },
+            exposure: { byDay[calendar.startOfDay(for: $0)]?.exposureState(for: tag) ?? .unknown },
+            calendar: calendar
+        )
+        guard case .analysed(let analysis) = analysed else { return nil }
+
+        let trialArm: ExperimentDesign.Arm = direction == .avoid ? .without : .with
+        let trialBlocks = analysis.blocks.filter { $0.arm == trialArm }
+        let baselineBlocks = analysis.blocks.filter { $0.arm != trialArm }
+        guard let trialMedian = Statistics.median(trialBlocks.compactMap(\.median)),
+              let baselineMedian = Statistics.median(baselineBlocks.compactMap(\.median)) else { return nil }
+        let adherence = analysis.adherence
+
+        // Per-night values for the interval, one array per arm, restricted to
+        // the nights that actually followed their arm -- the same nights the
+        // block medians above rest on. `analyse` only offers its own interval
+        // from three block pairs, which no shipping design reaches.
+        var trialValues: [Double] = []
+        var baselineValues: [Double] = []
+        for assignment in schedule {
+            let day = calendar.startOfDay(for: assignment.date)
+            guard let observation = byDay[day],
+                  let value = primaryMetric.value(from: observation) else { continue }
+            let followed = switch (observation.exposureState(for: tag), assignment.arm) {
+            case (.yes, .with), (.no, .without): true
+            default: false
+            }
+            guard followed else { continue }
+            if assignment.arm == trialArm { trialValues.append(value) } else { baselineValues.append(value) }
+        }
+        let interval = medianDifferenceInterval(baseline: baselineValues, trial: trialValues)
+
+        return SleepExperimentStore.Outcome(
+            id: UUID(),
+            tag: tag.rawValue,
+            hypothesis: hypothesis,
+            startDate: startDate,
+            endDate: endDate,
+            metricLabel: primaryMetric.shortLabel,
+            baselineMedian: baselineMedian,
+            trialMedian: trialMedian,
+            baselineNightCount: baselineBlocks.reduce(0) { $0 + $1.adherence.adherent },
+            trialNightCount: adherence.total,
+            higherIsBetter: primaryMetric.higherIsBetter,
+            trialKnownNightCount: adherence.adherent + adherence.nonAdherent,
+            direction: direction,
+            trialCompliantNightCount: adherence.adherent,
+            uncertaintyLower: interval?.lower,
+            uncertaintyUpper: interval?.upper
+        )
+    }
+
+    // MARK: - Uncertainty
+
+    /// 95% percentile-bootstrap interval on (median of `trial` − median of
+    /// `baseline`), resampling each side independently. The two-sample
+    /// counterpart of `Statistics.pairedBootstrapCI`, which resamples
+    /// per-pair deltas and has nothing to pair here: a before/after
+    /// comparison has different nights on each side.
+    ///
+    /// Deterministic for the same reason that one is -- an interval that
+    /// reshuffled between two visits to the screen would make the stated
+    /// confidence a random number. nil below `minimumPeriodNights` a side,
+    /// the floor `summarize` already applies to the medians themselves.
+    static func medianDifferenceInterval(
+        baseline: [Double],
+        trial: [Double],
+        iterations: Int = 2000,
+        seed: UInt64 = 0x5A0E_1DA7_5EED_0002
+    ) -> (lower: Double, upper: Double)? {
+        guard baseline.count >= minimumPeriodNights, trial.count >= minimumPeriodNights else { return nil }
+
+        var generator = SeededGenerator(seed: seed)
+        var differences: [Double] = []
+        differences.reserveCapacity(iterations)
+
+        for _ in 0..<iterations {
+            var baselineSample: [Double] = []
+            baselineSample.reserveCapacity(baseline.count)
+            for _ in 0..<baseline.count {
+                baselineSample.append(baseline[Int.random(in: 0..<baseline.count, using: &generator)])
+            }
+            var trialSample: [Double] = []
+            trialSample.reserveCapacity(trial.count)
+            for _ in 0..<trial.count {
+                trialSample.append(trial[Int.random(in: 0..<trial.count, using: &generator)])
+            }
+            if let baselineMedian = Statistics.median(baselineSample),
+               let trialMedian = Statistics.median(trialSample) {
+                differences.append(trialMedian - baselineMedian)
+            }
+        }
+
+        guard let lower = Statistics.percentile(differences, 2.5),
+              let upper = Statistics.percentile(differences, 97.5) else { return nil }
+        return (lower, upper)
     }
 }

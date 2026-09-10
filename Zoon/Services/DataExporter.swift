@@ -279,20 +279,22 @@ enum DataExporter {
     }
 
     /// One row per night, with a header. Dates are ISO-8601 so spreadsheets
-    /// parse them without a locale fight.
+    /// parse them without a locale fight. `date` is the wake day in the
+    /// night's own timezone (the trailing `timezone` column says which);
+    /// `bedtime`/`wake_time` stay as UTC instants.
     static func csv(nights: [SleepNightFeatures]) -> String {
         let header = [
             "date", "bedtime", "wake_time", "time_in_bed_min", "time_asleep_min",
             "efficiency_pct", "deep_min", "rem_min", "core_min", "unspecified_min",
             "awake_min", "wake_count", "latency_min", "avg_hr", "min_hr", "resting_hr", "hrv_ms",
-            "respiratory_rate", "spo2_pct", "wrist_temp_delta_c", "source"
+            "respiratory_rate", "spo2_pct", "wrist_temp_delta_c", "source", "timezone"
         ].joined(separator: ",")
 
         let formatter = ISO8601DateFormatter()
 
         let rows = nights.sorted { $0.date < $1.date }.map { night -> String in
             [
-                ISO8601DateFormatter.dayOnly.string(from: night.date),
+                ISO8601DateFormatter.dayString(for: night.date, timeZone: night.timeZone),
                 formatter.string(from: night.bedtime),
                 formatter.string(from: night.wakeTime),
                 num(night.timeInBedMinutes), num(night.timeAsleepMinutes),
@@ -304,7 +306,8 @@ enum DataExporter {
                 num(night.minHeartRate), num(night.restingHeartRate), num(night.avgHRV),
                 num(night.avgRespiratoryRate), num(night.avgSpO2),
                 num(night.wristTempDeltaC),
-                escape(night.sourceName ?? "")
+                escape(night.sourceName ?? ""),
+                escape(night.timeZoneIdentifier)
             ].joined(separator: ",")
         }
 
@@ -337,8 +340,17 @@ enum DataExporter {
     }
 
     static func defaultFilename(extension ext: String) -> String {
-        "zoon-export-\(ISO8601DateFormatter.dayOnly.string(from: .now)).\(ext)"
+        "zoon-export-\(ISO8601DateFormatter.dayString(for: .now, timeZone: .current)).\(ext)"
     }
+
+    /// Every filename prefix Zoon writes into the temporary directory: the
+    /// archive/CSV exports here, the clinician PDFs named by
+    /// `ClinicianReportGenerator.filename`, the Weekly Wrapped image and the
+    /// last-night share card. `clearTemporaryExports` removes all of them,
+    /// not just the first.
+    private static let temporaryExportPrefixes = [
+        "zoon-export-", "Sleep_Report_", "zoon-week-", "zoon-last-night"
+    ]
 
     /// Removes health-data export artefacts still owned by Zoon. Copies the
     /// user deliberately saved through the share sheet live outside this
@@ -352,7 +364,7 @@ enum DataExporter {
         ) else { return false }
 
         var succeeded = true
-        for url in urls where url.lastPathComponent.hasPrefix("zoon-export-") {
+        for url in urls where temporaryExportPrefixes.contains(where: { url.lastPathComponent.hasPrefix($0) }) {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {

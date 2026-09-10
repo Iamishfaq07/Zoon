@@ -59,6 +59,11 @@ final class WatchLink: NSObject {
     /// that value in memory and publish it from the activation callback rather
     /// than silently losing the night's only phone-to-watch hand-off.
     private var pendingSnapshot: SleepSnapshot?
+    /// Same shape for the other direction: a quick action tapped before the
+    /// watch's session has activated (cold launch straight into a Log
+    /// button) is held here and flushed from the activation callback rather
+    /// than dropped.
+    private var pendingQuickActions: [WatchQuickAction] = []
 
     /// Key for a watch quick action in a `transferUserInfo` payload -- see
     /// `sendQuickAction(_:)` below for why this is a different transport from
@@ -152,7 +157,10 @@ final class WatchLink: NSObject {
         #if canImport(WatchConnectivity)
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
-        guard session.activationState == .activated else { return }
+        guard session.activationState == .activated else {
+            pendingQuickActions.append(action)
+            return
+        }
 
         do {
             let data = try JSONEncoder().encode(WatchActionEnvelope(action: action, snapshotDate: snapshot?.date))
@@ -210,6 +218,9 @@ extension WatchLink: WCSessionDelegate {
                 } else if let pendingSnapshot {
                     send(pendingSnapshot)
                 }
+                let queued = pendingQuickActions
+                pendingQuickActions = []
+                for action in queued { sendQuickAction(action) }
             }
         }
     }

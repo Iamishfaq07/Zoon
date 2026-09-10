@@ -112,14 +112,14 @@ struct WeeklyReport {
                 items.append(Highlight(
                     symbol: "target",
                     title: "Rock-solid schedule",
-                    detail: "Your bedtime varied by only ±\(Int(consistency)) minutes. This is the single biggest lever most people never pull.",
+                    detail: "Your bedtime varied by only ±\(Int(consistency)) minutes. Regular timing goes with steadier sleep in most people's data.",
                     tone: .positive
                 ))
             } else if consistency > 75 {
                 items.append(Highlight(
                     symbol: "arrow.left.arrow.right",
                     title: "Irregular bedtimes",
-                    detail: "Your bedtime swung by ±\(Int(consistency)) minutes. Tightening this will do more than any supplement.",
+                    detail: "Your bedtime swung by ±\(Int(consistency)) minutes. Irregular timing tends to go with lighter, shorter sleep.",
                     tone: .caution
                 ))
             }
@@ -130,8 +130,8 @@ struct WeeklyReport {
                 symbol: trend > 0 ? "arrow.up.right" : "arrow.down.right",
                 title: trend > 0 ? "HRV trending up" : "HRV trending down",
                 detail: trend > 0
-                    ? "Up \(String(format: "%.0f%%", trend)) on the previous week — your body is adapting well to its current load."
-                    : "Down \(String(format: "%.0f%%", abs(trend))) on the previous week. Often training load, stress, or alcohol.",
+                    ? "Up \(String(format: "%.0f%%", trend)) on the previous week."
+                    : "Down \(String(format: "%.0f%%", abs(trend))) on the previous week. Training load, stress and alcohol often move alongside it.",
                 tone: trend > 0 ? .positive : .caution
             ))
         }
@@ -145,7 +145,7 @@ struct WeeklyReport {
                 items.append(Highlight(
                     symbol: "checkmark.seal.fill",
                     title: "Hit your goal \(goalHitCount) of \(nightCount) \(nightWord)",
-                    detail: "Consistently meeting your sleep need is the foundation everything else sits on.",
+                    detail: "Most nights this week reached your sleep need.",
                     tone: .positive
                 ))
             } else if ratio <= 0.4 {
@@ -157,7 +157,7 @@ struct WeeklyReport {
                     title: goalHitCount == 0
                         ? "Goal missed every night"
                         : "Goal met only \(goalHitCount) of \(nightCount) \(nightWord)",
-                    detail: "You're accumulating debt faster than you're repaying it. Move bedtime earlier rather than sleeping in.",
+                    detail: "Sleep debt grew faster than it was repaid this week. Nights you were in bed earlier tend to be the ones that close the gap.",
                     tone: .caution
                 ))
             }

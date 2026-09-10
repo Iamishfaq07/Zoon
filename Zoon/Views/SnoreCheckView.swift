@@ -42,9 +42,9 @@ struct SnoreCheckView: View {
                 snoring produces. It's a heuristic, not a trained model — treat the \
                 result as a rough estimate, not a measurement.
 
-                Audio is processed in short bursts and never saved. Only a minutes-\
-                snoring count survives the session — nothing else leaves this screen, \
-                and nothing at all leaves the phone.
+                Audio is processed in short bursts and never saved. Zoon keeps a minutes-\
+                snoring count and up to 200 timestamped sound-event labels on this device \
+                — nothing else survives the session, and nothing at all leaves the phone.
                 """)
                 .font(.caption)
                 .foregroundStyle(.secondary)

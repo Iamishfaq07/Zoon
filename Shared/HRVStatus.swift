@@ -47,7 +47,7 @@ struct HRVStatus: Codable, Hashable, Sendable {
             case .poor:
                 "Your HRV has been well below baseline for an extended period. Worth backing off substantially."
             case .building:
-                "Zoon needs about three weeks of nights to establish your personal HRV range."
+                "Zoon needs about four weeks of nights to establish your personal HRV range."
             }
         }
     }
@@ -59,6 +59,10 @@ struct HRVStatus: Codable, Hashable, Sendable {
     /// block so closely that it quietly redefines "normal" and stops noticing
     /// that you're buried.
     static let baselineWindow = 90
+
+    /// Smallest balanced-range half-width, as a fraction of the baseline
+    /// mean. See `evaluate`.
+    static let minimumSpreadFraction = 0.05
 
     static func evaluate(recentHRV: [Double], longTermHRV: [Double]) -> HRVStatus {
         guard longTermHRV.count >= minimumNights, !recentHRV.isEmpty else {
@@ -73,7 +77,11 @@ struct HRVStatus: Codable, Hashable, Sendable {
         let window = Array(longTermHRV.suffix(baselineWindow))
         let mean = window.reduce(0, +) / Double(window.count)
         let variance = window.reduce(0) { $0 + pow($1 - mean, 2) } / Double(window.count)
-        let sd = variance.squareRoot()
+        // Floor the spread at 5% of the mean. A near-constant history has an
+        // SD close to zero, and with a zero-width range a week 1 ms under
+        // the mean read as `.low` and 2 ms under as `.poor` -- night-to-night
+        // HRV noise is far larger than that on any real sensor.
+        let sd = max(variance.squareRoot(), mean * minimumSpreadFraction)
 
         let weekly = recentHRV.reduce(0, +) / Double(recentHRV.count)
         let lower = mean - sd

@@ -71,10 +71,15 @@ enum PersonalLearning {
         var timing: [Int] = [], debt: [Int] = [], hrv: [Int] = []
         // Use the last night of each episode as the recovery origin. Consecutive
         // travel/illness/stress days are one disruption, not several independent
-        // experiments with overlapping recovery windows.
+        // experiments with overlapping recovery windows. The baseline, though,
+        // is the five nights before the episode *began*: indexing it off the
+        // last night meant a multi-day disruption's own nights were the
+        // "normal" the recovery was measured back to.
         for episode in episodes {
-            guard let index = ordered.indices.last(where: { calendar.isDate(ordered[$0].date, inSameDayAs: episode.end) }), index >= 5 else { continue }
-            let baseline = Array(ordered[(index - 5)..<index])
+            guard let startIndex = ordered.indices.last(where: { calendar.isDate(ordered[$0].date, inSameDayAs: episode.start) }),
+                  let index = ordered.indices.last(where: { calendar.isDate(ordered[$0].date, inSameDayAs: episode.end) }),
+                  startIndex >= 5 else { continue }
+            let baseline = Array(ordered[(startIndex - 5)..<startIndex])
             let future = Array(ordered.dropFirst(index + 1).prefix(7))
             guard future.count >= 2 else { continue }
 

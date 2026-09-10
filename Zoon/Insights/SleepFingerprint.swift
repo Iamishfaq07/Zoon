@@ -8,6 +8,12 @@ struct SleepFingerprint: Equatable {
     let durationStability: Double
     let continuity: Double
     let bodySignalStability: Double
+    /// False when fewer than two nights carried an HRV reading. In that
+    /// case `bodySignalStability` is a placeholder, not a reading: there is
+    /// no dispersion to measure, and a low value here must not be shown as
+    /// "your body signals are unstable". Consumers should hide or label the
+    /// metric when this is false rather than render the number.
+    let bodySignalStabilityIsMeasured: Bool
 
     static func make(from nights: [SleepNightFeatures], days: Int) -> SleepFingerprint? {
         let sample = Array(nights.suffix(days))
@@ -26,14 +32,16 @@ struct SleepFingerprint: Equatable {
             guard let value = night.avgHRV, value.isFinite, value > 0 else { return nil }
             return value
         }
-        let bodyMAD = body.count >= 2 ? (Statistics.medianAbsoluteDeviation(body) ?? 0) / max(1, Statistics.median(body) ?? 0) : 0.5
+        let bodyIsMeasured = body.count >= 2
+        let bodyMAD = bodyIsMeasured ? (Statistics.medianAbsoluteDeviation(body) ?? 0) / max(1, Statistics.median(body) ?? 0) : 0.5
 
         return SleepFingerprint(
             sampleCount: sample.count,
             timingStability: stability(fromMAD: timingMAD, scale: 90),
             durationStability: stability(fromMAD: durationMAD, scale: max(30, durationMedian * 0.35)),
             continuity: continuity,
-            bodySignalStability: stability(fromMAD: bodyMAD, scale: 0.35)
+            bodySignalStability: stability(fromMAD: bodyMAD, scale: 0.35),
+            bodySignalStabilityIsMeasured: bodyIsMeasured
         )
     }
 

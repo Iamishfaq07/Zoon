@@ -34,6 +34,12 @@ name: TestFlight
 # instead of minting a new one. Omit IOS_P12_PASSWORD and the workflow
 # behaves exactly as before -- one new certificate per run -- which still
 # works, right up until the account fills up again.
+#
+# When the account *has* filled up (Archive fails with "Choose a certificate
+# to revoke"), dispatch the workflow with the `free_certificate_slot` input
+# ticked. The "Free a signing-certificate slot" step then revokes the oldest
+# distribution certificate(s) needed to free exactly one slot; on every other
+# run that step is a dry run that only reports the team's certificate state.
 
 on:
   workflow_dispatch:
@@ -42,6 +48,15 @@ on:
         description: 'CFBundleVersion override (defaults to the GitHub run number)'
         required: false
         type: string
+      free_certificate_slot:
+        description: >-
+          Revoke the OLDEST distribution certificate(s) on the team so that one
+          slot is free for this run to mint into. Only needed after Archive
+          has failed with "Choose a certificate to revoke". Off by default:
+          the slot step then only reports what it would do.
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: testflight-${{ github.ref }}
@@ -212,18 +227,44 @@ jobs:
           echo "Created $KEYCHAIN and made it the default for this job."
 
       - name: Free a signing-certificate slot
-        # On a cache miss we are about to mint. The private keys of every
-        # Development/Distribution certificate already on the account died
-        # with previous runners, and they still count against Apple's cap.
-        # Runs 66 and 67 (the crash-fix TestFlights) died here:
-        # "Choose a certificate to revoke." The same API key Archive already
-        # uses can delete them. Already-installed TestFlight builds keep
-        # working; Apple does not yank a build because the cert that signed
-        # it was later revoked. Skipped on a cache hit -- that identity is
-        # the one we would otherwise be deleting.
-        if: steps.signing-cache.outputs.cache-hit != 'true'
+        # On a cache miss we are about to mint, and a newly minted certificate
+        # needs a free slot on the team. Runs 66 and 67 died at Archive with
+        # "Choose a certificate to revoke" because orphaned certificates from
+        # earlier runners (private keys long gone) still counted against
+        # Apple's cap.
+        #
+        # This step is a DRY RUN by default: it lists the team's distribution
+        # certificates and says which one it *would* revoke, and nothing else.
+        # It only deletes anything when the workflow was dispatched with the
+        # `free_certificate_slot` input ticked, and even then the script
+        # revokes only the oldest distribution certificate(s) needed to free
+        # exactly one slot -- never development certificates (those belong to
+        # people's Macs), never the whole type. See Tools/asc_free_certificate_slot.py.
+        #
+        # Condition: run whenever this job is going to mint, i.e. whenever the
+        # restore step did NOT produce a cache hit. `signing-cache` is skipped
+        # entirely when IOS_P12_PASSWORD is unset (see its `if:`); a skipped
+        # step has outcome 'skipped' and an empty `cache-hit`, and in that
+        # configuration every run mints, so the step must run then too. The
+        # `outcome != 'success'` half makes that explicit rather than relying
+        # on an empty string comparing unequal to 'true'; the `cache-hit`
+        # half covers a successful restore that simply found nothing. On a
+        # genuine hit the cached identity is the one we would otherwise be
+        # deleting, so the step is skipped. Because the default is a dry run,
+        # running it "too often" costs one API call and a few log lines, not
+        # a certificate.
+        if: steps.signing-cache.outcome != 'success' || steps.signing-cache.outputs.cache-hit != 'true'
         run: |
-          python3 Tools/asc_free_certificate_slot.py \
+          REVOKE=""
+          if [ "${{ inputs.free_certificate_slot }}" = "true" ]; then
+            REVOKE="--revoke"
+            echo "::warning::free_certificate_slot was requested -- the oldest distribution certificate(s) needed to free one slot WILL be revoked."
+          else
+            echo "Dry run: listing certificates only. Re-run with the free_certificate_slot input ticked to actually free a slot."
+          fi
+          python3 Tools/asc_free_certificate_slot.py $REVOKE \
+            --type distribution \
+            --max-per-type 2 \
             --key-id "${{ secrets.APPSTORE_KEY_ID }}" \
             --issuer-id "${{ secrets.APPSTORE_ISSUER_ID }}" \
             --key-path "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"

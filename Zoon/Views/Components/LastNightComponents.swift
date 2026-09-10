@@ -1,5 +1,23 @@
 import SwiftUI
 
+extension SleepNightFeatures {
+    /// A wall-clock time in the zone the night was slept in, not the
+    /// device's current one -- a night recorded in London and read in New
+    /// York should still say 11:05 PM. Same style `NightShareCard` used.
+    func clockString(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle(date: .omitted, time: .shortened, timeZone: timeZone))
+    }
+
+    /// The night's calendar day, e.g. "Tuesday, Mar 4", in the same zone --
+    /// `date` is a start-of-day there, which can fall on the previous day
+    /// when read from a zone far enough west.
+    func dayString(month: Date.FormatStyle.Symbol.Month = .abbreviated) -> String {
+        var style = Date.FormatStyle.dateTime.weekday(.wide).month(month).day()
+        style.timeZone = timeZone
+        return date.formatted(style)
+    }
+}
+
 /// The Sleep tab's opening statement: duration as the hero number, the
 /// Sleep Intelligence verdict under it, and the bedtime → wake span as a
 /// ribbon. Answers "what happened last night?" before any tool or plan.
@@ -22,19 +40,19 @@ struct LastNightHero: View {
             )
 
             HStack(spacing: 10) {
-                Text(context.night.bedtime, format: .dateTime.hour().minute())
+                Text(context.night.clockString(context.night.bedtime))
                     .monospacedDigit()
                 Rectangle()
                     .fill(Theme.Family.sleep.opacity(0.5))
                     .frame(height: 1.5)
                     .frame(maxWidth: 120)
-                Text(context.night.wakeTime, format: .dateTime.hour().minute())
+                Text(context.night.clockString(context.night.wakeTime))
                     .monospacedDigit()
             }
             .font(Theme.label(14, weight: .medium))
             .foregroundStyle(.secondary)
 
-            Text(context.night.date, format: .dateTime.weekday(.wide).month().day())
+            Text(context.night.dayString())
                 .font(Theme.evidence)
                 .foregroundStyle(.tertiary)
 

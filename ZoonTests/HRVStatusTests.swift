@@ -26,6 +26,17 @@ final class HRVStatusTests: XCTestCase {
         XCTAssertEqual(status.state, .balanced)
     }
 
+    /// A constant history has SD 0, and a zero-width range called 1 ms under
+    /// the mean `.low`. The spread is floored at 5% of the mean so ordinary
+    /// sensor noise stays inside the balanced range.
+    func testEvaluateFloorsTheSpreadForAConstantHistory() {
+        let long = Array(repeating: 50.0, count: HRVStatus.minimumNights)
+        let status = HRVStatus.evaluate(recentHRV: [49, 49], longTermHRV: long)
+        XCTAssertEqual(status.state, .balanced)
+        XCTAssertEqual(status.lowerBound ?? 0, 47.5, accuracy: 0.001)
+        XCTAssertEqual(status.upperBound ?? 0, 52.5, accuracy: 0.001)
+    }
+
     func testEvaluateReadsUnbalancedAboveTheUpperBound() {
         // Baseline with real variance so the bounds are non-zero, then a
         // weekly average well above the upper bound.

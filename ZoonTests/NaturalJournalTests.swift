@@ -48,6 +48,29 @@ final class NaturalJournalTests: XCTestCase {
         XCTAssertTrue(proposals.first?.matchedText.contains("4pm") == true)
     }
 
+    /// "4pm" with no space before the meridiem used to fail to parse at all,
+    /// and "steak" used to propose caffeine by way of "tea".
+    func testATimeWithNoSpaceBeforeTheMeridiemStillParses() {
+        let proposals = NaturalJournalParser.proposals(from: "Had steak, then two coffees at 4pm")
+        XCTAssertEqual(proposals.map(\.tag), [.caffeineLate])
+        XCTAssertEqual(proposals.first?.state, .yes)
+        XCTAssertEqual(proposals.first?.confidence, .high)
+        XCTAssertEqual(proposals.first?.matchedText, "coffees at 4pm")
+    }
+
+    func testTwelveIsHandledOnBothSidesOfNoon() {
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 12pm").first?.tag, .caffeine)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 12am").first?.tag, .caffeine)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 3pm").first?.tag, .caffeineLate)
+    }
+
+    /// Keywords match whole words. A steady day contains "tea" and is not a
+    /// caffeine observation.
+    func testKeywordsInsideOtherWordsProposeNothing() {
+        XCTAssertTrue(NaturalJournalParser.proposals(from: "It was a steady day").isEmpty)
+        XCTAssertTrue(NaturalJournalParser.proposals(from: "Had steak for dinner").isEmpty)
+    }
+
     func testConsecutiveDisruptionDaysBecomeOneEpisode() {
         let calendar = Calendar(identifier: .gregorian)
         let start = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!

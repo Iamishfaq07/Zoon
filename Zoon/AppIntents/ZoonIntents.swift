@@ -17,8 +17,14 @@ struct GetRecoveryIntent: AppIntent {
     static var description = IntentDescription("Your latest recovery score from Zoon.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let snapshot = SnapshotStore.read() else {
+        guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
             return .result(dialog: "I don't have a recovery reading yet — open Zoon once to get started.")
+        }
+        // `recoveryPercent` defaults to 0 when the snapshot predates the
+        // field or the reading could not be made -- say so rather than
+        // announce "0 percent, low".
+        guard snapshot.canStateRecovery else {
+            return .result(dialog: "Recovery isn't available yet — Zoon needs a few nights of heart-rate data first.")
         }
         let band: String = switch snapshot.recoveryPercent {
         case 67...: "high"
@@ -34,7 +40,7 @@ struct GetSleepSummaryIntent: AppIntent {
     static var description = IntentDescription("How long you slept and your Sleep Intelligence result for last night.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let snapshot = SnapshotStore.read() else {
+        guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
             return .result(dialog: "I don't have last night's data yet — open Zoon once to get started.")
         }
         let duration = SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)
@@ -57,7 +63,11 @@ struct LogSleepTagIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let container = try PersistentStore.open()
         let store = JournalStore(context: container.mainContext)
-        store.toggle(tag, on: .now)
+        // A behaviour logged today belongs to the night ahead, whose entry is
+        // keyed by the morning it ends on -- see `JournalEntry.date`.
+        let calendar = Calendar.current
+        let nightAhead = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now)) ?? .now
+        store.toggle(tag, on: nightAhead)
         return .result(dialog: "Logged \(tag.label) for today.")
     }
 }

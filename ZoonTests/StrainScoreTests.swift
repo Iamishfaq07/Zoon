@@ -52,6 +52,32 @@ final class StrainScoreTests: XCTestCase {
         XCTAssertEqual(score.value, 0, accuracy: 0.001)
     }
 
+    /// The anchor points documented on `estimate`. The old coefficients put
+    /// a 150 kcal day with no exercise at 13.8 ("Strenuous") -- the estimate
+    /// has to stay comparable to what the zone path would say for the same
+    /// kind of day.
+    func testEstimateSedentaryDayReadsLight() {
+        let score = StrainScore.estimate(activeEnergyKcal: 150, exerciseMinutes: 0)
+        XCTAssertLessThanOrEqual(score.value, 4)
+        XCTAssertEqual(score.band, "Light")
+    }
+
+    func testEstimateModerateDayLandsInModerateBand() {
+        let score = StrainScore.estimate(activeEnergyKcal: 400, exerciseMinutes: 30)
+        XCTAssertEqual(score.value, 9.5, accuracy: 1)
+    }
+
+    func testEstimateHardDayLandsNearStrenuousHighBoundary() {
+        let score = StrainScore.estimate(activeEnergyKcal: 800, exerciseMinutes: 60)
+        XCTAssertEqual(score.value, 13.5, accuracy: 1)
+    }
+
+    func testEstimateGrowsWithActivity() {
+        let easy = StrainScore.estimate(activeEnergyKcal: 400, exerciseMinutes: 30)
+        let hard = StrainScore.estimate(activeEnergyKcal: 800, exerciseMinutes: 60)
+        XCTAssertGreaterThan(hard.value, easy.value)
+    }
+
     // MARK: - band boundaries
 
     func testBandBoundaries() {

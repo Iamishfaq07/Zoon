@@ -4,6 +4,7 @@ final class ModelHealthTests: XCTestCase {
 
     private func assess(
         nights: Int = 40,
+        qualifying: Int? = nil,
         recovery: Int? = nil,
         bodySignals: Int? = nil,
         coverage: Double? = 0.9,
@@ -13,6 +14,7 @@ final class ModelHealthTests: XCTestCase {
     ) -> [ModelHealth.Assessment] {
         ModelHealth.assess(
             nightCount: nights,
+            qualifyingSleepNeedNights: qualifying ?? nights,
             nightsWithRecoverySignal: recovery ?? nights,
             nightsWithBodySignals: bodySignals ?? nights,
             coverage: coverage,
@@ -123,6 +125,31 @@ final class ModelHealthTests: XCTestCase {
             XCTAssertFalse(assessment.area.question.isEmpty)
             XCTAssertFalse(assessment.stage.meaning.isEmpty)
         }
+    }
+
+    /// `LearnedSleepNeed` has no learned figure at all below thirty
+    /// qualifying nights and does not fully trust it until sixty. Calling
+    /// sleep need "personalised" at twenty-eight -- or grading it on nights
+    /// that never qualified -- contradicts the engine being summarised.
+    func testSleepNeedIsGradedOnQualifyingNightsAgainstTheLearnedNeedsOwnLadder() {
+        let justShort = LearnedSleepNeed.minimumQualifyingNights - 1
+        XCTAssertEqual(stage(.sleepNeed, in: assess(nights: 90, qualifying: justShort)), .establishing)
+        XCTAssertEqual(
+            stage(.sleepNeed, in: assess(nights: 90, qualifying: LearnedSleepNeed.minimumQualifyingNights)),
+            .personalised
+        )
+        XCTAssertEqual(
+            stage(.sleepNeed, in: assess(nights: 90, qualifying: LearnedSleepNeed.fullConfidenceNights - 1)),
+            .personalised
+        )
+        XCTAssertEqual(
+            stage(.sleepNeed, in: assess(nights: 90, qualifying: LearnedSleepNeed.fullConfidenceNights)),
+            .wellEstablished
+        )
+        XCTAssertTrue(
+            assess(nights: 90, qualifying: justShort).first { $0.area == .sleepNeed }?.basis.contains("\(justShort) nights") ?? false,
+            "the basis must quote the qualifying count, not the night count"
+        )
     }
 
     func testTheLadderIsMonotonic() {

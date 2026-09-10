@@ -44,7 +44,12 @@ struct CycleContext: Sendable {
     /// Finds the most recent period start on or before `date` and returns the
     /// day offset. `starts` need not be sorted.
     static func compute(date: Date, starts: [Date], calendar: Calendar = .current) -> CycleContext {
-        let priorStarts = starts.filter { $0 <= date }
+        // Compared as calendar days, the same way the offset below is
+        // taken. On raw instants a start logged at 14:00 on day X sat
+        // *after* a night dated X 00:00 and was skipped, so that night read
+        // as the previous cycle's last day instead of day 1.
+        let day = calendar.startOfDay(for: date)
+        let priorStarts = starts.filter { calendar.startOfDay(for: $0) <= day }
         guard let mostRecent = priorStarts.max() else {
             return CycleContext(cycleDay: nil)
         }
@@ -78,8 +83,9 @@ struct CycleContext: Sendable {
         guard intervals.count >= 2,
               let shortest = intervals.min(), let longest = intervals.max(),
               longest - shortest <= 9 else { return nil }
-        let sorted = intervals.sorted()
-        return sorted[sorted.count / 2]
+        // The true median: with an even count the upper-middle element alone
+        // biased the length up by a day for half of all histories.
+        return Statistics.median(intervals.map(Double.init)).map { Int($0.rounded()) }
     }
 }
 

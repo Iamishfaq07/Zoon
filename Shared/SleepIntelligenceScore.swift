@@ -227,14 +227,23 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
         // means, not what it is called.
         if let habitual = inputs.habitualMidpointHours {
             let tonightMidpoint = midpointHours(night)
-            let diffMinutes = abs(tonightMidpoint - habitual) * 60
+            // Both values are hours on a 24-hour clock, but they fold at
+            // different points: `midpointHours` folds the onset at 18:00 and
+            // adds half the span unfolded, `BodyClock.midpoint` folds at
+            // 12:00. A 20:30 midpoint against a 20:30 habit is +20.5 vs
+            // -3.5, which a plain subtraction reads as a full day of drift.
+            // Measure the drift on the circle instead; the signed wrap is
+            // only for the label.
+            let rawDeltaMinutes = (tonightMidpoint - habitual) * 60
+            let signedDeltaMinutes = rawDeltaMinutes - (rawDeltaMinutes / 1440).rounded() * 1440
+            let diffMinutes = Statistics.circularDistance(tonightMidpoint * 60, habitual * 60)
             let circadianNormalized = interpolate(
                 diffMinutes,
                 anchors: [(0, 100), (15, 100), (30, 90), (60, 75), (90, 55), (120, 35), (180, 10), (240, 0)]
             ) / 100
             raw.append((Component(
                 label: "Timing",
-                detail: String(format: "%+.0fm vs usual timing", (tonightMidpoint - habitual) * 60),
+                detail: String(format: "%+.0fm vs usual timing", signedDeltaMinutes),
                 normalized: circadianNormalized,
                 weightUsed: 0,
                 expectedNeutral: Self.circadianNeutral
@@ -400,7 +409,11 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     }
 
     private static func confidenceLevel(nightCount: Int, completeness: Int) -> Confidence {
-        guard completeness >= 40 else { return .insufficient }
+        // Duration (0.40) is always present, so a 40 threshold could never
+        // fail. 70 is Duration plus Continuity: a night that produced
+        // nothing but a sleep-minutes figure is not a night this score can
+        // say anything about.
+        guard completeness >= 70 else { return .insufficient }
         switch nightCount {
         case ..<14: return .low
         case 14..<30: return .moderate

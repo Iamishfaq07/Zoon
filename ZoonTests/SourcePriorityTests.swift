@@ -42,6 +42,17 @@ final class SourcePriorityTests: XCTestCase {
         XCTAssertEqual(priority, .phoneOrManual)
     }
 
+    /// A third-party app running on the Watch reports Watch hardware too. It
+    /// is still a third-party writer, not Apple's own sleep staging.
+    func testThirdPartyAppOnWatchHardwareIsNotPromotedToAppleWatch() {
+        let priority = SourcePriority.classify(
+            hardwareVersion: "Watch7,4",
+            bundleIdentifier: "com.tantsissa.AutoSleep",
+            sourceName: "AutoSleep"
+        )
+        XCTAssertEqual(priority, .thirdPartyWearable)
+    }
+
     func testWatchOutranksWearableWhichOutranksPhone() {
         XCTAssertLessThan(SourcePriority.appleWatch, SourcePriority.thirdPartyWearable)
         XCTAssertLessThan(SourcePriority.thirdPartyWearable, SourcePriority.phoneOrManual)

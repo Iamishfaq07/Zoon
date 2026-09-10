@@ -232,6 +232,71 @@ enum EvidenceLedger {
     }
 }
 
+// MARK: - Withdrawing a claim
+
+extension EvidenceLedger {
+
+    /// The revision that says an association is no longer found.
+    ///
+    /// The engines only ever *offer* current beliefs, and `recording` only
+    /// appends when one differs from the last. A finding that quietly stops
+    /// being produced therefore says nothing, and its last revision stands
+    /// -- an "Association detected" that nothing has contradicted because
+    /// nothing was said at all. This is the something. The status is the
+    /// caller's to choose: whether the comparison pool is now too thin
+    /// (`learning`) or ample and silent (`inconclusive`) is a question only
+    /// the engine can answer, and `sampleSize` is its current pair count.
+    static func retraction(
+        of latest: Revision,
+        status: Status,
+        sampleSize: Int,
+        at recordedAt: Date = .now
+    ) -> Revision {
+        Revision(
+            claimID: latest.claimID,
+            recordedAt: recordedAt,
+            status: status,
+            headline: "The association washed out over a longer window.",
+            // No effect: there is no finding to take one from, and carrying
+            // the old number forward would let the row keep making the
+            // claim it exists to withdraw.
+            effect: nil,
+            effectUnit: latest.effectUnit,
+            uncertaintyLower: nil,
+            uncertaintyUpper: nil,
+            sampleSize: sampleSize,
+            windowStart: nil,
+            windowEnd: nil,
+            algorithmVersion: latest.algorithmVersion,
+            sourceFeature: latest.sourceFeature,
+            provenance: latest.provenance
+        )
+    }
+
+    /// The latest revision of every claim from `provenance` that still
+    /// asserts an association and is not in `currentClaimIDs` -- the claims
+    /// a retraction is owed to. Empty on any refresh where every standing
+    /// association was found again, which is most of them; and empty for a
+    /// claim already withdrawn, because its latest revision no longer says
+    /// `associated`.
+    static func associationsToRetract(
+        in history: [Revision],
+        currentClaimIDs: Set<String>,
+        provenance: String
+    ) -> [Revision] {
+        var latestByClaim: [String: Revision] = [:]
+        for revision in history where revision.provenance == provenance {
+            if let existing = latestByClaim[revision.claimID], existing.recordedAt >= revision.recordedAt {
+                continue
+            }
+            latestByClaim[revision.claimID] = revision
+        }
+        return latestByClaim.values
+            .filter { $0.status == .associated && !currentClaimIDs.contains($0.claimID) }
+            .sorted { $0.claimID < $1.claimID }
+    }
+}
+
 // MARK: - Why did this change?
 
 extension EvidenceLedger {

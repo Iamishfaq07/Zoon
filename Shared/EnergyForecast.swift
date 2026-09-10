@@ -125,7 +125,6 @@ struct EnergyForecast: Codable, Hashable, Sendable {
         let morningRise = wakeTime.addingTimeInterval(30 * 60)
         let morningPeak = wakeTime.addingTimeInterval((3 + min(debtHours * 0.15, 1)) * 3600)
         let afternoonDip = wakeTime.addingTimeInterval((7 - min(debtHours * 0.3, 1.5)) * 3600)
-        let eveningRise = wakeTime.addingTimeInterval(11 * 3600)
 
         let windDown: Date
         let isGeneric: Bool
@@ -140,16 +139,29 @@ struct EnergyForecast: Codable, Hashable, Sendable {
             isGeneric = true
         }
 
-        return EnergyForecast(
-            windows: [
-                Window(kind: .morningRise, time: morningRise),
-                Window(kind: .morningPeak, time: morningPeak),
-                Window(kind: .afternoonDip, time: afternoonDip),
-                Window(kind: .eveningRise, time: eveningRise),
-                Window(kind: .windDown, time: windDown)
-            ],
-            isGenericWindDown: isGeneric
-        )
+        // A late wake pushes the wake-anchored windows toward -- or past --
+        // tonight's wind-down: a 13:00 wake puts the second wind at 00:00,
+        // after a 23:30 wind-down, and the curve doubles back on itself.
+        // The second wind is held to at least an hour before wind-down, and
+        // anything still landing at or after wind-down is dropped so the
+        // anchors run strictly forward in time. Wind-down itself always
+        // stays: it is the one anchor the body clock, not the wake, set.
+        let eveningRise = min(wakeTime.addingTimeInterval(11 * 3600), windDown.addingTimeInterval(-3600))
+
+        var windows: [Window] = []
+        for window in [
+            Window(kind: .morningRise, time: morningRise),
+            Window(kind: .morningPeak, time: morningPeak),
+            Window(kind: .afternoonDip, time: afternoonDip),
+            Window(kind: .eveningRise, time: eveningRise),
+            Window(kind: .windDown, time: windDown)
+        ].sorted(by: { $0.time < $1.time }) {
+            guard window.kind == .windDown || window.time < windDown else { continue }
+            if let last = windows.last?.time, window.time <= last { continue }
+            windows.append(window)
+        }
+
+        return EnergyForecast(windows: windows, isGenericWindDown: isGeneric)
     }
 
     /// Resolves an hours-from-midnight value (evening negative, per

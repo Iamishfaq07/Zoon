@@ -81,7 +81,7 @@ all of them locally.
 - **Cause Finder** — Helps / Hurts / No Effect / Still Learning, built on
   matched-pair comparisons and a paired bootstrap confidence interval, not a
   simple tagged-vs-untagged average.
-- **Journal** (Whoop-style) — 23 tagged behaviours across four categories, and a
+- **Journal** (Whoop-style) — 25 tagged behaviours across four categories, and a
   correlation engine that reports what actually tracks with better nights. It
   refuses to call anything a pattern without enough tagged *and* untagged nights,
   and it says "pattern", never "cause". Reached from a sheet rather than its own
@@ -143,7 +143,7 @@ otherwise arrive as the same sentence on the same kind of card.
   a 10-minute deadband so ordinary variation does not manufacture a new target
   every evening, and repays sleep debt a capped quarter at a time. On Today, on
   the watch, and in a widget.
-- **Adaptive Journal** — shortens the nightly ask from 23 checkboxes to the
+- **Adaptive Journal** — shortens the nightly ask from 25 checkboxes to the
   handful worth asking about, *above* the full list rather than instead of it:
   a shortcut that hides the thing you came to log is worse than no shortcut.
   Its ranking takes **no sleep outcome at all** — asking about alcohol more
@@ -163,7 +163,7 @@ otherwise arrive as the same sentence on the same kind of card.
   above, only Sleep Autopilot and Uncertainty Forecast reach the wrist and
   the widgets — they are the two about the night *ahead*, which is what
   earns a glance surface; the rest are reading material.
-- **Badges** — 13 of them, every one cumulative or best-ever. Nothing here can
+- **Badges** — 15 of them, every one cumulative or best-ever. Nothing here can
   be lost to one bad night, on purpose.
 - **Stress today** — the one live, daytime number in an app otherwise built
   from last night, from the same HR/HRV already granted for sleep
@@ -185,9 +185,12 @@ otherwise arrive as the same sentence on the same kind of card.
 - **Streaks** and goal-met counts, kept modest — a streak that punishes one bad
   night is actively harmful in a sleep app
 - **Export** to JSON (complete, re-importable) or CSV (one row per night)
-- **Optional iCloud backup** — an encrypted `ZoonBackup.json` in the user's
-  own iCloud Drive Documents, off until tapped, passphrase never stored.
-  Not a Zoon server
+- **Encrypted local export** — the JSON export can be sealed with a
+  passphrase (More → Data → *Encrypt JSON backup*): AES-GCM with a
+  PBKDF2-derived key, fresh salt and nonce per file, passphrase never
+  stored. Unencrypted JSON otherwise. The file goes wherever the share
+  sheet sends it; there is no iCloud sync and no Zoon server. Import
+  reads both forms back
 - **Travel repayment** — three destination nights, each moved by Autopilot's
   20-minute cap, so Tonight and the jet-lag plan cannot disagree
 - **Clinician report** — 7/30/90-day PDF with nights meeting goal, longest /
@@ -223,8 +226,9 @@ ZoonWidget/          WidgetKit extension (lock screen, home screen). Reads the
 ZoonWatch/           Companion watchOS app. Reads the same snapshot.
 ZoonWatchWidget/     Watch-face complications, a separate extension target
                      from the phone-side widget.
-ZoonTests/           XCTest target: pure-logic and SwiftData-free unit tests
-                     for the Shared/ statistics and score engines.
+ZoonTests/           XCTest target. Mostly pure-logic tests for the Shared/
+                     statistics and score engines; a handful use an
+                     in-memory SwiftData container to cover persistence.
 ```
 
 The data flow is one direction:
@@ -352,9 +356,10 @@ has run this against a real Health store:
   registered and associated with all four App IDs in the Apple Developer portal.
 - Background delivery needs the HealthKit background-delivery capability.
   Without it the app still refreshes on foreground.
-- Optional iCloud backup needs the iCloud Documents container
-  `iCloud.com.zoon.sleep` associated with the App ID. Without it, Back up to
-  iCloud reports that iCloud is unavailable and Export still works.
+- There is no iCloud entitlement and no cloud backup of any kind. Export and
+  Import in More → Data write and read a local file (optionally encrypted)
+  through the system share sheet and file picker, so they need no extra
+  capability.
 
 ## Not medical advice
 

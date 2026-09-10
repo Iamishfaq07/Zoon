@@ -139,8 +139,10 @@ struct WatchComplicationProvider: TimelineProvider {
 
     private func currentEntry() -> WatchComplicationEntry {
         if let snapshot = WatchSnapshotStore.load() {
+            // A stored snapshot can itself be sample data (the phone had no
+            // real night yet); carry that through so faces badge it.
             return WatchComplicationEntry(
-                date: .now, snapshot: snapshot, isPlaceholder: false, kind: kind
+                date: .now, snapshot: snapshot, isPlaceholder: snapshot.isMock, kind: kind
             )
         }
         return WatchComplicationEntry(

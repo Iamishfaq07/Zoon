@@ -85,9 +85,10 @@ struct DataQuality {
         /// 0...1. Always against `expectedNightCount`, even for a
         /// secondary metric -- a night that's missing entirely is exactly
         /// as much a coverage gap for HRV as a night that exists but has
-        /// no HRV reading on it.
+        /// no HRV reading on it. Clamped so two rows on one calendar day
+        /// can never read as more than complete.
         var fraction: Double {
-            Double(presentNightCount) / Double(denominator)
+            min(1, Double(presentNightCount) / Double(denominator))
         }
 
         var percent: Int { Int((fraction * 100).rounded()) }
@@ -131,7 +132,13 @@ struct DataQuality {
         // otherwise a night from exactly `windowDays` ago (midnight) reads as
         // older than a same-day-clock-time cutoff and drops out of the
         // window whenever `now` isn't itself midnight, i.e. always.
-        let rawCutoff = calendar.date(byAdding: .day, value: -windowDays, to: now) ?? now
+        //
+        // `windowDays - 1` because the window is inclusive at both ends and
+        // today is one of its days: a 30-day window is today plus the 29
+        // days before it. Going back a full `windowDays` spans 31 calendar
+        // days against an `expectedNightCount` of 30, and a fully tracked
+        // month then reads as 103% coverage.
+        let rawCutoff = calendar.date(byAdding: .day, value: -(windowDays - 1), to: now) ?? now
         let cutoff = calendar.startOfDay(for: rawCutoff)
         let windowed = nights.filter { $0.date >= cutoff && $0.date <= now }
 

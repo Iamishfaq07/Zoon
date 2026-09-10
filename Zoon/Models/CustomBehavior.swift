@@ -36,5 +36,8 @@ final class CustomBehaviorStore {
         behaviors[index].isActive.toggle(); save()
     }
     func remove(_ behavior: CustomBehavior) { behaviors.removeAll { $0.id == behavior.id }; save() }
+    /// Delete Everything. Removes the key rather than saving an empty list so
+    /// nothing of the user's is left behind in defaults.
+    func deleteAll() { behaviors = []; UserDefaults.standard.removeObject(forKey: key) }
     private func save() { UserDefaults.standard.set(try? JSONEncoder().encode(behaviors), forKey: key) }
 }

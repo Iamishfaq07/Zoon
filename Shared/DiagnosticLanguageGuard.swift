@@ -40,6 +40,13 @@ enum DiagnosticLanguageGuard {
     /// `WeeklyReport`. Kept as a list rather than deleted with the strings so
     /// they cannot come back, and so the model-backed engines are held to the
     /// same standard as the rule-based one.
+    ///
+    /// The plain connectives at the end are the ones a model reaches for
+    /// when it has been told not to say "caused": "due to", "led to",
+    /// "because of". Bare "because" is deliberately absent -- "because your
+    /// history is short" is an honest reason for withholding a claim, not
+    /// a claim. Matched on word boundaries, so "resembled tomorrow" does not
+    /// contain "led to".
     static let causalOverclaimTerms = [
         "fighting something off",
         "traces to",
@@ -48,8 +55,19 @@ enum DiagnosticLanguageGuard {
         "sleep is the lever",
         "stayed in gear",
         "caused by",
+        "caused",
         "this is why",
         "which is why you",
+        "because of",
+        "due to",
+        "led to",
+        "leads to",
+        "resulted in",
+        "results in",
+        "is the reason",
+        "was the reason",
+        "explains why",
+        "made your",
     ]
 
     static func containsBannedLanguage(_ text: String) -> Bool {
@@ -58,9 +76,18 @@ enum DiagnosticLanguageGuard {
     }
 
     /// Whether `text` asserts a cause or a verdict Zoon cannot support.
+    ///
+    /// Whole words, unlike `containsBannedLanguage`, which wants the stem
+    /// match ("diagnos"). A causal connective is short and ordinary enough
+    /// to sit inside unrelated words.
     static func overclaimsCausation(_ text: String) -> Bool {
         let lowered = text.lowercased()
-        return causalOverclaimTerms.contains { lowered.contains($0) }
+        return causalOverclaimTerms.contains { term in
+            lowered.range(
+                of: "\\b" + NSRegularExpression.escapedPattern(for: term) + "\\b",
+                options: .regularExpression
+            ) != nil
+        }
     }
 
     /// The full check applied to on-device model output.

@@ -14,6 +14,8 @@ final class JournalCorrelatorTests: XCTestCase {
         // means nothing was answered, so every behaviour is unknown.
         fullyAnswered: Bool = true,
         sleepPerformance: Double? = 80,
+        efficiency: Double = 90,
+        wakeCount: Double = 2,
         isWeekend: Bool = false
     ) -> JournalCorrelator.Observation {
         let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
@@ -25,8 +27,8 @@ final class JournalCorrelatorTests: XCTestCase {
             sleepPerformance: sleepPerformance,
             deepMinutes: 80,
             remMinutes: 90,
-            efficiency: 90,
-            wakeCount: 2,
+            efficiency: efficiency,
+            wakeCount: wakeCount,
             isWeekend: isWeekend,
             sleepDebtMinutes: 30,
             bedtimeHour: -1,
@@ -129,5 +131,69 @@ final class JournalCorrelatorTests: XCTestCase {
         // finding at all -- it should fall to "still learning," not
         // silently borrow the unjournaled nights to manufacture one.
         XCTAssertFalse(findings.contains { $0.tag == .alcohol })
+    }
+
+    // MARK: - Effect gates
+
+    /// Eight tagged nights and a deep pool of answered "no" nights, split
+    /// evenly across the weekend/weekday constraint so every tagged night
+    /// finds a match.
+    private func matchedHistory(
+        tagged: (Int) -> JournalCorrelator.Observation,
+        control: (Int) -> JournalCorrelator.Observation
+    ) -> [JournalCorrelator.Observation] {
+        (0..<8).map(tagged) + (8..<32).map(control)
+    }
+
+    /// Awakenings sit at two or three a night, so a pair-delta median of
+    /// half an awakening cleared the 20% gate. A shift under one awakening
+    /// is not a pattern; a shift of one and a half still is.
+    func testAFractionOfAnAwakeningIsNotAFinding() {
+        let fraction = matchedHistory(
+            tagged: { observation(daysAgo: $0, tags: [.alcohol], wakeCount: 2.5, isWeekend: $0 % 2 == 0) },
+            control: { observation(daysAgo: $0, tags: [], wakeCount: 2, isWeekend: $0 % 2 == 0) }
+        )
+        XCTAssertFalse(
+            JournalCorrelator().findings(from: fraction).contains { $0.tag == .alcohol && $0.metric == .wakeCount }
+        )
+
+        let whole = matchedHistory(
+            tagged: { observation(daysAgo: $0, tags: [.alcohol], wakeCount: 3.5, isWeekend: $0 % 2 == 0) },
+            control: { observation(daysAgo: $0, tags: [], wakeCount: 2, isWeekend: $0 % 2 == 0) }
+        )
+        XCTAssertTrue(
+            JournalCorrelator().findings(from: whole).contains { $0.tag == .alcohol && $0.metric == .wakeCount }
+        )
+    }
+
+    /// Six metrics per tag, and the largest mover among six is the noisiest
+    /// estimate on the list. The headline row is the pre-specified metric
+    /// whenever it cleared the bar; `findings` still carries both.
+    func testTopFindingPerTagPrefersThePrimaryMetricOverTheLargestMover() {
+        // Efficiency moves 22%, sleep sufficiency 12.5%: both clear their bars.
+        let observations = matchedHistory(
+            tagged: { observation(daysAgo: $0, tags: [.alcohol], sleepPerformance: 70, efficiency: 70, isWeekend: $0 % 2 == 0) },
+            control: { observation(daysAgo: $0, tags: [], sleepPerformance: 80, efficiency: 90, isWeekend: $0 % 2 == 0) }
+        )
+        let correlator = JournalCorrelator()
+
+        let all = correlator.findings(from: observations).filter { $0.tag == .alcohol }
+        XCTAssertEqual(all.first?.metric, .efficiency, "precondition: efficiency is the largest mover")
+        XCTAssertTrue(all.contains { $0.metric == .sleepPerformance }, "precondition: the primary metric cleared its bar")
+
+        let top = correlator.topFindingPerTag(from: observations).filter { $0.tag == .alcohol }
+        XCTAssertEqual(top.count, 1)
+        XCTAssertEqual(top.first?.metric, JournalCorrelator.Metric.primaryForAssociations)
+    }
+
+    /// When the primary metric did not clear the bar, the largest mover
+    /// still stands in -- a real finding by the same thresholds.
+    func testTopFindingPerTagFallsBackToTheLargestMover() {
+        let observations = matchedHistory(
+            tagged: { observation(daysAgo: $0, tags: [.alcohol], sleepPerformance: 80, efficiency: 70, isWeekend: $0 % 2 == 0) },
+            control: { observation(daysAgo: $0, tags: [], sleepPerformance: 80, efficiency: 90, isWeekend: $0 % 2 == 0) }
+        )
+        let top = JournalCorrelator().topFindingPerTag(from: observations).filter { $0.tag == .alcohol }
+        XCTAssertEqual(top.map(\.metric), [.efficiency])
     }
 }

@@ -59,7 +59,7 @@ struct SleepDetailView: View {
                 .font(Theme.numeral(52))
                 .monospacedDigit()
 
-            Text(context.night.date, format: .dateTime.weekday(.wide).month().day())
+            Text(context.night.dayString())
                 .font(Theme.label(13))
                 .foregroundStyle(.secondary)
 
@@ -232,8 +232,8 @@ struct SleepDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Timing & Quality", systemImage: "clock")
 
-            row("Bedtime", context.night.bedtime.formatted(.dateTime.hour().minute()))
-            row("Wake time", context.night.wakeTime.formatted(.dateTime.hour().minute()))
+            row("Bedtime", context.night.clockString(context.night.bedtime))
+            row("Wake time", context.night.clockString(context.night.wakeTime))
             row(
                 context.night.timeInBedIsEstimated ? "Time in bed (estimated)" : "Time in bed",
                 SleepNightFeatures.formatMinutes(context.night.timeInBedMinutes),

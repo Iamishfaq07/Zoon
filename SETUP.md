@@ -97,11 +97,16 @@ To change the wording: target **Zoon** → **Build Settings** → search
 <string>Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.</string>
 ```
 
-> **`NSHealthUpdateUsageDescription` is deliberately absent.** That key is only
-> required when an app requests *write* access. Zoon calls
-> `requestAuthorization(toShare: [], read:)` — the share set is empty by
-> construction, so it can never write to Health, and declaring a write purpose
-> string it doesn't use would be claiming access it doesn't want.
+> **`NSHealthUpdateUsageDescription` is present, as a harmless precaution.**
+> Zoon never asks for write access — every call is
+> `requestAuthorization(toShare: [], read:)`, so the share set is empty by
+> construction and the app cannot write to Health. The key is only *required*
+> when an app requests write access, but `Tools/generate-pbxproj.py` emits it
+> anyway (and `Tools/release-audit.py` insists on it): a missing HealthKit
+> purpose string is a launch-time crash rather than a review note, carrying an
+> unused one costs nothing, and the text of the string itself spells out the
+> read-only boundary ("never writes to or changes your Health data").
+> Declaring it requests nothing; no share types are ever requested.
 
 **The app will crash on launch if the share key is missing.** That's HealthKit
 being strict, not a bug — if you see `NSHealthShareUsageDescription must be set`,
@@ -127,9 +132,10 @@ Work through these in order:
 - **Is there sleep data to read?** Open the Health app → Browse → Sleep. If it's
   empty, Zoon has nothing to show. Wear the watch to bed with Sleep Focus
   scheduled.
-- **Only slept a couple of hours?** Sessions shorter than 2 hours are treated as
-  naps and skipped. Change `minimumSessionDuration` in `SleepSessionBuilder` if
-  you want to see them.
+- **Only a very short sleep?** Sessions shorter than 15 minutes
+  (`minimumSessionDuration = 60 * 15` in `SleepSessionBuilder`) are dropped
+  as noise. Anything longer counts; short daytime sessions become naps rather
+  than the night's main sleep. Change that constant if you want to see them.
 
 ## Why a device
 
