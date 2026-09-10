@@ -58,10 +58,9 @@ enum PersistentStore {
 
     /// File-backed configuration. Always the same schema, never CloudKit.
     ///
-    /// iCloud Drive (the encrypted JSON archive) is a separate entitlement
-    /// and a separate code path. `cloudKitDatabase` defaults to `.automatic`
-    /// on the no-URL initializer, which would try to put these models on
-    /// CloudKit the moment the iCloud container identifiers are present --
+    /// The user-controlled archive export is a separate local file path./// `cloudKitDatabase` defaults to `.automatic` on the no-URL initializer,
+    /// which would try to put these models on CloudKit if a future capability
+    /// were added --
     /// `@Attribute(.unique)` on a SwiftData model is enough for that path
     /// to trap inside `DefaultMigrationManager` rather than throw. The URL
     /// initializer already defaults to `.none`; passing it anyway so a
