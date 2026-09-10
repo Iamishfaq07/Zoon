@@ -349,6 +349,13 @@ enum Theme {
         /// A meaningful departure from personal baseline. Soft coral.
         static let deviation = Theme.adaptiveMetric((1.00, 0.48, 0.44))
 
+        /// Lunar disc used by week moons and the past-nights film.
+        enum Moon {
+            static let lit = adaptive(dark: (0.984, 0.965, 0.910), light: (0.957, 0.929, 0.831))
+            static let body = adaptive(dark: (0.941, 0.918, 0.847), light: (0.906, 0.863, 0.722))
+            static let dark = adaptive(dark: (0.145, 0.165, 0.267), light: (0.604, 0.627, 0.714))
+        }
+
         /// Electric blue at wake → warm gold at the day's peak. Used as a
         /// stroke/fill along the x-axis of anything that draws a day.
         static var energy: LinearGradient {
