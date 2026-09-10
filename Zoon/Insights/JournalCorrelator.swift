@@ -562,7 +562,7 @@ struct JournalCorrelator {
                 distance += Self.unknownConfounderPenalty
             }
 
-            if best == nil || distance < best!.distance {
+            if best.map({ distance < $0.distance }) ?? true {
                 best = (index, distance)
             }
         }

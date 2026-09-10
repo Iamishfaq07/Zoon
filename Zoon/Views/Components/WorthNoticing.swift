@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Today's one conditional slot: the single most notable thing that isn't
+/// Today's ranked stream: up to three useful things that are not already
 /// already in the hero, the pulse or the plan.
 ///
 /// Replaces five always-present cards (`HealthRadarCard`, `StressCard`,
@@ -21,6 +21,7 @@ struct WorthNoticing: View {
     let lightGuidance: LightCoach.Guidance?
     let nightsTracked: Int
     let taggedNights: Int
+    var proactiveItems: [PersonalLearning.ProactiveItem] = []
     var onTurnOffRecoveryMode: () -> Void = {}
 
     enum Item {
@@ -29,24 +30,33 @@ struct WorthNoticing: View {
         case recoveryMode(RecoveryMode)
         case light(LightCoach.Guidance)
         case learning(nightsTracked: Int, taggedNights: Int)
+        case proactive(PersonalLearning.ProactiveItem)
     }
 
-    /// The pick. `nil` when nothing clears the bar -- then the slot renders
-    /// nothing at all, which is the correct answer on an ordinary good day.
-    var item: Item? {
-        if context.healthRadar.isActive { return .radar(context.healthRadar) }
-        if let stress, stress.band != .calm { return .stress(stress) }
-        if let recoveryMode { return .recoveryMode(recoveryMode) }
-        if let lightGuidance { return .light(lightGuidance) }
-        if nightsTracked < 30 { return .learning(nightsTracked: nightsTracked, taggedNights: taggedNights) }
-        return nil
+    /// Ranked by consequence, deduplicated, then capped so Today never turns
+    /// into an unbounded advice feed.
+    var items: [Item] {
+        var ranked: [Item] = []
+        if context.healthRadar.isActive { ranked.append(.radar(context.healthRadar)) }
+        if let stress, stress.band != .calm { ranked.append(.stress(stress)) }
+        if let recoveryMode { ranked.append(.recoveryMode(recoveryMode)) }
+        if let lightGuidance { ranked.append(.light(lightGuidance)) }
+        // Radar is already first above; don't repeat PersonalLearning's copy
+        // of the same event under a second heading.
+        ranked.append(contentsOf: proactiveItems
+            .filter { $0.kind != .bodySignals }
+            .map(Item.proactive))
+        if nightsTracked < 30 { ranked.append(.learning(nightsTracked: nightsTracked, taggedNights: taggedNights)) }
+        return Array(ranked.prefix(3))
     }
 
     var body: some View {
-        if let item {
+        if !items.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                ZoonSectionHeader("Worth noticing")
-                content(for: item)
+                ZoonSectionHeader("For You")
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    content(for: item)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -69,7 +79,7 @@ struct WorthNoticing: View {
                 symbol: "waveform.path.ecg",
                 tint: stress.band == .high ? Theme.Family.deviation : Theme.Family.attention,
                 headline: "Your body is running \(stress.band == .high ? "well above" : "a bit above") its usual load today",
-                detail: stress.band.detail,
+                detail: stress.baselineContextNote,
                 linkLabel: "View today's load"
             ) { StressDetailView(stress: stress, todayStrain: context.strain.value) }
 
@@ -97,6 +107,17 @@ struct WorthNoticing: View {
                 )
                 PersonalizationProgressRows(nightsTracked: nights, taggedNights: tagged)
             }
+
+        case let .proactive(item):
+            NavigationLink { PersonalLearningView() } label: {
+                noticeText(
+                    symbol: item.kind == .debt ? "moon.zzz.fill" : "clock.arrow.circlepath",
+                    tint: Theme.Family.sleep,
+                    headline: item.title,
+                    detail: item.detail
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 

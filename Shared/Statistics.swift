@@ -78,10 +78,11 @@ enum Statistics {
     /// than an inline formula, so the anchors are the whole story and can be
     /// read, argued with, and tuned in one place.
     static func interpolate(_ x: Double, anchors: [(x: Double, y: Double)]) -> Double {
-        guard !anchors.isEmpty else { return 0 }
+        guard let first = anchors.min(by: { $0.x < $1.x }),
+              let last = anchors.max(by: { $0.x < $1.x }) else { return 0 }
         let sorted = anchors.sorted { $0.x < $1.x }
-        if x <= sorted.first!.x { return sorted.first!.y }
-        if x >= sorted.last!.x { return sorted.last!.y }
+        if x <= first.x { return first.y }
+        if x >= last.x { return last.y }
         for i in 0..<(sorted.count - 1) {
             let a = sorted[i], b = sorted[i + 1]
             if x >= a.x && x <= b.x {
@@ -90,7 +91,7 @@ enum Statistics {
                 return a.y + (b.y - a.y) * fraction
             }
         }
-        return sorted.last!.y
+        return last.y
     }
 
     /// Minutes-from-midnight for a wall-clock time, shifted so evening times

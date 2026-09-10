@@ -54,6 +54,13 @@ final class SleepScoreTests: XCTestCase {
         XCTAssertEqual(totalWeight, 1.0, accuracy: 0.001)
     }
 
+    func testMissingStagesAreExcludedAndRemainingEvidenceIsRenormalized() {
+        let score = SleepScore.compute(for: MockData.unstagedNight, goalMinutes: 480)
+        XCTAssertNil(score.components.first { $0.label == "Deep" })
+        XCTAssertNil(score.components.first { $0.label == "REM" })
+        XCTAssertEqual(score.components.reduce(0) { $0 + $1.weight }, 1, accuracy: 0.001)
+    }
+
     func testValueIsWithinZeroToOneHundred() {
         let perfect = SleepScore.compute(
             for: Fixture.night(timeAsleepMinutes: 480, timeInBedMinutes: 480, wakeCount: 0),

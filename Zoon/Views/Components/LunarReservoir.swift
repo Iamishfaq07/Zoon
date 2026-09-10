@@ -54,7 +54,7 @@ struct LunarReservoir: View {
                     .rotationEffect(.degrees(135))
 
                 VStack(spacing: 4) {
-                    Text("Sleep debt")
+                    Text("Sleep shortfall")
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
@@ -81,7 +81,7 @@ struct LunarReservoir: View {
         .frame(maxWidth: .infinity)
         .drawOnce(id: Int(debtMinutes.rounded()), progress: $progress)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Sleep debt")
+        .accessibilityLabel("Estimated sleep shortfall")
         .accessibilityValue(accessibilityValue)
     }
 
@@ -104,7 +104,7 @@ struct LunarReservoir: View {
     }
 
     private var accessibilityValue: String {
-        var parts = ["\(debtMinutes > 1 ? SleepNightFeatures.formatMinutes(debtMinutes) : "none") owed, \(band.lowercased())"]
+        var parts = ["\(debtMinutes > 1 ? SleepNightFeatures.formatMinutes(debtMinutes) : "none") short, \(band.lowercased())"]
         if let weekAgoMinutes {
             let delta = debtMinutes - weekAgoMinutes
             if abs(delta) >= 5 {

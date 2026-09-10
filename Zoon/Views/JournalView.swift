@@ -103,14 +103,18 @@ struct JournalView: View {
             HStack(spacing: 8) {
                 // Last two weeks, newest first. Beyond that, recall is poor
                 // enough that the data would be noise.
-                ForEach(0..<14, id: \.self) { offset in
-                    let date = Calendar.current.date(byAdding: .day, value: -offset, to: .now)!
-                    let day = Calendar.current.startOfDay(for: date)
+                ForEach(recentDays, id: \.self) { day in
                     dayChip(day)
                 }
             }
             .padding(.vertical, 4)
         }
+    }
+
+    private var recentDays: [Date] {
+        (0..<14).compactMap { offset in
+            Calendar.current.date(byAdding: .day, value: -offset, to: .now)
+        }.map { Calendar.current.startOfDay(for: $0) }
     }
 
     private func dayChip(_ day: Date) -> some View {

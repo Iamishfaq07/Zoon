@@ -2,6 +2,15 @@ import XCTest
 
 final class StressScoreTests: XCTestCase {
 
+    func testBaselineContextIsDisclosedOnEveryScore() {
+        let score = StressScore.compute(
+            avgHeartRate: 78, avgHRV: 34, hrBaseline: 64, hrvBaseline: 52,
+            sampledMinutes: 240, baselineNightCount: 10
+        )
+        XCTAssertTrue(score?.baselineContextNote.contains("overnight") == true)
+        XCTAssertEqual(StressScore.minimumBaselineNights, 7)
+    }
+
     /// `StressDetailView` shows today's reading against its own baseline for
     /// each signal -- that only works if `compute` actually carries the
     /// baselines it was given onto the returned score, not just the blended

@@ -3,10 +3,8 @@ import SwiftUI
 /// The explainable score: a number, a band, and — the whole point of it — a
 /// "why" that sums to the number instead of gesturing at it.
 ///
-/// Deliberately additive to the existing Recovery ring and Sleep Score rather
-/// than replacing either. Those are established, referenced elsewhere (the
-/// widget, previews, the hero ring), and this is a new, separately-versioned
-/// model sitting alongside them — not a rip-and-replace.
+/// The canonical sleep-period score. Recovery remains a separate answer to
+/// how prepared the body appears for today.
 struct SleepIntelligenceCard: View {
     let score: SleepIntelligenceScore
 
@@ -42,8 +40,8 @@ struct SleepIntelligenceCard: View {
                         // components were renamed to "Timing" and "Stage Pattern",
                         // so the one place explaining the score used two words for
                         // it that appear nowhere else in the app.
-                        "Combines seven components -- Duration, Continuity, Regularity, Recovery, Timing, Breathing, and Stage Pattern -- each measured against your own recent history, not a fixed target.",
-                        "A component with no data tonight (no HRV sensor, not enough history for a body clock yet) is left out and the rest are reweighted to fill 100% -- missing data never counts against you."
+                        "Combines five sleep-period components -- Duration, Continuity, Regularity, Timing, and Stage Pattern. Recovery and body-signal anomalies are reported separately.",
+                        "A component with no data tonight (not enough timing history or no stage detail) is left out and the rest are reweighted to fill 100% -- missing data never counts against you."
                     ]
                 )
             }

@@ -35,7 +35,9 @@ struct PersonalSetup: Codable, Equatable, Sendable {
                       day >= calendar.startOfDay(for: firstDate),
                       weekdays.isEmpty ? calendar.isDate(day, inSameDayAs: firstDate) : weekdays.contains(calendar.component(.weekday, from: day)),
                       let bed = calendar.date(bySettingHour: bedtimeMinute / 60, minute: bedtimeMinute % 60, second: 0, of: day) else { continue }
-                let wakeDay = wakeMinute <= bedtimeMinute ? calendar.date(byAdding: .day, value: 1, to: day)! : day
+                guard let wakeDay = wakeMinute <= bedtimeMinute
+                    ? calendar.date(byAdding: .day, value: 1, to: day)
+                    : day else { continue }
                 guard let wake = calendar.date(bySettingHour: wakeMinute / 60, minute: wakeMinute % 60, second: 0, of: wakeDay), wake > now, wake > bed else { continue }
                 return DateInterval(start: bed, end: wake)
             }

@@ -40,7 +40,10 @@ struct CoachEvidence: Sendable {
     }
 
     var promptCatalog: String {
-        catalog.keys.sorted().map { "\($0): \(catalog[$0]!)" }.joined(separator: "\n")
+        let values = catalog
+        return values.keys.sorted().compactMap { key in
+            values[key].map { "\(key): \($0)" }
+        }.joined(separator: "\n")
     }
 
     /// Legacy shape used by existing tests and the chat fallback wrapper.

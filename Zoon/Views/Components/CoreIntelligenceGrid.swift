@@ -68,7 +68,7 @@ struct CoreIntelligenceGrid: View {
         let fraction = min(1, debt / 300)
 
         return module(
-            title: "Sleep Debt",
+            title: "Sleep Shortfall",
             icon: AnyView(ZoonIcon.SleepDebt(tint: Theme.Metric.temperature, deficit: fraction)),
             tint: Theme.Metric.temperature, zoomID: "sleepDebt"
         ) {
@@ -86,7 +86,7 @@ struct CoreIntelligenceGrid: View {
             }
             .frame(height: 20)
         } stat: {
-            debt < 1 ? "Clear" : "\(SleepNightFeatures.formatMinutes(debt)) owed"
+            debt < 1 ? "Clear" : "\(SleepNightFeatures.formatMinutes(debt)) short"
         }
     }
 

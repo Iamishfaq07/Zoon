@@ -4,18 +4,16 @@ import Foundation
 /// Score, Oura's Sleep Score, and Whoop's Sleep Performance all are, but with
 /// every point traceable to a cause instead of handed down from a black box.
 ///
-/// Seven components, each scored 0–1 against **this person's own recent
+/// Five sleep-period components, each scored 0–1 against **this person's own recent
 /// history** using robust statistics (median/MAD, not mean/SD — see
 /// `Statistics`), then weighted and summed:
 ///
 /// | Component | Weight | What it measures |
 /// |---|---|---|
-/// | Duration | 25% | Tonight's sleep vs. tonight's estimated need |
-/// | Continuity | 20% | Efficiency, WASO, and awakening rate |
-/// | Regularity | 15% | Bedtime/wake consistency (reuses `SleepRegularity`) |
-/// | Recovery | 15% | HRV, resting HR, and temperature vs. baseline |
-/// | Circadian | 10% | Tonight's midpoint vs. your habitual `BodyClock` |
-/// | Breathing | 10% | Respiratory rate deviation + disturbances |
+/// | Duration | 40% | Tonight's sleep vs. tonight's estimated need |
+/// | Continuity | 30% | Efficiency, WASO, and awakening rate |
+/// | Regularity | 20% | Bedtime/wake consistency (reuses `SleepRegularity`) |
+/// | Timing | 5% | Tonight's midpoint vs. your habitual `BodyClock` |
 /// | Stage Pattern | 5% | How close tonight's deep/REM split is to your own |
 ///
 /// A missing component (no HRV sensor, no `BodyClock` yet, a source with no
@@ -28,13 +26,13 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// Bumped whenever the anchor tables or weights change, so a score
     /// computed under an old version stays interpretable as such rather than
     /// silently meaning something different after an app update.
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     let percent: Int
     let scoringVersion: Int
     let components: [Component]
     let confidence: Confidence
-    /// What fraction of the full seven-component model actually had enough
+    /// What fraction of the full five-component model actually had enough
     /// data to run tonight, as a percent 0–100.
     let dataCompletenessPercent: Int
 
@@ -52,14 +50,10 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
         /// not 0.5.
         ///
         /// This was 0.5 for every component, and 0.5 is not the middle of
-        /// anything here. `recoveryComponent` scores an HRV exactly at your
-        /// own median as 0.65, because HRV has more room to fall than to
-        /// rise; `stagePatternComponent` scores a night at your own median
-        /// stage split as 0.93, because it measures distance from your
-        /// pattern and zero distance is the best possible. Measured against
-        /// 0.5, both of those read as *helping* the score -- so a perfectly
-        /// ordinary night was reported as a night where your HRV and your
-        /// sleep stages were doing you favours.
+        /// anything here. `stagePatternComponent` scores a night at a typical
+        /// distance from its median stage split near 0.93 because it measures
+        /// distance from the person's pattern. Measured against 0.5, that
+        /// ordinary stage pattern would incorrectly read as helping.
         ///
         /// Each component derives this from the same anchor table it scores
         /// with, at a documented expected input, so a curve and its neutral
@@ -129,8 +123,8 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// the algorithm-transparency screen can show the real table rather than
     /// a hand-copied duplicate that could drift out of sync with it.
     static let nominalWeights: [(component: String, weight: Double)] = [
-        ("Duration", 0.25), ("Continuity", 0.20), ("Regularity", 0.15),
-        ("Recovery", 0.15), ("Timing", 0.10), ("Breathing", 0.10), ("Stage Pattern", 0.05)
+        ("Duration", 0.40), ("Continuity", 0.30), ("Regularity", 0.20),
+        ("Timing", 0.05), ("Stage Pattern", 0.05)
     ]
     private static let nominalWeightsByName = Dictionary(
         uniqueKeysWithValues: nominalWeights.map { ($0.component, $0.weight) }
@@ -173,7 +167,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             // helpful -- which is what the curve has always said. Sleeping
             // past your need does not buy anything back.
             expectedNeutral: durationScore(deltaMinutes: 0) / 100
-        ), nominalWeightsByName["Duration"]!))
+        ), nominalWeightsByName["Duration"] ?? 0))
 
         // --- Continuity ------------------------------------------------------
         if night.timeAsleepMinutes > 0 {
@@ -201,7 +195,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 normalized: continuityNormalized,
                 weightUsed: 0,
                 expectedNeutral: Self.continuityNeutral
-            ), nominalWeightsByName["Continuity"]!))
+            ), nominalWeightsByName["Continuity"] ?? 0))
         }
 
         // --- Regularity ------------------------------------------------------
@@ -216,18 +210,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 // reasonably regular sleeper runs at -- see
                 // `typicalRegularityIndex`.
                 expectedNeutral: Self.typicalRegularityIndex / 100
-            ), nominalWeightsByName["Regularity"]!))
-        }
-
-        // --- Recovery (HRV, resting HR, temperature) -----------------------
-        if let recovery = recoveryComponent(night: night, history: history) {
-            raw.append((Component(
-                label: "Recovery",
-                detail: recoveryDetail(night: night, history: history),
-                normalized: recovery.normalized,
-                weightUsed: 0,
-                expectedNeutral: recovery.expectedNeutral
-            ), nominalWeightsByName["Recovery"]!))
+            ), nominalWeightsByName["Regularity"] ?? 0))
         }
 
         // --- Timing ----------------------------------------------------------
@@ -255,18 +238,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 normalized: circadianNormalized,
                 weightUsed: 0,
                 expectedNeutral: Self.circadianNeutral
-            ), nominalWeightsByName["Timing"]!))
-        }
-
-        // --- Breathing -------------------------------------------------------
-        if let breathing = breathingComponent(night: night, history: history) {
-            raw.append((Component(
-                label: "Breathing",
-                detail: breathingDetail(night: night),
-                normalized: breathing.normalized,
-                weightUsed: 0,
-                expectedNeutral: breathing.expectedNeutral
-            ), nominalWeightsByName["Breathing"]!))
+            ), nominalWeightsByName["Timing"] ?? 0))
         }
 
         // --- Stage Pattern -----------------------------------------------------
@@ -277,7 +249,7 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 normalized: stagePattern.normalized,
                 weightUsed: 0,
                 expectedNeutral: stagePattern.expectedNeutral
-            ), nominalWeightsByName["Stage Pattern"]!))
+            ), nominalWeightsByName["Stage Pattern"] ?? 0))
         }
 
         // --- Renormalize -----------------------------------------------------
@@ -307,175 +279,6 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     }
 
     // MARK: - Component helpers
-
-    private static func recoveryComponent(
-        night: SleepNightFeatures,
-        history: [SleepNightFeatures]
-    ) -> (normalized: Double, expectedNeutral: Double)? {
-        var scores: [(value: Double, neutral: Double, weight: Double)] = []
-
-        if let hrv = night.avgHRV {
-            let history30 = Array(history.suffix(30)).compactMap(\.avgHRV)
-            if let z = Statistics.robustZ(hrv, in: history30) {
-                // HRV: higher than usual is good, so direction is not symmetric.
-                let anchors: [(Double, Double)] = [
-                    (-3, 5), (-2, 20), (-1, 45), (0, 65), (1, 90), (2, 100), (3, 100)
-                ]
-                // An HRV sitting exactly on your own median scores 65, not
-                // 100 -- the curve is asymmetric because HRV has further to
-                // fall than to rise. Graded against 0.5 that read as a night
-                // your HRV helped. It is the definition of an ordinary one.
-                scores.append((interpolate(z, anchors: anchors), interpolate(0, anchors: anchors), 0.5))
-            }
-        }
-        if let rhr = night.restingHeartRate {
-            let history30 = Array(history.suffix(30)).compactMap(\.restingHeartRate)
-            if let z = Statistics.robustZ(rhr, in: history30) {
-                // Elevated resting HR relative to baseline is unfavorable.
-                let anchors: [(Double, Double)] = [
-                    (-2, 100), (-1, 90), (0, 65), (1, 40), (2, 15), (3, 5)
-                ]
-                scores.append((interpolate(z, anchors: anchors), interpolate(0, anchors: anchors), 0.3))
-            }
-        }
-        if let temp = night.wristTempDeltaC {
-            let history30 = Array(history.suffix(30)).compactMap(\.wristTempDeltaC)
-            if let z = Statistics.robustZ(temp, in: history30) {
-                // Either direction away from baseline is unusual for temperature.
-                let anchors: [(Double, Double)] = [
-                    (0, 100), (1, 75), (1.5, 50), (2, 25), (3, 5)
-                ]
-                // Distance from baseline, so the expected input is the
-                // expected distance -- half your nights are further from
-                // your own median than this -- not zero.
-                scores.append((
-                    interpolate(abs(z), anchors: anchors),
-                    interpolate(expectedAbsoluteZ, anchors: anchors),
-                    0.2
-                ))
-            }
-        }
-
-        guard !scores.isEmpty else { return nil }
-        return blend(scores)
-    }
-
-    /// Weighted mean of whichever sub-signals were available, carrying each
-    /// one's own neutral through the same renormalization as its value.
-    ///
-    /// The neutral has to be blended with the value, not chosen for the
-    /// component as a whole: a night with HRV and no temperature reading is
-    /// scored against a different mix than one with both, so its expected
-    /// state is a different number too. Hard-coding one neutral per component
-    /// would quietly mis-grade every night where a sensor was missing.
-    private static func blend(
-        _ scores: [(value: Double, neutral: Double, weight: Double)]
-    ) -> (normalized: Double, expectedNeutral: Double) {
-        let totalWeight = scores.reduce(0) { $0 + $1.weight }
-        guard totalWeight > 0 else { return (0, 0) }
-        return (
-            scores.reduce(0) { $0 + $1.value / 100 * $1.weight } / totalWeight,
-            scores.reduce(0) { $0 + $1.neutral / 100 * $1.weight } / totalWeight
-        )
-    }
-
-    private static func recoveryDetail(night: SleepNightFeatures, history: [SleepNightFeatures]) -> String {
-        if let hrv = night.avgHRV { return "HRV \(Int(hrv)) ms" }
-        if let rhr = night.restingHeartRate { return "Resting HR \(Int(rhr)) bpm" }
-        return "—"
-    }
-
-    /// Breathing, graded against Apple's own call and against this person's
-    /// own nights -- never against an invented severity scale.
-    ///
-    /// The disturbance half used to interpolate an absolute table:
-    ///
-    ///     0% -> 100, 5% -> 85, 15% -> 55, 30% -> 25, 50% -> 5
-    ///
-    /// Those five points are a clinical-looking severity curve that nothing
-    /// in this app, or in Apple's documentation, supports. They give the
-    /// impression that Zoon knows what a 15% disturbance rate means for a
-    /// person's health. It does not, and `BreathingHealth`'s own doc comment
-    /// says as much about the same measurement.
-    ///
-    /// What does exist is `HKAppleSleepingBreathingDisturbancesClassification`,
-    /// which Apple computes and `FeatureExtractor` already stores on every
-    /// night. It has two states and Apple stands behind both. Where it is
-    /// present it is used and nothing is invented on top of it. Where it is
-    /// absent -- older hardware, the feature switched off -- the fallback is
-    /// this person's own distribution, one-sided: a night with unusually few
-    /// disturbances for them is not a bonus, it is a normal night.
-    private static func breathingComponent(
-        night: SleepNightFeatures,
-        history: [SleepNightFeatures]
-    ) -> (normalized: Double, expectedNeutral: Double)? {
-        var scores: [(value: Double, neutral: Double, weight: Double)] = []
-
-        if let rate = night.avgRespiratoryRate {
-            let history30 = Array(history.suffix(30)).compactMap(\.avgRespiratoryRate)
-            if let z = Statistics.robustZ(rate, in: history30) {
-                let anchors: [(Double, Double)] = [
-                    (0, 100), (1, 80), (1.5, 55), (2, 30), (3, 5)
-                ]
-                scores.append((
-                    interpolate(abs(z), anchors: anchors),
-                    interpolate(expectedAbsoluteZ, anchors: anchors),
-                    0.6
-                ))
-            }
-        }
-
-        if let classification = night.breathingDisturbancesClassification {
-            // Two states, both Apple's. `notElevated` is the expected state
-            // and carries no penalty; `elevated` is Apple's own flag that
-            // this is worth a person's attention, and it costs the component
-            // real ground without pretending to grade how severe it is.
-            let value = classification == .elevated
-                ? elevatedBreathingScore
-                : notElevatedBreathingScore
-            scores.append((value, notElevatedBreathingScore, 0.4))
-        } else if let disturbances = night.breathingDisturbances {
-            let history30 = Array(history.suffix(30)).compactMap(\.breathingDisturbances)
-            if let z = Statistics.robustZ(disturbances, in: history30) {
-                let anchors: [(Double, Double)] = [
-                    (0, 100), (1, 85), (2, 60), (3, 35)
-                ]
-                // One-sided on purpose: only *more* disturbance than usual
-                // counts against the night. Fewer than usual is a normal
-                // night, not an achievement, and scoring it as one would
-                // reward noise.
-                scores.append((
-                    interpolate(max(0, z), anchors: anchors),
-                    interpolate(0, anchors: anchors),
-                    0.4
-                ))
-            }
-        }
-
-        guard !scores.isEmpty else { return nil }
-        return blend(scores)
-    }
-
-    /// The two values the Apple classification maps to.
-    ///
-    /// Named constants rather than literals because they are a judgement --
-    /// the classification says elevated or not, it does not say by how much,
-    /// and any number here is Zoon's choice about how much weight to give
-    /// Apple's flag. `notElevated` is the neutral, so an unflagged night is
-    /// reported as ordinary rather than as a night your breathing helped.
-    /// Together they move at most 4 points of the whole score.
-    static let notElevatedBreathingScore = 100.0
-    static let elevatedBreathingScore = 30.0
-
-    private static func breathingDetail(night: SleepNightFeatures) -> String {
-        if night.breathingDisturbancesClassification == .elevated {
-            return "Elevated disturbances (Apple)"
-        }
-        if let rate = night.avgRespiratoryRate {
-            return String(format: "%.1f br/min", rate)
-        }
-        return "—"
-    }
 
     /// How close tonight's deep/REM split is to this person's own.
     ///

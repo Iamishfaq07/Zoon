@@ -57,12 +57,16 @@ struct TonightRoutineView: View {
 struct SavedSleepPlansView: View {
     @State private var store = PersonalSetupStore.shared
     @State private var name = "My sleep schedule"
-    @State private var bed = Calendar.current.date(bySettingHour: 23, minute: 0, second: 0, of: .now)!
-    @State private var wake = Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: .now)!
+    @State private var bed = Self.timeToday(hour: 23)
+    @State private var wake = Self.timeToday(hour: 7)
     @State private var firstDate = Date.now
     @State private var zone = TimeZone.current.identifier
     @State private var repeating = true
     @State private var weekdays: Set<Int> = [1, 2, 3, 4, 5, 6, 7]
+
+    private static func timeToday(hour: Int) -> Date {
+        Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
+    }
 
     var body: some View {
         Form {

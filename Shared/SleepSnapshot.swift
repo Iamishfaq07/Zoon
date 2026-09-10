@@ -29,6 +29,9 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// custom `init(from:)` below is what makes it true, and every field
     /// added here needs a matching `decodeIfPresent` line there.
     var recoveryPercent: Int = 0
+    /// Explicit presence signal so a legacy payload that predates Recovery
+    /// cannot turn the numeric default above into a real-looking score of 0.
+    var hasRecovery: Bool = false
     var bodyBattery: Int = 0
     var strain: Double = 0
     var sleepPerformance: Double = 0
@@ -238,6 +241,7 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     }
 
     var canStateRecovery: Bool {
+        guard hasRecovery else { return false }
         guard let confidence = MetricConfidence(rawValue: recoveryConfidence) else {
             // Written before this field existed. Those snapshots came from a
             // build that showed the number unconditionally, and hiding it
@@ -313,6 +317,11 @@ extension SleepSnapshot {
 
         // Added later. Each falls back to the same default declared above.
         recoveryPercent = try container.decodeIfPresent(Int.self, forKey: .recoveryPercent) ?? 0
+        // Intermediate snapshots carried a recovery number before this flag
+        // existed. Presence of that key is sufficient migration evidence;
+        // the oldest payloads have neither and remain honestly missing.
+        hasRecovery = try container.decodeIfPresent(Bool.self, forKey: .hasRecovery)
+            ?? container.contains(.recoveryPercent)
         bodyBattery = try container.decodeIfPresent(Int.self, forKey: .bodyBattery) ?? 0
         strain = try container.decodeIfPresent(Double.self, forKey: .strain) ?? 0
         sleepPerformance = try container.decodeIfPresent(Double.self, forKey: .sleepPerformance) ?? 0
@@ -365,6 +374,7 @@ extension SleepSnapshot {
         insight: SleepInsight,
         goalMinutes: Double,
         recoveryPercent: Int = 0,
+        hasRecovery: Bool = true,
         bodyBattery: Int = 0,
         strain: Double = 0,
         sleepPerformance: Double = 0,
@@ -382,6 +392,7 @@ extension SleepSnapshot {
         self.insightSummary = insight.summary
         self.generatedAt = .now
         self.recoveryPercent = recoveryPercent
+        self.hasRecovery = hasRecovery
         self.bodyBattery = bodyBattery
         self.strain = strain
         self.sleepPerformance = sleepPerformance

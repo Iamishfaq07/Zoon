@@ -1,7 +1,7 @@
 import WidgetKit
 import SwiftUI
 
-/// Sleep debt as a "bank balance".
+/// Recent estimated sleep shortfall.
 ///
 /// The framing is the point: hours owed is a number people already know how to
 /// read, and it makes an abstract cumulative deficit feel like something you can
@@ -20,8 +20,8 @@ struct SleepDebtWidget: Widget {
                 // widget render with a broken-looking transparent panel.
                 .containerBackground(for: .widget) { WidgetNightGround() }
         }
-        .configurationDisplayName("Sleep Debt")
-        .description("How much sleep you owe yourself over the last two weeks.")
+        .configurationDisplayName("Sleep Shortfall")
+        .description("Your estimated sleep shortfall over the last two weeks.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
@@ -62,7 +62,7 @@ struct SleepDebtWidgetView: View {
 
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Sleep Debt", systemImage: "moon.zzz.fill")
+            Label("Sleep Shortfall", systemImage: "moon.zzz.fill")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -97,7 +97,7 @@ struct SleepDebtWidgetView: View {
     private var medium: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Sleep Debt", systemImage: "moon.zzz.fill")
+                Label("Sleep Shortfall", systemImage: "moon.zzz.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
@@ -168,7 +168,7 @@ struct SleepDebtWidgetView: View {
 
     private var rectangular: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label("Sleep Debt", systemImage: "moon.zzz.fill")
+            Label("Sleep Shortfall", systemImage: "moon.zzz.fill")
                 .font(.caption2)
                 .widgetAccentable()
             Text(snapshot.balanceLabel)
@@ -195,7 +195,7 @@ struct SleepDebtWidgetView: View {
 
     private var debtCaption: String {
         if snapshot.sleepDebtMinutes < 15 {
-            return "Square with your goal"
+            return "No recent shortfall"
         }
         return "vs \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes))/night, 14 days"
     }

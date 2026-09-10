@@ -35,7 +35,7 @@ enum SleepEras {
         if !current.isEmpty { groups.append(current) }
 
         // Avoid tiny tail fragments: merge them into the preceding era.
-        if groups.count > 1, groups.last!.count < minimumNights {
+        if groups.count > 1, let lastGroup = groups.last, lastGroup.count < minimumNights {
             let tail = groups.removeLast()
             groups[groups.count - 1].append(contentsOf: tail)
         }

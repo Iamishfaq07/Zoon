@@ -76,7 +76,14 @@ struct StressScore: Codable, Hashable, Sendable {
     }
 
     /// Baseline nights required before this is more than a guess.
-    static let minimumBaselineNights = 4
+    static let minimumBaselineNights = 7
+
+    /// The current comparison baseline comes from sleep, not matched waking
+    /// hours. Keep this on the model so every surface can disclose the same
+    /// limitation instead of relying on a detail screen being opened.
+    var baselineContextNote: String {
+        "Compared with your overnight baseline; waking physiology normally differs."
+    }
 
     static func compute(
         avgHeartRate: Double?,

@@ -136,10 +136,9 @@ private struct StoreRecoveryView: View {
                 .font(.caption.monospaced())
                 .foregroundStyle(.tertiary)
                 .textSelection(.enabled)
-            Link(
-                "Report this problem",
-                destination: URL(string: "https://github.com/Iamishfaq07/Zoon/issues")!
-            )
+            if let issuesURL = URL(string: "https://github.com/Iamishfaq07/Zoon/issues") {
+                Link("Report this problem", destination: issuesURL)
+            }
         }
         .padding(28)
         .frame(maxWidth: 560)

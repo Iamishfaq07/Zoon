@@ -103,6 +103,30 @@ final class BodyBatteryTests: XCTestCase {
         XCTAssertLessThanOrEqual(battery.morningPeak, 100)
     }
 
+    func testOvernightOnlyDoesNotInventDaytimeDrain() {
+        let wake = Date.now
+        let battery = BodyBattery.overnightOnly(startLevel: 64, wakeTime: wake)
+        XCTAssertEqual(battery.points.count, 1)
+        XCTAssertEqual(battery.current, 64)
+        XCTAssertEqual(battery.restingBaselineSource, .unavailable)
+        XCTAssertTrue(battery.isEstimate)
+        XCTAssertNotNil(battery.confidenceNote)
+    }
+
+    func testPersonalBaselineIsMarkedPersonalized() {
+        let wake = Date.now
+        let battery = BodyBattery.build(
+            startLevel: 64,
+            wakeTime: wake,
+            hourlyHeartRate: [],
+            restingHeartRate: 54,
+            maxHeartRate: 180,
+            restingBaselineSource: .personalBaseline
+        )
+        XCTAssertFalse(battery.isEstimate)
+        XCTAssertNil(battery.confidenceNote)
+    }
+
     // MARK: - band / guidance / spentToday
 
     func testBandBoundaries() {

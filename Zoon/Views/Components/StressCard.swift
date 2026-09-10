@@ -79,7 +79,7 @@ struct StressCard: View {
                             StatusPill(text: "Estimate", tint: .secondary)
                         }
                     }
-                    Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.band.detail)
+                    Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.baselineContextNote)
                         .font(Theme.text(12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -95,7 +95,7 @@ struct StressCard: View {
         }
         .buttonStyle(PressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Physiological load today, experimental, \(stress.band.label), \(stress.percent) percent")
+        .accessibilityLabel("Physiological load today, experimental estimate, \(stress.band.label), \(stress.percent) percent. \(stress.baselineContextNote)")
     }
 }
 

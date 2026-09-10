@@ -105,22 +105,29 @@ struct DayContextBuilder {
         )
 
         // --- Body battery -------------------------------------------------
-        // Resting HR falls back through the night's own true RHR, then its
-        // sleep-window low, then a plausible default — a nil here would zero
-        // the drain model rather than degrade it. Body Battery is a wellness
-        // curve, not a scored component, so this looser fallback chain (unlike
-        // RecoveryBaseline above) is an acceptable approximation.
-        let restingHR = recoveryBaseline.restingHeartRate ?? night.restingHeartRate ?? night.minHeartRate ?? 60
-        let bodyBattery = BodyBattery.build(
-            startLevel: BodyBattery.overnightCharge(
-                recoveryPercent: recovery.percent,
-                sleepPerformance: sleepNeed.performancePercent
-            ),
-            wakeTime: night.wakeTime,
-            hourlyHeartRate: inputs.hourlyHeartRate,
-            restingHeartRate: restingHR,
-            maxHeartRate: inputs.maxHeartRate
+        let startLevel = BodyBattery.overnightCharge(
+            recoveryPercent: recovery.percent,
+            sleepPerformance: sleepNeed.performancePercent
         )
+        let restingInput: (value: Double, source: BodyBattery.RestingBaselineSource)? = {
+            if let value = recoveryBaseline.restingHeartRate { return (value, .personalBaseline) }
+            if let value = night.restingHeartRate { return (value, .nightlyRestingHeartRate) }
+            if let value = night.minHeartRate { return (value, .sleepingLowEstimate) }
+            return nil
+        }()
+        let bodyBattery: BodyBattery
+        if let restingInput {
+            bodyBattery = BodyBattery.build(
+                startLevel: startLevel,
+                wakeTime: night.wakeTime,
+                hourlyHeartRate: inputs.hourlyHeartRate,
+                restingHeartRate: restingInput.value,
+                maxHeartRate: inputs.maxHeartRate,
+                restingBaselineSource: restingInput.source
+            )
+        } else {
+            bodyBattery = BodyBattery.overnightOnly(startLevel: startLevel, wakeTime: night.wakeTime)
+        }
 
         // --- Vitals -------------------------------------------------------
         let vitals = VitalsStatus.evaluate(
@@ -170,7 +177,7 @@ struct DayContextBuilder {
             wakeTime: night.wakeTime,
             hrvSDNN: night.avgHRV,
             hrvBaseline: night.hrv7DayAvg,
-            restingHeartRate: night.restingHeartRate ?? restingHR,
+            restingHeartRate: night.restingHeartRate ?? restingInput?.value,
             minOvernightHeartRate: night.minHeartRate,
             remMinutes: night.remMinutes,
             deepMinutes: night.deepMinutes,

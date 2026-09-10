@@ -63,6 +63,14 @@ final class RecoveryBaselineTests: XCTestCase {
         XCTAssertEqual(baseline.nightCount, 0)
     }
 
+    func testSingleExtremeOutlierDoesNotMoveRobustBaseline() {
+        var history = nights(count: 14, withTemperature: 14)
+        history[0] = Fixture.night(daysAgo: 14, avgHRV: 500, wristTempDeltaC: 8)
+        let baseline = RecoveryBaseline.from(nights: history)
+        XCTAssertEqual(baseline.hrv ?? .nan, 55, accuracy: 0.001)
+        XCTAssertEqual(baseline.wristTemperature ?? .nan, 0.2, accuracy: 0.001)
+    }
+
     /// The end-to-end consequence: an under-sampled metric must reach
     /// RecoveryScore as unavailable, so it's excluded and renormalized around
     /// rather than scored against a mean of one or two readings.

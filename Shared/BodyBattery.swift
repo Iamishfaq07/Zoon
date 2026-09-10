@@ -2,10 +2,10 @@ import Foundation
 
 /// A 0–100 energy reserve that charges while you rest and drains as you spend.
 ///
-/// Garmin's Body Battery, reimplemented. It's the most *legible* metric in this
-/// whole app: everyone understands a battery. Where recovery is a verdict
-/// delivered once each morning, this is a running balance you can watch move,
-/// and it makes the cost of a bad night visible in a way a percentage doesn't.
+/// Zoon's explainable energy-reserve model. It is a wellness visualization,
+/// not a physiological measurement or an implementation of another product's
+/// proprietary score. Where recovery is a morning summary, this is a running
+/// accounting curve whose input provenance stays visible.
 ///
 /// ## The model
 ///
@@ -21,6 +21,15 @@ import Foundation
 /// accounting model whose inputs are all things HealthKit will actually give us.
 struct BodyBattery: Codable, Hashable, Sendable {
 
+    enum RestingBaselineSource: String, Codable, Hashable, Sendable {
+        case personalBaseline
+        case nightlyRestingHeartRate
+        case sleepingLowEstimate
+        case unavailable
+
+        var isPersonalized: Bool { self == .personalBaseline }
+    }
+
     /// Hourly samples across the day, oldest first.
     let points: [Point]
     /// Level right now (or at the last sample).
@@ -29,6 +38,9 @@ struct BodyBattery: Codable, Hashable, Sendable {
     let morningPeak: Int
     /// Lowest point reached today.
     let dayLow: Int
+    /// Provenance for the threshold driving daytime drain. A precise-looking
+    /// curve must disclose when it lacks a stable personal resting baseline.
+    var restingBaselineSource: RestingBaselineSource = .unavailable
 
     struct Point: Codable, Hashable, Sendable, Identifiable {
         let date: Date
@@ -40,6 +52,8 @@ struct BodyBattery: Codable, Hashable, Sendable {
     }
 
     static let empty = BodyBattery(points: [], current: 0, morningPeak: 0, dayLow: 0)
+
+    var isEstimate: Bool { !restingBaselineSource.isPersonalized }
 
     // MARK: - Build
 
@@ -70,17 +84,20 @@ struct BodyBattery: Codable, Hashable, Sendable {
         wakeTime: Date,
         hourlyHeartRate: [(date: Date, bpm: Double)],
         restingHeartRate: Double,
-        maxHeartRate: Double
+        maxHeartRate: Double,
+        restingBaselineSource: RestingBaselineSource = .personalBaseline
     ) -> BodyBattery {
 
         guard !hourlyHeartRate.isEmpty else {
             let level = Int(startLevel.rounded())
-            return BodyBattery(
+            var result = BodyBattery(
                 points: [Point(date: wakeTime, level: startLevel, delta: 0)],
                 current: level,
                 morningPeak: level,
                 dayLow: level
             )
+            result.restingBaselineSource = restingBaselineSource
+            return result
         }
 
         let reserve = max(20, maxHeartRate - restingHeartRate)
@@ -107,12 +124,36 @@ struct BodyBattery: Codable, Hashable, Sendable {
         }
 
         let levels = points.map(\.level)
-        return BodyBattery(
+        var result = BodyBattery(
             points: points,
             current: Int((levels.last ?? startLevel).rounded()),
             morningPeak: Int((levels.max() ?? startLevel).rounded()),
             dayLow: Int((levels.min() ?? startLevel).rounded())
         )
+        result.restingBaselineSource = restingBaselineSource
+        return result
+    }
+
+    /// Honest fallback when no defensible resting threshold exists. It shows
+    /// only what the night contributed and refuses to model daytime drain.
+    static func overnightOnly(startLevel: Double, wakeTime: Date) -> BodyBattery {
+        let level = Int(startLevel.rounded())
+        return BodyBattery(
+            points: [Point(date: wakeTime, level: startLevel, delta: 0)],
+            current: level,
+            morningPeak: level,
+            dayLow: level,
+            restingBaselineSource: .unavailable
+        )
+    }
+
+    var confidenceNote: String? {
+        switch restingBaselineSource {
+        case .personalBaseline: nil
+        case .nightlyRestingHeartRate: "Estimated from last night's resting heart rate while your personal baseline builds."
+        case .sleepingLowEstimate: "Estimated from the night's lowest heart-rate reading; daytime drain may be less reliable."
+        case .unavailable: "Overnight reserve only. Daytime change needs a personal resting heart-rate baseline."
+        }
     }
 }
 

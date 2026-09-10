@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-/// Estimated sleep debt on its own screen: the running balance, the last
+/// Estimated sleep shortfall on its own screen: the running balance, the last
 /// few nights' contribution to it, and what it means.
 struct SleepDebtView: View {
 
@@ -47,7 +47,7 @@ struct SleepDebtView: View {
             .padding()
         }
         .nightBackground()
-        .navigationTitle("Sleep Debt")
+        .navigationTitle("Sleep Shortfall")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -75,7 +75,7 @@ struct SleepDebtView: View {
                         .font(Theme.label(12))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0) + " owed")
+                    Text(SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0) + " short")
                         .font(Theme.label(12, weight: .semibold))
                         .monospacedDigit()
                 }
@@ -118,7 +118,7 @@ struct SleepDebtView: View {
                                 ChartSelectionBadge(
                                     title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
                                     lines: [(
-                                        "Owed",
+                                        "Shortfall",
                                         SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0),
                                         band.tint
                                     )]
@@ -126,15 +126,15 @@ struct SleepDebtView: View {
                             }
                     }
                 }
-                .chartYAxisLabel("hours owed")
+                .chartYAxisLabel("hours short")
                 .frame(height: 110)
                 .chartXSelection(value: $selectedDate)
                 // Sleep debt is better low, so a falling line is the
                 // improvement -- the trend helper has to be told that or it
                 // would call a shrinking debt a decline.
                 .chartSummary(
-                    "Sleep debt over the last \(nights.count) nights",
-                    "Now \(SleepNightFeatures.formatMinutes(nights.last?.sleepDebtMinutes ?? 0)) owed. "
+                    "Estimated sleep shortfall over the last \(nights.count) nights",
+                    "Now \(SleepNightFeatures.formatMinutes(nights.last?.sleepDebtMinutes ?? 0)) short. "
                         + ChartTrend.describe(
                             nights.map { ($0.sleepDebtMinutes ?? 0) / 60 },
                             higherIsBetter: false

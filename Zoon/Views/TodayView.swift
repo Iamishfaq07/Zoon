@@ -33,6 +33,7 @@ struct TodayView: View {
     @State private var setup = PersonalSetupStore.shared
 
     private var scoreLight: Bool { setup.value.scoreLight }
+    private var moment: ZoonAmbientBackground.Band { .current() }
 
     var body: some View {
         NavigationStack {
@@ -53,8 +54,12 @@ struct TodayView: View {
 
     @ViewBuilder
     private var todayBackdrop: some View {
-        ZoonNightGround()
-            .overlay { NightSky(starCount: 40).opacity(0.55).allowsHitTesting(false) }
+        ZoonAmbientBackground()
+            .overlay {
+                if moment == .night {
+                    NightSky(starCount: 40).opacity(0.45).allowsHitTesting(false)
+                }
+            }
     }
 
     @ViewBuilder
@@ -100,20 +105,25 @@ struct TodayView: View {
 
     private func loadedContent(_ context: DayContext) -> some View {
         VStack(alignment: .leading, spacing: 28) {
-            TodayNightHero(
-                context: context,
-                greeting: greeting,
-                scoreLight: scoreLight
-            )
-            .entrance(0)
+            if moment == .evening || moment == .night {
+                TonightSection(context: context, autopilot: autopilotPlan(context))
+                    .entrance(0)
+            } else if moment == .day && !scoreLight {
+                daytimeHero(context).entrance(0)
+            } else {
+                TodayNightHero(context: context, greeting: greeting, scoreLight: scoreLight)
+                    .entrance(0)
+            }
 
             TodayNeedTracks(context: context)
                 .entrance(1)
 
-            MorningBrief(context: context)
-                .entrance(2)
+            if moment == .morning {
+                MorningBrief(context: context)
+                    .entrance(2)
+            }
 
-            if !scoreLight {
+            if !scoreLight && (moment == .morning || moment == .day) {
                 Button {
                     Haptics.select()
                     withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
@@ -131,7 +141,7 @@ struct TodayView: View {
                 .buttonStyle(.plain)
             }
 
-            if showsExplanation && !scoreLight {
+            if showsExplanation && !scoreLight && (moment == .morning || moment == .day) {
                 LunarOrbit(
                     score: context.sleepIntelligence,
                     selectedID: $selectedComponentID,
@@ -143,7 +153,8 @@ struct TodayView: View {
                     .entrance(3)
             }
 
-            WorthNoticing(
+            if moment != .night {
+                WorthNoticing(
                 context: context,
                 stress: coordinator.todayStress,
                 recoveryMode: RecoveryMode.evaluate(
@@ -158,22 +169,26 @@ struct TodayView: View {
                 ),
                 nightsTracked: coordinator.recentNights.count,
                 taggedNights: coordinator.journal.taggedNightCount(),
+                proactiveItems: PersonalLearning.proactiveItems(
+                    nights: coordinator.recentNights,
+                    radar: context.healthRadar
+                ),
                 onTurnOffRecoveryMode: { preferences.setRecoveryModeEnabledToday(false) }
-            )
-            .entrance(4)
+                )
+                .entrance(4)
+            }
 
-            ProactiveZoonCard(items: PersonalLearning.proactiveItems(
-                nights: coordinator.recentNights,
-                radar: context.healthRadar
-            ))
-            .entrance(4)
+            if moment == .day {
+                energySection(context).entrance(5)
+            }
 
-            energySection(context).entrance(5)
+            if moment == .morning || moment == .day {
+                TonightSection(context: context, autopilot: autopilotPlan(context))
+                    .entrance(6)
+            }
 
-            TonightSection(context: context, autopilot: autopilotPlan(context))
-                .entrance(6)
-
-            MorningCheckInCard(
+            if moment == .morning {
+                MorningCheckInCard(
                 selected: checkInFeeling,
                 details: checkInDetails,
                 onSelectFeeling: { feeling in
@@ -186,26 +201,50 @@ struct TodayView: View {
                     coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date, nightKey: context.night.nightKey)
                 }
             )
-            .entrance(7)
-            .task(id: context.night.date) {
+                .entrance(7)
+                .task(id: context.night.date) {
                 let entry = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)
                 checkInFeeling = entry?.feeling
                 checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
                     result[dimension] = entry?.value(for: dimension)
                 }
+                }
             }
 
-            ShareLastNightButton(
-                night: context.night,
-                line: context.insight.summary
-            )
-            .entrance(8)
+            if moment == .morning || moment == .day {
+                ShareLastNightButton(
+                    night: context.night,
+                    line: context.insight.summary
+                )
+                .entrance(8)
+            }
 
             footer(context).entrance(8)
         }
     }
 
     // MARK: - Hero helpers
+
+    private func daytimeHero(_ context: DayContext) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(greeting).font(Theme.kicker).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("\(context.recovery.percent)")
+                    .font(Theme.numeral(52))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.recoveryColor(Double(context.recovery.percent)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Capacity now").font(Theme.label(18, weight: .semibold))
+                    Text("\(context.recovery.band.label) recovery · \(context.recovery.confidence.label)")
+                        .font(Theme.text(12)).foregroundStyle(.secondary)
+                }
+            }
+            Text(coordinator.todayStress?.baselineContextNote ?? "Based on last night's recovery; daytime change appears when enough quiet data is available.")
+                .font(Theme.evidence).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
 
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
