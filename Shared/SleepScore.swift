@@ -81,20 +81,21 @@ struct SleepScore: Codable, Hashable, Sendable {
             components.append(.init(label: "Deep", normalized: deepNormalized, weight: deepWeight))
             components.append(.init(label: "REM", normalized: remNormalized, weight: remWeight))
         } else {
-            // No staging from this source. Rather than zeroing those components —
-            // which would permanently cap an iPhone-only user around 75 — we
-            // credit them at the efficiency score, so the score stays comparable
-            // across sources. The UI notes that staging is unavailable.
-            components.append(.init(label: "Deep", normalized: efficiency, weight: deepWeight))
-            components.append(.init(label: "REM", normalized: efficiency, weight: remWeight))
+            // Missing stages are missing evidence. Do not manufacture Deep/REM
+            // performance from efficiency; the available components are
+            // reweighted below so an iPhone-only user is not penalized either.
         }
 
         // Continuity: 0 wakes = 1.0, decaying to 0 at 8 wakes.
         let continuity = clamp01(1 - Double(features.wakeCount) / 8)
         components.append(.init(label: "Continuity", normalized: continuity, weight: continuityWeight))
 
-        let total = components.reduce(0) { $0 + $1.points }
-        return SleepScore(value: Int(total.rounded()), components: components)
+        let availableWeight = components.reduce(0) { $0 + $1.weight }
+        let normalizedComponents = components.map {
+            Component(label: $0.label, normalized: $0.normalized, weight: $0.weight / availableWeight)
+        }
+        let total = normalizedComponents.reduce(0) { $0 + $1.points }
+        return SleepScore(value: Int(total.rounded()), components: normalizedComponents)
     }
 
     private static func clamp01(_ x: Double) -> Double { min(max(x, 0), 1) }

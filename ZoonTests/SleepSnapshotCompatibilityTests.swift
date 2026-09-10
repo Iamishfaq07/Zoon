@@ -58,6 +58,8 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         let snapshot = try decoder().decode(SleepSnapshot.self, from: Data(legacyPayload.utf8))
 
         XCTAssertEqual(snapshot.recoveryPercent, 0)
+        XCTAssertFalse(snapshot.hasRecovery)
+        XCTAssertFalse(snapshot.canStateRecovery)
         XCTAssertEqual(snapshot.bodyBattery, 0)
         XCTAssertEqual(snapshot.sleepIntelligencePercent, 0)
         // The Watch and widget both treat an empty band as "nothing to show
@@ -92,6 +94,7 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         let snapshot = try decoder().decode(SleepSnapshot.self, from: Data(payload.utf8))
 
         XCTAssertEqual(snapshot.recoveryPercent, 68)
+        XCTAssertTrue(snapshot.hasRecovery)
         XCTAssertEqual(snapshot.bodyBattery, 74)
         // Newer than that build: still defaults.
         XCTAssertEqual(snapshot.bodySignalsLabel, "Nothing unusual")
