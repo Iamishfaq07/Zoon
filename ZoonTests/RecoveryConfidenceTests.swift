@@ -92,10 +92,12 @@ final class RecoveryConfidenceTests: XCTestCase {
             RecoveryScore.baselineConfidence(nightCount: RecoveryScore.minimumBaselineNights),
             .low
         )
-        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 6), .low)
-        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 7), .moderate)
-        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 13), .moderate)
-        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 14), .high)
+        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 6), .insufficient)
+        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 7), .low)
+        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 13), .low)
+        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 14), .moderate)
+        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 29), .moderate)
+        XCTAssertEqual(RecoveryScore.baselineConfidence(nightCount: 30), .high)
     }
 
     func testCoverageThresholds() {

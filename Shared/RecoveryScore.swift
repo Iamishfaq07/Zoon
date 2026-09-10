@@ -78,7 +78,7 @@ struct RecoveryScore: Codable, Hashable, Sendable {
     private static let respiratoryWeight = 0.10
 
     /// Nights of history before the score stops being flagged as an estimate.
-    static let minimumBaselineNights = 4
+    static let minimumBaselineNights = 7
 
     /// True resting heart rate, from HealthKit's daily `.restingHeartRate`
     /// sample -- not the lowest heart-rate reading during sleep, which is a
@@ -210,17 +210,16 @@ extension RecoveryScore {
 
     /// Confidence from how much history the baseline stands on.
     ///
-    /// Below `minimumBaselineNights` the comparison is against a mean of
-    /// three or fewer readings, which is what `isEstimate` has always
-    /// flagged. Above it the number keeps improving, and a boolean cannot
-    /// say so: two weeks of baseline is a materially better comparison than
-    /// five nights, and someone deciding whether to train on it deserves to
-    /// know which they have.
+    /// Below `minimumBaselineNights` there is not enough personal history to
+    /// state a readiness number. Above it the number keeps improving, and a
+    /// boolean cannot say so: a month of baseline is materially stronger than
+    /// one week, and someone deciding whether to train deserves to know which
+    /// they have.
     static func baselineConfidence(nightCount: Int) -> MetricConfidence {
         switch nightCount {
         case ..<minimumBaselineNights: .insufficient
-        case minimumBaselineNights..<7: .low
-        case 7..<14: .moderate
+        case minimumBaselineNights..<14: .low
+        case 14..<30: .moderate
         default: .high
         }
     }
@@ -352,7 +351,7 @@ struct RecoveryBaseline: Codable, Hashable, Sendable {
         wristTemperature: nil, nightCount: 0
     )
 
-    /// Samples a single metric needs before its mean is worth comparing
+    /// Samples a single metric needs before its robust centre is worth comparing
     /// against.
     ///
     /// Enforced per metric rather than across the window as a whole, because
@@ -365,7 +364,7 @@ struct RecoveryBaseline: Codable, Hashable, Sendable {
     /// 30-night baseline is the bug this guards: the comparison looks just
     /// as authoritative as a well-sampled one, and nothing downstream can
     /// tell the difference.
-    static let minimumSamplesPerMetric = 3
+    static let minimumSamplesPerMetric = 7
 
     /// Builds a baseline from a window of nights, requiring every metric to
     /// clear `minimumSamplesPerMetric` on its own before it contributes.
@@ -380,19 +379,19 @@ struct RecoveryBaseline: Codable, Hashable, Sendable {
     /// rate differently from the live path and silently scoring history
     /// against a baseline the live screen never used.
     static func from(nights: [SleepNightFeatures]) -> RecoveryBaseline {
-        func gatedMean(_ values: [Double]) -> Double? {
+        func gatedMedian(_ values: [Double]) -> Double? {
             guard values.count >= minimumSamplesPerMetric else { return nil }
-            return values.reduce(0, +) / Double(values.count)
+            return Statistics.median(values)
         }
 
         return RecoveryBaseline(
-            hrv: gatedMean(nights.compactMap(\.avgHRV)),
+            hrv: gatedMedian(nights.compactMap(\.avgHRV)),
             // True RHR only -- never minHeartRate. See
             // SleepNightFeatures.restingHeartRate for why mixing the two
             // into one baseline is worse than excluding the older nights.
-            restingHeartRate: gatedMean(nights.compactMap(\.restingHeartRate)),
-            respiratoryRate: gatedMean(nights.compactMap(\.avgRespiratoryRate)),
-            wristTemperature: gatedMean(nights.compactMap(\.wristTempDeltaC)),
+            restingHeartRate: gatedMedian(nights.compactMap(\.restingHeartRate)),
+            respiratoryRate: gatedMedian(nights.compactMap(\.avgRespiratoryRate)),
+            wristTemperature: gatedMedian(nights.compactMap(\.wristTempDeltaC)),
             nightCount: nights.count
         )
     }
