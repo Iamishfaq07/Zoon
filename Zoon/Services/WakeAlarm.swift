@@ -47,7 +47,7 @@ final class WakeAlarm {
 
     /// Stable across schedulings so a re-schedule replaces the previous alarm
     /// rather than stacking a second one on the same morning.
-    private static let alarmID = UUID(uuidString: "5F3B9A61-0C4E-4E7A-9E2D-1A7C6B8D4E20")!
+    private static let alarmID = UUID(uuidString: "5F3B9A61-0C4E-4E7A-9E2D-1A7C6B8D4E20") ?? UUID()
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "WakeAlarm")
 

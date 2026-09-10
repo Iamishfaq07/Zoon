@@ -84,10 +84,9 @@ struct DataPrivacyView: View {
             }
             LabeledContent("Health originals", value: "Never modified")
 
-            Link(
-                "Read the full privacy policy",
-                destination: URL(string: "https://github.com/Iamishfaq07/Zoon/blob/main/PRIVACY.md")!
-            )
+            if let privacyURL = URL(string: "https://github.com/Iamishfaq07/Zoon/blob/main/PRIVACY.md") {
+                Link("Read the full privacy policy", destination: privacyURL)
+            }
         } header: {
             Text("Where data lives")
         } footer: {

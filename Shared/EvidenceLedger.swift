@@ -222,8 +222,9 @@ enum EvidenceLedger {
     static func claimIDs(in history: [Revision]) -> [String] {
         var newestByClaim: [String: Date] = [:]
         for revision in history {
-            let existing = newestByClaim[revision.claimID]
-            if existing == nil || revision.recordedAt > existing! {
+            if let existing = newestByClaim[revision.claimID], revision.recordedAt <= existing {
+                continue
+            } else {
                 newestByClaim[revision.claimID] = revision.recordedAt
             }
         }

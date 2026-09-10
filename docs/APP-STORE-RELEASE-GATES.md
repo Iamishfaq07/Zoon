@@ -46,7 +46,8 @@ OS version, Watch model, and pass/fail evidence for every run.
 
 ## Apple Watch, complications, Smart Stack, and widgets
 
-- [ ] Navigate Last Night, Today, Tonight, and Log pages on the smallest supported Watch.
+- [ ] Navigate the adaptive Now, Tonight, and Log pages on the smallest supported Watch.
+- [ ] Verify the responsive dial on 40/41/42/44/45/46 mm and Ultra 49 mm cases, including accessibility text and Always-On.
 - [ ] Quick-log caffeine, alcohol, nap, and feeling; verify phone receipt and deduplication.
 - [ ] Start/end a nap on each device, including delayed WatchConnectivity delivery.
 - [ ] Reboot phone and Watch and verify stale/fresh snapshot labels.

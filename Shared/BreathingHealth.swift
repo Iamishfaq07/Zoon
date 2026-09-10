@@ -165,8 +165,9 @@ struct BreathingHealth: Codable, Hashable, Sendable {
 
         let disturbanceWindow = Array(sorted.suffix(patternWindow))
         let disturbanceNights = disturbanceWindow.filter { $0.breathingDisturbances != nil }
-        let disturbanceTrend = disturbanceNights.map {
-            TrendPoint(date: $0.date, value: $0.breathingDisturbances!, elevation: elevation($0))
+        let disturbanceTrend = disturbanceNights.compactMap { night -> TrendPoint? in
+            guard let value = night.breathingDisturbances else { return nil }
+            return TrendPoint(date: night.date, value: value, elevation: elevation(night))
         }
 
         let oxygenTrend = disturbanceWindow.compactMap { night -> TrendPoint? in

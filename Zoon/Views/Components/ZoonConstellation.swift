@@ -321,8 +321,9 @@ extension ZoonConstellation {
         // findings would otherwise fan out four near-identical lines.
         var strongest: [BehaviorTag: JournalCorrelator.Finding] = [:]
         for finding in findings {
-            let incumbent = strongest[finding.tag]
-            if incumbent == nil || abs(finding.delta) > abs(incumbent!.delta) {
+            if let incumbent = strongest[finding.tag], abs(finding.delta) <= abs(incumbent.delta) {
+                continue
+            } else {
                 strongest[finding.tag] = finding
             }
         }

@@ -4,9 +4,9 @@ This ledger maps the final App Store audit prompt to repository evidence. “Bui
 
 ## Research, audit, and calculations
 
-- **Built:** 2026 competitor and category review, feature-gap ranking, calculation audit, HealthKit/privacy review, interaction audit, design audit, Watch/widget review, and shipping report are captured in the Zoon release-review canvas and PR #284.
+- **Built:** The 2026 competitor/category review, feature-gap ranking, calculation audit, HealthKit/privacy review, interaction audit, design audit, Watch/widget review, and shipping report are captured in `DEEP-AUDIT-2026.md`, `ALGORITHM-SPECS.md`, `PERFORMANCE-PRIVACY-RELEASE-2026.md`, and PR #309.
 - **Built:** Cardiovascular Age is removed from the product surface; cycle context is conservative and history-gated; SRI and chronotype wording is user-safe; body-signal drift, energy, provenance, uncertainty, and permission rules are guarded by code and CI.
-- **Built:** 1,184 unit tests, UI flows, all-source compilation checking, crash-log collection, generated-project validation, privacy manifests, and release trust checks run in CI.
+- **Built:** Unit and UI test targets, all-source compilation checking, crash-log collection, generated-project validation, privacy manifests, and release trust checks run in CI. This release adds regression coverage for legacy snapshots, missing stages, robust Recovery baselines, Body Battery provenance, canonical score meaning, alertness uncertainty, and adaptive scene boundaries.
 
 ## Product and interaction work
 
@@ -25,11 +25,11 @@ This ledger maps the final App Store audit prompt to repository evidence. “Bui
 - **Built:** single-purpose screen hierarchy, reduced card density, progressive disclosure, large-number typography, Lunar Orbit, provenance lanes, evidence timelines, uncertainty bands, comparison plots, and experiment ribbons.
 - **Built:** purposeful, interruptible motion for score resolution, chart selection, replay, baseline/evidence transitions, body-clock scrubbing, forecasts, experiments, and current-time movement. Reduce Motion is respected.
 - **Built:** soundscapes, saved audio scenes, audio-session coordination, nap wake sounds, alarm fallback architecture, and snore-check controls.
-- **Built:** simple Watch Last Night/Today/Tonight/Log pages, quick logging, complications, stale-snapshot handling, and state-driven Smart Stack relevance including active naps.
+- **Built:** glance-first Watch Now/Tonight/Log navigation, active-nap promotion, a responsive shared dial, quick logging, complications, stale-snapshot handling, and state-driven Smart Stack relevance.
 
 ## Deliberate exclusions required by the prompt
 
-- **Smart alarm remains post-launch.** The prompt says not to add it before release unless termination, restart, Watch, battery, wake-window confidence, and missed-signal behavior are proven. Zoon keeps its deterministic system-alarm fallback and does not market it as a smart alarm.
+- **Smart Wake is not marketed as implemented.** The prompt requires live-sensing termination, restart, Watch, battery, wake-window confidence, and missed-signal evidence before shipping that claim. Zoon ships its deterministic AlarmKit wake alarm with notification fallback and keeps the real-time Smart Wake experiment behind physical-device validation.
 - **Not added:** diagnosis, disease prediction, treatment claims, autonomous medical advice, broad nutrition tracking, social feeds, generic workout-platform scope, medical-record replacement, or a collection of new composite scores.
 
 ## External release evidence
