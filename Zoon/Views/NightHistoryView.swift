@@ -15,19 +15,30 @@ struct NightHistoryView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 10) {
-                ForEach(nights) { night in
-                    NavigationLink {
-                        PastNightDetailView(night: night)
-                    } label: {
-                        row(for: night)
-                    }
-                    .buttonStyle(PressableStyle())
+            VStack(alignment: .leading, spacing: 16) {
+                if !nights.isEmpty {
+                    NightFilmStrip(
+                        nights: nights,
+                        goalMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes
+                            ?? coordinator.recentNights.last?.sleepNeedBaselineMinutes
+                            ?? 480
+                    )
+                    .padding(.horizontal)
                 }
+                LazyVStack(spacing: 10) {
+                    ForEach(nights) { night in
+                        NavigationLink {
+                            PastNightDetailView(night: night)
+                        } label: {
+                            row(for: night)
+                        }
+                        .buttonStyle(PressableStyle())
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 28)
+                .padding(.top, 4)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 28)
-            .padding(.top, 4)
         }
         .nightBackground()
         .navigationTitle("Past Nights")

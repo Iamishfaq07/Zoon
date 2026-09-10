@@ -56,7 +56,7 @@ struct RootView: View {
 
         TabView(selection: $selection) {
             TodayView()
-                .tabItem { Label("Today", systemImage: "bolt.heart.fill") }
+                .tabItem { Label("Today", systemImage: "moon.fill") }
                 .tag(Tab.today)
 
             SleepTabView(path: $sleepPath)
@@ -345,6 +345,18 @@ struct SleepTabView: View {
                         SleepStoryMoments(story: story(for: context), night: context.night)
                             .entrance(2)
 
+                        SleepSoundsHero()
+                            .entrance(3)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            ZoonSectionHeader("Past nights")
+                            NightFilmStrip(
+                                nights: Array(coordinator.recentNights.suffix(14).reversed()),
+                                goalMinutes: context.sleepNeed.totalNeedMinutes
+                            )
+                        }
+                        .entrance(4)
+
                         VStack(alignment: .leading, spacing: 8) {
                             ZoonSectionHeader("Last night in numbers") {
                                 NavigationLink {
@@ -361,7 +373,7 @@ struct SleepTabView: View {
                             }
                             SleepMetricBoard(night: context.night)
                         }
-                        .entrance(3)
+                        .entrance(5)
 
                         // Planning follows analysis.
                         VStack(alignment: .leading, spacing: Theme.stackSpacing) {
@@ -379,21 +391,16 @@ struct SleepTabView: View {
                             NavigationLink {
                                 NightHistoryView()
                             } label: {
-                                toolRow(
-                                    "Past Nights",
-                                    detail: coordinator.recentNights.isEmpty
-                                        ? "Nothing recorded yet"
-                                        : "\(coordinator.recentNights.count) night\(coordinator.recentNights.count == 1 ? "" : "s") on file",
-                                    symbol: "calendar",
-                                    tint: Theme.Metric.hrv
-                                )
+                                Text("All \(coordinator.recentNights.count) nights")
+                                    .font(Theme.text(13, weight: .semibold))
+                                    .foregroundStyle(Theme.Family.sleep)
                             }
-                            .buttonStyle(PressableStyle())
+                            .buttonStyle(.plain)
                         }
-                        .entrance(4)
+                        .entrance(6)
                     }
 
-                    SleepToolsStrip().entrance(5)
+                    SleepToolsStrip().entrance(7)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 28)
@@ -439,31 +446,6 @@ struct SleepTabView: View {
             napIntervals: coordinator.napIntervals(before: context.night.date, timeZone: context.night.timeZone),
             soundEvents: soundEventStore.recentEvents
         )
-    }
-
-    private func toolRow(_ title: String, detail: String, symbol: String, tint: Color) -> some View {
-        HStack(spacing: 13) {
-            Image(systemName: symbol)
-                .font(Theme.text(17))
-                .foregroundStyle(tint)
-                .frame(width: 42, height: 42)
-                .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Theme.label(15, weight: .semibold))
-                Text(detail)
-                    .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(Theme.text(12, weight: .semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .glassCard()
     }
 }
 

@@ -44,11 +44,10 @@ struct CoachTabView: View {
         }
     }
 
-    /// V8: not a chat landing page but an analytical one -- four categories
-    /// of question (Today, Trend, Discovery, Plan), each with one prompt
-    /// derived from the person's own data, then the open composer. The
-    /// data-driven picker `suggestions(for:)` is unchanged; it feeds the
-    /// Today slot.
+    /// V8: not a chat landing page but an analytical one -- This week from
+    /// Cause Finder, then Today, Trend, Discovery, Plan, then the open
+    /// composer. The data-driven picker `suggestions(for:)` is unchanged;
+    /// it feeds the Today slot.
     private func landing(_ night: SleepNightFeatures) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
@@ -117,9 +116,9 @@ struct CoachTabView: View {
         let tint: Color
     }
 
-    /// One question per analytical lens. Today's comes from the existing
-    /// signal-driven picker; the other three read the same history the
-    /// Insights tab does so they ask about something that's actually there.
+    /// This week's question is duration-only, from Cause Finder's strongest
+    /// tag. Today's comes from the existing signal-driven picker; Trend,
+    /// Discovery and Plan read the same history the Insights tab does.
     private func categories(for night: SleepNightFeatures) -> [Category] {
         let today = suggestions(for: night).first ?? "How did I sleep last night?"
 
@@ -127,6 +126,10 @@ struct CoachTabView: View {
         let trend: String = nights.count >= 14 ? "What changed this month?" : "What's Zoon learning about my sleep so far?"
 
         let findings = JournalCorrelator().findings(from: coordinator.journalObservations())
+        let week = WeeklyQuestion.make(
+            strongestTag: findings.first?.tag.label,
+            deltaMinutes: findings.first?.pairDeltaMedian
+        )
         let discovery: String = {
             if let strongest = findings.first {
                 return "Is \(strongest.tag.label.lowercased()) actually affecting me?"
@@ -139,6 +142,7 @@ struct CoachTabView: View {
             : "How should I prepare for tomorrow?"
 
         return [
+            Category(kicker: "This week", question: week.question, tint: Theme.Family.sleep),
             Category(kicker: "Today", question: today, tint: Theme.Family.sleep),
             Category(kicker: "Trend", question: trend, tint: Theme.Family.recovery),
             Category(kicker: "Discovery", question: discovery, tint: Theme.Family.bodySignals),

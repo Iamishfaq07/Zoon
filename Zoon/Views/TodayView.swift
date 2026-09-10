@@ -110,6 +110,8 @@ struct TodayView: View {
                     .entrance(0)
                 TonightSection(context: context, autopilot: autopilotPlan(context))
                     .entrance(1)
+                TravelTonightCard()
+                    .entrance(1)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
             } else {
@@ -186,6 +188,11 @@ struct TodayView: View {
 
             if moment == .morning || moment == .day {
                 TonightSection(context: context, autopilot: autopilotPlan(context))
+                    .entrance(6)
+            }
+
+            if moment == .day {
+                TravelTonightCard()
                     .entrance(6)
             }
 
