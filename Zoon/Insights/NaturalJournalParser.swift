@@ -43,11 +43,11 @@ enum NaturalJournalParser {
         let lower = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current).lowercased()
         var output: [Proposal] = []
         for rule in rules {
-            guard var phrase = rule.phrases.first(where: { lower.contains($0) }) else { continue }
+            guard var phrase = rule.phrases.first(where: { range(of: $0, in: lower) != nil }) else { continue }
             // "Tea but no coffee" still contains a positive caffeine source;
             // choose the positive entity instead of letting the negated coffee
             // token erase the tea observation.
-            if rule.tag == .caffeine, phrase == "coffee", lower.contains("tea"), state(for: phrase, in: lower) == .no,
+            if rule.tag == .caffeine, phrase == "coffee", range(of: "tea", in: lower) != nil, state(for: phrase, in: lower) == .no,
                state(for: "tea", in: lower) == .yes { phrase = "tea" }
             let state = state(for: phrase, in: lower)
             let timing = timeNear(phrase: phrase, in: lower)
@@ -60,24 +60,46 @@ enum NaturalJournalParser {
         return output
     }
 
+    /// Whole-word occurrence of `phrase`, so "tea" is not found inside
+    /// "steak" or "steady" and "drinks" is not found inside "soft-drinks-ish"
+    /// coinages. Plain substring matching proposed caffeine for a steady day.
+    private static func range(of phrase: String, in text: String) -> Range<String.Index>? {
+        text.range(
+            of: "\\b" + NSRegularExpression.escapedPattern(for: phrase) + "\\b",
+            options: .regularExpression
+        )
+    }
+
     private static func state(for phrase: String, in text: String) -> BehaviorObservationState {
-        guard let index = text.range(of: phrase)?.lowerBound else { return .unknown }
+        guard let index = range(of: phrase, in: text)?.lowerBound else { return .unknown }
         let tokens = String(text[..<index]).split(separator: " ").suffix(5).map(String.init)
         let hasDidNot = tokens.contains("did") && tokens.contains("not")
         return negations.contains(where: { tokens.contains($0) }) || hasDidNot ? .no : .yes
     }
 
+    /// "at 4pm", "around 4:30 PM", "after 3": the connective, then the hour,
+    /// then optional minutes and meridiem, as capture groups. The previous
+    /// pattern re-split the matched text on spaces to find the hour, which
+    /// broke the moment there was no space before "pm".
+    private static let timePattern = try? NSRegularExpression(
+        pattern: #"\b(?:at|around|after)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?"#
+    )
+
     /// Finds a clock hour only when it is attached to the matched entity.
     /// An isolated "after 3" elsewhere can never create caffeine.
     private static func timeNear(phrase: String, in text: String) -> Int? {
-        guard let range = text.range(of: phrase) else { return nil }
-        let tail = String(text[range.upperBound...].prefix(24))
-        let pattern = #"(?:at|around|after)\s+(\d{1,2})(?::\d{2})?\s*(am|pm)?"#
-        guard let match = tail.range(of: pattern, options: .regularExpression) else { return nil }
-        let value = String(tail[match])
-        guard let clock = value.split(separator: " ").dropFirst().first,
-              let hour = Int(clock.split(separator: ":").first ?? "") else { return nil }
-        return value.contains("pm") ? (hour == 12 ? 12 : hour + 12) : hour
+        guard let matched = range(of: phrase, in: text) else { return nil }
+        let tail = String(text[matched.upperBound...].prefix(24))
+        guard let timePattern = Self.timePattern,
+              let match = timePattern.firstMatch(in: tail, range: NSRange(tail.startIndex..., in: tail)),
+              let hourRange = Range(match.range(at: 1), in: tail),
+              let hour = Int(tail[hourRange]), (0...23).contains(hour) else { return nil }
+        let meridiem = Range(match.range(at: 3), in: tail).map { String(tail[$0]) }
+        switch meridiem {
+        case "am": return hour == 12 ? 0 : hour
+        case "pm": return hour == 12 ? 12 : hour + 12
+        default: return hour
+        }
     }
 
     private static func formatHour(_ hour: Int) -> String { hour >= 12 ? "\(hour == 12 ? 12 : hour - 12)pm" : "\(hour)am" }

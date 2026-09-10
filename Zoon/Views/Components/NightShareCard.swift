@@ -113,8 +113,7 @@ struct ShareLastNightButton: View {
     }
 
     private var window: String {
-        let t = Date.FormatStyle(date: .omitted, time: .shortened)
-        return "\(night.bedtime.formatted(t))  →  \(night.wakeTime.formatted(t))"
+        "\(night.clockString(night.bedtime))  →  \(night.clockString(night.wakeTime))"
     }
 
     private func renderFile() -> URL? {
@@ -122,7 +121,7 @@ struct ShareLastNightButton: View {
             asleep: night.formattedTimeAsleep,
             window: window,
             line: line,
-            dateLabel: night.date.formatted(.dateTime.weekday(.wide).month(.wide).day())
+            dateLabel: night.dayString(month: .wide)
         )
         let renderer = ImageRenderer(content: card)
         renderer.scale = 2

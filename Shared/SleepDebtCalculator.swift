@@ -45,6 +45,26 @@ enum SleepDebtCalculator {
         ).last
     }
 
+    /// Same as `debt(timeAsleepMinutesNewestFirst:goalMinutesNewestFirst:)`,
+    /// but decaying per *calendar* night between records rather than per
+    /// record -- see
+    /// `debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:nightDatesOldestFirst:calendar:)`.
+    /// - Parameter nightDatesNewestFirst: same count and order as `nights`.
+    static func debt(
+        timeAsleepMinutesNewestFirst nights: [Double],
+        goalMinutesNewestFirst goals: [Double],
+        nightDatesNewestFirst dates: [Date],
+        calendar: Calendar = .current
+    ) -> Double? {
+        guard !nights.isEmpty, nights.count == goals.count, nights.count == dates.count else { return nil }
+        return debtSeries(
+            timeAsleepMinutesOldestFirst: Array(nights.reversed()),
+            goalMinutesOldestFirst: Array(goals.reversed()),
+            nightDatesOldestFirst: Array(dates.reversed()),
+            calendar: calendar
+        ).last
+    }
+
     /// The debt figure as of *each* night, not just the final one — what a
     /// chart plotting debt over time needs.
     ///
@@ -96,10 +116,72 @@ enum SleepDebtCalculator {
         timeAsleepMinutesOldestFirst nights: [Double],
         goalMinutesOldestFirst goals: [Double]
     ) -> [Double] {
+        debtSeries(
+            timeAsleepMinutesOldestFirst: nights,
+            goalMinutesOldestFirst: goals,
+            gapDaysOldestFirst: Array(repeating: 1, count: nights.count)
+        )
+    }
+
+    /// The same recurrence, decaying per *calendar* night rather than per
+    /// recorded night.
+    ///
+    /// "Missing nights are skipped" (see the type's doc comment) means an
+    /// unworn night adds no shortfall of its own -- not that time stopped.
+    /// Without dates the recurrence decayed once per *record*, so a
+    /// 300-minute shortfall followed by a month with the watch in a drawer
+    /// still read as 280 minutes of debt on the first night back, when 31
+    /// calendar nights of decay should have left about 35. Between
+    /// consecutive records the debt is therefore decayed by `decayPerNight`
+    /// raised to the number of calendar days between them -- at least one,
+    /// so two records filed on the same day still count as consecutive.
+    ///
+    /// - Parameter nightDatesOldestFirst: the calendar day each night is
+    ///   filed under, same order as `nights`. Any night without a date
+    ///   falls back to a one-night gap.
+    static func debtSeries(
+        timeAsleepMinutesOldestFirst nights: [Double],
+        goalMinutesOldestFirst goals: [Double],
+        nightDatesOldestFirst dates: [Date],
+        calendar: Calendar = .current
+    ) -> [Double] {
+        var gaps: [Int] = []
+        gaps.reserveCapacity(dates.count)
+        for (index, date) in dates.enumerated() {
+            guard index > 0 else {
+                gaps.append(1)
+                continue
+            }
+            let days = calendar.dateComponents(
+                [.day],
+                from: calendar.startOfDay(for: dates[index - 1]),
+                to: calendar.startOfDay(for: date)
+            ).day ?? 1
+            gaps.append(max(1, days))
+        }
+        return debtSeries(
+            timeAsleepMinutesOldestFirst: nights,
+            goalMinutesOldestFirst: goals,
+            gapDaysOldestFirst: gaps
+        )
+    }
+
+    /// The one loop every overload above resolves to. `gapDaysOldestFirst`
+    /// is how many calendar nights of decay precede each record; a record
+    /// with no entry decays by exactly one.
+    private static func debtSeries(
+        timeAsleepMinutesOldestFirst nights: [Double],
+        goalMinutesOldestFirst goals: [Double],
+        gapDaysOldestFirst gaps: [Int]
+    ) -> [Double] {
         var debt = 0.0
         var series: [Double] = []
-        for (minutes, goal) in zip(nights, goals) {
-            debt = debt * decayPerNight + max(0, goal - minutes)
+        for (index, (minutes, goal)) in zip(nights, goals).enumerated() {
+            let gapDays = index < gaps.count ? gaps[index] : 1
+            // A plain multiply for the common case keeps the undated path
+            // bit-identical to what it always produced.
+            let decay = gapDays == 1 ? decayPerNight : pow(decayPerNight, Double(gapDays))
+            debt = debt * decay + max(0, goal - minutes)
             series.append(debt)
         }
         return series

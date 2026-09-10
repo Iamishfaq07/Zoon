@@ -19,9 +19,13 @@ struct SleepFingerprintView: View {
                         metric("Timing", fingerprint.timingStability, "How consistently your sleep starts")
                         metric("Duration", fingerprint.durationStability, "How much your sleep length varies")
                         metric("Continuity", fingerprint.continuity, "How uninterrupted your sleep tends to be")
-                        metric("Body signals", fingerprint.bodySignalStability, "How steady your available HRV readings are")
+                        if fingerprint.bodySignalStabilityIsMeasured {
+                            metric("Body signals", fingerprint.bodySignalStability, "How steady your available HRV readings are")
+                        } else {
+                            unmeasuredMetric("Body signals", "Not enough HRV readings in this period to describe.")
+                        }
                     }.glassCard()
-                    Text("Based on \(fingerprint.sampleCount) recent nights. Missing sensors simply reduce the body-signal score.")
+                    Text("Based on \(fingerprint.sampleCount) recent nights. A missing sensor leaves its row unmeasured rather than lowering a score.")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     ZoonEmptyState(kind: .learning(collected: coordinator.recentNights.count, typicallyNeeded: 3...7, message: "Keep logging sleep for a few more nights to reveal your fingerprint."))
@@ -30,9 +34,16 @@ struct SleepFingerprintView: View {
         }.nightBackground().navigationTitle("Sleep fingerprint").navigationBarTitleDisplayMode(.inline)
     }
 
+    private func unmeasuredMetric(_ title: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack { Text(title).font(.headline); Spacer(); Text("—").font(.headline.monospacedDigit()).foregroundStyle(.secondary) }
+            Text(detail).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
     private func metric(_ title: String, _ value: Double, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack { Text(title).font(.headline); Spacer(); Text("\(Int(value * 100))%").font(.headline.monospacedDigit()) }
+            HStack { Text(title).font(.headline); Spacer(); Text("\(Int((value * 100).rounded()))%").font(.headline.monospacedDigit()) }
             ProgressView(value: value).tint(Theme.Family.sleep)
             Text(detail).font(.caption).foregroundStyle(.secondary)
         }

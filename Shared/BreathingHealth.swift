@@ -123,6 +123,11 @@ struct BreathingHealth: Codable, Hashable, Sendable {
     /// pattern rather than noise. Also the minimum number of *classified*
     /// nights before the check runs at all.
     private static let patternMinimumNights = 5
+    /// Prior nights with a respiratory-rate reading before a baseline (and
+    /// a deviation from it) is reported at all. A median of two or three
+    /// nights is not a baseline, and a "20% above usual" read against one
+    /// would look exactly as confident as a real one.
+    private static let respiratoryBaselineMinimumNights = 7
 
     /// How a night was classified. Apple's classification, or nothing.
     static func elevation(_ night: SleepNightFeatures) -> BreathingElevation {
@@ -157,7 +162,9 @@ struct BreathingHealth: Codable, Hashable, Sendable {
         var baseline: Double?
         if let rate = latest?.avgRespiratoryRate {
             let history = recentWindow.dropLast().compactMap(\.avgRespiratoryRate)
-            baseline = Statistics.median(history)
+            if history.count >= respiratoryBaselineMinimumNights {
+                baseline = Statistics.median(history)
+            }
             if let base = baseline, base > 0 {
                 respiratoryDeviation = (rate - base) / base * 100
             }

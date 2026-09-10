@@ -464,6 +464,11 @@ final class SleepHistoryStore {
     /// recording merges instead of discarding. Imported nights are marked as
     /// having no live wrist-temperature reading — the archive carries the delta,
     /// which is meaningless without the baseline it was computed against.
+    ///
+    /// Each row is stamped with the night's own `nightKey`. Without it a
+    /// restored night had no key at all, so `secondaryEpisodeAsleepMinutes`
+    /// -- which looks episodes up by key -- could never credit the naps and
+    /// split-sleep blocks restored from the same archive.
     /// - Returns: how many rows were written.
     @discardableResult
     func importNights(
@@ -474,7 +479,8 @@ final class SleepHistoryStore {
         for night in nights.sorted(by: { $0.date < $1.date }) {
             upsert(
                 night,
-                absoluteWristTempC: absoluteTemperatures[night.date]
+                absoluteWristTempC: absoluteTemperatures[night.date],
+                nightKey: night.nightKey
             )
             written += 1
         }
@@ -597,6 +603,10 @@ final class SleepHistoryStore {
     /// `SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`
     /// for why a single shared value can't be used once a night's target can
     /// be a learned figure rather than a stable one.
+    ///
+    /// Each night's `date` goes along too, so the decay runs per *calendar*
+    /// night: an unworn fortnight fades the debt by fourteen nights, not by
+    /// the one record boundary it used to.
     private func sleepDebt(
         nights: [SleepNightRecord], goalMinutes: Double, manualNaps: [NapStore.Nap] = []
     ) -> Double? {
@@ -608,7 +618,8 @@ final class SleepHistoryStore {
                     manualNaps: manualNaps
                 )
             },
-            goalMinutesNewestFirst: nights.map { $0.sleepNeedBaselineMinutesAtProcessing ?? goalMinutes }
+            goalMinutesNewestFirst: nights.map { $0.sleepNeedBaselineMinutesAtProcessing ?? goalMinutes },
+            nightDatesNewestFirst: nights.map(\.date)
         )
     }
 

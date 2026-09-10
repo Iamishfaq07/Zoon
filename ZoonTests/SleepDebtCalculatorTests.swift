@@ -150,4 +150,77 @@ final class SleepDebtCalculatorTests: XCTestCase {
     func testDebtWithMismatchedCountsReturnsNil() {
         XCTAssertNil(SleepDebtCalculator.debt(timeAsleepMinutesNewestFirst: [480, 420], goalMinutesNewestFirst: [480]))
     }
+
+    // MARK: - Calendar-night decay
+
+    private let gregorian = Calendar(identifier: .gregorian)
+
+    private func day(_ day: Int) throws -> Date {
+        try XCTUnwrap(gregorian.date(from: DateComponents(year: 2026, month: 6, day: day)))
+    }
+
+    /// A month with the watch in a drawer is a month of decay, not one
+    /// night's worth. 300 minutes short, then nothing for 30 days, then one
+    /// on-goal night: the shortfall has had 31 calendar nights to fade.
+    func testGapNightsDecayByCalendarNightsNotByRecords() throws {
+        let first = try day(1)
+        let backAfterAMonth = try XCTUnwrap(gregorian.date(byAdding: .day, value: 31, to: first))
+        let series = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: [180, 480],
+            goalMinutesOldestFirst: [480, 480],
+            nightDatesOldestFirst: [first, backAfterAMonth],
+            calendar: gregorian
+        )
+        let debt = try XCTUnwrap(series.last)
+        // 300 x 0.933^31 is about 35 -- far below the 280 the per-record
+        // form left after "one" night of decay.
+        XCTAssertLessThan(debt, 50)
+        XCTAssertGreaterThan(debt, 20)
+        XCTAssertEqual(debt, 300 * pow(SleepDebtCalculator.decayPerNight, 31), accuracy: 0.01)
+    }
+
+    /// Consecutive calendar nights are exactly the undated recurrence, so
+    /// existing callers that never had gaps see the same numbers.
+    func testConsecutiveDatesMatchTheUndatedSeries() throws {
+        let oldestFirst: [Double] = [480, 420, 390, 500, 460, 300, 480]
+        let goals = [Double](repeating: 480, count: oldestFirst.count)
+        let dates = try (0..<oldestFirst.count).map { try day(1 + $0) }
+
+        let dated = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: oldestFirst,
+            goalMinutesOldestFirst: goals,
+            nightDatesOldestFirst: dates,
+            calendar: gregorian
+        )
+        let undated = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: oldestFirst,
+            goalMinutesOldestFirst: goals
+        )
+        XCTAssertEqual(dated, undated)
+    }
+
+    func testDatedScalarDebtMatchesDatedSeriesLastElement() throws {
+        let newestFirst: [Double] = [480, 180]
+        let goals: [Double] = [480, 480]
+        let datesNewestFirst = try [day(20), day(1)]
+        let tooFewDates = try [day(20)]
+
+        let scalar = SleepDebtCalculator.debt(
+            timeAsleepMinutesNewestFirst: newestFirst,
+            goalMinutesNewestFirst: goals,
+            nightDatesNewestFirst: datesNewestFirst,
+            calendar: gregorian
+        )
+        let series = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: Array(newestFirst.reversed()),
+            goalMinutesOldestFirst: Array(goals.reversed()),
+            nightDatesOldestFirst: Array(datesNewestFirst.reversed()),
+            calendar: gregorian
+        )
+        XCTAssertEqual(scalar, series.last)
+        XCTAssertNil(SleepDebtCalculator.debt(
+            timeAsleepMinutesNewestFirst: newestFirst, goalMinutesNewestFirst: goals,
+            nightDatesNewestFirst: tooFewDates, calendar: gregorian
+        ))
+    }
 }

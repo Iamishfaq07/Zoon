@@ -287,7 +287,7 @@ enum ClinicianReportGenerator {
     }
 
     static func filename(rangeDays: Int) -> String {
-        "Sleep_Report_\(ISO8601DateFormatter.dayOnly.string(from: .now))_\(rangeDays)_Days.pdf"
+        "Sleep_Report_\(ISO8601DateFormatter.dayString(for: .now, timeZone: .current))_\(rangeDays)_Days.pdf"
     }
 
     /// Self-reported profile for the title page. Omitted rows stay off the

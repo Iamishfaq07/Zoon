@@ -64,10 +64,10 @@ extension EvidenceLedger {
             // name here would render "+40 deep sleep". The name belongs in
             // `sourceFeature` and the headline, and both have it.
             effectUnit: nil,
-            // A before/after median difference carries no interval, and the
-            // summary never computed one. Left nil rather than fabricated.
-            uncertaintyLower: nil,
-            uncertaintyUpper: nil,
+            // The two-sample bootstrap interval `summarize` records on the
+            // outcome. nil only for outcomes stored before it existed.
+            uncertaintyLower: outcome.uncertaintyLower,
+            uncertaintyUpper: outcome.uncertaintyUpper,
             sampleSize: min(outcome.baselineNightCount, trialSize),
             windowStart: outcome.startDate,
             windowEnd: outcome.endDate,
@@ -91,6 +91,16 @@ extension EvidenceLedger {
         guard baseline > 0 else { return .inconclusive }
         guard abs(outcome.delta) / baseline >= experimentMinimumRelativeChange else {
             return .inconclusive
+        }
+
+        // A 5% shift in the median of seven nights is well inside ordinary
+        // night-to-night noise. When the outcome carries its bootstrap
+        // interval, the interval has to exclude zero before either side is
+        // claimed; a range that straddles no-change is the definition of
+        // "did not separate". Outcomes recorded before the interval existed
+        // have no bounds and keep the reading they were given then.
+        if let lower = outcome.uncertaintyLower, let upper = outcome.uncertaintyUpper {
+            guard lower > 0 || upper < 0 else { return .inconclusive }
         }
 
         return outcome.isImprovement ? .supported : .notSupported

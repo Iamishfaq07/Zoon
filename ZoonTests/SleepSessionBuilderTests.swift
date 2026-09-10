@@ -246,4 +246,77 @@ final class SleepSessionBuilderTests: XCTestCase {
 
         XCTAssertEqual(session.wakeCountAfterOnset, 1)
     }
+
+    /// A source can contradict itself in time: an `awake` sample inside a
+    /// longer undifferentiated asleep block. The awake minutes must come out
+    /// of the asleep total rather than being counted as both.
+    func testAwakeInsideUnspecifiedAsleepIsNotCountedAsAsleep() {
+        let onset = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let wakeUp = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 7))!
+        let awakeStart = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2, hour: 3))!
+        let awakeEnd = awakeStart.addingTimeInterval(30 * 60)
+
+        let samples = [
+            sample(.asleepUnspecified, start: onset, end: wakeUp),
+            sample(.awake, start: awakeStart, end: awakeEnd)
+        ]
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertEqual(session.totalAsleepMinutes, 450, accuracy: 0.001)
+        XCTAssertEqual(session.minutes(.awake), 30, accuracy: 0.001)
+        XCTAssertEqual(session.minutes(.unspecified), 450, accuracy: 0.001)
+    }
+
+    /// Undifferentiated asleep written over the same span as staged sleep
+    /// is the same sleep, not additional sleep.
+    func testUnspecifiedOverlappingStagedSleepIsNotDoubleCounted() {
+        let onset = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let wakeUp = onset.addingTimeInterval(8 * 3600)
+        let deepStart = onset.addingTimeInterval(2 * 3600)
+        let deepEnd = deepStart.addingTimeInterval(3600)
+
+        let samples = [
+            sample(.asleepUnspecified, start: onset, end: wakeUp),
+            sample(.asleepDeep, start: deepStart, end: deepEnd)
+        ]
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertEqual(session.totalAsleepMinutes, 480, accuracy: 0.001)
+        XCTAssertEqual(session.minutes(.deep), 60, accuracy: 0.001)
+        XCTAssertEqual(session.minutes(.unspecified), 420, accuracy: 0.001)
+    }
+
+    /// Lying awake after the last asleep interval, before getting up, is not
+    /// an awakening -- nothing was fallen back asleep after it.
+    func testTerminalAwakeBlockIsNotCountedAsAnAwakening() {
+        let onset = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1, hour: 23))!
+        let midNightWake = onset.addingTimeInterval(4 * 3600)
+        let backToSleep = midNightWake.addingTimeInterval(15 * 60)
+        let lastAsleepEnd = onset.addingTimeInterval(7 * 3600 + 30 * 60)
+        let wakeUp = onset.addingTimeInterval(8 * 3600)
+
+        let samples = [
+            sample(.asleepCore, start: onset, end: midNightWake),
+            sample(.awake, start: midNightWake, end: backToSleep),
+            sample(.asleepCore, start: backToSleep, end: lastAsleepEnd),
+            sample(.awake, start: lastAsleepEnd, end: wakeUp)
+        ]
+
+        let builder = SleepSessionBuilder()
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("Expected one session")
+        }
+
+        XCTAssertEqual(session.lastAsleepEnd, lastAsleepEnd)
+        XCTAssertEqual(session.wakeCountAfterOnset, 1, "Only the mid-night awakening counts; the terminal awake block does not")
+        XCTAssertEqual(session.awakeIntervals.count, 2)
+    }
 }

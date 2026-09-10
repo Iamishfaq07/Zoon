@@ -467,7 +467,7 @@ extension SleepNightFeatures {
     /// API contract.
     var summaryForLLM: String {
         let payload = LLMPayload(
-            date: ISO8601DateFormatter.dayOnly.string(from: date),
+            date: ISO8601DateFormatter.dayString(for: date, timeZone: timeZone),
             sleepEfficiencyPct: sleepEfficiencyPercent.rounded(to: 1),
             timeAsleepMin: Int(timeAsleepMinutes.rounded()),
             timeInBedMin: Int(timeInBedMinutes.rounded()),
@@ -565,4 +565,15 @@ extension ISO8601DateFormatter {
         f.formatOptions = [.withFullDate]
         return f
     }()
+
+    /// `dayOnly`, but in a specific timezone. `dayOnly` formats in GMT, so a
+    /// night's `date` -- local midnight in the zone it was recorded in --
+    /// prints as the previous day anywhere east of UTC. Export rows want the
+    /// day the person actually woke up on, which is `night.timeZone`.
+    static func dayString(for date: Date, timeZone: TimeZone) -> String {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withFullDate]
+        f.timeZone = timeZone
+        return f.string(from: date)
+    }
 }

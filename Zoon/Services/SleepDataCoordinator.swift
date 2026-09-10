@@ -138,6 +138,12 @@ final class SleepDataCoordinator {
     private var refreshState: RefreshState = .idle
     private var refreshTask: Task<Void, Never>?
     private var isErasing = false
+    /// Bumped by `deleteAllData()`. A `publishLatest()` suspended across an
+    /// `await` while the erase ran would otherwise resume after `isErasing`
+    /// has been reset and publish -- or write back -- the night it had
+    /// already read from the store that no longer exists. Each await in
+    /// `publishLatest` re-checks this instead.
+    private var storeGeneration = 0
     var isRefreshing: Bool { refreshState != .idle }
     /// Live daytime read, refreshed alongside everything else. `nil` until the
     /// first successful sample — a phone that's never queried HealthKit today
@@ -232,17 +238,22 @@ final class SleepDataCoordinator {
     ) {
         let date = event.targetDate
         let key = BehaviorObservationRecord.provisionalNightKey(for: date, calendar: event.calendar)
+        // Behaviours are about the day that just happened and belong to the
+        // night after it, which is keyed by the morning it ends on -- see
+        // `JournalEntry.date`. Feelings, naps and awakenings stay on `date`.
+        let nightDate = event.behaviorNightDate
+        let nightKey = BehaviorObservationRecord.provisionalNightKey(for: nightDate, calendar: event.calendar)
         switch event.action {
         case .behaviorTag(let rawValue):
             guard let tag = BehaviorTag(rawValue: rawValue) else { return }
-            journal.toggle(tag, on: date, nightKey: key)
-            let happened = journal.entryOrCreate(for: date, nightKey: key).contains(tag)
-            behaviors.set(happened ? .yes : .no, for: tag, nightKey: key)
+            journal.toggle(tag, on: nightDate, nightKey: nightKey)
+            let happened = journal.entryOrCreate(for: nightDate, nightKey: nightKey).contains(tag)
+            behaviors.set(happened ? .yes : .no, for: tag, nightKey: nightKey)
         case .behaviorAnswer(let rawValue, let happened):
             guard let tag = BehaviorTag(rawValue: rawValue) else { return }
-            behaviors.set(happened ? .yes : .no, for: tag, nightKey: key)
-            let entry = journal.entryOrCreate(for: date, nightKey: key)
-            if happened != entry.contains(tag) { journal.toggle(tag, on: date, nightKey: key) }
+            behaviors.set(happened ? .yes : .no, for: tag, nightKey: nightKey)
+            let entry = journal.entryOrCreate(for: nightDate, nightKey: nightKey)
+            if happened != entry.contains(tag) { journal.toggle(tag, on: nightDate, nightKey: nightKey) }
         case .morningFeeling(let rawValue):
             guard let feeling = MorningFeeling(rawValue: rawValue) else { return }
             journal.setFeeling(feeling, on: date)
@@ -531,11 +542,13 @@ final class SleepDataCoordinator {
             case .nothingToDo:
                 break
             case .partial(let ranges):
-                // Not gated on `!samples.isEmpty`: a window whose only sample
-                // was deleted in Health legitimately refetches to nothing, and
-                // `processSessions` still needs to run so it prunes the
-                // now-stale stored night rather than leaving it behind. (That
-                // case reaches `.full` anyway, since deletions force it.)
+                // Not gated on `!samples.isEmpty` here: `processSessions`
+                // decides for itself what an empty fetch means. With history
+                // already in the store it refuses to prune on one -- a window
+                // whose only sample was deleted in Health is indistinguishable
+                // from a failed query -- so that stale night is only removed
+                // by a later pass that returns at least one sample. (Deletions
+                // force `.full` anyway, so this case never reaches `.partial`.)
                 let samples = try await healthKit.fetchAllSleepSamples(in: window)
                 persisted = await processSessions(from: samples, window: window, rebuilding: ranges)
             case .full:
@@ -598,6 +611,18 @@ final class SleepDataCoordinator {
         window: DateInterval,
         rebuilding ranges: [DateInterval]? = nil
     ) async -> Bool {
+        // An empty full-window fetch against a store that already has
+        // history is far more likely to be HealthKit failing -- authorization
+        // revoked, a transient query error surfacing as zero rows -- than the
+        // user having deleted every night in Health. Pruning on it would wipe
+        // the whole window's worth of records in one pass, so nothing is
+        // touched. The cost is that a genuine erase-everything-in-Health is
+        // not mirrored until at least one sample exists again. Nothing was
+        // written, so `true` is the honest answer to "did every write land".
+        if samples.isEmpty, !store.isEmpty {
+            logger.error("HealthKit returned no sleep samples while the store has history; skipping prune")
+            return true
+        }
         store.beginTrackingWrites()
         sessionBuilder.preferredSourceBundleIdentifier = preferences.preferredSleepSourceBundleIdentifier
         sessionBuilder.preferredSourceName = preferences.preferredSleepSourceName
@@ -696,8 +721,24 @@ final class SleepDataCoordinator {
         // `sessionsToRebuild`: a night that exists in HealthKit but was not
         // worth re-extracting must not look stale to the pruner.
         let validDates = Set(mainSleepPerDate.map(\.wakeDate))
-        store.prune(window: window, keeping: validDates)
-        store.pruneEpisodes(window: window, keeping: validEpisodeIDs)
+        // A partial rebuild only re-extracted the nights inside `ranges`, so
+        // that is also all it is allowed to prune. The bounds are widened to
+        // whole days because a night's `date` is the start of its wake day,
+        // which can sit before the range that touched it. `validDates` is
+        // complete either way (see above), so this is a second fence rather
+        // than a correctness requirement -- it bounds the damage should a
+        // partial plan and a bad fetch ever coincide.
+        let pruneWindow: DateInterval
+        if let ranges, let earliest = ranges.map(\.start).min(), let latest = ranges.map(\.end).max() {
+            let calendar = Calendar.current
+            let dayStart = calendar.startOfDay(for: earliest)
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: latest)) ?? latest
+            pruneWindow = DateInterval(start: dayStart, end: dayEnd)
+        } else {
+            pruneWindow = window
+        }
+        store.prune(window: pruneWindow, keeping: validDates)
+        store.pruneEpisodes(window: pruneWindow, keeping: validEpisodeIDs)
 
         return store.writesSucceeded
     }
@@ -800,6 +841,7 @@ final class SleepDataCoordinator {
     private func publishLatest() async {
         applyLocalRepairs()
         guard !isErasing else { return }
+        let generation = storeGeneration
         let goal = preferences.sleepGoalMinutes
 
         guard let record = store.latestNight else {
@@ -822,6 +864,7 @@ final class SleepDataCoordinator {
         if let modelEngine = engine as? FoundationModelInsightEngine {
             await modelEngine.prepare(for: night, baseline: baseline, goalMinutes: goal)
         }
+        guard generation == storeGeneration else { return }
 
         // Rebuild each stored night against the context that existed before
         // that specific night. Reusing the latest baseline for the whole array
@@ -845,7 +888,7 @@ final class SleepDataCoordinator {
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
         )
 
-        guard !isErasing else { return }
+        guard !isErasing, generation == storeGeneration else { return }
 
         // Generation is deferred into the builder rather than run above,
         // because the summary's opening grade has to come from Sleep
@@ -1484,7 +1527,9 @@ final class SleepDataCoordinator {
         guard !isErasing else { return false }
         isErasing = true
         defer { isErasing = false }
+        storeGeneration += 1
         healthKit.stopObserving()
+        healthKit.disableBackgroundDelivery()
         // Drain the in-flight query before clearing stores; it cannot repopulate
         // erased rows after this method returns.
         await refreshTask?.value
@@ -1500,6 +1545,8 @@ final class SleepDataCoordinator {
         experiments.deleteAll()
         SnoreStore.erasePersistedData()
         SoundEventStore.erasePersistedData()
+        AlertnessCheckStore().deleteAll()
+        CustomBehaviorStore.shared.deleteAll()
         let snapshotDeleted = SnapshotStore.clear()
         let legacyStoreDeleted = PersistentStore.eraseLegacyStoreFiles()
         let temporaryExportsDeleted = DataExporter.clearTemporaryExports()
@@ -1513,6 +1560,7 @@ final class SleepDataCoordinator {
         AnchorStore.clear()
         reminders.cancel()
         reminders.cancelWakeWindow()
+        reminders.cancelMorningBrief()
         preferences.resetForDataErasure()
         engine = Self.makeEngine(for: preferences.preferredEngine)
 
@@ -1520,6 +1568,8 @@ final class SleepDataCoordinator {
         recentNights = []
         recoveryHistory = [:]
         todayStress = nil
+        todayWorkouts = []
+        lastRecordedNightSet = nil
         cyclePeriodStarts = []
         todayLifestyleInsights = nil
         lastRefresh = nil
@@ -1578,7 +1628,9 @@ final class SleepDataCoordinator {
     private var lastRecordedNightSet: Int?
 
     private func recordAssociations() {
-        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations())
+        let observations = journalObservations()
+        let correlator = JournalCorrelator()
+        let findings = correlator.topFindingPerTag(from: observations)
         for finding in findings {
             store.recordBelief(
                 EvidenceLedger.Revision(
@@ -1596,6 +1648,32 @@ final class SleepDataCoordinator {
                     algorithmVersion: JournalCorrelator.algorithmVersion,
                     sourceFeature: finding.metric.rawValue,
                     provenance: "JournalCorrelator"
+                )
+            )
+        }
+
+        // The half offering beliefs cannot do. A finding that stopped being
+        // produced said nothing, so its last "Association detected" stood
+        // in the ledger indefinitely -- see `EvidenceLedger.retraction`.
+        // Withdrawn as inconclusive when the comparison pool is still deep
+        // enough that the engine looked and found nothing, as learning when
+        // the pool itself has thinned below what a comparison needs.
+        let tagByClaimID = Dictionary(
+            uniqueKeysWithValues: BehaviorTag.allCases.map {
+                (EvidenceLedger.Claim.behaviour(tag: $0.rawValue).id, $0)
+            }
+        )
+        let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.tag.rawValue).id })
+        for latest in EvidenceLedger.associationsToRetract(
+            in: store.evidenceHistory(), currentClaimIDs: current, provenance: "JournalCorrelator"
+        ) {
+            guard let tag = tagByClaimID[latest.claimID] else { continue }
+            let pairs = correlator.matchedPairCount(for: tag, observations: observations)
+            store.recordBelief(
+                EvidenceLedger.retraction(
+                    of: latest,
+                    status: pairs >= JournalCorrelator.minimumMatchedPairs ? .inconclusive : .learning,
+                    sampleSize: pairs
                 )
             )
         }
@@ -1877,15 +1955,37 @@ final class SleepDataCoordinator {
     /// Finder "End experiment" action.
     func endActiveExperiment() {
         if let tag = preferences.activeExperimentTag, let startDate = preferences.experimentStartDate {
-            if let outcome = GuidedExperiment.summarize(
-                tag: tag,
-                hypothesis: preferences.experimentHypothesis,
-                primaryMetric: preferences.experimentPrimaryMetric ?? .sleepPerformance,
-                direction: preferences.experimentDirection ?? .avoid,
-                startDate: startDate,
-                endDate: .now,
-                observations: journalObservations()
-            ) {
+            let primaryMetric = preferences.experimentPrimaryMetric ?? .sleepPerformance
+            let direction = preferences.experimentDirection ?? .avoid
+            let observations = journalObservations()
+            // A controlled design is read against the schedule it was given,
+            // not against the fortnight before it -- the schedule is the
+            // whole reason the person chose it. `experimentSchedule` is
+            // empty for `.beforeAfter`, which keeps the before/after summary.
+            let schedule = preferences.experimentSchedule
+            let outcome: SleepExperimentStore.Outcome?
+            if preferences.experimentDesign?.isControlled == true, !schedule.isEmpty {
+                outcome = GuidedExperiment.summarizeCrossover(
+                    tag: tag,
+                    hypothesis: preferences.experimentHypothesis,
+                    primaryMetric: primaryMetric,
+                    direction: direction,
+                    schedule: schedule,
+                    endDate: .now,
+                    observations: observations
+                )
+            } else {
+                outcome = GuidedExperiment.summarize(
+                    tag: tag,
+                    hypothesis: preferences.experimentHypothesis,
+                    primaryMetric: primaryMetric,
+                    direction: direction,
+                    startDate: startDate,
+                    endDate: .now,
+                    observations: observations
+                )
+            }
+            if let outcome {
                 experiments.record(outcome)
             }
         }
@@ -1971,11 +2071,16 @@ final class SleepDataCoordinator {
             testedResults: experiments.outcomes
                 .sorted { $0.endDate > $1.endDate }
                 .prefix(3)
-                .map {
-                    CoachContextDigest.TestedResult(
-                        behavior: BehaviorTag(rawValue: $0.tag)?.label ?? $0.tag,
-                        metric: $0.metricLabel,
-                        isImprovement: $0.isImprovement
+                .map { outcome -> CoachContextDigest.TestedResult in
+                    // The ledger's verdict, not the raw sign of the median
+                    // difference: an inconclusive trial has no direction to
+                    // hand Coach. See `EvidenceLedger.experimentStatus`.
+                    let status = EvidenceLedger.experimentStatus(for: outcome)
+                    return CoachContextDigest.TestedResult(
+                        behavior: BehaviorTag(rawValue: outcome.tag)?.label ?? outcome.tag,
+                        metric: outcome.metricLabel,
+                        verdict: status.label,
+                        isImprovement: status == .inconclusive ? nil : outcome.isImprovement
                     )
                 },
             suggestedNextTest: ExperimentPlanner.next(
@@ -2053,7 +2158,12 @@ final class SleepDataCoordinator {
         struct TestedResult: Encodable {
             let behavior: String
             let metric: String
-            let isImprovement: Bool
+            /// `EvidenceLedger.Status.label` -- "Supported", "Not supported"
+            /// or "Inconclusive" -- so Coach reads the trial the way the
+            /// ledger recorded it.
+            let verdict: String
+            /// Omitted for an inconclusive trial, which has no direction.
+            let isImprovement: Bool?
         }
     }
 

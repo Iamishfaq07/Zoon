@@ -90,14 +90,31 @@ struct StrainScore: Codable, Hashable, Sendable {
         )
     }
 
+    /// Active energy an ordinary day logs without any workout -- standing,
+    /// walking around, fidgeting. The zone path scores all of that as zero
+    /// because none of it lifts heart rate above 50% HRR, so the estimate
+    /// has to discount it too or a sedentary day reads as a training day.
+    private static let sedentaryActiveEnergyKcal = 250.0
+
     /// Fallback when heart-rate coverage is too sparse to build zones —
     /// common if the watch came off during the day.
     ///
     /// Active energy is a much blunter instrument (it can't tell a long walk
     /// from a short sprint), so anything derived this way is flagged as an
     /// estimate and the UI says so.
+    ///
+    /// Calibrated so the pseudo-load lands where the zone path's
+    /// `Σ minutes × weight` would for a comparable day (30 min moderate ≈
+    /// 10.2, 60 min vigorous ≈ 15.7), through the same `log1p` curve:
+    ///
+    ///    150 kcal /   0 min → load   0.0 → 0.0  (Light; was 13.8, "Strenuous")
+    ///    400 kcal /  30 min → load  15.0 → 9.6  (Moderate; was 18.0)
+    ///    800 kcal /  60 min → load  47.5 → 13.5 (Strenuous; was 20.4)
+    ///   1200 kcal /  90 min → load  80.0 → 15.3 (High)
+    ///   2000 kcal / 150 min → load 145.0 → 17.3 (High)
     static func estimate(activeEnergyKcal: Double, exerciseMinutes: Double) -> StrainScore {
-        let pseudoLoad = activeEnergyKcal * 0.35 + exerciseMinutes * 1.2
+        let surplusKcal = max(0, activeEnergyKcal - sedentaryActiveEnergyKcal)
+        let pseudoLoad = surplusKcal * 0.07 + exerciseMinutes * 0.15
         let normalized = log1p(pseudoLoad) / log1p(saturationLoad)
         return StrainScore(
             value: min(maxValue, normalized * maxValue),

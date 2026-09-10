@@ -279,4 +279,91 @@ final class GuidedExperimentTests: XCTestCase {
         )
         XCTAssertNil(outcome)
     }
+
+    // MARK: - Controlled designs
+
+    /// The arm that does what the experiment asks is the trial; the other
+    /// arm is its baseline. Nights without alcohol score 88, nights with it
+    /// 80, and every assigned night followed the plan -- so the outcome
+    /// reads without (trial) against with (baseline), and never against the
+    /// fortnight before the schedule, which has no nights here at all.
+    func testACrossoverIsReadAgainstItsScheduleNotTheFortnightBefore() throws {
+        let schedule = ExperimentDesign.abba.schedule(
+            startingOn: startDate, blockNights: 7, seed: 1, calendar: calendar
+        )
+        let observations = schedule.map { assignment in
+            observation(
+                date: assignment.date,
+                tags: assignment.arm == .with ? [.alcohol] : [],
+                sleepPerformance: assignment.arm == .with ? 80 : 88
+            )
+        }
+
+        let outcome = try XCTUnwrap(GuidedExperiment.summarizeCrossover(
+            tag: .alcohol, hypothesis: nil, primaryMetric: .sleepPerformance, direction: .avoid,
+            schedule: schedule, endDate: dateOffset(28, from: startDate),
+            observations: observations, calendar: calendar
+        ))
+
+        XCTAssertEqual(outcome.baselineMedian, 80, accuracy: 0.001)
+        XCTAssertEqual(outcome.trialMedian, 88, accuracy: 0.001)
+        XCTAssertTrue(outcome.isImprovement)
+        XCTAssertEqual(outcome.trialNightCount, 28, "every assigned night, both arms")
+        XCTAssertEqual(outcome.trialCompliantNightCount, 28)
+        XCTAssertEqual(outcome.trialKnownNightCount, 28)
+        XCTAssertEqual(outcome.baselineNightCount, 14, "the with arm's followed nights")
+        XCTAssertEqual(outcome.startDate, schedule.first?.date)
+        XCTAssertEqual(outcome.direction, .avoid)
+    }
+
+    /// A stretch nobody followed is refused, the same way `analyse` refuses
+    /// it, rather than summarised from the nights around it.
+    func testACrossoverWithAnUnfollowedStretchProducesNoOutcome() {
+        let schedule = ExperimentDesign.ab.schedule(
+            startingOn: startDate, blockNights: 7, seed: 1, calendar: calendar
+        )
+        // Every night alcohol-free: the "with" stretch has no adherent nights.
+        let observations = schedule.map { assignment in
+            observation(date: assignment.date, tags: [], sleepPerformance: 85)
+        }
+
+        XCTAssertNil(GuidedExperiment.summarizeCrossover(
+            tag: .alcohol, hypothesis: nil, primaryMetric: .sleepPerformance, direction: .avoid,
+            schedule: schedule, endDate: dateOffset(14, from: startDate),
+            observations: observations, calendar: calendar
+        ))
+    }
+
+    // MARK: - Interval on the median difference
+
+    /// A ten-point shift between two tight samples excludes zero; the same
+    /// baseline against noise around its own median does not.
+    func testAClearShiftExcludesZeroAndNoiseDoesNot() throws {
+        let baseline: [Double] = [78, 80, 79, 81, 80, 82, 78, 80, 79, 81]
+
+        let clear = try XCTUnwrap(GuidedExperiment.medianDifferenceInterval(
+            baseline: baseline, trial: baseline.map { $0 + 10 }
+        ))
+        XCTAssertGreaterThan(clear.lower, 0)
+        XCTAssertLessThan(clear.lower, clear.upper)
+
+        let wobble = try XCTUnwrap(GuidedExperiment.medianDifferenceInterval(
+            baseline: baseline, trial: [79, 81, 80, 80, 82, 78, 81, 79, 80, 80]
+        ))
+        XCTAssertLessThanOrEqual(wobble.lower, 0)
+        XCTAssertGreaterThanOrEqual(wobble.upper, 0)
+    }
+
+    func testTheIntervalIsDeterministicAndNeedsTheSummaryMinimumNights() {
+        let baseline: [Double] = [78, 80, 79, 81, 80, 82, 78]
+        let trial: [Double] = [84, 86, 85, 87, 86, 88, 84]
+        let first = GuidedExperiment.medianDifferenceInterval(baseline: baseline, trial: trial)
+        let second = GuidedExperiment.medianDifferenceInterval(baseline: baseline, trial: trial)
+        XCTAssertEqual(first?.lower, second?.lower)
+        XCTAssertEqual(first?.upper, second?.upper)
+
+        XCTAssertNil(GuidedExperiment.medianDifferenceInterval(
+            baseline: Array(baseline.dropLast()), trial: trial
+        ))
+    }
 }

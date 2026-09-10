@@ -100,11 +100,17 @@ enum PersistentStore {
     /// `ModelConfiguration()` with an App Group entitlement uses
     /// `groupContainer: .automatic` and can open the *same* store `open()`
     /// just mounted -- two `ModelContainer`s on one file is a SwiftData trap.
-    private static func legacyDiskConfiguration() -> ModelConfiguration {
+    ///
+    /// Built from `legacyURL` explicitly. The named form
+    /// (`ModelConfiguration("Zoon", ...)`) resolves to `Zoon.store`, while
+    /// the legacy store this migration exists for -- and the file
+    /// `eraseLegacyStoreFiles()` deletes -- is `default.store`. Opening the
+    /// wrong one read an empty store, marked the migration done, and then
+    /// erased the real history.
+    private static func legacyDiskConfiguration(url: URL) -> ModelConfiguration {
         ModelConfiguration(
-            "Zoon",
             schema: schema,
-            groupContainer: .none,
+            url: url,
             cloudKitDatabase: .none
         )
     }
@@ -147,13 +153,31 @@ enum PersistentStore {
         }
 
         let legacy = try ModelContainer(
-            for: schema, configurations: legacyDiskConfiguration()
+            for: schema, configurations: legacyDiskConfiguration(url: legacyURL)
+        )
+        let legacyNightCount = try legacy.mainContext.fetchCount(
+            FetchDescriptor<SleepNightRecord>()
         )
         // If this throws, it propagates out of this function before reaching
         // the migrationKey/eraseLegacyStoreFiles() calls below, so a failed
         // copy never marks the migration done or deletes the source -- the
         // next launch retries from scratch instead of losing data.
         try copy(from: legacy.mainContext, into: destinationContext)
+
+        // Erasing is irreversible, so it is gated on the destination now
+        // holding at least every night the source did. A short count means
+        // something went wrong that did not throw; the legacy file stays
+        // where it is and the migration is not marked done, so the next
+        // launch can try again.
+        let migratedNightCount = try destinationContext.fetchCount(
+            FetchDescriptor<SleepNightRecord>()
+        )
+        guard migratedNightCount >= legacyNightCount else {
+            logger.error(
+                "Legacy store migration copied \(migratedNightCount) of \(legacyNightCount) nights; leaving the legacy store in place"
+            )
+            return
+        }
 
         defaults.set(true, forKey: migrationKey)
         _ = eraseLegacyStoreFiles()

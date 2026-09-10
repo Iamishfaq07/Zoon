@@ -18,6 +18,7 @@ final class AudioSessionCoordinator {
         var recording: Bool
         var stop: () -> Void
         var resume: (() -> Void)?
+        var reset: (() -> Void)?
     }
 
     private init() {
@@ -39,7 +40,7 @@ final class AudioSessionCoordinator {
             Task { @MainActor in self?.interrupt() }
         })
         observers.append(center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.interrupt() }
+            Task { @MainActor in self?.reset() }
         })
     }
 
@@ -47,7 +48,8 @@ final class AudioSessionCoordinator {
         _ id: UUID,
         recording: Bool = false,
         onInterrupt: @escaping () -> Void,
-        onResume: (() -> Void)? = nil
+        onResume: (() -> Void)? = nil,
+        onReset: (() -> Void)? = nil
     ) throws {
         let others = owners.filter { $0.key != id }
         guard !others.values.contains(where: { $0.recording }) && (!recording || others.isEmpty) else {
@@ -60,7 +62,7 @@ final class AudioSessionCoordinator {
                 mode: recording ? .measurement : .default, options: recording ? [] : [.mixWithOthers])
             try session.setActive(true)
         }
-        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume)
+        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume, reset: onReset)
     }
 
     func release(_ id: UUID) {
@@ -71,6 +73,15 @@ final class AudioSessionCoordinator {
     private func interrupt() {
         let callbacks = owners.values.map(\.stop)
         for stop in callbacks { stop() }
+    }
+
+    /// Media services restarted underneath us: every engine and node the
+    /// owners held is gone, so there is nothing to resume to. Owners that
+    /// distinguish this from a pause get their reset handler; the rest are
+    /// interrupted as before.
+    private func reset() {
+        let callbacks = owners.values.map { $0.reset ?? $0.stop }
+        for callback in callbacks { callback() }
     }
 
     private func resumeInterrupted(shouldResume: Bool) {

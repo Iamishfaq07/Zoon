@@ -154,4 +154,35 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
         XCTAssertEqual(written, 1)
         XCTAssertEqual(store.allNights().count, 2)
     }
+
+    /// A restored night has to carry its key. `secondaryEpisodeAsleepMinutes`
+    /// looks episodes up by `nightKey`, so an imported row without one could
+    /// never be credited with the naps and split-sleep blocks restored from
+    /// the same archive -- they were on disk and counted for nothing.
+    func testImportNightsStampsNightKeySoRestoredEpisodesAreCredited() async throws {
+        let store = try makeStore()
+        let features = Fixture.night(daysAgo: 2)
+
+        XCTAssertEqual(store.importNights([features]), 1)
+        store.upsertEpisode(
+            id: "restored-episode",
+            nightKey: features.nightKey,
+            startDate: features.wakeTime.addingTimeInterval(4 * 3_600),
+            endDate: features.wakeTime.addingTimeInterval(5 * 3_600),
+            timezoneIdentifier: features.timeZoneIdentifier,
+            episodeType: .secondarySleep,
+            asleepMinutes: 45,
+            timeInBedMinutes: 60,
+            sourceName: "Fixture"
+        )
+
+        let record = try XCTUnwrap(store.night(on: features.date))
+        XCTAssertEqual(record.nightKey, features.nightKey)
+        XCTAssertEqual(
+            store.secondaryEpisodeAsleepMinutes(
+                forNightKey: record.nightKey ?? "", wakeDate: record.date, timeZone: features.timeZone
+            ),
+            45, accuracy: 0.001
+        )
+    }
 }

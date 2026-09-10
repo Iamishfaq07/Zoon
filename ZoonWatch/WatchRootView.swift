@@ -279,7 +279,7 @@ struct QuickLogView: View {
                         link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
                     }
                     logRow(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
-                        link.sendQuickAction(.behaviorTag(rawValue: "caffeineLate"))
+                        link.sendQuickAction(.caffeine())
                     }
                     logRow(id: "awakening", label: "Awakening", symbol: "moon.zzz") {
                         link.sendQuickAction(.midnightAwakening)
@@ -693,7 +693,7 @@ struct QuickLogActions: View {
         VStack(spacing: 5) {
             HStack(spacing: 5) {
                 action(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
-                    link.sendQuickAction(.behaviorTag(rawValue: "caffeineLate"))
+                    link.sendQuickAction(.caffeine())
                 }
                 action(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
                     link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
@@ -914,6 +914,16 @@ struct WaitingPage: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 10)
+    }
+}
+
+extension WatchQuickAction {
+    /// The Log buttons just say "Caffeine", but the journal keeps two tags:
+    /// `caffeine` and `caffeineLate` ("Caffeine after 4pm"). Pick by the hour
+    /// of the tap so a morning coffee is not logged as a late one.
+    static func caffeine(at date: Date = .now) -> WatchQuickAction {
+        let hour = Calendar.current.component(.hour, from: date)
+        return .behaviorTag(rawValue: hour >= 16 ? "caffeineLate" : "caffeine")
     }
 }
 

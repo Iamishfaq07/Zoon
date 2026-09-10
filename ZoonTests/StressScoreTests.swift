@@ -46,4 +46,33 @@ final class StressScoreTests: XCTestCase {
         XCTAssertEqual(score?.hrBaseline, 64)
         XCTAssertNil(score?.hrvBaseline)
     }
+
+    /// The spec maps HR deviation across ±20% and HRV deviation across ±35%
+    /// of baseline. A previous version divided by the half-width instead,
+    /// which silently narrowed both bands to ±10% and ±17.5%.
+    func testNormalizationMatchesTheDocumentedBands() {
+        let hrTenPercentOver = StressScore.compute(
+            avgHeartRate: 66, avgHRV: nil, hrBaseline: 60, hrvBaseline: nil,
+            sampledMinutes: 240, baselineNightCount: 10
+        )
+        XCTAssertEqual(Double(hrTenPercentOver?.percent ?? 0), 75, accuracy: 1)
+
+        let hrTwentyPercentOver = StressScore.compute(
+            avgHeartRate: 72, avgHRV: nil, hrBaseline: 60, hrvBaseline: nil,
+            sampledMinutes: 240, baselineNightCount: 10
+        )
+        XCTAssertEqual(hrTwentyPercentOver?.percent, 100)
+
+        let hrvThirtyFivePercentUnder = StressScore.compute(
+            avgHeartRate: nil, avgHRV: 32.5, hrBaseline: nil, hrvBaseline: 50,
+            sampledMinutes: 240, baselineNightCount: 10
+        )
+        XCTAssertEqual(hrvThirtyFivePercentUnder?.percent, 100)
+
+        let atBaseline = StressScore.compute(
+            avgHeartRate: 60, avgHRV: 50, hrBaseline: 60, hrvBaseline: 50,
+            sampledMinutes: 240, baselineNightCount: 10
+        )
+        XCTAssertEqual(atBaseline?.percent, 50)
+    }
 }

@@ -35,8 +35,8 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Inputs:** sleep minutes, computed sleep need, efficiency/WASO/wake rate, regularity index, habitual midpoint, optional staged Deep/REM pattern.
 - **Weights:** Duration 0.40; Continuity 0.30; Regularity 0.20; Timing 0.05; Stage Pattern 0.05.
 - **Normalization:** piecewise-linear anchors in `Shared/SleepIntelligenceScore.swift`; included weights renormalize to one.
-- **Baseline:** regularity and timing use the bounded habit window; stage pattern requires at least five staged prior nights and robust z-scores.
-- **Missing behavior:** unavailable components are excluded; `dataCompletenessPercent` and `MetricConfidence` disclose coverage. Recovery, HRV, RHR, temperature and breathing do not affect this score.
+- **Baseline:** regularity and timing use the bounded habit window; timing drift is measured on the 24-hour circle; stage pattern requires at least five staged prior nights and robust z-scores.
+- **Missing behavior:** unavailable components are excluded; `dataCompletenessPercent` and `MetricConfidence` disclose coverage, and confidence is insufficient below 70% completeness (Duration alone is never enough). Recovery, HRV, RHR, temperature and breathing do not affect this score.
 - **Bands:** Poor <50; Fair 50–69; Good 70–84; Excellent ≥85.
 - **Tests:** `SleepIntelligenceScoreTests`, `ScoreMeaningTests`, `FlagshipScoreTests`, `SleepVocabularyTests`.
 - **Allowed:** “Sleep Intelligence,” “Duration held the night back.” **Disallowed:** “Your body is ready,” diagnosis, or claiming stages are directly measured by Zoon.
@@ -78,7 +78,7 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 ## Recovery
 
 - **Question:** how prepared does the body appear for today?
-- **Inputs:** nightly HealthKit HRV SDNN in milliseconds, true RHR, wrist-temperature delta, respiration and sleep sufficiency as defined in `RecoveryScore`.
+- **Inputs:** nightly HealthKit HRV SDNN in milliseconds, true RHR, respiration and sleep sufficiency as defined in `RecoveryScore`. Wrist-temperature delta is not a Recovery input; it is surfaced through Vitals / Health Radar only.
 - **Baseline:** per-metric median of a recent window; minimum seven usable samples per metric. Confidence is insufficient below 7 nights, low at 7–13, moderate at 14–29, high at 30+ and is further limited by component coverage.
 - **Source continuity:** each nightly feature retains measurement provenance. A source switch is visible in Sensor Truth and must be considered before a trend claim.
 - **Missing behavior:** unavailable inputs are excluded and confidence falls; sleep alone cannot create a stateable Recovery score.
@@ -90,6 +90,7 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Purpose:** summarize activity context used by sleep need and guidance.
 - **Inputs:** workouts, active energy, duration, and available heart-rate context; output scale 0–21.
 - **Missing behavior:** no workouts/energy yields missing or low-evidence context rather than invented exertion.
+- **Estimate path:** without heart-rate zones, `StrainScore.estimate` maps active energy above a 250 kcal sedentary allowance (×0.07) plus exercise minutes (×0.15) through the same logarithmic curve as the zone path, flagged `isEstimate`. Anchors: 150 kcal/0 min → 0 (Light); 400 kcal/30 min → ≈9.6 (Moderate); 800 kcal/60 min → ≈13.5 (Strenuous); 1200 kcal/90 min → ≈15.3 (High).
 - **2026 path:** completed-workout `HKWorkoutZoneGroup` time-in-zone can improve intensity context only behind iOS/watchOS 27 availability checks and with an older-device fallback.
 - **Tests:** `StrainScoreTests`, workout summary/edge tests, multiple-workout and midnight cases.
 
@@ -124,7 +125,7 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 
 - **Purpose:** report sustained personal-baseline drift without diagnosing its cause.
 - **Inputs:** HRV, RHR, respiratory rate, SpO2, wrist temperature, sleep duration and Apple breathing classification.
-- **Baseline:** robust personal history, per-signal availability and repeated-night rules. Health Radar activates on multi-signal or sustained change rather than a single noisy value.
+- **Baseline:** robust personal history, per-signal availability and repeated-night rules. HRV status compares the most recent seven nights (including tonight) against a baseline of up to 90 nights that excludes that comparison week; the balanced range is at least ±5% of the baseline mean. Health Radar activates on multi-signal or sustained change rather than a single noisy value.
 - **Missing behavior:** each signal remains unavailable independently. Raw breathing percentage does not invent a clinical threshold.
 - **Tests:** `HRVStatusTests`, `VitalsStatusTests`, `HealthRadarTests`, `BreathingHealthTests`.
 
@@ -132,7 +133,7 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 
 - **Purpose:** display Apple’s public sleep-breathing measurement and classification conservatively.
 - **Rule:** Apple’s `HKAppleSleepingBreathingDisturbancesClassification` decides elevated/not-elevated when present. Unclassified raw percentages are trends only; Zoon does not invent severity cutoffs.
-- **Missing behavior:** unclassified and unavailable are distinct from not elevated.
+- **Missing behavior:** unclassified and unavailable are distinct from not elevated. The respiratory-rate baseline and its deviation require at least seven prior nights with a reading.
 - **Tests:** `BreathingHealthTests`, Sensor Truth and report tests.
 - **Allowed:** “Apple classified repeated nights as elevated; review in Health.” **Disallowed:** apnea diagnosis.
 

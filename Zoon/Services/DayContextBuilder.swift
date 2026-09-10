@@ -147,9 +147,14 @@ struct DayContextBuilder {
         )
 
         // --- HRV status ---------------------------------------------------
+        // The comparison week includes tonight; the baseline is everything
+        // before that week. Passing the full record as the baseline meant
+        // the same seven nights sat on both sides of the comparison, which
+        // pulled the baseline toward whatever the week was doing and dulled
+        // exactly the drift this status exists to notice.
         let hrvStatus = HRVStatus.evaluate(
-            recentHRV: Array(history.suffix(7)).compactMap(\.avgHRV),
-            longTermHRV: history.compactMap(\.avgHRV)
+            recentHRV: (history + [night]).suffix(7).compactMap(\.avgHRV),
+            longTermHRV: Array(history.dropLast(7)).compactMap(\.avgHRV)
         )
 
         // --- Chronotype ---------------------------------------------------

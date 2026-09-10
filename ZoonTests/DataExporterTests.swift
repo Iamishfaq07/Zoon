@@ -354,4 +354,49 @@ final class DataExporterTests: XCTestCase {
         XCTAssertNotNil(decoded.preferences)
         XCTAssertNil(decoded.preferences?.recoveryModeDate)
     }
+
+    // MARK: - CSV
+
+    /// `date` is the night's own local day, not the GMT day of the same
+    /// instant. Midnight in Tokyo is still the previous afternoon in UTC, so
+    /// a GMT formatter filed every Tokyo night under the wrong date.
+    func testCSVDateColumnUsesTheNightsOwnTimezone() throws {
+        // 2024-03-11 00:00 in Asia/Tokyo is 2024-03-10T15:00:00Z.
+        let tokyoMidnight = Date(timeIntervalSince1970: 1_710_082_800)
+        let night = SleepNightFeatures(
+            date: tokyoMidnight,
+            bedtime: tokyoMidnight.addingTimeInterval(-3_600),
+            wakeTime: tokyoMidnight.addingTimeInterval(7 * 3_600),
+            timeInBedMinutes: 480,
+            timeAsleepMinutes: 450,
+            sleepEfficiencyPercent: 93.75,
+            coreMinutes: 270,
+            deepMinutes: 80,
+            remMinutes: 100,
+            unspecifiedAsleepMinutes: 0,
+            awakeMinutes: 30,
+            wakeCount: 2,
+            sleepLatencyMinutes: 10,
+            avgHeartRate: 56,
+            minHeartRate: 48,
+            avgHRV: 55,
+            avgRespiratoryRate: 14.5,
+            avgSpO2: 97,
+            wristTempDeltaC: nil,
+            hrv7DayAvg: nil,
+            sleepDebtMinutes: nil,
+            lastWorkoutHoursBeforeBed: nil,
+            exerciseMinutesPreviousDay: nil,
+            sourceName: "Apple Watch",
+            timeZoneIdentifier: "Asia/Tokyo"
+        )
+
+        let lines = DataExporter.csv(nights: [night]).split(separator: "\n")
+        XCTAssertEqual(lines.count, 2)
+        let header = try XCTUnwrap(lines.first)
+        let row = try XCTUnwrap(lines.last)
+        XCTAssertTrue(header.hasSuffix(",timezone"), String(header))
+        XCTAssertTrue(row.hasPrefix("2024-03-11,"), String(row))
+        XCTAssertTrue(row.hasSuffix(",Asia/Tokyo"), String(row))
+    }
 }

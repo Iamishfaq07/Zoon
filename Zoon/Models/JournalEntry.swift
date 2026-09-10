@@ -329,17 +329,33 @@ enum CheckInDimension: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// One day's tagged behaviours, keyed to the night they preceded.
+///
+/// Two calendar days are involved in every row, and they must not be
+/// confused. The behaviours happened on day D (the alcohol, the late coffee,
+/// the hard session). The night they can affect is the one that *follows*
+/// D, and that night is keyed -- here and in `SleepNightRecord` -- by the
+/// morning it ends on, D+1. So the entry carrying "drank alcohol on Tuesday"
+/// has `date` = Wednesday. Writers (`JournalView`, the watch path in
+/// `SleepDataCoordinator.apply`) do that shift; readers join on `date` or
+/// `nightKey` and never shift again.
 @Model
 final class JournalEntry {
 
     /// Start-of-day for the morning the user woke up — the same key
     /// `SleepNightRecord` uses, so the join is trivial.
+    ///
+    /// Not the day the behaviours happened on: that is the calendar day
+    /// *before* this one. See the type comment.
     @Attribute(.unique) var date: Date
 
     /// `SleepNightFeatures.nightKey` for the night this entry is actually
-    /// about, captured at write time. Optional and backfill-safe, same
-    /// pattern as `SleepNightRecord.nightKey`: existing rows predate this
-    /// column and fall back to `date`-based matching.
+    /// about -- the one ending on the morning of `date` -- captured at write
+    /// time. Optional and backfill-safe, same pattern as
+    /// `SleepNightRecord.nightKey`: existing rows predate this column and
+    /// fall back to `date`-based matching. `nil` is also the normal value
+    /// for tonight's entry written this evening: the night has not been
+    /// slept yet, so it has no key, and `BehaviorObservationRecord` keeps
+    /// the answers under a provisional key until it does.
     ///
     /// `date` alone is unsafe as a night-matching key across a timezone
     /// change: it's computed via `Calendar.current` *at whatever moment the

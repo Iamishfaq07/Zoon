@@ -90,4 +90,31 @@ final class WatchQuickActionTests: XCTestCase {
             XCTAssertEqual(BehaviorTag(rawValue: raw), tag)
         }
     }
+
+    // MARK: - Which night a behaviour lands on
+
+    /// A behaviour tapped in the evening is about the night that follows,
+    /// and that night is keyed by the morning it ends on -- the 11th for a
+    /// tap at 21:00 on the 10th. See `JournalEntry.date`. A morning feeling
+    /// is about the night already slept and keeps its own day.
+    func testAnEveningBehaviourTargetsTheNightEndingTheNextMorning() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/London"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let occurredAt = try XCTUnwrap(
+            calendar.date(from: DateComponents(year: 2026, month: 5, day: 10, hour: 21))
+        )
+        let event = WatchActionEnvelope(
+            action: .behaviorTag(rawValue: "alcohol"), occurredAt: occurredAt, timeZone: zone
+        )
+
+        XCTAssertEqual(
+            BehaviorObservationRecord.provisionalNightKey(for: event.behaviorNightDate, calendar: event.calendar),
+            "pending:2026-05-11"
+        )
+        XCTAssertEqual(
+            BehaviorObservationRecord.provisionalNightKey(for: event.targetDate, calendar: event.calendar),
+            "pending:2026-05-10"
+        )
+    }
 }

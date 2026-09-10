@@ -186,14 +186,18 @@ summary, nothing is broken — that build uploaded fine, and the next run will
 mint a fresh certificate the way every run did before caching existed.
 
 *(If you're reading this because a run just failed with exactly that
-error: the TestFlight workflow now revokes the orphaned Development and
-Distribution certificates itself, on a cache miss, before Archive -- those
+error: run the TestFlight workflow again with the **`free_certificate_slot`**
+input ticked. The "Free a signing-certificate slot" step then revokes the
+*oldest* distribution certificate(s) needed to free exactly one slot -- those
 private keys died with previous runners and only the public halves were
-still occupying slots. Re-run the workflow. If it still fails with the
-same message, the API key does not have permission to manage certificates;
-go to
+still occupying slots. It never touches Apple Development certificates
+(those belong to people's Macs) and never empties a type. On every other
+run that step is a dry run that only prints the team's certificate state,
+so you can see what it would do before asking it to. If the run still fails
+with the same message, the API key does not have permission to manage
+certificates; go to
 [developer.apple.com/account/resources/certificates/list](https://developer.apple.com/account/resources/certificates/list)
-and revoke one old "Apple Development" certificate by hand, then run it
+and revoke one old "Apple Distribution" certificate by hand, then run it
 again. If `IOS_P12_PASSWORD` is set and the error still happens after a
 cache *hit*, the cached certificate itself is the one that got revoked
 somewhere; bump `ios-signing-identity-v1` to `-v2` in both places it
@@ -210,9 +214,15 @@ TestFlight app itself, a few minutes later.
 
 First build on a fresh App Store Connect record needs one manual step Apple
 doesn't let CI skip: **Export Compliance**. App Store Connect → TestFlight →
-the build → answer "Does your app use encryption?" — **No** is correct here
-(Zoon has no networking code, so nothing to declare). After that first
-answer, later builds in the same app don't ask again.
+the build → answer "Does your app use encryption?" Zoon has no networking
+code at all, but it *does* use encryption: the optional encrypted JSON export
+(More → Data) seals the file with CryptoKit AES-GCM under a PBKDF2-derived
+key, and that is used only for user-initiated local export files that never
+leave the device unless the user shares them. Answer the questionnaire
+truthfully on that basis and follow Apple's current export-compliance
+guidance for how to classify it — this document does not assert that Zoon
+is exempt. After that first answer, later builds in the same app don't ask
+again.
 
 Once all this exists, install TestFlight on your iPhone, accept the invite
 App Store Connect emails you, and every future push through the workflow puts

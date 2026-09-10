@@ -23,8 +23,23 @@ xcuserdata/
 ## Signing — never commit these. Xcode generates the app's entitlements file
 ## when you add the HealthKit capability; it's specific to your team.
 *.mobileprovision
+*.provisionprofile
 *.p12
+*.p8
+*.pem
+*.key
 *.certSigningRequest
+AuthKey_*
+ExportOptions.plist
+
+## Build products and logs — CI writes these next to the checkout.
+*.xcarchive
+*.xcresult
+*.log
+
+## Local secrets and tooling state
+.env
+.claude/
 
 ## macOS
 .DS_Store

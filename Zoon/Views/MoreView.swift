@@ -315,8 +315,11 @@ struct MoreView: View {
     private var privacyCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Privacy", systemImage: "lock.shield.fill")
+            // Exports are plain JSON unless the toggle above is on; say which.
             privacyRow("wifi.slash", "No network calls",
-                       "Zoon contains no URLSession and no analytics. Health data stays on this device unless you explicitly export an encrypted file.")
+                       encryptBackup
+                           ? "Zoon contains no URLSession and no analytics. Health data stays on this device unless you explicitly export an encrypted file."
+                           : "Zoon contains no URLSession and no analytics. Health data stays on this device unless you explicitly export a file. Exports are unencrypted unless you turn on Encrypt JSON backup.")
             privacyRow("iphone", "Processed on device",
                        "Every score, insight, and sound is computed locally.")
             privacyRow("eye.slash", "Read-only Health access",

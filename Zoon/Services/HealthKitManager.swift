@@ -358,6 +358,22 @@ final class HealthKitManager {
         activeObservers.removeAll()
     }
 
+    /// Counterpart to the `enableBackgroundDelivery` call in `register`.
+    /// `stopObserving()` only ends the in-process queries; the system-level
+    /// delivery registration outlives them and would keep waking the app
+    /// for HealthKit changes after the user asked for everything to go.
+    /// `startObserving` re-enables it per type the next time it runs.
+    func disableBackgroundDelivery() {
+        store.disableAllBackgroundDelivery { [weak self] _, error in
+            guard let error else { return }
+            Task { @MainActor in
+                self?.logger.notice(
+                    "Background delivery could not be disabled: \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+    }
+
     // MARK: - Sleep samples
 
     /// Anchored fetch of sleep samples.

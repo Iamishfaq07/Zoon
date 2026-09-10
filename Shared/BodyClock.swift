@@ -147,9 +147,32 @@ struct BodyClock: Codable, Hashable, Sendable {
 
     /// How far a proposed bedtime sits from the window's opening, in minutes.
     /// Positive means later than the body wants.
+    ///
+    /// The window is resolved for the *night the bedtime belongs to*, not the
+    /// night beginning on the evening of its calendar date: a 00:30 bedtime
+    /// is part of the night that began the previous evening, so comparing it
+    /// against the following night's onset (as `window(for: bedtime)` alone
+    /// would) read a 90-minute-late bedtime as 1350 minutes *early*. A
+    /// bedtime before noon is therefore matched to the previous evening's
+    /// window, and the result is wrapped onto the 24-hour circle so it is
+    /// always the shorter signed distance.
     func drift(of bedtime: Date, calendar: Calendar = .current) -> Double? {
-        guard let window = window(for: bedtime, calendar: calendar) else { return nil }
-        return bedtime.timeIntervalSince(window.start) / 60
+        let hour = calendar.component(.hour, from: bedtime)
+        let nightDate: Date
+        if hour < 12 {
+            guard let previousDay = calendar.date(byAdding: .day, value: -1, to: bedtime) else { return nil }
+            nightDate = previousDay
+        } else {
+            nightDate = bedtime
+        }
+        guard let window = window(for: nightDate, calendar: calendar) else { return nil }
+        var drift = bedtime.timeIntervalSince(window.start) / 60
+        if drift > 720 {
+            drift -= 1440
+        } else if drift < -720 {
+            drift += 1440
+        }
+        return drift
     }
 
     // MARK: - Computation

@@ -46,11 +46,16 @@ enum SourcePriority: Int, Comparable, Sendable {
         bundleIdentifier: String?,
         sourceName: String?
     ) -> SourcePriority {
-        if let hardwareVersion, hardwareVersion.localizedCaseInsensitiveContains("Watch") {
+        // productType for a paired Apple Watch is values like "Watch7,4".
+        // iPhone product types contain "iPhone", never "Watch". A third-party
+        // app running *on* the Watch (AutoSleep, Pillow) reports the same
+        // hardware string, so the hardware alone is not enough: the sample
+        // must also be Apple's own write, which is the `com.apple.health`
+        // bundle prefix `WearableSource` matches on.
+        let isAppleBundle = bundleIdentifier?.lowercased().hasPrefix("com.apple.health") == true
+        if isAppleBundle, let hardwareVersion, hardwareVersion.localizedCaseInsensitiveContains("Watch") {
             return .appleWatch
         }
-        // productType for a paired Apple Watch is values like "Watch7,4".
-        // iPhone product types contain "iPhone", never "Watch".
         let wearable = WearableSource.identify(
             bundleIdentifier: bundleIdentifier,
             name: sourceName

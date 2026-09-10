@@ -52,6 +52,13 @@ enum TrendEngine {
             }
         }
 
+        /// A time-of-day metric. Its values are *signed clock offsets* (see
+        /// `value`: 23:30 is -30), so dividing a change or a spread by the
+        /// typical value is meaningless -- a 23:59 sleeper's typical is -1,
+        /// and every minute of spread reads as 100%. Callers comparing
+        /// across metrics scale these by a fixed hour instead.
+        var isClockTime: Bool { self == .bedtime }
+
         /// Minimum absolute or relative change before a shift is reported at
         /// all -- see the type doc for why this varies per metric.
         ///
@@ -141,6 +148,17 @@ enum TrendEngine {
             ))
         }
 
-        return results.sorted { abs($0.delta / max(abs($0.previousMedian), 1)) > abs($1.delta / max(abs($1.previousMedian), 1)) }
+        return results.sorted { relativeChange($0) > relativeChange($1) }
+    }
+
+    /// Size of a change relative to where it started, for ranking results in
+    /// different units against each other. Time-of-day metrics are scaled by
+    /// a fixed hour rather than by their (signed, near-zero) clock offset --
+    /// see `Metric.isClockTime`.
+    private static func relativeChange(_ result: Result) -> Double {
+        if result.metric.isClockTime {
+            return abs(result.delta) / 60
+        }
+        return abs(result.delta / max(abs(result.previousMedian), 1))
     }
 }

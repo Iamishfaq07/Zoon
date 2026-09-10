@@ -137,6 +137,16 @@ enum ModelHealth {
     static let personalisedNights = 28
     static let wellEstablishedNights = 60
 
+    /// Sleep need is graded on `LearnedSleepNeed`'s own ladder, and on the
+    /// nights that *qualified* for it rather than every night held. The
+    /// learned figure does not exist at all below
+    /// `LearnedSleepNeed.minimumQualifyingNights` and is not fully trusted
+    /// until `fullConfidenceNights` -- calling it "personalised" at
+    /// twenty-eight nights, two short of the first learned estimate, was a
+    /// report contradicting the engine it summarised.
+    static let personalisedSleepNeedNights = LearnedSleepNeed.minimumQualifyingNights
+    static let wellEstablishedSleepNeedNights = LearnedSleepNeed.fullConfidenceNights
+
     /// Settled claims -- `.associated` or stronger -- behind "what your
     /// habits do".
     static let establishingClaims = 1
@@ -185,6 +195,9 @@ enum ModelHealth {
     ///
     /// - Parameters:
     ///   - nightCount: nights Zoon holds at all.
+    ///   - qualifyingSleepNeedNights: nights that cleared `LearnedSleepNeed`'s
+    ///     quality filter -- `LearnedSleepNeed.qualifyingNightCount`, which is
+    ///     what the learned need is actually built from.
     ///   - nightsWithRecoverySignal: nights carrying an HRV reading -- what
     ///     the recovery baseline is actually built from, which is never the
     ///     same as the night count.
@@ -198,6 +211,7 @@ enum ModelHealth {
     ///     comparison, or nil when none was supported.
     static func assess(
         nightCount: Int,
+        qualifyingSleepNeedNights: Int,
         nightsWithRecoverySignal: Int,
         nightsWithBodySignals: Int,
         coverage: Double?,
@@ -210,12 +224,12 @@ enum ModelHealth {
             Assessment(
                 area: .sleepNeed,
                 stage: stage(
-                    for: nightCount,
+                    for: qualifyingSleepNeedNights,
                     establishing: establishingNights,
-                    personalised: personalisedNights,
-                    wellEstablished: wellEstablishedNights
+                    personalised: personalisedSleepNeedNights,
+                    wellEstablished: wellEstablishedSleepNeedNights
                 ),
-                basis: "From \(nights(nightCount))"
+                basis: "From \(nights(qualifyingSleepNeedNights)) that qualified"
             ),
             Assessment(
                 area: .recoveryBaseline,

@@ -22,7 +22,7 @@ struct PastNightDetailView: View {
             .padding(.bottom, 28)
         }
         .nightBackground()
-        .navigationTitle(night.date.formatted(.dateTime.weekday(.wide).month().day()))
+        .navigationTitle(night.dayString())
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -70,8 +70,8 @@ struct PastNightDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Timing & Quality", systemImage: "clock")
 
-            row("Bedtime", night.bedtime.formatted(.dateTime.hour().minute()))
-            row("Wake time", night.wakeTime.formatted(.dateTime.hour().minute()))
+            row("Bedtime", night.clockString(night.bedtime))
+            row("Wake time", night.clockString(night.wakeTime))
             row("Time in bed", SleepNightFeatures.formatMinutes(night.timeInBedMinutes))
             row("Efficiency", "\(Int(night.sleepEfficiencyPercent))%")
             if let latency = night.sleepLatencyMinutes {

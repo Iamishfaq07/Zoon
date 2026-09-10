@@ -217,6 +217,10 @@ struct ModelHealthView: View {
 
         return ModelHealth.assess(
             nightCount: nights.count,
+            // The learned need's own count, read off the day context the
+            // coordinator already built -- `state` is published before
+            // `recentNights`, so it is there by the time this task runs.
+            qualifyingSleepNeedNights: coordinator.state.context?.learnedSleepNeed.qualifyingNightCount ?? 0,
             nightsWithRecoverySignal: nights.filter { $0.avgHRV != nil }.count,
             nightsWithBodySignals: nights.filter { $0.restingHeartRate != nil }.count,
             coverage: coverage(of: nights),

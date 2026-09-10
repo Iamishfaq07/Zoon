@@ -12,7 +12,10 @@ struct SleepDebtView: View {
     var zoomNamespace: Namespace.ID? = nil
     var zoomID: String? = nil
 
-    private var currentDebt: Double { coordinator.state.context?.night.sleepDebtMinutes ?? 0 }
+    /// `nil` when the latest night has no estimate yet; the arc and headline
+    /// say so rather than drawing a reassuring-looking zero.
+    private var currentDebtMinutes: Double? { coordinator.state.context?.night.sleepDebtMinutes }
+    private var currentDebt: Double { currentDebtMinutes ?? 0 }
 
     private var band: (label: String, tint: Color) {
         switch currentDebt {
@@ -54,15 +57,33 @@ struct SleepDebtView: View {
     /// V8: the reservoir arc replaces the number-in-a-card. Same
     /// `sleepDebtMinutes` value; the week-ago figure comes from the same
     /// history the trend chart below plots.
+    @ViewBuilder
     private var hero: some View {
-        LunarReservoir(debtMinutes: currentDebt, weekAgoMinutes: debtWeekAgo)
+        if currentDebtMinutes != nil {
+            LunarReservoir(debtMinutes: currentDebt, weekAgoMinutes: debtWeekAgo)
+                .padding(.vertical, 8)
+        } else {
+            VStack(spacing: 6) {
+                Text("—")
+                    .font(Theme.numeral(52))
+                Text("Not estimated yet")
+                    .font(Theme.label(13))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
+        }
     }
 
+    /// The night seven calendar days before the latest one, looked up by
+    /// date rather than by position -- a gap in the history would otherwise
+    /// make "a week ago" silently mean "eight nights ago".
     private var debtWeekAgo: Double? {
         let nights = coordinator.recentNights
-        guard nights.count >= 8 else { return nil }
-        return nights[nights.count - 8].sleepDebtMinutes
+        guard let latest = nights.last,
+              let target = Calendar.current.date(byAdding: .day, value: -7, to: latest.date)
+        else { return nil }
+        return nights.nearest(toDay: target)?.sleepDebtMinutes
     }
 
     private var recentNightsCard: some View {
@@ -75,7 +96,7 @@ struct SleepDebtView: View {
                         .font(Theme.label(12))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0) + " short")
+                    Text(night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) + " short" } ?? "Not estimated")
                         .font(Theme.label(12, weight: .semibold))
                         .monospacedDigit()
                 }
@@ -88,7 +109,9 @@ struct SleepDebtView: View {
 
     @ViewBuilder
     private var trendChart: some View {
-        let nights = Array(coordinator.recentNights.suffix(30))
+        // Nights without an estimate are left out rather than plotted as 0,
+        // which would draw a fake recovery into the line.
+        let nights = coordinator.recentNights.suffix(30).filter { $0.sleepDebtMinutes != nil }
         if nights.count >= 3 {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(title: "Running balance, last 30 nights", systemImage: "chart.line.uptrend.xyaxis")

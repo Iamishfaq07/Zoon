@@ -76,7 +76,10 @@ struct WhatChangedCard: View {
             let word = change.delta < 0 ? "steadier" : "more scattered"
             return "\(Int(abs(change.delta).rounded()))m \(word)"
         case "debt":
-            return "\(signedMinutes(-change.delta)) owed"
+            // `delta` is after − before on a series where positive means
+            // minutes owed, so a positive delta is *more* owed -- the same
+            // reading `WhatChangedStream` gives it ("Up ... from last week").
+            return "\(signedMinutes(change.delta)) owed"
         default:
             return signedMinutes(change.delta)
         }

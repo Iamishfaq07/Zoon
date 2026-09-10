@@ -26,6 +26,16 @@ struct WatchActionEnvelope: Codable, Sendable {
         calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .gmt
         return calendar
     }
+
+    /// The night a behaviour logged at `targetDate` belongs to: the one that
+    /// follows the day it happened on, keyed by the morning it ends on. A
+    /// tag pressed at 21:00 on the 10th is about the night ending on the
+    /// 11th. In the watch's own timezone at the time, not the phone's now.
+    /// Only meaningful for `.behaviorTag` and `.behaviorAnswer`; a morning
+    /// feeling or a midnight awakening is about the night already slept.
+    var behaviorNightDate: Date {
+        calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+    }
 }
 
 /// Retained across data erasure so an offline Watch cannot resurrect erased logs.

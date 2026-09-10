@@ -107,7 +107,7 @@ final class UncertaintyForecastTests: XCTestCase {
 
     func testForecastAllSortsMostPredictableFirst() {
         let forecasts = UncertaintyForecast.forecastAll(nights: nights(21))
-        let relative = forecasts.map { $0.spread / max(abs($0.typical), 1) }
+        let relative = forecasts.map(UncertaintyForecast.relativeSpread)
         XCTAssertEqual(relative, relative.sorted())
     }
 

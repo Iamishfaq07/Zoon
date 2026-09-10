@@ -121,7 +121,18 @@ final class SnoreDetector {
             }
         }
 
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            // Undo the partial start. Leaving the tap installed would make
+            // the next `start()` install a second one on the same bus, which
+            // crashes; leaving the owner acquired would block every other
+            // audio feature until relaunch.
+            input.removeTap(onBus: 0)
+            soundClassifier.stop()
+            AudioSessionCoordinator.shared.release(audioOwner)
+            throw error
+        }
         isRunning = true
         logger.info("Snore detection started")
     }

@@ -248,6 +248,8 @@ final class SoundscapeEngine {
                 self?.pauseForInterruption()
             } onResume: { [weak self] in
                 self?.resumeAfterInterruption()
+            } onReset: { [weak self] in
+                self?.stopAfterMediaServicesReset()
             }
 
             if sound.fileName != nil {
@@ -407,7 +409,7 @@ final class SoundscapeEngine {
         guard wasInterrupted else { return }
         wasInterrupted = false
         interruptionMessage = nil
-        if playing != nil, player != nil || filePlayer != nil {
+        if playing != nil, player != nil || filePlayer != nil, restartEnginesIfNeeded() {
             player?.play()
             filePlayer?.play()
             for layer in scenePlayers {
@@ -418,6 +420,33 @@ final class SoundscapeEngine {
         }
         guard let pausedSound else { return }
         play(pausedSound, toggle: false)
+    }
+
+    /// An interruption can stop an `AVAudioEngine` underneath its paused
+    /// player node, and `play()` on a node whose engine is not running
+    /// crashes. Restart any stopped engine first (this one and each scene
+    /// layer's); `false` means the caller should rebuild via `play` instead.
+    private func restartEnginesIfNeeded() -> Bool {
+        for layer in scenePlayers {
+            guard layer.restartEnginesIfNeeded() else { return false }
+        }
+        guard let engine, !engine.isRunning else { return true }
+        do {
+            try engine.start()
+            return true
+        } catch {
+            logger.error("Could not restart engine after interruption: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    /// Media services were reset: every engine and node is gone, so there is
+    /// nothing to pause or resume. Tear down fully rather than sit in a
+    /// "will resume" state that can never fire.
+    private func stopAfterMediaServicesReset() {
+        guard playing != nil || pausedSound != nil else { return }
+        stop()
+        interruptionMessage = "Audio was reset by the system. Tap a sound to start again."
     }
 
     /// Sleep-onset cue: as overnight HR falls below resting, turn the

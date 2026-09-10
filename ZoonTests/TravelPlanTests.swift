@@ -224,6 +224,51 @@ final class TravelPlanTests: XCTestCase {
         }
     }
 
+    /// The repayment nights print a *destination-local* bedtime: the home
+    /// onset converted onto the destination clock, then moved toward the
+    /// destination's normal bedtime by the preparation already done plus
+    /// Autopilot's cap per night.
+    ///
+    /// By hand, for this fixture: London -> Tokyo is +8 in July; the clock's
+    /// onset is 23:00 (midpoint 3, eight hours: -1); nine days' notice gives
+    /// the full three preparation days at 40 minutes, i.e. 2 h. Unshifted,
+    /// 23:00 London reads 07:00 in Tokyo. After 2 h of preparation and the
+    /// first night's 20 minutes there are 8 - 2 - 1/3 = 5 h 40 still to go,
+    /// so the first night is 23:00 + 5:40 = 04:40 local, then 04:20, then
+    /// 04:00. Before this fix the step said 22:40 -- a home-clock time.
+    func testRepaymentNightsPrintDestinationLocalBedtimes() throws {
+        let plan = try XCTUnwrap(TravelPlan.plan(
+            for: trip(to: tokyo), bodyClock: clock(), now: date(day: 1)
+        ))
+        XCTAssertEqual(plan.preparationDays, 3, "the arithmetic below assumes 2 h of preparation")
+
+        let first = try XCTUnwrap(plan.steps.first { $0.when == "First night there" })
+        XCTAssertTrue(
+            first.action.contains("around \(BodyClock.formatted(hour: 4 + 40.0 / 60))."),
+            first.action
+        )
+        let third = try XCTUnwrap(plan.steps.first { $0.when == "Night 3 there" })
+        XCTAssertTrue(third.action.contains("around \(BodyClock.formatted(hour: 4))."), third.action)
+        XCTAssertFalse(first.action.contains(BodyClock.formatted(hour: -1 - 20.0 / 60)),
+                       "22:40 is the unconverted home-clock time this used to print")
+    }
+
+    /// Westward the conversion runs the other way: 23:00 London is 18:00
+    /// New York (-5); two preparation days at an hour each bring that to
+    /// 20:00, and the first night's 20 minutes to 20:20.
+    func testRepaymentNightsConvertWestwardToo() throws {
+        let plan = try XCTUnwrap(TravelPlan.plan(
+            for: trip(to: newYork), bodyClock: clock(), now: date(day: 1)
+        ))
+        XCTAssertEqual(plan.preparationDays, 2, "the arithmetic below assumes 2 h of preparation")
+
+        let first = try XCTUnwrap(plan.steps.first { $0.when == "First night there" })
+        XCTAssertTrue(
+            first.action.contains("around \(BodyClock.formatted(hour: -(3 + 40.0 / 60)))."),
+            first.action
+        )
+    }
+
     // MARK: - The flight
 
     func testLandingInTheMorningMeansSleepingOnTheFlight() throws {

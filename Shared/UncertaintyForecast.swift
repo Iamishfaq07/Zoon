@@ -146,10 +146,21 @@ enum UncertaintyForecast {
             .sorted { relativeSpread($0) < relativeSpread($1) }
     }
 
-    private static func relativeSpread(_ forecast: Forecast) -> Double {
+    /// Spread as a fraction of the typical value, so metrics in different
+    /// units rank against each other. Internal (not private) so the test
+    /// can assert the ordering with the same rule rather than a copy of it.
+    static func relativeSpread(_ forecast: Forecast) -> Double {
+        // Bedtime's typical is a signed clock offset (23:30 is -30), which
+        // is not a scale anything can be relative to: a 23:59 sleeper would
+        // read every minute of spread as 100%. An hour of spread counts as
+        // 1.0 instead -- the same "as unpredictable as a 100% relative
+        // spread" reading the other metrics get.
+        if forecast.metric.isClockTime {
+            return forecast.spread / 60
+        }
         // Guarded against a typical value of zero, which is legitimate for
         // sleep debt on someone fully rested.
-        forecast.spread / max(abs(forecast.typical), 1)
+        return forecast.spread / max(abs(forecast.typical), 1)
     }
 
     /// Confidence rises with how many nights back the interval, and stops

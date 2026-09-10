@@ -172,4 +172,17 @@ final class BreathingHealthTests: XCTestCase {
         XCTAssertEqual(health.baselineRespiratoryRate ?? 0, 14.0, accuracy: 0.001)
         XCTAssertEqual(health.respiratoryDeviationPercent ?? 0, 20.0, accuracy: 0.5)
     }
+
+    /// A median of a few nights is not a baseline. Below seven prior
+    /// respiratory samples there is no baseline and no deviation, rather
+    /// than a confident-looking percentage against three nights.
+    func testRespiratoryBaselineNeedsSevenPriorSamples() {
+        var nights = (1..<7).map { Fixture.night(daysAgo: $0, avgRespiratoryRate: 14.0) }
+        nights.append(Fixture.night(daysAgo: 0, avgRespiratoryRate: 16.8))
+        let health = BreathingHealth.compute(nights: nights)
+
+        XCTAssertEqual(health.tonightRespiratoryRate, 16.8)
+        XCTAssertNil(health.baselineRespiratoryRate)
+        XCTAssertNil(health.respiratoryDeviationPercent)
+    }
 }

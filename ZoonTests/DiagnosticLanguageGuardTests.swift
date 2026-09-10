@@ -87,4 +87,42 @@ final class DiagnosticLanguageGuardTests: XCTestCase {
         XCTAssertTrue(DiagnosticLanguageGuard.rejects("Your poor sleep was caused by late caffeine."))
         XCTAssertTrue(DiagnosticLanguageGuard.rejects("Deep sleep is the first thing to suffer here."))
     }
+
+    /// The connectives a model reaches for once it has been told not to say
+    /// "caused". Each is an ordinary sentence, not a list entry pasted into
+    /// a template.
+    func testCatchesPlainCausalConnectives() {
+        let overclaims = [
+            "Your recovery dropped because of the late workout.",
+            "Lower HRV due to alcohol.",
+            "Late caffeine led to the extra awakenings.",
+            "Screen time leads to lighter sleep.",
+            "The early bedtime resulted in more deep sleep.",
+            "Skipping the nap results in a longer night.",
+            "Alcohol is the reason your REM fell.",
+            "The flight was the reason you woke early.",
+            "This explains why you felt groggy.",
+            "The late meal made your night restless.",
+            "Stress caused the short night.",
+        ]
+        for text in overclaims {
+            XCTAssertTrue(DiagnosticLanguageGuard.overclaimsCausation(text), text)
+        }
+    }
+
+    /// Whole words only. An honest reason for withholding a claim, and a
+    /// word that merely contains a connective, must both keep passing --
+    /// a guard that rejected them would push copy toward vaguer phrasing,
+    /// not safer phrasing.
+    func testHonestReasonsAndWordsContainingAConnectivePass() {
+        let allowed = [
+            "Zoon can't say yet because your history is short.",
+            "Not enough nights resembled tomorrow for a forecast.",
+            "The two moved together; nothing here says which came first.",
+            "Your bedtime was later, alongside a lower recovery.",
+        ]
+        for text in allowed {
+            XCTAssertFalse(DiagnosticLanguageGuard.overclaimsCausation(text), text)
+        }
+    }
 }

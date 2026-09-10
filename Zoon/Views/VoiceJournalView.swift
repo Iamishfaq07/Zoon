@@ -12,5 +12,6 @@ struct VoiceJournalView: View {
             if let error = recorder.error { Text(error).font(.caption).foregroundStyle(.orange) }
             Spacer()
         }.padding().nightBackground().navigationTitle("Voice journal").navigationBarTitleDisplayMode(.inline)
+            .onDisappear { recorder.stop() }
     }
 }
