@@ -13,8 +13,8 @@ struct SleepFingerprint: Equatable {
         let sample = Array(nights.suffix(days))
         guard sample.count >= 3 else { return nil }
 
-        let bedtimes = sample.map { minutesSinceMidnight($0.bedtime) }
-        let timingMAD = circularMAD(bedtimes)
+        let bedtimes = sample.map { minutesSinceMidnight($0.bedtime, timeZone: $0.timeZone) }
+        let timingMAD = Statistics.circularMedianAbsoluteDeviation(bedtimes) ?? 0
         let durations = sample.map(\.timeAsleepMinutes)
         let durationMAD = Statistics.medianAbsoluteDeviation(durations) ?? 0
         let durationMedian = max(1, Statistics.median(durations) ?? 0)
@@ -41,17 +41,10 @@ struct SleepFingerprint: Equatable {
         min(1, max(0, 1 - mad / max(0.001, scale)))
     }
 
-    private static func minutesSinceMidnight(_ date: Date) -> Double {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+    private static func minutesSinceMidnight(_ date: Date, timeZone: TimeZone) -> Double {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let c = calendar.dateComponents([.hour, .minute], from: date)
         return Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
-    }
-
-    private static func circularMAD(_ values: [Double]) -> Double {
-        guard let centre = values.sorted().dropFirst(max(0, values.count / 2 - 1)).first else { return 0 }
-        let distances = values.map { raw -> Double in
-            let delta = abs(raw - centre).truncatingRemainder(dividingBy: 1440)
-            return min(delta, 1440 - delta)
-        }
-        return Statistics.medianAbsoluteDeviation(distances) ?? 0
     }
 }

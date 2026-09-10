@@ -222,9 +222,11 @@ struct DayContextBuilder {
             chronotype: chronotype,
             regularity: regularity,
             healthRadar: HealthRadar.detect(nights: fullHistory),
-            cardiovascularAge: CardiovascularAge.compute(
-                nights: fullHistory, chronologicalAge: inputs.age
-            ),
+            // Keep the legacy estimator internal for compatibility, but never
+            // surface an unvalidated biological-age claim to users. A future
+            // Baseline & Resilience view can replace it with longitudinal,
+            // provenance-aware trends.
+            cardiovascularAge: nil,
             bodyClock: bodyClock,
             hourlyHeartRate: inputs.hourlyHeartRate,
             cognitiveEnergy: cognitiveEnergy,

@@ -111,6 +111,32 @@ enum Statistics {
         return minutes >= 18 * 60 ? minutes - 24 * 60 : minutes
     }
 
+    /// Smallest distance between two wall-clock minutes on a 24-hour circle.
+    /// Keeping this in the shared statistics layer prevents midnight crossings
+    /// from being treated as a 23-hour change by individual engines.
+    static func circularDistance(_ lhs: Double, _ rhs: Double, period: Double = 1440) -> Double {
+        let delta = abs((lhs - rhs).truncatingRemainder(dividingBy: period))
+        return min(delta, period - delta)
+    }
+
+    /// Robust circular median absolute distance. The centre is the observed
+    /// point that minimises total circular distance (a circular medoid), then
+    /// dispersion is the median distance from that centre. This is the
+    /// circular analogue of MAD and remains stable around midnight.
+    static func circularMedianAbsoluteDeviation(_ values: [Double], period: Double = 1440) -> Double? {
+        guard !values.isEmpty else { return nil }
+        let normalized = values.map { value in
+            let remainder = value.truncatingRemainder(dividingBy: period)
+            return remainder >= 0 ? remainder : remainder + period
+        }
+        guard let centre = normalized.min(by: { candidate, other in
+            let candidateTotal = normalized.reduce(0) { $0 + circularDistance($1, candidate, period: period) }
+            let otherTotal = normalized.reduce(0) { $0 + circularDistance($1, other, period: period) }
+            return candidateTotal < otherTotal
+        }) else { return nil }
+        return median(normalized.map { circularDistance($0, centre, period: period) })
+    }
+
     /// Percentile-bootstrap 95% confidence interval for the median of
     /// `deltas` (e.g. paired exposed-minus-matched differences): resamples
     /// `deltas` with replacement `iterations` times, takes the median of

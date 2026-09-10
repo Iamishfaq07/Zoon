@@ -22,8 +22,6 @@ struct MoreView: View {
     @State private var showingRestorePreview = false
     @State private var restoring = false
     @State private var importMessage: String?
-    @State private var iCloudStatus: ICloudArchiveSync.Status = .unavailable
-    @State private var iCloudMessage: String?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -232,60 +230,8 @@ struct MoreView: View {
             }
             .buttonStyle(.plain)
 
-            iCloudBackupRows
         }
         .glassCard()
-        .onAppear { iCloudStatus = ICloudArchiveSync.status() }
-    }
-
-    @ViewBuilder
-    private var iCloudBackupRows: some View {
-        Divider().padding(.vertical, 4)
-        Text("iCloud")
-            .font(Theme.label(12, weight: .semibold))
-            .foregroundStyle(.secondary)
-        Text(iCloudStatusLine)
-            .font(Theme.text(10))
-            .foregroundStyle(.tertiary)
-            .fixedSize(horizontal: false, vertical: true)
-        if let iCloudMessage {
-            Text(iCloudMessage)
-                .font(.caption)
-                .foregroundStyle(Theme.Metric.recoveryMid)
-        }
-        Button {
-            backupToICloud()
-        } label: {
-            actionRow(
-                "Back up to iCloud",
-                "Encrypted copy in your iCloud Drive. Passphrase is not stored.",
-                "icloud.and.arrow.up",
-                Theme.Metric.sleep
-            )
-        }
-        .buttonStyle(.plain)
-        Button {
-            restoreFromICloud()
-        } label: {
-            actionRow(
-                "Restore from iCloud",
-                "Same file, same passphrase as export",
-                "icloud.and.arrow.down",
-                Theme.Metric.hrv
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var iCloudStatusLine: String {
-        switch iCloudStatus {
-        case .unavailable:
-            "iCloud isn't available on this device. Sign in to iCloud, or use Export."
-        case .empty:
-            "No Zoon backup in iCloud yet. This copy lives in your iCloud Drive, not on a Zoon server."
-        case .present(let modified, let bytes):
-            "Last backup \(modified.formatted(.relative(presentation: .named))), \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))."
-        }
     }
 
     private func actionRow(_ title: String, _ detail: String, _ symbol: String, _ tint: Color) -> some View {
@@ -342,51 +288,6 @@ struct MoreView: View {
         }
     }
 
-    private func jsonArchiveData() throws -> Data {
-        let archive = DataExporter.archive(
-            nights: coordinator.nightsForRepair(),
-            journal: coordinator.journal.allEntries(),
-            naps: naps.naps,
-            goalMinutes: preferences.sleepGoalMinutes,
-            preferences: preferences,
-            snoreSummaries: SnoreStore().nights,
-            wristTemperatures: coordinator.absoluteWristTemperaturesForExport(),
-            episodes: coordinator.episodesForExport(),
-            experiments: coordinator.experiments.outcomes,
-            soundEvents: SoundEventStore().recentEvents,
-            behaviorObservations: coordinator.behaviorObservationsForExport(),
-            evidenceHistory: coordinator.evidenceHistoryForExport(),
-            personalSetup: setup.value
-        )
-        let plain = try DataExporter.jsonData(archive)
-        return try ArchiveCipher.seal(plain, passphrase: archivePassphrase)
-    }
-
-    private func backupToICloud() {
-        do {
-            try ICloudArchiveSync.write(try jsonArchiveData())
-            iCloudStatus = ICloudArchiveSync.status()
-            iCloudMessage = nil
-            Haptics.success()
-        } catch {
-            iCloudMessage = error.localizedDescription
-        }
-    }
-
-    private func restoreFromICloud() {
-        do {
-            let data = try ICloudArchiveSync.read()
-            guard data.count <= 64 * 1024 * 1024 else { throw DataExporter.ImportError.unreadable }
-            let plain = ArchiveCipher.isEncrypted(data)
-                ? try ArchiveCipher.open(data, passphrase: archivePassphrase)
-                : data
-            pendingArchive = try DataExporter.decode(plain)
-            showingRestorePreview = true
-            iCloudMessage = nil
-        } catch {
-            iCloudMessage = error.localizedDescription
-        }
-    }
 
     private func handleImport(_ result: Result<URL, Error>) {
         do {
@@ -415,7 +316,7 @@ struct MoreView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Privacy", systemImage: "lock.shield.fill")
             privacyRow("wifi.slash", "No network calls",
-                       "Zoon contains no URLSession and no analytics. An optional encrypted iCloud backup, if you turn it on, copies a file to your iCloud Drive — never to a Zoon server.")
+                       "Zoon contains no URLSession and no analytics. Health data stays on this device unless you explicitly export an encrypted file.")
             privacyRow("iphone", "Processed on device",
                        "Every score, insight, and sound is computed locally.")
             privacyRow("eye.slash", "Read-only Health access",
