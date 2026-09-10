@@ -24,8 +24,12 @@ final class SleepFingerprintTests: XCTestCase {
         XCTAssertEqual(mad ?? .nan, 5, accuracy: 0.001)
     }
 
+    /// 23:00 against 11:00 -- half a day apart on the clock circle. The
+    /// medoid centre lands on one of the two, so the median distance is
+    /// twelve hours halved: 360 minutes. (23:00 against 03:00, the old
+    /// fixture, is only four hours apart and correctly reads 120.)
     func testCircularDispersionTreatsOppositeScheduleAsVariable() {
-        let mad = Statistics.circularMedianAbsoluteDeviation([1380, 180])
+        let mad = Statistics.circularMedianAbsoluteDeviation([1380, 660])
         XCTAssertGreaterThan(mad ?? 0, 200)
     }
 
