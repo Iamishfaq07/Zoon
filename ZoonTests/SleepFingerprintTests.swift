@@ -16,12 +16,12 @@ final class SleepFingerprintTests: XCTestCase {
 
     func testCircularDispersionTreatsMidnightClusterAsStable() {
         let mad = Statistics.circularMedianAbsoluteDeviation([1435, 0, 5])
-        XCTAssertEqual(mad, 5, accuracy: 0.001)
+        XCTAssertEqual(mad ?? .nan, 5, accuracy: 0.001)
     }
 
     func testCircularDispersionTreatsDaySleeperAsStable() {
         let mad = Statistics.circularMedianAbsoluteDeviation([540, 550, 535])
-        XCTAssertEqual(mad, 5, accuracy: 0.001)
+        XCTAssertEqual(mad ?? .nan, 5, accuracy: 0.001)
     }
 
     func testCircularDispersionTreatsOppositeScheduleAsVariable() {
