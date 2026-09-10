@@ -1,15 +1,7 @@
 import SwiftUI
 import WatchKit
 
-/// Four pages, swiped horizontally -- the redesign spec's "glanceable"
-/// count for the watch. This used to run to six: Sleep Intelligence,
-/// Recovery, Sleep, a standalone Battery ring, Body Signals, and Badges.
-/// Six full-bleed swipes is a lot to page through on a wrist, and two of
-/// those six were already redundant or low-priority enough to fold in
-/// rather than earn their own screen: Body Battery already appears as a
-/// mini-stat on the Recovery page, and Body Signals plus Badges are both
-/// "check occasionally," not "check every glance" information, so they now
-/// share one combined page instead of two.
+/// Three glance-first destinations: Now, Tonight and Log.
 ///
 /// A `TabView` in page style rather than a list: on a watch, swiping between
 /// full-bleed screens is faster than scrolling a list and tapping into detail,
@@ -34,8 +26,7 @@ struct WatchRootView: View {
                 if snapshot.isNapRunning() {
                     NapPage(snapshot: snapshot)
                 }
-                if snapshot.scoreLightMode { ScoreLightSnapshotView(snapshot: snapshot) }
-                else { LastNightPage(snapshot: snapshot); TodayPage(snapshot: snapshot) }
+                NowPage(snapshot: snapshot)
                 // Tonight, not last night -- the only page here about a
                 // night that has not happened yet, which is why it sits
                 // after the two that grade the one that has. Gated on the
@@ -47,7 +38,6 @@ struct WatchRootView: View {
                     TonightPage(snapshot: snapshot)
                 }
                 LogPage()
-                if !snapshot.scoreLightMode { MorePage(snapshot: snapshot) }
             } else {
                 WaitingPage(isActivated: link.isActivated)
             }
@@ -65,6 +55,71 @@ struct WatchRootView: View {
         .sheet(isPresented: $showsQuickLog) {
             QuickLogView()
         }
+    }
+}
+
+/// Chooses the answer that matters at the current local time while preserving
+/// the same snapshot and score provenance.
+private struct NowPage: View {
+    let snapshot: SleepSnapshot
+
+    @ViewBuilder var body: some View {
+        if snapshot.scoreLightMode {
+            ScoreLightSnapshotView(snapshot: snapshot)
+        } else {
+            switch Calendar.current.component(.hour, from: .now) {
+            case 5..<12: LastNightPage(snapshot: snapshot)
+            case 12..<18: TodayPage(snapshot: snapshot)
+            default: TonightPage(snapshot: snapshot)
+            }
+        }
+    }
+}
+
+/// One responsive dial primitive for large Watch metrics. Geometry owns the
+/// diameter, stroke, and centre so content cannot escape the ring.
+struct ZoonWatchDial: View {
+    let value: Int
+    let label: String
+    let tint: Color
+    let accessibilityDescription: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @State private var revealed = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let diameter = min(proxy.size.width, proxy.size.height)
+            let lineWidth = min(12, max(6, diameter * 0.065))
+            let progress = min(1, max(0, Double(value) / 100))
+            ZStack {
+                Circle().stroke(Color.white.opacity(isLuminanceReduced ? 0.08 : 0.12), lineWidth: lineWidth)
+                Circle()
+                    .trim(from: 0, to: revealed || reduceMotion ? progress : 0)
+                    .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                VStack(spacing: 0) {
+                    Text("\(value)")
+                        .font(.system(size: diameter * 0.25, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                    Text(label)
+                        .font(.system(size: max(8, diameter * 0.075), weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .frame(width: diameter * 0.70, height: diameter * 0.48)
+            }
+            .frame(width: diameter, height: diameter)
+            .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .onAppear {
+            if reduceMotion { revealed = true }
+            else { withAnimation(.easeOut(duration: 0.35)) { revealed = true } }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
     }
 }
 
@@ -368,25 +423,12 @@ struct LastNightPage: View {
                 .font(Theme.label(9, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            ZStack {
-                Circle()
-                    .stroke(Color.white.opacity(0.12), lineWidth: 9)
-                Circle()
-                    .trim(from: 0, to: Double(snapshot.flagshipScore) / 100)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: tint.opacity(0.5), radius: 5)
-
-                VStack(spacing: -3) {
-                    Text("\(snapshot.flagshipScore)")
-                        .font(Theme.numeral(32))
-                        .monospacedDigit()
-                    Text("SLEEP")
-                        .font(Theme.label(9, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(maxHeight: .infinity)
+            ZoonWatchDial(
+                value: snapshot.flagshipScore,
+                label: "SLEEP",
+                tint: tint,
+                accessibilityDescription: "Sleep Intelligence, \(snapshot.flagshipScore), \(snapshot.flagshipBand)"
+            )
 
             Text(snapshot.flagshipBand)
                 .font(Theme.label(12, weight: .semibold))
@@ -400,7 +442,7 @@ struct LastNightPage: View {
                 )
                 WatchMiniStat(
                     value: snapshot.balanceLabel,
-                    label: "bank",
+                    label: "shortfall",
                     tint: debtTint
                 )
             }
@@ -475,25 +517,12 @@ struct TodayPage: View {
                 .foregroundStyle(.secondary)
 
             if snapshot.canStateRecovery {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.12), lineWidth: 9)
-                    Circle()
-                        .trim(from: 0, to: Double(snapshot.recoveryPercent) / 100)
-                        .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: tint.opacity(0.5), radius: 5)
-
-                    VStack(spacing: -3) {
-                        Text("\(snapshot.recoveryPercent)")
-                            .font(Theme.numeral(32))
-                            .monospacedDigit()
-                        Text("RECOVERY")
-                            .font(Theme.label(9, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .frame(maxHeight: .infinity)
+                ZoonWatchDial(
+                    value: snapshot.recoveryPercent,
+                    label: "RECOVERY",
+                    tint: tint,
+                    accessibilityDescription: "Recovery, \(snapshot.recoveryPercent) percent"
+                )
             } else {
                 VStack(spacing: 4) {
                     Text("Recovery")
