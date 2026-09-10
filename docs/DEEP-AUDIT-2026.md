@@ -28,7 +28,7 @@ No open P0 code defect was found. Physical-device release gates remain mandatory
 ### P2 — implemented with conservative framing
 
 - Force unwraps in production selection, date, interpolation, grouping, and matching paths were removed where ordinary data could reach them.
-- App icon variants existed but used a generic crescent. Three directions were produced; Orbit Pulse was implemented in default, dark, and tinted appearances.
+- App icon variants existed but used a flat generic crescent. Three abstract directions were evaluated, then product review selected a refined version of Zoon's established realistic crescent-and-stars identity. Opaque default, dark, and monochrome tinted appearances are implemented.
 - Adaptive scene tokens already existed but Today did not use them. Today now uses `ZoonAmbientBackground` rather than a permanent star field.
 
 ### P2/P3 — device or final-SDK gates

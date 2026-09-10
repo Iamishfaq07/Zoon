@@ -106,8 +106,10 @@ struct TodayView: View {
     private func loadedContent(_ context: DayContext) -> some View {
         VStack(alignment: .leading, spacing: 28) {
             if moment == .evening || moment == .night {
-                TonightSection(context: context, autopilot: autopilotPlan(context))
+                tonightCircleHero(context)
                     .entrance(0)
+                TonightSection(context: context, autopilot: autopilotPlan(context))
+                    .entrance(1)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
             } else {
@@ -226,26 +228,40 @@ struct TodayView: View {
     // MARK: - Hero helpers
 
     private func daytimeHero(_ context: DayContext) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 16) {
             Text(greeting).font(Theme.kicker).foregroundStyle(.secondary)
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("\(context.recovery.percent)")
-                    .font(Theme.numeral(52))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.recoveryColor(Double(context.recovery.percent)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Capacity now").font(Theme.label(18, weight: .semibold))
-                    Text("\(context.recovery.band.label) recovery · \(context.recovery.confidence.label)")
-                        .font(Theme.text(12)).foregroundStyle(.secondary)
-                }
-            }
+            RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16)
+            Text("Capacity now")
+                .font(Theme.label(20, weight: .semibold))
+            Text("\(context.recovery.confidence.label) confidence")
+                .font(Theme.text(13))
+                .foregroundStyle(.secondary)
             Text(coordinator.todayStress?.baselineContextNote ?? "Based on last night's recovery; daytime change appears when enough quiet data is available.")
-                .font(Theme.evidence).foregroundStyle(.tertiary)
+                .font(Theme.evidence)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
 
+    private func tonightCircleHero(_ context: DayContext) -> some View {
+        VStack(spacing: 14) {
+            Text(greeting)
+                .font(Theme.kicker)
+                .foregroundStyle(.secondary)
+            LunarReservoir(
+                debtMinutes: context.night.sleepDebtMinutes ?? 0,
+                size: 220
+            )
+            Text("Tonight's plan")
+                .font(Theme.label(20, weight: .semibold))
+            Text("Target \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) of sleep")
+                .font(Theme.text(13))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
         case 5..<12: "Good morning"
