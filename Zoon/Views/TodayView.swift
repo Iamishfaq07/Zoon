@@ -262,7 +262,6 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity)
     }
-
     private var greeting: String {
         switch Calendar.current.component(.hour, from: .now) {
         case 5..<12: "Good morning"
