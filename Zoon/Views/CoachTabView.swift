@@ -24,10 +24,11 @@ struct CoachTabView: View {
                 if let night = coordinator.state.context?.night {
                     landing(night)
                 } else {
-                    ContentUnavailableView(
-                        "No night yet",
-                        systemImage: "sparkles",
-                        description: Text("Zoon needs last night's data before there's anything to ask about.")
+                    GatheringNights(
+                        title: "No night yet",
+                        message: "Zoon needs last night's data before there's anything to ask about.",
+                        nights: 0,
+                        needed: 1
                     )
                 }
             }

@@ -18,7 +18,12 @@ struct RecoveryDetailView: View {
                     RecoveryBreakdownCard(recovery: context.recovery)
                     HRVStatusCard(status: context.hrvStatus)
                 } else {
-                    ContentUnavailableView("No night yet", systemImage: "moon.zzz")
+                    GatheringNights(
+                        title: "No night yet",
+                        message: "Recovery needs last night before it can say anything.",
+                        nights: 0,
+                        needed: 1
+                    )
                         .padding(.top, 60)
                 }
             }

@@ -17,7 +17,12 @@ struct RegularityDetailView: View {
                         academic: context.academicSleepRegularity
                     )
                 } else {
-                    ContentUnavailableView("No night yet", systemImage: "moon.zzz")
+                    GatheringNights(
+                        title: "No night yet",
+                        message: "Regularity is a comparison between nights, so Zoon needs some first.",
+                        nights: 0,
+                        needed: 1
+                    )
                         .padding(.top, 60)
                 }
             }

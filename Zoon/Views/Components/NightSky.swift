@@ -62,16 +62,9 @@ struct InteractiveMoon: View {
                 .frame(width: size, height: size)
                 .scaleEffect(settled || reduceMotion ? 1 : 0.9)
 
-            Image(systemName: "moonphase.waxing.crescent")
-                .font(.system(size: size * 0.46, weight: .light))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(white: 0.99), Theme.Metric.sleep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .symbolRenderingMode(.hierarchical)
+            // The same moon the week strip draws, so the hero and the history
+            // are recognisably the same object.
+            MoonFill(fill: 0.34, active: true, size: size * 0.78)
         }
         .offset(x: drag.width * 0.14, y: drag.height * 0.14)
         .gesture(

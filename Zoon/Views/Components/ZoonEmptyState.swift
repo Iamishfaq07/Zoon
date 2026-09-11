@@ -201,10 +201,11 @@ struct ZoonLoadingState: View {
                         value: sweep
                     )
 
-                Image(systemName: "moonphase.waxing.crescent")
-                    .font(.system(size: 46, weight: .light))
-                    .foregroundStyle(Color(white: 0.96))
-                    .symbolRenderingMode(.hierarchical)
+                // The drawn moon, not `moonphase.waxing.crescent`. That
+                // symbol renders its unlit half as a filled slab, and
+                // `.hierarchical` turns it into a grey-and-white split disc
+                // that reads as a sphere rather than a moon.
+                MoonFill(fill: 0.34, active: true, size: 84)
             }
             .frame(height: 244)
 

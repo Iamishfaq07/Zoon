@@ -69,9 +69,18 @@ struct TonightWidgetView: View {
 
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Tonight", systemImage: "moonphase.waxing.crescent")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+            HStack(spacing: 5) {
+                // The drawn moon only where the widget renders in full colour.
+                // Accessory families (Lock Screen, Smart Stack) render
+                // accented or monochrome, where a Canvas collapses to a flat
+                // blob and `.widgetAccentable()` has nothing to tint -- and
+                // `.accessoryInline` cannot host a custom view at all. Those
+                // keep the SF Symbol, which is built for that treatment.
+                MoonFill(fill: 0.34, active: true, size: 26)
+                Text("Tonight")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
 
             if hasPlan {
                 Text(snapshot.tonightTargetLabel)
@@ -101,9 +110,12 @@ struct TonightWidgetView: View {
     private var medium: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Tonight", systemImage: "moonphase.waxing.crescent")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    MoonFill(fill: 0.34, active: true, size: 30)
+                    Text("Tonight")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
 
                 if hasPlan {
                     Text(snapshot.tonightTargetLabel)

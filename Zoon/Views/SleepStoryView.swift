@@ -37,7 +37,12 @@ struct SleepStoryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 if recentNights.isEmpty {
-                    ContentUnavailableView("No nights yet", systemImage: "moon.zzz")
+                    GatheringNights(
+                        title: "No nights yet",
+                        message: "The story of a night is written once Zoon has read one from Health.",
+                        nights: 0,
+                        needed: 1
+                    )
                         .padding(.top, 60)
                 } else {
                     nightPicker

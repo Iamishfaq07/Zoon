@@ -45,10 +45,11 @@ struct NightHistoryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
             if nights.isEmpty {
-                ContentUnavailableView(
-                    "Nothing recorded yet",
-                    systemImage: "moon.zzz",
-                    description: Text("Nights appear here once Zoon has read them from Health.")
+                GatheringNights(
+                    title: "Nothing recorded yet",
+                    message: "Nights appear here once Zoon has read them from Health.",
+                    nights: 0,
+                    needed: 1
                 )
             }
         }

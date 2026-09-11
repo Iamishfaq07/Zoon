@@ -37,7 +37,12 @@ struct SleepNeedView: View {
                     trendChart
                     explanationCard
                 } else {
-                    ContentUnavailableView("No night yet", systemImage: "moon.zzz")
+                    GatheringNights(
+                        title: "No night yet",
+                        message: "Your sleep need is learned from nights you have actually slept.",
+                        nights: 0,
+                        needed: 1
+                    )
                         .padding(.top, 60)
                 }
             }
