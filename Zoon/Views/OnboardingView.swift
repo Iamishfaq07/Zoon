@@ -25,6 +25,7 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var goalHours: Double = 8
     @State private var isRequestingHealth = false
+    @State private var hasRequestedHealth = false
 
     private let pageCount = 3
 
@@ -35,7 +36,7 @@ struct OnboardingView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                TabView(selection: $page) {
+                TabView(selection: pageSelection) {
                     welcome.tag(0)
                     privacy.tag(1)
                     goal.tag(2)
@@ -55,6 +56,41 @@ struct OnboardingView: View {
         .onAppear {
             goalHours = preferences.sleepGoalMinutes / 60
         }
+    }
+
+    // MARK: - The Health gate
+
+    /// A swipe must not carry anyone past the Health page before the system
+    /// sheet has been shown.
+    ///
+    /// `TabView(.page)` pages on a drag as well as on the button, so a flick
+    /// from the welcome page landed on the goal page, "Open Zoon" completed
+    /// onboarding, and the app ran having never asked for anything. Every
+    /// query then returned nothing, with no way back: the sheet is offered
+    /// once, so the only remedy left was finding Zoon in Settings by hand.
+    ///
+    /// The gate is "has been asked", not "has granted", because granted is not
+    /// knowable. HealthKit deliberately never reports *read* authorization --
+    /// `authorizationStatus(for:)` answers for writes only -- so an app cannot
+    /// tell a denial from an empty Health store. Asking is the part that was
+    /// being skipped, and it is the part this can guarantee.
+    private var pageSelection: Binding<Int> {
+        Binding(
+            get: { page },
+            set: { page = min($0, furthestAllowedPage) }
+        )
+    }
+
+    private var furthestAllowedPage: Int {
+        guard needsHealthGate else { return pageCount - 1 }
+        return hasRequestedHealth ? pageCount - 1 : 1
+    }
+
+    /// No gate where there is nothing to ask for: an iPad without Health, or a
+    /// demo/screenshot launch, where `requestHealthAccess()` returns straight
+    /// away and blocking would strand the run on page 1 forever.
+    private var needsHealthGate: Bool {
+        DataEnvironment.current.isLive && HealthKitManager.isHealthDataAvailable
     }
 
     // MARK: - Pages
@@ -314,6 +350,9 @@ struct OnboardingView: View {
             Task {
                 await coordinator.requestHealthAccess()
                 isRequestingHealth = false
+                // Set before the page changes: the gate reads this, so
+                // advancing first would be clamped straight back to 1.
+                hasRequestedHealth = true
                 withAnimation { page = 2 }
             }
 

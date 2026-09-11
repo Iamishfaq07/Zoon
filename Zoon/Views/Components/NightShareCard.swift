@@ -14,16 +14,7 @@ struct NightShareCardView: View {
             ShareStarField()
             VStack(spacing: 22) {
                 Spacer(minLength: 80)
-                Image(systemName: "moonphase.waxing.crescent")
-                    .font(.system(size: 108, weight: .light))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color(white: 0.98), Theme.Metric.sleep],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .symbolRenderingMode(.hierarchical)
+                MoonFill(fill: 0.34, active: true, size: 186)
                 Text("\u{2068}زوٗن\u{2069}")
                     .font(.system(size: 14, weight: .semibold))
                     .tracking(6)
