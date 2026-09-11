@@ -58,6 +58,44 @@ private func halfEllipse(
     )
 }
 
+/// The near side, as it actually looks.
+///
+/// A geometrically correct crescent is still just a white shape: the phase was
+/// right and it read as a blob, because nothing about a flat two-tone wedge
+/// says "moon". What says moon is the maria — the dark basalt seas anyone
+/// would recognise without being able to name them — plus the way a sphere
+/// dims toward its limb.
+///
+/// Positions are the real ones, in units of the moon's radius from the centre,
+/// x right and y down, as seen from Earth with north up.
+private struct Mare {
+    let x: Double
+    let y: Double
+    let r: Double
+    let depth: Double
+}
+
+private let maria: [Mare] = [
+    Mare(x: -0.52, y: -0.10, r: 0.40, depth: 0.30),   // Oceanus Procellarum
+    Mare(x: -0.26, y: -0.42, r: 0.29, depth: 0.38),   // Mare Imbrium
+    Mare(x:  0.10, y: -0.36, r: 0.20, depth: 0.40),   // Mare Serenitatis
+    Mare(x:  0.30, y: -0.10, r: 0.23, depth: 0.42),   // Mare Tranquillitatis
+    Mare(x:  0.50, y:  0.14, r: 0.15, depth: 0.36),   // Mare Fecunditatis
+    Mare(x:  0.30, y:  0.26, r: 0.12, depth: 0.34),   // Mare Nectaris
+    Mare(x: -0.20, y:  0.30, r: 0.19, depth: 0.30),   // Mare Nubium
+    Mare(x: -0.47, y:  0.34, r: 0.13, depth: 0.28),   // Mare Humorum
+    Mare(x:  0.04, y: -0.62, r: 0.11, depth: 0.26),   // Mare Frigoris, western end
+]
+
+/// A few bright-rimmed craters. Small, and the reason the lower third does not
+/// read as empty.
+private let craters: [Mare] = [
+    Mare(x: -0.10, y:  0.56, r: 0.07, depth: -0.34),  // Tycho
+    Mare(x: -0.34, y:  0.62, r: 0.05, depth: -0.22),
+    Mare(x:  0.42, y: -0.44, r: 0.05, depth: -0.20),
+    Mare(x:  0.16, y:  0.46, r: 0.04, depth: -0.18),
+]
+
 private func drawMoon(
     in context: inout GraphicsContext,
     canvasSize: CGSize,
@@ -79,7 +117,11 @@ private func drawMoon(
     let discRect = CGRect(
         x: center.x - moonR, y: center.y - moonR, width: moonR * 2, height: moonR * 2
     )
-    context.fill(Path(ellipseIn: discRect), with: .color(Theme.Family.Moon.body.opacity(0.32)))
+    let disc = Path(ellipseIn: discRect)
+
+    // Earthshine: the unlit face is not absent, it is dim. Drawn first so the
+    // lit face lands on top of it.
+    context.fill(disc, with: .color(Theme.Family.Moon.body.opacity(0.32)))
 
     // The lit face as a single closed path: down the right rim, then back up
     // the terminator.
@@ -113,5 +155,64 @@ private func drawMoon(
     )
     lit.closeSubpath()
 
-    context.fill(lit, with: .color(Theme.Family.Moon.lit))
+    // Everything below is clipped to the lit face, so the surface never spills
+    // onto the earthshine side or past the rim.
+    context.drawLayer { face in
+        face.clip(to: lit)
+        face.fill(lit, with: .color(Theme.Family.Moon.lit))
+
+        // Detail costs nothing to skip and is worse than nothing when it
+        // lands on a couple of pixels. Below roughly 54pt the maria would be
+        // grey mush, so small moons stay a clean phase. That also keeps the
+        // film strip cheap, which can be thirty moons on one screen.
+        if s >= 54 {
+            for mare in maria + craters {
+                let rr = CGFloat(mare.r) * moonR
+                let spot = CGPoint(
+                    x: center.x + CGFloat(mare.x) * moonR,
+                    y: center.y + CGFloat(mare.y) * moonR
+                )
+                let rect = CGRect(
+                    x: spot.x - rr, y: spot.y - rr, width: rr * 2, height: rr * 2
+                )
+                // A soft radial fill rather than a blurred disc. A mare has no
+                // edge, and a hard one reads as a sticker -- but a blur filter
+                // per sea would be thirteen offscreen passes per moon, and the
+                // film strip draws a moon per night.
+                let base: Color = mare.depth < 0
+                    ? Color.white
+                    : Theme.Family.Moon.dark
+                let strength = abs(mare.depth) * (active ? 0.92 : 0.78)
+                face.fill(
+                    Path(ellipseIn: rect),
+                    with: .radialGradient(
+                        Gradient(stops: [
+                            .init(color: base.opacity(strength), location: 0),
+                            .init(color: base.opacity(strength * 0.72), location: 0.55),
+                            .init(color: base.opacity(0), location: 1)
+                        ]),
+                        center: spot,
+                        startRadius: 0,
+                        endRadius: rr
+                    )
+                )
+            }
+        }
+
+        // Limb darkening: a sphere lit from the side falls off toward its edge.
+        // Without it the disc stays flat however much surface is painted on.
+        face.fill(
+            disc,
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.10),
+                    Color.clear,
+                    Theme.Family.Moon.dark.opacity(0.42)
+                ]),
+                center: CGPoint(x: center.x + moonR * 0.22, y: center.y - moonR * 0.24),
+                startRadius: 0,
+                endRadius: moonR * 1.32
+            )
+        )
+    }
 }
