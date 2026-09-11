@@ -54,10 +54,11 @@ struct TravelPlanView: View {
                 if let bodyClock {
                     planSection(bodyClock: bodyClock)
                 } else {
-                    ContentUnavailableView(
-                        "Building your body clock",
-                        systemImage: "clock",
-                        description: Text("A travel plan is built around your own sleep timing, so Zoon needs \(BodyClock.minimumNights) nights before it can make one.")
+                    GatheringNights(
+                        title: "Building your body clock",
+                        message: "A travel plan is built around your own sleep timing, so Zoon needs \(BodyClock.minimumNights) nights before it can make one.",
+                        nights: coordinator.recentNights.count,
+                        needed: BodyClock.minimumNights
                     )
                     .padding(.top, 40)
                 }

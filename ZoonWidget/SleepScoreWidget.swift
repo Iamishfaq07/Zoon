@@ -116,10 +116,24 @@ struct SleepScoreWidgetView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Lit fraction of the widget's moon: last night against the goal, the
+    /// same quantity the week strip fills its moons with, so the Home Screen
+    /// and the app agree about what the moon means.
+    private var moonFill: Double {
+        min(1, snapshot.timeAsleepMinutes / max(snapshot.goalMinutes, 1))
+    }
+
     private var small: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Label(lastNightLabel, systemImage: "moonphase.waxing.crescent")
+            HStack(spacing: 5) {
+                // The drawn moon only where the widget renders in full colour.
+                // Accessory families (Lock Screen, Smart Stack) render
+                // accented or monochrome, where a Canvas collapses to a flat
+                // blob and `.widgetAccentable()` has nothing to tint -- and
+                // `.accessoryInline` cannot host a custom view at all. Those
+                // keep the SF Symbol, which is built for that treatment.
+                MoonFill(fill: moonFill, active: true, size: 26)
+                Text(lastNightLabel)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()

@@ -65,10 +65,11 @@ struct MetricTrendView: View {
                         AskZoonAboutChart(question: selectedQuestion) { asking = selectedQuestion }
                     }
                 } else {
-                    ContentUnavailableView(
-                        "Not enough history yet",
-                        systemImage: kind.symbol,
-                        description: Text("Zoon needs a few more nights before it can chart a trend for \(kind.label.lowercased()).")
+                    GatheringNights(
+                        title: "Not enough history yet",
+                        message: "Zoon needs a few more nights before it can chart a trend for \(kind.label.lowercased()).",
+                        nights: points.count,
+                        needed: 3
                     )
                     .padding(.top, 40)
                 }

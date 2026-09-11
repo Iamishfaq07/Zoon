@@ -42,10 +42,11 @@ struct BodyClockView: View {
                     stabilityCard(bodyClock)
                     travelLink
                 } else {
-                    ContentUnavailableView(
-                        "Building your body clock",
-                        systemImage: "clock",
-                        description: Text("Zoon needs \(BodyClock.minimumNights) nights of history before it can estimate your preferred sleep window.")
+                    GatheringNights(
+                        title: "Building your body clock",
+                        message: "Zoon needs \(BodyClock.minimumNights) nights of history before it can estimate your preferred sleep window.",
+                        nights: coordinator.recentNights.count,
+                        needed: BodyClock.minimumNights
                     )
                     .padding(.top, 60)
                 }
