@@ -63,8 +63,9 @@ struct InteractiveMoon: View {
                 .scaleEffect(settled || reduceMotion ? 1 : 0.9)
 
             // The same moon the week strip draws, so the hero and the history
-            // are recognisably the same object.
-            MoonFill(fill: 0.34, active: true, size: size * 0.78)
+            // are recognisably the same object -- and here, the one place it
+            // is the focal point rather than a datum, it turns.
+            MoonCycle(size: size * 0.78, active: true)
         }
         .offset(x: drag.width * 0.14, y: drag.height * 0.14)
         .gesture(
