@@ -320,11 +320,21 @@ private func drawMoon(
         var night = Path()
         night.addPath(disc)
         night.addPath(lit)
-        face.fill(
-            night,
-            with: .color(Theme.Family.Moon.dark.opacity(active ? 0.80 : 0.86)),
-            style: FillStyle(eoFill: true)
-        )
+        let nightTone = Theme.Family.Moon.dark.opacity(active ? 0.80 : 0.86)
+
+        if s >= 120 {
+            // A real terminator is a gradient, not an edge: the sun sets over
+            // a band of surface, not a line. One blur pass, and only on the
+            // moons big enough for the hard edge to be the thing you notice.
+            // The clip to `disc` is on the enclosing layer, so softening the
+            // terminator cannot soften the rim.
+            face.drawLayer { dusk in
+                dusk.addFilter(.blur(radius: moonR * 0.045))
+                dusk.fill(night, with: .color(nightTone), style: FillStyle(eoFill: true))
+            }
+        } else {
+            face.fill(night, with: .color(nightTone), style: FillStyle(eoFill: true))
+        }
     }
 }
 
