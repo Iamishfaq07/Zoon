@@ -1,29 +1,22 @@
 import SwiftUI
 
-/// The moon, drawn rather than borrowed from SF Symbols.
+/// The moon, photographed rather than drawn.
 ///
-/// In `Shared/` so the app, both widget extensions and the watch all draw the
-/// *same* moon. `moonphase.waxing.crescent` was used in ten places across
-/// those targets and is not a moon: its unlit half is a filled slab, so under
-/// `.hierarchical` rendering it reads as a grey-and-white split sphere.
+/// In `Shared/` so the app and the widget extension draw the *same* moon.
+/// `moonphase.waxing.crescent` was used in ten places across those targets and
+/// is not a moon: its unlit half is a filled slab, so under `.hierarchical`
+/// rendering it reads as a grey-and-white split sphere.
 ///
-/// Depends on nothing but SwiftUI and `Theme.Family.Moon`/`.sleep`, which is
-/// what makes it portable to every target.
+/// What replaced it first was vector art -- maria as soft blobs, a seeded
+/// crater field, limb darkening -- and it went through four rounds of
+/// refinement while still being told, correctly, that it looked like black and
+/// white circles. It always would have. A drawn moon reads as a drawing at any
+/// level of detail, and what a person recognises as the Moon is a photograph
+/// of it: Tranquillitatis and Imbrium exactly where they belong, Tycho's rays
+/// reaching halfway across the southern highlands, thousands of craters nobody
+/// could name but everybody has seen.
 
-/// Waxing moon whose illumination is asleep ÷ need.
-struct MoonFill: View {
-    var fill: Double
-    var active: Bool
-    var size: CGFloat = 28
-
-    var body: some View {
-        Canvas { context, canvasSize in
-            drawMoon(in: &context, canvasSize: canvasSize, fill: fill, active: active)
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
-    }
-}
+// MARK: - Phase geometry
 
 /// The waist of the terminator ellipse as a fraction of the moon's radius.
 /// 1 at new and full (the terminator is the rim itself), 0 at the quarters
@@ -58,10 +51,23 @@ private func halfEllipse(
     )
 }
 
+// MARK: - Drawing
+
+/// A real full-moon photograph, cropped so the disc fills the frame edge to
+/// edge, with an antialiased circular alpha.
+///
+/// Deliberately *fully lit*, carrying no shadow of its own: the phase is
+/// applied below, in code, by dimming the part of the disc the sun has not
+/// reached. That separation is what lets one image serve every phase, waxing
+/// and waning, at any illumination -- and it is why this asset must never be
+/// replaced with a crescent.
+private let moonTexture = Image("MoonTexture")
+
 private func drawMoon(
     in context: inout GraphicsContext,
     canvasSize: CGSize,
     fill: Double,
+    waxing: Bool,
     active: Bool
 ) {
     let t = min(1, max(0, fill))
@@ -70,32 +76,35 @@ private func drawMoon(
     let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
     let moonR = 58 * scale
 
+    // Which limb the sun is on. Waxing is lit from the west (screen right),
+    // waning from the east. The surface never mirrors -- the near side always
+    // faces us -- only the lighting moves.
+    let sun: CGFloat = waxing ? 1 : -1
+
     let glowR = 78 * scale
-    let glow = Path(ellipseIn: CGRect(
-        x: center.x - glowR, y: center.y - glowR, width: glowR * 2, height: glowR * 2
-    ))
-    context.fill(glow, with: .color(Theme.Family.sleep.opacity(active ? 0.28 : 0.12)))
+    context.fill(
+        Path(ellipseIn: CGRect(
+            x: center.x - glowR, y: center.y - glowR, width: glowR * 2, height: glowR * 2
+        )),
+        with: .color(Theme.Family.sleep.opacity(active ? 0.28 : 0.12))
+    )
 
     let discRect = CGRect(
         x: center.x - moonR, y: center.y - moonR, width: moonR * 2, height: moonR * 2
     )
-    context.fill(Path(ellipseIn: discRect), with: .color(Theme.Family.Moon.body.opacity(0.32)))
+    let disc = Path(ellipseIn: discRect)
 
-    // The lit face as a single closed path: down the right rim, then back up
-    // the terminator.
-    //
     // The terminator of a real moon is its own rim seen at an angle, so it
     // projects to an ellipse exactly as tall as the disc whose waist closes to
     // nothing at the quarter and reopens to the full radius at new and full.
-    // It bulges *into* the lit half while waxing to a crescent and *away* from
-    // it once gibbous, which is the whole reason a moon reads as a moon.
+    // It bulges *into* the lit half while crescent and *away* once gibbous,
+    // which is the whole reason a moon reads as a moon.
     //
-    // This used to be a second circle unioned into the disc and filled
-    // even-odd. Two things went wrong with that. A circle is the wrong curve --
-    // its waist cannot close, so there was no quarter moon. Worse, wherever
-    // that circle reached past the rim the overhang lay inside exactly one
-    // subpath, so even-odd filled it: a lens of moonlight hanging off the side
-    // of the disc, which is the white blob that showed up down the week strip.
+    // This began as a second circle unioned into the disc and filled even-odd.
+    // A circle is the wrong curve -- its waist cannot close, so there was no
+    // quarter moon -- and wherever it reached past the rim the overhang lay
+    // inside exactly one subpath, so even-odd filled it: a lens of moonlight
+    // hanging off the side of the disc.
     let top = CGPoint(x: center.x, y: center.y - moonR)
     let bottom = CGPoint(x: center.x, y: center.y + moonR)
     let waist = moonR * CGFloat(moonWaist(t))
@@ -103,15 +112,144 @@ private func drawMoon(
 
     var lit = Path()
     lit.move(to: top)
-    halfEllipse(from: top, to: bottom, axisX: center.x, peakX: center.x + moonR, in: &lit)
+    halfEllipse(from: top, to: bottom, axisX: center.x, peakX: center.x + sun * moonR, in: &lit)
     halfEllipse(
         from: bottom,
         to: top,
         axisX: center.x,
-        peakX: center.x + (bulgesIntoLitHalf ? waist : -waist),
+        peakX: center.x + sun * (bulgesIntoLitHalf ? waist : -waist),
         in: &lit
     )
     lit.closeSubpath()
 
-    context.fill(lit, with: .color(Theme.Family.Moon.lit))
+    context.drawLayer { face in
+        face.clip(to: disc)
+
+        // The whole disc, photographed. The night side is dimmed afterwards
+        // rather than never drawn, so the surface stays faintly visible
+        // through it -- earthshine, and the reason a real crescent still shows
+        // you the rest of the moon.
+        face.draw(moonTexture, in: discRect)
+
+        // A warm cast, so the moon belongs to Zoon's palette rather than
+        // sitting in it as a grey cut-out. Light enough to leave the
+        // photograph's own tonality intact.
+        face.fill(disc, with: .color(Theme.Family.Moon.lit.opacity(0.14)))
+
+        // Limb darkening. The photograph is flat-lit by design, so the falloff
+        // that makes a sphere look spherical has to be added here, and it has
+        // to follow the sun rather than sit in the middle.
+        face.fill(
+            disc,
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.06),
+                    Color.clear,
+                    Theme.Family.Moon.dark.opacity(0.34)
+                ]),
+                center: CGPoint(x: center.x + sun * moonR * 0.24, y: center.y - moonR * 0.22),
+                startRadius: 0,
+                endRadius: moonR * 1.30
+            )
+        )
+
+        // Night side. `disc` plus `lit` under even-odd is exactly the unlit
+        // crescent, because `lit` is wholly inside `disc` by construction --
+        // no overhang, so nothing can be filled outside the rim.
+        var night = Path()
+        night.addPath(disc)
+        night.addPath(lit)
+        let nightTone = Theme.Family.Moon.dark.opacity(active ? 0.84 : 0.88)
+
+        if s >= 90 {
+            // A real terminator is a band, not an edge: the sun sets over a
+            // stretch of surface. One blur pass, and only where the hard edge
+            // would be the thing you notice. The clip to `disc` is on the
+            // enclosing layer, so softening the terminator cannot soften the
+            // rim.
+            face.drawLayer { dusk in
+                dusk.addFilter(.blur(radius: moonR * 0.05))
+                dusk.fill(night, with: .color(nightTone), style: FillStyle(eoFill: true))
+            }
+        } else {
+            face.fill(night, with: .color(nightTone), style: FillStyle(eoFill: true))
+        }
+    }
+}
+
+// MARK: - Views
+
+/// The moon at one phase. `fill` is the lit fraction: 0 new, 1 full.
+struct MoonFill: View {
+    var fill: Double
+    var active: Bool
+    var size: CGFloat = 28
+    /// Lit from the west, as the moon is on its way to full. Waning lights the
+    /// other limb -- the surface never mirrors, only the sun moves.
+    var waxing: Bool = true
+
+    var body: some View {
+        Canvas { context, canvasSize in
+            drawMoon(
+                in: &context, canvasSize: canvasSize,
+                fill: fill, waxing: waxing, active: active
+            )
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The moon, turning.
+///
+/// A full synodic cycle -- new, waxing crescent, first quarter, gibbous, full,
+/// then back down the other limb -- compressed into `period` seconds. The
+/// surface stays put and the terminator sweeps across it, which is what makes
+/// it read as one object being lit rather than a shape changing shape.
+///
+/// `TimelineView(.animation)` rather than an animated parameter: the phase is
+/// drawn inside a `Canvas`, and SwiftUI cannot interpolate a Canvas. Driving
+/// it from the timeline redraws each frame, which is the supported way to
+/// animate one.
+struct MoonCycle: View {
+    var size: CGFloat = 168
+    /// Seconds for one full cycle. Slow on purpose: the moon is not a spinner,
+    /// and anything brisk enough to notice becomes something to watch instead
+    /// of something to glance at.
+    var period: Double = 48
+    var active: Bool = true
+    /// Where it rests when the viewer has asked for less motion.
+    var restingFill: Double = 0.34
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            // Not a paused animation: a still moon, at a phase worth showing.
+            MoonFill(fill: restingFill, active: active, size: size)
+        } else {
+            // 20fps, not 60. The cycle takes 48 seconds, so a frame every 50ms
+            // is already finer than the eye can resolve here, and three times
+            // the work for motion nobody can see is battery spent for nothing.
+            TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+                let cycle = phase(at: timeline.date)
+                MoonFill(
+                    fill: cycle.lit,
+                    active: active,
+                    size: size,
+                    waxing: cycle.waxing
+                )
+            }
+        }
+    }
+
+    /// Position in the cycle: 0 to 1 waxing, then 1 back to 0 waning, with the
+    /// sun crossing to the other limb at full.
+    private func phase(at date: Date) -> (lit: Double, waxing: Bool) {
+        let seconds = date.timeIntervalSinceReferenceDate
+        let turn = (seconds / max(period, 1)).truncatingRemainder(dividingBy: 1)
+        return turn < 0.5
+            ? (lit: turn * 2, waxing: true)
+            : (lit: (1 - turn) * 2, waxing: false)
+    }
 }
