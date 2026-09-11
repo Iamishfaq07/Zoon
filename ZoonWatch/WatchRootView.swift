@@ -10,9 +10,18 @@ struct WatchRootView: View {
 
     @Environment(WatchLink.self) private var link
     @State private var showsQuickLog = false
+    @State private var page: Page = .lastNight
+    @State private var hasChosenOpeningPage = false
+
+    /// The pages, in the order of a day rather than the order of importance.
+    /// Stable membership is the point: a page that appears and disappears with
+    /// the clock cannot be found twice in the same place.
+    private enum Page: Hashable {
+        case nap, scoreLight, lastNight, today, tonight, more, log
+    }
 
     var body: some View {
-        TabView {
+        TabView(selection: $page) {
             if let snapshot = link.snapshot {
                 // First while it runs, and absent otherwise. Every other page
                 // here grades a night that has already happened; this is the
@@ -24,22 +33,30 @@ struct WatchRootView: View {
                 // Stack surface was added. Tapping it opened an app with
                 // nothing to say about the nap, which is the gap this closes.
                 if snapshot.isNapRunning() {
-                    NapPage(snapshot: snapshot)
+                    NapPage(snapshot: snapshot).tag(Page.nap)
                 }
-                NowPage(snapshot: snapshot)
-                // Tonight, not last night -- the only page here about a
-                // night that has not happened yet, which is why it sits
-                // after the two that grade the one that has. Gated on the
-                // label being non-empty: snapshots written before these
-                // fields existed decode with "", and a page that renders a
-                // blank target is worse than one page fewer.
-                if !snapshot.tonightTargetLabel.isEmpty
-                    || !snapshot.tomorrowRangeLabel.isEmpty {
-                    TonightPage(snapshot: snapshot)
+
+                if snapshot.scoreLightMode {
+                    ScoreLightSnapshotView(snapshot: snapshot).tag(Page.scoreLight)
+                } else {
+                    LastNightPage(snapshot: snapshot).tag(Page.lastNight)
+                    TodayPage(snapshot: snapshot).tag(Page.today)
                 }
-                LogPage()
+
+                // Tonight, not last night -- the only page here about a night
+                // that has not happened yet, which is why it sits after the
+                // two that grade the one that has. Gated on the label being
+                // non-empty: snapshots written before these fields existed
+                // decode with "", and a page that renders a blank target is
+                // worse than one page fewer.
+                if hasTonight(snapshot) {
+                    TonightPage(snapshot: snapshot).tag(Page.tonight)
+                }
+
+                MorePage(snapshot: snapshot).tag(Page.more)
+                LogPage().tag(Page.log)
             } else {
-                WaitingPage(isActivated: link.isActivated)
+                WaitingPage(isActivated: link.isActivated).tag(Page.lastNight)
             }
         }
         .tabViewStyle(.verticalPage)
@@ -55,22 +72,39 @@ struct WatchRootView: View {
         .sheet(isPresented: $showsQuickLog) {
             QuickLogView()
         }
+        .onChange(of: link.snapshot?.generatedAt, initial: true) { _, _ in
+            chooseOpeningPage()
+        }
     }
-}
 
-/// Chooses the answer that matters at the current local time while preserving
-/// the same snapshot and score provenance.
-private struct NowPage: View {
-    let snapshot: SleepSnapshot
+    private func hasTonight(_ snapshot: SleepSnapshot) -> Bool {
+        !snapshot.tonightTargetLabel.isEmpty || !snapshot.tomorrowRangeLabel.isEmpty
+    }
 
-    @ViewBuilder var body: some View {
-        if snapshot.scoreLightMode {
-            ScoreLightSnapshotView(snapshot: snapshot)
+    /// Which page to land on, decided once per launch.
+    ///
+    /// The time of day used to decide what a single "Now" page *rendered*,
+    /// which meant that after 18:00 it drew Tonight while the standalone
+    /// Tonight page was still in the deck -- two of the three pages were the
+    /// same screen. It also meant Recovery could only be seen between noon and
+    /// six: outside those hours no page in the app showed it at all.
+    ///
+    /// Choosing the opening page instead of the page's contents fixes both.
+    /// Every page is always present and always itself; the clock only decides
+    /// where the deck opens.
+    private func chooseOpeningPage() {
+        guard !hasChosenOpeningPage, let snapshot = link.snapshot else { return }
+        hasChosenOpeningPage = true
+
+        if snapshot.isNapRunning() {
+            page = .nap
+        } else if snapshot.scoreLightMode {
+            page = .scoreLight
         } else {
             switch Calendar.current.component(.hour, from: .now) {
-            case 5..<12: LastNightPage(snapshot: snapshot)
-            case 12..<18: TodayPage(snapshot: snapshot)
-            default: TonightPage(snapshot: snapshot)
+            case 5..<12: page = .lastNight
+            case 12..<18: page = .today
+            default: page = hasTonight(snapshot) ? .tonight : .lastNight
             }
         }
     }
@@ -220,39 +254,83 @@ struct NapPage: View {
 private struct TonightPage: View {
     let snapshot: SleepSnapshot
 
+    /// How much of tonight's need last night's sleep already covered. The
+    /// same quantity the phone's week strip lights its moons with, so the
+    /// wrist and the phone mean the same thing by a full moon.
+    private var need: Double { max(snapshot.goalMinutes, 1) }
+    private var covered: Double { min(1, max(0, snapshot.timeAsleepMinutes / need)) }
+
+    private var debtTint: Color {
+        snapshot.sleepDebtMinutes <= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Tonight", systemImage: snapshot.isTonightTargetHolding
-                  ? "checkmark.circle.fill" : "arrow.left.arrow.right.circle.fill")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(snapshot.isTonightTargetHolding
-                                 ? Theme.Metric.recoveryHigh : Theme.Metric.sleep)
+        VStack(spacing: 6) {
+            Text("TONIGHT")
+                .font(Theme.label(9, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            // The moon rather than an SF Symbol in a Label. This page was the
+            // only one with no graphic at all -- four lines of text on a
+            // screen the size of a stamp -- and the moon is both the app's
+            // own object and a real reading: lit by how much of tonight's
+            // need is already covered.
+            ZStack {
+                MoonFill(fill: covered, active: snapshot.isTonightTargetHolding, size: 58)
+
+                if snapshot.isTonightTargetHolding {
+                    Circle()
+                        .stroke(Theme.Metric.recoveryHigh.opacity(0.65), lineWidth: 2)
+                        .frame(width: 62, height: 62)
+                }
+            }
+            .accessibilityHidden(true)
 
             if !snapshot.tonightTargetLabel.isEmpty {
                 Text(snapshot.tonightTargetLabel)
-                    .font(.title3.weight(.semibold))
+                    .font(Theme.label(19, weight: .bold))
                     .monospacedDigit()
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
+
                 Text(snapshot.tonightTargetNote)
-                    .font(.caption2)
+                    .font(Theme.text(10))
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
                     .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+
+            HStack(spacing: 10) {
+                WatchMiniStat(
+                    value: SleepNightFeatures.formatMinutes(snapshot.goalMinutes),
+                    label: "need",
+                    tint: Theme.Metric.sleep
+                )
+                WatchMiniStat(
+                    value: snapshot.balanceLabel,
+                    label: "shortfall",
+                    tint: debtTint
+                )
             }
 
             if !snapshot.tomorrowRangeLabel.isEmpty {
-                Divider()
                 Text(snapshot.tomorrowRangeLabel)
-                    .font(.caption2)
+                    .font(Theme.text(9))
                     .foregroundStyle(.secondary)
-                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Tonight. \(snapshot.tonightTargetLabel). \(snapshot.tonightTargetNote) "
+            + "Need \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes)), "
+            + "shortfall \(snapshot.balanceLabel)."
+        )
     }
 }
 
