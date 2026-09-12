@@ -80,6 +80,12 @@ struct CoachChatView: View {
         // re-arming once the state resolves to something else or to
         // available.
         .task(id: availabilityPollTick) {
+            // Build the session the moment the model can carry one. The poll
+            // used to only bump a tick so the view redrew and the banner went
+            // away -- nothing opened a session, so the coach silently kept
+            // answering from its local keyword replies even after the model
+            // was ready.
+            chat.ensureSession()
             guard chat.unavailabilityReason != nil, chat.isTransientlyUnavailable else { return }
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }

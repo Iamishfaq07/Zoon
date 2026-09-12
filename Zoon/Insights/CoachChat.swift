@@ -165,23 +165,53 @@ final class CoachChat {
     ///   nights it rests on -- is already computed and is handed over.
     func start(nightSummary: String, contextDigest: String? = nil, chartContext: String? = nil) {
         messages = []
+        pendingContext = Context(
+            nightSummary: nightSummary,
+            contextDigest: contextDigest,
+            chartContext: chartContext
+        )
         #if canImport(FoundationModels)
-        // Only open a model session when Apple Intelligence is actually
-        // available. Creating one on an ineligible device (or while the
-        // model is still downloading) made every send() throw and show
-        // "Couldn't generate a response" even though local answers were
-        // ready — that's the Coach tab the user hit.
-        if isAvailable, #available(iOS 26.0, *) {
-            session = LanguageModelSession(
-                instructions: Self.instructions(
-                    nightSummary: nightSummary,
-                    contextDigest: contextDigest,
-                    chartContext: chartContext
-                )
+        session = nil
+        ensureSession()
+        #endif
+    }
+
+    /// What a session needs to be built, kept so one can be built later.
+    ///
+    /// The model is often unavailable at the moment this screen opens --
+    /// `.modelNotReady` while iOS is still downloading it -- and becomes
+    /// available minutes later. Holding the context is what makes that
+    /// recoverable without reopening the screen and losing the conversation.
+    private struct Context {
+        let nightSummary: String
+        let contextDigest: String?
+        let chartContext: String?
+    }
+
+    private var pendingContext: Context?
+
+    /// Opens a model session if one is wanted, possible, and not already open.
+    ///
+    /// Called from `start()` and again before every `send()`. The session used
+    /// to be created once, in `start()`, and only if the model happened to be
+    /// available at that instant. When it wasn't -- the common case, because
+    /// `.modelNotReady` is what a device reports while the download finishes
+    /// -- `session` stayed nil for the life of the screen. The view polled and
+    /// the "still downloading" banner would clear, but nothing ever built the
+    /// session, so every answer kept coming from the local keyword replies.
+    /// The model became available and the app carried on not using it.
+    func ensureSession() {
+        #if canImport(FoundationModels)
+        guard session == nil, isAvailable, #available(iOS 26.0, *),
+              let context = pendingContext else { return }
+        session = LanguageModelSession(
+            instructions: Self.instructions(
+                nightSummary: context.nightSummary,
+                contextDigest: context.contextDigest,
+                chartContext: context.chartContext
             )
-        } else {
-            session = nil
-        }
+        )
+        logger.notice("Opened a language model session")
         #endif
     }
 
@@ -194,6 +224,9 @@ final class CoachChat {
         defer { isResponding = false }
 
         #if canImport(FoundationModels)
+        // The model may have become available since this screen opened.
+        ensureSession()
+
         guard isAvailable, #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
             appendLocalAnswer(trimmed)
             return

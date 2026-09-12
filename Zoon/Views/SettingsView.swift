@@ -537,49 +537,21 @@ struct SettingsView: View {
 
     private var engineSection: some View {
         Section {
-            Picker(
-                "Insight engine",
-                selection: Binding(
-                    get: { preferences.preferredEngine },
-                    set: { coordinator.setEngine($0) }
-                )
-            ) {
-                ForEach(UserPreferences.EngineChoice.shippingCases) { choice in
-                    Text(choice.displayName).tag(choice)
-                }
+            // The picker itself now lives on the Coach tab, which is the one
+            // screen where its effect is visible. It was here, three screens
+            // from anything it changes: someone wondering why the coach
+            // sounded mechanical had no reason to look in Settings for the
+            // answer, and no hint that the choice might not be available on
+            // their device at all.
+            HStack {
+                Label("Answered by", systemImage: "cpu")
+                Spacer()
+                Text(preferences.preferredEngine.displayName)
+                    .foregroundStyle(.secondary)
             }
-            Text(preferences.preferredEngine.detail)
+            Text("Change this on the Coach tab, where you can see what it changes.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-
-            // Why the model cannot run at all: an ineligible device, Apple
-            // Intelligence switched off, iOS below 26, or the model still
-            // downloading.
-            //
-            // `unavailabilityReason` has always existed and its own doc
-            // comment says it is "surfaced in Settings so the option explains
-            // itself rather than silently doing nothing" -- and it never was.
-            // Picking Apple Intelligence on a device that cannot run it did
-            // exactly the silent nothing the comment warns about, with no way
-            // to tell that from the feature being broken.
-            if preferences.preferredEngine == .appleIntelligence,
-               let reason = FoundationModelInsightEngine().unavailabilityReason {
-                Label(reason, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(Theme.Metric.recoveryMid)
-            }
-
-            // Apple Intelligence can be selected, report itself `.available`,
-            // and still fall back silently every single night if generation
-            // throws or the model's own safety guardrail rejects the prompt.
-            // Without this, that reads as "the toggle doesn't do anything" --
-            // there is otherwise no way to see why short of a Mac and Console.
-            if preferences.preferredEngine == .appleIntelligence,
-               let reason = FoundationModelDiagnostics.shared.lastFailureReason {
-                Label(reason, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(Theme.Metric.recoveryLow)
-            }
 
             // Not a third picker option -- see `EngineChoice.shippingCases`.
             // `LocalLLMInsightEngine` always falls back to rules today, so
