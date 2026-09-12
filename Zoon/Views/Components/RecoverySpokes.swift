@@ -118,10 +118,15 @@ struct RecoverySpokes: View {
                 .offset(y: -(base + filled / 2))
 
             marker(for: component, tint: tint)
-                .offset(y: -tip)
-                // Counter-rotate so every icon stays upright once the whole
-                // spoke is turned onto its axis.
+                // Counter-spin FIRST, then offset. `.offset` is render-time
+                // only, so it leaves the layout centre where it was -- a
+                // `.rotationEffect` applied after it therefore anchors on
+                // that centre and orbits the marker instead of turning it in
+                // place. With the parent's own rotation cancelling it out,
+                // all four markers landed stacked at the top of the ring.
+                // Rotating first anchors the spin on the glyph itself.
                 .rotationEffect(-angle(at: index) - .degrees(90))
+                .offset(y: -tip)
         }
         .rotationEffect(angle(at: index) + .degrees(90))
         .opacity(grown)
