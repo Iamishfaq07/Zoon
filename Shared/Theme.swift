@@ -776,7 +776,12 @@ struct ZoonAmbientBackground: View {
                let band = Band(rawValue: forced) {
                 return band
             }
-            switch calendar.component(.hour, from: now) {
+            // `return switch`, not a bare `switch`: the switch used to be
+            // this function's only statement, which made it an implicit
+            // return and gave the bare `.morning` its contextual type. The
+            // early return above demoted it to a statement and the cases
+            // stopped compiling.
+            return switch calendar.component(.hour, from: now) {
             case 5..<9: .morning
             case 9..<17: .day
             case 17..<21: .evening
