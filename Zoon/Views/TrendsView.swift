@@ -93,11 +93,13 @@ struct TrendsView: View {
                 // single quiet "More to explore" row at the end.
                 VStack(alignment: .leading, spacing: 28) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
+                        .entrance(0)
                     WeekMoonStrip(
                         nights: Array(coordinator.recentNights.suffix(7)),
                         goalMinutes: preferences.sleepGoalMinutes,
                         selected: $selectedNight
                     )
+                    .entrance(1)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)
@@ -114,11 +116,13 @@ struct TrendsView: View {
                         .buttonStyle(.plain)
                     }
                     WhatChangedStream(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
+                        .entrance(2)
                     if let context = coordinator.state.context {
                         VStack(alignment: .leading, spacing: 12) {
                             ZoonSectionHeader("Your sleep system")
                             CoreIntelligenceGrid(context: context)
                         }
+                        .entrance(3)
                     }
                     DiscoveriesStream(
                         findings: JournalCorrelator().findings(from: coordinator.journalObservations()),
@@ -131,9 +135,11 @@ struct TrendsView: View {
                         },
                         taggedNights: coordinator.journal.taggedNightCount()
                     )
+                    .entrance(4)
 
                     if nights.count < 2 {
                         notEnoughData
+                            .entrance(5)
                     } else {
                     VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                             ZoonSectionHeader("Over time") { windowPicker.frame(maxWidth: 160) }
@@ -148,9 +154,11 @@ struct TrendsView: View {
                                 CycleCorrelationCard(correlations: correlations)
                             }
                         }
+                        .entrance(5)
                     }
 
                     moreToExplore
+                        .entrance(6)
                 }
                 .padding()
             }

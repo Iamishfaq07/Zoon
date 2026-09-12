@@ -18,6 +18,8 @@ struct ZoonApp: App {
     @State private var soundscape: SoundscapeEngine
     @State private var reminders: BedtimeReminder
     @State private var presentation = GlobalPresentation()
+    /// Starts true on demo/screenshot launches so nothing waits behind it.
+    @State private var splashFinished = !LaunchOptions.showsSplash
 
     init() {
         let preferences = UserPreferences()
@@ -90,30 +92,47 @@ struct ZoonApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if let modelContainer, let coordinator, storeOpeningError == nil {
-                Group {
-                    if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
-                        RootView()
-                    } else {
-                        OnboardingView()
-                            .transition(.opacity)
-                    }
+            ZStack {
+                launchedContent
+                // Above everything, including the store-recovery screen and
+                // onboarding: this is the app's first frame, and a recovery
+                // screen appearing without one would be the only launch that
+                // looked different.
+                if !splashFinished {
+                    ZoonSplash { splashFinished = true }
+                        .transition(.opacity)
+                        .zIndex(10)
                 }
-                .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
-                .environment(coordinator)
-                .environment(preferences)
-                .environment(naps)
-                .environment(soundscape)
-                .environment(reminders)
-                .environment(presentation)
-                .modelContainer(modelContainer)
-            } else {
-                // Deliberately carries no .modelContainer and no coordinator:
-                // this is the scene for when there is no store to give it.
-                StoreRecoveryView(
-                    message: storeOpeningError ?? "The data store could not be opened."
-                )
             }
+            .animation(.smooth(duration: 0.5), value: splashFinished)
+        }
+    }
+
+    @ViewBuilder
+    private var launchedContent: some View {
+        if let modelContainer, let coordinator, storeOpeningError == nil {
+            Group {
+                if preferences.hasCompletedOnboarding || LaunchOptions.skipsOnboarding {
+                    RootView()
+                } else {
+                    OnboardingView()
+                        .transition(.opacity)
+                }
+            }
+            .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
+            .environment(coordinator)
+            .environment(preferences)
+            .environment(naps)
+            .environment(soundscape)
+            .environment(reminders)
+            .environment(presentation)
+            .modelContainer(modelContainer)
+        } else {
+            // Deliberately carries no .modelContainer and no coordinator:
+            // this is the scene for when there is no store to give it.
+            StoreRecoveryView(
+                message: storeOpeningError ?? "The data store could not be opened."
+            )
         }
     }
 }

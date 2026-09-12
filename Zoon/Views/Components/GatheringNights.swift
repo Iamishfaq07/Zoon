@@ -27,9 +27,24 @@ struct GatheringNights: View {
 
     private var isReady: Bool { nights >= needed }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Drives the one-time reveal. An empty screen is the screen most likely
+    /// to be read as "the app is broken", and a moon that arrives is the
+    /// cheapest possible signal that something is running.
+    @State private var risen = false
+
     var body: some View {
         VStack(spacing: 18) {
             MoonWell(fill: fill, metNeed: isReady, size: 104)
+                .scaleEffect(risen ? 1 : 0.88)
+                .opacity(risen ? 1 : 0)
+                .onAppear {
+                    guard !reduceMotion else {
+                        risen = true
+                        return
+                    }
+                    withAnimation(Motion.hero) { risen = true }
+                }
 
             VStack(spacing: 8) {
                 Text(title)
@@ -52,6 +67,7 @@ struct GatheringNights: View {
                         .monospacedDigit()
                 }
             }
+            .entrance(1)
         }
         .frame(maxWidth: 320)
         .frame(maxWidth: .infinity)
