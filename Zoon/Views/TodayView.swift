@@ -305,12 +305,20 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity)
     }
+    /// Derived from `moment`, not from the clock.
+    ///
+    /// It used to read `Calendar.current.component(.hour,...)` on its own,
+    /// which agreed with the hero by coincidence -- both read the same clock.
+    /// Once `-zoonMoment` could pin the band for capture they disagreed, and
+    /// the first day-band render greeted "Good evening" over a daytime hero.
+    /// One source for both settles it, and the greeting now cannot drift
+    /// from the screen it sits above.
     private var greeting: String {
-        switch Calendar.current.component(.hour, from: .now) {
-        case 5..<12: "Good morning"
-        case 12..<17: "Good afternoon"
-        case 17..<22: "Good evening"
-        default: "Good night"
+        switch moment {
+        case .morning: "Good morning"
+        case .day: "Good afternoon"
+        case .evening: "Good evening"
+        case .night: "Good night"
         }
     }
 

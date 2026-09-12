@@ -127,9 +127,18 @@ struct RecoveryRing: View {
 
                 // The unlit remainder of this signal's slice: what it could
                 // have contributed and didn't.
+                //
+                // Tinted with the slice's own hue rather than a neutral. The
+                // first render showed why: `Theme.neutral(0.07)` is white at
+                // 7% in Dark and all but vanished, so the ring read as four
+                // floating arcs and "this signal fell short" was invisible --
+                // while in Light the same token is black at 14% and read
+                // fine. A tinted track is legible on both grounds and says
+                // whose track it is. Same 0.15-ish treatment `TripleRing`
+                // already uses.
                 Circle()
                     .trim(from: slice.start / 360, to: (slice.start + slice.span) / 360)
-                    .stroke(Theme.neutral(0.07), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .stroke(slice.color.opacity(0.18), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                     .rotationEffect(.degrees(-90))
 
                 // Bloom under the lit part, so it reads as light rather than paint.
