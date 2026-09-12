@@ -61,6 +61,17 @@ struct RecoveryRing<Inner: View>: View {
             inner
 
             content
+                // The ring is a fixed diameter; its centre labels are not.
+                // At the largest accessibility sizes "RECOVERY" and
+                // "Moderate" grew past the arc on both sides and landed on
+                // the spokes and the stroke. Capped here rather than made
+                // unscalable: they still respond to the setting, just not
+                // past what the circle can hold. Nothing is lost by it --
+                // the band name and every underlying reading are repeated
+                // at full size in the score drivers and the plan directly
+                // below, which is where someone who needs large type is
+                // actually reading them.
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         }
         .frame(width: size, height: size)
         .onAppear {

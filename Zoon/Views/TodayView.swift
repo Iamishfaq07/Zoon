@@ -271,7 +271,7 @@ struct TodayView: View {
                 // where "65%" is drawn -- the first render had the icons
                 // overlapping the number and the polygon reading as a stray
                 // shape behind the text.
-                RecoveryRadar(components: context.recovery.components, size: 190)
+                RecoverySpokes(components: context.recovery.components, size: 190)
             }
 
             ScoreDrivers(components: context.recovery.components)
