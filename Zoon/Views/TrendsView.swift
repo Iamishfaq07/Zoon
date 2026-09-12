@@ -202,13 +202,44 @@ struct TrendsView: View {
     /// Cause Finder and Sleep Story are linked from Discoveries and the
     /// Sleep tab's story moments respectively; Need, Debt, Body Clock and
     /// Body Signals are the four modules of `CoreIntelligenceGrid`.
+    /// The analytical screens, on the tab they analyse.
+    ///
+    /// Seven of these lived only under More → Later: Patterns, Sleep
+    /// fingerprint, Sleep eras, What Zoon knows, How well Zoon knows you,
+    /// Personal learning and Chart builder. Every one is an answer to "what
+    /// does my sleep look like over time", which is the question this tab
+    /// exists to answer -- so they were filed in a drawer next to Settings
+    /// while the tab they belong to linked three of them.
+    ///
+    /// Two groups rather than one row of ten pills, because they answer two
+    /// different questions: what your sleep looks like, and how confident
+    /// Zoon is about saying so. A wall of ten is a dump with better framing.
+    ///
+    /// They are removed from More rather than duplicated -- the sleep-tools
+    /// strip on both Today and Sleep was the same mistake, and it read as
+    /// clutter the moment it was seen on a phone.
     private var moreToExplore: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ZoonSectionHeader("More to explore")
-            FlowLayout(spacing: 10) {
-                exploreLink("Sleep Story", "clock.arrow.circlepath") { SleepStoryView() }
-                exploreLink("Sleep Playbook", "checklist") { SleepPlaybookView() }
-                exploreLink("Year in Sleep", "square.grid.3x3.fill") { YearHeatmapView() }
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
+                ZoonSectionHeader("Your sleep, explored")
+                FlowLayout(spacing: 10) {
+                    exploreLink("Sleep Story", "clock.arrow.circlepath") { SleepStoryView() }
+                    exploreLink("Your patterns", "square.grid.3x3.fill") { PatternsView() }
+                    exploreLink("Sleep fingerprint", "circle.hexagongrid.fill") { SleepFingerprintView() }
+                    exploreLink("Sleep eras", "timeline.selection") { SleepErasView() }
+                    exploreLink("Year in Sleep", "calendar") { YearHeatmapView() }
+                    exploreLink("Sleep Playbook", "checklist") { SleepPlaybookView() }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                ZoonSectionHeader("How Zoon knows")
+                FlowLayout(spacing: 10) {
+                    exploreLink("What Zoon knows", "checkmark.seal.fill") { EvidenceView() }
+                    exploreLink("How well Zoon knows you", "square.stack.3d.up.fill") { ModelHealthView() }
+                    exploreLink("Personal learning", "sparkles.rectangle.stack.fill") { PersonalLearningView() }
+                    exploreLink("Chart builder", "chart.xyaxis.line") { ChartBuilderView() }
+                }
             }
         }
     }

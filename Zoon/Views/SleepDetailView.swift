@@ -35,6 +35,7 @@ struct SleepDetailView: View {
                 hypnogramCard
                 storyPreviewCard
                 breakdownCard
+                RelatedReading(placement: .sleepStages, title: "What the stages mean")
             }
             .padding(.horizontal)
             .padding(.bottom, 28)

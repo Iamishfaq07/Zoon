@@ -176,3 +176,41 @@ extension Article {
         )
     ]
 }
+
+// MARK: - Where each piece of reading belongs
+
+extension Article {
+
+    /// The screen a piece of reading belongs beside.
+    ///
+    /// All eight articles lived in one place — More → Learn — which is the
+    /// one place nobody goes while looking at their sleep debt and wondering
+    /// what sleep debt is. Apple Health puts its reading on the screen the
+    /// reading is about, and that is the right shape: the question arrives
+    /// on the chart, so the answer should too.
+    ///
+    /// The mapping lives here rather than at each call site so a new article
+    /// is placed once, and so it is possible to see at a glance that every
+    /// article has a home. `Learn` in More stays: a reader who wants to
+    /// browse rather than answer a question still needs somewhere to start.
+    enum Placement {
+        case sleepStages
+        case sleepDebt
+        case recovery
+        case consistency
+        case behaviours
+        case tonightRoutine
+    }
+
+    static func reading(for placement: Placement) -> [Article] {
+        let ids: [String] = switch placement {
+        case .sleepStages: ["sleep-stages"]
+        case .sleepDebt: ["sleep-debt"]
+        case .recovery: ["hrv-explained", "sleep-and-training"]
+        case .consistency: ["sleep-consistency"]
+        case .behaviours: ["caffeine-and-sleep"]
+        case .tonightRoutine: ["screens-before-bed", "bedroom-temperature"]
+        }
+        return ids.compactMap { id in all.first { $0.id == id } }
+    }
+}

@@ -53,6 +53,7 @@ struct CauseFinderView: View {
                 .pickerStyle(.segmented)
 
                 content(observations)
+                RelatedReading(placement: .behaviours, title: "On habits and sleep")
             }
             .padding()
         }
