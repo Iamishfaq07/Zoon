@@ -307,6 +307,13 @@ jobs:
           shoot today light || FAILED=1
           shoot settings light || FAILED=1
           shoot journal light || FAILED=1
+          # The other three tabs in Light. Only today/settings/journal were
+          # ever captured in Light, so Sleep, Insights and Coach -- three of
+          # the four tabs -- had no light-appearance render at all, and a
+          # washed-out or invisible label there could not be seen from here.
+          shoot sleep light || FAILED=1
+          shoot trends light || FAILED=1
+          shoot coach light || FAILED=1
 
           # Largest Dynamic Type, on the three screens with the most competing
           # text. V8 removed the app-wide `.accessibility5` cap

@@ -261,6 +261,34 @@ enum Theme {
         adaptive(dark: (1, 1, 1), light: (0.09, 0.09, 0.16))
     }
 
+    /// The three hierarchical text levels, chosen against *this app's*
+    /// grounds rather than the system's.
+    ///
+    /// SwiftUI's `.secondary` and `.tertiary` are fixed fractions of the
+    /// label colour -- roughly 50% and 25%. Those are tuned for a flat
+    /// system background, and Zoon has neither: Dark is a near-black navy
+    /// gradient, Light a pale lavender one. At 25% on the Light ground a
+    /// `.tertiary` line lands around #BFBFBF on #EDEDF5, which is why the
+    /// sentence under "Capacity now" was reported as barely readable.
+    ///
+    /// These are set once in `zoonTypography()`, which every screen root
+    /// already applies, so roughly 500 existing `.secondary` and
+    /// `.tertiary` call sites all strengthen together and none of them has
+    /// to change. Hierarchy is preserved -- each level is still clearly
+    /// quieter than the one above it -- it simply starts from a floor that
+    /// stays legible on both grounds.
+    static var ink: Color {
+        cardTint(dark: (1, 1, 1, 1), light: (0.09, 0.09, 0.16, 1))
+    }
+
+    static var inkSecondary: Color {
+        cardTint(dark: (1, 1, 1, 0.74), light: (0.09, 0.09, 0.16, 0.68))
+    }
+
+    static var inkTertiary: Color {
+        cardTint(dark: (1, 1, 1, 0.56), light: (0.09, 0.09, 0.16, 0.52))
+    }
+
     /// A glass card's specular highlight -- the soft sheen a curved glass
     /// surface catches along its top edge. Deliberately **not** built from
     /// `neutral`, which flips to black in Light on purpose (it needs to
@@ -617,6 +645,11 @@ extension View {
     /// accessibility size would make body text.
     func zoonTypography() -> some View {
         dynamicTypeSize(...DynamicTypeSize.accessibility5)
+            // Sets all three hierarchical levels for every descendant, which
+            // is what lets `Theme.ink*` reach ~500 `.secondary`/`.tertiary`
+            // call sites without editing one of them. Anything that sets its
+            // own foreground still wins, as before.
+            .foregroundStyle(Theme.ink, Theme.inkSecondary, Theme.inkTertiary)
     }
 
     /// The V8 alternative to `.glassCard()`: content that sits directly on

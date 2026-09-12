@@ -245,6 +245,21 @@ struct TodayView: View {
                 .entrance(8)
             }
 
+            // The five sleep tools, on the tab people actually open.
+            //
+            // They lived only at the bottom of the Sleep tab, which is the
+            // screen you go to for a report on a night that is already
+            // over -- so the one part of the app you use *before* sleeping
+            // was the hardest part to reach. Today is the default tab and
+            // the one opened most, and a nap timer, a wind-down pacer and
+            // sleep sounds are all things you reach for now rather than
+            // read about later.
+            //
+            // Placed near the end rather than at the top: Today's job is
+            // still to answer "how did I sleep", and a row of buttons above
+            // that answer would be the same mistake in the other direction.
+            SleepToolsStrip().entrance(8)
+
             footer(context).entrance(8)
         }
     }
