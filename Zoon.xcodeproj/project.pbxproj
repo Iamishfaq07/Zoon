@@ -3399,6 +3399,14 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				// The system launch screen is a flat sheet of one colour shown
+				// while the process starts, before any SwiftUI exists. Left at
+				// the default it is the system background -- pure black in Dark,
+				// pure white in Light -- and neither matches ZoonNightGround, so
+				// every cold launch flashed one ground before painting another.
+				// LaunchBackground is the top stop of that gradient in both
+				// appearances, which makes the hand-off into ZoonSplash seamless.
+				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = LaunchBackground;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -3600,6 +3608,14 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				// The system launch screen is a flat sheet of one colour shown
+				// while the process starts, before any SwiftUI exists. Left at
+				// the default it is the system background -- pure black in Dark,
+				// pure white in Light -- and neither matches ZoonNightGround, so
+				// every cold launch flashed one ground before painting another.
+				// LaunchBackground is the top stop of that gradient in both
+				// appearances, which makes the hand-off into ZoonSplash seamless.
+				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = LaunchBackground;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
