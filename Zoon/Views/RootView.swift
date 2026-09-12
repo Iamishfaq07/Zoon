@@ -402,6 +402,7 @@ struct SleepTabView: View {
 
                     SleepToolsStrip().entrance(7)
                 }
+                .stateTransition(coordinator.state.context != nil)
                 .padding(.horizontal)
                 .padding(.bottom, 28)
             }

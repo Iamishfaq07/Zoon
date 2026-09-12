@@ -63,4 +63,23 @@ enum LaunchOptions {
     static var skipsOnboarding: Bool {
         isDemo && !forcesOnboarding
     }
+
+    /// Hold the launch splash on screen instead of letting it hand over.
+    ///
+    /// Screenshot capture waits six seconds after launch before it shoots,
+    /// by which time the splash has long since finished. This is the only
+    /// way to photograph it, so it is also the only way to check the thing
+    /// every user sees first without a device in hand.
+    static var holdsSplash: Bool {
+        UserDefaults.standard.bool(forKey: "zoonSplash")
+    }
+
+    /// Whether the launch splash plays at all.
+    ///
+    /// Demo launches skip it for the same reason they skip onboarding: a
+    /// screenshot run that photographed the splash five times would tell
+    /// nobody anything. `-zoonSplash YES` opts back in.
+    static var showsSplash: Bool {
+        holdsSplash || !isDemo
+    }
 }

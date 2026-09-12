@@ -39,6 +39,7 @@ struct TodayView: View {
         NavigationStack {
             ScrollView {
                 content
+                    .stateTransition(stateKey)
                     .padding(.horizontal)
                     .padding(.bottom, 28)
             }
@@ -60,6 +61,22 @@ struct TodayView: View {
                     NightSky(starCount: 40).opacity(0.45).allowsHitTesting(false)
                 }
             }
+    }
+
+    /// Which *kind* of state Today is in, with the payload deliberately
+    /// dropped.
+    ///
+    /// The crossfade should fire when the screen becomes a different screen
+    /// -- loading giving way to last night -- and never when a pull to
+    /// refresh replaces one loaded context with another. Keying on the whole
+    /// state would flash the entire page on every refresh.
+    private var stateKey: String {
+        switch coordinator.state {
+        case .idle, .loading: "loading"
+        case .loaded, .mock: "loaded"
+        case .empty: "empty"
+        case .failed: "failed"
+        }
     }
 
     @ViewBuilder

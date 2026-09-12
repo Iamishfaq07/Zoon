@@ -120,7 +120,7 @@ struct SleepIntelligenceOrb: View {
                     guard let component = component(at: value.location) else { return }
                     if selectedID != component.id {
                         Haptics.tap()
-                        withAnimation(.snappy(duration: 0.15)) { selectedID = component.id }
+                        withAnimation(Motion.respecting(reduceMotion, Motion.scrub)) { selectedID = component.id }
                     }
                 }
         )
@@ -195,7 +195,7 @@ struct SleepIntelligenceOrb: View {
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
             .onTapGesture {
                 Haptics.tap()
-                withAnimation(.snappy(duration: 0.2)) { selectedID = nil }
+                withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { selectedID = nil }
             }
         } else {
             VStack(spacing: 2) {
@@ -213,7 +213,7 @@ struct SleepIntelligenceOrb: View {
 
     private func select(_ component: SleepIntelligenceScore.Component) {
         Haptics.tap()
-        withAnimation(.snappy(duration: 0.2)) {
+        withAnimation(Motion.respecting(reduceMotion, Motion.tap)) {
             selectedID = (selectedID == component.id) ? nil : component.id
         }
     }

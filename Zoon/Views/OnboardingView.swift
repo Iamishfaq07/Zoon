@@ -343,7 +343,7 @@ struct OnboardingView: View {
     private func advance() {
         switch page {
         case 0:
-            withAnimation { page = 1 }
+            withAnimation(Motion.respecting(reduceMotion, Motion.navigation)) { page = 1 }
 
         case 1:
             isRequestingHealth = true
@@ -353,7 +353,7 @@ struct OnboardingView: View {
                 // Set before the page changes: the gate reads this, so
                 // advancing first would be clamped straight back to 1.
                 hasRequestedHealth = true
-                withAnimation { page = 2 }
+                withAnimation(Motion.respecting(reduceMotion, Motion.navigation)) { page = 2 }
             }
 
         default:

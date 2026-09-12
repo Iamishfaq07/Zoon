@@ -60,7 +60,7 @@ struct BodyClockCard: View {
         .glassCard()
         .onAppear {
             guard !reduceMotion else { sweep = 1; return }
-            withAnimation(.easeOut(duration: 0.9)) { sweep = 1 }
+            withAnimation(Motion.draw) { sweep = 1 }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Body clock")

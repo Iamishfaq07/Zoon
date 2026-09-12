@@ -81,6 +81,35 @@ enum Motion {
     /// move together. Short enough that a finger dragging never outruns it.
     static let scrub = Animation.snappy(duration: 0.12)
 
+    /// The launch splash: the moon settling into place before the app
+    /// appears behind it. Slower and softer than `hero` — this plays once
+    /// per cold launch and is the only animation in the app nobody chose to
+    /// trigger, so it has to feel like the app waking up rather than like a
+    /// delay someone inserted.
+    static let splash = Animation.spring(response: 0.9, dampingFraction: 0.8)
+
+    /// How long the splash holds before handing over. Short on purpose: a
+    /// branded first frame is worth a beat, and nothing more.
+    static let splashHold: Double = 1.05
+
+    /// A screen swapping one whole state for another — loading → loaded,
+    /// empty → content. Without this the swap is a hard cut, which on the
+    /// morning screen means the loading moon vanishes mid-sweep and last
+    /// night appears fully formed in the same frame.
+    ///
+    /// Asymmetric on purpose: the arriving state lifts and scales in the
+    /// same way `EntranceModifier` does, so a state change and a first
+    /// appearance read as the same gesture, while the leaving state only
+    /// fades — a state on its way out that also moves reads as two things
+    /// happening instead of one.
+    static func stateChange(reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .top)),
+            removal: .opacity
+        )
+    }
+
     /// The Today entrance sequence, expressed as delays from first frame.
     /// Total perceived duration is under half a second -- the screen is
     /// opened half-asleep every morning and must not make anyone wait.
@@ -169,6 +198,26 @@ struct EntranceModifier: ViewModifier {
     }
 }
 
+/// Crossfades a view when its state identity changes. See
+/// `Motion.stateChange(reduceMotion:)`.
+///
+/// `id` is what makes this work: SwiftUI only runs a transition when a view
+/// is inserted or removed, and a `switch` returning a different branch of
+/// the same `@ViewBuilder` is, as far as the view graph is concerned, the
+/// same view with new contents. Keying identity to the state forces the real
+/// insert/remove pair the transition needs.
+struct StateTransitionModifier: ViewModifier {
+    let value: AnyHashable
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .id(value)
+            .transition(Motion.stateChange(reduceMotion: reduceMotion))
+            .animation(Motion.respecting(reduceMotion, Motion.navigation), value: value)
+    }
+}
+
 /// Presses in slightly while held. Applied to card-shaped buttons so a tap on
 /// a large target still gives the feedback a small one does for free.
 struct PressableStyle: ButtonStyle {
@@ -186,6 +235,13 @@ extension View {
     /// Cascading entrance. See `EntranceModifier`.
     func entrance(_ index: Int = 0) -> some View {
         modifier(EntranceModifier(index: index))
+    }
+
+    /// Crossfade between mutually exclusive states of one screen. Pass
+    /// something that changes when the state does — a case name, an enum
+    /// that is `Hashable`, a count. See `StateTransitionModifier`.
+    func stateTransition(_ value: some Hashable) -> some View {
+        modifier(StateTransitionModifier(value: AnyHashable(value)))
     }
 
     /// A soft pulsing glow, for something that is genuinely live — a running

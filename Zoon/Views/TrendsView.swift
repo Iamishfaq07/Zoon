@@ -93,11 +93,13 @@ struct TrendsView: View {
                 // single quiet "More to explore" row at the end.
                 VStack(alignment: .leading, spacing: 28) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
+                        .entrance(0)
                     WeekMoonStrip(
                         nights: Array(coordinator.recentNights.suffix(7)),
                         goalMinutes: preferences.sleepGoalMinutes,
                         selected: $selectedNight
                     )
+                    .entrance(1)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)
@@ -114,11 +116,13 @@ struct TrendsView: View {
                         .buttonStyle(.plain)
                     }
                     WhatChangedStream(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
+                        .entrance(2)
                     if let context = coordinator.state.context {
                         VStack(alignment: .leading, spacing: 12) {
                             ZoonSectionHeader("Your sleep system")
                             CoreIntelligenceGrid(context: context)
                         }
+                        .entrance(3)
                     }
                     DiscoveriesStream(
                         findings: JournalCorrelator().findings(from: coordinator.journalObservations()),
@@ -131,9 +135,11 @@ struct TrendsView: View {
                         },
                         taggedNights: coordinator.journal.taggedNightCount()
                     )
+                    .entrance(4)
 
                     if nights.count < 2 {
                         notEnoughData
+                            .entrance(5)
                     } else {
                     VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                             ZoonSectionHeader("Over time") { windowPicker.frame(maxWidth: 160) }
@@ -148,9 +154,11 @@ struct TrendsView: View {
                                 CycleCorrelationCard(correlations: correlations)
                             }
                         }
+                        .entrance(5)
                     }
 
                     moreToExplore
+                        .entrance(6)
                 }
                 .padding()
             }
@@ -236,7 +244,8 @@ struct DurationChartCard: View {
     var body: some View {
         ChartCard(
             title: "Sleep Duration",
-            subtitle: "Hours asleep vs your \(SleepNightFeatures.formatMinutes(goalMinutes)) goal"
+            subtitle: "Hours asleep vs your \(SleepNightFeatures.formatMinutes(goalMinutes)) goal",
+            drawKey: nights.count
         ) {
             Chart {
                 ForEach(nights) { night in
@@ -377,7 +386,8 @@ struct HRVChartCard: View {
     private var card: some View {
         ChartCard(
             title: "Heart Rate Variability",
-            subtitle: "Overnight SDNN. Higher generally means better recovery."
+            subtitle: "Overnight SDNN. Higher generally means better recovery.",
+            drawKey: points.count
         ) {
             if points.count < 2 {
                 unavailable
@@ -511,7 +521,8 @@ struct SleepDebtChartCard: View {
     var body: some View {
         ChartCard(
             title: "Accumulated Sleep Debt",
-            subtitle: "Running shortfall across this period. Only short nights add to it."
+            subtitle: "Running shortfall across this period. Only short nights add to it.",
+            drawKey: points.count
         ) {
             Chart {
                 ForEach(points) { point in
@@ -624,7 +635,8 @@ struct ConsistencyChartCard: View {
     var body: some View {
         ChartCard(
             title: "Schedule Consistency",
-            subtitle: "Bedtime to wake time each night. A steady shape beats a long one."
+            subtitle: "Bedtime to wake time each night. A steady shape beats a long one.",
+            drawKey: points.count
         ) {
             Chart {
                 ForEach(points) { point in
@@ -709,7 +721,13 @@ struct ConsistencyChartCard: View {
 struct ChartCard<Content: View>: View {
     let title: String
     let subtitle: String
+    /// What the chart is drawing. A change re-arms the reveal, so switching
+    /// the window from 7 days to 90 redraws rather than silently swapping
+    /// the data under a chart that already finished.
+    var drawKey: AnyHashable = 0
     @ViewBuilder let content: Content
+
+    @State private var drawn: Double = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -723,6 +741,23 @@ struct ChartCard<Content: View>: View {
             content
                 .frame(height: 170)
                 .padding(.top, 6)
+                // Left → right, which is what `Motion.draw` was written for
+                // and what none of the Insights charts were doing: four
+                // cards of bars and lines arriving fully formed, in a tab
+                // whose entire subject is change over time.
+                //
+                // The mask is generous vertically (`-160` on both edges) so
+                // it constrains width only. A mask sized exactly to the
+                // frame would keep clipping a selection badge annotated
+                // above the plot area long after the reveal had finished.
+                .mask(alignment: .leading) {
+                    GeometryReader { geometry in
+                        Rectangle()
+                            .frame(width: geometry.size.width * drawn)
+                            .padding(.vertical, -160)
+                    }
+                }
+                .drawOnce(id: drawKey, progress: $drawn)
         }
         .glassCard()
     }

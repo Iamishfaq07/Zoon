@@ -33,6 +33,7 @@ struct CoachTabView: View {
                     )
                 }
             }
+            .stateTransition(coordinator.state.context?.night != nil)
             .nightBackground()
             .navigationTitle("Coach")
             .navigationBarTitleDisplayMode(.inline)
@@ -54,6 +55,7 @@ struct CoachTabView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 header
+                    .entrance(0)
 
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(categories(for: night).enumerated()), id: \.element.kicker) { index, category in
@@ -87,6 +89,11 @@ struct CoachTabView: View {
                         .accessibilityHint("Ask Zoon")
                     }
                 }
+                // Cascaded as one block rather than per row: the rows are
+                // separated by hairlines that are not themselves in the
+                // ForEach body's animated view, so staggering the rows would
+                // leave the dividers hanging in empty space.
+                .entrance(1)
 
                 NavigationLink {
                     CoachChatView(night: night)
@@ -105,10 +112,13 @@ struct CoachTabView: View {
                     .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(PressableStyle())
+                .entrance(2)
 
                 engineCard
+                    .entrance(3)
 
                 capabilityCard
+                    .entrance(4)
             }
             .padding()
         }
