@@ -163,7 +163,7 @@ struct HypnogramV4: View {
                     .monospacedDigit()
                 Text("Zoomed")
                     .font(Theme.supportingLabel)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Spacer(minLength: 0)
                 Button("Full night") {
                     Haptics.tap()
@@ -193,7 +193,7 @@ struct HypnogramV4: View {
     private func metric(_ label: String, _ value: String, tint: Color) -> some View {
         HStack(spacing: 4) {
             Circle().fill(tint).frame(width: 5, height: 5)
-            Text(label).font(Theme.text(11)).foregroundStyle(.secondary)
+            Text(label).font(Theme.text(11)).foregroundStyle(Theme.inkSecondary)
             Text(value).font(Theme.label(12, weight: .semibold)).monospacedDigit()
         }
     }
@@ -276,7 +276,7 @@ struct HypnogramV4: View {
             }
         }
         .font(Theme.text(10))
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.inkTertiary)
         .monospacedDigit()
         .padding(.leading, 50)
     }
@@ -315,13 +315,13 @@ struct HypnogramV4: View {
                 Text(moment.date, format: .dateTime.hour().minute())
                     .font(Theme.text(12))
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Spacer(minLength: 0)
                 if let index = steppedMoment {
                     Text("\(index + 1) of \(moments.count)")
                         .font(Theme.text(11))
                         .monospacedDigit()
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             .padding(.leading, 50)
@@ -499,7 +499,7 @@ struct HypnogramV4: View {
                 Text("\(awakenings.count)")
                     .font(Theme.label(12, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -514,7 +514,7 @@ struct HypnogramV4: View {
                                     .monospacedDigit()
                                 Text("\(Int(awakening.minutes.rounded()))m")
                                     .font(Theme.text(11))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)

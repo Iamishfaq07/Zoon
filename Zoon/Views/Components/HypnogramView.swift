@@ -228,7 +228,7 @@ struct HypnogramView: View {
             }
         }
         .font(Theme.text(9))
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.inkTertiary)
         .padding(.leading, 42)
     }
 
@@ -352,7 +352,7 @@ struct StageLegend: View {
                     // duration that wraps mid-value is unreadable.
                     Text(SleepNightFeatures.formatMinutes(row.minutes))
                         .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -360,7 +360,7 @@ struct StageLegend: View {
 
                     Text(row.reference)
                         .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                         .frame(width: 48, alignment: .trailing)

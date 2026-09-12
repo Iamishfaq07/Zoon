@@ -39,7 +39,7 @@ struct WhyScoreWaterfall: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Why this score")
                     .font(Theme.label(12, weight: .bold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 ForEach(movers) { component in
                     row(component)
                 }
@@ -60,7 +60,7 @@ struct WhyScoreWaterfall: View {
                         .font(Theme.label(12, weight: .semibold))
                     Text(component.detail)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer(minLength: 8)
                     Text(formattedPoints(contribution))
                         .font(Theme.label(12, weight: .bold))

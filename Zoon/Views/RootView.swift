@@ -321,8 +321,25 @@ struct SleepTabView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
+                    // Above the night analysis, not below it.
+                    //
+                    // These five are the only things on this tab you *do*
+                    // rather than read, and they sat last -- under the hero,
+                    // the hypnogram, the story, past nights, the numbers and
+                    // the tonight plan. Reaching Nap or Wind Down meant
+                    // scrolling through a full report on a night that had
+                    // already happened, which is why they read as hidden.
+                    //
+                    // The strip is one compact row, so leading with it costs
+                    // the analysis almost no vertical space, and it is
+                    // outside the `if let context` on purpose: a phone with
+                    // no night recorded yet still has a nap timer and a
+                    // wind-down pacer, and those are arguably more use then,
+                    // not less.
+                    SleepToolsStrip().entrance(0)
+
                     if let context = coordinator.state.context {
-                        LastNightHero(context: context).entrance(0)
+                        LastNightHero(context: context).entrance(1)
 
                         if !context.night.stageSegments.isEmpty {
                             HypnogramV4(
@@ -330,23 +347,23 @@ struct SleepTabView: View {
                                 heartRateSamples: context.hourlyHeartRate,
                                 soundEvents: soundEventStore.recentEvents
                             )
-                            .entrance(1)
+                            .entrance(2)
                         } else {
                             VStack(alignment: .leading, spacing: 10) {
                                 StageProportionBar(features: context.night)
                                 Text("\(context.night.sourceName ?? "This source") records sleep without breaking it into stages. Wearing an Apple Watch to bed adds Deep, REM and Core.")
                                     .font(Theme.evidence)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
-                            .entrance(1)
+                            .entrance(2)
                         }
 
                         SleepStoryMoments(story: story(for: context), night: context.night)
-                            .entrance(2)
+                            .entrance(3)
 
                         SleepSoundsHero()
-                            .entrance(3)
+                            .entrance(4)
 
                         VStack(alignment: .leading, spacing: 8) {
                             ZoonSectionHeader("Past nights")
@@ -355,7 +372,7 @@ struct SleepTabView: View {
                                 goalMinutes: context.sleepNeed.totalNeedMinutes
                             )
                         }
-                        .entrance(4)
+                        .entrance(5)
 
                         VStack(alignment: .leading, spacing: 8) {
                             ZoonSectionHeader("Last night in numbers") {
@@ -373,7 +390,7 @@ struct SleepTabView: View {
                             }
                             SleepMetricBoard(night: context.night)
                         }
-                        .entrance(5)
+                        .entrance(6)
 
                         // Planning follows analysis.
                         VStack(alignment: .leading, spacing: Theme.stackSpacing) {
@@ -397,10 +414,9 @@ struct SleepTabView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        .entrance(6)
+                        .entrance(7)
                     }
 
-                    SleepToolsStrip().entrance(7)
                 }
                 .stateTransition(coordinator.state.context != nil)
                 .padding(.horizontal)

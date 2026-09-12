@@ -109,7 +109,7 @@ struct TrendsView: View {
                                     .font(Theme.label(15, weight: .semibold))
                                 Text(selectedNight.formattedTimeAsleep + " asleep")
                                     .font(Theme.text(13))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -172,9 +172,9 @@ struct TrendsView: View {
         let fingerprint: SleepFingerprint
         var body: some View {
             VStack(alignment: .leading, spacing: 8) {
-                HStack { Text("Fingerprint").font(.headline); Spacer(); Text("\(fingerprint.sampleCount) nights").font(.caption).foregroundStyle(.secondary) }
+                HStack { Text("Fingerprint").font(.headline); Spacer(); Text("\(fingerprint.sampleCount) nights").font(.caption).foregroundStyle(Theme.inkSecondary) }
                 Text("Timing \(Int(fingerprint.timingStability * 100))% · continuity \(Int(fingerprint.continuity * 100))% · duration \(Int(fingerprint.durationStability * 100))%")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Theme.inkSecondary)
             }.glassCard()
         }
     }
@@ -266,11 +266,11 @@ struct DurationChartCard: View {
 
                 RuleMark(y: .value("Goal", goalMinutes / 60))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 4]))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .annotation(position: .top, alignment: .leading) {
                         Text("Goal")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
 
                 if let selectedDate, let night = nights.nearest(toDay: selectedDate) {
@@ -420,7 +420,7 @@ struct HRVChartCard: View {
                     if let average = mean {
                         RuleMark(y: .value("Average", average))
                             .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
 
                     if let selectedDate, let night = points.nearest(toDay: selectedDate), let hrv = night.avgHRV {
@@ -476,7 +476,7 @@ struct HRVChartCard: View {
     private var unavailable: some View {
         Text("No HRV readings in this period. HRV needs an Apple Watch worn overnight.")
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .frame(maxWidth: .infinity, minHeight: 80)
     }
 }
@@ -735,7 +735,7 @@ struct ChartCard<Content: View>: View {
                 .font(Theme.label(15, weight: .semibold))
             Text(subtitle)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             content

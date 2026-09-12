@@ -38,7 +38,7 @@ struct CycleCorrelationCard: View {
                 }
                 Text("\(row.nightCount) nights")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .padding(.leading, 78)
                 if row.id != correlations.last?.id {
                     Divider().overlay(Theme.cardStroke).padding(.vertical, 2)
@@ -47,7 +47,7 @@ struct CycleCorrelationCard: View {
 
             Text("These are calendar estimates, not detected physiological phases or ovulation. Irregular histories remain unclassified.")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -67,7 +67,7 @@ struct CycleCorrelationCard: View {
             Text("\(Int(value.rounded()))")
                 .font(Theme.text(11))
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .frame(width: 26, alignment: .trailing)
         }
     }

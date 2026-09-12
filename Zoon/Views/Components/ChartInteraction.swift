@@ -24,13 +24,13 @@ struct ChartSelectionBadge: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(Theme.text(9, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                 HStack(spacing: 5) {
                     Circle().fill(line.tint).frame(width: 6, height: 6)
                     Text(line.label)
                         .font(Theme.text(10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(line.value)
                         .font(Theme.label(12, weight: .bold))
                         .monospacedDigit()

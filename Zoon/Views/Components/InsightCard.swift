@@ -42,7 +42,7 @@ struct InsightCard: View {
                 if let cause = insight.likelyCause {
                     Text(cause)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.leading, 10)
                         .overlay(alignment: .leading) {
@@ -98,10 +98,10 @@ struct InsightCard: View {
             Text("IN GENERAL, NOT MEASURED IN YOU")
                 .font(Theme.label(10, weight: .semibold))
                 .tracking(0.6)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Text(context)
                 .font(Theme.text(13))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.leading, 10)
@@ -113,12 +113,12 @@ struct InsightCard: View {
             Text("TONIGHT'S READ")
                 .font(Theme.label(11, weight: .bold))
                 .tracking(0.6)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer()
             if let engineName {
                 Text(engineName)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
     }

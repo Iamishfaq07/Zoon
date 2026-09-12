@@ -108,7 +108,7 @@ struct WhatChangedStream: View {
                 ZoonSectionHeader("What changed") {
                     Text("This week vs last")
                         .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 14) {
@@ -142,7 +142,7 @@ private struct ChangeCell: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             bars
 
@@ -152,7 +152,7 @@ private struct ChangeCell: View {
 
             Text(change.technical)
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .monospacedDigit()
         }
         .frame(width: 200, alignment: .leading)

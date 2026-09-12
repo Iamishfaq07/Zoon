@@ -199,7 +199,7 @@ struct HealthPulseStrip: View {
                 .monospacedDigit()
             Text(title)
                 .font(Theme.text(9))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 }

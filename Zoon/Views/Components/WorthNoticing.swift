@@ -157,7 +157,7 @@ struct WorthNoticing: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(Theme.evidence)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -186,7 +186,7 @@ struct PersonalizationProgressRows: View {
                 HStack(spacing: 10) {
                     Text(row.label)
                         .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .frame(width: 120, alignment: .leading)
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -199,7 +199,7 @@ struct PersonalizationProgressRows: View {
                     .frame(height: 4)
                     Text("\(row.current)/\(row.target)")
                         .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .monospacedDigit()
                 }
                 .accessibilityElement(children: .ignore)

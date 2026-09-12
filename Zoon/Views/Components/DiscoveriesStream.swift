@@ -83,7 +83,7 @@ struct DiscoveriesStream: View {
 
             Text("\(finding.matchedPairCount) matched night\(finding.matchedPairCount == 1 ? "" : "s") · association, not proof of cause")
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
@@ -143,7 +143,7 @@ struct ExperimentPreview: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Text(tag.label)
                     .font(Theme.label(15, weight: .semibold))
@@ -153,7 +153,7 @@ struct ExperimentPreview: View {
                     ribbon(filled: learning.loggedNights, total: JournalCorrelator.minimumMatchedPairs)
                     Text("Night \(learning.loggedNights) of about \(JournalCorrelator.minimumMatchedPairs) · \(learning.remainingNights) to go before a first read")
                         .font(Theme.evidence)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 case let .result(helpful, harmful):
                     if let strongest = (helpful + harmful).first {
                         Text(strongest.headline)
@@ -165,7 +165,7 @@ struct ExperimentPreview: View {
                 case .noEffect:
                     Text("No meaningful difference found so far")
                         .font(Theme.text(14))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             .padding(.vertical, 6)

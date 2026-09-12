@@ -52,7 +52,7 @@ struct SleepHealthView: View {
         VStack(spacing: 6) {
             Text("Sleep Health -- \(window.label.lowercased())")
                 .font(Theme.label(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             if let score = health.score {
                 Text(String(format: "%.0f", score))
                     .font(Theme.numeral(46))
@@ -63,12 +63,12 @@ struct SleepHealthView: View {
             } else {
                 Text("--")
                     .font(Theme.numeral(46))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 StatusPill(text: "Insufficient data", tint: .secondary)
             }
             Text("Built from \(health.nightCount) night\(health.nightCount == 1 ? "" : "s") in this window. \(health.confidence.label).")
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 2)
         }
@@ -108,7 +108,7 @@ struct SleepHealthView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("How this is measured", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("""
                 A slower-moving picture than any single night: sufficiency, regularity, continuity and \
                 estimated sleep debt every time, plus breathing stability and self-reported restfulness \
@@ -116,7 +116,7 @@ struct SleepHealthView: View {
                 rather than guessed at, so the score you see is only ever built from what Zoon actually knows.
                 """)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

@@ -39,7 +39,7 @@ struct EvidenceHistoryView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 Text("What Zoon believed, and when. Earlier readings are never overwritten -- if a longer stretch of nights changes the answer, both are here.")
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .glassCard()
@@ -48,7 +48,7 @@ struct EvidenceHistoryView: View {
                 if claims.isEmpty {
                     Text("Nothing recorded yet. Once Zoon can compare enough of your nights to say something about a habit, the first reading lands here and stays.")
                         .font(Theme.text(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .glassCard()
@@ -96,12 +96,12 @@ struct EvidenceHistoryView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(revision.recordedAt.formatted(date: .abbreviated, time: .omitted))
                             .font(Theme.text(11))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                         Text(revision.status.label)
                             .font(Theme.label(13, weight: .semibold))
                         Text(evidenceLine(revision))
                             .font(Theme.evidence)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
 
                         // "Why did this change?" -- the timeline already

@@ -81,7 +81,7 @@ struct StressCard: View {
                     }
                     Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.baselineContextNote)
                         .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -89,7 +89,7 @@ struct StressCard: View {
 
                 Image(systemName: "chevron.right")
                     .font(Theme.text(12, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .glassCard()
         }

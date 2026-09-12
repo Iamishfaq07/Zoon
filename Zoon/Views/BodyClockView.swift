@@ -92,14 +92,14 @@ struct BodyClockView: View {
                         .font(Theme.label(14, weight: .semibold))
                     Text("A schedule for shifting this clock, built around where it sits now.")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(Theme.text(11, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()
@@ -137,7 +137,7 @@ struct BodyClockView: View {
 
             Text(alignmentSentence(driftMinutes: driftMinutes))
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -147,7 +147,7 @@ struct BodyClockView: View {
     private func legend(color: Color, label: String) -> some View {
         HStack(spacing: 5) {
             Circle().fill(color).frame(width: 7, height: 7)
-            Text(label).font(Theme.text(10)).foregroundStyle(.secondary)
+            Text(label).font(Theme.text(10)).foregroundStyle(Theme.inkSecondary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -179,7 +179,7 @@ struct BodyClockView: View {
             }
             Text(bodyClock.stability.detail)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .glassCard()
     }
@@ -252,7 +252,7 @@ struct BodyClockView: View {
                             if selected == moment {
                                 Text(moment.detail)
                                     .font(Theme.evidence)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -295,7 +295,7 @@ struct BodyClockView: View {
                         night crossing midnight doesn't distort the result.
                         """)
                         .font(Theme.text(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text("""
                         The energy peak, dip and wind-down are a forecast from your wake time and \
                         sleep debt, not a measurement of how alert you were. The light window is \
@@ -303,7 +303,7 @@ struct BodyClockView: View {
                         outdoor light does the most to anchor tonight's timing.
                         """)
                         .font(Theme.text(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)

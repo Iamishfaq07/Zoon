@@ -57,7 +57,7 @@ struct SleepNeedView: View {
         VStack(spacing: 6) {
             Text("Tonight's estimated need")
                 .font(Theme.label(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))
                 .font(Theme.numeral(46))
                 .monospacedDigit()
@@ -65,7 +65,7 @@ struct SleepNeedView: View {
             if let learned, let learnedMinutes = learned.learnedMinutes {
                 Text("Based on \(learned.qualifyingNightCount) qualifying nights -- your own baseline is estimated at \(SleepNightFeatures.formatMinutes(learnedMinutes)), blended with your goal below.")
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 2)
@@ -175,10 +175,10 @@ struct SleepNeedView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("How this is estimated", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(learnedExplanationText)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

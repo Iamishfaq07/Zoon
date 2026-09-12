@@ -34,9 +34,9 @@ struct AlertnessCheckView: View {
             Label("Optional 20–30 second check", systemImage: "hand.tap.fill")
                 .font(Theme.label(15, weight: .semibold))
             Text("Tap when the moon changes. Zoon records reaction time, lapses, and how alert you feel as a personal outcome alongside your sleep history.")
-                .font(Theme.text(13)).foregroundStyle(.secondary)
+                .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
             Text("Wellness information only. This is not a medical, neurological, driving, or fitness-for-duty test.")
-                .font(Theme.evidence).foregroundStyle(.tertiary)
+                .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
@@ -69,7 +69,7 @@ struct AlertnessCheckView: View {
                 Text("Saved on this device").font(Theme.numeral(24))
                 if let latest = store.results.first {
                     Text("Median \(latest.medianReactionMilliseconds) ms · \(latest.lapses) \(latest.lapses == 1 ? "lapse" : "lapses") · alertness \(latest.subjectiveAlertness)/5")
-                        .font(Theme.text(13)).foregroundStyle(.secondary)
+                        .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
                 }
                 Button("Done") { reset() }.buttonStyle(.bordered)
             }
@@ -99,7 +99,7 @@ struct AlertnessCheckView: View {
                     Text(result.date, format: .dateTime.month(.abbreviated).day()).font(Theme.text(12))
                     Spacer()
                     Text("\(result.medianReactionMilliseconds) ms").font(Theme.label(13, weight: .semibold)).monospacedDigit()
-                    Text("· \(result.subjectiveAlertness)/5").font(Theme.text(12)).foregroundStyle(.secondary)
+                    Text("· \(result.subjectiveAlertness)/5").font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
                 }
             }
         }.glassCard()

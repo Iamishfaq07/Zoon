@@ -62,7 +62,7 @@ struct NightHistoryView: View {
                     .font(Theme.label(14, weight: .semibold))
                 Text("\(Int(night.sleepEfficiencyPercent))% efficiency · \(night.wakeCount) awakenings")
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             Spacer()
@@ -74,7 +74,7 @@ struct NightHistoryView: View {
 
             Image(systemName: "chevron.right")
                 .font(Theme.text(12, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .padding(14)
         .glassCard()

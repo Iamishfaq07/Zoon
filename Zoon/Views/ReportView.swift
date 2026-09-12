@@ -49,7 +49,7 @@ struct ReportView: View {
         VStack(spacing: 6) {
             Text("\(report.periodStart, format: .dateTime.month().day()) – \(report.periodEnd, format: .dateTime.month().day())")
                 .font(Theme.label(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             if let recovery = report.averageRecovery {
                 Text("\(Int(recovery))%")
@@ -60,7 +60,7 @@ struct ReportView: View {
                 // week is reachable and read "across 1 nights".
                 Text("average recovery across \(report.nightCount.pluralized("night"))")
                     .font(Theme.label(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             if let trend = report.recoveryTrend {
@@ -86,7 +86,7 @@ struct ReportView: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .font(Theme.label(14, weight: .semibold))
             .padding(.vertical, 12)
@@ -124,7 +124,7 @@ struct ReportView: View {
                             .font(Theme.label(13, weight: .semibold))
                         Text(highlight.detail)
                             .font(Theme.text(11))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -171,7 +171,7 @@ struct ReportView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Text(value)
                 .font(Theme.label(18, weight: .bold))
                 .monospacedDigit()
@@ -236,14 +236,14 @@ struct ReportView: View {
                 .chartYAxis {
                     AxisMarks(values: [0.0, 50.0, 100.0]) { _ in
                         AxisGridLine().foregroundStyle(Theme.neutral(0.07))
-                        AxisValueLabel().font(Theme.text(9)).foregroundStyle(.tertiary)
+                        AxisValueLabel().font(Theme.text(9)).foregroundStyle(Theme.inkTertiary)
                     }
                 }
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: 3)) { _ in
                         AxisValueLabel(format: .dateTime.day())
                             .font(Theme.text(9))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
                 .frame(height: 150)
@@ -279,7 +279,7 @@ struct ReportView: View {
                             .foregroundStyle(trend.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
                         Text(trend.sentence)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -311,7 +311,7 @@ struct ReportView: View {
                             .font(Theme.label(13, weight: .semibold))
                         Text(finding.detail)
                             .font(Theme.text(11))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -342,7 +342,7 @@ struct ReportView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Text(night.date, format: .dateTime.weekday(.wide))
                     .font(Theme.label(13, weight: .semibold))
             }
@@ -354,7 +354,7 @@ struct ReportView: View {
                     .foregroundStyle(tint)
                 Text("\(Int(night.sleepEfficiencyPercent))% efficiency")
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
     }

@@ -17,20 +17,20 @@ struct MorningInThreeCard: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Morning in 3")
                 .font(Theme.label(13, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             ForEach(summary.lines) { line in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(line.label)
                         .font(Theme.label(10, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                     Text(line.headline)
                         .font(Theme.numeral(22))
                         .fixedSize(horizontal: false, vertical: true)
                     if let detail = line.detail {
                         Text(detail)
                             .font(Theme.text(12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

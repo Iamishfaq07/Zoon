@@ -261,6 +261,42 @@ enum Theme {
         adaptive(dark: (1, 1, 1), light: (0.09, 0.09, 0.16))
     }
 
+    /// The three text levels, chosen against *this app's* grounds rather
+    /// than the system's.
+    ///
+    /// SwiftUI's `.secondary` and `.tertiary` are fixed fractions of the
+    /// label colour -- roughly 50% and 25%. Those fractions are tuned for a
+    /// flat system background, and Zoon has neither: Dark is a near-black
+    /// navy gradient, Light a pale lavender one. At 25% on the Light ground
+    /// a `.tertiary` line lands around #BFBFBF on #EDEDF5, which is why the
+    /// sentence under "Capacity now" was reported as barely readable.
+    ///
+    /// **These are applied at the call site, not inherited.** The first
+    /// attempt set all three levels once via `foregroundStyle(_:_:_:)` in
+    /// `zoonTypography()`, on the theory that every `.secondary` and
+    /// `.tertiary` in the app would then resolve against them. It changed
+    /// nothing: a capture of Today in Light before and after was identical
+    /// to the pixel -- darkest ink 180 in both. That modifier stays below
+    /// because it is still correct for SwiftUI's own controls, but the ~500
+    /// call sites in the app name these colours directly, because that is
+    /// the version that demonstrably renders.
+    ///
+    /// The widget and watch targets deliberately keep `.secondary`:
+    /// accessory families render monochrome and tint whatever they are
+    /// given, so a fixed colour there would fight the system rather than
+    /// help it.
+    static var ink: Color {
+        cardTint(dark: (1, 1, 1, 1), light: (0.09, 0.09, 0.16, 1))
+    }
+
+    static var inkSecondary: Color {
+        cardTint(dark: (1, 1, 1, 0.74), light: (0.09, 0.09, 0.16, 0.68))
+    }
+
+    static var inkTertiary: Color {
+        cardTint(dark: (1, 1, 1, 0.56), light: (0.09, 0.09, 0.16, 0.52))
+    }
+
     /// A glass card's specular highlight -- the soft sheen a curved glass
     /// surface catches along its top edge. Deliberately **not** built from
     /// `neutral`, which flips to black in Light on purpose (it needs to
@@ -617,6 +653,13 @@ extension View {
     /// accessibility size would make body text.
     func zoonTypography() -> some View {
         dynamicTypeSize(...DynamicTypeSize.accessibility5)
+            // Sets the three hierarchical levels for descendants that use
+            // SwiftUI's own `.secondary`/`.tertiary` -- system controls,
+            // mostly. This alone did NOT move the app's own text (see
+            // `Theme.ink`), so the app's call sites name the colours
+            // directly; this stays for everything that does still resolve
+            // through the hierarchy.
+            .foregroundStyle(Theme.ink, Theme.inkSecondary, Theme.inkTertiary)
     }
 
     /// The V8 alternative to `.glassCard()`: content that sits directly on
@@ -882,7 +925,7 @@ struct ZoonSectionHeader<Accessory: View>: View {
             .font(Theme.kicker)
             .tracking(1.0)
             .textCase(.uppercase)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -936,7 +979,7 @@ struct SectionHeader: View {
                 } else if let systemImage {
                     Image(systemName: systemImage)
                         .font(Theme.text(12, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Text(title)
                     .font(Theme.label(16, weight: .bold))
@@ -944,7 +987,7 @@ struct SectionHeader: View {
             if let subtitle {
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

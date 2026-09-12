@@ -25,7 +25,7 @@ struct BreathingView: View {
                 if isRunning {
                     Text("Cycle \(min(coach.cyclesCompleted + 1, coach.totalCycles)) of \(coach.totalCycles)")
                         .font(Theme.text(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 

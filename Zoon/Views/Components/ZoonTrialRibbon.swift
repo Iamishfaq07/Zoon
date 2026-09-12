@@ -120,7 +120,7 @@ struct ZoonTrialRibbon: View {
                 Spacer()
                 Text(summaryLine)
                     .font(Theme.evidence)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.trailing)
             }
 
@@ -129,7 +129,7 @@ struct ZoonTrialRibbon: View {
             if let selectedDay, let day = days.first(where: { $0.date == selectedDay }) {
                 Text("\(day.date.formatted(.dateTime.weekday(.wide).day().month())) · \(day.status.label)")
                     .font(Theme.supportingLabel)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .transition(.opacity)
             }
         }
@@ -167,7 +167,7 @@ struct ZoonTrialRibbon: View {
             VStack(spacing: 4) {
                 Text(day.date.formatted(.dateTime.weekday(.narrow)))
                     .font(Theme.kicker)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Image(systemName: day.status.symbol)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(foreground(day.status))

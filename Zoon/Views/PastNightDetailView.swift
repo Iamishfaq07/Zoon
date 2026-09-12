@@ -33,7 +33,7 @@ struct PastNightDetailView: View {
                 .monospacedDigit()
             Text("asleep")
                 .font(Theme.label(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
@@ -127,7 +127,7 @@ struct PastNightDetailView: View {
         HStack {
             Text(label)
                 .font(Theme.label(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer()
             Text(value)
                 .font(Theme.label(13, weight: .semibold))

@@ -79,7 +79,7 @@ struct ZoonEvidenceLedger: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(sorted.enumerated()), id: \.element.id) { index, milestone in
@@ -104,7 +104,7 @@ struct ZoonEvidenceLedger: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .frame(minWidth: 52, alignment: .trailing)
                 .padding(.top, 2)
 
@@ -133,7 +133,7 @@ struct ZoonEvidenceLedger: View {
                 if let detail = milestone.detail {
                     Text(detail)
                         .font(Theme.evidence)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

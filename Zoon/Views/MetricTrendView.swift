@@ -87,7 +87,7 @@ struct MetricTrendView: View {
         VStack(spacing: 6) {
             Text(kind.label)
                 .font(Theme.label(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(currentMetric?.formattedValue ?? "—")
                 .font(Theme.numeral(40))
                 .monospacedDigit()
@@ -100,7 +100,7 @@ struct MetricTrendView: View {
             if let range = currentMetric?.formattedRange {
                 Text("Your typical range: \(range)")
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -176,7 +176,7 @@ struct MetricTrendView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("How this is measured", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             VStack(spacing: 6) {
                 evidenceRow("Nights behind the baseline", sampleDescription)
@@ -193,7 +193,7 @@ struct MetricTrendView: View {
 
             Text(method)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -203,7 +203,7 @@ struct MetricTrendView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer(minLength: 12)
             Text(value)
                 .font(Theme.evidence)

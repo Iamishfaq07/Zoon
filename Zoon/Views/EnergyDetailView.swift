@@ -75,16 +75,16 @@ struct EnergyDetailView: View {
                         .monospacedDigit()
                     Text("Load")
                         .font(Theme.label(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 HStack(spacing: 4) {
                     Text(context.strain.band)
                         .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                     if context.strain.isEstimate {
                         Text("· estimated")
                             .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
             }
@@ -147,7 +147,7 @@ private struct CognitiveEnergyCard: View {
 
             Text("Estimated from last night's HRV, the overnight heart-rate dip, and REM/Deep mix. Nothing on a wrist measures cognition.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -177,7 +177,7 @@ private struct CognitiveEnergyCard: View {
                 .monospacedDigit()
             Text(label)
                 .font(Theme.text(11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -73,7 +73,7 @@ struct RegularityCard: View {
 
             Text(regularity.detail)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let jetlagDetail = regularity.socialJetlagDetail {
@@ -81,7 +81,7 @@ struct RegularityCard: View {
                 Label {
                     Text(jetlagDetail)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
                     Image(systemName: "airplane")
@@ -98,7 +98,7 @@ struct RegularityCard: View {
                         .monospacedDigit()
                     Text("Academic formula over full calendar days, including daytime. Not the timing number above — daytime awake-to-awake agreement would flatten that one.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -131,7 +131,7 @@ struct RegularityCard: View {
                     .foregroundStyle(tint)
                 Text("TIMING")
                     .font(Theme.text(8, weight: .bold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -147,7 +147,7 @@ struct RegularityCard: View {
                 .monospacedDigit()
             Text(label)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
     }
 
@@ -217,7 +217,7 @@ struct HealthRadarCard: View {
                                 .font(Theme.label(12, weight: .medium))
                             Text("\(signal.consecutiveNights) nights \(signal.direction == .elevated ? "elevated" : "below baseline")")
                                 .font(Theme.text(10))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                         }
 
                         Spacer()
@@ -235,12 +235,12 @@ struct HealthRadarCard: View {
 
                 Text(radar.detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(SleepInsight.disclaimer)
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .glassCard()

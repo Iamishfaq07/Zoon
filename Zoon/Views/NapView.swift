@@ -102,7 +102,7 @@ struct NapView: View {
             }
             Text("You started a \(pending.targetMinutes)-minute nap at \(pending.start.formatted(date: .omitted, time: .shortened)), and Zoon wasn't running when it was due to end. It doesn't know when you actually woke up.")
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 12) {
@@ -171,7 +171,7 @@ struct NapView: View {
                         .monospacedDigit()
                     Text("remaining")
                         .font(Theme.label(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             .frame(width: 200, height: 200)
@@ -250,7 +250,7 @@ struct NapView: View {
             }
             Text(recommendation.reason)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -280,7 +280,7 @@ struct NapView: View {
                                 .font(Theme.label(14, weight: .semibold))
                             Text(preset.detail)
                                 .font(Theme.text(10))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                         }
 
                         Spacer()
@@ -341,7 +341,7 @@ struct NapView: View {
                     HStack {
                         Text(nap.start, format: .dateTime.weekday(.abbreviated).hour().minute())
                             .font(Theme.label(12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Spacer()
                         Text("\(Int(nap.minutes)) min")
                             .font(Theme.label(13, weight: .semibold))
@@ -364,7 +364,7 @@ struct NapView: View {
                 beats napping.
                 """)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

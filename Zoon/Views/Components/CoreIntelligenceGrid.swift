@@ -175,7 +175,7 @@ struct CoreIntelligenceGrid: View {
                 visual()
                 Text(stat())
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }

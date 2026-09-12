@@ -33,7 +33,7 @@ struct BodyBatteryCard: View {
                         .foregroundStyle(Theme.batteryColor(Double(battery.current)))
                     Text("/100")
                         .font(Theme.label(12))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
 
@@ -47,12 +47,12 @@ struct BodyBatteryCard: View {
 
             Text(battery.guidance)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let note = battery.confidenceNote {
                 Label(note, systemImage: "info.circle")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -66,7 +66,7 @@ struct BodyBatteryCard: View {
                 .monospacedDigit()
             Text(label)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -90,7 +90,7 @@ struct SleepSummaryStrip: View {
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(Theme.text(12, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -99,7 +99,7 @@ struct SleepSummaryStrip: View {
                         .monospacedDigit()
                     Text("\(Int(context.sleepNeed.performancePercent))% of need")
                         .font(Theme.label(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
 
                 if !context.night.stageSegments.isEmpty {
@@ -154,7 +154,7 @@ struct RecoveryBreakdownCard: View {
                 if let reason = recovery.confidenceReason {
                     Text(reason)
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -190,7 +190,7 @@ struct RecoveryBreakdownCard: View {
 
                     Text(component.isAvailable ? component.detail : "Not available")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                         .frame(width: 74, alignment: .trailing)
 
@@ -209,7 +209,7 @@ struct RecoveryBreakdownCard: View {
                 Divider().overlay(Theme.cardStroke)
                 Text("Based on \(recovery.availableComponentCount) of \(recovery.components.count) signals tonight (\(recovery.dataCompletenessPercent)% of the full model). Missing signals were excluded, not assumed average.")
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -271,14 +271,14 @@ struct HRVStatusCard: View {
                     Spacer()
                     Text("Your range \(Int(lower))–\(Int(upper)) ms")
                         .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .monospacedDigit()
                 }
             }
 
             Text(status.state.detail)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

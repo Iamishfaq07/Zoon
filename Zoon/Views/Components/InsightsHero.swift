@@ -85,7 +85,7 @@ struct InsightsHero: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
 
                 if let score = current.score {
@@ -104,7 +104,7 @@ struct InsightsHero: View {
                     } else {
                         Text("Steady vs prior \(window.label.lowercased())")
                             .font(Theme.text(12, weight: .medium))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 } else {
                     ZoonHeroMetric(value: "--", meaning: "Not enough nights yet", tint: .secondary)

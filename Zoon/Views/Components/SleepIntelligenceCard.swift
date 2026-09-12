@@ -54,7 +54,7 @@ struct SleepIntelligenceCard: View {
                     .foregroundStyle(tint)
                 Text(score.band.label)
                     .font(Theme.label(16, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             Button {
@@ -91,7 +91,7 @@ struct SleepIntelligenceCard: View {
             if score.positiveContributors.isEmpty && score.negativeContributors.isEmpty {
                 Text("Every component landed close to neutral tonight -- nothing stood out either way.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
         }
         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -101,7 +101,7 @@ struct SleepIntelligenceCard: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(Theme.label(11, weight: .bold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
             ForEach(items) { component in
                 HStack(spacing: 8) {
                     Image(systemName: positive ? "checkmark" : "minus")
@@ -112,7 +112,7 @@ struct SleepIntelligenceCard: View {
                         .font(Theme.label(12, weight: .medium))
                     Text(component.detail)
                         .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                     Spacer()
                     Text(String(format: "%+.0f", component.pointContribution))
                         .font(Theme.text(11, weight: .semibold))

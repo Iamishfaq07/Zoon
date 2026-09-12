@@ -95,7 +95,7 @@ struct TonightTimelineCard: View {
                                 .opacity(isPast ? 0.6 : 1)
                             Text(node.label)
                                 .font(Theme.text(9))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                         }
                         .frame(maxWidth: .infinity)
                     }

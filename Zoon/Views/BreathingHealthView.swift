@@ -52,13 +52,13 @@ struct BreathingHealthView: View {
                         .monospacedDigit()
                     Text("br/min")
                         .font(Theme.label(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     if let baseline = health.baselineRespiratoryRate {
                         VStack(alignment: .trailing, spacing: 1) {
                             Text("Baseline \(String(format: "%.1f", baseline))")
                                 .font(Theme.text(10))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                             if let deviation = health.respiratoryDeviationPercent {
                                 Text(String(format: "%+.0f%%", deviation))
                                     .font(Theme.label(12, weight: .semibold))
@@ -70,7 +70,7 @@ struct BreathingHealthView: View {
             } else {
                 Text("No respiratory rate reading for last night.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
         }
         .glassCard()
@@ -94,7 +94,7 @@ struct BreathingHealthView: View {
             if health.disturbanceTrend.count < 2 {
                 Text("Needs a Series 9 / Ultra 2 or later with the feature enabled, and a few nights of history.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             } else {
                 Chart {
                     ForEach(health.disturbanceTrend) { point in
@@ -140,13 +140,13 @@ struct BreathingHealthView: View {
                 if case .repeatedPattern(let elevated, let window) = health.pattern {
                     Text("Elevated on \(elevated) of the last \(window) classified nights. Consider discussing a repeated pattern like this with a healthcare professional if it continues.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if case .unclassified(let window) = health.pattern {
                     Text("Your device recorded breathing disturbances on \(window) of these nights but didn't classify them. The trend above is real; Zoon won't call any of it elevated on its own, because that classification comes from Apple and isn't available here.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -227,7 +227,7 @@ struct BreathingHealthView: View {
                     HStack {
                         Text(night.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                             .font(Theme.label(12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Spacer()
                         Text("\(night.snorePercent)% of \(Int(night.monitoredMinutes))m monitored")
                             .font(Theme.label(12, weight: .semibold))
@@ -241,7 +241,7 @@ struct BreathingHealthView: View {
                 SectionHeader(title: "Snoring", systemImage: "waveform.and.mic")
                 Text("No Snore Check sessions yet. Run one from the Sleep tab to start building history here.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             .glassCard()
         }
@@ -253,7 +253,7 @@ struct BreathingHealthView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("What this screen can't tell you", systemImage: "exclamationmark.shield")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("""
                 Zoon cannot diagnose sleep apnea, or any other condition, from consumer-device \
                 measurements. It can only show you the pattern in your own recorded data. If \
@@ -262,7 +262,7 @@ struct BreathingHealthView: View {
                 professional.
                 """)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

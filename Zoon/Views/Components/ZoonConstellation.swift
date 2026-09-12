@@ -250,10 +250,10 @@ struct ZoonConstellation: View {
         VStack(alignment: .leading, spacing: 1) {
             Text(term)
                 .font(Theme.supportingLabel)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(meaning)
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
     }
 
@@ -270,7 +270,7 @@ struct ZoonConstellation: View {
 
                 Text("Zoon found this by comparing your own nights. It's a pattern in your data, not proof that one causes the other — nights like these usually differ in other ways too.")
                     .font(Theme.evidence)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Spacer()

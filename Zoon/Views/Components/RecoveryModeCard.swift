@@ -20,7 +20,7 @@ struct RecoveryModeCard: View {
                         .font(Theme.label(14, weight: .semibold))
                     Text(mode.detail)
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -49,7 +49,7 @@ struct RecoveryModeEnableLink: View {
         } label: {
             Label("Not feeling recovered? Turn on Recovery Mode", systemImage: "leaf")
                 .font(Theme.text(11, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .buttonStyle(.plain)
     }

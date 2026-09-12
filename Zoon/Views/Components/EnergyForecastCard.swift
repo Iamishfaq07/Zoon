@@ -43,7 +43,7 @@ struct EnergyForecastCard: View {
                             .minimumScaleFactor(0.7)
                         Text(window.kind.label)
                             .font(Theme.text(8))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }

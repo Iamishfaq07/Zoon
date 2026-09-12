@@ -91,13 +91,13 @@ struct WhatChangedCard: View {
                 SectionHeader(title: "What Changed", systemImage: "arrow.left.arrow.right")
                 Text("This week vs the week before")
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
 
                 ForEach(rows) { row in
                     HStack(spacing: 10) {
                         Image(systemName: row.symbol)
                             .font(Theme.text(13))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .frame(width: 20)
                         Text(row.label)
                             .font(Theme.label(13, weight: .medium))

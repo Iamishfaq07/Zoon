@@ -9,7 +9,7 @@ struct SleepFingerprintView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Sleep fingerprint").font(.title2.bold())
                 Text("A calm summary of what your sleep usually looks like. It describes patterns; it does not diagnose causes.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(Theme.inkSecondary)
                 Picker("Period", selection: $days) {
                     Text("7 nights").tag(7); Text("30 nights").tag(30); Text("90 nights").tag(90)
                 }.pickerStyle(.segmented)
@@ -26,7 +26,7 @@ struct SleepFingerprintView: View {
                         }
                     }.glassCard()
                     Text("Based on \(fingerprint.sampleCount) recent nights. A missing sensor leaves its row unmeasured rather than lowering a score.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(Theme.inkSecondary)
                 } else {
                     ZoonEmptyState(kind: .learning(collected: coordinator.recentNights.count, typicallyNeeded: 3...7, message: "Keep logging sleep for a few more nights to reveal your fingerprint."))
                 }
@@ -36,8 +36,8 @@ struct SleepFingerprintView: View {
 
     private func unmeasuredMetric(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack { Text(title).font(.headline); Spacer(); Text("—").font(.headline.monospacedDigit()).foregroundStyle(.secondary) }
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            HStack { Text(title).font(.headline); Spacer(); Text("—").font(.headline.monospacedDigit()).foregroundStyle(Theme.inkSecondary) }
+            Text(detail).font(.caption).foregroundStyle(Theme.inkSecondary)
         }
     }
 
@@ -45,7 +45,7 @@ struct SleepFingerprintView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack { Text(title).font(.headline); Spacer(); Text("\(Int((value * 100).rounded()))%").font(.headline.monospacedDigit()) }
             ProgressView(value: value).tint(Theme.Family.sleep)
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            Text(detail).font(.caption).foregroundStyle(Theme.inkSecondary)
         }
     }
 }
@@ -57,7 +57,7 @@ private struct FingerprintRings: View {
             Circle().stroke(Theme.Family.sleep.opacity(0.15), lineWidth: 24)
             Circle().trim(from: 0, to: fingerprint.timingStability).stroke(Theme.Family.sleep, style: StrokeStyle(lineWidth: 24, lineCap: .round)).rotationEffect(.degrees(-90))
             Circle().trim(from: 0, to: fingerprint.continuity).stroke(Theme.Family.recovery, style: StrokeStyle(lineWidth: 12, lineCap: .round)).rotationEffect(.degrees(-90))
-            VStack { Text("Your pattern").font(.caption).foregroundStyle(.secondary); Text("\(fingerprint.sampleCount) nights").font(.title3.bold()) }
+            VStack { Text("Your pattern").font(.caption).foregroundStyle(Theme.inkSecondary); Text("\(fingerprint.sampleCount) nights").font(.title3.bold()) }
         }.frame(height: 210).frame(maxWidth: .infinity).padding(.vertical, 8)
     }
 }

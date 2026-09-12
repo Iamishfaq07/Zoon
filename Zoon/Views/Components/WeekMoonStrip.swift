@@ -59,7 +59,7 @@ struct NightFilmStrip: View {
                             MoonWell(fill: fill, metNeed: met)
                             Text(night.date, format: .dateTime.weekday(.abbreviated).day())
                                 .font(Theme.text(11))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.inkSecondary)
                             Text(night.formattedTimeAsleep)
                                 .font(Theme.label(13, weight: .semibold))
                                 .monospacedDigit()

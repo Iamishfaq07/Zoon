@@ -80,7 +80,7 @@ struct SettingsView: View {
                     Text("Nightly goal")
                     Spacer()
                     Text(preferences.sleepGoalDisplay)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                 }
                 Slider(
@@ -178,7 +178,7 @@ struct SettingsView: View {
                     Text("Bedtime reminders")
                     Text("Wind-down nudge \(BedtimeReminder.windDownLeadMinutes) minutes ahead, then bedtime.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 
@@ -218,7 +218,7 @@ struct SettingsView: View {
 
                     Text("Add Zoon as a filter to any Focus (Settings → Focus → Add Filter) and these nudges pause while it's on. Your wake alarm still sounds.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -241,7 +241,7 @@ struct SettingsView: View {
                     Text("Wake window")
                     Text("Notifies within your usual wake window, not a live sleep-stage alarm.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 
@@ -267,7 +267,7 @@ struct SettingsView: View {
                         Text("Ring an alarm")
                         Text(alarmStatusDescription)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .disabled(!wakeAlarm.isAvailable)
@@ -291,7 +291,7 @@ struct SettingsView: View {
                     Text("Morning brief")
                     Text("Nudge \(BedtimeReminder.morningBriefLeadMinutes) minutes after your usual wake. Names no numbers — open the app for those.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 
@@ -338,7 +338,7 @@ struct SettingsView: View {
 
                 Text(preferences.shiftWorkMode.explanation)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.vertical, 2)
@@ -406,7 +406,7 @@ struct SettingsView: View {
                     Text("Cycle tracking")
                     Text("Correlates recovery and sleep with your cycle phase.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
         } header: {
@@ -447,7 +447,7 @@ struct SettingsView: View {
                     Text("Lifestyle Insights")
                     Text("Reads measured caffeine, alcohol, daylight, and mindfulness from Health.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
         } header: {
@@ -547,11 +547,11 @@ struct SettingsView: View {
                 Label("Answered by", systemImage: "cpu")
                 Spacer()
                 Text(preferences.preferredEngine.displayName)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             Text("Change this on the Coach tab, where you can see what it changes.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             // Not a third picker option -- see `EngineChoice.shippingCases`.
             // `LocalLLMInsightEngine` always falls back to rules today, so
@@ -561,9 +561,9 @@ struct SettingsView: View {
             HStack {
                 Label("Bundled on-device model", systemImage: "flask")
                 Spacer()
-                Text("Labs").font(.caption).foregroundStyle(.secondary)
+                Text("Labs").font(.caption).foregroundStyle(Theme.inkSecondary)
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Bundled on-device model, in Labs, not yet available")
 

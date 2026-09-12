@@ -77,12 +77,12 @@ struct SoundscapeView: View {
         return HStack(spacing: 10) {
             Image(systemName: "speaker.fill")
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Slider(value: $engine.volume, in: 0...1)
                 .tint(Theme.Metric.battery)
             Image(systemName: "speaker.wave.3.fill")
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .padding(.horizontal, 4)
     }
@@ -95,7 +95,7 @@ struct SoundscapeView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(group.label)
                         .font(Theme.label(12, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .textCase(.uppercase)
                     LazyVGrid(
                         columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
@@ -128,7 +128,7 @@ struct SoundscapeView: View {
 
                 Text(sound.detail)
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxHeight: .infinity, alignment: .top)
@@ -212,7 +212,7 @@ struct SoundscapeView: View {
                 streamed. Sleep onset still drops volume as overnight heart rate falls.
                 """)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

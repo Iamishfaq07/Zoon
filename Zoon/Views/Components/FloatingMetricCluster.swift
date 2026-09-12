@@ -46,7 +46,7 @@ struct FloatingMetricCluster: View {
                     .monospacedDigit()
                 Text(label)
                     .font(Theme.text(10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

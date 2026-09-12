@@ -22,7 +22,7 @@ struct FirstNightCard: View {
                         .font(Theme.label(15, weight: .bold))
                     Text(night.formattedTimeAsleep + " tracked")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 
@@ -34,7 +34,7 @@ struct FirstNightCard: View {
 
             Text("Personal baselines become more accurate as you collect more nights -- scores and comparisons below will start appearing over the next couple of weeks.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -47,7 +47,7 @@ struct FirstNightCard: View {
                 .foregroundStyle(available ? Theme.Metric.recoveryHigh : .secondary)
             Text(label)
                 .font(Theme.text(9))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity)
     }

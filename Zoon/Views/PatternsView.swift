@@ -111,7 +111,7 @@ struct PatternsView: View {
             if findings.isEmpty {
                 Text("Nothing yet. Log what you did on a few more nights and Zoon can start comparing them against each other.")
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 ForEach(Array(findings.enumerated()), id: \.element.id) { index, finding in
@@ -123,13 +123,13 @@ struct PatternsView: View {
                             .font(Theme.label(14, weight: .semibold))
                         Text(finding.plainSentence)
                             .font(Theme.text(13))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                         // The count is never hidden. A finding from 6 matched
                         // nights and one from 60 read identically without it.
                         Text(finding.supportLine)
                             .font(Theme.evidence)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
@@ -155,7 +155,7 @@ struct PatternsView: View {
                 ZoonConstellation(nodes: graph.nodes, edges: graph.edges, initialFocus: "sleep")
                 Text("Tap a connection to see the evidence behind it.")
                     .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
     }
@@ -194,7 +194,7 @@ struct PatternsView: View {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(forecast.metric.label.capitalizedFirst)
                                     .font(Theme.text(13))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                 Spacer(minLength: 12)
                                 Text("\(forecast.metric.formattedMagnitude(forecast.lower))–\(forecast.metric.formattedMagnitude(forecast.upper))")
                                     .font(Theme.text(13, weight: .semibold))
@@ -247,11 +247,11 @@ struct PatternsView: View {
                     Text(prediction.confidence.label)
                 }
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
                 Text(prediction.sentence(format: metric.formattedMagnitude))
                     .font(Theme.text(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if !prediction.matches.isEmpty {
@@ -260,7 +260,7 @@ struct PatternsView: View {
 
                 Text(prediction.caveat)
                     .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .glassCard()
@@ -298,7 +298,7 @@ struct PatternsView: View {
                     }
                     Text("Mixed means those nights did not agree with tomorrow on it, so the range says less about it.")
                         .font(Theme.evidence)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -321,7 +321,7 @@ struct PatternsView: View {
             Text("\(Int((match.agreement * 100).rounded()))%")
                 .font(Theme.evidence)
                 .monospacedDigit()
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
@@ -361,11 +361,11 @@ struct PatternsView: View {
                 mapGrid(map)
                 Text(map.sentence)
                     .font(Theme.text(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(map.caveat)
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .glassCard()
@@ -392,7 +392,7 @@ struct PatternsView: View {
                 Text(SleepMap.Band.high.phrase(for: mapAxes.x))
             }
             .font(Theme.text(10))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.inkTertiary)
         }
     }
 
@@ -459,14 +459,14 @@ struct PatternsView: View {
                 .font(Theme.label(13, weight: .semibold))
                 .textCase(.uppercase)
                 .kerning(0.6)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 
     private func placeholder(_ text: String) -> some View {
         Text(text)
             .font(Theme.text(13))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()

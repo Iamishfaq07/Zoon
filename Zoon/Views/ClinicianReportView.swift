@@ -49,7 +49,7 @@ struct ClinicianReportView: View {
     private var header: some View {
         Text("A PDF summary of your sleep data, formatted for a clinician to skim -- light background, print-friendly, generated entirely on this device.")
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -117,7 +117,7 @@ struct ClinicianReportView: View {
             It is not a diagnosis.
             """)
             .font(Theme.text(10))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.inkTertiary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
