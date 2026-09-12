@@ -47,7 +47,7 @@ struct SnoreCheckView: View {
                 — nothing else survives the session, and nothing at all leaves the phone.
                 """)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -66,7 +66,7 @@ struct SnoreCheckView: View {
                 .monospacedDigit()
             Text("\(Int(detector.snoreSeconds / 60)) min flagged so far")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity)
         .glassCard()
@@ -86,7 +86,7 @@ struct SnoreCheckView: View {
 
             Text("\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged.")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
     }
@@ -129,14 +129,14 @@ struct SnoreCheckView: View {
                         if !episode.isMomentary {
                             Text("\(Int(episode.minutes.rounded())) min")
                                 .font(Theme.text(11))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                                 .monospacedDigit()
                         }
                     }
                     Spacer()
                     Text(timing(episode))
                         .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                 }
                 .accessibilityElement(children: .combine)

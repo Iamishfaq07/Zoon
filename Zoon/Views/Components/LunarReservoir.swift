@@ -58,7 +58,7 @@ struct LunarReservoir: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(debtMinutes > 1 ? SleepNightFeatures.formatMinutes(debtMinutes) : "None")
                         .font(.system(size: 44, weight: .light, design: .rounded))
                         .monospacedDigit()

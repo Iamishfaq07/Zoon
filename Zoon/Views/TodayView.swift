@@ -268,7 +268,7 @@ struct TodayView: View {
 
     private func daytimeHero(_ context: DayContext) -> some View {
         VStack(spacing: 16) {
-            Text(greeting).font(Theme.kicker).foregroundStyle(.secondary)
+            Text(greeting).font(Theme.kicker).foregroundStyle(Theme.inkSecondary)
             RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16)
             Text("Capacity now")
                 .font(Theme.label(20, weight: .semibold))
@@ -278,10 +278,10 @@ struct TodayView: View {
             // Every other site in the app renders the label bare.
             Text(context.recovery.confidence.label)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(coordinator.todayStress?.baselineContextNote ?? "Based on last night's recovery; daytime change appears when enough quiet data is available.")
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -292,7 +292,7 @@ struct TodayView: View {
         VStack(spacing: 14) {
             Text(greeting)
                 .font(Theme.kicker)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             LunarReservoir(
                 debtMinutes: context.night.sleepDebtMinutes ?? 0,
                 size: 220
@@ -301,7 +301,7 @@ struct TodayView: View {
                 .font(Theme.label(20, weight: .semibold))
             Text("Target \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) of sleep")
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -388,7 +388,7 @@ struct TodayView: View {
             }
         }
         .font(Theme.text(10))
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.inkTertiary)
         .frame(maxWidth: .infinity)
         .padding(.top, 6)
     }

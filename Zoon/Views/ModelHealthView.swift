@@ -86,11 +86,11 @@ struct ModelHealthView: View {
                 .foregroundStyle(tint(for: stage))
             Text(stage.meaning)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text(ModelHealth.headline(assessments))
                 .font(Theme.text(12))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,11 +133,11 @@ struct ModelHealthView: View {
 
             Text(assessment.area.question)
                 .font(Theme.text(11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text(assessment.basis)
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
@@ -168,7 +168,7 @@ struct ModelHealthView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("How this is worked out", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("""
                 Each area is placed on the same four steps by how much is behind it -- nights, readings, \
                 settled findings, matched pairs. Nothing here is averaged into one number: the step at the \
@@ -176,7 +176,7 @@ struct ModelHealthView: View {
                 useful to see than a figure that hides it.
                 """)
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

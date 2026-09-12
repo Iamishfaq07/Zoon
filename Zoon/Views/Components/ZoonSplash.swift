@@ -100,7 +100,7 @@ struct ZoonSplash: View {
                 .font(Theme.label(13, weight: .medium))
                 .tracking(1.4)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .opacity(risen ? 1 : 0)
         .offset(y: risen ? 0 : 10)

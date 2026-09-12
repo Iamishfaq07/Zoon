@@ -50,7 +50,7 @@ struct StressDetailView: View {
                         .monospacedDigit()
                     Text(stress.band.label)
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             .frame(width: 96, height: 96)
@@ -64,7 +64,7 @@ struct StressDetailView: View {
 
             Text(mayReflectActivity ? "Today includes real exertion -- this may still reflect exercise, not autonomic load." : stress.band.detail)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -95,7 +95,7 @@ struct StressDetailView: View {
 
             Text("\(Int(stress.sampledMinutes)) minutes sampled so far today.")
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
     }
@@ -113,7 +113,7 @@ struct StressDetailView: View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .frame(width: 18)
 
             Text(label)
@@ -130,7 +130,7 @@ struct StressDetailView: View {
                         .foregroundStyle(.primary)
                     Text("overnight baseline \(String(format: "%.0f", baseline)) \(unit)")
                         .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
 
                 Spacer(minLength: 4)
@@ -142,7 +142,7 @@ struct StressDetailView: View {
             } else {
                 Text("Not available")
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Spacer(minLength: 4)
             }
         }
@@ -155,7 +155,7 @@ struct StressDetailView: View {
             Text("Marked Experimental because the baseline it compares against is built from overnight resting physiology, and even a genuinely calm waking hour doesn't sit on the same scale sleep does. Resolution is also limited by however much of the day has elapsed, which is why it's additionally shown as an estimate until there's enough baseline history.")
         }
         .font(Theme.text(12))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.inkSecondary)
         .fixedSize(horizontal: false, vertical: true)
         .glassCard()
     }

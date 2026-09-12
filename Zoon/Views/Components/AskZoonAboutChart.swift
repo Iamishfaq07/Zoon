@@ -29,7 +29,7 @@ struct AskZoonAboutChart: View {
                 .foregroundStyle(Theme.Family.sleep)
                 Text(question.question)
                     .font(Theme.evidence)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }

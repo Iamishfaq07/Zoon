@@ -353,7 +353,7 @@ struct SleepTabView: View {
                                 StageProportionBar(features: context.night)
                                 Text("\(context.night.sourceName ?? "This source") records sleep without breaking it into stages. Wearing an Apple Watch to bed adds Deep, REM and Core.")
                                     .font(Theme.evidence)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             .entrance(2)

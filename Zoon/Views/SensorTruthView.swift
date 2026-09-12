@@ -48,7 +48,7 @@ struct SensorTruthView: View {
             LazyVStack(alignment: .leading, spacing: 12) {
                 Text("A wrist temperature is a thing a sensor recorded. A REM minute-count is a model's guess. Both look the same on a card, so here is which is which.")
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .glassCard()
@@ -111,7 +111,7 @@ struct SensorTruthView: View {
 
             Text("Counted from your last \(report.nightsConsidered) nights from this source, not from a list of what the model is supposed to do.")
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             // "Everything is arriving" is only true of *this* watch when
@@ -188,7 +188,7 @@ struct SensorTruthView: View {
             if let note = entry.attributionNote {
                 Text(note)
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -221,7 +221,7 @@ struct SensorTruthView: View {
 
             Text(CalibrationLedger.subtitle)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             ForEach(Array(reliability.enumerated()), id: \.element.id) { index, result in
@@ -233,7 +233,7 @@ struct SensorTruthView: View {
 
             Text("Scored by rebuilding each range from the nights before it, so no night helped predict itself.")
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -252,7 +252,7 @@ struct SensorTruthView: View {
                 Text("\(result.hits) of \(result.attempts)")
                     .font(Theme.text(11, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             reliabilityBar(result)
@@ -263,7 +263,7 @@ struct SensorTruthView: View {
 
             Text(result.verdict.meaning)
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
@@ -377,7 +377,7 @@ struct SensorTruthView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(row.quantity.label)
                     .font(Theme.text(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Spacer(minLength: 8)
                 Text(row.provenance.label)
                     .font(Theme.text(10, weight: .semibold))
@@ -394,13 +394,13 @@ struct SensorTruthView: View {
             if !row.sourceNames.isEmpty {
                 Text(SourceCoverage.list(row.sourceNames))
                     .font(Theme.text(11, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             if let note = row.note {
                 Text(note)
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -415,10 +415,10 @@ struct SensorTruthView: View {
                                 // them.
                                 Text(step == 0 ? "•" : "↓")
                                     .font(Theme.text(10))
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(Theme.inkTertiary)
                                 Text(text)
                                     .font(Theme.text(11))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
@@ -441,14 +441,14 @@ struct SensorTruthView: View {
                 Spacer(minLength: 8)
                 Text(entry.availability.label)
                     .font(Theme.text(11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Theme.neutral(0.12), in: Capsule())
             }
             Text(note)
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -469,20 +469,20 @@ struct SensorTruthView: View {
 
             Text(fact.quantity.whatItIs)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             // The limit is the reason this screen exists, so it is never
             // collapsed behind a disclosure.
             Text(fact.quantity.limit)
                 .font(Theme.text(12))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if fact.isWeakenedByItsInputs, let first = fact.weakenedBy.first {
                 Text("Shown as \(fact.provenance.label.lowercased()) because \(first.label.lowercased()) is.")
                     .font(Theme.text(12))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

@@ -141,7 +141,7 @@ struct ZoonUncertaintyBand: View {
         return Text(text)
             .font(Theme.supportingLabel)
             .monospacedDigit()
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .frame(width: labelWidth, alignment: alignment)
             .offset(x: x)
             .opacity(progress >= 0.9 ? 1 : 0)
@@ -160,7 +160,7 @@ struct ZoonUncertaintyBand: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text("\(forecast.metric.formattedMagnitude(forecast.lower))–\(forecast.metric.formattedMagnitude(forecast.upper))")
                         .font(Theme.supportingValue)
                         .monospacedDigit()
@@ -171,7 +171,7 @@ struct ZoonUncertaintyBand: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     ZoonEvidenceBadge(confidence: forecast.confidence)
                 }
             }
@@ -198,7 +198,7 @@ struct ZoonUncertaintyBand: View {
                     Text(forecast.caveat)
                 }
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
                 .transition(.opacity)
             }

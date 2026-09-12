@@ -61,7 +61,7 @@ struct SleepDetailView: View {
 
             Text(context.night.dayString())
                 .font(Theme.label(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             HStack(spacing: 8) {
                 StatusPill(
@@ -136,13 +136,13 @@ struct SleepDetailView: View {
                             if let detail = event.detail {
                                 Text(detail)
                                     .font(Theme.text(10))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Theme.inkSecondary)
                             }
                         }
                         Spacer(minLength: 0)
                         Text(event.time, format: .dateTime.hour().minute())
                             .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .monospacedDigit()
                     }
                 }
@@ -222,7 +222,7 @@ struct SleepDetailView: View {
                     breaking it into stages. Wearing an Apple Watch to bed adds Deep, REM, and Core.
                     """)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -310,7 +310,7 @@ struct SleepDetailView: View {
                 HStack {
                     Text(source.label)
                         .font(Theme.label(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     Image(systemName: source.available ? "checkmark.circle.fill" : "minus.circle")
                         .font(Theme.text(11))
@@ -319,7 +319,7 @@ struct SleepDetailView: View {
             }
             Text("Missing data is never treated as zero -- a metric with nothing available here is simply left out of tonight's score and comparisons.")
                 .font(Theme.text(9))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -332,7 +332,7 @@ struct SleepDetailView: View {
         HStack {
             Text(label)
                 .font(Theme.label(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             if let definitionTitle, let definition {
                 MetricInfoButton(
                     title: definitionTitle, symbol: definitionSymbol,
@@ -425,7 +425,7 @@ struct SleepNeedCard: View {
 
             Text(need.summary)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -466,14 +466,14 @@ struct ChronotypeCard: View {
                     if chronotype.kind != .unknown {
                         Text("Typical bedtime \(chronotype.formattedBedtime) · ±\(Int(chronotype.consistencyMinutes)) min")
                             .font(Theme.text(11))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
             }
 
             Text(chronotype.kind.detail)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

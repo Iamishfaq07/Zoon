@@ -31,7 +31,7 @@ struct LastNightHero: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             ZoonHeroMetric(
                 value: context.night.formattedTimeAsleep,
@@ -50,11 +50,11 @@ struct LastNightHero: View {
                     .monospacedDigit()
             }
             .font(Theme.label(14, weight: .medium))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
 
             Text(context.night.dayString())
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
 
             if context.night.isMock {
                 StatusPill(text: "Sample data", systemImage: "wand.and.stars", tint: Theme.Family.sleep)
@@ -235,7 +235,7 @@ struct SleepMetricBoard: View {
             HStack(spacing: 4) {
                 Text(cell.label)
                     .font(Theme.supportingLabel)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 if let definition = cell.definition {
                     MetricInfoButton(
                         title: definition.title, symbol: definition.symbol,
@@ -246,7 +246,7 @@ struct SleepMetricBoard: View {
             if let caveat = cell.caveat {
                 Text(caveat)
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

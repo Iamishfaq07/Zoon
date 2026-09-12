@@ -10,7 +10,7 @@ struct TonightRoutineView: View {
             Section {
                 Label("Settle into tonight", systemImage: "moon.stars.fill").font(.title2.bold())
                 Text("Begin with guided breathing and your sound scene. Audio fades at the end. Your routine continues when you leave this screen.")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(Theme.inkSecondary)
                 if let window = store.value.nextWindow() {
                     LabeledContent("Saved bedtime", value: window.start.formatted(date: .abbreviated, time: .shortened))
                     LabeledContent("Saved wake time", value: window.end.formatted(date: .abbreviated, time: .shortened))
@@ -74,7 +74,7 @@ struct SavedSleepPlansView: View {
                 ForEach($store.value.plans) { $plan in
                     VStack(alignment: .leading) {
                         Toggle(plan.name, isOn: $plan.enabled)
-                        Text(plan.timeZoneIdentifier).font(.caption).foregroundStyle(.secondary)
+                        Text(plan.timeZoneIdentifier).font(.caption).foregroundStyle(Theme.inkSecondary)
                         if let window = plan.nextWindow(after: .now) {
                             Text("\(window.start.formatted(date: .abbreviated, time: .shortened)) – \(window.end.formatted(date: .abbreviated, time: .shortened))")
                                 .font(.caption)

@@ -77,7 +77,7 @@ struct SleepStoryView: View {
             VStack(spacing: 3) {
                 Text(night.date, format: .dateTime.weekday(.abbreviated))
                     .font(Theme.text(10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text(night.date, format: .dateTime.day())
                     .font(Theme.label(16, weight: .bold))
             }
@@ -125,13 +125,13 @@ struct SleepStoryView: View {
                             Spacer()
                             Text(event.time, format: .dateTime.hour().minute())
                                 .font(Theme.text(11))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.inkSecondary)
                                 .monospacedDigit()
                         }
                         if let detail = event.detail {
                             Text(detail)
                                 .font(Theme.text(11))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                     }
                     .padding(.bottom, index < story.events.count - 1 ? 14 : 0)

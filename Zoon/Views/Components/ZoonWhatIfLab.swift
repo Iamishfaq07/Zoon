@@ -79,7 +79,7 @@ struct ZoonWhatIfLab: View {
             if projections.isEmpty {
                 Text("Not enough nights on both sides of this split yet. Zoon needs about \(ZoonTwin.minimumGroupNights.pluralized("night")) with \(direction.word) \(lever.label) and as many without.")
                     .font(Theme.text(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(minHeight: 120, alignment: .topLeading)
                     .transition(.opacity)
@@ -92,7 +92,7 @@ struct ZoonWhatIfLab: View {
                     .font(Theme.kicker)
                     .tracking(1.0)
                     .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
 
                 VStack(alignment: .leading, spacing: 22) {
                     ForEach(projections) { projection in
@@ -104,7 +104,7 @@ struct ZoonWhatIfLab: View {
                 if let first = projections.first {
                     Text(first.caveat)
                         .font(Theme.evidence)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -152,7 +152,7 @@ struct ZoonWhatIfLab: View {
                     .font(Theme.kicker)
                     .tracking(1.0)
                     .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Spacer(minLength: 8)
                 ZoonEvidenceBadge(confidence: estimate.confidence)
             }
@@ -164,18 +164,18 @@ struct ZoonWhatIfLab: View {
 
             Text("\(estimate.outcome.label.capitalizedFirst), range \(estimate.formattedBound(estimate.lower)) to \(estimate.formattedBound(estimate.upper))")
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             Text(estimate.sentence)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             matchingDetail(estimate)
 
             Text(estimate.caveat)
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)
@@ -214,7 +214,7 @@ struct ZoonWhatIfLab: View {
                 }
                 Text("Each night was paired with a night of the same day shape and a similar setup, from a similar stretch of your history. Pairs further apart than Zoon's limit were not made at all.")
                     .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 8)
@@ -227,7 +227,7 @@ struct ZoonWhatIfLab: View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer(minLength: 12)
             Text(value)
                 .font(Theme.evidence)
@@ -240,15 +240,15 @@ struct ZoonWhatIfLab: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Not enough to estimate this", systemImage: "questionmark.circle")
                 .font(Theme.label(13, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(reason.message)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             if reason.improvesWithMoreNights {
                 Text("More nights may change this.")
                     .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .padding(.vertical, 4)
@@ -270,7 +270,7 @@ struct ZoonWhatIfLab: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             // Lever pills. Native glass because these float over the plot
             // and are the one thing a finger goes to on this screen.
@@ -328,7 +328,7 @@ struct ZoonWhatIfLab: View {
                         .font(Theme.text(12, weight: .semibold))
                         .monospacedDigit()
                 }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             }
 
             let axis = sharedAxis(projection)
@@ -397,7 +397,7 @@ struct ZoonWhatIfLab: View {
                     .foregroundStyle(emphasised ? .primary : .secondary)
                 Text("· \(count.pluralized("night"))")
                     .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Spacer()
                 Text(metric.formattedMagnitude(median))
                     .font(Theme.supportingLabel)

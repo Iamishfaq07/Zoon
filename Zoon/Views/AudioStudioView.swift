@@ -35,7 +35,7 @@ struct AudioStudioView: View {
                     Button(scene.name) { name = scene.name; layers = scene.layers }
                         .swipeActions { Button("Delete", role: .destructive) { store.value.scenes.removeAll { $0.id == scene.id } } }
                 }
-                Text("Loading a scene is silent. Tap Play mix to listen.").font(.caption).foregroundStyle(.secondary)
+                Text("Loading a scene is silent. Tap Play mix to listen.").font(.caption).foregroundStyle(Theme.inkSecondary)
             }
             Section("Sleep timer") {
                 ForEach([15, 30, 60, 90], id: \.self) { minutes in
@@ -45,7 +45,7 @@ struct AudioStudioView: View {
             }
             Section {
                 Text("Brown, pink and white are generated so they never seam. Rain, wind, fire and the rest are the recorded loops bundled in the app. Levels mix at reduced gain. Switching scenes keeps the timer's original end time.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(Theme.inkSecondary)
             }
         }
         .navigationTitle("Audio Studio")

@@ -84,7 +84,7 @@ struct AchievementsView: View {
                         .monospacedDigit()
                     Text("of \(achievements.count)")
                         .font(Theme.text(10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             .frame(width: 108, height: 108)
@@ -95,14 +95,14 @@ struct AchievementsView: View {
                         .font(Theme.label(13, weight: .semibold))
                     Text(next.progressText)
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                 }
             }
 
             Text("Badges are never taken away. Nothing here depends on an unbroken run — a sleep app that punishes one bad night is working against you.")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -222,7 +222,7 @@ struct BadgeTile: View {
                 Text(achievement.progressText)
                     .font(Theme.text(9))
                     .monospacedDigit()
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .onAppear {
@@ -285,7 +285,7 @@ struct AchievementDetailSheet: View {
                     .font(Theme.numeral(22))
                 Text(achievement.detail)
                     .font(Theme.text(14))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 28)
             }
@@ -300,7 +300,7 @@ struct AchievementDetailSheet: View {
                     Text(achievement.progressText)
                         .font(Theme.text(12))
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 

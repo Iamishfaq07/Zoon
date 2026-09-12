@@ -31,7 +31,7 @@ struct TodayNightHero: View {
                 }
                 Text(greeting)
                     .font(Theme.label(15, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             ZStack {
@@ -73,11 +73,11 @@ struct TodayNightHero: View {
                     .font(Theme.numeral(28))
                 Text("of \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) need")
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 if !scoreLight {
                     Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
                         .font(Theme.evidence)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
 
@@ -105,7 +105,7 @@ struct TodayNightHero: View {
                 .foregroundStyle(tint)
                 .monospacedDigit()
             Text(label)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -160,7 +160,7 @@ struct TodayNeedTracks: View {
                 HStack {
                     Text(label)
                         .font(Theme.label(12, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     Text(value)
                         .font(Theme.label(15, weight: .semibold))

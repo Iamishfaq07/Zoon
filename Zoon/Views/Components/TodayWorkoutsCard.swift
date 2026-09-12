@@ -23,12 +23,12 @@ struct TodayWorkoutsCard: View {
                         Spacer()
                         Text("\(Int(workout.durationMinutes.rounded())) min")
                             .font(Theme.text(12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .monospacedDigit()
                         if let kcal = workout.activeEnergyKcal {
                             Text("\(Int(kcal.rounded())) kcal")
                                 .font(Theme.text(12))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                                 .monospacedDigit()
                         }
                     }

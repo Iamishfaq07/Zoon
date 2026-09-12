@@ -87,7 +87,7 @@ struct EnergyHorizon: View {
                         .contentTransition(.numericText())
                     Text(Self.describe(level: level))
                         .font(Theme.supportingLabel)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             } else if let next = nextWindow {
                 VStack(alignment: .leading, spacing: 1) {
@@ -95,7 +95,7 @@ struct EnergyHorizon: View {
                         .font(Theme.supportingValue)
                     Text(next.time, format: .dateTime.hour().minute())
                         .font(Theme.supportingLabel)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                 }
             } else {
@@ -104,7 +104,7 @@ struct EnergyHorizon: View {
                         .font(Theme.supportingValue)
                     Text("Today's curve is behind you")
                         .font(Theme.supportingLabel)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
 
@@ -118,7 +118,7 @@ struct EnergyHorizon: View {
                         .foregroundStyle(Theme.batteryColor(Double(battery.current)))
                     Text("Reserve")
                         .font(Theme.supportingLabel)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
         }
@@ -203,11 +203,11 @@ struct EnergyHorizon: View {
             let caption = VStack(spacing: 3) {
                 Text(window.kind.label)
                     .font(Theme.text(9, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
                 Text(window.time, format: .dateTime.hour().minute())
                     .font(Theme.text(9))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .monospacedDigit()
             }
 
@@ -272,7 +272,7 @@ struct EnergyHorizon: View {
             }
         }
         .font(Theme.text(10))
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.inkTertiary)
         .monospacedDigit()
     }
 

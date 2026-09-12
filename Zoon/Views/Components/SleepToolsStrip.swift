@@ -14,7 +14,7 @@ struct SleepToolsStrip: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sleep Tools")
                 .font(Theme.label(12, weight: .bold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {

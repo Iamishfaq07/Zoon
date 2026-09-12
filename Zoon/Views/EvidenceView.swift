@@ -106,7 +106,7 @@ struct EvidenceView: View {
                     .font(Theme.label(13, weight: .semibold))
                     .textCase(.uppercase)
                     .kerning(0.6)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             ForEach(tier.entries) { entry in
@@ -118,7 +118,7 @@ struct EvidenceView: View {
             // train people to skip it.
             Text(tier.strength.caveat)
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -137,7 +137,7 @@ struct EvidenceView: View {
                 if let confidence = entry.confidence {
                     Text(confidence.label)
                         .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             Spacer(minLength: 0)
@@ -225,11 +225,11 @@ struct EvidenceView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(proposal.sentence)
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(proposal.caveat)
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -254,12 +254,12 @@ struct EvidenceView: View {
                         .font(Theme.label(14, weight: .semibold))
                     Text("Which are measured, and which are estimates")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(Theme.text(12, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()
@@ -270,7 +270,7 @@ struct EvidenceView: View {
     private var emptyState: some View {
         Text("Nothing worth claiming yet. A few more nights, and anything Zoon finds will show up here ranked by how it found it.")
             .font(Theme.text(13))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()

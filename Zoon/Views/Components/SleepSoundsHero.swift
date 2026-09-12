@@ -26,7 +26,7 @@ struct SleepSoundsHero: View {
                         .font(Theme.label(16, weight: .semibold))
                     Text(engine.isPlaying ? "Playing" : subtitle)
                         .font(Theme.text(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 Button {

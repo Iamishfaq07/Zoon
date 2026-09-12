@@ -13,12 +13,12 @@ struct TravelTonightCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Travel")
                         .font(Theme.kicker)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(destinationName(trip.destination))
                         .font(Theme.label(20, weight: .semibold))
                     Text("Destination nights move \(Int(SleepAutopilot.maximumNightlyShift)) minutes at a time, so Tonight and this plan cannot disagree.")
                         .font(Theme.text(13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

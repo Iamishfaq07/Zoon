@@ -193,7 +193,7 @@ struct ZoonBodyClockOrbit: View {
                     .monospacedDigit()
                 Text(stateLabel(atFraction: inspectedFraction))
                     .font(Theme.meaning)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -203,7 +203,7 @@ struct ZoonBodyClockOrbit: View {
                     .font(Theme.kicker)
                     .tracking(1.0)
                     .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text(alignmentWord)
                     .font(Theme.meaning)
                     .foregroundStyle(Theme.recoveryColor(alignment))

@@ -78,7 +78,7 @@ struct RecoveryRing: View {
             Text("RECOVERY")
                 .font(Theme.label(10, weight: .heavy))
                 .tracking(1.6)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             HStack(alignment: .top, spacing: 1) {
                 Text("\(recovery.percent)")
@@ -93,7 +93,7 @@ struct RecoveryRing: View {
 
             Text(recovery.isEstimate ? "Estimate" : recovery.band.label)
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 }

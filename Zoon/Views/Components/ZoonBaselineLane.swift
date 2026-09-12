@@ -43,7 +43,7 @@ struct ZoonBaselineLane: View {
                 Spacer()
                 Text(meaning)
                     .font(Theme.text(12, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             lane
@@ -66,7 +66,7 @@ struct ZoonBaselineLane: View {
                 if let range = metric.formattedRange {
                     Text("Your normal \(range)")
                         .font(Theme.evidence)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .monospacedDigit()
                 }
             }

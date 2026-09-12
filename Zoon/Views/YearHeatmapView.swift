@@ -89,7 +89,7 @@ struct YearHeatmapView: View {
                     .foregroundStyle(average.map { Theme.recoveryColor(Double($0)) } ?? .secondary)
                 Text("Average recovery")
                     .font(Theme.text(10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
@@ -98,7 +98,7 @@ struct YearHeatmapView: View {
                     .monospacedDigit()
                 Text("Nights tracked")
                     .font(Theme.text(10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
         }
         .glassCard()
@@ -144,7 +144,7 @@ struct YearHeatmapView: View {
 
         Text(isNewMonth ? week[0].formatted(.dateTime.month(.abbreviated)) : "")
             .font(Theme.text(8, weight: .semibold))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.inkTertiary)
             // The fixed height is structural -- every column's label slot has
             // to be the same height or the heatmap grid below it stops
             // lining up -- but `Theme.text` maps to a text *style*, so it
@@ -202,7 +202,7 @@ struct YearHeatmapView: View {
                 } else {
                     Text("No data")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             if let selectedNight {
@@ -228,7 +228,7 @@ struct YearHeatmapView: View {
         HStack(spacing: 6) {
             Text("Lower")
                 .font(Theme.text(9))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
             ForEach([10, 30, 50, 70, 90], id: \.self) { value in
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
                     .fill(color(for: value, isFuture: false))
@@ -236,7 +236,7 @@ struct YearHeatmapView: View {
             }
             Text("Higher")
                 .font(Theme.text(9))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
             Spacer()
         }
         .padding(.horizontal, 4)

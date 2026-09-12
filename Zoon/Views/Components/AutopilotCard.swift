@@ -26,11 +26,11 @@ struct AutopilotCard: View {
                     .font(Theme.label(13, weight: .semibold))
                     .textCase(.uppercase)
                     .kerning(0.6)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Spacer(minLength: 0)
                 Text(plan.confidence.label)
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -39,7 +39,7 @@ struct AutopilotCard: View {
                     .monospacedDigit()
                 Image(systemName: "arrow.right")
                     .font(Theme.text(12))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                 Text(clock(plan.targetWakeMinutes))
                     .font(Theme.label(28, weight: .semibold))
                     .monospacedDigit()
@@ -47,12 +47,12 @@ struct AutopilotCard: View {
 
             Text(plan.sentence)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(plan.caveat)
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

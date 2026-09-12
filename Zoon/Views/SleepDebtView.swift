@@ -68,7 +68,7 @@ struct SleepDebtView: View {
                     .font(Theme.numeral(52))
                 Text("Not estimated yet")
                     .font(Theme.label(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
@@ -94,7 +94,7 @@ struct SleepDebtView: View {
                 HStack {
                     Text(night.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                         .font(Theme.label(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     Text(night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) + " short" } ?? "Not estimated")
                         .font(Theme.label(12, weight: .semibold))
@@ -172,7 +172,7 @@ struct SleepDebtView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("What this number means", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("""
                 A running shortfall against your sleep goal -- a planning figure, not a direct \
                 physiological measurement. Recent nights count most; older ones fade out \
@@ -181,7 +181,7 @@ struct SleepDebtView: View {
                 bring the balance down over time.
                 """)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

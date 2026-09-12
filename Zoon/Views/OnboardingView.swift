@@ -154,7 +154,7 @@ struct OnboardingView: View {
         VStack(spacing: 10) {
             Text("Optional — used only to pick a demographic deep-sleep prior, so a typical older night is not marked down against a young-adult target.")
                 .font(Theme.text(11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 28)
 
@@ -252,7 +252,7 @@ struct OnboardingView: View {
                         .monospacedDigit()
                     Text("a night")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             .frame(width: 150, height: 150)
@@ -287,12 +287,12 @@ struct OnboardingView: View {
                     .multilineTextAlignment(.center)
                 Text(subtitle)
                     .font(Theme.label(14, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
             }
             Text(body)
                 .font(Theme.text(14))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
                 .padding(.horizontal, 28)

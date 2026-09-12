@@ -128,7 +128,7 @@ struct TravelPlanView: View {
 
                 Text(headline(for: plan))
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -152,7 +152,7 @@ struct TravelPlanView: View {
                     ForEach(caveats(for: plan), id: \.self) { caveat in
                         Text(caveat)
                             .font(Theme.evidence)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -163,7 +163,7 @@ struct TravelPlanView: View {
                 SectionHeader(title: "Travel plan", systemImage: "list.bullet")
                 Text(noPlanReason)
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .glassCard()

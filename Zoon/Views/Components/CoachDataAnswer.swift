@@ -56,7 +56,7 @@ struct CoachDataAnswer: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             ZoonBaselineLane(metric: metric)
         }
     }
@@ -79,10 +79,10 @@ struct CoachDataAnswer: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(result.sentence)
                 .font(Theme.evidence)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)

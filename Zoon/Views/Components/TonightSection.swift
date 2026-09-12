@@ -82,7 +82,7 @@ struct TonightSection: View {
                 if let autopilot {
                     Text(autopilot.caveat)
                         .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

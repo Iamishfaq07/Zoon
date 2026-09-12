@@ -56,7 +56,7 @@ struct SleepPlaybookView: View {
                 .font(Theme.numeral(18))
             Text("Built from your own history -- conditions that show up disproportionately around your best sleep, not a hypothesis test on any one behaviour.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 
@@ -66,7 +66,7 @@ struct SleepPlaybookView: View {
             and a condition needs a real enough gap between your best nights and the rest before it shows up here.
             """)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 12)
     }
@@ -93,7 +93,7 @@ private struct FactorRow: View {
 
             Text("Present on \(Int((factor.bestNightsRate * 100).rounded()))% of your best nights, vs \(Int((factor.otherNightsRate * 100).rounded()))% on the rest -- \(factor.sampleSize) best nights with a known answer, \(factor.confidence.label.lowercased()).")
                 .font(Theme.text(11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()

@@ -46,7 +46,7 @@ struct DataQualityView: View {
                 not a hidden fault.
                 """)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -56,7 +56,7 @@ struct DataQualityView: View {
             HStack(spacing: 10) {
                 Image(systemName: coverage.metric.symbol)
                     .font(Theme.text(13))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .frame(width: 20)
                 Text(coverage.metric.label)
                     .font(Theme.label(13, weight: .medium))
@@ -80,7 +80,7 @@ struct DataQualityView: View {
             .frame(height: 5)
             Text("\(coverage.presentNightCount) of \(coverage.expectedNightCount) nights")
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(coverage.metric.label): \(coverage.percent) percent, \(coverage.confidence.label), \(coverage.presentNightCount) of \(coverage.expectedNightCount) nights")

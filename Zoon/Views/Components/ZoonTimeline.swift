@@ -69,7 +69,7 @@ struct ZoonTimeline: View {
                     if isPast {
                         Image(systemName: "checkmark")
                             .font(.system(size: 6, weight: .bold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .frame(width: 14, height: 18)
@@ -91,7 +91,7 @@ struct ZoonTimeline: View {
                 if let detail = node.detail {
                     Text(detail)
                         .font(Theme.evidence)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

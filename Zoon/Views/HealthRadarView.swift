@@ -93,13 +93,13 @@ struct HealthRadarView: View {
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(radar.isActive ? radar.severity.label : "Nothing unusual")
                 .font(.system(size: 30, weight: .light, design: .rounded))
                 .foregroundStyle(radar.isActive ? tint(for: radar.severity) : .primary)
             Text("Each signal against your own recent overnight baseline.")
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -120,7 +120,7 @@ struct HealthRadarView: View {
                 .foregroundStyle(tint(for: radar.severity))
             Text(radar.detail)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -129,7 +129,7 @@ struct HealthRadarView: View {
     private var disclaimerCard: some View {
         Text(SleepInsight.disclaimer)
             .font(Theme.text(10))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.inkTertiary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 4)
     }

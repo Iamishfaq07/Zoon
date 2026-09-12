@@ -59,7 +59,7 @@ struct MorningCheckInCard: View {
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 }
                 .font(Theme.text(11, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             }
             .buttonStyle(.plain)
 
@@ -94,12 +94,12 @@ private struct CheckInDimensionRow: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(dimension.question)
                 .font(Theme.text(12, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
 
             HStack(spacing: 8) {
                 Text(dimension.lowLabel)
                     .font(Theme.text(9))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(width: 60, alignment: .leading)
 
                 HStack(spacing: 6) {
@@ -124,7 +124,7 @@ private struct CheckInDimensionRow: View {
 
                 Text(dimension.highLabel)
                     .font(Theme.text(9))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .frame(width: 60, alignment: .trailing)
             }
         }

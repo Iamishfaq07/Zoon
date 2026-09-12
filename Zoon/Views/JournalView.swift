@@ -134,7 +134,7 @@ struct JournalView: View {
             // it -- see `targetNightDate`.
             Text(dayScopeCaption)
                 .font(Theme.text(11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 
@@ -165,7 +165,7 @@ struct JournalView: View {
             VStack(spacing: 3) {
                 Text(day, format: .dateTime.weekday(.abbreviated))
                     .font(Theme.text(10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                 Text(day, format: .dateTime.day())
                     .font(Theme.label(16, weight: .bold))
                 Circle()
@@ -237,7 +237,7 @@ struct JournalView: View {
         .padding(.horizontal, 11)
         .padding(.vertical, 8)
         .background(Theme.neutral(0.06), in: Capsule())
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.inkSecondary)
     }
 
     // MARK: - Natural Journal
@@ -271,7 +271,7 @@ struct JournalView: View {
             } else {
                 Text("Confirm what Zoon understood")
                     .font(Theme.label(12, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
 
                 FlowLayout(spacing: 8) {
                     ForEach(naturalProposals) { proposal in
@@ -305,7 +305,7 @@ struct JournalView: View {
 
             Text("Parsing happens on this device. Proposed observations are not saved or used as evidence until you tap Confirm and save.")
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -383,7 +383,7 @@ struct JournalView: View {
                     .font(Theme.kicker)
                     .tracking(1.0)
                     .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
 
                 Text(prompt.tag.question)
                     .font(Theme.text(17, weight: .medium))
@@ -397,10 +397,10 @@ struct JournalView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Why Zoon is asking")
                         .font(Theme.label(11, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(prompt.note)
                         .font(Theme.text(11))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -628,7 +628,7 @@ struct JournalView: View {
                 .buttonStyle(.plain)
                 Text("Zoon can only compare a behaviour against nights you have said it didn't happen on. Unanswered stays unknown.")
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .glassCard()
@@ -670,7 +670,7 @@ struct JournalView: View {
                     it will call anything a pattern.
                     """)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 ForEach(findings.prefix(6)) { finding in
@@ -717,7 +717,7 @@ struct CorrelationRow: View {
 
             Text(finding.detail)
                 .font(Theme.text(11))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 4)

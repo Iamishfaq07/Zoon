@@ -110,7 +110,7 @@ private struct ArticleCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text("\(article.readMinutes) min read")
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .padding(11)
         }
@@ -151,7 +151,7 @@ struct ArticleDetailView: View {
                                 .foregroundStyle(Theme.Metric.battery)
                             Text(takeaway)
                                 .font(Theme.text(13, weight: .medium))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.inkSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .padding(14)

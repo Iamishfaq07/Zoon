@@ -45,7 +45,7 @@ struct CoachChatView: View {
         VStack(spacing: 0) {
             if chat.unavailabilityReason != nil {
                 Text("Local answers · sleep, timing, HRV and heart rate")
-                    .font(.caption).foregroundStyle(.secondary).padding(8)
+                    .font(.caption).foregroundStyle(Theme.inkSecondary).padding(8)
             }
             transcript
             composer
@@ -100,7 +100,7 @@ struct CoachChatView: View {
                     if chat.messages.isEmpty {
                         Text("Ask anything about last night — \"why was my HRV low?\", \"should I train today?\"")
                             .font(Theme.text(13))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .padding(.top, 8)
                     }
                     ForEach(Array(chat.messages.enumerated()), id: \.element.id) { index, message in
@@ -110,7 +110,7 @@ struct CoachChatView: View {
                     if chat.isResponding {
                         HStack(spacing: 6) {
                             ProgressView().tint(.secondary)
-                            Text("Thinking…").font(Theme.text(12)).foregroundStyle(.secondary)
+                            Text("Thinking…").font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
                         }
                     }
                 }
@@ -228,7 +228,7 @@ struct CoachChatView: View {
             } label: {
                 Label(text, systemImage: "number")
                     .font(Theme.text(11, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Theme.neutral(0.06), in: Capsule())
@@ -239,7 +239,7 @@ struct CoachChatView: View {
             if isExpanded {
                 Text("The number above is the specific figure this answer is based on -- not a general statement.")
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, 8)
                     .transition(.opacity)
             }
@@ -277,10 +277,10 @@ struct CoachChatView: View {
             Spacer()
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 34))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(reason)
                 .font(Theme.text(14))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             // Only when waiting might actually help (see
@@ -297,7 +297,7 @@ struct CoachChatView: View {
                 // the app itself might be able to resolve it faster.
                 Text("This can take a while depending on your connection. Zoon checks automatically every few seconds.")
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
 

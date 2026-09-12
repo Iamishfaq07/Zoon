@@ -127,7 +127,7 @@ struct CauseFinderView: View {
                 .font(Theme.numeral(20))
             Text("Patterns found in your own sleep history -- an association, not proof of cause.")
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 
@@ -168,7 +168,7 @@ struct CauseFinderView: View {
     private func emptyState(_ text: String) -> some View {
         Text(text)
             .font(Theme.text(12))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 12)
     }
@@ -205,18 +205,18 @@ private struct CauseFinderRow: View {
                             .font(Theme.label(14, weight: .semibold))
                         Text("\(finding.metric.format(finding.delta)) \(finding.metric.shortLabel)")
                             .font(Theme.text(11))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(finding.matchedPairCount.pluralized("matched night"))
                             .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                         ZoonEvidenceBadge(confidence: ZoonPairedPlot.metricConfidence(finding.confidence))
                     }
                     Image(systemName: "chevron.down")
                         .font(Theme.text(10, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .rotationEffect(.degrees(expanded ? 180 : 0))
                 }
             }
@@ -230,7 +230,7 @@ private struct CauseFinderRow: View {
                 }
                 Text(finding.detail)
                     .font(Theme.text(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
             } else if finding.pairDeltas.count >= 2 {
@@ -251,7 +251,7 @@ private struct LearningRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: tag.tag.symbol)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .frame(width: 24, height: 24)
                     .background(Theme.neutral(0.06), in: Circle())
                 Text(tag.tag.label)
@@ -260,7 +260,7 @@ private struct LearningRow: View {
                 Text("\(tag.loggedNights) / \(JournalCorrelator.minimumMatchedPairs)")
                     .font(Theme.text(11, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             GeometryReader { geo in
@@ -275,7 +275,7 @@ private struct LearningRow: View {
 
             Text("Needs about \(tag.remainingNights) more comparable night\(tag.remainingNights == 1 ? "" : "s") before Zoon will call anything a pattern.")
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
     }
@@ -287,7 +287,7 @@ private struct NoEffectRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: tag.symbol)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .frame(width: 24, height: 24)
                 .background(Theme.neutral(0.06), in: Circle())
             VStack(alignment: .leading, spacing: 1) {
@@ -295,7 +295,7 @@ private struct NoEffectRow: View {
                     .font(Theme.label(14, weight: .semibold))
                 Text("No meaningful difference found in your data so far.")
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             Spacer()
         }
@@ -332,12 +332,12 @@ private struct GuidedExperimentCard: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text("\(direction == .avoid ? "Less" : "More") \(tag.label.lowercased())")
                         .font(Theme.label(15, weight: .semibold))
                     Text("Judged on \(primaryMetric.shortLabel)")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     if let tonight {
                         // The whole value of assigning nights in advance is
                         // that the person can read tonight's off a screen
@@ -368,12 +368,12 @@ private struct GuidedExperimentCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Answer Yes or No for \(tag.label.lowercased()) each day. Unanswered nights cannot count as a comparison. Log travel and illness so Zoon can match similar context.")
                     Text("This is a personal association test. An inconclusive result means the data did not separate the possibilities.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     ForEach(observations.filter { $0.date >= (startDate ?? .distantPast) }.sorted { $0.date > $1.date }, id: \.date) { observation in
                         VStack(alignment: .leading) {
                             Text(observation.date, style: .date)
                             Text(observation.exposureState(for: tag) == .unknown ? "Not comparable: no explicit answer" : primaryMetric.value(from: observation) == nil ? "Not comparable: missing outcome" : "Answer and outcome recorded; matching still depends on context")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(Theme.inkSecondary)
                             if observation.isTravelDay { Text("Travel context").font(.caption) }
                         }
                     }
@@ -384,7 +384,7 @@ private struct GuidedExperimentCard: View {
             case .learning(let learning):
                 Text("Needs about \(learning.remainingNights.pluralized("more comparable night")) before there's an answer. Keep tagging \(tag.label.lowercased()) in the Journal.")
                     .font(Theme.text(11))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
 
             case .result(let helpful, let harmful):
@@ -393,7 +393,7 @@ private struct GuidedExperimentCard: View {
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     ForEach(helpful + harmful) { finding in
                         HStack(spacing: 8) {
                             Image(systemName: finding.isImprovement ? "arrow.up.right" : "arrow.down.right")
@@ -408,12 +408,12 @@ private struct GuidedExperimentCard: View {
             case .noEffect:
                 Text("No meaningful difference found in your data so far.")
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             Button("End experiment", action: onEnd)
                 .font(Theme.text(11, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .glassCard()
     }
@@ -530,11 +530,11 @@ private struct PastExperimentRow: View {
                             + Text(outcome.endDate, format: .dateTime.month(.abbreviated).day())
                     }
                     .font(Theme.text(10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     Spacer()
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(Theme.text(10, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             .buttonStyle(.plain)
@@ -544,7 +544,7 @@ private struct PastExperimentRow: View {
                     if let hypothesis = outcome.hypothesis, !hypothesis.isEmpty {
                         Text("Hypothesis: \(hypothesis)")
                             .font(Theme.text(11))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                     Text("""
                         Comparing \(outcome.baselineNightCount) nights before the trial against \
@@ -555,7 +555,7 @@ private struct PastExperimentRow: View {
                         controlled one -- other things could have changed too.
                         """)
                         .font(Theme.text(12))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                     if let adherenceRate = outcome.adherenceRate, let compliant = outcome.trialCompliantNightCount, let direction = outcome.direction {
                         // "The rest" used to be one bucket. It is two, and
@@ -569,12 +569,12 @@ private struct PastExperimentRow: View {
                             }
                         }
                         .font(Theme.text(10))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                     } else if let known = outcome.trialKnownNightCount {
                         Text("Logged \(known) of \(outcome.trialNightCount) trial nights either way -- the rest never got tagged, so the result rests on the ones that did.")
                             .font(Theme.text(10))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

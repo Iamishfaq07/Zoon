@@ -26,7 +26,7 @@ struct ZoonHeroMetric: View {
                 .font(Theme.meaning)
                 .tracking(1.2)
                 .textCase(.uppercase)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .accessibilityElement(children: .combine)
     }
@@ -70,7 +70,7 @@ struct ZoonMetricRow<Destination: View>: View {
                 .contentTransition(.numericText())
             Text(item.label)
                 .font(Theme.supportingLabel)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -122,7 +122,7 @@ struct ZoonEvidenceBadge: View {
             }
             Text(label)
                 .font(Theme.text(10, weight: .medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(confidence.label)
@@ -208,7 +208,7 @@ struct ZoonExplainThenDetail<Detail: View>: View {
             ZoonExplainThenDetail(explanation: "Your timing was more consistent this week.") {
                 Text("Regularity index 88 (+8.3% vs 30-day baseline)")
                     .font(Theme.evidence)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
         }
         .padding()

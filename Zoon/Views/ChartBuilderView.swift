@@ -26,7 +26,7 @@ struct ChartBuilderView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Ask for a chart").font(.title2.bold())
-                Text("Type a metric and time range. Calculations run locally from your stored nights.").font(.subheadline).foregroundStyle(.secondary)
+                Text("Type a metric and time range. Calculations run locally from your stored nights.").font(.subheadline).foregroundStyle(Theme.inkSecondary)
                 HStack { TextField("e.g. HRV last 90 days weekly", text: $prompt, axis: .vertical).textFieldStyle(.roundedBorder); Button("Build") { build() }.buttonStyle(.borderedProminent) }
                 if let error { Text(error).font(.caption).foregroundStyle(.orange) }
                 Text("\(request.metric.label) · last \(request.days) days\(request.groupedWeekly ? " · weekly view" : "")").font(.headline)
@@ -36,7 +36,7 @@ struct ChartBuilderView: View {
                         PointMark(x: .value("Date", point.date), y: .value(request.metric.label, point.value)).symbolSize(18)
                     }
                 }.frame(height: 240).glassCard()
-                Text("No causes are inferred from this chart. It is a transparent view of the values Zoon has available.").font(.caption).foregroundStyle(.secondary)
+                Text("No causes are inferred from this chart. It is a transparent view of the values Zoon has available.").font(.caption).foregroundStyle(Theme.inkSecondary)
             }.padding()
         }.nightBackground().navigationTitle("Chart builder").navigationBarTitleDisplayMode(.inline)
     }

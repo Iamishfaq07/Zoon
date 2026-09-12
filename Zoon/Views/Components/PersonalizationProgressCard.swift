@@ -55,7 +55,7 @@ struct PersonalizationProgressCard: View {
                 } else {
                     Text("\(row.current)/\(row.target) nights")
                         .font(Theme.text(11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .monospacedDigit()
                 }
             }

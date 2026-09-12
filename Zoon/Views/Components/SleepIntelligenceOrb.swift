@@ -181,7 +181,7 @@ struct SleepIntelligenceOrb: View {
                     .font(Theme.label(14, weight: .semibold))
                 Text(selected.detail)
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)
@@ -205,7 +205,7 @@ struct SleepIntelligenceOrb: View {
                     .foregroundStyle(tint)
                 Text(score.band.label)
                     .font(Theme.label(15, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
         }

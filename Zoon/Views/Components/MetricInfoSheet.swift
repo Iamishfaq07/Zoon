@@ -29,7 +29,7 @@ struct MetricInfoButton: View {
         } label: {
             Image(systemName: "info.circle")
                 .font(Theme.text(13))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $isPresented) {
@@ -77,7 +77,7 @@ private struct MetricInfoSheet: View {
                     ForEach(Array(explanation.enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph)
                             .font(Theme.text(14))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .lineSpacing(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -91,12 +91,12 @@ private struct MetricInfoSheet: View {
                                     .foregroundStyle(relatedArticle.category.tint)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text("Read more").font(Theme.label(13, weight: .semibold))
-                                    Text(relatedArticle.title).font(Theme.text(11)).foregroundStyle(.secondary)
+                                    Text(relatedArticle.title).font(Theme.text(11)).foregroundStyle(Theme.inkSecondary)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .font(Theme.text(11, weight: .semibold))
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(Theme.inkTertiary)
                             }
                             .padding(12)
                             .glassCard()
@@ -133,18 +133,18 @@ private struct MetricInfoSheet: View {
 
             Text(fact.quantity.whatItIs)
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(fact.quantity.limit)
                 .font(Theme.text(12))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if fact.isWeakenedByItsInputs, let first = fact.weakenedBy.first {
                 Text("Shown as \(fact.provenance.label.lowercased()) because \(first.label.lowercased()) is.")
                     .font(Theme.text(12))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

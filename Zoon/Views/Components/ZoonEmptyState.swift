@@ -40,7 +40,7 @@ struct ZoonEmptyState: View {
                     .multilineTextAlignment(.center)
                 Text(message)
                     .font(Theme.evidence)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -55,10 +55,10 @@ struct ZoonEmptyState: View {
                         HStack(spacing: 8) {
                             Image(systemName: "circle.dashed")
                                 .font(Theme.text(11))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.inkTertiary)
                             Text(item)
                                 .font(Theme.text(12))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                     }
                 }
@@ -76,7 +76,7 @@ struct ZoonEmptyState: View {
                         Button(secondaryAction.label, action: secondaryAction.action)
                             .buttonStyle(.plain)
                             .font(Theme.text(13, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .padding(.top, 4)
@@ -129,7 +129,7 @@ struct ZoonEmptyState: View {
                 Circle().stroke(Theme.neutral(0.10), style: StrokeStyle(lineWidth: 4, dash: [6, 6]))
                 Image(systemName: "applewatch.slash")
                     .font(.system(size: 30, weight: .light))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
         case .failed:
             ZStack {
@@ -158,7 +158,7 @@ struct ZoonEmptyState: View {
             .frame(height: 6)
             Text("\(collected) night\(collected == 1 ? "" : "s") collected · about \(needed.lowerBound)–\(needed.upperBound) usually gives enough variation")
                 .font(Theme.text(11))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -215,7 +215,7 @@ struct ZoonLoadingState: View {
                     .multilineTextAlignment(.center)
                 Text("From Health on this phone")
                     .font(Theme.label(13, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
         }
         .frame(maxWidth: .infinity)

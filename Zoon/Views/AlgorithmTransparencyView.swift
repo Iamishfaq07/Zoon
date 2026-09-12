@@ -26,7 +26,7 @@ struct AlgorithmTransparencyView: View {
                 .font(Theme.numeral(20))
             Text("Five sleep-period components. Recovery and body-signal anomalies are kept separate so the headline remains easy to interpret.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -59,7 +59,7 @@ struct AlgorithmTransparencyView: View {
         VStack(alignment: .leading, spacing: 6) {
             Label("Missing data doesn't count against you", systemImage: "checkmark.shield")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("""
                 Components with missing data -- not enough timing history or a source without \
                 stage detail -- are excluded, and the remaining \
@@ -67,7 +67,7 @@ struct AlgorithmTransparencyView: View {
                 missing input were zero.
                 """)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -77,7 +77,7 @@ struct AlgorithmTransparencyView: View {
         HStack {
             Text("Algorithm")
                 .font(Theme.label(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer()
             Text("Sleep Intelligence v\(SleepIntelligenceScore.currentVersion).0")
                 .font(Theme.label(12, weight: .semibold))

@@ -78,7 +78,7 @@ struct CoachTabView: View {
                                     Spacer(minLength: 8)
                                     Image(systemName: "arrow.up.right")
                                         .font(Theme.text(12, weight: .semibold))
-                                        .foregroundStyle(.tertiary)
+                                        .foregroundStyle(Theme.inkTertiary)
                                 }
                             }
                             .padding(.vertical, 16)
@@ -106,7 +106,7 @@ struct CoachTabView: View {
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(Theme.text(11, weight: .semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     .padding(14)
                     .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -202,7 +202,7 @@ struct CoachTabView: View {
 
             Text(preferences.preferredEngine.detail)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             // The requirements, stated whichever engine is selected.
@@ -218,7 +218,7 @@ struct CoachTabView: View {
                 systemImage: "info.circle"
             )
             .font(Theme.text(11))
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.inkTertiary)
             .fixedSize(horizontal: false, vertical: true)
 
             // Why it cannot run here, when it cannot.
@@ -255,7 +255,7 @@ struct CoachTabView: View {
             } else {
                 Label("Answered on this device. Nothing leaves your phone.", systemImage: "lock.fill")
                     .font(Theme.text(12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -285,7 +285,7 @@ struct CoachTabView: View {
                 .frame(width: 16)
             Text(text)
                 .font(Theme.text(12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
     }
 
@@ -295,7 +295,7 @@ struct CoachTabView: View {
                 .font(Theme.numeral(28))
             Text("Your sleep intelligence assistant")
                 .font(Theme.text(13))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

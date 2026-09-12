@@ -88,7 +88,7 @@ struct BodyBatteryChart: View {
                     if let level = value.as(Double.self) {
                         Text("\(Int(level))")
                             .font(Theme.text(9))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
             }
@@ -98,7 +98,7 @@ struct BodyBatteryChart: View {
                 AxisGridLine().foregroundStyle(Theme.neutral(0.05))
                 AxisValueLabel(format: .dateTime.hour())
                     .font(Theme.text(9))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
         }
         .frame(height: height)
@@ -129,10 +129,10 @@ struct BodyBatteryChart: View {
     private var emptyState: some View {
         VStack(spacing: 6) {
             Image(systemName: "bolt.slash")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("Not enough heart-rate data yet today")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)

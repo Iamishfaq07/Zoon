@@ -32,7 +32,7 @@ struct PersonalLearningView: View {
             Text("What Zoon is learning about your response")
                 .font(Theme.numeral(25))
             Text("These are observational summaries from your own history. Zoon withholds them until there is enough repeated data and never treats them as medical conclusions.")
-                .font(Theme.text(13)).foregroundStyle(.secondary)
+                .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
         }.glassCard()
     }
 
@@ -46,7 +46,7 @@ struct PersonalLearningView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(result.sentence).font(Theme.label(14, weight: .semibold))
                         Text("Median across \(result.disruptions) supported disruptions; recovery requires two consecutive nights in range.")
-                            .font(Theme.evidence).foregroundStyle(.tertiary)
+                            .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
                     }
                 }
             }
@@ -59,9 +59,9 @@ struct PersonalLearningView: View {
             if let circadian {
                 Text(circadian.sentence).font(Theme.label(15, weight: .semibold))
                 Text("Approximate uncertainty ±\(circadian.uncertaintyMinutes) minutes · \(circadian.daylightNights) daylight nights · \(circadian.comparisonNights) comparison nights")
-                    .font(Theme.evidence).foregroundStyle(.secondary)
+                    .font(Theme.evidence).foregroundStyle(Theme.inkSecondary)
                 Text("This is an association. Other differences between those days may explain it.")
-                    .font(Theme.evidence).foregroundStyle(.tertiary)
+                    .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
             } else {
                 learningMessage("Answer Morning daylight in the Journal on at least six yes and six no days. Zoon will stay quiet if the difference is small.")
             }
@@ -70,7 +70,7 @@ struct PersonalLearningView: View {
 
     private func learningMessage(_ text: String) -> some View {
         Label(text, systemImage: "circle.dotted")
-            .font(Theme.text(12)).foregroundStyle(.secondary)
+            .font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -94,7 +94,7 @@ struct ProactiveZoonCard: View {
                     Label("Worth checking", systemImage: "bell.badge.fill")
                         .font(Theme.kicker).foregroundStyle(Theme.Family.attention)
                     Text(first.title).font(Theme.label(16, weight: .semibold))
-                    Text(first.detail).font(Theme.text(12)).foregroundStyle(.secondary)
+                    Text(first.detail).font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
                     Text(first.action).font(Theme.label(12, weight: .semibold)).foregroundStyle(Theme.Family.sleep)
                 }.frame(maxWidth: .infinity, alignment: .leading).glassCard()
             }

@@ -19,7 +19,7 @@ struct LightCoachCard: View {
                     .font(Theme.label(14, weight: .semibold))
                 Text(guidance.detail)
                     .font(Theme.text(11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

@@ -53,7 +53,7 @@ struct GatheringNights: View {
 
                 Text(message)
                     .font(Theme.text(14))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -63,7 +63,7 @@ struct GatheringNights: View {
                 if needed > 1 {
                     Text(countLine)
                         .font(Theme.label(12, weight: .medium))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                         .monospacedDigit()
                 }
             }

@@ -149,11 +149,11 @@ private struct StoreRecoveryView: View {
                 .font(Theme.label(22, weight: .bold))
                 .multilineTextAlignment(.center)
             Text("Your existing store has not been deleted or replaced. Quit and reopen Zoon after installing the latest update. If the problem continues, report the diagnostic below before resetting anything.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
             Text(message)
                 .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .textSelection(.enabled)
             if let issuesURL = URL(string: "https://github.com/Iamishfaq07/Zoon/issues") {
                 Link("Report this problem", destination: issuesURL)

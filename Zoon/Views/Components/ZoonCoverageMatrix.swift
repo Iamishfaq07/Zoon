@@ -39,7 +39,7 @@ struct ZoonCoverageMatrix: View {
             ZoonSectionHeader("Last 7 nights") {
                 Text("● recorded  ○ missing")
                     .font(Theme.text(10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
 
             Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 10) {
@@ -48,7 +48,7 @@ struct ZoonCoverageMatrix: View {
                     ForEach(recent) { night in
                         Text(night.date, format: .dateTime.weekday(.narrow))
                             .font(Theme.text(10, weight: .semibold))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -56,7 +56,7 @@ struct ZoonCoverageMatrix: View {
                     GridRow {
                         Text(row.label)
                             .font(Theme.text(12, weight: .medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                             .frame(width: 96, alignment: .leading)
                         ForEach(recent) { night in
                             let present = row.present(night)
@@ -74,7 +74,7 @@ struct ZoonCoverageMatrix: View {
 
             Text(summary)
                 .font(Theme.evidence)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

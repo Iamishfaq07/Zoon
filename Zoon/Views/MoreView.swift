@@ -169,12 +169,12 @@ struct MoreView: View {
                     .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).font(Theme.label(15, weight: .semibold))
-                    Text(detail).font(Theme.text(11)).foregroundStyle(.secondary)
+                    Text(detail).font(Theme.text(11)).foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(Theme.text(12, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .glassCard()
         }
@@ -184,7 +184,7 @@ struct MoreView: View {
     private func sectionLabel(_ title: String) -> some View {
         Text(title)
             .font(Theme.label(12, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 10)
             .accessibilityAddTraits(.isHeader)
@@ -203,7 +203,7 @@ struct MoreView: View {
             Toggle("Encrypt JSON backup", isOn: $encryptBackup)
             SecureField("Backup passphrase (for export or import)", text: $archivePassphrase)
                 .textContentType(.password)
-            Text("Encrypted backups need this passphrase to restore. Zoon does not save it.").font(.caption).foregroundStyle(.secondary)
+            Text("Encrypted backups need this passphrase to restore. Zoon does not save it.").font(.caption).foregroundStyle(Theme.inkSecondary)
             if restoring { ProgressView("Restoring backup…") }
             if let url = exportURL {
                 ShareLink(item: url) {
@@ -245,7 +245,7 @@ struct MoreView: View {
                 .frame(width: 26)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(Theme.label(13, weight: .semibold))
-                Text(detail).font(Theme.text(10)).foregroundStyle(.tertiary)
+                Text(detail).font(Theme.text(10)).foregroundStyle(Theme.inkTertiary)
             }
             Spacer()
         }
@@ -343,7 +343,7 @@ struct MoreView: View {
                 Text(title).font(Theme.label(12, weight: .semibold))
                 Text(detail)
                     .font(Theme.text(10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -355,10 +355,10 @@ struct MoreView: View {
                 .font(Theme.label(15, weight: .bold))
             Text("“Zoon” means moon in Kashmiri.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text(SleepInsight.disclaimer)
                 .font(Theme.text(10))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
@@ -433,7 +433,7 @@ struct StreakCard: View {
                 .monospacedDigit()
             Text(label)
                 .font(Theme.text(9))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -467,7 +467,7 @@ struct BedtimeCountdownCard: View {
                     if remaining > 0 {
                         Text("in \(formattedRemaining(remaining))")
                             .font(Theme.label(13))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                     } else {
                         StatusPill(text: "Wind down now", systemImage: "moon.fill", tint: Theme.Metric.temperature)
                     }
@@ -477,7 +477,7 @@ struct BedtimeCountdownCard: View {
                      ? "Being asleep by then hits your full sleep need for tomorrow."
                      : "You're past the ideal bedtime. Going now still recovers most of it.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .glassCard()

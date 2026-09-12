@@ -18,7 +18,7 @@ struct MorningBrief: View {
             ZoonSectionHeader("Your morning brief") {
                 Text(context.insight.source.displayName)
                     .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
 
             Text(context.insight.summary)
@@ -29,7 +29,7 @@ struct MorningBrief: View {
                 if let cause = context.insight.likelyCause {
                     Text(cause)
                         .font(Theme.text(14))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
@@ -43,10 +43,10 @@ struct MorningBrief: View {
                         Text("IN GENERAL, NOT MEASURED IN YOU")
                             .font(Theme.label(10, weight: .semibold))
                             .tracking(0.6)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                         Text(general)
                             .font(Theme.text(13))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)
@@ -97,7 +97,7 @@ struct MorningBrief: View {
             if context.recovery.isEstimate {
                 Text("Zoon needs a few more nights before these numbers are trustworthy.")
                     .font(Theme.evidence)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
