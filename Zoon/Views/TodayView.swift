@@ -253,14 +253,25 @@ struct TodayView: View {
 
     private func daytimeHero(_ context: DayContext) -> some View {
         VStack(spacing: 16) {
-            Text(greeting).font(Theme.kicker).foregroundStyle(Theme.inkSecondary)
-            RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16)
-            Text("Capacity now")
-                .font(Theme.label(20, weight: .semibold))
-            // `MetricConfidence.label` already reads "High confidence", so
-            // appending the word gave "High confidence confidence" -- and
-            // "Insufficient data confidence" at the bottom of the scale.
-            // Every other site in the app renders the label bare.
+            // Addresses the reader, and says what the number means before
+            // showing it. "67%, Moderate" is a measurement; "your body needs
+            // moderate output today" is the thing they opened the app for.
+            Text(openingLine(context))
+                .font(Theme.label(19, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // The ring says how much. The radar inside says in what shape --
+            // whether the number came from everything being middling or from
+            // three strong signals and one that collapsed.
+            RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16) {
+                RecoveryRadar(components: context.recovery.components, size: 150)
+            }
+
+            ScoreDrivers(components: context.recovery.components)
+
+            TodayActionPlan(recovery: context.recovery, forecast: energyForecast(context))
+
             Text(context.recovery.confidence.label)
                 .font(Theme.text(13))
                 .foregroundStyle(Theme.inkSecondary)
@@ -270,7 +281,32 @@ struct TodayView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
+    }
+
+    /// "Ishfaq, your body needs moderate output today." — or the same
+    /// sentence without the name, when none has been set. The name is a
+    /// local preference and empty is a real answer; nothing here nags for it
+    /// or invents one.
+    private func openingLine(_ context: DayContext) -> String {
+        let body = switch context.recovery.band {
+        case .high: "your body can take load today."
+        case .moderate: "your body needs moderate output today."
+        case .low: "your body is asking for a light day."
+        }
+        let name = preferences.displayName
+        return name.isEmpty
+            ? body.prefix(1).uppercased() + body.dropFirst()
+            : "\(name), \(body)"
+    }
+
+    /// One construction, shared by the plan card and the energy section, so
+    /// the window the plan names is the window the curve draws.
+    private func energyForecast(_ context: DayContext) -> EnergyForecast {
+        EnergyForecast.compute(
+            wakeTime: context.night.wakeTime,
+            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
+        )
     }
 
     private func tonightCircleHero(_ context: DayContext) -> some View {
@@ -332,11 +368,7 @@ struct TodayView: View {
                 .buttonStyle(.plain)
             }
             EnergyHorizon(
-                forecast: EnergyForecast.compute(
-                    wakeTime: context.night.wakeTime,
-                    sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
-                    windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
-                ),
+                forecast: energyForecast(context),
                 battery: context.bodyBattery,
                 targetBedtime: context.targetBedtime()
             )
