@@ -92,12 +92,18 @@ struct BreathingView: View {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Theme.Metric.sleep.opacity(0.5), .clear],
+                        colors: [Theme.Family.Moon.lit.opacity(0.22), .clear],
                         center: .center, startRadius: 4, endRadius: 140
                     )
                 )
+            // The moon breathes with the pacer. The scale already carries the
+            // pacing; making the thing that grows and shrinks the moon rather
+            // than an empty ring costs nothing and is the same object the
+            // rest of the app is built around.
+            MoonFill(fill: 0.62, active: true, size: 176)
+                .opacity(0.72)
             Circle()
-                .stroke(Theme.Metric.sleep.opacity(0.5), lineWidth: 1.5)
+                .stroke(Theme.Family.Moon.lit.opacity(0.30), lineWidth: 1.5)
         }
         .frame(width: 220, height: 220)
         .scaleEffect(reduceMotion ? 0.85 : scale)

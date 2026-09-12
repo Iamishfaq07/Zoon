@@ -156,6 +156,15 @@ struct NapView: View {
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1), value: progress)
 
+                // The moon behind the countdown, filling as the nap runs.
+                // The ring already says how far along it is; the moon says
+                // the same thing in the app's own object, and a nap is a
+                // short night. Held well back so the numerals stay the thing
+                // you read -- this is a backdrop, not a second dial.
+                MoonFill(fill: progress, active: true, size: 150)
+                    .opacity(0.38)
+                    .accessibilityHidden(true)
+
                 VStack(spacing: 2) {
                     Text(formatted(max(0, target - elapsed)))
                         .font(Theme.numeral(38))

@@ -240,7 +240,11 @@ struct TodayView: View {
             RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16)
             Text("Capacity now")
                 .font(Theme.label(20, weight: .semibold))
-            Text("\(context.recovery.confidence.label) confidence")
+            // `MetricConfidence.label` already reads "High confidence", so
+            // appending the word gave "High confidence confidence" -- and
+            // "Insufficient data confidence" at the bottom of the scale.
+            // Every other site in the app renders the label bare.
+            Text(context.recovery.confidence.label)
                 .font(Theme.text(13))
                 .foregroundStyle(.secondary)
             Text(coordinator.todayStress?.baselineContextNote ?? "Based on last night's recovery; daytime change appears when enough quiet data is available.")
