@@ -52,6 +52,45 @@ final class CoachEvidenceTests: XCTestCase {
         XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text + (reply.action ?? "")))
     }
 
+    // MARK: - Not everything is a question about sleep
+
+    /// The local replies are what every answer falls back to when the model
+    /// is unavailable, and the router used to end in `return sleepReply()`.
+    /// That made "hi" -- and any other unmatched input -- produce the exact
+    /// same sleep summary, which reads as a coach with one canned answer.
+    func testAGreetingIsNotAnsweredWithASleepSummary() {
+        let evidence = CoachEvidence(night: Fixture.night(timeAsleepMinutes: 400), history: [])
+        for greeting in ["hi", "hello", "Hey!", "hi hello", "thanks"] {
+            let reply = evidence.reply(to: greeting)
+            XCTAssertFalse(
+                reply.text.contains("asleep"),
+                "\(greeting) was answered with the sleep summary"
+            )
+            XCTAssertNil(reply.evidence, "a greeting cites no number")
+        }
+    }
+
+    func testAQuestionOutsideTheDataSaysSoRatherThanAnsweringAnotherOne() {
+        let evidence = CoachEvidence(night: Fixture.night(), history: [])
+        for question in ["what is the capital of France", "tell me a joke", "who are you"] {
+            let reply = evidence.reply(to: question)
+            XCTAssertTrue(
+                reply.text.lowercased().contains("can only answer"),
+                "\(question) did not say what it can answer: \(reply.text)"
+            )
+            XCTAssertNil(reply.evidence)
+        }
+    }
+
+    /// The greeting check must not swallow a real question that happens to
+    /// contain a short word, and near-miss sleep questions should still get
+    /// the night rather than the "I can only answer" line.
+    func testRealQuestionsStillReachTheirIntent() {
+        let evidence = CoachEvidence(night: Fixture.night(avgHRV: 42), history: [])
+        XCTAssertTrue(evidence.reply(to: "ok so why was my HRV low?").text.contains("42"))
+        XCTAssertTrue(evidence.reply(to: "why was my sleep bad").text.contains("asleep"))
+    }
+
     func testLocalAnswersMayContainDigitsUnlikeGeneratedProse() {
         XCTAssertFalse(CoachEvidence.allowsGeneratedProse("Your HRV was 42 ms"))
         let reply = CoachEvidence(night: Fixture.night(), history: []).reply(to: "How did I sleep last night?")

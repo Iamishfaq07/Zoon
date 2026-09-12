@@ -57,6 +57,8 @@ struct CoachEvidence: Sendable {
     func reply(to question: String) -> Reply {
         let q = question.lowercased()
 
+        if isGreeting(q) { return greetingReply() }
+
         if matches(q, ["behind", "debt", "catch up", "enough sleep", "short on sleep", "sleep enough"]) {
             return debtReply()
         }
@@ -78,7 +80,57 @@ struct CoachEvidence: Sendable {
         if matches(q, ["deep", "rem", "stage", "solid", "how did i sleep", "last night"]) {
             return sleepReply()
         }
-        return sleepReply()
+
+        // Anything still mentioning the night is close enough to answer with
+        // it. Past that, say so.
+        if matches(q, ["sleep", "night", "slept", "rest"]) {
+            return sleepReply()
+        }
+        return unknownReply()
+    }
+
+    /// Small talk, answered as small talk.
+    ///
+    /// Checked before the intents so "hi" cannot be swallowed by a substring
+    /// match, and kept to whole words so "which" does not read as "hi".
+    private func isGreeting(_ q: String) -> Bool {
+        let words = Set(
+            q.components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty }
+        )
+        guard words.count <= 4 else { return false }
+        return !words.isDisjoint(with: [
+            "hi", "hey", "hello", "yo", "sup", "hiya", "howdy",
+            "thanks", "thank", "ok", "okay", "cool", "nice", "bye"
+        ])
+    }
+
+    private func greetingReply() -> Reply {
+        Reply(
+            text: "Hello. Ask me about last night and I'll answer from your own numbers — "
+                + "how you slept, your timing, HRV, resting heart rate, how often you woke, "
+                + "whether to train today, or what to do tonight.",
+            evidence: nil,
+            action: nil
+        )
+    }
+
+    /// What a question outside the data gets.
+    ///
+    /// This used to be `sleepReply()`. Every unmatched question -- including
+    /// "hi" -- returned the identical sleep summary, which is exactly how it
+    /// reads on a device where the model is unavailable and every answer
+    /// comes from here: the coach appears to give one canned response no
+    /// matter what it is asked. Saying what it can answer is both honest and
+    /// more useful than answering a question nobody asked.
+    private func unknownReply() -> Reply {
+        Reply(
+            text: "I can only answer from the nights Zoon has recorded. Try asking about how "
+                + "you slept, your bedtime and wake timing, HRV, resting heart rate, how often "
+                + "you woke, whether to train today, or what to do tonight.",
+            evidence: nil,
+            action: nil
+        )
     }
 
     /// Generated prose may explain; numbers and citations come from code.
