@@ -193,7 +193,7 @@ struct ZoonConstellation: View {
                 }
             Text(node.label)
                 .font(isFocus ? Theme.label(13, weight: .semibold) : Theme.supportingLabel)
-                .foregroundStyle(isFocus ? .primary : .secondary)
+                .foregroundStyle(isFocus ? .primary : Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 92)

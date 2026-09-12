@@ -23,7 +23,7 @@ struct WeekMoonStrip: View {
                         MoonFill(fill: fill, active: on, size: 34)
                         Text(night.date, format: .dateTime.weekday(.narrow))
                             .font(Theme.text(11, weight: on ? .semibold : .regular))
-                            .foregroundStyle(on ? Color.primary : .secondary)
+                            .foregroundStyle(on ? Color.primary : Theme.inkSecondary)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 44)
@@ -56,7 +56,7 @@ struct NightFilmStrip: View {
                         PastNightDetailView(night: night)
                     } label: {
                         VStack(alignment: .center, spacing: 8) {
-                            MoonWell(fill: fill, metNeed: met)
+                            MoonFill(fill: fill, active: met, size: 88)
                             Text(night.date, format: .dateTime.weekday(.abbreviated).day())
                                 .font(Theme.text(11))
                                 .foregroundStyle(Theme.inkSecondary)
@@ -69,59 +69,6 @@ struct NightFilmStrip: View {
                     .buttonStyle(PressableStyle())
                 }
             }
-        }
-    }
-}
-
-/// Circular night sky holding a phase moon — the past-night icon.
-struct MoonWell: View {
-    var fill: Double
-    var metNeed: Bool
-    var size: CGFloat = 88
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Theme.Family.Moon.lit.opacity(metNeed ? 0.20 : 0.10),
-                            Theme.Family.Moon.dark
-                        ],
-                        center: UnitPoint(x: 0.5, y: 0.42),
-                        startRadius: 0,
-                        endRadius: size * 0.52
-                    )
-                )
-            MoonStars()
-            MoonFill(fill: fill, active: metNeed, size: size * 0.72)
-        }
-        .frame(width: size, height: size)
-        .overlay {
-            Circle().stroke(
-                metNeed ? Theme.Family.Moon.lit.opacity(0.42) : Theme.cardStroke,
-                lineWidth: 1
-            )
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-private struct MoonStars: View {
-    var body: some View {
-        GeometryReader { proxy in
-            let s = min(proxy.size.width, proxy.size.height)
-            ZStack {
-                Circle().fill(.white.opacity(0.55)).frame(width: 2.2, height: 2.2)
-                    .offset(x: s * -0.34, y: s * -0.30)
-                Circle().fill(.white.opacity(0.4)).frame(width: 1.6, height: 1.6)
-                    .offset(x: s * 0.34, y: s * -0.34)
-                Circle().fill(.white.opacity(0.5)).frame(width: 2, height: 2)
-                    .offset(x: s * 0.38, y: s * 0.24)
-                Circle().fill(.white.opacity(0.35)).frame(width: 1.4, height: 1.4)
-                    .offset(x: s * -0.38, y: s * 0.28)
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 }

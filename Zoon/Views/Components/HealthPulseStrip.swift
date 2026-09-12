@@ -117,8 +117,8 @@ struct HealthPulseStrip: View {
     private var breathingTile: some View {
         let tint: Color = {
             switch breathing.pattern {
-            case .insufficientData: .secondary
-            case .unclassified: .secondary
+            case .insufficientData: Theme.inkSecondary
+            case .unclassified: Theme.inkSecondary
             case .normal: Theme.Metric.recoveryHigh
             case .repeatedPattern: Theme.Metric.recoveryMid
             }

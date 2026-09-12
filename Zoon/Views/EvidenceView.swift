@@ -303,7 +303,7 @@ struct EvidenceView: View {
         case .tested: Theme.Metric.recoveryHigh
         case .associated: Theme.Metric.sleep
         case .observed: Theme.Metric.strain
-        case .anecdote: .secondary
+        case .anecdote: Theme.inkSecondary
         }
     }
 }

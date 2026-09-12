@@ -86,7 +86,7 @@ struct YearHeatmapView: View {
                 Text(average.map { "\($0)%" } ?? "--")
                     .font(Theme.numeral(30))
                     .monospacedDigit()
-                    .foregroundStyle(average.map { Theme.recoveryColor(Double($0)) } ?? .secondary)
+                    .foregroundStyle(average.map { Theme.recoveryColor(Double($0)) } ?? Theme.inkSecondary)
                 Text("Average recovery")
                     .font(Theme.text(10))
                     .foregroundStyle(Theme.inkSecondary)

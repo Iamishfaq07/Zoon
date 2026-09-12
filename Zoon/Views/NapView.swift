@@ -272,7 +272,7 @@ struct NapView: View {
                             .monospacedDigit()
                             .frame(width: 38)
                             .foregroundStyle(
-                                selectedMinutes == preset.minutes ? Theme.Metric.strain : .secondary
+                                selectedMinutes == preset.minutes ? Theme.Metric.strain : Theme.inkSecondary
                             )
 
                         VStack(alignment: .leading, spacing: 1) {

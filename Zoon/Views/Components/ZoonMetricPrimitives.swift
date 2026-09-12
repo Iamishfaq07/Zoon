@@ -99,7 +99,7 @@ struct ZoonMetricPill: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .foregroundStyle(isSelected ? tint : .secondary)
+        .foregroundStyle(isSelected ? tint : Theme.inkSecondary)
         .zoonGlassPill(tint: isSelected ? tint : Theme.neutral(0.20))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

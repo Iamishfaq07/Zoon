@@ -100,7 +100,7 @@ struct LunarReservoir: View {
             }
         }
         .font(Theme.text(13, weight: .medium))
-        .foregroundStyle(abs(delta) < 5 ? .secondary : (delta < 0 ? Theme.Family.recovery : Theme.Family.attention))
+        .foregroundStyle(abs(delta) < 5 ? Theme.inkSecondary : (delta < 0 ? Theme.Family.recovery : Theme.Family.attention))
     }
 
     private var accessibilityValue: String {

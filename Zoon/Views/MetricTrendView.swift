@@ -234,7 +234,7 @@ struct MetricTrendView: View {
         switch state {
         case .typical: Theme.Metric.recoveryHigh
         case .aboveTypical, .belowTypical: Theme.Metric.recoveryMid
-        case .unavailable: .secondary
+        case .unavailable: Theme.inkSecondary
         }
     }
 }

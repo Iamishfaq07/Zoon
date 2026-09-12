@@ -375,7 +375,7 @@ struct SettingsView: View {
                     isObligation ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.06),
                     in: RoundedRectangle(cornerRadius: 8)
                 )
-                .foregroundStyle(isObligation ? Theme.Metric.sleep : .secondary)
+                .foregroundStyle(isObligation ? Theme.Metric.sleep : Theme.inkSecondary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(calendar.weekdaySymbols[weekday - 1])
@@ -639,7 +639,7 @@ struct SettingsView: View {
 
             LabeledContent("Widget data") {
                 Text(AppGroup.isConfigured ? "Live" : "Sample only")
-                    .foregroundStyle(AppGroup.isConfigured ? .green : .secondary)
+                    .foregroundStyle(AppGroup.isConfigured ? .green : Theme.inkSecondary)
             }
 
             NavigationLink {

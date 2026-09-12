@@ -56,7 +56,7 @@ struct ZoonTimeline: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(isPast ? .tertiary : .primary)
+                .foregroundStyle(isPast ? Theme.inkTertiary : .primary)
                 .frame(minWidth: 52, alignment: .trailing)
                 .padding(.top, 2)
 
@@ -86,7 +86,7 @@ struct ZoonTimeline: View {
                         .foregroundStyle(isPast ? AnyShapeStyle(.tertiary) : AnyShapeStyle(node.tint))
                     Text(node.title)
                         .font(Theme.label(14, weight: node.isEmphasised ? .semibold : .medium))
-                        .foregroundStyle(isPast ? .secondary : .primary)
+                        .foregroundStyle(isPast ? Theme.inkSecondary : .primary)
                 }
                 if let detail = node.detail {
                     Text(detail)

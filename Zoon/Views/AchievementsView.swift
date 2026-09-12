@@ -207,7 +207,7 @@ struct BadgeTile: View {
 
                 Image(systemName: achievement.symbol)
                     .font(Theme.text(22, weight: .medium))
-                    .foregroundStyle(achievement.isUnlocked ? .black : .secondary)
+                    .foregroundStyle(achievement.isUnlocked ? .black : Theme.inkSecondary)
             }
             .frame(height: 80)
 
@@ -216,7 +216,7 @@ struct BadgeTile: View {
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .frame(height: 26, alignment: .top)
-                .foregroundStyle(achievement.isUnlocked ? .primary : .secondary)
+                .foregroundStyle(achievement.isUnlocked ? .primary : Theme.inkSecondary)
 
             if !achievement.isUnlocked {
                 Text(achievement.progressText)

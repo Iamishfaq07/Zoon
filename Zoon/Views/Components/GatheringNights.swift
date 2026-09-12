@@ -35,7 +35,7 @@ struct GatheringNights: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            MoonWell(fill: fill, metNeed: isReady, size: 104)
+            MoonFill(fill: fill, active: isReady, size: 104)
                 .scaleEffect(risen ? 1 : 0.88)
                 .opacity(risen ? 1 : 0)
                 .onAppear {

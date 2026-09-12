@@ -73,7 +73,7 @@ struct SleepDetailView: View {
                     tint: Theme.recoveryColor(Double(context.sleepScore.value))
                 )
                 if context.night.isMock {
-                    StatusPill(text: "Sample", systemImage: "wand.and.stars", tint: .secondary)
+                    StatusPill(text: "Sample", systemImage: "wand.and.stars", tint: Theme.inkSecondary)
                 }
             }
 
@@ -314,7 +314,7 @@ struct SleepDetailView: View {
                     Spacer()
                     Image(systemName: source.available ? "checkmark.circle.fill" : "minus.circle")
                         .font(Theme.text(11))
-                        .foregroundStyle(source.available ? Theme.Metric.recoveryHigh : .secondary)
+                        .foregroundStyle(source.available ? Theme.Metric.recoveryHigh : Theme.inkSecondary)
                 }
             }
             Text("Missing data is never treated as zero -- a metric with nothing available here is simply left out of tonight's score and comparisons.")

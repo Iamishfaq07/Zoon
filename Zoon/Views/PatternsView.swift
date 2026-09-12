@@ -316,7 +316,7 @@ struct PatternsView: View {
                 .foregroundStyle(match.isShared ? Theme.Family.sleep : Color.secondary)
             Text(match.phrase)
                 .font(Theme.text(12))
-                .foregroundStyle(match.isShared ? .primary : .secondary)
+                .foregroundStyle(match.isShared ? .primary : Theme.inkSecondary)
             Spacer(minLength: 8)
             Text("\(Int((match.agreement * 100).rounded()))%")
                 .font(Theme.evidence)
@@ -409,7 +409,7 @@ struct PatternsView: View {
                 if let region, region.nightCount > 0 {
                     Text("\(region.nightCount)")
                         .font(Theme.text(12, weight: isBest ? .bold : .regular))
-                        .foregroundStyle(isBest ? .primary : .secondary)
+                        .foregroundStyle(isBest ? .primary : Theme.inkSecondary)
                 }
             }
             .overlay {

@@ -291,7 +291,7 @@ struct RootView: View {
     /// longer live on the tab bar.
     private func push(_ destination: DeepLink.Destination) {
         switch destination {
-        case .soundscapes, .nap, .sleepDetail, .breathing, .snoreCheck, .bodyClock:
+        case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock:
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
@@ -433,6 +433,11 @@ struct SleepTabView: View {
                 case .breathing: BreathingView()
                 case .snoreCheck: SnoreCheckView()
                 case .bodyClock: BodyClockView()
+                // Reachable in the app from "All N nights" below; a
+                // destination as well so screenshot capture can render the
+                // past-night moons, which sit too far down the Sleep tab for
+                // any capture to reach them.
+                case .nightHistory: NightHistoryView()
                 case .sleepDetail:
                     if let context = coordinator.state.context {
                         SleepDetailView(context: context)
