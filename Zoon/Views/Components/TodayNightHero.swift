@@ -116,19 +116,45 @@ struct TodayNightHero: View {
 /// Sleep / Need / Debt as filled tracks, not a row of loose numbers.
 struct TodayNeedTracks: View {
     let context: DayContext
+    /// Nap minutes recorded today, which no stored night carries yet. See
+    /// `NapsTodayCard` for why they have to be read live.
+    var napMinutesToday: Double = 0
 
-    private var debt: Double { context.night.sleepDebtMinutes ?? 0 }
+    /// Last night's main sleep plus every nap already credited to it.
+    ///
+    /// This track showed `timeAsleepMinutes` — main sleep alone — while debt
+    /// and need are both computed from `total24hAsleepMinutes`, which counts
+    /// naps. So a nap could shrink the shortfall on the Debt line while the
+    /// Sleep line above it never moved, and the two tracks disagreed about
+    /// the same night.
+    private var slept: Double { context.night.total24hAsleepMinutes }
+
+    /// Today's naps come off today's shortfall, and cannot take it below
+    /// zero.
+    private var debt: Double {
+        max(0, (context.night.sleepDebtMinutes ?? 0) - napMinutesToday)
+    }
     private var need: Double { max(context.sleepNeed.totalNeedMinutes, 1) }
 
     var body: some View {
         VStack(spacing: 12) {
             track(
                 label: "Sleep",
-                value: SleepNightFeatures.formatMinutes(context.night.timeAsleepMinutes),
-                fraction: context.night.timeAsleepMinutes / need,
+                value: SleepNightFeatures.formatMinutes(slept),
+                fraction: slept / need,
                 tint: Theme.Family.sleep,
                 destination: SleepDetailView(context: context)
             )
+
+            if napMinutesToday > 0 {
+                track(
+                    label: "Naps today",
+                    value: SleepNightFeatures.formatMinutes(napMinutesToday),
+                    fraction: napMinutesToday / need,
+                    tint: Theme.Family.recovery,
+                    destination: NapView()
+                )
+            }
             track(
                 label: "Need",
                 value: SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes),
