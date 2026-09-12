@@ -552,6 +552,23 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            // Why the model cannot run at all: an ineligible device, Apple
+            // Intelligence switched off, iOS below 26, or the model still
+            // downloading.
+            //
+            // `unavailabilityReason` has always existed and its own doc
+            // comment says it is "surfaced in Settings so the option explains
+            // itself rather than silently doing nothing" -- and it never was.
+            // Picking Apple Intelligence on a device that cannot run it did
+            // exactly the silent nothing the comment warns about, with no way
+            // to tell that from the feature being broken.
+            if preferences.preferredEngine == .appleIntelligence,
+               let reason = FoundationModelInsightEngine().unavailabilityReason {
+                Label(reason, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Metric.recoveryMid)
+            }
+
             // Apple Intelligence can be selected, report itself `.available`,
             // and still fall back silently every single night if generation
             // throws or the model's own safety guardrail rejects the prompt.
