@@ -96,7 +96,11 @@ struct LunarReservoir: View {
                     Capsule()
                         .fill(Theme.neutral(0.22))
                         .frame(width: 2, height: 5)
-                        .offset(y: -(size / 2 - 8))
+                        // Inside the ring, not under it. At `size/2 - 8`
+                        // these sat exactly within the stroke band (centred
+                        // on size/2, 16 wide, so ±8) and were painted over
+                        // by the arc -- invisible in the first render.
+                        .offset(y: -(size / 2 - 26))
                         .rotationEffect(.degrees(135 + Self.sweep * t + 90))
                 }
 

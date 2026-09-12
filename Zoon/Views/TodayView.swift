@@ -353,19 +353,37 @@ struct TodayView: View {
     /// `map` to `Date` rather than to `Date?`.
     /// The debt figure from a week back, for the reservoir's trend line.
     ///
-    /// `recentNights` is oldest-first and `debtSeries` returns one entry per
-    /// night in the same order, so the eighth from the end is a week before
-    /// the latest night. Needs eight nights to exist at all; below that there
-    /// is no honest comparison to draw and the line stays hidden.
+    /// Returned as `displayed debt − the change over the week`, not as the
+    /// series' own value from seven nights ago. That distinction is the whole
+    /// correctness of this function.
+    ///
+    /// `context.night.sleepDebtMinutes` — the number the arc displays — is
+    /// computed from `total24hAsleepMinutes` against each night's own frozen
+    /// `sleepNeedBaselineMinutes`, with decay. A series built any other way
+    /// is on a different basis, and subtracting one from the other compares
+    /// two things that were never the same measurement. The first render said
+    /// "Improved by 24h 4m since last week" under a 1h 35m shortfall, which
+    /// is what that mistake looks like from the outside.
+    ///
+    /// So the series is built with the same inputs the stored debt uses, and
+    /// only its *delta* is taken — the part that is basis-independent — then
+    /// applied to the displayed number. `debtMinutes − weekAgoMinutes` is
+    /// then exactly the change the series measured, whatever the bases.
+    ///
+    /// Needs eight nights: below that there is no week to compare and the
+    /// line stays hidden.
     private func debtWeekAgo(_ context: DayContext) -> Double? {
         let nights = coordinator.recentNights
         guard nights.count >= 8 else { return nil }
         let series = SleepDebtCalculator.debtSeries(
-            timeAsleepMinutesOldestFirst: nights.map(\.timeAsleepMinutes),
-            goalMinutes: context.sleepNeed.totalNeedMinutes
+            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
+            goalMinutesOldestFirst: nights.map {
+                $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes
+            }
         )
-        guard series.count >= 8 else { return nil }
-        return series[series.count - 8]
+        guard let latest = series.last, series.count >= 8 else { return nil }
+        let change = latest - series[series.count - 8]
+        return (context.night.sleepDebtMinutes ?? 0) - change
     }
 
     private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
