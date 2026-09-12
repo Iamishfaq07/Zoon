@@ -187,6 +187,18 @@ jobs:
                 output="${tab}-light"
                 appearance_args=(-zoon.pref.appearance light)
                 ;;
+              day|morning|night)
+                # Today draws a different hero per time-of-day band, so
+                # without pinning it capture renders whichever band the
+                # runner happened to be in. The recovery ring only exists in
+                # `day`, which is why it had never been photographed.
+                output="today-${variant}"
+                appearance_args=(-zoonMoment "$variant")
+                ;;
+              dayLight)
+                output="today-day-light"
+                appearance_args=(-zoonMoment day -zoon.pref.appearance light)
+                ;;
               splash)
                 # -zoonSplash YES both enables the launch splash under
                 # -zoonDemo and holds it on screen, since the capture below
@@ -314,6 +326,13 @@ jobs:
           # The past-night moons in Light. They live too far down the Sleep
           # tab for a capture to reach, so this screen -- which leads with
           # the same strip -- is the only render of them there is.
+          # Today's other three heroes, pinned so they render every run
+          # rather than whenever the clock happens to agree.
+          shoot today day || FAILED=1
+          shoot today dayLight || FAILED=1
+          shoot today morning || FAILED=1
+          shoot today night || FAILED=1
+
           shoot nightHistory light || FAILED=1
 
           shoot sleep light || FAILED=1

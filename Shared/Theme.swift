@@ -756,10 +756,26 @@ struct ZoonAmbientBackground: View {
     @State private var band = Band.current()
     @Environment(\.colorScheme) private var colorScheme
 
-    enum Band: Equatable {
+    enum Band: String, Equatable {
         case morning, day, evening, night
 
         static func current(now: Date = .now, calendar: Calendar = .current) -> Band {
+            // `-zoonMoment day` pins the band, for screenshot capture only.
+            //
+            // Today draws a different hero in each band, and capture could
+            // only ever photograph whichever band the runner happened to be
+            // in -- so three of the four heroes were never rendered, and
+            // which one you got changed with the time of day. That also made
+            // today.jpg useless for comparing one run against another.
+            //
+            // Read straight from UserDefaults rather than through
+            // LaunchOptions: this file compiles into the widget and watch
+            // targets too, and they have no LaunchOptions. Inert without the
+            // argument, exactly like every other -zoon flag.
+            if let forced = UserDefaults.standard.string(forKey: "zoonMoment"),
+               let band = Band(rawValue: forced) {
+                return band
+            }
             switch calendar.component(.hour, from: now) {
             case 5..<9: .morning
             case 9..<17: .day
