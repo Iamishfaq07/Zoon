@@ -44,11 +44,20 @@ struct ZoonTimeline: View {
         let revealed = progress >= Double(index) / Double(max(sorted.count, 1))
         return HStack(alignment: .top, spacing: 14) {
             // Time column, right-aligned so the spine lines up.
+            //
+            // `minWidth` with `fixedSize`, not a hard `width`. At 52pt a
+            // two-digit hour in a 12-hour locale does not fit -- "11:17 AM"
+            // wrapped to "11:17 A" over "M" on every row of the evening,
+            // which is what the screenshot of a real device showed. The
+            // column still aligns at its natural width; it is now allowed to
+            // be wider than that rather than breaking the word.
             Text(node.time, format: .dateTime.hour().minute())
                 .font(Theme.label(13, weight: .semibold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(isPast ? .tertiary : .primary)
-                .frame(width: 52, alignment: .trailing)
+                .frame(minWidth: 52, alignment: .trailing)
                 .padding(.top, 2)
 
             // Spine + mark.

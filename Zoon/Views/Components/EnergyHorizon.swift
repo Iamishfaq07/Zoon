@@ -186,7 +186,21 @@ struct EnergyHorizon: View {
             // can't drift off the line if the model's levels ever change.
             let level = Self.interpolate(window.time, in: samples)
             let p = point(for: (window.time, level), width: width, height: height)
-            VStack(spacing: 3) {
+            // Above the point where there is room, below it where there is
+            // not.
+            //
+            // `.position` centres a view on its point, and this sat
+            // unconditionally at `p.y - 22` with nothing clamping it. A peak
+            // near the top of the curve -- which is exactly what a good
+            // morning looks like -- put the label's centre at a negative y,
+            // so it rendered outside the chart and landed on the readout
+            // above: "Peak focus 1:01 PM" written through "Winding down".
+            let labelHeight: CGFloat = 32
+            let roomAbove = p.y - 22 - labelHeight / 2 >= 0
+            let dot = Circle()
+                .fill(tint(for: window.kind))
+                .frame(width: 6, height: 6)
+            let caption = VStack(spacing: 3) {
                 Text(window.kind.label)
                     .font(Theme.text(9, weight: .semibold))
                     .foregroundStyle(.secondary)
@@ -195,12 +209,24 @@ struct EnergyHorizon: View {
                     .font(Theme.text(9))
                     .foregroundStyle(.tertiary)
                     .monospacedDigit()
-                Circle()
-                    .fill(tint(for: window.kind))
-                    .frame(width: 6, height: 6)
+            }
+
+            VStack(spacing: 3) {
+                if roomAbove {
+                    caption
+                    dot
+                } else {
+                    dot
+                    caption
+                }
             }
             .fixedSize()
-            .position(x: min(max(p.x, 28), width - 28), y: p.y - 22)
+            .position(
+                x: min(max(p.x, 28), width - 28),
+                y: roomAbove
+                    ? p.y - 22
+                    : min(p.y + 22, height - labelHeight / 2)
+            )
             .opacity(progress >= fraction(of: window.time) ? 1 : 0)
             .animation(Motion.respecting(reduceMotion, .easeOut(duration: 0.2)), value: progress)
         }

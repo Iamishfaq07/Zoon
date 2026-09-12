@@ -96,11 +96,16 @@ struct ZoonEvidenceLedger: View {
         let tint = Self.tint(for: milestone.kind)
         let revealed = progress >= Double(index) / Double(max(sorted.count, 1))
         return HStack(alignment: .top, spacing: 14) {
+            // Same guard as the tonight timeline: a hard width around a
+            // localised date is a wrap waiting for a longer month
+            // abbreviation.
             Text(milestone.date, format: .dateTime.month(.abbreviated).day())
                 .font(Theme.label(12, weight: .semibold))
                 .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(.secondary)
-                .frame(width: 52, alignment: .trailing)
+                .frame(minWidth: 52, alignment: .trailing)
                 .padding(.top, 2)
 
             VStack(spacing: 0) {

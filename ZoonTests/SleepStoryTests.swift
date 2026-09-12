@@ -125,7 +125,10 @@ final class SleepStoryTests: XCTestCase {
         let story = SleepStory.build(night: night, soundEvents: events)
         let snoreEvents = story.events.filter { $0.title == "Snoring" }
         XCTAssertEqual(snoreEvents.count, 1)
-        XCTAssertEqual(snoreEvents.first?.detail, "3 times over 0h 4m")
+        // "over 4m", not "over 0h 4m". formatMinutes used to emit both
+        // components whatever their value, which is the defect this literal
+        // was pinning in place rather than catching.
+        XCTAssertEqual(snoreEvents.first?.detail, "3 times over 4m")
     }
 
     /// `Event.id` used to be the bare `Date`. A nap ending exactly one

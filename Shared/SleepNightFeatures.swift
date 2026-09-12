@@ -427,7 +427,23 @@ extension SleepNightFeatures {
 
     static func formatMinutes(_ minutes: Double) -> String {
         let total = max(0, Int(minutes.rounded()))
-        return "\(total / 60)h \(total % 60)m"
+        let hours = total / 60
+        let mins = total % 60
+
+        // Drop the component that is zero. This always emitted both, so a
+        // twenty-minute span read "0h 20m" -- "Aim for 0h 20m earlier than
+        // usual tonight, which includes 0h 23m toward what you're owed" is a
+        // sentence no one would write, and it is on the Today screen every
+        // evening. A whole number of hours had the mirror problem: "9h 0m".
+        //
+        // Both components stay whenever both are non-zero, so the durations
+        // this mostly formats -- a night's sleep, a need, a debt -- are
+        // unchanged.
+        switch (hours, mins) {
+        case (0, _): return "\(mins)m"
+        case (_, 0): return "\(hours)h"
+        default: return "\(hours)h \(mins)m"
+        }
     }
 
     /// `timeZoneIdentifier` resolved, falling back to the device's current

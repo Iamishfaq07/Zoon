@@ -85,7 +85,7 @@ struct MoonWell: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            Theme.Family.sleep.opacity(metNeed ? 0.42 : 0.22),
+                            Theme.Family.Moon.lit.opacity(metNeed ? 0.20 : 0.10),
                             Theme.Family.Moon.dark
                         ],
                         center: UnitPoint(x: 0.5, y: 0.42),
@@ -98,7 +98,10 @@ struct MoonWell: View {
         }
         .frame(width: size, height: size)
         .overlay {
-            Circle().stroke(metNeed ? Theme.Family.sleep.opacity(0.5) : Theme.cardStroke, lineWidth: 1)
+            Circle().stroke(
+                metNeed ? Theme.Family.Moon.lit.opacity(0.42) : Theme.cardStroke,
+                lineWidth: 1
+            )
         }
         .accessibilityHidden(true)
     }
