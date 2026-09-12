@@ -14,6 +14,8 @@ struct ScoreDrivers: View {
 
     let components: [RecoveryScore.Component]
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Score drivers")
@@ -22,37 +24,93 @@ struct ScoreDrivers: View {
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.inkSecondary)
 
-            HStack(alignment: .top, spacing: 0) {
-                ForEach(components) { component in
-                    VStack(spacing: 3) {
-                        Image(systemName: Self.symbol(for: component.label))
-                            .font(Theme.text(15, weight: .semibold))
-                            .foregroundStyle(Self.tint(for: component.label))
-
-                        Text(Self.shortLabel(for: component.label))
-                            .font(Theme.label(11, weight: .semibold))
-
-                        Text(component.isAvailable ? component.detail : "—")
-                            .font(Theme.label(12, weight: .bold))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-
-                        Text(Self.qualifier(for: component))
-                            .font(Theme.text(11))
-                            .foregroundStyle(Self.qualifierColor(for: component))
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 10) {
+                    ForEach(components) { component in
+                        row(for: component)
                     }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel(
-                        component.isAvailable
-                            ? "\(component.label), \(component.detail), \(Self.qualifier(for: component))"
-                            : "\(component.label), not measured"
-                    )
+                }
+            } else {
+                HStack(alignment: .top, spacing: 0) {
+                    ForEach(components) { component in
+                        column(for: component)
+                    }
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Four abreast, the way the mockup reads: a glanceable row of signals.
+    private func column(for component: RecoveryScore.Component) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: Self.symbol(for: component.label))
+                .font(Theme.text(15, weight: .semibold))
+                .foregroundStyle(Self.tint(for: component.label))
+
+            Text(Self.shortLabel(for: component.label))
+                .font(Theme.label(11, weight: .semibold))
+
+            Text(component.isAvailable ? component.detail : "—")
+                .font(Theme.label(12, weight: .bold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(Self.qualifier(for: component))
+                .font(Theme.text(11))
+                .foregroundStyle(Self.qualifierColor(for: component))
+        }
+        .frame(maxWidth: .infinity)
+        .modifier(Self.Describe(component: component))
+    }
+
+    /// One signal per line once the type is large.
+    ///
+    /// A quarter of the card is 88 points wide. At the largest accessibility
+    /// size "Optimal" wants about 180 and "64 ms" about 140, so four columns
+    /// stop being a layout and become four truncations — and the reading is
+    /// the whole point of this strip. Full width per signal costs three rows
+    /// of height on a screen that is already scrolling.
+    private func row(for component: RecoveryScore.Component) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: Self.symbol(for: component.label))
+                .font(Theme.text(15, weight: .semibold))
+                .foregroundStyle(Self.tint(for: component.label))
+                .frame(width: 26, alignment: .leading)
+
+            Text(Self.shortLabel(for: component.label))
+                .font(Theme.label(11, weight: .semibold))
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(component.isAvailable ? component.detail : "—")
+                    .font(Theme.label(12, weight: .bold))
+                    .monospacedDigit()
+
+                Text(Self.qualifier(for: component))
+                    .font(Theme.text(11))
+                    .foregroundStyle(Self.qualifierColor(for: component))
+            }
+            .multilineTextAlignment(.trailing)
+        }
+        .modifier(Self.Describe(component: component))
+    }
+
+    /// The same spoken description either way round, so the layout switch
+    /// cannot quietly change what VoiceOver reads.
+    private struct Describe: ViewModifier {
+        let component: RecoveryScore.Component
+        func body(content: Content) -> some View {
+            content
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    component.isAvailable
+                        ? "\(component.label), \(component.detail), \(ScoreDrivers.qualifier(for: component))"
+                        : "\(component.label), not measured"
+                )
+        }
     }
 
     /// One scale for all four, from the value the ring already plots, so the

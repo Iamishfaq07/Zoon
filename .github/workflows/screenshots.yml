@@ -199,6 +199,15 @@ jobs:
                 output="today-day-light"
                 appearance_args=(-zoonMoment day -zoon.pref.appearance light)
                 ;;
+              dayLargeText)
+                # The hero being checked at large type -- ring, radar, score
+                # drivers, plan -- only exists in the `day` band, so an
+                # unpinned large-text shot of Today photographs whichever
+                # band the runner happened to be in and proves nothing
+                # about the layout it was raised to test.
+                output="today-largeText"
+                appearance_args=(-zoonMoment day)
+                ;;
               splash)
                 # -zoonSplash YES both enables the launch splash under
                 # -zoonDemo and holds it on screen, since the capture below
@@ -354,7 +363,7 @@ jobs:
           echo "Raising Dynamic Type to the largest accessibility size"
           xcrun simctl ui "$UDID" content_size accessibility-extra-extra-extra-large || \
             echo "::warning::Could not set content size; large-text shots will match the default."
-          shoot today largeText || FAILED=1
+          shoot today dayLargeText || FAILED=1
           shoot sleepDetail largeText || FAILED=1
           shoot trends largeText || FAILED=1
           xcrun simctl ui "$UDID" content_size medium || true
