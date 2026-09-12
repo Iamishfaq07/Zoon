@@ -9,6 +9,7 @@ struct SleepIntelligenceCard: View {
     let score: SleepIntelligenceScore
 
     @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var tint: Color {
         switch score.band {
@@ -57,7 +58,7 @@ struct SleepIntelligenceCard: View {
             }
 
             Button {
-                withAnimation(.snappy(duration: 0.25)) { expanded.toggle() }
+                withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { expanded.toggle() }
                 Haptics.tap()
             } label: {
                 HStack(spacing: 5) {

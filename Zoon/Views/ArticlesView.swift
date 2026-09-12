@@ -6,6 +6,7 @@ import SwiftUI
 struct ArticlesView: View {
 
     @State private var selectedCategory: Article.Category?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var filtered: [Article] {
         guard let selectedCategory else { return Article.all }
@@ -58,7 +59,7 @@ struct ArticlesView: View {
         let tint = category?.tint ?? Theme.Metric.sleep
 
         return Button {
-            withAnimation(.snappy(duration: 0.2)) { selectedCategory = category }
+            withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { selectedCategory = category }
             Haptics.tap()
         } label: {
             Text(label)

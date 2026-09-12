@@ -502,6 +502,7 @@ private struct ExperimentPickerSheet: View {
 private struct PastExperimentRow: View {
     let outcome: SleepExperimentStore.Outcome
     @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var tag: BehaviorTag? { BehaviorTag(rawValue: outcome.tag) }
 
@@ -512,7 +513,7 @@ private struct PastExperimentRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
-                withAnimation(.snappy(duration: 0.2)) { expanded.toggle() }
+                withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 10) {
                     if let tag {

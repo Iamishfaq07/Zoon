@@ -150,7 +150,7 @@ struct ZoonWatchDial: View {
         .aspectRatio(1, contentMode: .fit)
         .onAppear {
             if reduceMotion { revealed = true }
-            else { withAnimation(.easeOut(duration: 0.35)) { revealed = true } }
+            else { withAnimation(Motion.entrance) { revealed = true } }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
