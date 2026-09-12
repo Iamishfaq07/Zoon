@@ -53,7 +53,7 @@ struct InteractiveMoon: View {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Theme.Metric.sleep.opacity(0.5), .clear],
+                        colors: [Theme.Family.Moon.lit.opacity(0.22), .clear],
                         center: .center,
                         startRadius: 8,
                         endRadius: size * 0.58

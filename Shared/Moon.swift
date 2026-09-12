@@ -81,12 +81,28 @@ private func drawMoon(
     // faces us -- only the lighting moves.
     let sun: CGFloat = waxing ? 1 : -1
 
+    // Moonlight, not a purple disc.
+    //
+    // This was a flat fill of the app's sleep purple, which put a lilac ring
+    // around every moon -- the more photographic the moon got, the more that
+    // ring looked like a sticker behind it. A real moon casts its own light,
+    // so the halo is the moon's own tone fading to nothing, and a gradient
+    // rather than a flat disc so it has no edge to read as a ring.
     let glowR = 78 * scale
     context.fill(
         Path(ellipseIn: CGRect(
             x: center.x - glowR, y: center.y - glowR, width: glowR * 2, height: glowR * 2
         )),
-        with: .color(Theme.Family.sleep.opacity(active ? 0.28 : 0.12))
+        with: .radialGradient(
+            Gradient(stops: [
+                .init(color: Theme.Family.Moon.lit.opacity(active ? 0.22 : 0.10), location: 0.60),
+                .init(color: Theme.Family.Moon.lit.opacity(active ? 0.08 : 0.04), location: 0.82),
+                .init(color: Theme.Family.Moon.lit.opacity(0), location: 1)
+            ]),
+            center: center,
+            startRadius: 0,
+            endRadius: glowR
+        )
     )
 
     let discRect = CGRect(
