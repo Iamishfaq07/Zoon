@@ -11,6 +11,7 @@ import SwiftUI
 struct CoachTabView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
     /// Bumped to force a fresh read of `CoachChat.unavailabilityReason` in
     /// `capabilityCard` -- see the polling `.task(id:)` below. Same fix as
     /// `CoachChatView`'s: that reason reads live system state, not anything
@@ -105,6 +106,8 @@ struct CoachTabView: View {
                 }
                 .buttonStyle(PressableStyle())
 
+                engineCard
+
                 capabilityCard
             }
             .padding()
@@ -163,6 +166,73 @@ struct CoachTabView: View {
     /// "anything" is grounded in, and a coach that quietly knows 30 nights of
     /// history reads very differently from one that knows one. Both counts
     /// come from data already loaded for this screen.
+    /// Which engine answers, chosen here rather than buried in Settings.
+    ///
+    /// This picker lived in Settings, three screens away from the only place
+    /// its effect is visible. Someone wondering why the coach sounds
+    /// mechanical had no reason to look for it there, and someone who did
+    /// find it got no hint that the choice might not be available to them at
+    /// all.
+    private var engineCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Who answers", systemImage: "cpu")
+
+            Picker(
+                "Insight engine",
+                selection: Binding(
+                    get: { preferences.preferredEngine },
+                    set: { coordinator.setEngine($0) }
+                )
+            ) {
+                ForEach(UserPreferences.EngineChoice.shippingCases) { choice in
+                    Text(choice.displayName).tag(choice)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text(preferences.preferredEngine.detail)
+                .font(Theme.text(12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // The requirements, stated whichever engine is selected.
+            //
+            // Apple Intelligence is not a preference that works everywhere:
+            // it needs hardware most iPhones in use do not have. Saying so
+            // before it is picked is the difference between "I chose it and
+            // nothing happened" and "I can't have this yet" -- and Rules is a
+            // real answer on every device, not a consolation.
+            Label(
+                "Apple Intelligence needs iOS 26 or later on an iPhone 15 Pro, "
+                    + "iPhone 16, or newer. Rules answers on any device.",
+                systemImage: "info.circle"
+            )
+            .font(Theme.text(11))
+            .foregroundStyle(.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            // Why it cannot run here, when it cannot.
+            if preferences.preferredEngine == .appleIntelligence,
+               let reason = CoachChat.unavailabilityReason {
+                Label(reason, systemImage: "exclamationmark.triangle")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.Metric.recoveryMid)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Why a model that *can* run fell back anyway.
+            if preferences.preferredEngine == .appleIntelligence,
+               CoachChat.unavailabilityReason == nil,
+               let reason = FoundationModelDiagnostics.shared.lastFailureReason {
+                Label(reason, systemImage: "exclamationmark.triangle")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.Metric.recoveryLow)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .glassCard()
+    }
+
     private var capabilityCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "What Zoon can see", systemImage: "eye")
