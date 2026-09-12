@@ -307,10 +307,13 @@ struct RootView: View {
 /// any planning or tools.
 ///
 /// Order: Last Night hero → Hypnogram V4 (the visual hero) → three story
-/// moments → metric board → then Sleep Need, Body Clock, chronotype, past
-/// nights and the tools strip. Analysis of the night comes first; planning
-/// follows it. The full `SleepDetailView` (completeness, stage breakdown)
-/// is one tap from the metric board.
+/// moments → metric board → then Sleep Need, Body Clock, chronotype and
+/// past nights. Analysis of the night comes first; planning follows it. The
+/// full `SleepDetailView` (completeness, stage breakdown) is one tap from
+/// the metric board.
+///
+/// The tools strip is deliberately not here. It lives at the bottom of
+/// Today, and only there.
 struct SleepTabView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
@@ -321,23 +324,6 @@ struct SleepTabView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    // Above the night analysis, not below it.
-                    //
-                    // These five are the only things on this tab you *do*
-                    // rather than read, and they sat last -- under the hero,
-                    // the hypnogram, the story, past nights, the numbers and
-                    // the tonight plan. Reaching Nap or Wind Down meant
-                    // scrolling through a full report on a night that had
-                    // already happened, which is why they read as hidden.
-                    //
-                    // The strip is one compact row, so leading with it costs
-                    // the analysis almost no vertical space, and it is
-                    // outside the `if let context` on purpose: a phone with
-                    // no night recorded yet still has a nap timer and a
-                    // wind-down pacer, and those are arguably more use then,
-                    // not less.
-                    SleepToolsStrip().entrance(0)
-
                     if let context = coordinator.state.context {
                         LastNightHero(context: context).entrance(1)
 

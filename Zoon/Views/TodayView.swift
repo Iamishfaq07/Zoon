@@ -245,7 +245,17 @@ struct TodayView: View {
                 .entrance(8)
             }
 
-            footer(context).entrance(8)
+            // Last on Today, and only here.
+            //
+            // These are the only things in the app you *do* rather than
+            // read, and they have now been in three places: buried at the
+            // bottom of the Sleep tab, then leading Sleep and repeated on
+            // Today, then Sleep alone. Bottom of Today is where they stay --
+            // one home, on the screen that opens the app, after the reading
+            // rather than in front of it.
+            SleepToolsStrip().entrance(8)
+
+            footer(context).entrance(9)
         }
     }
 
