@@ -270,6 +270,29 @@ jobs:
             --key-path "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
 
       - name: Archive
+        # CODE_SIGN_IDENTITY is pinned to Apple Distribution, and that is not
+        # cosmetic -- it decides which certificate family this archive mints
+        # into.
+        #
+        # Nothing in the project sets CODE_SIGN_IDENTITY, so automatic signing
+        # fell back to Xcode's iOS default of "Apple Development". Runs 88 and
+        # 89 both died on "Choose a certificate to revoke", and 89's slot step
+        # explained why it could not help:
+        #
+        #   Account has 10 certificates; 0 are in the selected family
+        #   (DISTRIBUTION); 10 of other types left alone.
+        #   nothing to revoke -- every selected family already has a free slot
+        #
+        # The full family was Development -- ten certificates, one per
+        # ephemeral runner that ever minted here, none of whose private keys
+        # still exist. Distribution was completely empty. So the archive was
+        # queueing for the one full family while the right one sat unused,
+        # and freeing a distribution slot could never have fixed it.
+        #
+        # An App Store build has to be distribution-signed to be accepted
+        # anyway; export re-signs it as such regardless. Asking for that
+        # identity up front is both more correct and the one fix here that
+        # revokes nothing.
         run: |
           set -o pipefail
           xcodebuild archive \
@@ -285,6 +308,7 @@ jobs:
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             CURRENT_PROJECT_VERSION="${{ steps.version.outputs.number }}" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             2>&1 | tee archive.log
 
