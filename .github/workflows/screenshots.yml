@@ -289,7 +289,7 @@ jobs:
           # own labels; only a render shows it.
           FAILED=0
           for tab in onboarding today sleep trends coach journal more \
-                     sleepDetail bodyClock soundscapes nap breathing snoreCheck \
+                     sleepDetail nightHistory bodyClock soundscapes nap breathing snoreCheck \
                      report settings badges evidence patterns sensorTruth; do
             shoot "$tab" || FAILED=1
           done
@@ -311,6 +311,11 @@ jobs:
           # ever captured in Light, so Sleep, Insights and Coach -- three of
           # the four tabs -- had no light-appearance render at all, and a
           # washed-out or invisible label there could not be seen from here.
+          # The past-night moons in Light. They live too far down the Sleep
+          # tab for a capture to reach, so this screen -- which leads with
+          # the same strip -- is the only render of them there is.
+          shoot nightHistory light || FAILED=1
+
           shoot sleep light || FAILED=1
           shoot trends light || FAILED=1
           shoot coach light || FAILED=1

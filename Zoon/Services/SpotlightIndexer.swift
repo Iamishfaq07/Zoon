@@ -65,6 +65,12 @@ enum SpotlightIndexer {
                 subtitle: "Your sleep stages and score",
                 keywords: ["last night", "hypnogram", "sleep stages", "rem", "deep sleep", "score"]
             )
+        case .nightHistory:
+            Entry(
+                title: "All Nights",
+                subtitle: "Every night Zoon has recorded",
+                keywords: ["all nights", "history", "past nights", "previous nights", "log"]
+            )
         case .breathing:
             Entry(
                 title: "Wind Down",
