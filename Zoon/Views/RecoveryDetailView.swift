@@ -26,6 +26,7 @@ struct RecoveryDetailView: View {
                     )
                         .padding(.top, 60)
                 }
+                RelatedReading(placement: Article.Placement.recovery, title: "Worth reading")
             }
             .padding()
         }

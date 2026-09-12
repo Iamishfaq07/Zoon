@@ -18,6 +18,13 @@ struct TonightRoutineView: View {
                 }
                 NavigationLink("Travel and shift schedules") { SavedSleepPlansView() }
             }
+
+            // Screens and bedroom temperature are exactly what a wind-down
+            // routine is made of, so the reading on both sits here rather
+            // than in a library three taps away.
+            Section {
+                RelatedReading(placement: .tonightRoutine, title: "Setting up for tonight")
+            }
             Section("Routine") {
                 Stepper("\(store.value.routine.minutes) minutes", value: $store.value.routine.minutes, in: 5...120, step: 5)
                 Toggle("Start with breathing", isOn: $store.value.routine.breathing)

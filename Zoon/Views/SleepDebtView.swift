@@ -46,6 +46,7 @@ struct SleepDebtView: View {
                 recentNightsCard
                 trendChart
                 explanationCard
+                RelatedReading(placement: Article.Placement.sleepDebt, title: "What sleep debt is")
             }
             .padding()
         }

@@ -25,6 +25,7 @@ struct RegularityDetailView: View {
                     )
                         .padding(.top, 60)
                 }
+                RelatedReading(placement: Article.Placement.consistency, title: "Why consistency matters")
             }
             .padding()
         }

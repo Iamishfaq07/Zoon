@@ -245,21 +245,6 @@ struct TodayView: View {
                 .entrance(8)
             }
 
-            // The five sleep tools, on the tab people actually open.
-            //
-            // They lived only at the bottom of the Sleep tab, which is the
-            // screen you go to for a report on a night that is already
-            // over -- so the one part of the app you use *before* sleeping
-            // was the hardest part to reach. Today is the default tab and
-            // the one opened most, and a nap timer, a wind-down pacer and
-            // sleep sounds are all things you reach for now rather than
-            // read about later.
-            //
-            // Placed near the end rather than at the top: Today's job is
-            // still to answer "how did I sleep", and a row of buttons above
-            // that answer would be the same mistake in the other direction.
-            SleepToolsStrip().entrance(8)
-
             footer(context).entrance(8)
         }
     }
@@ -268,14 +253,31 @@ struct TodayView: View {
 
     private func daytimeHero(_ context: DayContext) -> some View {
         VStack(spacing: 16) {
-            Text(greeting).font(Theme.kicker).foregroundStyle(Theme.inkSecondary)
-            RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16)
-            Text("Capacity now")
-                .font(Theme.label(20, weight: .semibold))
-            // `MetricConfidence.label` already reads "High confidence", so
-            // appending the word gave "High confidence confidence" -- and
-            // "Insufficient data confidence" at the bottom of the scale.
-            // Every other site in the app renders the label bare.
+            // Addresses the reader, and says what the number means before
+            // showing it. "67%, Moderate" is a measurement; "your body needs
+            // moderate output today" is the thing they opened the app for.
+            Text(openingLine(context))
+                .font(Theme.label(19, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // The ring says how much. The radar inside says in what shape --
+            // whether the number came from everything being middling or from
+            // three strong signals and one that collapsed.
+            RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16) {
+                // 190 inside a 236 ring: vertex markers land at radius
+                // 84-106, clear of both the numerals and the stroke's inner
+                // edge at 110. At 150 they sat at 64-86, which is exactly
+                // where "65%" is drawn -- the first render had the icons
+                // overlapping the number and the polygon reading as a stray
+                // shape behind the text.
+                RecoverySpokes(components: context.recovery.components, size: 190)
+            }
+
+            ScoreDrivers(components: context.recovery.components)
+
+            TodayActionPlan(recovery: context.recovery, forecast: energyForecast(context))
+
             Text(context.recovery.confidence.label)
                 .font(Theme.text(13))
                 .foregroundStyle(Theme.inkSecondary)
@@ -285,7 +287,32 @@ struct TodayView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
+    }
+
+    /// "Ishfaq, your body needs moderate output today." — or the same
+    /// sentence without the name, when none has been set. The name is a
+    /// local preference and empty is a real answer; nothing here nags for it
+    /// or invents one.
+    private func openingLine(_ context: DayContext) -> String {
+        let body = switch context.recovery.band {
+        case .high: "your body can take load today."
+        case .moderate: "your body needs moderate output today."
+        case .low: "your body is asking for a light day."
+        }
+        let name = preferences.displayName
+        return name.isEmpty
+            ? body.prefix(1).uppercased() + body.dropFirst()
+            : "\(name), \(body)"
+    }
+
+    /// One construction, shared by the plan card and the energy section, so
+    /// the window the plan names is the window the curve draws.
+    private func energyForecast(_ context: DayContext) -> EnergyForecast {
+        EnergyForecast.compute(
+            wakeTime: context.night.wakeTime,
+            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
+        )
     }
 
     private func tonightCircleHero(_ context: DayContext) -> some View {
@@ -295,6 +322,13 @@ struct TodayView: View {
                 .foregroundStyle(Theme.inkSecondary)
             LunarReservoir(
                 debtMinutes: context.night.sleepDebtMinutes ?? 0,
+                // Both of these existed on LunarReservoir and neither was
+                // ever passed here, so the trend line under the arc was
+                // unreachable code and the repayment tonight's plan already
+                // computes was stated three sections further down but never
+                // shown against the shortfall it pays off.
+                weekAgoMinutes: debtWeekAgo(context),
+                repaymentMinutes: autopilotPlan(context)?.debtRepaymentMinutes,
                 size: 220
             )
             Text("Tonight's plan")
@@ -305,12 +339,20 @@ struct TodayView: View {
         }
         .frame(maxWidth: .infinity)
     }
+    /// Derived from `moment`, not from the clock.
+    ///
+    /// It used to read `Calendar.current.component(.hour,...)` on its own,
+    /// which agreed with the hero by coincidence -- both read the same clock.
+    /// Once `-zoonMoment` could pin the band for capture they disagreed, and
+    /// the first day-band render greeted "Good evening" over a daytime hero.
+    /// One source for both settles it, and the greeting now cannot drift
+    /// from the screen it sits above.
     private var greeting: String {
-        switch Calendar.current.component(.hour, from: .now) {
-        case 5..<12: "Good morning"
-        case 12..<17: "Good afternoon"
-        case 17..<22: "Good evening"
-        default: "Good night"
+        switch moment {
+        case .morning: "Good morning"
+        case .day: "Good afternoon"
+        case .evening: "Good evening"
+        case .night: "Good night"
         }
     }
 
@@ -332,11 +374,7 @@ struct TodayView: View {
                 .buttonStyle(.plain)
             }
             EnergyHorizon(
-                forecast: EnergyForecast.compute(
-                    wakeTime: context.night.wakeTime,
-                    sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
-                    windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
-                ),
+                forecast: energyForecast(context),
                 battery: context.bodyBattery,
                 targetBedtime: context.targetBedtime()
             )
@@ -351,6 +389,41 @@ struct TodayView: View {
     /// wake time has somewhere to land: `bodyClock?.window(for:)?.end` is a
     /// non-optional `Date` *inside* the chain, so mapping it there applies
     /// `map` to `Date` rather than to `Date?`.
+    /// The debt figure from a week back, for the reservoir's trend line.
+    ///
+    /// Returned as `displayed debt − the change over the week`, not as the
+    /// series' own value from seven nights ago. That distinction is the whole
+    /// correctness of this function.
+    ///
+    /// `context.night.sleepDebtMinutes` — the number the arc displays — is
+    /// computed from `total24hAsleepMinutes` against each night's own frozen
+    /// `sleepNeedBaselineMinutes`, with decay. A series built any other way
+    /// is on a different basis, and subtracting one from the other compares
+    /// two things that were never the same measurement. The first render said
+    /// "Improved by 24h 4m since last week" under a 1h 35m shortfall, which
+    /// is what that mistake looks like from the outside.
+    ///
+    /// So the series is built with the same inputs the stored debt uses, and
+    /// only its *delta* is taken — the part that is basis-independent — then
+    /// applied to the displayed number. `debtMinutes − weekAgoMinutes` is
+    /// then exactly the change the series measured, whatever the bases.
+    ///
+    /// Needs eight nights: below that there is no week to compare and the
+    /// line stays hidden.
+    private func debtWeekAgo(_ context: DayContext) -> Double? {
+        let nights = coordinator.recentNights
+        guard nights.count >= 8 else { return nil }
+        let series = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
+            goalMinutesOldestFirst: nights.map {
+                $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes
+            }
+        )
+        guard let latest = series.last, series.count >= 8 else { return nil }
+        let change = latest - series[series.count - 8]
+        return (context.night.sleepDebtMinutes ?? 0) - change
+    }
+
     private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
         let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
         return SleepAutopilot.plan(

@@ -25,6 +25,7 @@ final class UserPreferences {
         static let wakeAlarmEnabled = "zoon.pref.wakeAlarmEnabled"
         static let morningBriefEnabled = "zoon.pref.morningBriefEnabled"
         static let appearance = "zoon.pref.appearance"
+        static let displayName = "zoon.pref.displayName"
         static let recoveryModeDate = "zoon.pref.recoveryModeDate"
         static let experimentTag = "zoon.pref.experimentTag"
         static let experimentStartDate = "zoon.pref.experimentStartDate"
@@ -217,6 +218,23 @@ final class UserPreferences {
     /// using it.
     var appearance: AppearancePreference {
         didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+    }
+
+    /// What to call you, for the one line on Today that addresses you
+    /// directly. Empty by default and empty is a real answer: the headline
+    /// simply drops the name rather than inventing one or nagging for it.
+    ///
+    /// Stored locally like every other preference. It is never sent anywhere
+    /// -- there is nowhere for it to be sent.
+    var displayName: String {
+        didSet {
+            let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed != displayName {
+                displayName = trimmed
+                return
+            }
+            defaults.set(trimmed, forKey: Key.displayName)
+        }
     }
 
     enum AppearancePreference: String, CaseIterable, Identifiable {
@@ -579,6 +597,7 @@ final class UserPreferences {
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: Key.appearance) ?? ""
         ) ?? .dark
+        self.displayName = defaults.string(forKey: Key.displayName) ?? ""
         let storedAge = defaults.integer(forKey: Key.age)
         self.age = storedAge > 0 ? storedAge : nil
         self.biologicalSex = DemographicBaseline.Sex(
@@ -638,6 +657,7 @@ final class UserPreferences {
         wakeAlarmEnabled = false
         morningBriefEnabled = false
         appearance = .dark
+        displayName = ""
         age = nil
         biologicalSex = .unspecified
         bodyMassIndex = nil

@@ -1,20 +1,32 @@
 import SwiftUI
 
-/// The hero recovery ring.
+/// The hero recovery ring: one arc for how recovered, a slot inside for why.
 ///
-/// A single big arc with the number inside. Everything about it is tuned for
-/// one job: being readable at a glance, half-awake, from arm's length.
+/// This briefly drew four arcs, one per signal, sized by the weight each
+/// carried — a nice property (the total lit arc equalled the score exactly)
+/// that turned out to be the wrong division of labour once the radar existed.
+/// The radar shows each signal's own value far more legibly than an arc
+/// segment can, and two breakdowns of the same four numbers on the same
+/// circle is one too many. So the ring is a single arc again, saying one
+/// thing: how recovered, overall.
 ///
-/// - The arc animates from zero on appear, which gives the number weight —
-///   a value that's just *there* on load reads as static text.
+/// What is lost with the segments is the *weight* each signal carried — HRV
+/// counts for 45% and respiration 10%, and the radar draws both axes the same
+/// length. That is a real trade, made deliberately: the question people ask
+/// of this screen is "which signal is low", not "which signal counted most".
+///
+/// - The arc animates from zero on appear, which gives the number weight.
 /// - Digits are monospaced so the number doesn't wobble mid-animation.
-/// - The whole thing is one accessibility element; VoiceOver reading "72",
-///   "percent", "High" as three unrelated fragments is worse than useless.
-struct RecoveryRing: View {
+/// - The ring is one accessibility element; "72", "percent", "High" read as
+///   three unrelated fragments is worse than useless.
+struct RecoveryRing<Inner: View>: View {
 
     let recovery: RecoveryScore
     var size: CGFloat = 200
     var lineWidth: CGFloat = 18
+    /// Drawn inside the arc, behind the number. Empty by default so the ring
+    /// still stands alone wherever it is used without one.
+    @ViewBuilder var inner: Inner
 
     @State private var animatedFraction: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -24,7 +36,6 @@ struct RecoveryRing: View {
 
     var body: some View {
         ZStack {
-            // Track
             Circle()
                 .stroke(Theme.neutral(0.07), lineWidth: lineWidth)
 
@@ -47,7 +58,20 @@ struct RecoveryRing: View {
                 )
                 .rotationEffect(.degrees(-90))
 
+            inner
+
             content
+                // The ring is a fixed diameter; its centre labels are not.
+                // At the largest accessibility sizes "RECOVERY" and
+                // "Moderate" grew past the arc on both sides and landed on
+                // the spokes and the stroke. Capped here rather than made
+                // unscalable: they still respond to the setting, just not
+                // past what the circle can hold. Nothing is lost by it --
+                // the band name and every underlying reading are repeated
+                // at full size in the score drivers and the plan directly
+                // below, which is where someone who needs large type is
+                // actually reading them.
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         }
         .frame(width: size, height: size)
         .onAppear {
@@ -55,22 +79,25 @@ struct RecoveryRing: View {
                 animatedFraction = fraction
                 return
             }
-            withAnimation(Motion.hero) {
-                animatedFraction = fraction
-            }
+            withAnimation(Motion.hero) { animatedFraction = fraction }
         }
         .onChange(of: recovery.percent) { _, _ in
-            withAnimation(reduceMotion ? nil : Motion.hero) {
-                animatedFraction = fraction
-            }
+            withAnimation(reduceMotion ? nil : Motion.hero) { animatedFraction = fraction }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Recovery")
-        .accessibilityValue(
-            recovery.isEstimate
-                ? "\(recovery.percent) percent, still building your baseline"
-                : "\(recovery.percent) percent, \(recovery.band.label)"
-        )
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        let head = recovery.isEstimate
+            ? "\(recovery.percent) percent, still building your baseline"
+            : "\(recovery.percent) percent, \(recovery.band.label)"
+        let parts = recovery.components
+            .filter(\.isAvailable)
+            .map { "\($0.label) \($0.detail)" }
+            .joined(separator: ", ")
+        return parts.isEmpty ? head : head + ". From " + parts
     }
 
     private var content: some View {
@@ -81,8 +108,8 @@ struct RecoveryRing: View {
                 .foregroundStyle(Theme.inkSecondary)
 
             HStack(alignment: .top, spacing: 1) {
-                Text("\(recovery.percent)")
-                    .font(Theme.numeral(size * 0.30))
+                Text("\(Int((Double(recovery.percent) * min(1, animatedFraction / max(fraction, 0.0001))).rounded()))")
+                    .font(Theme.numeral(size * 0.26))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 Text("%")
@@ -95,6 +122,15 @@ struct RecoveryRing: View {
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
         }
+    }
+}
+
+extension RecoveryRing where Inner == EmptyView {
+    init(recovery: RecoveryScore, size: CGFloat = 200, lineWidth: CGFloat = 18) {
+        self.recovery = recovery
+        self.size = size
+        self.lineWidth = lineWidth
+        self.inner = EmptyView()
     }
 }
 

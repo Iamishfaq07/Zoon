@@ -51,34 +51,6 @@ struct MoreView: View {
                     navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
                         ArticlesView()
                     }
-                    navRow("What Zoon knows", "Every claim, ranked by how it was found",
-                            "checkmark.seal.fill", Theme.Metric.recoveryHigh) {
-                        EvidenceView()
-                    }
-                    navRow("Your patterns", "Where your good nights sit, and tomorrow's range",
-                            "square.grid.3x3.fill", Theme.Metric.sleep) {
-                        PatternsView()
-                    }
-                    navRow("How well Zoon knows you", "Which parts are settled, and which are still forming",
-                            "square.stack.3d.up.fill", Theme.Metric.hrv) {
-                        ModelHealthView()
-                    }
-                    navRow("Personal learning", "Resilience, light response and alertness checks",
-                            "sparkles.rectangle.stack.fill", Theme.Family.sleep) {
-                        PersonalLearningView()
-                    }
-                    navRow("Sleep fingerprint", "Your recent sleep signature at a glance",
-                            "circle.hexagongrid.fill", Theme.Family.recovery) {
-                        SleepFingerprintView()
-                    }
-                    navRow("Sleep eras", "Stable stretches and meaningful shifts over time",
-                            "timeline.selection", Theme.Family.sleep) {
-                        SleepErasView()
-                    }
-                    navRow("Chart builder", "Ask for a transparent local chart",
-                            "chart.xyaxis.line", Theme.Family.sleep) {
-                        ChartBuilderView()
-                    }
                     navRow("Voice journal", "Speak a note and review the transcript",
                             "mic.circle.fill", Theme.Family.sleep) {
                         VoiceJournalView()

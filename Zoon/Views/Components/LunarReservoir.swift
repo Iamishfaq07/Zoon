@@ -15,6 +15,12 @@ struct LunarReservoir: View {
     let debtMinutes: Double
     /// Debt a week ago, if known, for the trend line.
     var weekAgoMinutes: Double?
+    /// What tonight's plan already sets aside to repay, from
+    /// `SleepAutopilot.Plan.debtRepaymentMinutes`. Drawn as the far end of
+    /// the filled arc in the recovery hue, so the part of the shortfall
+    /// tonight is going to clear is visible rather than only stated in a
+    /// sentence further down the screen.
+    var repaymentMinutes: Double?
     var size: CGFloat = 200
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -22,7 +28,16 @@ struct LunarReservoir: View {
 
     /// The arc is full at four hours of debt.
     private static let fullMinutes: Double = 240
+    /// The arc spans 270 degrees, starting at 135.
+    private static let sweep: Double = 270
     private var fraction: Double { min(1, max(0, debtMinutes / Self.fullMinutes)) }
+
+    /// How much of the filled arc tonight's plan clears, as a fraction of the
+    /// whole reservoir. Never more than what is actually owed.
+    private var repaidFraction: Double {
+        guard let repaymentMinutes, repaymentMinutes > 0 else { return 0 }
+        return min(fraction, repaymentMinutes / Self.fullMinutes)
+    }
 
     private var tint: Color {
         debtMinutes >= 120 ? Theme.Family.attention : Theme.Family.sleep
@@ -53,6 +68,42 @@ struct LunarReservoir: View {
                     )
                     .rotationEffect(.degrees(135))
 
+                // The slice of the shortfall tonight's plan already clears,
+                // drawn over the far end of the fill. Arrives after the arc
+                // has finished rather than with it: it is a consequence of
+                // the number, and showing it at the same moment reads as two
+                // arcs racing.
+                if repaidFraction > 0 {
+                    Circle()
+                        .trim(
+                            from: 0.75 * (fraction - repaidFraction) * progress,
+                            to: 0.75 * fraction * progress
+                        )
+                        .stroke(
+                            Theme.Family.recovery,
+                            style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(135))
+                        .opacity(progress > 0.92 ? 1 : 0)
+                        .animation(Motion.respecting(reduceMotion, Motion.hero), value: progress > 0.92)
+                }
+
+                // Hour marks. The reservoir is full at four hours and said so
+                // only in a doc comment -- without them the arc has no scale
+                // at all and a quarter-full ring means nothing in particular.
+                ForEach(1..<4) { hour in
+                    let t = Double(hour) * 60 / Self.fullMinutes
+                    Capsule()
+                        .fill(Theme.neutral(0.22))
+                        .frame(width: 2, height: 5)
+                        // Inside the ring, not under it. At `size/2 - 8`
+                        // these sat exactly within the stroke band (centred
+                        // on size/2, 16 wide, so ±8) and were painted over
+                        // by the arc -- invisible in the first render.
+                        .offset(y: -(size / 2 - 26))
+                        .rotationEffect(.degrees(135 + Self.sweep * t + 90))
+                }
+
                 VStack(spacing: 4) {
                     Text("Sleep shortfall")
                         .font(Theme.kicker)
@@ -68,6 +119,14 @@ struct LunarReservoir: View {
                         .tracking(1.2)
                         .textCase(.uppercase)
                         .foregroundStyle(tint)
+
+                    if let repaymentMinutes, repaymentMinutes >= 1 {
+                        Text("−\(SleepNightFeatures.formatMinutes(repaymentMinutes)) tonight")
+                            .font(Theme.label(12, weight: .semibold))
+                            .foregroundStyle(Theme.Family.recovery)
+                            .monospacedDigit()
+                            .padding(.top, 2)
+                    }
                 }
                 .opacity(progress > 0.2 ? 1 : 0)
                 .animation(Motion.respecting(reduceMotion, Motion.hero), value: progress > 0.2)
@@ -105,6 +164,9 @@ struct LunarReservoir: View {
 
     private var accessibilityValue: String {
         var parts = ["\(debtMinutes > 1 ? SleepNightFeatures.formatMinutes(debtMinutes) : "none") short, \(band.lowercased())"]
+        if let repaymentMinutes, repaymentMinutes >= 1 {
+            parts.append("tonight's plan repays \(SleepNightFeatures.formatMinutes(repaymentMinutes))")
+        }
         if let weekAgoMinutes {
             let delta = debtMinutes - weekAgoMinutes
             if abs(delta) >= 5 {
