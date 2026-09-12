@@ -497,7 +497,7 @@ struct SensorTruthView: View {
         case .measured: Theme.Metric.recoveryHigh
         case .derived: Theme.Metric.strain
         case .inferred: Theme.Metric.sleep
-        case .selfReported: .secondary
+        case .selfReported: Theme.inkSecondary
         }
     }
 }

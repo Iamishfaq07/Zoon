@@ -117,7 +117,7 @@ struct WhatChangedCard: View {
         switch isImprovement {
         case true: Theme.Metric.recoveryHigh
         case false: Theme.Metric.recoveryMid
-        case nil: .secondary
+        case nil: Theme.inkSecondary
         }
     }
 

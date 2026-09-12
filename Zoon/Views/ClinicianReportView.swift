@@ -77,7 +77,7 @@ struct ClinicianReportView: View {
                 } label: {
                     HStack {
                         Image(systemName: selectedSections.contains(section) ? "checkmark.square.fill" : "square")
-                            .foregroundStyle(selectedSections.contains(section) ? Theme.Metric.sleep : .secondary)
+                            .foregroundStyle(selectedSections.contains(section) ? Theme.Metric.sleep : Theme.inkSecondary)
                         Text(section.rawValue)
                             .font(Theme.label(13))
                             .foregroundStyle(.primary)

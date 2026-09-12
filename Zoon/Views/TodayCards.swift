@@ -167,7 +167,7 @@ struct RecoveryBreakdownCard: View {
                 HStack(spacing: 10) {
                     Text(component.label)
                         .font(Theme.label(12, weight: .medium))
-                        .foregroundStyle(component.isAvailable ? .primary : .tertiary)
+                        .foregroundStyle(component.isAvailable ? .primary : Theme.inkTertiary)
                         .frame(width: 82, alignment: .leading)
 
                     if component.isAvailable {
@@ -290,7 +290,7 @@ struct HRVStatusCard: View {
         case .unbalanced: Theme.Metric.recoveryMid
         case .low: Theme.Metric.temperature
         case .poor: Theme.Metric.recoveryLow
-        case .building: .secondary
+        case .building: Theme.inkSecondary
         }
     }
 }

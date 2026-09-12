@@ -120,7 +120,7 @@ struct SoundscapeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: sound.symbol)
                     .font(Theme.text(22))
-                    .foregroundStyle(isActive ? Theme.Metric.battery : .secondary)
+                    .foregroundStyle(isActive ? Theme.Metric.battery : Theme.inkSecondary)
                     .symbolEffect(.variableColor.iterative, isActive: isActive)
 
                 Text(sound.label)

@@ -191,7 +191,7 @@ struct ZoonTrialRibbon: View {
         switch status {
         case .compliant: .white
         case .broken: Theme.Family.attention
-        case .unlogged, .upcoming: .secondary
+        case .unlogged, .upcoming: Theme.inkSecondary
         }
     }
 

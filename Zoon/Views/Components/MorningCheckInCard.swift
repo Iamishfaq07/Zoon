@@ -32,7 +32,7 @@ struct MorningCheckInCard: View {
                         VStack(spacing: 4) {
                             Image(systemName: feeling.symbol)
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(isSelected ? Theme.Metric.sleep : .secondary)
+                                .foregroundStyle(isSelected ? Theme.Metric.sleep : Theme.inkSecondary)
                                 .frame(width: 36, height: 36)
                                 .background(
                                     isSelected ? Theme.Metric.sleep.opacity(0.18) : Theme.neutral(0.06),
@@ -40,7 +40,7 @@ struct MorningCheckInCard: View {
                                 )
                             Text(feeling.label)
                                 .font(Theme.text(9, weight: isSelected ? .semibold : .regular))
-                                .foregroundStyle(isSelected ? .primary : .tertiary)
+                                .foregroundStyle(isSelected ? .primary : Theme.inkTertiary)
                         }
                         .frame(maxWidth: .infinity)
                     }

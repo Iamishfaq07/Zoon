@@ -394,7 +394,7 @@ struct ZoonWhatIfLab: View {
             HStack(spacing: 6) {
                 Text(title)
                     .font(Theme.supportingLabel)
-                    .foregroundStyle(emphasised ? .primary : .secondary)
+                    .foregroundStyle(emphasised ? .primary : Theme.inkSecondary)
                 Text("· \(count.pluralized("night"))")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
@@ -402,7 +402,7 @@ struct ZoonWhatIfLab: View {
                 Text(metric.formattedMagnitude(median))
                     .font(Theme.supportingLabel)
                     .monospacedDigit()
-                    .foregroundStyle(emphasised ? tint : .secondary)
+                    .foregroundStyle(emphasised ? tint : Theme.inkSecondary)
             }
 
             GeometryReader { geo in

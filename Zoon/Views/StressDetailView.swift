@@ -56,9 +56,9 @@ struct StressDetailView: View {
             .frame(width: 96, height: 96)
 
             HStack(spacing: 6) {
-                StatusPill(text: "Experimental", tint: .secondary)
+                StatusPill(text: "Experimental", tint: Theme.inkSecondary)
                 if stress.isEstimate {
-                    StatusPill(text: "Estimate", tint: .secondary)
+                    StatusPill(text: "Estimate", tint: Theme.inkSecondary)
                 }
             }
 

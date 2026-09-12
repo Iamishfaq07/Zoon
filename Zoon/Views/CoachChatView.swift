@@ -166,7 +166,7 @@ struct CoachChatView: View {
                     if let confidence = message.confidence {
                         StatusPill(
                             text: confidence == .grounded ? "Recorded evidence" : "General",
-                            tint: confidence == .grounded ? Theme.Metric.sleep : .secondary
+                            tint: confidence == .grounded ? Theme.Metric.sleep : Theme.inkSecondary
                         )
                     }
                 }
@@ -264,7 +264,7 @@ struct CoachChatView: View {
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 28))
-                    .foregroundStyle(input.trimmingCharacters(in: .whitespaces).isEmpty ? .secondary : Theme.Metric.sleep)
+                    .foregroundStyle(input.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.inkSecondary : Theme.Metric.sleep)
             }
             .disabled(input.trimmingCharacters(in: .whitespaces).isEmpty || chat.isResponding)
         }

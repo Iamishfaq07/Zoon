@@ -62,7 +62,7 @@ struct BreathingHealthView: View {
                             if let deviation = health.respiratoryDeviationPercent {
                                 Text(String(format: "%+.0f%%", deviation))
                                     .font(Theme.label(12, weight: .semibold))
-                                    .foregroundStyle(abs(deviation) < 8 ? .secondary : Theme.Metric.recoveryMid)
+                                    .foregroundStyle(abs(deviation) < 8 ? Theme.inkSecondary : Theme.Metric.recoveryMid)
                             }
                         }
                     }
@@ -156,10 +156,10 @@ struct BreathingHealthView: View {
 
     private var patternTint: Color {
         switch health.pattern {
-        case .insufficientData: .secondary
+        case .insufficientData: Theme.inkSecondary
         // Not a reassuring colour. Zoon has readings but no classification,
         // which is not the same as nothing being wrong.
-        case .unclassified: .secondary
+        case .unclassified: Theme.inkSecondary
         case .normal: Theme.Metric.recoveryHigh
         case .repeatedPattern: Theme.Metric.recoveryMid
         }

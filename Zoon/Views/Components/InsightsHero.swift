@@ -107,7 +107,7 @@ struct InsightsHero: View {
                             .foregroundStyle(Theme.inkTertiary)
                     }
                 } else {
-                    ZoonHeroMetric(value: "--", meaning: "Not enough nights yet", tint: .secondary)
+                    ZoonHeroMetric(value: "--", meaning: "Not enough nights yet", tint: Theme.inkSecondary)
                 }
             }
             .frame(maxWidth: .infinity)

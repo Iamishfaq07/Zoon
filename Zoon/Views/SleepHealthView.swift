@@ -64,7 +64,7 @@ struct SleepHealthView: View {
                 Text("--")
                     .font(Theme.numeral(46))
                     .foregroundStyle(Theme.inkTertiary)
-                StatusPill(text: "Insufficient data", tint: .secondary)
+                StatusPill(text: "Insufficient data", tint: Theme.inkSecondary)
             }
             Text("Built from \(health.nightCount) night\(health.nightCount == 1 ? "" : "s") in this window. \(health.confidence.label).")
                 .font(Theme.text(10))
