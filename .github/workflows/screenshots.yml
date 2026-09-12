@@ -235,7 +235,16 @@ jobs:
             # phantom crash reports before the broken-pipe message gave it away.
             local processes
             processes=$(xcrun simctl spawn "$UDID" launchctl list || true)
-            if ! printf '%s' "$processes" | grep -q "$BUNDLE_ID"; then
+            # A here-string, not `printf ... | grep -q`. The comment above
+            # describes this trap for `launchctl list | grep -q`; the same
+            # trap was still live one line down. `grep -q` exits on the first
+            # match, which SIGPIPEs the `printf` feeding it -- so under
+            # `pipefail` the pipeline reports failure *because the app was
+            # found*, and the check announces the app died when it is
+            # running. It fired on `trends-largeText` in run 61, half a
+            # second after that screen's screenshot was written successfully.
+            # A here-string is not a pipeline, so there is nothing to break.
+            if ! grep -q "$BUNDLE_ID" <<< "$processes"; then
               echo "::error::Zoon died on screen '$output'."
 
               # The .ips crash report carries the exception type and the stack.
@@ -344,7 +353,8 @@ jobs:
           sleep 8
           xcrun simctl io "$UDID" screenshot "screenshots/liveHealthKit.png" || true
           live=$(xcrun simctl spawn "$UDID" launchctl list || true)
-          if printf '%s' "$live" | grep -q "$BUNDLE_ID"; then
+          # Here-string for the same reason as the liveness check above.
+          if grep -q "$BUNDLE_ID" <<< "$live"; then
             echo "Survived a non-demo launch (most likely sitting on the Health sheet)."
           else
             echo "::warning::Zoon died on a non-demo launch -- this is the device crash reproducing."

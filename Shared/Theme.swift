@@ -847,18 +847,43 @@ struct ZoonSectionHeader<Accessory: View>: View {
         self.accessory = accessory()
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .font(Theme.kicker)
-                .tracking(1.0)
-                .textCase(.uppercase)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 8)
-            accessory
+        Group {
+            // Side by side while both halves fit; stacked once they cannot.
+            //
+            // A row is the right shape for "WHAT CHANGED" next to "This week
+            // vs last week" at any ordinary size. At an accessibility size
+            // both halves wrap to two or three lines each, the HStack has no
+            // width left to divide, and the two run straight through one
+            // another -- which is what the largest-type capture of Insights
+            // showed. Nothing here truncates, because a header that hides
+            // half its own words is no better than one that overlaps them.
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 6) {
+                    titleText
+                    accessory
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    titleText
+                    Spacer(minLength: 8)
+                    accessory
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityAddTraits(.isHeader)
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(Theme.kicker)
+            .tracking(1.0)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 
