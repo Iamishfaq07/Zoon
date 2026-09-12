@@ -245,21 +245,6 @@ struct TodayView: View {
                 .entrance(8)
             }
 
-            // The five sleep tools, on the tab people actually open.
-            //
-            // They lived only at the bottom of the Sleep tab, which is the
-            // screen you go to for a report on a night that is already
-            // over -- so the one part of the app you use *before* sleeping
-            // was the hardest part to reach. Today is the default tab and
-            // the one opened most, and a nap timer, a wind-down pacer and
-            // sleep sounds are all things you reach for now rather than
-            // read about later.
-            //
-            // Placed near the end rather than at the top: Today's job is
-            // still to answer "how did I sleep", and a row of buttons above
-            // that answer would be the same mistake in the other direction.
-            SleepToolsStrip().entrance(8)
-
             footer(context).entrance(8)
         }
     }
@@ -295,6 +280,13 @@ struct TodayView: View {
                 .foregroundStyle(Theme.inkSecondary)
             LunarReservoir(
                 debtMinutes: context.night.sleepDebtMinutes ?? 0,
+                // Both of these existed on LunarReservoir and neither was
+                // ever passed here, so the trend line under the arc was
+                // unreachable code and the repayment tonight's plan already
+                // computes was stated three sections further down but never
+                // shown against the shortfall it pays off.
+                weekAgoMinutes: debtWeekAgo(context),
+                repaymentMinutes: autopilotPlan(context)?.debtRepaymentMinutes,
                 size: 220
             )
             Text("Tonight's plan")
@@ -359,6 +351,23 @@ struct TodayView: View {
     /// wake time has somewhere to land: `bodyClock?.window(for:)?.end` is a
     /// non-optional `Date` *inside* the chain, so mapping it there applies
     /// `map` to `Date` rather than to `Date?`.
+    /// The debt figure from a week back, for the reservoir's trend line.
+    ///
+    /// `recentNights` is oldest-first and `debtSeries` returns one entry per
+    /// night in the same order, so the eighth from the end is a week before
+    /// the latest night. Needs eight nights to exist at all; below that there
+    /// is no honest comparison to draw and the line stays hidden.
+    private func debtWeekAgo(_ context: DayContext) -> Double? {
+        let nights = coordinator.recentNights
+        guard nights.count >= 8 else { return nil }
+        let series = SleepDebtCalculator.debtSeries(
+            timeAsleepMinutesOldestFirst: nights.map(\.timeAsleepMinutes),
+            goalMinutes: context.sleepNeed.totalNeedMinutes
+        )
+        guard series.count >= 8 else { return nil }
+        return series[series.count - 8]
+    }
+
     private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
         let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
         return SleepAutopilot.plan(

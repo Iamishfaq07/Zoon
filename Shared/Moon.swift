@@ -74,7 +74,12 @@ private func drawMoon(
     let s = min(canvasSize.width, canvasSize.height)
     let scale = s / 200
     let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-    let moonR = 58 * scale
+    // The disc used to take 58% of its frame's width, which left it looking
+    // like a small moon parked in a large empty box -- most visible in the
+    // past-night strip, where the surrounding space read as part of the icon.
+    // At 80 the disc is 80% of the frame, with the remainder left to the
+    // halo rather than to nothing.
+    let moonR = 80 * scale
 
     // Which limb the sun is on. Waxing is lit from the west (screen right),
     // waning from the east. The surface never mirrors -- the near side always
@@ -88,15 +93,22 @@ private func drawMoon(
     // ring looked like a sticker behind it. A real moon casts its own light,
     // so the halo is the moon's own tone fading to nothing, and a gradient
     // rather than a flat disc so it has no edge to read as a ring.
-    let glowR = 78 * scale
+    // 98 rather than 78: the halo now reaches the frame's edge, where the
+    // gradient has already fallen to zero, so nothing clips.
+    let glowR = 98 * scale
     context.fill(
         Path(ellipseIn: CGRect(
             x: center.x - glowR, y: center.y - glowR, width: glowR * 2, height: glowR * 2
         )),
         with: .radialGradient(
             Gradient(stops: [
-                .init(color: Theme.Family.Moon.lit.opacity(active ? 0.22 : 0.10), location: 0.60),
-                .init(color: Theme.Family.Moon.lit.opacity(active ? 0.08 : 0.04), location: 0.82),
+                // Stops sit just inside the disc's edge (80/98 = 0.82 of the
+                // glow radius) so the bright band of the halo hugs the limb
+                // and fades outward. With the old 0.60/0.82 placement and the
+                // larger disc, the whole bright part fell *under* the moon
+                // and only the faint tail showed.
+                .init(color: Theme.Family.Moon.lit.opacity(active ? 0.22 : 0.10), location: 0.78),
+                .init(color: Theme.Family.Moon.lit.opacity(active ? 0.10 : 0.05), location: 0.90),
                 .init(color: Theme.Family.Moon.lit.opacity(0), location: 1)
             ]),
             center: center,
