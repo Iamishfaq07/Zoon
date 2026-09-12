@@ -98,7 +98,7 @@ struct RecoveryRing<Inner: View>: View {
 
             HStack(alignment: .top, spacing: 1) {
                 Text("\(Int((Double(recovery.percent) * min(1, animatedFraction / max(fraction, 0.0001))).rounded()))")
-                    .font(Theme.numeral(size * 0.30))
+                    .font(Theme.numeral(size * 0.26))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 Text("%")

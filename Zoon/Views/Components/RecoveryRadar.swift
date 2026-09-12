@@ -115,7 +115,7 @@ struct RecoveryRadar: View {
         }
         .fill(
             LinearGradient(
-                colors: [Theme.Family.sleep.opacity(0.30), Theme.Family.recovery.opacity(0.22)],
+                colors: [Theme.Family.sleep.opacity(0.16), Theme.Family.recovery.opacity(0.12)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -130,7 +130,7 @@ struct RecoveryRadar: View {
                 }
                 path.closeSubpath()
             }
-            .stroke(Theme.Family.sleep.opacity(0.75), lineWidth: 1.5)
+            .stroke(Theme.Family.sleep.opacity(0.70), lineWidth: 1.5)
         }
     }
 
@@ -140,9 +140,9 @@ struct RecoveryRadar: View {
             let p = point(at: index, value: 1)
 
             Image(systemName: Self.symbol(for: component.label))
-                .font(Theme.text(11, weight: .semibold))
+                .font(Theme.text(10, weight: .semibold))
                 .foregroundStyle(component.isAvailable ? .white : Theme.inkTertiary)
-                .frame(width: 24, height: 24)
+                .frame(width: 22, height: 22)
                 .background {
                     Circle()
                         .fill(component.isAvailable ? tint : Color.clear)
