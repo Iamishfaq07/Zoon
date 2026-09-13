@@ -16,9 +16,9 @@ final class ZoonUITests: XCTestCase {
         app.launchArguments += ["-zoonDemo", "YES"]
         app.launch()
 
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["zoon.tab.today"].waitForExistence(timeout: 10))
         for tab in ["Sleep", "Insights", "Coach", "Today"] {
-            let button = app.tabBars.buttons[tab]
+            let button = app.buttons["zoon.tab.\(tab.lowercased())"]
             XCTAssertTrue(button.exists, "Missing core tab \(tab)")
             button.tap()
             XCTAssertTrue(button.isSelected)
@@ -29,13 +29,13 @@ final class ZoonUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-zoonDemo", "YES"]
         app.launch()
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["zoon.tab.today"].waitForExistence(timeout: 10))
 
-        app.tabBars.buttons["Sleep"].tap()
+        app.buttons["zoon.tab.sleep"].tap()
         XCTAssertTrue(app.navigationBars["Sleep"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Last night in numbers"].waitForExistence(timeout: 5))
 
-        app.tabBars.buttons["Coach"].tap()
+        app.buttons["zoon.tab.coach"].tap()
         XCTAssertTrue(app.staticTexts["Ask Zoon"].waitForExistence(timeout: 5))
     }
 }

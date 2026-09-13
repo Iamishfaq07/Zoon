@@ -339,15 +339,29 @@ enum Theme {
     }
 
     enum Metric {
+        // The three semantic hues are pinned to the V11 design spec:
+        // indigo #6C5CE7 for sleep, bedtime and targets; amber #FFA940 for
+        // shortfall and debt; emerald #00E676 for recovery and progress.
+        //
+        // Retuned in place rather than added alongside. The app's own values
+        // were already these three roles at slightly different coordinates
+        // (#7B61FF, #FFC24B, #00E08F), so a second "spec palette" would have
+        // meant two indigos a few percent apart, applied by whichever
+        // component was written last. One palette, moved.
+        //
+        // Only the dark value is given: `adaptiveMetric` derives the light
+        // one, so the light theme follows without a second set of numbers to
+        // keep in sync.
+
         /// Recovery bands. Green / amber / red, the convention every recovery
         /// product shares — breaking it would cost more in comprehension than
         /// any originality gains.
-        static let recoveryHigh = Theme.adaptiveMetric((0.00, 0.878, 0.561))
-        static let recoveryMid = Theme.adaptiveMetric((1.00, 0.761, 0.294))
+        static let recoveryHigh = Theme.adaptiveMetric((0.00, 0.902, 0.463))
+        static let recoveryMid = Theme.adaptiveMetric((1.00, 0.663, 0.251))
         static let recoveryLow = Theme.adaptiveMetric((1.00, 0.302, 0.427))
 
         static let strain = Theme.adaptiveMetric((0.290, 0.659, 1.00))
-        static let sleep = Theme.adaptiveMetric((0.482, 0.380, 1.00))
+        static let sleep = Theme.adaptiveMetric((0.424, 0.361, 0.906))
         static let battery = Theme.adaptiveMetric((0.153, 0.851, 0.753))
         static let hrv = Theme.adaptiveMetric((1.00, 0.435, 0.780))
         static let heart = Theme.adaptiveMetric((1.00, 0.365, 0.365))

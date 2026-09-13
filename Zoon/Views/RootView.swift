@@ -56,20 +56,34 @@ struct RootView: View {
 
         TabView(selection: $selection) {
             TodayView()
-                .tabItem { Label("Today", systemImage: "moon.fill") }
                 .tag(Tab.today)
 
             SleepTabView(path: $sleepPath)
-                .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(Tab.sleep)
 
             TrendsView()
-                .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }
                 .tag(Tab.trends)
 
             CoachTabView()
-                .tabItem { Label("Coach", systemImage: "sparkles") }
                 .tag(Tab.coach)
+        }
+        // The system bar is hidden and replaced by a floating capsule. The
+        // `TabView` still owns selection, paging and state restoration --
+        // only its chrome is ours.
+        .toolbar(.hidden, for: .tabBar)
+        // Every tab's scroll view gets the same bottom room, here rather
+        // than in each tab: a floating bar sits over content, and a tab that
+        // forgot the inset would hide its own last row.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            FloatingTabBar(
+                items: [
+                    .init(tab: Tab.today, title: "Today", symbol: "moon.fill"),
+                    .init(tab: Tab.sleep, title: "Sleep", symbol: "moon.stars.fill"),
+                    .init(tab: Tab.trends, title: "Insights", symbol: "chart.xyaxis.line"),
+                    .init(tab: Tab.coach, title: "Coach", symbol: "sparkles")
+                ],
+                selection: $selection
+            )
         }
         .tint(Theme.Metric.sleep)
         // System/Dark/Light, from Settings — `nil` for System lets SwiftUI
