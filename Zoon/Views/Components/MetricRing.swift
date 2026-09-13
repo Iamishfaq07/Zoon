@@ -31,6 +31,16 @@ struct RecoveryRing<Inner: View>: View {
     @State private var animatedFraction: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// The signal the reader has tapped, if any. Owned here rather than by
+    /// the radar because the centre text is what changes: the ring is one
+    /// object, and the selection belongs to the object, not to the markers
+    /// that happen to set it.
+    @Binding var selectedSignalID: String?
+
+    private var selected: RecoveryScore.Component? {
+        recovery.components.first { $0.id == selectedSignalID }
+    }
+
     private var fraction: Double { min(1, max(0, Double(recovery.percent) / 100)) }
     private var color: Color { Theme.recoveryColor(Double(recovery.percent)) }
 
@@ -100,7 +110,15 @@ struct RecoveryRing<Inner: View>: View {
         return parts.isEmpty ? head : head + ". From " + parts
     }
 
-    private var content: some View {
+    @ViewBuilder private var content: some View {
+        if let selected {
+            signalContent(selected)
+        } else {
+            scoreContent
+        }
+    }
+
+    private var scoreContent: some View {
         VStack(spacing: 0) {
             Text("RECOVERY")
                 .font(Theme.label(10, weight: .heavy))
@@ -123,6 +141,51 @@ struct RecoveryRing<Inner: View>: View {
                 .foregroundStyle(Theme.inkSecondary)
         }
     }
+
+    /// What one signal contributed, in place of the score.
+    ///
+    /// The weight is the part that was never anywhere: the radar gives every
+    /// axis the same length, so "HRV is low" and "HRV is low and counts 45%
+    /// of the score" look identical on it. Tapping is where that belongs —
+    /// it answers a question about one signal without spending room on the
+    /// resting screen.
+    private func signalContent(_ component: RecoveryScore.Component) -> some View {
+        VStack(spacing: 2) {
+            Text(component.label.uppercased())
+                .font(Theme.label(10, weight: .heavy))
+                .tracking(1.6)
+                .foregroundStyle(Theme.inkSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Text(component.isAvailable ? component.detail : "Not measured")
+                .font(Theme.numeral(size * 0.16))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .foregroundStyle(Theme.ink)
+
+            if component.isAvailable {
+                Text("\(Int((component.effectiveWeight * 100).rounded()))% of the score")
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkSecondary)
+            } else {
+                Text("Carries no weight today")
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+
+            Text("Tap to go back")
+                .font(Theme.evidence)
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .padding(.horizontal, size * 0.18)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Haptics.select()
+            selectedSignalID = nil
+        }
+    }
 }
 
 extension RecoveryRing where Inner == EmptyView {
@@ -131,6 +194,40 @@ extension RecoveryRing where Inner == EmptyView {
         self.size = size
         self.lineWidth = lineWidth
         self.inner = EmptyView()
+        self._selectedSignalID = .constant(nil)
+    }
+}
+
+extension RecoveryRing {
+    /// For the rings that draw something inside but have nothing to select —
+    /// the selection is the hero's business, not every ring's.
+    init(
+        recovery: RecoveryScore,
+        size: CGFloat = 200,
+        lineWidth: CGFloat = 18,
+        @ViewBuilder inner: () -> Inner
+    ) {
+        self.recovery = recovery
+        self.size = size
+        self.lineWidth = lineWidth
+        self.inner = inner()
+        self._selectedSignalID = .constant(nil)
+    }
+
+    /// The hero: the inner view can set the selection, and the centre text
+    /// answers it.
+    init(
+        recovery: RecoveryScore,
+        size: CGFloat = 200,
+        lineWidth: CGFloat = 18,
+        selectedSignalID: Binding<String?>,
+        @ViewBuilder inner: () -> Inner
+    ) {
+        self.recovery = recovery
+        self.size = size
+        self.lineWidth = lineWidth
+        self.inner = inner()
+        self._selectedSignalID = selectedSignalID
     }
 }
 

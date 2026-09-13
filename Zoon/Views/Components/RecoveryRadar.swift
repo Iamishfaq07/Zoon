@@ -23,6 +23,18 @@ struct RecoveryRadar: View {
 
     let components: [RecoveryScore.Component]
     var size: CGFloat = 190
+    /// Set by tapping a marker; the ring's centre answers it.
+    @Binding var selectedID: String?
+
+    init(
+        components: [RecoveryScore.Component],
+        size: CGFloat = 190,
+        selectedID: Binding<String?>
+    ) {
+        self.components = components
+        self.size = size
+        self._selectedID = selectedID
+    }
 
     /// Drives the outline growing from the centre on first appearance.
     @State private var grown: Double = 0
@@ -86,7 +98,6 @@ struct RecoveryRadar: View {
             }
             withAnimation(Motion.hero.delay(0.12)) { grown = 1 }
         }
-        .accessibilityHidden(true)
     }
 
     /// Concentric rings at 25/50/75/100% plus a spoke per signal, so a vertex
@@ -106,6 +117,7 @@ struct RecoveryRadar: View {
                 .stroke(Theme.neutral(0.09), lineWidth: 0.5)
             }
         }
+        .accessibilityHidden(true)
     }
 
     /// The reading: a wash of the signal hues under a hairline.
@@ -125,6 +137,7 @@ struct RecoveryRadar: View {
                 webPath { index in max(0.02, value(of: components[index])) }
                     .stroke(Theme.Family.sleep.opacity(0.32), lineWidth: 1)
             }
+            .accessibilityHidden(true)
     }
 
     /// One closed path through every axis, at whatever radius the caller
@@ -146,6 +159,8 @@ struct RecoveryRadar: View {
             let plotted = max(Self.markerFloor * grown, value(of: component))
             let p = point(at: index, value: plotted)
 
+            let isSelected = selectedID == component.id
+
             Image(systemName: Self.symbol(for: component.label))
                 .font(Theme.text(10, weight: .semibold))
                 // The disc behind it is a fixed 22 points, so the glyph has
@@ -164,8 +179,34 @@ struct RecoveryRadar: View {
                             )
                         }
                 }
+                // A selected marker wears a halo rather than growing: the
+                // disc sits on its own vertex, and a marker that changed
+                // size would read as the reading having changed.
+                .overlay {
+                    Circle()
+                        .stroke(tint, lineWidth: 2)
+                        .padding(-4)
+                        .opacity(isSelected ? 1 : 0)
+                }
+                .scaleEffect(isSelected ? 1.08 : 1)
                 .position(x: p.x, y: p.y)
                 .opacity(grown)
+                // 44 points of touch target around a 22-point disc, without
+                // enlarging the drawn marker.
+                .contentShape(Circle().inset(by: -11))
+                .onTapGesture {
+                    Haptics.select()
+                    withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
+                        selectedID = isSelected ? nil : component.id
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(
+                    component.isAvailable
+                        ? "\(component.label), \(component.detail)"
+                        : "\(component.label), not measured"
+                )
+                .accessibilityAddTraits(.isButton)
         }
     }
 }

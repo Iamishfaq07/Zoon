@@ -18,7 +18,6 @@ struct TodayView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
-    @Environment(NapStore.self) private var naps
 
     // Owned locally rather than read fresh from `coordinator.journal` on
     // every render: a tap saved through the store and re-fetched wouldn't
@@ -31,6 +30,8 @@ struct TodayView: View {
 
     @State private var selectedComponentID: String?
     @State private var showsExplanation = false
+    /// Which recovery signal the reader has tapped in the hero ring.
+    @State private var selectedSignalID: String?
     @State private var setup = PersonalSetupStore.shared
 
     private var scoreLight: Bool { setup.value.scoreLight }
@@ -271,16 +272,15 @@ struct TodayView: View {
 
     // MARK: - Naps
 
-    /// Nap minutes recorded today, read live rather than from a stored
-    /// night.
+    /// Nap minutes recorded today, from both the in-app timer and Health,
+    /// read live rather than from a stored night.
     ///
-    /// Nothing in the night pipeline can supply this yet: nap credit is
-    /// attributed to the calendar day before a wake, so a nap taken this
-    /// afternoon belongs to tomorrow morning's record and does not exist
-    /// until that night is written. Today's shortfall is a number about
-    /// today, so it reads today's naps.
+    /// Nap credit is attributed to the calendar day before a wake, so a nap
+    /// taken this afternoon belongs to tomorrow morning's record and does
+    /// not exist until that night is written. Today's shortfall is a number
+    /// about today, so it reads today's naps.
     private var napMinutesToday: Double {
-        naps.minutes(on: .now)
+        coordinator.napMinutesToday()
     }
 
     private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {
@@ -325,12 +325,21 @@ struct TodayView: View {
             // The ring says how much. The radar inside says in what shape --
             // whether the number came from everything being middling or from
             // three strong signals and one that collapsed.
-            RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16) {
+            RecoveryRing(
+                recovery: context.recovery,
+                size: 236,
+                lineWidth: 16,
+                selectedSignalID: $selectedSignalID
+            ) {
                 // 190 inside a 236 ring, so a full-value vertex lands at
                 // radius 95 -- inside the stroke's inner edge at 110. The
                 // web crosses the centre type by design and is drawn pale
                 // enough to sit under it; see RecoveryRadar.
-                RecoveryRadar(components: context.recovery.components, size: 190)
+                RecoveryRadar(
+                    components: context.recovery.components,
+                    size: 190,
+                    selectedID: $selectedSignalID
+                )
             }
 
             ScoreDrivers(components: context.recovery.components)
