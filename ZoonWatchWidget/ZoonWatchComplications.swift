@@ -256,13 +256,15 @@ struct BodySignalsComplicationView: View {
     let entry: WatchComplicationEntry
     @Environment(\.widgetFamily) private var family
 
-    private var isNormal: Bool { entry.snapshot.bodySignalsLabel == "Nothing unusual" }
-    private var symbol: String { isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right" }
+    /// Shared with the watch app and the widgets, so the same snapshot
+    /// cannot read "Typical" on a complication and "Building" in the app.
+    private var signals: SnapshotBodySignals { SnapshotBodySignals(snapshot: entry.snapshot) }
+    private var symbol: String { signals.symbol }
 
-    /// "Typical" rather than the stored "Nothing unusual": the complication
-    /// has one line, and the spec's own wording for the quiet state is the
-    /// shorter one.
-    private var summary: String { isNormal ? "Typical" : entry.snapshot.bodySignalsLabel }
+    /// One line, so the short form. A complication has no room to explain
+    /// itself, which makes it the worst place to assert reassurance the data
+    /// does not support — "—" is the honest glyph when nothing is known.
+    private var summary: String { signals.shortLabel }
 
     var body: some View {
         if entry.snapshot.scoreLightMode {
@@ -293,7 +295,7 @@ struct BodySignalsComplicationView: View {
             VStack(spacing: 1) {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .semibold))
-                Text(isNormal ? "OK" : "Drift")
+                Text(signals.shortLabel)
                     .font(.system(size: 11, weight: .semibold))
             }
             .privacySensitive()
@@ -861,6 +863,7 @@ struct CircadianPhaseComplicationView: View {
     WatchComplicationEntry(date: .now, snapshot: {
         var snapshot = MockData.snapshotWithBadges
         snapshot.bodySignalsLabel = "Several signals moving"
+        snapshot.bodySignalsState = "Notable"
         return snapshot
     }(), isPlaceholder: false)
 }

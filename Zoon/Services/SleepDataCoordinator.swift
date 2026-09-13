@@ -1143,9 +1143,13 @@ final class SleepDataCoordinator {
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).
         snapshot.recoveryConfidence = context.recovery.confidence.rawValue
-        snapshot.bodySignalsLabel = context.healthRadar.isActive
-            ? context.healthRadar.severity.label
-            : "Nothing unusual"
+        // The radar's own state, not `isActive` collapsed to a reassurance.
+        // `!isActive` is true of a clear fortnight, of night four, and of a
+        // phone that records sleep but no physiology; only the first of those
+        // is "nothing unusual", and the watch and complications were showing
+        // all three as "Typical".
+        snapshot.bodySignalsState = context.healthRadar.stateShortLabel
+        snapshot.bodySignalsLabel = context.healthRadar.stateHeadline
 
         // Autopilot and forecast are computed here for the same reason
         // badges are: both need the whole night history, and neither the

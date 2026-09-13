@@ -17,6 +17,38 @@ struct HealthRadar: Codable, Hashable, Sendable {
     let signals: [Signal]
     /// Nights the detection ran across.
     let nightCount: Int
+    /// How many physiological domains had a usable baseline (at least eight
+    /// values) when detection ran.
+    ///
+    /// Nights alone are not coverage: a fortnight of sleep recorded by a
+    /// phone carries no HRV, no resting heart rate and no respiratory rate,
+    /// so the radar can have fourteen nights and nothing to watch *with*.
+    /// Without this the two cases are indistinguishable downstream, and both
+    /// arrive as an empty `signals` array.
+    ///
+    /// `decodeIfPresent` below: archives written before this field existed
+    /// decode to 0, which reads as "coverage unknown" and routes to the same
+    /// cautious state as no coverage.
+    var domainsWithBaseline: Int = 0
+
+    /// Domains that have to carry a baseline before "nothing unusual" is a
+    /// claim rather than a gap. Two of the four supported signals.
+    static let minimumDomainsForTypical = 2
+
+    init(signals: [Signal], nightCount: Int, domainsWithBaseline: Int = 0) {
+        self.signals = signals
+        self.nightCount = nightCount
+        self.domainsWithBaseline = domainsWithBaseline
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        signals = try container.decode([Signal].self, forKey: .signals)
+        nightCount = try container.decode(Int.self, forKey: .nightCount)
+        domainsWithBaseline = try container.decodeIfPresent(
+            Int.self, forKey: .domainsWithBaseline
+        ) ?? 0
+    }
 
     struct Signal: Codable, Hashable, Sendable, Identifiable {
         let kind: VitalsStatus.Kind
@@ -73,7 +105,7 @@ struct HealthRadar: Codable, Hashable, Sendable {
     static func detect(nights: [SleepNightFeatures]) -> HealthRadar {
         let sorted = nights.sorted { $0.date < $1.date }
         guard sorted.count >= minimumBaselineNights else {
-            return HealthRadar(signals: [], nightCount: sorted.count)
+            return HealthRadar(signals: [], nightCount: sorted.count, domainsWithBaseline: 0)
         }
 
         // Baseline excludes the recent window, so a drift that's already
@@ -81,13 +113,15 @@ struct HealthRadar: Codable, Hashable, Sendable {
         let recentWindow = Array(sorted.suffix(minimumConsecutiveNights))
         let baselineWindow = Array(sorted.dropLast(minimumConsecutiveNights).suffix(30))
         guard baselineWindow.count >= minimumBaselineNights - minimumConsecutiveNights else {
-            return HealthRadar(signals: [], nightCount: sorted.count)
+            return HealthRadar(signals: [], nightCount: sorted.count, domainsWithBaseline: 0)
         }
 
         var detected: [Signal] = []
+        var domainsWithBaseline = 0
 
         for kind in VitalsStatus.Kind.allCases {
             let baselineValues = baselineWindow.compactMap { value(kind, in: $0) }
+            if baselineValues.count >= 8 { domainsWithBaseline += 1 }
             let recentValues = recentWindow.compactMap { value(kind, in: $0) }
 
             guard baselineValues.count >= 8,
@@ -121,7 +155,11 @@ struct HealthRadar: Codable, Hashable, Sendable {
             ))
         }
 
-        return HealthRadar(signals: detected, nightCount: sorted.count)
+        return HealthRadar(
+            signals: detected,
+            nightCount: sorted.count,
+            domainsWithBaseline: domainsWithBaseline
+        )
     }
 
     private static func value(_ kind: VitalsStatus.Kind, in night: SleepNightFeatures) -> Double? {
@@ -152,6 +190,55 @@ extension HealthRadar {
 
     var isActive: Bool { !signals.isEmpty }
 
+    /// What the radar can actually say — the one place that decides it.
+    ///
+    /// The bug this replaces: `signals.isEmpty` was read as "nothing
+    /// unusual". It is true of a clear fortnight *and* of a user on night
+    /// four, *and* of someone whose phone records sleep but no physiology.
+    /// Two of those three are "we do not know yet", and presenting them as
+    /// reassurance is a false negative on the one screen meant to catch a
+    /// change early.
+    enum State: Equatable, Sendable {
+        /// Not enough nights yet.
+        case buildingBaseline(nights: Int, required: Int)
+        /// Enough nights, not enough physiology to watch.
+        case insufficientSignals(domains: Int, required: Int)
+        /// Enough of both, and nothing is drifting. This is the only state
+        /// that is genuinely reassuring.
+        case typical
+        case watch([Signal])
+        case notable([Signal])
+
+        var isReassurance: Bool { self == .typical }
+
+        /// True when the honest answer is "not yet", not "you are fine".
+        var isIndeterminate: Bool {
+            switch self {
+            case .buildingBaseline, .insufficientSignals: true
+            case .typical, .watch, .notable: false
+            }
+        }
+    }
+
+    var state: State {
+        if nightCount < Self.minimumBaselineNights {
+            return .buildingBaseline(
+                nights: nightCount, required: Self.minimumBaselineNights
+            )
+        }
+        if !signals.isEmpty {
+            return signals.count >= 3 ? .notable(signals) : .watch(signals)
+        }
+        // Nights but no measurable domains is a gap, not a clean bill.
+        if domainsWithBaseline < Self.minimumDomainsForTypical {
+            return .insufficientSignals(
+                domains: domainsWithBaseline,
+                required: Self.minimumDomainsForTypical
+            )
+        }
+        return .typical
+    }
+
     /// Severity rises with how many signals moved together, because
     /// co-movement is the actual signal — one drifting metric is common,
     /// three at once is not.
@@ -172,6 +259,34 @@ extension HealthRadar {
         case 0: .clear
         case 1...2: .watch
         default: .notable
+        }
+    }
+
+    /// One line for the state, used by Today, the watch and complications so
+    /// they cannot word the same situation three different ways.
+    var stateHeadline: String {
+        switch state {
+        case .buildingBaseline(let nights, let required):
+            "Building your baseline · \(nights) of \(required) nights"
+        case .insufficientSignals:
+            "Not enough body signals yet"
+        case .typical:
+            "Nothing unusual"
+        case .watch(let signals):
+            signals.map(\.kind.label).joined(separator: ", ")
+        case .notable(let signals):
+            signals.map(\.kind.label).joined(separator: ", ")
+        }
+    }
+
+    /// The short form, for a complication or a watch row.
+    var stateShortLabel: String {
+        switch state {
+        case .buildingBaseline: "Building"
+        case .insufficientSignals: "No data"
+        case .typical: "Typical"
+        case .watch: "Watch"
+        case .notable: "Notable"
         }
     }
 

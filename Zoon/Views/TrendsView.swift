@@ -70,7 +70,7 @@ struct TrendsView: View {
         let inputs = coordinator.recentNights.map { night in
             (
                 date: night.date,
-                recoveryPercent: coordinator.recoveryHistory[night.date] ?? 50,
+                recoveryPercent: coordinator.recoveryHistory[night.date],
                 // Duration against goal, as a lightweight stand-in for the full
                 // debt-and-strain-adjusted sleep-need calculation — good enough
                 // for a phase-to-phase comparison, not a claim of precision.

@@ -58,7 +58,15 @@ struct SleepRegularity: Codable, Hashable, Sendable {
     /// every Monday.
     var socialJetlagHours: Double? {
         guard let weekday = weekdayMidpoint, let weekend = weekendMidpoint else { return nil }
-        return abs(weekend - weekday)
+        // Circular, not `abs(weekend - weekday)`.
+        //
+        // The midpoints are wall-clock hours shifted so an evening midpoint
+        // reads negative, which keeps the *median* stable across midnight but
+        // does not make subtraction safe: a weekday midpoint of 17.9 stays
+        // 17.9 while a weekend midpoint of 18.1 becomes −5.9, and the
+        // difference comes out as 23.8 hours instead of 12 minutes. Clock
+        // time is a circle everywhere, including here.
+        return Statistics.circularDistance(weekend, weekday, period: 24)
     }
 
     /// Nights required before an index is reported. SRI compares each night to

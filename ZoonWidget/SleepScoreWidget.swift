@@ -92,7 +92,7 @@ struct SleepScoreWidgetView: View {
                 // them or the reading could not be made -- the same gate the
                 // watch uses, so a missing score reads as missing, not as 0.
                 stat("Recovery", snapshot.canStateRecovery ? "\(snapshot.recoveryPercent)" : "—")
-                stat("Energy", snapshot.hasRecovery ? "\(snapshot.bodyBattery)" : "—")
+                stat("Energy", snapshot.hasEnergy ? "\(snapshot.bodyBattery)" : "—")
                 if !snapshot.sleepIntelligenceBand.isEmpty {
                     stat("Sleep Intel", "\(snapshot.sleepIntelligencePercent)")
                 }

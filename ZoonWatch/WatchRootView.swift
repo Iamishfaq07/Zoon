@@ -586,7 +586,12 @@ struct TodayPage: View {
         }
     }
 
-    private var signalsAreNormal: Bool { snapshot.bodySignalsLabel == "Nothing unusual" }
+    /// The phone's own radar state, not a string comparison.
+    ///
+    /// This matched on the literal "Nothing unusual", which a legacy snapshot
+    /// also decoded to — so an old payload, a four-night user and a genuinely
+    /// clear fortnight all lit the same green dot and read "Typical".
+    private var signals: SnapshotBodySignals { SnapshotBodySignals(snapshot: snapshot) }
 
     var body: some View {
         VStack(spacing: 5) {
@@ -615,12 +620,12 @@ struct TodayPage: View {
 
             HStack(spacing: 6) {
                 Circle()
-                    .fill(signalsAreNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
+                    .fill(signals.tint)
                     .frame(width: 6, height: 6)
                 Text("Signals")
                     .font(Theme.text(10))
                     .foregroundStyle(.secondary)
-                Text(signalsAreNormal ? "Typical" : snapshot.bodySignalsLabel)
+                Text(signals.shortLabel)
                     .font(Theme.label(11, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -878,16 +883,16 @@ struct MorePage: View {
 
     let snapshot: SleepSnapshot
 
-    private var isNormal: Bool { snapshot.bodySignalsLabel == "Nothing unusual" }
+    private var signals: SnapshotBodySignals { SnapshotBodySignals(snapshot: snapshot) }
     private var hasBadge: Bool { !snapshot.badgeTitle.isEmpty }
 
     var body: some View {
         VStack(spacing: 10) {
             VStack(spacing: 4) {
-                Image(systemName: isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right")
+                Image(systemName: signals.symbol)
                     .font(Theme.text(20, weight: .medium))
-                    .foregroundStyle(isNormal ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
-                Text(snapshot.bodySignalsLabel)
+                    .foregroundStyle(signals.tint)
+                Text(signals.headline)
                     .font(Theme.label(13, weight: .semibold))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -915,12 +920,12 @@ struct MorePage: View {
 
             HStack(spacing: 10) {
                 WatchMiniStat(
-                    value: "\(snapshot.bodyBattery)",
+                    value: snapshot.hasEnergy ? "\(snapshot.bodyBattery)" : "—",
                     label: "energy",
                     tint: Theme.Metric.battery
                 )
                 WatchMiniStat(
-                    value: String(format: "%.1f", snapshot.strain),
+                    value: snapshot.hasLoad ? String(format: "%.1f", snapshot.strain) : "—",
                     label: "load",
                     tint: Theme.Metric.strain
                 )

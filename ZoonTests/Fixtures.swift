@@ -46,6 +46,11 @@ enum Fixture {
         /// `false` writes the night as one undifferentiated asleep block, the
         /// way a source that reports no stages does. Not the same as a short
         /// night: the sleep is all there, the structure is not.
+        /// Naps or split-sleep credited to this night. `total24hAsleepMinutes`
+        /// is main sleep plus this, and that total is the basis the shortfall,
+        /// the need and the streak engine all measure against — so a test
+        /// about goal-met behaviour needs to be able to set it.
+        secondaryAsleepMinutes: Double = 0,
         staged: Bool = true,
         /// Overrides the default 18/22 split when a test needs a specific
         /// stage mix (demographic-prior scoring, for example).
@@ -69,6 +74,7 @@ enum Fixture {
         return SleepNightFeatures(
             date: calendar.startOfDay(for: wakeTime),
             bedtime: bedtime,
+            secondaryAsleepMinutes: secondaryAsleepMinutes,
             wakeTime: wakeTime,
             timeInBedMinutes: timeInBedMinutes,
             timeAsleepMinutes: timeAsleepMinutes,

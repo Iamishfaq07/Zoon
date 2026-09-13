@@ -68,7 +68,18 @@ struct SleepRegularityIndex: Hashable, Sendable {
             // recorded on only one of the two days is a disagreement —
             // that is the information this metric exists to capture.
             let windowStart = previous.bedtime
-            let windowEnd = windowStart.addingTimeInterval(day)
+            // A local day is 23, 24 or 25 hours around a DST transition, and
+            // this window has to be one *day* because the comparison inside
+            // it is "the same wall-clock time tomorrow". A fixed 86,400
+            // seconds runs an hour past or short of that on exactly the two
+            // nights a regularity metric most needs to stay correct, adding
+            // an hour of spurious comparisons against a shifted clock.
+            //
+            // The elapsed-duration uses of `day` above (the gap check) are
+            // left alone: those genuinely mean "about 24 hours of real
+            // time", not "one calendar day".
+            let windowEnd = calendar.date(byAdding: .day, value: 1, to: windowStart)
+                ?? windowStart.addingTimeInterval(day)
 
             var cursor = windowStart
             while cursor < windowEnd {
