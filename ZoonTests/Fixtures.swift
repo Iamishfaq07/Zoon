@@ -74,7 +74,6 @@ enum Fixture {
         return SleepNightFeatures(
             date: calendar.startOfDay(for: wakeTime),
             bedtime: bedtime,
-            secondaryAsleepMinutes: secondaryAsleepMinutes,
             wakeTime: wakeTime,
             timeInBedMinutes: timeInBedMinutes,
             timeAsleepMinutes: timeAsleepMinutes,
@@ -100,6 +99,7 @@ enum Fixture {
             sleepDebtMinutes: sleepDebtMinutes,
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed,
             exerciseMinutesPreviousDay: nil,
+            secondaryAsleepMinutes: secondaryAsleepMinutes,
             sourceName: sourceName,
             sourceBundleIdentifier: sourceBundleIdentifier,
             isMock: true,

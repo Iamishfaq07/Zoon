@@ -50,7 +50,7 @@ final class HealthRadarStateTests: XCTestCase {
             nights: (0..<30).map { Fixtures.night(daysAgo: $0) }
         )
         XCTAssertTrue(radar.signals.isEmpty)
-        XCTAssertEqual(radar.state, .typical)
+        XCTAssertEqual(radar.state, HealthRadar.State.typical)
         XCTAssertTrue(radar.state.isReassurance)
         XCTAssertEqual(radar.stateShortLabel, "Typical")
     }
