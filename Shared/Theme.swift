@@ -470,8 +470,14 @@ enum Theme {
                 Family.recovery
             ],
             center: .center,
-            startAngle: .degrees(-90),
-            endAngle: .degrees(270)
+            // Declared from 0, not -90, because the caller rotates the
+            // stroked circle by -90 to start its arc at the top -- and that
+            // rotation carries the gradient with it. Anchoring the first
+            // colour at -90 here put it at 9 o'clock in the drawn result and
+            // started the arc on the second colour instead: the hero came
+            // out orange at the top where it should begin purple.
+            startAngle: .degrees(0),
+            endAngle: .degrees(360)
         )
     }
 
