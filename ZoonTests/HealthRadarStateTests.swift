@@ -7,7 +7,7 @@ final class HealthRadarStateTests: XCTestCase {
     /// `signals.isEmpty` was read as reassurance and this user saw "Typical".
     func testFewNightsReportsBuildingBaselineNotTypical() {
         let radar = HealthRadar.detect(
-            nights: (0..<4).map { Fixtures.night(daysAgo: $0) }
+            nights: (0..<4).map { Fixture.night(daysAgo: $0) }
         )
         guard case .buildingBaseline(let nights, let required) = radar.state else {
             return XCTFail("Expected buildingBaseline, got \(radar.state)")
@@ -23,7 +23,7 @@ final class HealthRadarStateTests: XCTestCase {
     /// nothing drifted because nothing was measured.
     func testNightsWithoutBodySignalsReportInsufficientSignals() {
         let nights = (0..<30).map {
-            Fixtures.night(
+            Fixture.night(
                 daysAgo: $0,
                 avgHRV: nil,
                 restingHeartRate: nil,
@@ -47,7 +47,7 @@ final class HealthRadarStateTests: XCTestCase {
     /// The genuinely quiet case — and the only one allowed to reassure.
     func testStableHistoryWithSignalsReportsTypical() {
         let radar = HealthRadar.detect(
-            nights: (0..<30).map { Fixtures.night(daysAgo: $0) }
+            nights: (0..<30).map { Fixture.night(daysAgo: $0) }
         )
         XCTAssertTrue(radar.signals.isEmpty)
         XCTAssertEqual(radar.state, HealthRadar.State.typical)
@@ -58,7 +58,7 @@ final class HealthRadarStateTests: XCTestCase {
     /// Coverage is counted, and a stable history has domains behind it.
     func testDomainsWithBaselineAreCounted() {
         let radar = HealthRadar.detect(
-            nights: (0..<30).map { Fixtures.night(daysAgo: $0) }
+            nights: (0..<30).map { Fixture.night(daysAgo: $0) }
         )
         XCTAssertGreaterThanOrEqual(
             radar.domainsWithBaseline, HealthRadar.minimumDomainsForTypical
