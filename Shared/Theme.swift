@@ -467,7 +467,15 @@ enum Theme {
                 Family.sleep,
                 Family.circadian,
                 Family.bodySignals,
-                Family.recovery
+                Family.recovery,
+                // Closes the loop. An angular gradient's last stop meets its
+                // first at the wrap, and the wrap sits at 12 o'clock -- which
+                // is exactly where the arc begins and where its round cap
+                // overshoots by half a line width. Ending on a different hue
+                // put a green pip on the nose of a purple arc. Repeating the
+                // first colour makes the seam continuous, so there is nothing
+                // for the cap to catch.
+                Family.sleep
             ],
             center: .center,
             // Declared from 0, not -90, because the caller rotates the
