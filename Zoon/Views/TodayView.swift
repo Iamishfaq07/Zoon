@@ -127,10 +127,33 @@ struct TodayView: View {
             if moment == .evening || moment == .night {
                 tonightCircleHero(context)
                     .entrance(0)
+
+                let steps = tonightSteps(context)
+                if !steps.isEmpty {
+                    TonightPlanCardView(
+                        steps: steps,
+                        targetMinutes: autopilotPlan(context)?.targetSleepMinutes
+                            ?? context.sleepNeed.totalNeedMinutes,
+                        bedIn: plannedBedtime(context).map { $0.timeIntervalSinceNow }
+                    )
+                    .entrance(1)
+                }
+
+                // Actual against need, on one scale. The shortfall between
+                // them is what the hero above is counting, so `TodayNeedTracks`
+                // -- which draws a Debt bar of its own -- would be saying it
+                // twice on this moment's screen.
+                SleepMetricsView(
+                    actualMinutes: context.night.total24hAsleepMinutes + napMinutesToday,
+                    needMinutes: context.sleepNeed.totalNeedMinutes,
+                    napMinutes: napMinutesToday
+                )
+                .entrance(2)
+
                 TonightSection(context: context, autopilot: autopilotPlan(context))
-                    .entrance(1)
+                    .entrance(3)
                 TravelTonightCard()
-                    .entrance(1)
+                    .entrance(3)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
             } else {
@@ -138,8 +161,10 @@ struct TodayView: View {
                     .entrance(0)
             }
 
-            TodayNeedTracks(context: context, napMinutesToday: napMinutesToday)
-                .entrance(1)
+            if moment != .evening && moment != .night {
+                TodayNeedTracks(context: context, napMinutesToday: napMinutesToday)
+                    .entrance(1)
+            }
 
             if moment == .morning {
                 MorningBrief(context: context)
@@ -384,29 +409,55 @@ struct TodayView: View {
     }
 
     private func tonightCircleHero(_ context: DayContext) -> some View {
-        VStack(spacing: 14) {
+        let plan = autopilotPlan(context)
+        return VStack(spacing: 18) {
             Text(greeting)
                 .font(Theme.kicker)
                 .foregroundStyle(Theme.inkSecondary)
-            LunarReservoir(
-                debtMinutes: context.night.sleepDebtMinutes ?? 0,
-                // Both of these existed on LunarReservoir and neither was
-                // ever passed here, so the trend line under the arc was
-                // unreachable code and the repayment tonight's plan already
-                // computes was stated three sections further down but never
-                // shown against the shortfall it pays off.
-                weekAgoMinutes: debtWeekAgo(context),
-                repaymentMinutes: autopilotPlan(context)?.debtRepaymentMinutes,
-                size: 220
+
+            SleepDebtArcView(
+                debtMinutes: max(0, (context.night.sleepDebtMinutes ?? 0) - napMinutesToday),
+                weekChangeMinutes: weekChange(context),
+                repaymentMinutes: plan?.debtRepaymentMinutes
             )
-            Text("Tonight's plan")
-                .font(Theme.label(20, weight: .semibold))
-            Text("Target \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) of sleep")
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.inkSecondary)
         }
         .frame(maxWidth: .infinity)
     }
+
+    /// Tonight's three steps, built from the plan the app already computes.
+    ///
+    /// Wind down is half an hour before the target bedtime -- the same
+    /// half-hour `TonightSection` already talks about, given a place on the
+    /// line rather than only a sentence.
+    private func tonightSteps(_ context: DayContext) -> [TonightPlanCardView.Step] {
+        guard let plan = autopilotPlan(context), let bed = plannedBedtime(context) else { return [] }
+        let windDown = bed.addingTimeInterval(-30 * 60)
+        let wake = bed.addingTimeInterval(plan.targetSleepMinutes * 60)
+
+        var bedNote: String?
+        if plan.debtRepaymentMinutes >= 1 {
+            bedNote = "\(Int(plan.debtRepaymentMinutes.rounded())) minutes earlier than your habit, to start clearing the shortfall."
+        } else if plan.isHolding {
+            bedNote = "Where you already are — this target is holding, not correcting."
+        }
+
+        return [
+            .init(kind: .windDown, time: windDown, note: nil),
+            .init(kind: .bed, time: bed, note: bedNote),
+            .init(kind: .wake, time: wake, note: nil)
+        ]
+    }
+
+    /// Signed change in shortfall against the same weekday last week.
+    ///
+    /// Negative is an improvement. Takes the *delta* from one same-basis
+    /// series rather than differencing two separately-computed figures --
+    /// that mistake once put "improved by 24h 4m" on this screen.
+    private func weekChange(_ context: DayContext) -> Double? {
+        guard let weekAgo = debtWeekAgo(context) else { return nil }
+        return (context.night.sleepDebtMinutes ?? 0) - weekAgo
+    }
+
     /// Derived from `moment`, not from the clock.
     ///
     /// It used to read `Calendar.current.component(.hour,...)` on its own,
