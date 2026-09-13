@@ -664,6 +664,7 @@
 		B862ACC47533B1C5DCECCD35 /* Pluralization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66AB7D457143EE80D839E0D /* Pluralization.swift */; };
 		B8EF455B7121C2130B279F64 /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		B95CF23D3F31346556325772 /* StatisticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6E6954AE9E93E1873800C5 /* StatisticsTests.swift */; };
+		BA0D76E22DF7D3F40C4CBBD0 /* ExploreTiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = B506B3BA4A57688A5E304ED1 /* ExploreTiles.swift */; };
 		BA1F64F194528E2F790F643E /* BodyClockAgenda.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ACECF2891CE7CA2C7990B49 /* BodyClockAgenda.swift */; };
 		BA6CB9436CCAABA2DA57A9FF /* RuleBasedInsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93357909E5FD2CF0EE69F629 /* RuleBasedInsightEngine.swift */; };
 		BAA9309A80887580F2CBB0B9 /* SleepSourceArbitration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCC204477232E68E017061A /* SleepSourceArbitration.swift */; };
@@ -1358,6 +1359,7 @@
 		B44F3703015A6C11B51F7F00 /* CauseFinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CauseFinderView.swift"; sourceTree = "<group>"; };
 		B489AE9C9BB3B49F212F4A85 /* storm.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "storm.mp3"; sourceTree = "<group>"; };
 		B4A8F4C33D6ED860E4481578 /* SensorTruthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensorTruthTests.swift"; sourceTree = "<group>"; };
+		B506B3BA4A57688A5E304ED1 /* ExploreTiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExploreTiles.swift"; sourceTree = "<group>"; };
 		B5988981A0B2312A8B53FB4B /* BodyClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClock.swift"; sourceTree = "<group>"; };
 		B5AF71841A82B67EF82EB629 /* PRIVACY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "PRIVACY.md"; sourceTree = "<group>"; };
 		B62405A9E18D7C15EBAE64F2 /* ZoonBodyClockOrbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonBodyClockOrbit.swift"; sourceTree = "<group>"; };
@@ -1555,6 +1557,7 @@
 				58468C3B86FACD6E92814352,
 				13B1CA5190E455E50384AA62,
 				ED990DA799A1CBDDF31B58AD,
+				B506B3BA4A57688A5E304ED1,
 				9B0270263CE62B9C1BB2D468,
 				BFB3C23F8240B4F9AD67AE02,
 				E89D7CF3688C5054F6FC6D65,
@@ -2598,6 +2601,7 @@
 				90563CD1F9E87E966215EB23,
 				032C6B14D3F96F99ED9344B4,
 				461499C279B984083CF31802,
+				BA0D76E22DF7D3F40C4CBBD0,
 				D92C20AD9E19D6322BE37D32,
 				96583164B236BBE666AAB3FF,
 				5E5041F55AA126092D4A3CDD,

@@ -348,6 +348,27 @@ struct SleepTabView: View {
                         SleepStoryMoments(story: story(for: context), night: context.night)
                             .entrance(3)
 
+                        // Beside the moments it summarises, rather than as a
+                        // chip on another tab.
+                        NavigationLink {
+                            SleepStoryView()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundStyle(Theme.Family.sleep)
+                                Text("Read the full night's story")
+                                    .font(Theme.label(14, weight: .semibold))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(Theme.text(11, weight: .semibold))
+                                    .foregroundStyle(Theme.inkTertiary)
+                            }
+                            .padding(14)
+                            .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                        .buttonStyle(PressableStyle())
+                        .entrance(3)
+
                         SleepSoundsHero()
                             .entrance(4)
 
