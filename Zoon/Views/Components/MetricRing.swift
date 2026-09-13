@@ -43,7 +43,7 @@ struct RecoveryRing<Inner: View>: View {
             Circle()
                 .trim(from: 0, to: animatedFraction)
                 .stroke(
-                    Theme.recoveryGradient(Double(recovery.percent)),
+                    Theme.heroRecoveryGradient,
                     style: StrokeStyle(lineWidth: lineWidth + 8, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
@@ -53,7 +53,7 @@ struct RecoveryRing<Inner: View>: View {
             Circle()
                 .trim(from: 0, to: animatedFraction)
                 .stroke(
-                    Theme.recoveryGradient(Double(recovery.percent)),
+                    Theme.heroRecoveryGradient,
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))

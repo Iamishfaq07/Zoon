@@ -79,7 +79,7 @@ struct TodayActionPlan: View {
                     .frame(width: 30)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Today's plan")
+                    Text("Your today's action plan")
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
@@ -98,8 +98,16 @@ struct TodayActionPlan: View {
             }
             .padding(14)
             .glassCard(padding: 0)
+            // An outline in the band's own colour, as in the mockup. The
+            // card is the one thing on Today that asks you to *do*
+            // something, and a tinted edge separates it from the readings
+            // above and below without another fill competing with them.
+            .overlay {
+                RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
+                    .stroke(tint.opacity(0.45), lineWidth: 1)
+            }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Today's plan. \(headline) \(detail)")
+            .accessibilityLabel("Your today's action plan. \(headline) \(detail)")
         }
     }
 }

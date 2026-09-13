@@ -23,6 +23,7 @@ struct ScoreDrivers: View {
                 .tracking(1.0)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.inkSecondary)
+                .frame(maxWidth: .infinity)
 
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(spacing: 10) {
@@ -41,27 +42,35 @@ struct ScoreDrivers: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Four abreast, the way the mockup reads: a glanceable row of signals.
+    /// Four abreast, the way the mockup reads: the signal's mark to the left
+    /// of its own small block of text, not stacked over it. Stacked, the
+    /// glyph reads as a bullet for the column; beside the text it reads as
+    /// belonging to that signal, which is what it is.
     private func column(for component: RecoveryScore.Component) -> some View {
-        VStack(spacing: 3) {
+        HStack(alignment: .top, spacing: 5) {
             Image(systemName: Self.symbol(for: component.label))
                 .font(Theme.text(15, weight: .semibold))
                 .foregroundStyle(Self.tint(for: component.label))
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
 
-            Text(Self.shortLabel(for: component.label))
-                .font(Theme.label(11, weight: .semibold))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(Self.shortLabel(for: component.label))
+                    .font(Theme.label(11, weight: .semibold))
 
-            Text(component.isAvailable ? component.detail : "—")
-                .font(Theme.label(12, weight: .bold))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                Text(component.isAvailable ? component.detail : "—")
+                    .font(Theme.label(12, weight: .bold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
-            Text(Self.qualifier(for: component))
-                .font(Theme.text(11))
-                .foregroundStyle(Self.qualifierColor(for: component))
+                Text("(\(Self.qualifier(for: component)))")
+                    .font(Theme.text(11))
+                    .foregroundStyle(Self.qualifierColor(for: component))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(Self.Describe(component: component))
     }
 

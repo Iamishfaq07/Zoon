@@ -326,13 +326,11 @@ struct TodayView: View {
             // whether the number came from everything being middling or from
             // three strong signals and one that collapsed.
             RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16) {
-                // 190 inside a 236 ring: vertex markers land at radius
-                // 84-106, clear of both the numerals and the stroke's inner
-                // edge at 110. At 150 they sat at 64-86, which is exactly
-                // where "65%" is drawn -- the first render had the icons
-                // overlapping the number and the polygon reading as a stray
-                // shape behind the text.
-                RecoverySpokes(components: context.recovery.components, size: 190)
+                // 190 inside a 236 ring, so a full-value vertex lands at
+                // radius 95 -- inside the stroke's inner edge at 110. The
+                // web crosses the centre type by design and is drawn pale
+                // enough to sit under it; see RecoveryRadar.
+                RecoveryRadar(components: context.recovery.components, size: 190)
             }
 
             ScoreDrivers(components: context.recovery.components)

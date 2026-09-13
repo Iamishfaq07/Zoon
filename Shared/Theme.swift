@@ -448,10 +448,27 @@ enum Theme {
 
     /// Gradient for a recovery arc — a single flat colour on a ring reads as
     /// cheap; the shift across the sweep is what makes it feel alive.
-    static func recoveryGradient(_ percent: Double) -> AngularGradient {
-        let base = recoveryColor(percent)
-        return AngularGradient(
-            colors: [base.opacity(0.55), base, base.opacity(0.95)],
+    /// The hero recovery arc: one sweep through the app's own families
+    /// rather than a single band hue.
+    ///
+    /// Replaces `recoveryGradient`, which shaded one band colour and had no
+    /// remaining callers once the hero stopped using it. The front page does
+    /// not need the arc to say the band: the number and the word under it
+    /// already say it twice, and a long arc through three hues reads as
+    /// distance travelled in a way three tints of one hue does not.
+    ///
+    /// Fixed stops, deliberately. A gradient whose colours move with the
+    /// score means two mornings an hour apart are drawn in different palettes
+    /// and neither the length nor the colour can be compared with yesterday.
+    /// Here only the length carries the score.
+    static var heroRecoveryGradient: AngularGradient {
+        AngularGradient(
+            colors: [
+                Family.sleep,
+                Family.circadian,
+                Family.bodySignals,
+                Family.recovery
+            ],
             center: .center,
             startAngle: .degrees(-90),
             endAngle: .degrees(270)
