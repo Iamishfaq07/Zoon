@@ -96,7 +96,7 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// The previous default was the string "Nothing unusual", so every old
     /// snapshot actively asserted that they were.
     var bodySignalsState: String = ""
-    var bodySignalsLabel: String = """
+    var bodySignalsLabel: String = ""
 
     /// `MetricConfidence.rawValue` for the recovery score, or "" for a
     /// snapshot written before this field existed.
