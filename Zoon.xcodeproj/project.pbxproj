@@ -86,7 +86,6 @@
 		10002633F956390118F079A1 /* SleepDebtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C04C95F7B4CAD642DA384A03 /* SleepDebtView.swift */; };
 		10C5A8851CF03E9EB322DFEB /* MorningCheckInCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B73D68A2DABAB452A03AC3 /* MorningCheckInCard.swift */; };
 		1108CAF7451794712C1E8EBB /* ZoonIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BADFBFF192F82BF1AF28487A /* ZoonIntents.swift */; };
-		111DA79A18EB6D2FD6AEF92B /* RecoveryMeshBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC74EF2BD00BB4165DE7DCE /* RecoveryMeshBackground.swift */; };
 		1120114EC0F30EA48C6D834F /* PersistentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753455C5E45B0F317E8996AE /* PersistentStore.swift */; };
 		112F2AE90A83A00B85976AA3 /* StressDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 988C7859742E07AD3373E321 /* StressDetailView.swift */; };
 		1197DE8D940B97D85A58692F /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
@@ -1275,7 +1274,6 @@
 		8B43A6EBC51B9391CF645E60 /* TravelTonightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TravelTonightCard.swift"; sourceTree = "<group>"; };
 		8B737B1F7FDB18E09C5DA47F /* CycleContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CycleContextTests.swift"; sourceTree = "<group>"; };
 		8C79D6A0BD6897F64AF3B91E /* SoundscapeCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundscapeCatalogTests.swift"; sourceTree = "<group>"; };
-		8CC74EF2BD00BB4165DE7DCE /* RecoveryMeshBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryMeshBackground.swift"; sourceTree = "<group>"; };
 		8E02EEEE67ACDA5AE434FCF3 /* SleepEras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepEras.swift"; sourceTree = "<group>"; };
 		8E116B8901D148D29DCD2EC7 /* TonightRoutineController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TonightRoutineController.swift"; sourceTree = "<group>"; };
 		8E6C44D626E3E751E1F6F625 /* AudioStudioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioStudioView.swift"; sourceTree = "<group>"; };
@@ -1584,7 +1582,6 @@
 				6DC9B4657137BA5F3066D5E1,
 				5DF81B66203884E4C36BE4D2,
 				FBA68EDD0820A539DCB0B786,
-				8CC74EF2BD00BB4165DE7DCE,
 				723A44DC4BCED946497E0850,
 				5468773F767995B181FEA92A,
 				C674514EF3C9937365A3C45F,
@@ -2628,7 +2625,6 @@
 				A65C6C041C034DB1996AD127,
 				41BEA2D9EBB8D252072C79FF,
 				C773D4AF2F15394933066A75,
-				111DA79A18EB6D2FD6AEF92B,
 				67A44761B434001139B7BB7C,
 				1252730CB9541485DD0188FA,
 				63EACBCDD07E27FB51CFE8A1,

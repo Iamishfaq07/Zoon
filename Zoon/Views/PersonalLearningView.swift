@@ -11,14 +11,19 @@ struct PersonalLearningView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 introduction
+                    .entrance(0)
                 resilienceSection
+                    .entrance(1)
                 circadianSection
+                    .entrance(2)
                 NavigationLink { AlertnessCheckView() } label: {
                     Label("Take the optional alertness check", systemImage: "hand.tap.fill")
                         .font(Theme.label(14, weight: .semibold))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .glassCard()
-                }.buttonStyle(PressableStyle())
+                }
+                .buttonStyle(PressableStyle())
+                .entrance(3)
             }.padding()
         }
         .nightBackground()

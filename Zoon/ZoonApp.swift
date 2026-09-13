@@ -20,6 +20,7 @@ struct ZoonApp: App {
     @State private var presentation = GlobalPresentation()
     /// Starts true on demo/screenshot launches so nothing waits behind it.
     @State private var splashFinished = !LaunchOptions.showsSplash
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init() {
         let preferences = UserPreferences()
@@ -104,7 +105,7 @@ struct ZoonApp: App {
                         .zIndex(10)
                 }
             }
-            .animation(.smooth(duration: 0.5), value: splashFinished)
+            .animation(Motion.respecting(reduceMotion, .smooth(duration: 0.5)), value: splashFinished)
         }
     }
 
@@ -119,7 +120,7 @@ struct ZoonApp: App {
                         .transition(.opacity)
                 }
             }
-            .animation(.smooth(duration: 0.4), value: preferences.hasCompletedOnboarding)
+            .animation(Motion.respecting(reduceMotion, .smooth(duration: 0.4)), value: preferences.hasCompletedOnboarding)
             .environment(coordinator)
             .environment(preferences)
             .environment(naps)

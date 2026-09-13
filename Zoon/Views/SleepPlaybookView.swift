@@ -36,8 +36,9 @@ struct SleepPlaybookView: View {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
                 if let playbook, !playbook.factors.isEmpty {
-                    ForEach(playbook.factors) { factor in
+                    ForEach(Array(playbook.factors.enumerated()), id: \.element.id) { index, factor in
                         FactorRow(factor: factor)
+                            .entrance(index)
                     }
                 } else {
                     emptyState

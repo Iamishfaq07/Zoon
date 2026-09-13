@@ -42,7 +42,7 @@ struct OnboardingView: View {
                     goal.tag(2)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.snappy(duration: 0.35), value: page)
+                .animation(Motion.respecting(reduceMotion, .snappy(duration: 0.35)), value: page)
 
                 dots
                     .padding(.bottom, 18)
@@ -244,7 +244,7 @@ struct OnboardingView: View {
                         style: StrokeStyle(lineWidth: 12, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
-                    .animation(.snappy, value: goalHours)
+                    .animation(Motion.respecting(reduceMotion, .snappy), value: goalHours)
 
                 VStack(spacing: -2) {
                     Text(SleepNightFeatures.formatMinutes(goalHours * 60))
@@ -306,7 +306,7 @@ struct OnboardingView: View {
                 Capsule()
                     .fill(index == page ? Theme.Metric.sleep : Theme.neutral(0.20))
                     .frame(width: index == page ? 20 : 7, height: 7)
-                    .animation(.snappy(duration: 0.3), value: page)
+                    .animation(Motion.respecting(reduceMotion, .snappy(duration: 0.3)), value: page)
             }
         }
         .accessibilityHidden(true)

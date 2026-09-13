@@ -9,6 +9,7 @@ import SwiftUI
 struct NapView: View {
 
     @Environment(NapStore.self) private var naps
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(SleepDataCoordinator.self) private var coordinator
 
     @State private var selectedMinutes: Int = 20
@@ -154,7 +155,7 @@ struct NapView: View {
                         style: StrokeStyle(lineWidth: 14, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 1), value: progress)
+                    .animation(Motion.respecting(reduceMotion, .linear(duration: 1)), value: progress)
 
                 // The moon behind the countdown, filling as the nap runs.
                 // The ring already says how far along it is; the moon says

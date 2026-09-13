@@ -72,7 +72,10 @@ struct InteractiveMoon: View {
             DragGesture()
                 .onChanged { drag = $0.translation }
                 .onEnded { _ in
-                    withAnimation(Motion.hero) { drag = .zero }
+                    // The spring back was unguarded: with Reduce Motion on,
+                    // the parallax itself is suppressed but letting go still
+                    // sprang.
+                    withAnimation(Motion.respecting(reduceMotion, Motion.hero)) { drag = .zero }
                 }
         )
         .onAppear {
