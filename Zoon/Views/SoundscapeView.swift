@@ -10,7 +10,7 @@ struct SoundscapeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let message = engine.loadError ?? engine.interruptionMessage {
                     Text(message).font(.callout).accessibilityIdentifier("audioInterruption")
                 }

@@ -11,7 +11,7 @@ struct PastNightDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 headline
                 hypnogramCard
                 stagesCard

@@ -141,6 +141,7 @@
 		1F403B7A6E0EA27988A1351D /* ZoonBodyClockOrbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = B62405A9E18D7C15EBAE64F2 /* ZoonBodyClockOrbit.swift */; };
 		1F4E4B24FF68034E01F23A50 /* EvidenceLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6892AD705F2BD1EBCBAA91F1 /* EvidenceLedger.swift */; };
 		1F727E5A53AA124DC553EC54 /* SourceCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C71C3A9C2D9EDDF74E93F6 /* SourceCoverageTests.swift */; };
+		1F8450E0322BB13349946660 /* CascadeStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF3097C3D54F986AC8D1EB54 /* CascadeStack.swift */; };
 		1F8502931DFD1503DAEF6F02 /* CalibrationLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = C50203E4C19EFCC34EBC8C39 /* CalibrationLedger.swift */; };
 		1F95ADE0352279494A37A30F /* DayContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7C368630DDEC4A2AA747A1 /* DayContext.swift */; };
 		1FB34652CFE1F0BA16F33F57 /* ZoonTwin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7775D66F59AC28BF8EDDEED1 /* ZoonTwin.swift */; };
@@ -1423,6 +1424,7 @@
 		DE7FB093E433D30982864FBB /* RollingBaseline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RollingBaseline.swift"; sourceTree = "<group>"; };
 		DF227D05982E42FE973BE69D /* EvidenceClaims.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceClaims.swift"; sourceTree = "<group>"; };
 		DF2499A7B90354A53F01207B /* wind.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "wind.mp3"; sourceTree = "<group>"; };
+		DF3097C3D54F986AC8D1EB54 /* CascadeStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CascadeStack.swift"; sourceTree = "<group>"; };
 		DF4CCC9CCF7CEDBD7455FEF2 /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DeepLink.swift"; sourceTree = "<group>"; };
 		DF6BCFC8B0ACCBC5470DF3C4 /* SnoreSignalAnalyzerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreSignalAnalyzerTests.swift"; sourceTree = "<group>"; };
 		DFDED23FA58339F9273F6C84 /* ZoonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZoonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1547,6 +1549,7 @@
 				BE323A154A812CF844797F4A,
 				B04DB48634B9461AF67635F9,
 				B202E4810C0F1C50E34E2DC3,
+				DF3097C3D54F986AC8D1EB54,
 				C95D71E4BFB29978DEA0D2DE,
 				0056BFA9411ACE233F7DC0D1,
 				AE40B7A83F0DB3DEB94E7F0C,
@@ -2590,6 +2593,7 @@
 				5B06FAA7FC659D9DD72AD43C,
 				0A7C54E3814C703015DAABFB,
 				5FD7E940C881946CF2A5EF92,
+				1F8450E0322BB13349946660,
 				366ED0B304894CDB53A2004B,
 				F60C9D12E6B768F3CB1F1C06,
 				1E722F2ED94049C6243909F8,

@@ -96,7 +96,7 @@ struct CoachChatView: View {
     private var transcript: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                CascadeStack(alignment: .leading, spacing: 12) {
                     if chat.messages.isEmpty {
                         Text("Ask anything about last night — \"why was my HRV low?\", \"should I train today?\"")
                             .font(Theme.text(13))

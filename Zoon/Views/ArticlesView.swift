@@ -20,7 +20,7 @@ struct ArticlesView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            CascadeStack(alignment: .leading, spacing: 16) {
                 categoryFilter
 
                 LazyVGrid(columns: columns, spacing: 12) {

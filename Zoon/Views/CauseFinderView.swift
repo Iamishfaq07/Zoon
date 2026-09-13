@@ -42,7 +42,7 @@ struct CauseFinderView: View {
     var body: some View {
         let observations = observations()
         return ScrollView {
-            VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+            CascadeStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
                 experimentSection(observations)
                 pastExperimentsSection

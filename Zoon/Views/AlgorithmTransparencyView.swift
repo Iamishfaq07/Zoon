@@ -7,7 +7,7 @@ struct AlgorithmTransparencyView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+            CascadeStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
                 weightsCard
                 reweightingCard

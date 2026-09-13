@@ -44,7 +44,7 @@ struct NapView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let pending = naps.pendingNap {
                     pendingCard(pending)
                 } else if let active = naps.activeNap {

@@ -30,7 +30,7 @@ struct SleepNeedView: View {
 
     private var content: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let need {
                     hero(need)
                     breakdownCard(need)
