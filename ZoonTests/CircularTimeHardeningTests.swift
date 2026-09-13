@@ -11,7 +11,7 @@ final class CircularTimeHardeningTests: XCTestCase {
     /// median stable across midnight and makes plain subtraction unsafe:
     /// 17.9 stays 17.9 while 18.1 becomes −5.9, so `abs(a − b)` reported a
     /// twelve-minute difference as 23.8 hours.
-    func testSocialJetlagAcrossTheShiftBoundary() {
+    func testSocialJetlagAcrossTheShiftBoundary() throws {
         let regularity = SleepRegularity(
             index: 70, nightCount: 14, validPairCount: 13,
             weekdayMidpoint: 17.9,
