@@ -387,6 +387,16 @@ struct TodayView: View {
     /// local preference and empty is a real answer; nothing here nags for it
     /// or invents one.
     private func openingLine(_ context: DayContext) -> String {
+        // The band is a reading of the same score the ring may be declining
+        // to state. Saying "your body needs moderate output today" off a
+        // score built from sleep duration alone is the same claim in prose.
+        guard context.recovery.presentation.isShowable else {
+            let name = preferences.displayName
+            let line = "here is last night. Recovery needs more physiological data before it can call today."
+            return name.isEmpty
+                ? line.prefix(1).uppercased() + line.dropFirst()
+                : "\(name), \(line)"
+        }
         let body = switch context.recovery.band {
         case .high: "your body can take load today."
         case .moderate: "your body needs moderate output today."

@@ -105,8 +105,13 @@ struct DayContextBuilder {
         )
 
         // --- Body battery -------------------------------------------------
+        // Energy inherits Recovery's own verdict rather than its raw number.
+        // A score the app declines to show must not silently charge the
+        // battery as if it were measured.
+        let recoveryState = recovery.presentation
+        let energyProvenance = BodyBattery.provenance(for: recoveryState)
         let startLevel = BodyBattery.overnightCharge(
-            recoveryPercent: recovery.percent,
+            recoveryPercent: recoveryState.score,
             sleepPerformance: sleepNeed.performancePercent
         )
         let restingInput: (value: Double, source: BodyBattery.RestingBaselineSource)? = {
@@ -115,7 +120,7 @@ struct DayContextBuilder {
             if let value = night.minHeartRate { return (value, .sleepingLowEstimate) }
             return nil
         }()
-        let bodyBattery: BodyBattery
+        var bodyBattery: BodyBattery
         if let restingInput {
             bodyBattery = BodyBattery.build(
                 startLevel: startLevel,
@@ -128,6 +133,7 @@ struct DayContextBuilder {
         } else {
             bodyBattery = BodyBattery.overnightOnly(startLevel: startLevel, wakeTime: night.wakeTime)
         }
+        bodyBattery.provenance = energyProvenance
 
         // --- Vitals -------------------------------------------------------
         let vitals = VitalsStatus.evaluate(

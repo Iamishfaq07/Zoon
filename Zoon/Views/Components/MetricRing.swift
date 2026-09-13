@@ -41,7 +41,12 @@ struct RecoveryRing<Inner: View>: View {
         recovery.components.first { $0.id == selectedSignalID }
     }
 
-    private var fraction: Double { min(1, max(0, Double(recovery.percent) / 100)) }
+    /// Zero when the score is withheld: a three-quarter arc is a statement
+    /// of the same number the centre is declining to print.
+    private var fraction: Double {
+        guard recovery.presentation.isShowable else { return 0 }
+        return min(1, max(0, Double(recovery.percent) / 100))
+    }
     private var color: Color { Theme.recoveryColor(Double(recovery.percent)) }
 
     var body: some View {
@@ -100,6 +105,11 @@ struct RecoveryRing<Inner: View>: View {
     }
 
     private var accessibilityValue: String {
+        guard recovery.presentation.isShowable else {
+            return [recovery.presentation.title, recovery.presentation.explanation]
+                .compactMap { $0 }
+                .joined(separator: ". ")
+        }
         let head = recovery.isEstimate
             ? "\(recovery.percent) percent, still building your baseline"
             : "\(recovery.percent) percent, \(recovery.band.label)"
@@ -118,7 +128,17 @@ struct RecoveryRing<Inner: View>: View {
         }
     }
 
-    private var scoreContent: some View {
+    @ViewBuilder private var scoreContent: some View {
+        // One gate, shared with the watch and the widgets. A score the wrist
+        // refuses to state must not appear as a confident number here.
+        if recovery.presentation.isShowable {
+            numericScore
+        } else {
+            withheldScore
+        }
+    }
+
+    private var numericScore: some View {
         VStack(spacing: 0) {
             Text("RECOVERY")
                 .font(Theme.label(10, weight: .heavy))
@@ -140,6 +160,31 @@ struct RecoveryRing<Inner: View>: View {
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
         }
+    }
+
+    /// What the centre says when the score cannot be stated: the reason,
+    /// not a number in a quieter colour. A greyed-out 92 is still a 92.
+    private var withheldScore: some View {
+        VStack(spacing: 5) {
+            Text("RECOVERY")
+                .font(Theme.label(10, weight: .heavy))
+                .tracking(1.6)
+                .foregroundStyle(Theme.inkSecondary)
+
+            Text(recovery.presentation.title)
+                .font(Theme.label(size * 0.075, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.center)
+
+            if let explanation = recovery.presentation.explanation {
+                Text(explanation)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(4)
+            }
+        }
+        .padding(.horizontal, lineWidth + 12)
     }
 
     /// What one signal contributed, in place of the score.

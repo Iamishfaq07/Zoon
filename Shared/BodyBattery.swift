@@ -42,6 +42,59 @@ struct BodyBattery: Codable, Hashable, Sendable {
     /// curve must disclose when it lacks a stable personal resting baseline.
     var restingBaselineSource: RestingBaselineSource = .unavailable
 
+    /// What the overnight charge — the level the whole day is drawn down
+    /// from — was actually built on.
+    ///
+    /// Energy consumed `recovery.percent` as a bare number. Recovery has had
+    /// a real confidence for a while and the UI now refuses to *state* a
+    /// score below `.insufficient`, but the number still flowed into here
+    /// unchanged: a 92 computed from sleep duration alone charged the battery
+    /// exactly as a 92 built on HRV, resting heart rate and respiration did.
+    /// The user then saw a precise Energy figure resting on a Recovery figure
+    /// Zoon had already declined to show them.
+    enum Provenance: String, Codable, Hashable, Sendable {
+        /// Recovery was statable and well covered.
+        case fullPhysiologicalRecovery
+        /// Recovery was statable but on partial physiology.
+        case partialRecovery
+        /// Recovery could not be stated; the charge is a sleep-derived
+        /// estimate and must be labelled as one.
+        case sleepDerivedEstimate
+        /// Not enough to model a day at all.
+        case insufficient
+
+        var label: String {
+            switch self {
+            case .fullPhysiologicalRecovery: "Full physiological recovery input"
+            case .partialRecovery: "Partial recovery input"
+            case .sleepDerivedEstimate: "Sleep-derived estimate"
+            case .insufficient: "Insufficient data"
+            }
+        }
+
+        /// Whether a precise number may be presented.
+        var isPresentable: Bool { self != .insufficient }
+    }
+
+    var provenance: Provenance = .insufficient
+
+    /// Energy can never be more trustworthy than the recovery it was charged
+    /// from, and is further limited by whether the drawdown had a
+    /// personalised resting rate to work against. The weaker of the two,
+    /// never their average — the same rule Recovery itself uses.
+    var confidence: MetricConfidence {
+        let fromProvenance: MetricConfidence = switch provenance {
+        case .fullPhysiologicalRecovery: .high
+        case .partialRecovery: .moderate
+        case .sleepDerivedEstimate: .low
+        case .insufficient: .insufficient
+        }
+        let fromResting: MetricConfidence = restingBaselineSource.isPersonalized
+            ? .high
+            : (restingBaselineSource == .unavailable ? .low : .moderate)
+        return min(fromProvenance, fromResting)
+    }
+
     struct Point: Codable, Hashable, Sendable, Identifiable {
         let date: Date
         let level: Double
@@ -62,12 +115,42 @@ struct BodyBattery: Codable, Hashable, Sendable {
     /// Recovery quality dominates: eight hours of fragmented sleep after a hard
     /// day genuinely does not refill the tank, and a model that paid out purely
     /// on hours in bed would say it did.
-    static func overnightCharge(recoveryPercent: Int, sleepPerformance: Double) -> Double {
-        let recovery = Double(recoveryPercent) / 100
+    /// - Parameter recoveryPercent: `nil` when Recovery cannot be stated.
+    ///   The charge then falls back to sleep alone rather than consuming a
+    ///   number the rest of the app is refusing to show, and the caller
+    ///   records `.sleepDerivedEstimate` so every surface can say so.
+    static func overnightCharge(
+        recoveryPercent: Int?,
+        sleepPerformance: Double
+    ) -> Double {
         let sleep = min(1, sleepPerformance / 100)
         // 25 floor so a terrible night still leaves something to spend —
         // a zero would be both wrong and useless.
+        guard let recoveryPercent else {
+            // Sleep carries the whole charge rather than being blended with
+            // an unstatable recovery figure. Deliberately not "assume
+            // average recovery": that is the fabrication this avoids.
+            return 25 + sleep * 75
+        }
+        let recovery = Double(recoveryPercent) / 100
         return 25 + (recovery * 0.6 + sleep * 0.4) * 75
+    }
+
+    /// Maps Recovery's own presentation decision onto Energy's provenance,
+    /// so the two cannot disagree about whether the day is measured.
+    static func provenance(
+        for recovery: RecoveryPresentationState
+    ) -> Provenance {
+        switch recovery {
+        case .available(_, let confidence):
+            confidence >= .moderate ? .fullPhysiologicalRecovery : .partialRecovery
+        case .limited:
+            .sleepDerivedEstimate
+        case .buildingBaseline:
+            .sleepDerivedEstimate
+        case .unavailable:
+            .insufficient
+        }
     }
 
     /// Builds the day's curve.

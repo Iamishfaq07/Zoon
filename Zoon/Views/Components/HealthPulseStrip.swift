@@ -57,6 +57,8 @@ struct HealthPulseStrip: View {
         content.frame(maxWidth: .infinity)
     }
 
+    private var recoveryState: RecoveryPresentationState { context.recovery.presentation }
+
     // MARK: - Recovery -- a small ring, the same visual grammar as the score itself.
 
     private var recoveryTile: some View {
@@ -66,19 +68,31 @@ struct HealthPulseStrip: View {
             VStack(spacing: 4) {
                 ZStack {
                     Circle().stroke(Theme.neutral(0.10), lineWidth: 3)
-                    Circle()
-                        .trim(from: 0, to: Double(context.recovery.percent) / 100)
-                        .stroke(Theme.recoveryColor(Double(context.recovery.percent)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
+                    // Same gate as the hero ring and the wrist: an arc is a
+                    // statement of the number, so a withheld score draws no
+                    // arc rather than a quiet one.
+                    if let score = recoveryState.score {
+                        Circle()
+                            .trim(from: 0, to: Double(score) / 100)
+                            .stroke(
+                                Theme.recoveryColor(Double(score)),
+                                style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                    }
                 }
                 .frame(width: 22, height: 22)
-                pulseLabel("Recovery", value: "\(context.recovery.percent)")
+                pulseLabel("Recovery", value: recoveryState.placeholder)
             }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Recovery")
-        .accessibilityValue("\(context.recovery.percent) percent, \(context.recovery.band.label)")
+        .accessibilityValue(
+            recoveryState.score.map { "\($0) percent, \(context.recovery.band.label)" }
+                ?? [recoveryState.title, recoveryState.explanation]
+                    .compactMap { $0 }.joined(separator: ". ")
+        )
         .accessibilityHint("View recovery breakdown")
     }
 
