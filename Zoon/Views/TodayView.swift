@@ -18,6 +18,7 @@ struct TodayView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
+    @Environment(NapStore.self) private var naps
 
     // Owned locally rather than read fresh from `coordinator.journal` on
     // every render: a tap saved through the store and re-fetched wouldn't
@@ -136,7 +137,7 @@ struct TodayView: View {
                     .entrance(0)
             }
 
-            TodayNeedTracks(context: context)
+            TodayNeedTracks(context: context, napMinutesToday: napMinutesToday)
                 .entrance(1)
 
             if moment == .morning {
@@ -245,8 +246,68 @@ struct TodayView: View {
                 .entrance(8)
             }
 
-            footer(context).entrance(8)
+            if moment == .morning || moment == .day {
+                NapsTodayCard(
+                    napMinutesToday: napMinutesToday,
+                    debtMinutes: context.night.sleepDebtMinutes ?? 0,
+                    recommendation: napRecommendation(context)
+                )
+                .entrance(8)
+            }
+
+            // Last on Today, and only here.
+            //
+            // These are the only things in the app you *do* rather than
+            // read, and they have now been in three places: buried at the
+            // bottom of the Sleep tab, then leading Sleep and repeated on
+            // Today, then Sleep alone. Bottom of Today is where they stay --
+            // one home, on the screen that opens the app, after the reading
+            // rather than in front of it.
+            SleepToolsStrip().entrance(8)
+
+            footer(context).entrance(9)
         }
+    }
+
+    // MARK: - Naps
+
+    /// Nap minutes recorded today, read live rather than from a stored
+    /// night.
+    ///
+    /// Nothing in the night pipeline can supply this yet: nap credit is
+    /// attributed to the calendar day before a wake, so a nap taken this
+    /// afternoon belongs to tomorrow morning's record and does not exist
+    /// until that night is written. Today's shortfall is a number about
+    /// today, so it reads today's naps.
+    private var napMinutesToday: Double {
+        naps.minutes(on: .now)
+    }
+
+    private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {
+        NapCoach.recommend(
+            debtMinutes: max(0, context.night.sleepDebtMinutes ?? 0),
+            plannedBedtime: plannedBedtime(context),
+            napMinutesToday: napMinutesToday
+        )
+    }
+
+    /// Tonight's target bedtime as a `Date`, which is what `NapCoach` needs
+    /// to judge "is bedtime too close for this nap to be worth it".
+    ///
+    /// The plan stores minutes-from-midnight and wraps past 1440 for a
+    /// bedtime after midnight, so the wrap decides the day: 23:10 is tonight,
+    /// 00:40 is tomorrow. Resolving it against today's midnight alone would
+    /// put an after-midnight bedtime in the past and make every nap look
+    /// safe.
+    private func plannedBedtime(_ context: DayContext) -> Date? {
+        guard let minutes = autopilotPlan(context)?.targetBedtimeMinutes else { return nil }
+        let calendar = Calendar.current
+        let wrapped = (minutes.rounded().truncatingRemainder(dividingBy: 1440) + 1440)
+            .truncatingRemainder(dividingBy: 1440)
+        let midnight = calendar.startOfDay(for: .now)
+        let candidate = midnight.addingTimeInterval(wrapped * 60)
+        // An after-midnight bedtime lands before now; it belongs to tomorrow.
+        return candidate > .now ? candidate : candidate.addingTimeInterval(86_400)
     }
 
     // MARK: - Hero helpers
@@ -265,13 +326,11 @@ struct TodayView: View {
             // whether the number came from everything being middling or from
             // three strong signals and one that collapsed.
             RecoveryRing(recovery: context.recovery, size: 236, lineWidth: 16) {
-                // 190 inside a 236 ring: vertex markers land at radius
-                // 84-106, clear of both the numerals and the stroke's inner
-                // edge at 110. At 150 they sat at 64-86, which is exactly
-                // where "65%" is drawn -- the first render had the icons
-                // overlapping the number and the polygon reading as a stray
-                // shape behind the text.
-                RecoverySpokes(components: context.recovery.components, size: 190)
+                // 190 inside a 236 ring, so a full-value vertex lands at
+                // radius 95 -- inside the stroke's inner edge at 110. The
+                // web crosses the centre type by design and is drawn pale
+                // enough to sit under it; see RecoveryRadar.
+                RecoveryRadar(components: context.recovery.components, size: 190)
             }
 
             ScoreDrivers(components: context.recovery.components)
