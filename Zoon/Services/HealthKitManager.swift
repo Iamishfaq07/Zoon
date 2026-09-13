@@ -749,10 +749,6 @@ final class HealthKitManager {
         }
     }
 
-    /// Bin width `heartRateZones` below buckets heart rate into before
-    /// assigning zone minutes -- see that function's doc comment.
-    static let zoneBinMinutes = 10
-
     /// Minutes spent in each heart-rate zone across an interval.
     ///
     /// Zones are defined on **heart-rate reserve** (Karvonen) rather than raw
@@ -760,38 +756,69 @@ final class HealthKitManager {
     /// Two people with the same max but a 20bpm difference in resting HR are not
     /// working equally hard at 140bpm, and a %max model says they are.
     ///
-    /// Built from means over `zoneBinMinutes`-wide bins, so it's still an
-    /// approximation -- a bin containing a shorter interval session averages
-    /// out to something moderate -- but a 10-minute bin is a fraction of the
-    /// distortion a 60-minute one was: the old hourly version could credit
-    /// an entire hour to one zone off a single mean that blended twenty
-    /// minutes of hard effort into forty minutes sitting still. It's
-    /// directionally right and it's what's cheaply available from
-    /// `HKStatisticsCollectionQuery`'s own bucketing; the UI flags strain as
-    /// an estimate whenever coverage is thin.
+    /// Time-integrated from raw samples by `HeartRateZoneIntegrator`, not
+    /// from statistics bins.
+    ///
+    /// The bin approach credited a whole 10-minute bin to whatever zone its
+    /// mean fell in, so one passive reading of 142 bpm became ten minutes of
+    /// vigorous exercise -- inflating time-in-zone and Load most for the
+    /// users sampling least often. See that type for the integration rule and
+    /// the interpolation cap.
     func heartRateZones(
         in interval: DateInterval,
         restingHeartRate: Double,
         maxHeartRate: Double
     ) async throws -> (zones: [StrainScore.Zone: Double], coverage: Double) {
 
-        let binned = try await binnedHeartRate(in: interval, binMinutes: Self.zoneBinMinutes)
-        guard !binned.isEmpty else { return ([:], 0) }
+        let samples = try await heartRateSamples(in: interval)
+        guard !samples.isEmpty else { return ([:], 0) }
 
-        let reserve = max(20, maxHeartRate - restingHeartRate)
-        var zones: [StrainScore.Zone: Double] = [:]
+        let result = HeartRateZoneIntegrator.integrate(
+            samples: samples,
+            restingHeartRate: restingHeartRate,
+            maxHeartRate: maxHeartRate,
+            interval: interval
+        )
+        return (result.zoneMinutes, result.coverage)
+    }
 
-        for sample in binned {
-            let hrr = (sample.bpm - restingHeartRate) / reserve
-            // Highest zone whose lower bound is cleared.
-            guard let zone = StrainScore.Zone.allCases
-                .filter({ hrr >= $0.lowerBoundHRR })
-                .max(by: { $0.lowerBoundHRR < $1.lowerBoundHRR }) else { continue }
-            zones[zone, default: 0] += Double(Self.zoneBinMinutes)
+    /// Raw heart-rate samples, for time-integrated zone attribution.
+    ///
+    /// Statistics bins cannot support this: a bin reports a mean and hides
+    /// how many readings produced it, so one sample and two hundred look
+    /// identical. The integrator needs the timestamps.
+    func heartRateSamples(
+        in interval: DateInterval
+    ) async throws -> [HeartRateZoneIntegrator.Sample] {
+        let type = HKQuantityType(.heartRate)
+        let predicate = HKQuery.predicateForSamples(
+            withStart: interval.start, end: interval.end, options: .strictStartDate
+        )
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [
+                    NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+                ]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                let unit = HKUnit.count().unitDivided(by: .minute())
+                let mapped = (samples as? [HKQuantitySample] ?? []).map {
+                    HeartRateZoneIntegrator.Sample(
+                        date: $0.startDate,
+                        bpm: $0.quantity.doubleValue(for: unit)
+                    )
+                }
+                continuation.resume(returning: mapped)
+            }
+            store.execute(query)
         }
-
-        let expectedBins = max(1, interval.duration / Double(Self.zoneBinMinutes * 60))
-        return (zones, min(1, Double(binned.count) / expectedBins))
     }
 
     // MARK: - Workouts
