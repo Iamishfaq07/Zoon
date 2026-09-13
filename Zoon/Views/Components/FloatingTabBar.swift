@@ -46,16 +46,20 @@ struct FloatingTabBar<Tab: Hashable>: View {
         }
         .padding(.horizontal, 26)
         .padding(.bottom, 6)
-        // The system tab bar is hidden, so `app.tabBars` no longer resolves.
-        // This is what the UI tests address instead; it is the bar's
-        // identity, not a test hook.
-        .accessibilityIdentifier(Self.accessibilityIdentifier)
-        .accessibilityElement(children: .contain)
     }
 
-    /// Addresses the bar itself, for UI tests and for anything that needs to
-    /// scope a query to the tabs rather than the whole screen.
-    static var accessibilityIdentifier: String { "zoon.tabBar" }
+    /// Each tab's own identifier.
+    ///
+    /// The first attempt put one identifier on the bar and had the tests
+    /// scope their queries to it. That element never resolved — an
+    /// identifier on a styled `HStack` is not reliably exposed as a
+    /// container, and the run failed with "No matches found for ... 'zoon
+    /// .tabBar' IN identifiers". Identifying the buttons themselves needs no
+    /// container to exist, and it also avoids matching a label like "Sleep"
+    /// that appears elsewhere on the screen.
+    static func identifier(for title: String) -> String {
+        "zoon.tab.\(title.lowercased())"
+    }
 
     private func button(_ item: Item) -> some View {
         let isSelected = selection == item.tab
@@ -91,6 +95,7 @@ struct FloatingTabBar<Tab: Hashable>: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(Self.identifier(for: item.title))
         .accessibilityLabel(item.title)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
