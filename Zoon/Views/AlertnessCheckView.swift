@@ -16,7 +16,7 @@ struct AlertnessCheckView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 header
                 testSurface
                 if !store.results.isEmpty { history }

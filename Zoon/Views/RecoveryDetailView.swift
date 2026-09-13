@@ -13,7 +13,7 @@ struct RecoveryDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let context {
                     RecoveryBreakdownCard(recovery: context.recovery)
                     HRVStatusCard(status: context.hrvStatus)

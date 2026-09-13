@@ -115,6 +115,42 @@ struct TrendsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    // High in the tab, not under every chart. These are
+                    // ways of looking at your own history, which is what
+                    // this tab is; burying them under the charts made them
+                    // unfindable, which is the problem moving them out of
+                    // Settings was supposed to solve.
+                    ExploreGrid(title: "Explore your sleep") {
+                        ExploreTile(
+                            title: "Your patterns",
+                            subtitle: "What repeats, night after night",
+                            symbol: "square.grid.3x3.fill",
+                            tint: Theme.Family.sleep
+                        ) { PatternsView() }
+
+                        ExploreTile(
+                            title: "Sleep eras",
+                            subtitle: "Stretches where your sleep changed character",
+                            symbol: "timeline.selection",
+                            tint: Theme.Family.circadian
+                        ) { SleepErasView() }
+
+                        ExploreTile(
+                            title: "Year in Sleep",
+                            subtitle: "Every night of the year at once",
+                            symbol: "calendar",
+                            tint: Theme.Family.recovery
+                        ) { YearHeatmapView() }
+
+                        ExploreTile(
+                            title: "Chart builder",
+                            subtitle: "Plot any two things against each other",
+                            symbol: "chart.xyaxis.line",
+                            tint: Theme.Family.bodySignals
+                        ) { ChartBuilderView() }
+                    }
+                    .entrance(2)
+
                     WhatChangedStream(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes)
                         .entrance(2)
                     if let context = coordinator.state.context {
@@ -148,7 +184,16 @@ struct TrendsView: View {
                             SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
                             ConsistencyChartCard(nights: nights)
                             if let fingerprint = SleepFingerprint.make(from: coordinator.recentNights, days: window.days) {
-                                FingerprintSummaryCard(fingerprint: fingerprint)
+                                // The card was already showing the summary
+                                // while a chip at the foot of the tab linked
+                                // to the full screen. The card is the link
+                                // now -- the thing you would tap anyway.
+                                NavigationLink {
+                                    SleepFingerprintView()
+                                } label: {
+                                    FingerprintSummaryCard(fingerprint: fingerprint)
+                                }
+                                .buttonStyle(PressableStyle())
                             }
                             if let correlations = cycleCorrelations {
                                 CycleCorrelationCard(correlations: correlations)
@@ -156,9 +201,6 @@ struct TrendsView: View {
                         }
                         .entrance(5)
                     }
-
-                    moreToExplore
-                        .entrance(6)
                 }
                 .padding()
             }
@@ -218,42 +260,6 @@ struct TrendsView: View {
     /// They are removed from More rather than duplicated -- the sleep-tools
     /// strip on both Today and Sleep was the same mistake, and it read as
     /// clutter the moment it was seen on a phone.
-    private var moreToExplore: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                ZoonSectionHeader("Your sleep, explored")
-                FlowLayout(spacing: 10) {
-                    exploreLink("Sleep Story", "clock.arrow.circlepath") { SleepStoryView() }
-                    exploreLink("Your patterns", "square.grid.3x3.fill") { PatternsView() }
-                    exploreLink("Sleep fingerprint", "circle.hexagongrid.fill") { SleepFingerprintView() }
-                    exploreLink("Sleep eras", "timeline.selection") { SleepErasView() }
-                    exploreLink("Year in Sleep", "calendar") { YearHeatmapView() }
-                    exploreLink("Sleep Playbook", "checklist") { SleepPlaybookView() }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                ZoonSectionHeader("How Zoon knows")
-                FlowLayout(spacing: 10) {
-                    exploreLink("What Zoon knows", "checkmark.seal.fill") { EvidenceView() }
-                    exploreLink("How well Zoon knows you", "square.stack.3d.up.fill") { ModelHealthView() }
-                    exploreLink("Personal learning", "sparkles.rectangle.stack.fill") { PersonalLearningView() }
-                    exploreLink("Chart builder", "chart.xyaxis.line") { ChartBuilderView() }
-                }
-            }
-        }
-    }
-
-    private func exploreLink<Destination: View>(
-        _ title: String, _ symbol: String,
-        @ViewBuilder destination: @escaping () -> Destination
-    ) -> some View {
-        NavigationLink(destination: destination) {
-            ZoonMetricPill(text: title, systemImage: symbol, tint: Theme.Family.sleep, isSelected: false)
-        }
-        .buttonStyle(.plain)
-    }
-
     private var notEnoughData: some View {
         ZoonEmptyState(kind: .learning(
             collected: nights.count,

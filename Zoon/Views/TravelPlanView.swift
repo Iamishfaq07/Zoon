@@ -47,7 +47,7 @@ struct TravelPlanView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+            CascadeStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 tripCard
                 Button("Save this trip") { setup.value.trip = .init(destination: destination.identifier, departure: departure, arrival: arrival) }
                 NavigationLink("Choose sleep times for this trip") { SavedSleepPlansView() }

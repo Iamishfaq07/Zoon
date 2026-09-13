@@ -41,7 +41,7 @@ struct SleepDebtView: View {
 
     private var content: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 hero
                 recentNightsCard
                 trendChart

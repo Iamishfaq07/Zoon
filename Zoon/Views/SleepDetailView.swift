@@ -514,7 +514,7 @@ struct ChronotypeCard: View {
 
 #Preview("Sleep need only") {
     ScrollView {
-        VStack(spacing: 16) {
+        CascadeStack(spacing: 16) {
             SleepNeedCard(need: AppMockData.dayContext().sleepNeed)
             SleepNeedCard(need: AppMockData.poorDayContext().sleepNeed)
         }

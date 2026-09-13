@@ -53,7 +53,7 @@ struct MetricTrendView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 hero
                 if points.count >= 3 {
                     chartCard

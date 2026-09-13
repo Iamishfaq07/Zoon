@@ -53,32 +53,14 @@ struct ZoonSplash: View {
 
     private var moon: some View {
         ZStack {
-            // The halo is drawn separately from `MoonFill`'s own glow and
-            // expands past it, so the moon reads as arriving out of the dark
-            // rather than fading up in place.
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Theme.Family.Moon.lit.opacity(0.26),
-                            Theme.Family.Moon.lit.opacity(0.04),
-                            .clear
-                        ],
-                        center: .center,
-                        // Starts just outside the disc and falls away fast.
-                        // A wider, softer falloff (the first capture had it
-                        // reaching 132 from a 44 start, blurred 12) read as
-                        // haze around the moon rather than light off it, and
-                        // took the crispness off the limb.
-                        startRadius: 62,
-                        endRadius: 116
-                    )
-                )
-                .frame(width: 232, height: 232)
-                .scaleEffect(risen ? 1 : 0.55)
-                .opacity(risen ? 1 : 0)
-                .blur(radius: 7)
-
+            // No halo ring here.
+            //
+            // This drew a separate radial gradient from radius 62 to 116 in
+            // the moon's own lit purple, around a 132pt moon whose own
+            // radius is 66 -- so it began exactly at the limb and read as a
+            // purple ring fitted around the moon rather than as light coming
+            // off it. `MoonFill` already carries its own glow; a second one
+            // starting where the disc ends can only ever draw an outline.
             MoonFill(fill: 0.78, active: true, size: 132)
                 .scaleEffect(risen ? 1 : 0.82)
                 .opacity(risen ? 1 : 0)

@@ -35,7 +35,7 @@ struct BodyClockView: View {
 
     private var content: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let bodyClock, let night {
                     ring(bodyClock: bodyClock, night: night)
                     agendaCard(bodyClock: bodyClock, night: night)

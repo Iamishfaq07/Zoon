@@ -10,7 +10,7 @@ struct RegularityDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let context {
                     RegularityCard(
                         regularity: context.regularity,

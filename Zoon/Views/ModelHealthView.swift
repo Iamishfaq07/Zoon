@@ -20,7 +20,7 @@ struct ModelHealthView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+            CascadeStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 if assessments.isEmpty {
                     ContentUnavailableView(
                         "Nothing to describe yet",

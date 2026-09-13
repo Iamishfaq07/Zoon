@@ -24,7 +24,7 @@ struct StressDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 headerCard
                 breakdownCard
                 explanationCard

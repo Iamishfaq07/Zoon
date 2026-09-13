@@ -256,10 +256,21 @@ struct MoonCycle: View {
             // Not a paused animation: a still moon, at a phase worth showing.
             MoonFill(fill: restingFill, active: active, size: size)
         } else {
-            // 20fps, not 60. The cycle takes 48 seconds, so a frame every 50ms
-            // is already finer than the eye can resolve here, and three times
-            // the work for motion nobody can see is battery spent for nothing.
-            TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
+            // 30fps, not 20 and not 60.
+            //
+            // 20 was argued from resolution -- a 48-second cycle moves so
+            // little in 50ms that no frame can be told from the next. That
+            // reasoning is about *steps*, and the thing people actually see
+            // is *cadence*: a redraw every 50ms against a 60 or 120Hz display
+            // lands three or six refreshes apart, and the eye reads regular
+            // gaps as judder even when each individual step is invisible. 30
+            // divides both refresh rates evenly and halves the gap, at a
+            // frame cost this view can carry.
+            //
+            // It cannot be verified from here: screenshot capture photographs
+            // stills, so smoothness is the one property CI cannot show. This
+            // is reasoning about frame cadence, not a measurement.
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
                 let cycle = phase(at: timeline.date)
                 MoonFill(
                     fill: cycle.lit,

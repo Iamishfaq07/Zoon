@@ -26,7 +26,7 @@ struct SleepHealthView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 windowPicker
                 hero
                 if !health.components.isEmpty {

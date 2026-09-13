@@ -15,7 +15,7 @@ struct ClinicianReportView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.stackSpacing) {
+            CascadeStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 header
                 rangeCard
                 sectionsCard

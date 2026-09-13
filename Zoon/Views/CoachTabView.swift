@@ -114,11 +114,46 @@ struct CoachTabView: View {
                 .buttonStyle(PressableStyle())
                 .entrance(2)
 
+                // What the coach is working from, as real entry points.
+                // These answer "why does it say that", which is a question
+                // about the coach -- so they belong on the coach's own tab,
+                // not at the bottom of the charts tab.
+                ExploreGrid(title: "How Zoon knows you") {
+                    ExploreTile(
+                        title: "What Zoon knows",
+                        subtitle: "The evidence behind every claim",
+                        symbol: "checkmark.seal.fill",
+                        tint: Theme.Family.recovery
+                    ) { EvidenceView() }
+
+                    ExploreTile(
+                        title: "How well it knows you",
+                        subtitle: "How much history it is working from",
+                        symbol: "square.stack.3d.up.fill",
+                        tint: Theme.Family.bodySignals
+                    ) { ModelHealthView() }
+
+                    ExploreTile(
+                        title: "Personal learning",
+                        subtitle: "What it has worked out about you",
+                        symbol: "sparkles.rectangle.stack.fill",
+                        tint: Theme.Family.sleep
+                    ) { PersonalLearningView() }
+
+                    ExploreTile(
+                        title: "Sleep Playbook",
+                        subtitle: "Your habits, and what to try next",
+                        symbol: "checklist",
+                        tint: Theme.Family.circadian
+                    ) { SleepPlaybookView() }
+                }
+                .entrance(3)
+
                 engineCard
-                    .entrance(3)
+                    .entrance(4)
 
                 capabilityCard
-                    .entrance(4)
+                    .entrance(5)
             }
             .padding()
         }

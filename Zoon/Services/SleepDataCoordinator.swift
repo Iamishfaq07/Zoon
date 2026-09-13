@@ -969,6 +969,39 @@ final class SleepDataCoordinator {
         return summary.automaticNapAsleepMinutes + summary.manualNapMinutes
     }
 
+    /// Naps recorded **today**, from both sources, deduplicated.
+    ///
+    /// `deduplicatedNapMinutes(before:)` answers "what naps does this
+    /// finished night carry", which is the day before its wake. Nothing
+    /// answered "what have I napped today", and today is the only day whose
+    /// shortfall is still moving — so a nap this afternoon, from the in-app
+    /// timer or from Health, could not affect anything on screen until
+    /// tomorrow morning's night was written.
+    ///
+    /// Both sources, not just the in-app timer: a nap Apple Health recorded
+    /// arrives as a `SleepEpisodeRecord` and never touches `NapStore`, so
+    /// reading `NapStore` alone misses exactly the naps a watch caught by
+    /// itself. Routed through `SleepDaySummary` for the same overlap-aware
+    /// dedupe, so a nap caught by both is credited once.
+    ///
+    /// Today's own calendar day in the device's current timezone, which is
+    /// right here for the same reason a stored night uses its own: today is
+    /// happening now, wherever the phone is now.
+    func napMinutesToday(now: Date = .now) -> Double {
+        let calendar = Calendar.current
+        guard let dayInterval = calendar.dateInterval(of: .day, for: now) else {
+            return naps.minutes(on: now)
+        }
+
+        let manualNaps = naps.naps
+            .filter { calendar.isDate($0.start, inSameDayAs: now) }
+            .map { SleepDaySummary.ManualNap(interval: DateInterval(start: $0.start, end: $0.end), minutes: $0.minutes) }
+        let autoEpisodes = store.autoDetectedNaps(in: dayInterval)
+
+        let summary = SleepDaySummary.compute(mainSleepMinutes: 0, autoEpisodes: autoEpisodes, manualNaps: manualNaps)
+        return summary.automaticNapAsleepMinutes + summary.manualNapMinutes
+    }
+
     /// Every nap before `night`, as literal intervals for `SleepStory`'s
     /// chronological account -- `deduplicatedNapMinutes` above already
     /// covers the case that just needs a total.

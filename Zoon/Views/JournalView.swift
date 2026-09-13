@@ -68,7 +68,7 @@ struct JournalView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: Theme.stackSpacing) {
+                CascadeStack(spacing: Theme.stackSpacing) {
                     dayPicker
                     lifestyleInsightsCard
                     tonightsAsk

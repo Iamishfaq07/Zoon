@@ -23,7 +23,7 @@ struct ReportView: View {
     /// nobody could tap.
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.stackSpacing) {
+            CascadeStack(spacing: Theme.stackSpacing) {
                 if let report {
                     header(report)
                     shareCard(report)
