@@ -127,7 +127,10 @@ struct SleepDebtArcView: View {
         // The gauge is a fixed diameter; its centre text is not, and at the
         // largest accessibility sizes it would run out through the stroke.
         .dynamicTypeSize(...DynamicTypeSize.xxLarge)
-        .padding(.horizontal, lineWidth + 8)
+        // The stroke's inner edge is `lineWidth` in from the frame; 12 more
+        // keeps the stack off it without giving the pill less room than it
+        // needs.
+        .padding(.horizontal, lineWidth + 12)
     }
 
     private var pill: some View {
@@ -140,6 +143,13 @@ struct SleepDebtArcView: View {
             }
         }
         .font(Theme.label(11, weight: .semibold))
+        // One line, always. "Moderate debt • −8m tonight" wrapped onto two
+        // inside the gauge, which splits the band name across lines and
+        // makes the badge taller than the number above it. Scaling down is
+        // the right trade here: the pill is a qualifier, and a qualifier
+        // that reflows is worse than one a point smaller.
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
         .foregroundStyle(bandTint)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
