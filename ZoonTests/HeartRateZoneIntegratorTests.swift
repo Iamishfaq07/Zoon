@@ -54,7 +54,7 @@ final class HeartRateZoneIntegratorTests: XCTestCase {
     func testSparseRestingSamplingIsNotExtrapolated() {
         let offsets = stride(from: 0.0, to: 3600.0, by: 300.0).map { $0 }
         let result = HeartRateZoneIntegrator.integrate(
-            samples: samples(offsets, bpm: 70),
+            samples: samples(offsets, bpm: 140),
             restingHeartRate: resting, maxHeartRate: maximum,
             interval: interval(minutes: 60)
         )
@@ -105,7 +105,7 @@ final class HeartRateZoneIntegratorTests: XCTestCase {
         let start = Date(timeIntervalSinceReferenceDate: 0)
         let outside = [
             HeartRateZoneIntegrator.Sample(date: start.addingTimeInterval(-600), bpm: 170),
-            HeartRateZoneIntegrator.Sample(date: start.addingTimeInterval(60), bpm: 100)
+            HeartRateZoneIntegrator.Sample(date: start.addingTimeInterval(60), bpm: 150)
         ]
         let result = HeartRateZoneIntegrator.integrate(
             samples: outside, restingHeartRate: resting, maxHeartRate: maximum,
@@ -113,6 +113,22 @@ final class HeartRateZoneIntegratorTests: XCTestCase {
         )
         XCTAssertEqual(totalMinutes(result), 2.5, accuracy: 0.01,
                        "Only the in-window sample counts")
+    }
+
+    /// A restful day is fully *observed* and scores no zone minutes. The
+    /// first version conflated the two and reported such a day as
+    /// uncovered, which pushed the caller onto its sparse-data fallback
+    /// despite complete sampling.
+    func testRestfulDayIsCoveredButScoresNoZones() {
+        let offsets = stride(from: 0.0, to: 600.0, by: 5.0).map { $0 }
+        let result = HeartRateZoneIntegrator.integrate(
+            samples: samples(offsets, bpm: 70),
+            restingHeartRate: resting, maxHeartRate: maximum,
+            interval: interval(minutes: 10)
+        )
+        XCTAssertTrue(result.zoneMinutes.isEmpty, "70bpm is below the lowest zone")
+        XCTAssertEqual(result.coverage, 1.0, accuracy: 0.01,
+                       "but the day was watched throughout")
     }
 
     /// Zone provenance is independent of coverage: perfect sampling against

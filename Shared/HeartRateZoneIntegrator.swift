@@ -117,6 +117,15 @@ enum HeartRateZoneIntegrator {
             guard gap > 0 else { continue }
             let duration = min(gap, cap)
 
+            // Coverage counts the observation whatever the intensity. The
+            // lowest zone starts at 50% of heart-rate reserve, so an entire
+            // restful day sits below every zone -- and attributing coverage
+            // only when a zone matched made such a day look unobserved,
+            // which pushed the caller onto its "thin coverage" estimate
+            // despite complete sampling. "Did we watch?" and "was it hard?"
+            // are different questions.
+            attributed += duration
+
             let hrr = (sample.bpm - restingHeartRate) / reserve
             guard let zone = StrainScore.Zone.allCases
                 .filter({ hrr >= $0.lowerBoundHRR })
@@ -124,7 +133,6 @@ enum HeartRateZoneIntegrator {
             else { continue }
 
             zones[zone, default: 0] += duration / 60
-            attributed += duration
         }
 
         return Result(

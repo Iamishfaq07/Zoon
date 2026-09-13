@@ -148,7 +148,7 @@ struct CoreIntelligenceGrid: View {
             }
             .frame(height: 20)
         } stat: {
-            radar.isActive ? "\(radar.signals.count) drifting" : "Nothing unusual"
+            radar.isActive ? "\(radar.signals.count) drifting" : radar.stateShortLabel
         }
     }
 

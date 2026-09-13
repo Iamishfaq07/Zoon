@@ -31,8 +31,20 @@ struct HealthRadar: Codable, Hashable, Sendable {
     /// cautious state as no coverage.
     var domainsWithBaseline: Int = 0
 
+    /// The kinds that count as *physiological* coverage.
+    ///
+    /// `VitalsStatus.Kind` includes `.sleepDuration`, which every night
+    /// carries by definition -- it is the thing being measured, not a body
+    /// signal measured during it. Counting it here let a phone-only user
+    /// with no HRV, no resting heart rate and no respiration reach the
+    /// coverage threshold on sleep duration alone and be told "Typical",
+    /// which is the exact false reassurance the state model exists to stop.
+    static var physiologicalKinds: [VitalsStatus.Kind] {
+        VitalsStatus.Kind.allCases.filter { $0 != .sleepDuration }
+    }
+
     /// Domains that have to carry a baseline before "nothing unusual" is a
-    /// claim rather than a gap. Two of the four supported signals.
+    /// claim rather than a gap.
     static let minimumDomainsForTypical = 2
 
     init(signals: [Signal], nightCount: Int, domainsWithBaseline: Int = 0) {
@@ -121,7 +133,9 @@ struct HealthRadar: Codable, Hashable, Sendable {
 
         for kind in VitalsStatus.Kind.allCases {
             let baselineValues = baselineWindow.compactMap { value(kind, in: $0) }
-            if baselineValues.count >= 8 { domainsWithBaseline += 1 }
+            if baselineValues.count >= 8, Self.physiologicalKinds.contains(kind) {
+                domainsWithBaseline += 1
+            }
             let recentValues = recentWindow.compactMap { value(kind, in: $0) }
 
             guard baselineValues.count >= 8,

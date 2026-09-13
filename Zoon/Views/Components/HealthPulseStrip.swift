@@ -122,7 +122,13 @@ struct HealthPulseStrip: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Body Signals")
-        .accessibilityValue(radar.isActive ? "\(radar.signals.count) signals drifting" : "Nothing unusual")
+        // `isActive` is false for a clear fortnight, for night four, and for
+        // a phone with no physiology. Only the first is reassurance.
+        .accessibilityValue(
+            radar.isActive
+                ? "\(radar.signals.count) signals drifting"
+                : radar.stateHeadline
+        )
         .accessibilityHint("View body signals")
     }
 
