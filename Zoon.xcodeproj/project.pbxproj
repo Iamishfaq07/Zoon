@@ -161,6 +161,7 @@
 		20F5DBB6588A9182EACA4A4B /* FindingSentence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F144B7409E9E3BBF4E5DDE3B /* FindingSentence.swift */; };
 		213619B45F0EC47B2663B5F0 /* SleepErasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A3BF86FDE87485002498C7 /* SleepErasView.swift */; };
 		213A353DA13601D9688D13DB /* CognitiveEnergyCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60BBFAB53A49DC06328276E /* CognitiveEnergyCurve.swift */; };
+		21B11D3F51334EFC2291604C /* ScoreInvariantTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB28A2C016F35BBA85E47C76 /* ScoreInvariantTests.swift */; };
 		21C99678C209300372D988F8 /* SleepIntelligenceOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 423CBBEE5037B19C59780D54 /* SleepIntelligenceOrb.swift */; };
 		21D5835007FCFA81EF145704 /* HRVStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A088D94B376B7C6652E976B /* HRVStatusTests.swift */; };
 		21F404F9F2612B2B371FD18F /* HypnogramHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0349A1A1EA0EC15EBB35DE8B /* HypnogramHaptics.swift */; };
@@ -1523,6 +1524,7 @@
 		E98A436D538AAC795E4E7A7E /* SleepStoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStoryView.swift"; sourceTree = "<group>"; };
 		EA6626DD8F329DC2CDC07427 /* CaffeineCutoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CaffeineCutoff.swift"; sourceTree = "<group>"; };
 		EA7710078DC7380114F1BA65 /* ExperimentPlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExperimentPlannerTests.swift"; sourceTree = "<group>"; };
+		EB28A2C016F35BBA85E47C76 /* ScoreInvariantTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScoreInvariantTests.swift"; sourceTree = "<group>"; };
 		EBD8E590A508113B7C7E45AE /* CycleRecoveryProvenanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CycleRecoveryProvenanceTests.swift"; sourceTree = "<group>"; };
 		EBF13117CFB2BE353EB64293 /* RecoveryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryDetailView.swift"; sourceTree = "<group>"; };
 		ECE30B82E446955CA1BDB5BB /* SleepIntelligenceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepIntelligenceCard.swift"; sourceTree = "<group>"; };
@@ -1937,6 +1939,7 @@
 				728522C938EB304A352B98B0,
 				4DDA4FDA0CAE8B6ECF6BF699,
 				9D6BA693E9476B3989FEB75F,
+				EB28A2C016F35BBA85E47C76,
 				890C0E2A92FB4929DA9077A2,
 				B4A8F4C33D6ED860E4481578,
 				222AA307323FF3B9A1DFE1F8,
@@ -3128,6 +3131,7 @@
 				8B838995599BC2BFFAC52ECC,
 				D8D8819C21CFE5E7DEDC2D62,
 				93AA7361FCCD00EAD308307C,
+				21B11D3F51334EFC2291604C,
 				736C62D343018E0159032651,
 				7BA1298E55AD9747F8AD12ED,
 				32443B02BF8C6F999F1A227B,
