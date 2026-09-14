@@ -22,6 +22,36 @@ struct StrainScore: Codable, Hashable, Sendable {
     let activeEnergyKcal: Double?
     /// False when there wasn't enough heart-rate coverage to trust it.
     let isEstimate: Bool
+    /// Where the zone boundaries these minutes were sorted into came from.
+    ///
+    /// Optional because it is genuinely unknown for a score decoded from a
+    /// payload written before this existed, and for the active-energy
+    /// fallback, which sorts nothing into zones at all. Unknown is not the
+    /// same as generic, and the UI must be able to tell them apart.
+    let zoneProvenance: HRZoneProvenance?
+
+    init(
+        value: Double,
+        zoneMinutes: [Zone: Double],
+        activeEnergyKcal: Double?,
+        isEstimate: Bool,
+        zoneProvenance: HRZoneProvenance? = nil
+    ) {
+        self.value = value
+        self.zoneMinutes = zoneMinutes
+        self.activeEnergyKcal = activeEnergyKcal
+        self.isEstimate = isEstimate
+        self.zoneProvenance = zoneProvenance
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        value = try container.decode(Double.self, forKey: .value)
+        zoneMinutes = try container.decode([Zone: Double].self, forKey: .zoneMinutes)
+        activeEnergyKcal = try container.decodeIfPresent(Double.self, forKey: .activeEnergyKcal)
+        isEstimate = try container.decode(Bool.self, forKey: .isEstimate)
+        zoneProvenance = try container.decodeIfPresent(HRZoneProvenance.self, forKey: .zoneProvenance)
+    }
 
     enum Zone: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
         case light      // 50–60% HRR
@@ -77,7 +107,8 @@ struct StrainScore: Codable, Hashable, Sendable {
     static func compute(
         zoneMinutes: [Zone: Double],
         activeEnergyKcal: Double?,
-        hasHeartRateCoverage: Bool
+        hasHeartRateCoverage: Bool,
+        zoneProvenance: HRZoneProvenance = .genericFallback
     ) -> StrainScore {
 
         let load = zoneMinutes.reduce(0.0) { $0 + $1.value * $1.key.weight }
@@ -91,7 +122,8 @@ struct StrainScore: Codable, Hashable, Sendable {
             value: value,
             zoneMinutes: zoneMinutes,
             activeEnergyKcal: activeEnergyKcal,
-            isEstimate: !hasHeartRateCoverage
+            isEstimate: !hasHeartRateCoverage,
+            zoneProvenance: zoneProvenance
         )
     }
 
@@ -133,6 +165,39 @@ struct StrainScore: Codable, Hashable, Sendable {
 }
 
 extension StrainScore {
+
+    /// One line naming the weakest thing this number rests on, or `nil` when
+    /// there is nothing worth qualifying.
+    ///
+    /// Coverage and zone boundaries fail independently. A day can be watched
+    /// continuously and still be sorted by a guessed maximum heart rate, and
+    /// the second is the quieter problem: nothing about the display hints at
+    /// it, so a number built on 208 − 0.7 × age looks exactly as solid as one
+    /// built on a max the person actually hit. Coverage is named first when
+    /// both are weak, because a score with no heart rate behind it is the
+    /// larger caveat.
+    var confidenceNote: String? {
+        if isEstimate {
+            return "Estimated from active energy — not enough heart-rate coverage to build zones."
+        }
+        switch zoneProvenance {
+        case .some(let provenance) where provenance.isPersonalized:
+            return nil
+        case .some(.ageEstimated):
+            return "Zones from an age-estimated maximum heart rate, not one you've hit."
+        case .some(.genericFallback):
+            return "Zones from a default maximum heart rate. Add your age in Settings to sharpen this."
+        case .none:
+            return nil
+        }
+    }
+
+    /// Short enough for a row beside the band.
+    var confidenceTag: String? {
+        if isEstimate { return "estimated" }
+        guard let zoneProvenance, !zoneProvenance.isPersonalized else { return nil }
+        return "estimated zones"
+    }
 
     var band: String {
         switch value {

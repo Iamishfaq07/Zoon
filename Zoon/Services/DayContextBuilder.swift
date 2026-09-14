@@ -266,7 +266,25 @@ struct DayContextBuilder {
     /// available. Closer to observed values across adult ages than the older
     /// 220−age rule, which systematically underestimates for over-40s.
     static func estimatedMaxHeartRate(age: Int?) -> Double {
-        guard let age, age > 0, age < 120 else { return 190 }
-        return 208 - 0.7 * Double(age)
+        maximumHeartRate(age: age).bpm
+    }
+
+    /// The same number, with where it came from attached.
+    ///
+    /// Zone boundaries rest entirely on this figure, and a formula applied to
+    /// one person is not a measurement of them: two people the same age can
+    /// differ by 20 bpm at maximum, which moves every boundary and therefore
+    /// the Load score itself. Callers that display a load figure carry the
+    /// provenance through so the UI can say which it is, rather than
+    /// presenting a guessed ceiling as though it had been observed.
+    ///
+    /// `.observedPersonalized` and `.userConfigured` are not produced here:
+    /// nothing in the app records a max someone actually hit, and there is no
+    /// setting for it. Those cases exist so that when either arrives it has a
+    /// name, and so the UI's "is this personal" question has a single answer
+    /// today rather than being rewritten then.
+    static func maximumHeartRate(age: Int?) -> (bpm: Double, provenance: HRZoneProvenance) {
+        guard let age, age > 0, age < 120 else { return (190, .genericFallback) }
+        return (208 - 0.7 * Double(age), .ageEstimated)
     }
 }

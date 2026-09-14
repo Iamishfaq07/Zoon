@@ -873,7 +873,8 @@ final class SleepDataCoordinator {
         let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
             .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) }
 
-        let maxHR = DayContextBuilder.estimatedMaxHeartRate(age: preferences.age)
+        let maximum = DayContextBuilder.maximumHeartRate(age: preferences.age)
+        let maxHR = maximum.bpm
         // True RHR first (see SleepNightFeatures.restingHeartRate), falling
         // back to the sleep-window low only when no daily RHR sample exists
         // yet — heart-rate-reserve zones are sensitive to this baseline, so
@@ -885,7 +886,8 @@ final class SleepDataCoordinator {
             ?? 60
 
         let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
-            wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR
+            wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR,
+            zoneProvenance: maximum.provenance
         )
 
         guard !isErasing, generation == storeGeneration else { return }
@@ -1038,7 +1040,8 @@ final class SleepDataCoordinator {
     private func loadActivity(
         wakeTime: Date,
         restingHR: Double,
-        maxHR: Double
+        maxHR: Double,
+        zoneProvenance: HRZoneProvenance
     ) async -> (today: StrainScore, yesterday: StrainScore, hourly: [(date: Date, bpm: Double)]) {
 
         let calendar = Calendar.current
@@ -1046,10 +1049,12 @@ final class SleepDataCoordinator {
         let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
 
         async let todayTask = strain(
-            in: DateInterval(start: todayStart, end: .now), restingHR: restingHR, maxHR: maxHR
+            in: DateInterval(start: todayStart, end: .now), restingHR: restingHR, maxHR: maxHR,
+            zoneProvenance: zoneProvenance
         )
         async let yesterdayTask = strain(
-            in: DateInterval(start: yesterdayStart, end: todayStart), restingHR: restingHR, maxHR: maxHR
+            in: DateInterval(start: yesterdayStart, end: todayStart), restingHR: restingHR, maxHR: maxHR,
+            zoneProvenance: zoneProvenance
         )
 
         let today = await todayTask
@@ -1062,7 +1067,12 @@ final class SleepDataCoordinator {
         return (today, yesterday, hourly)
     }
 
-    private func strain(in interval: DateInterval, restingHR: Double, maxHR: Double) async -> StrainScore {
+    private func strain(
+        in interval: DateInterval,
+        restingHR: Double,
+        maxHR: Double,
+        zoneProvenance: HRZoneProvenance
+    ) async -> StrainScore {
         guard interval.duration > 0 else { return .zero }
 
         let energy = (try? await healthKit.sum(.activeEnergyBurned, unit: .kilocalorie(), in: interval)) ?? nil
@@ -1079,7 +1089,8 @@ final class SleepDataCoordinator {
         return .compute(
             zoneMinutes: result.zones,
             activeEnergyKcal: energy,
-            hasHeartRateCoverage: true
+            hasHeartRateCoverage: true,
+            zoneProvenance: zoneProvenance
         )
     }
 
