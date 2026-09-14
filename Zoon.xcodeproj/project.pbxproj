@@ -42,6 +42,7 @@
 		0487178E102B6D9C2A77E68E /* SleepFingerprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB07B1941EF095AA63626FF /* SleepFingerprint.swift */; };
 		04AB6DC77A0B9F44E57B3036 /* EnergyDrivers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C78C81EC152B94DA0EC92A7 /* EnergyDrivers.swift */; };
 		04E326AE2C384BDC653F3BE9 /* SleepMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94863AD57BC6DF42B748A3BB /* SleepMap.swift */; };
+		0567DC69218D6DD48BA0BA35 /* SleepSessionInvariantTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9CEAEB729D498800191F771 /* SleepSessionInvariantTests.swift */; };
 		062BE44244AF7C5B8B96FF32 /* NaturalJournalParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED68DAD097FACDD4F450C05 /* NaturalJournalParser.swift */; };
 		06A2D6CDFEB32346CDAA12AB /* Moon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 082DE867103EB3FC76681813 /* Moon.swift */; };
 		06B95CAA584AA5AD1051282D /* SleepStreakEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B0A0EC5506FF9F69067618 /* SleepStreakEngine.swift */; };
@@ -1530,6 +1531,7 @@
 		C86F4E642A185C699DD6A3F0 /* EvidenceNotebook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceNotebook.swift"; sourceTree = "<group>"; };
 		C92235080998380B7580437E /* SleepStoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStoryTests.swift"; sourceTree = "<group>"; };
 		C95D71E4BFB29978DEA0D2DE /* ChartAccessibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChartAccessibility.swift"; sourceTree = "<group>"; };
+		C9CEAEB729D498800191F771 /* SleepSessionInvariantTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSessionInvariantTests.swift"; sourceTree = "<group>"; };
 		CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreWidget.swift"; sourceTree = "<group>"; };
 		CA2313A4FDE3B0D1E1A6AEEC /* ZoonTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonTimeline.swift"; sourceTree = "<group>"; };
 		CB0716483B53D50F81083840 /* SleepDayKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDayKey.swift"; sourceTree = "<group>"; };
@@ -2043,6 +2045,7 @@
 				02F8E195AB0DD1AF36A81CB8,
 				AE124896DF66A305DE386B60,
 				02032F4DEAB22D8D55BEC054,
+				C9CEAEB729D498800191F771,
 				834993D3DFFF430EB3AE89C6,
 				D5961A2136DCC31F3C0D57CD,
 				768BDAD8573485CF77BD960C,
@@ -3277,6 +3280,7 @@
 				B61F4B5838F2AE2C29B0EFBC,
 				CEF42B0CEF4B28AA158A6DBB,
 				432F30A14EEFE12881030E12,
+				0567DC69218D6DD48BA0BA35,
 				01EFEFCF5155499408B014B0,
 				8BD0CA9AA5D444700E195EBA,
 				C61E009A7D9349C666F80D6D,
