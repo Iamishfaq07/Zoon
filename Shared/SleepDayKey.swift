@@ -78,6 +78,19 @@ struct SleepDayKey: Hashable, Comparable, Sendable, CustomStringConvertible {
 
     func isDayAfter(_ other: SleepDayKey) -> Bool { other.next == self }
 
+    /// Whole days from `other` to `self`, negative when `self` is earlier.
+    ///
+    /// A stable time index: because both sides are civil dates and the
+    /// arithmetic runs in UTC, the answer does not change with where either
+    /// night was recorded or with a daylight-saving transition between them.
+    /// `dateComponents([.day], from:to:)` over instants answers a different
+    /// question — how many 24-hour periods elapsed — and gives a different
+    /// number across a 23-hour day or a flight.
+    func daysSince(_ other: SleepDayKey) -> Int {
+        guard let from = other.noonUTC, let to = noonUTC else { return 0 }
+        return Self.arithmeticCalendar.dateComponents([.day], from: from, to: to).day ?? 0
+    }
+
     static func < (lhs: SleepDayKey, rhs: SleepDayKey) -> Bool {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }
