@@ -15,11 +15,20 @@ struct MetricTrendView: View {
     @State private var selectedDate: Date?
     @State private var asking: ChartQuestion?
 
-    private var points: [(date: Date, value: Double)] {
-        coordinator.recentNights.compactMap { night in
-            guard let value = VitalsStatus.currentValue(kind, features: night) else { return nil }
-            return (night.date, value)
-        }
+    /// Nights carrying this metric, oldest first.
+    ///
+    /// Computed once per body pass and handed down, not read as a property
+    /// from five places. Each read walks the whole of `recentNights` and calls
+    /// `VitalsStatus.currentValue` per night, and `recentNights` grows with
+    /// the user's history -- so on a multi-year record this was five full
+    /// passes (plus a sort) for one render of one screen.
+    private func makePoints() -> [(date: Date, value: Double)] {
+        coordinator.recentNights
+            .compactMap { night in
+                guard let value = VitalsStatus.currentValue(kind, features: night) else { return nil }
+                return (night.date, value)
+            }
+            .sorted { $0.date < $1.date }
     }
 
     private var currentMetric: VitalsStatus.Metric? {
@@ -32,7 +41,7 @@ struct MetricTrendView: View {
     /// from the person's history under its own rules, rather than being
     /// re-derived from the handful of points on screen -- see
     /// `ChartQuestion.forVital`.
-    private var selectedQuestion: ChartQuestion? {
+    private func selectedQuestion(_ points: [(date: Date, value: Double)]) -> ChartQuestion? {
         guard let selectedDate else { return nil }
         let plotted = points.map { ChartQuestion.Point(date: $0.date, value: $0.value) }
         guard let nearest = plotted.nearest(toDay: selectedDate, keyPath: \.date) else { return nil }
@@ -52,17 +61,18 @@ struct MetricTrendView: View {
     private var askedNight: SleepNightFeatures? { coordinator.recentNights.last }
 
     var body: some View {
+        let points = makePoints()
         ScrollView {
             CascadeStack(spacing: Theme.stackSpacing) {
                 hero
                 if points.count >= 3 {
-                    chartCard
+                    chartCard(points)
                     // Below the card, not inside it: a button in a Chart
                     // annotation competes with `chartXSelection`'s own drag
                     // recogniser for the same touches. Same placement and
                     // reasoning as the HRV card in Trends.
-                    if let selectedQuestion {
-                        AskZoonAboutChart(question: selectedQuestion) { asking = selectedQuestion }
+                    if let question = selectedQuestion(points) {
+                        AskZoonAboutChart(question: question) { asking = question }
                     }
                 } else {
                     GatheringNights(
@@ -73,7 +83,7 @@ struct MetricTrendView: View {
                     )
                     .padding(.top, 40)
                 }
-                resilienceCard
+                resilienceCard(points)
                 evidenceCard
             }
             .padding()
@@ -97,7 +107,7 @@ struct MetricTrendView: View {
     /// hiding the card in those cases would leave the screen looking as
     /// though resilience had never been considered.
     @ViewBuilder
-    private var resilienceCard: some View {
+    private func resilienceCard(_ points: [(date: Date, value: Double)]) -> some View {
         if let metric = currentMetric,
            let baseline = metric.baseline,
            let tolerance = metric.tolerance {
@@ -151,10 +161,8 @@ struct MetricTrendView: View {
         .glassCard()
     }
 
-    private var chartCard: some View {
-        let sorted = points.sorted { $0.date < $1.date }
-
-        return VStack(alignment: .leading, spacing: 10) {
+    private func chartCard(_ sorted: [(date: Date, value: Double)]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Recent nights", systemImage: "chart.line.uptrend.xyaxis")
             Chart {
                 ForEach(sorted, id: \.date) { point in
