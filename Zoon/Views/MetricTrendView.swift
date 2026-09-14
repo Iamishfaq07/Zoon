@@ -202,7 +202,11 @@ struct MetricTrendView: View {
             }
             .frame(height: 140)
             .chartXSelection(value: $selectedDate)
-            .accessibilityElement(children: .contain)
+            // `.ignore`, not `.contain`: with the marks left focusable
+            // VoiceOver reads the chart as a list of bare numbers, one per
+            // night, after announcing the label. The summary below is the
+            // thing someone opened the chart to learn.
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(kind.label) over the last \(sorted.count) nights")
             .accessibilityValue(selectedPointDescription(in: sorted) ?? "")
         }

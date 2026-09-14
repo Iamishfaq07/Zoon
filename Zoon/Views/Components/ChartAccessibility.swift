@@ -24,6 +24,17 @@ extension View {
     /// - Parameters:
     ///   - label: what the chart is. A noun phrase, not "chart of...".
     ///   - summary: where the value is now and where it has been heading.
+    /// **`.ignore`, never `.contain`.** This is the distinction that matters
+    /// and the one six charts in this app had backwards.
+    ///
+    /// `.contain` builds a container element and leaves the children
+    /// focusable. On a chart the children are marks — unlabelled numbers —
+    /// so VoiceOver announces the label and then reads the series one bare
+    /// value at a time, which is worse than no chart at all: the reader has
+    /// to hold twenty numbers in their head to learn one thing.
+    ///
+    /// `.contain` is right for a strip of labelled, tappable nights, where
+    /// each child is individually meaningful. It is wrong for a line.
     func chartSummary(_ label: String, _ summary: String) -> some View {
         accessibilityElement(children: .ignore)
             .accessibilityLabel(label)

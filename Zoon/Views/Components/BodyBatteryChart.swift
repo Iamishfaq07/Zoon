@@ -103,7 +103,7 @@ struct BodyBatteryChart: View {
         }
         .frame(height: height)
         .chartXSelection(value: $selectedDate)
-        .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
         .accessibilityValue(selectedPointDescription ?? "")
     }
