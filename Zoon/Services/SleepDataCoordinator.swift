@@ -1154,6 +1154,9 @@ final class SleepDataCoordinator {
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).
         snapshot.recoveryConfidence = context.recovery.confidence.rawValue
+        // Same reason, same rule: the glance surfaces lead with Sleep
+        // Intelligence and need to know when not to state it.
+        snapshot.sleepIntelligenceConfidence = context.sleepIntelligence.confidence.rawValue
         // The radar's own state, not `isActive` collapsed to a reassurance.
         // `!isActive` is true of a clear fortnight, of night four, and of a
         // phone that records sleep but no physiology; only the first of those

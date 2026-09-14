@@ -117,6 +117,11 @@ struct ZoonWatchDial: View {
     let label: String
     let tint: Color
     let accessibilityDescription: String
+    /// Overrides the numeral in the centre. `nil` prints `value`; a caller
+    /// passes "—" when the score exists but is not one to state. The ring
+    /// still draws to `value`, because the shape is a rough indication and
+    /// the numeral is the claim.
+    var displayText: String? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
@@ -134,7 +139,7 @@ struct ZoonWatchDial: View {
                     .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 VStack(spacing: 0) {
-                    Text("\(value)")
+                    Text(displayText ?? "\(value)")
                         .font(.system(size: diameter * 0.25, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                     Text(label)
@@ -503,10 +508,13 @@ struct LastNightPage: View {
                 value: snapshot.flagshipScore,
                 label: "SLEEP",
                 tint: tint,
-                accessibilityDescription: "Sleep Intelligence, \(snapshot.flagshipScore), \(snapshot.flagshipBand)"
+                accessibilityDescription: snapshot.canStateFlagshipScore
+                    ? "Sleep Intelligence, \(snapshot.flagshipScore), \(snapshot.flagshipBand)"
+                    : "Sleep Intelligence, not enough data from last night to score.",
+                displayText: snapshot.canStateFlagshipScore ? nil : "—"
             )
 
-            Text(snapshot.flagshipBand)
+            Text(snapshot.canStateFlagshipScore ? snapshot.flagshipBand : "Limited data")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(.secondary)
 

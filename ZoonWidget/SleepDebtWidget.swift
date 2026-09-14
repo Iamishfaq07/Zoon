@@ -151,7 +151,7 @@ struct SleepDebtWidgetView: View {
         Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
             Image(systemName: "moon.zzz.fill")
         } currentValueLabel: {
-            Text("\(snapshot.flagshipScore)")
+            Text(snapshot.flagshipScoreText)
                 .font(.system(.body, design: .rounded).weight(.semibold))
         }
         .gaugeStyle(.accessoryCircular)
@@ -174,7 +174,7 @@ struct SleepDebtWidgetView: View {
             Text(snapshot.balanceLabel)
                 .font(.system(.title2, design: .rounded).weight(.bold))
                 .privacySensitive()
-            Text("\(lastNightLabel) \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.flagshipScore)")
+            Text("\(lastNightLabel) \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)) · \(snapshot.flagshipScoreText)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .privacySensitive()

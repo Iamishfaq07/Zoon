@@ -186,13 +186,20 @@ struct SleepIntelligenceComplicationView: View {
     private var percent: Int { entry.snapshot.flagshipScore }
     private var band: String { entry.snapshot.flagshipBand }
 
+    /// The same refusal `RecoveryComplicationView` already makes below.
+    /// `SleepIntelligenceScore` returns `.insufficient` for a night that
+    /// produced nothing but a sleep-minutes figure, and the phone's own hero
+    /// has said so beside this number for a while -- the faces were the
+    /// surface still stating it bare.
+    private var scoreText: String { entry.snapshot.flagshipScoreText }
+
     var body: some View {
         if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
         case .accessoryInline:
-            Text("Sleep \(percent)")
+            Text("Sleep \(scoreText)")
                 .privacySensitive()
 
         case .accessoryRectangular:
@@ -200,7 +207,7 @@ struct SleepIntelligenceComplicationView: View {
                 Label("Last Night", systemImage: "moonphase.waxing.crescent")
                     .font(Theme.text(13, weight: .semibold))
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("\(percent)")
+                    Text(scoreText)
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .monospacedDigit()
                     Text(entry.isPlaceholder ? "Sample" : band)
@@ -218,7 +225,7 @@ struct SleepIntelligenceComplicationView: View {
             Gauge(value: Double(percent), in: 0...100) {
                 Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
-                Text("\(percent)").monospacedDigit()
+                Text(scoreText).monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
@@ -458,7 +465,7 @@ struct SleepBankComplicationView: View {
             Gauge(value: Double(entry.snapshot.flagshipScore), in: 0...100) {
                 Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
-                Text("\(entry.snapshot.flagshipScore)").monospacedDigit()
+                Text(entry.snapshot.flagshipScoreText).monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()

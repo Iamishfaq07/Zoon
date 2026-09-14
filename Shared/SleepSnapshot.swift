@@ -107,6 +107,16 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// covered night states that as confidently as one off a month. The
     /// watch needs the second half of that pair to be able to decline.
     var recoveryConfidence: String = ""
+    /// `MetricConfidence.rawValue` for the Sleep Intelligence score.
+    ///
+    /// Empty for a payload written before this field existed. The phone's own
+    /// hero has printed "Low confidence · 40% data coverage" beside this
+    /// number for a while; the widgets, the watch and the complications
+    /// printed the same number bare. `SleepIntelligenceScore` can genuinely
+    /// return `.insufficient` -- a night that produced nothing but a
+    /// sleep-minutes figure -- so that was a score being stated on glass that
+    /// the phone was already declining to stand behind.
+    var sleepIntelligenceConfidence: String = ""
 
     /// A nap running on the phone right now, as of this snapshot.
     ///
@@ -272,8 +282,38 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
         return confidence > .insufficient
     }
 
+    /// Whether the Sleep Intelligence score in this payload is one to state.
+    ///
+    /// Same shape and same legacy rule as `canStateRecovery`: an empty
+    /// confidence means the payload predates the field, and those came from a
+    /// build that showed the number unconditionally. Hiding it retroactively
+    /// would read on the wrist as lost data rather than as new honesty.
+    var canStateSleepIntelligence: Bool {
+        guard hasSleepIntelligence else { return false }
+        guard let confidence = MetricConfidence(rawValue: sleepIntelligenceConfidence) else {
+            return true
+        }
+        return confidence > .insufficient
+    }
+
     var flagshipScore: Int {
         hasSleepIntelligence ? sleepIntelligencePercent : score
+    }
+
+    /// Whether `flagshipScore` is worth printing.
+    ///
+    /// When the payload carries no Sleep Intelligence, the flagship falls
+    /// back to the older `score`, which records no confidence of its own --
+    /// so there is nothing to withhold and behaviour is unchanged.
+    var canStateFlagshipScore: Bool {
+        hasSleepIntelligence ? canStateSleepIntelligence : true
+    }
+
+    /// `flagshipScore` as a glance surface should print it: the number, or a
+    /// dash when it is not one to state. Every widget and complication that
+    /// draws the score bare goes through this.
+    var flagshipScoreText: String {
+        canStateFlagshipScore ? "\(flagshipScore)" : "—"
     }
 
     /// The band belonging to `flagshipScore`, from the same payload. Never
@@ -378,6 +418,8 @@ extension SleepSnapshot {
             bodySignalsState = ""
         }
         recoveryConfidence = try container.decodeIfPresent(String.self, forKey: .recoveryConfidence) ?? ""
+        sleepIntelligenceConfidence = try container
+            .decodeIfPresent(String.self, forKey: .sleepIntelligenceConfidence) ?? ""
         isShiftWorkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isShiftWorkModeEnabled) ?? false
 
         // Tonight's plan and tomorrow's range. Missing here until now, which
