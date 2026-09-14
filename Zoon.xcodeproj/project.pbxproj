@@ -119,6 +119,7 @@
 		1947BD9640EB9DBB7AD6586D /* SourceCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE4A990528A240EACB4B9AB /* SourceCoverage.swift */; };
 		199F4C23DB7AB576EF9027C3 /* ZoonTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2313A4FDE3B0D1E1A6AEEC /* ZoonTimeline.swift */; };
 		19C9393F454DC7C29AD4209B /* CalibrationLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E08C516566B6695A46B2A9 /* CalibrationLedgerTests.swift */; };
+		1A1BDA8E6310D0EFD7964434 /* PhaseBoundaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */; };
 		1A7886363C8ADD44EA384FEF /* WearableSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC91DA7AA1B296DCFF7CD1E /* WearableSource.swift */; };
 		1ABC2B7CCA007C20B202ECFA /* MeasurementSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C8C8D52C275F7CA472BFF7 /* MeasurementSource.swift */; };
 		1ADB87B7BF70CBA632A3C3E3 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */; };
@@ -213,6 +214,7 @@
 		2FFF20E0F22093891AC50EE5 /* JournalCorrelator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F3143BC9E915F4D207693A /* JournalCorrelator.swift */; };
 		302917169C4AC623ABB64A57 /* SleepSourceArbitration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCC204477232E68E017061A /* SleepSourceArbitration.swift */; };
 		3055A7E100843FFC01A84460 /* fan.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 1A0585470E2FCD7DD8379563 /* fan.mp3 */; };
+		307C28B8C12E0EC4EC674746 /* PhaseBoundaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */; };
 		30C4E372E8A49C2879632006 /* GuidedExperiment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54305AA7DFBC8E20A175DAE7 /* GuidedExperiment.swift */; };
 		30D02782ED1C19CF13EB68F2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A642BBA44A200DA78DC8E341 /* Assets.xcassets */; };
 		30E5AF233E194415274098D9 /* BehaviorObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B71499926BBCC880385250 /* BehaviorObservation.swift */; };
@@ -257,6 +259,7 @@
 		3BD8788C4B056B0908519607 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6091C50583FCFF320FA7FCEC /* PrivacyInfo.xcprivacy */; };
 		3C02FD7198FF69917392008A /* CaffeineCutoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA6626DD8F329DC2CDC07427 /* CaffeineCutoff.swift */; };
 		3C47CC1CD3387EFA735C2E38 /* CycleRecoveryProvenanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD8E590A508113B7C7E45AE /* CycleRecoveryProvenanceTests.swift */; };
+		3C9A8187E74E5B6DA6574097 /* PhaseBoundaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */; };
 		3CB1A3CE7CD0DB21BFBBCE0D /* CircadianPhaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E407BFB2B97A928A2461870 /* CircadianPhaseTests.swift */; };
 		3CE8E0215165CD2B0633783B /* WorthNoticing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C4F794FC22711D31AE51FB3 /* WorthNoticing.swift */; };
 		3D19938F41400805F90D63FA /* NightIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D956F040253B0CA1FB34BE /* NightIdentityTests.swift */; };
@@ -369,6 +372,7 @@
 		5FB61CABFDDAD8B9CCC67C46 /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
 		5FD483E0FF8C627A8E1F8F44 /* BehaviorObservationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00AE87DBDA56AC4CCB5B66 /* BehaviorObservationStore.swift */; };
 		5FD7E940C881946CF2A5EF92 /* BodyClockCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B202E4810C0F1C50E34E2DC3 /* BodyClockCard.swift */; };
+		5FE36731FC84026A129405B4 /* PhaseBoundaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */; };
 		608C1D54B134BF6C62DF29B9 /* rainfall.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 570DA1C409196B9D0914EDAF /* rainfall.mp3 */; };
 		6098DC278D97605174B04846 /* NapActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A941681C0FF29010F444059 /* NapActivityAttributes.swift */; };
 		60AEE6F07D47E217A0BC343F /* SleepApneaEventSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87B28A8A75CC1E3786389CB3 /* SleepApneaEventSummary.swift */; };
@@ -800,6 +804,7 @@
 		D48781A246FF2B96459ED998 /* WidgetRelevance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD3C825D8958A9912B23C7F /* WidgetRelevance.swift */; };
 		D54AF07DE7CEE3CF700AE908 /* HealthPulseStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE48A5D44EF4E0599DDBA08C /* HealthPulseStrip.swift */; };
 		D56F49D56C050671633971EF /* PersonalSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73634D1D1625805E420C39B /* PersonalSetup.swift */; };
+		D58E1401390B8C95FAA132C6 /* PhaseBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351A93379712BC5A1CDBC006 /* PhaseBoundaryTests.swift */; };
 		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		D5D7BF8B181F62A6FA3C93CE /* SleepVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24D0E274A10CDD544D1B02C /* SleepVocabulary.swift */; };
 		D7743D7200174D8A290F0236 /* forest.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2E03AFA4718620CC22B5D2C0 /* forest.mp3 */; };
@@ -883,6 +888,7 @@
 		E7E7C0142F441A71C212CB3F /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		E7F4FE786866EA1680038DD2 /* ArchiveCipher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7FB7ED912EC5DA6CCB20F99 /* ArchiveCipher.swift */; };
 		E803BF5B87A1E69F54B045F4 /* AudioSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3A56B5A89CF6121E0FF4E9 /* AudioSessionCoordinator.swift */; };
+		E8672E7A89BBA601817EDD5A /* PhaseBoundaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */; };
 		E8743E49268A2EF60DD227EA /* WatchSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B93A614F4D6732EB3109C0 /* WatchSnapshotStore.swift */; };
 		E8CD5DE8F6C971086E35FD03 /* ScoreLightSnapshotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0278D14480A795D4342D056A /* ScoreLightSnapshotView.swift */; };
 		E8D4DAF25EB06021F18AD8C5 /* ZoonBaselineLane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 006E64082F1EF426B9BF8089 /* ZoonBaselineLane.swift */; };
@@ -1137,6 +1143,7 @@
 		32B703D845C762279417E217 /* WeeklyReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyReport.swift"; sourceTree = "<group>"; };
 		32DF84481F1211BF95927815 /* SleepDaySummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDaySummaryTests.swift"; sourceTree = "<group>"; };
 		330761C5EA614104E6172BEB /* IntegrationFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntegrationFlowTests.swift"; sourceTree = "<group>"; };
+		351A93379712BC5A1CDBC006 /* PhaseBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhaseBoundaryTests.swift"; sourceTree = "<group>"; };
 		359A6C66E7D3A1CF1406C6C6 /* DataPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataPrivacyView.swift"; sourceTree = "<group>"; };
 		35D25F2515856E1F2C18D447 /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchRootView.swift"; sourceTree = "<group>"; };
 		370C5BDEA4F3E5D7B868D1EE /* ClinicianReportRowsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClinicianReportRowsTests.swift"; sourceTree = "<group>"; };
@@ -1538,6 +1545,7 @@
 		FC3793DA0BC899092FF4BE4C /* BehaviorObservationRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorObservationRecord.swift"; sourceTree = "<group>"; };
 		FCA1729029D787AC916B77DF /* BehaviorObservationStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorObservationStoreTests.swift"; sourceTree = "<group>"; };
 		FCA6692328B0DFF25BBA22D4 /* SnapshotBodySignals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnapshotBodySignals.swift"; sourceTree = "<group>"; };
+		FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhaseBoundaryRefresh.swift"; sourceTree = "<group>"; };
 		FDF025B9FE132BD8106CA328 /* AchievementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AchievementTests.swift"; sourceTree = "<group>"; };
 		FE1407BF1441EF6FE38A66DA /* HealthRadarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadarTests.swift"; sourceTree = "<group>"; };
 		FEAD1473EE6E80B4F51FCDBF /* ZoonMetricPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonMetricPrimitives.swift"; sourceTree = "<group>"; };
@@ -1908,6 +1916,7 @@
 				61D956F040253B0CA1FB34BE,
 				4F2F230F51470A733C4F90BD,
 				08A3630C62C77D88D24D1330,
+				351A93379712BC5A1CDBC006,
 				CE191264FB836AC4CAD15978,
 				AC2598BE02E91A9C95109E77,
 				1B7019651EFEC9BBAB163A15,
@@ -2063,6 +2072,7 @@
 				4980E3BEBDBC7753D6697D62,
 				428FBEDA15967526E0AD1710,
 				F73634D1D1625805E420C39B,
+				FCE3A21F7F965D722577B136,
 				B66AB7D457143EE80D839E0D,
 				3DC68C5081CD20CB2DA2E6CC,
 				80C7D36A00BAC538D67BB759,
@@ -2512,6 +2522,7 @@
 				F68C515B483769C23ACBCC89,
 				24B648D32F108108552BE9AB,
 				AFB8A478E81F293CDF6A801F,
+				307C28B8C12E0EC4EC674746,
 				B862ACC47533B1C5DCECCD35,
 				C9E11F58E708C31FE69D679F,
 				8E67F11245834616379E0043,
@@ -2832,6 +2843,7 @@
 				DFBFFF969B5D420FF702E8A2,
 				487F3A6398D1487FC7E73463,
 				E0448A244BE49C61E87B2FE9,
+				E8672E7A89BBA601817EDD5A,
 				92193627A3C2793659E9E7CA,
 				9E72D81E5F880F86FDE330CD,
 				450004E2C257034AD386D80E,
@@ -2952,6 +2964,7 @@
 				FB30B37FCD53870A2B8E5230,
 				28C22ADA11500E6CD9DD0F22,
 				947DA50F518ECCE4A633FC57,
+				3C9A8187E74E5B6DA6574097,
 				E9F8AF30C226F9059477AFAB,
 				8B35F5EF125312CC8435A46E,
 				C51349E547F6305300554E59,
@@ -3087,6 +3100,7 @@
 				3D19938F41400805F90D63FA,
 				7BC71BAD5A461D772CCF20CD,
 				5FA0BDE136096552D75BA7D4,
+				D58E1401390B8C95FAA132C6,
 				8D97CC1A03164A983BD15302,
 				E46DAC3B1BE6879273091E86,
 				419AFF3F1A5D1DF58DA74469,
@@ -3197,6 +3211,7 @@
 				1CCC0AA9264A693436F06D44,
 				5CC6BA54098C0BF17AD7F6BA,
 				D56F49D56C050671633971EF,
+				5FE36731FC84026A129405B4,
 				3B4A13D047B8F6DFBB3CB412,
 				B6C879863E0654B26F78152F,
 				0C45B6AF6834BB9230792BFC,
@@ -3355,6 +3370,7 @@
 				006F7BB8DBF457147EEBAE36,
 				271DE062D46481958EDF063A,
 				0C6E5C510F861E9529B304E8,
+				1A1BDA8E6310D0EFD7964434,
 				7FDD4E38B9615C011B18F904,
 				DEB765085C487BBC96E3C657,
 				204B2FA01C5114BC26D83CBB,

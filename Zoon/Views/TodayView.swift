@@ -35,7 +35,15 @@ struct TodayView: View {
     @State private var setup = PersonalSetupStore.shared
 
     private var scoreLight: Bool { setup.value.scoreLight }
-    private var moment: ZoonAmbientBackground.Band { .current() }
+    /// The band Today is drawing for.
+    ///
+    /// Was a computed `.current()`, which is correct whenever the body runs
+    /// and never causes the body to run: leave the screen open at 16:59 and
+    /// at 17:01 it still shows the day hero. State plus
+    /// `refreshingOnPhaseBoundary` makes the change itself the invalidation,
+    /// from the same `Band` the background uses -- one set of boundaries for
+    /// the greeting, the hero, the cards and the gradient.
+    @State private var moment: ZoonAmbientBackground.Band = .current()
 
     var body: some View {
         NavigationStack {
@@ -52,6 +60,9 @@ struct TodayView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .zoonGlobalToolbar()
             .refreshable { await coordinator.refresh() }
+            // The hero, greeting and card set all key off `moment`. Without
+            // this the screen keeps drawing the band it opened in.
+            .refreshingOnPhaseBoundary($moment)
         }
     }
 
