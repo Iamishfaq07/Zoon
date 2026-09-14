@@ -238,13 +238,13 @@ GitHub Actions macOS CI (iOS Simulator) is the only verification channel
 available here. Every claim of "verified" in this document means a green run
 on it and nothing more.
 
-Last confirmed green: `f04c3d5` — build succeeded, and the sleep-session
-invariant tests that found the stage-overlap defect passed with no regression
-in the existing `SleepSessionBuilderTests`. The three `ScoreExplainabilityTests`
-failures on that run were the degenerate fixture described in §2, corrected in
-`ce47fcb`; **that correction was still building when this document was
-written and its result is not recorded here.** Anyone reading this should
-check the branch's latest run rather than take this line as current.
+Last confirmed green: run `34847415817` on `116eb09` — build succeeded and the
+full `ZoonTests` suite passed. That run covers everything in this document,
+including the stage-overlap fix (whose invariant tests pass with no regression
+in the existing `SleepSessionBuilderTests`) and the fixture correction for the
+`ScoreExplainabilityTests` described in §2.
+
+No UI test run is included: `ZoonUITests` is skipped in this workflow.
 
 ## 12. Screenshots
 
