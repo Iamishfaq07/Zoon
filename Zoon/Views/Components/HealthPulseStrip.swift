@@ -158,7 +158,7 @@ struct HealthPulseStrip: View {
                     }
                 }
                 .frame(height: 22)
-                pulseLabel("Breathing", value: breathingValueLabel)
+                pulseLabel("Breathing", value: breathingValueLabel(breathing))
             }
         }
         .buttonStyle(.plain)
