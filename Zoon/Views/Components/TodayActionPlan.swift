@@ -82,7 +82,7 @@ struct TodayActionPlan: View {
                     .frame(width: 30)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Your today's action plan")
+                    Text("Your plan for today")
                         .font(Theme.kicker)
                         .tracking(1.0)
                         .textCase(.uppercase)
@@ -110,7 +110,7 @@ struct TodayActionPlan: View {
                     .stroke(tint.opacity(0.45), lineWidth: 1)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Your today's action plan. \(headline) \(detail)")
+            .accessibilityLabel("Your plan for today. \(headline) \(detail)")
         }
     }
 }
