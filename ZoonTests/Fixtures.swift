@@ -51,6 +51,15 @@ enum Fixture {
         /// the need and the streak engine all measure against — so a test
         /// about goal-met behaviour needs to be able to set it.
         secondaryAsleepMinutes: Double = 0,
+        /// Bedtime hour in local time. `nil` keeps the default anchoring
+        /// (wake at 07:00, bedtime derived from `timeInBedMinutes`), which is
+        /// what every existing caller relies on. Supplied, the night is
+        /// anchored on bedtime instead and wake follows -- needed by anything
+        /// testing *when* someone slept rather than how long.
+        bedtimeHour: Int? = nil,
+        /// Minutes added to `bedtimeHour`, for drift cases. Negative is
+        /// earlier.
+        bedtimeMinuteOffset: Int = 0,
         staged: Bool = true,
         /// Overrides the default 18/22 split when a test needs a specific
         /// stage mix (demographic-prior scoring, for example).
@@ -68,8 +77,25 @@ enum Fixture {
     ) -> SleepNightFeatures {
         let calendar = Calendar.current
         let wake = calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
-        let wakeTime = calendar.date(bySettingHour: 7, minute: 0, second: 0, of: wake) ?? wake
-        let bedtime = wakeTime.addingTimeInterval(-timeInBedMinutes * 60)
+        let bedtime: Date
+        let wakeTime: Date
+        if let bedtimeHour {
+            // Anchored on bedtime. The hour is set on the day *before* the
+            // wake day whenever it falls in the evening, so a 23:00 bedtime
+            // belongs to the night that ends on `wake`, not the one starting
+            // that evening.
+            let anchorDay = bedtimeHour >= 12
+                ? calendar.date(byAdding: .day, value: -1, to: wake) ?? wake
+                : wake
+            let anchored = calendar.date(
+                bySettingHour: bedtimeHour, minute: 0, second: 0, of: anchorDay
+            ) ?? wake
+            bedtime = anchored.addingTimeInterval(Double(bedtimeMinuteOffset) * 60)
+            wakeTime = bedtime.addingTimeInterval(timeInBedMinutes * 60)
+        } else {
+            wakeTime = calendar.date(bySettingHour: 7, minute: 0, second: 0, of: wake) ?? wake
+            bedtime = wakeTime.addingTimeInterval(-timeInBedMinutes * 60)
+        }
 
         return SleepNightFeatures(
             date: calendar.startOfDay(for: wakeTime),
