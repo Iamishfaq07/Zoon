@@ -18,6 +18,9 @@ OS version, Watch model, and pass/fail evidence for every run.
 - [ ] Confirm late-arriving HRV updates the correct night without duplicating it.
 - [ ] Cross daylight-saving boundaries and east/west timezone travel.
 - [ ] Verify naps and secondary sleep are counted once in the correct 24-hour day.
+- [ ] On a daylight-saving day specifically, check the planned bedtime in Today and the
+      nap coach's "time until bed": both are wall-clock times and must not shift by an
+      hour or land on the following day.
 
 ## Core interactions
 
@@ -49,6 +52,15 @@ OS version, Watch model, and pass/fail evidence for every run.
 - [ ] Navigate the adaptive Now, Tonight, and Log pages on the smallest supported Watch.
 - [ ] Verify the responsive dial on 40/41/42/44/45/46 mm and Ultra 49 mm cases, including accessibility text and Always-On.
 - [ ] Quick-log caffeine, alcohol, nap, and feeling; verify phone receipt and deduplication.
+- [ ] Quick-log with the phone out of range: the row must read Queued, not Saved, and must
+      reach Saved once the phone reconnects. WatchConnectivity cannot be exercised in the
+      simulator or in CI, so the acknowledgement round trip is logic-tested only and this
+      is the first real test of it.
+- [ ] Quick-log the same action twice and confirm the second is acknowledged as saved
+      rather than left pending: the phone deduplicates it, which is a success from the
+      wrist's point of view.
+- [ ] Turn the phone off, quick-log, and confirm the row reports Not saved rather than
+      spinning indefinitely.
 - [ ] Start/end a nap on each device, including delayed WatchConnectivity delivery.
 - [ ] Reboot phone and Watch and verify stale/fresh snapshot labels.
 - [ ] Test every supported complication family with fresh, stale, and missing snapshots.
@@ -60,7 +72,11 @@ OS version, Watch model, and pass/fail evidence for every run.
 - [ ] Complete VoiceOver navigation on onboarding, Today, Sleep, Trends, Journal, and More.
 - [ ] Verify largest Dynamic Type, Bold Text, Increase Contrast, and Reduce Transparency.
 - [ ] Verify Reduce Motion removes travel/scale without losing selection feedback.
-- [ ] Confirm interactive targets remain at least 44 by 44 points.
+- [ ] Confirm interactive targets remain at least 44 by 44 points. The metric info
+      buttons are the known risk: a 13-point glyph with no explicit frame, repeated
+      beside most metrics in the app. Their labels are fixed; the hit area needs a
+      rendered check, because enlarging it blind would change the height of the
+      compact rows they sit in.
 - [ ] Profile refresh query count/duration with 30 nights and multiple years of history.
 - [ ] Profile scrolling and animation on the oldest supported iPhone and Watch.
 - [ ] Measure memory for hypnogram, Sleep Replay, Patterns, Sensor Truth, Twin, and reports.
@@ -77,3 +93,32 @@ OS version, Watch model, and pass/fail evidence for every run.
 - [ ] Regenerate iPhone screenshots from the final commit; capture Watch surfaces separately.
 - [ ] Remove placeholders, debug text, mock labels, and unavailable feature claims.
 - [ ] Upload the exact tested build and retain this completed checklist with release evidence.
+
+## Not provable from this environment
+
+Recorded rather than left implicit. Every item here needs a Mac with Xcode, a
+paired device, or a product decision — none can be closed by simulator CI, and
+none should be reported as done on the strength of a green build.
+
+- **2026 HealthKit and watchOS SDK review.** Whether newer APIs (workout zones
+  among them) would replace anything Zoon derives itself. This needs the
+  current SDK headers and documentation open on a Mac. Nothing has been guessed
+  at or referenced against an API that has not been read.
+- **Device validation of everything above.** The checklist is the record; a
+  green CI run is not evidence for any line in it.
+
+## Decisions still open
+
+Two parts of the hardening pass stop at a product question rather than a
+technical one. They are written down so they are not settled silently by
+whichever implementation happens to land first.
+
+- **Readiness during the day.** Morning Recovery grades the night and does not
+  move after waking, which is now stated in the name and in the copy. If a
+  live daytime readiness figure is wanted, it has to be decided whether it may
+  *recover* during the day after rest or only decline — those are different
+  metrics with different inputs, and the choice is not derivable from the data.
+- **Daytime physiology baselines.** A time-of-day baseline needs a stated
+  number of quiet days before it is trustworthy, and a stated exclusion window
+  after a workout. Both are judgement calls about how cautious the app should
+  be, not measurements.

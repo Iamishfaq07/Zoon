@@ -1,10 +1,19 @@
 import Foundation
 
-/// How ready the body is today, 0–100%.
+/// How recovered the body was on waking, 0–100%.
 ///
-/// The headline number, in the tradition of Whoop's Recovery and Garmin's
-/// Training Readiness. It answers one question: *given last night and the state
-/// of your autonomic nervous system, how hard can you go today?*
+/// The headline number. It answers one question: *given last night and the
+/// autonomic state you woke in, how hard can you go today?*
+///
+/// ## Morning Recovery, not current readiness
+///
+/// Every input is measured during or at the end of sleep. Nothing here is
+/// recomputed as the day goes on, so the score does not fall as someone
+/// tires or rise after a nap — it is a verdict on the night, carried through
+/// the day unchanged. `RecoveryPresentationState.longName` is the name the
+/// UI uses for exactly this reason. A live, during-the-day readiness figure
+/// would be a different metric built from different samples; this is not it,
+/// and must not be labelled as though it were.
 ///
 /// ## What it's built from
 ///
@@ -22,11 +31,13 @@ import Foundation
 ///
 /// ## What it is not
 ///
-/// This is not Whoop's algorithm, or Garmin's, or anyone else's — those are
-/// proprietary and trained on data we don't have. It's a transparent
-/// reimplementation of the same *idea*, with the weights written down so you can
-/// argue with them. Every component is exposed in `components` so the UI can
-/// show its working rather than handing down a number from nowhere.
+/// Not any other product's recovery score, and not comparable to one. Those
+/// are proprietary, trained on data we do not have, and built from different
+/// inputs; a number here and a number there sharing a 0–100 range does not
+/// make them the same measurement. This is Zoon's own model, with its weights
+/// written down above so you can argue with them, and every component exposed
+/// in `components` so the UI can show its working rather than handing down a
+/// number from nowhere.
 struct RecoveryScore: Codable, Hashable, Sendable {
 
     let percent: Int

@@ -833,11 +833,38 @@ struct ZoonAmbientBackground: View {
             default: .night
             }
         }
+
+        /// The hours `current(now:)` switches on. Declared once so the
+        /// boundary schedule below cannot drift from the band it schedules
+        /// for -- two lists of the same four numbers is how a screen ends up
+        /// refreshing at 17:00 into a band that changed at 18:00.
+        static let boundaryHours = [5, 9, 17, 21]
+
+        /// When this band next changes.
+        ///
+        /// Built with calendar arithmetic rather than by adding seconds: a
+        /// local day is 23 or 25 hours around a DST transition, and "tomorrow
+        /// at 05:00" is a wall-clock claim, not a duration. `nil` only if the
+        /// calendar cannot form the date at all.
+        static func nextBoundary(after now: Date = .now, calendar: Calendar = .current) -> Date? {
+            for hour in boundaryHours {
+                if let candidate = calendar.date(
+                    bySettingHour: hour, minute: 0, second: 0, of: now
+                ), candidate > now {
+                    return candidate
+                }
+            }
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) else { return nil }
+            return calendar.date(bySettingHour: boundaryHours[0], minute: 0, second: 0, of: tomorrow)
+        }
     }
 
     var body: some View {
         ZoonNightGround()
             .onAppear { band = .current() }
+            // Reading once on appear left the gradient stale for anyone who
+            // kept a screen open across 09:00, 17:00 or 21:00.
+            .refreshingOnPhaseBoundary($band)
             // Night ground is the default; morning/day/evening overlay a
             // second static gradient so Light/Dark still redraws. The band
             // is identity only — it does not reintroduce the dynamic-colour

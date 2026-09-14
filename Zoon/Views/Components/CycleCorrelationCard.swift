@@ -28,6 +28,11 @@ struct CycleCorrelationCard: View {
                             value: recovery,
                             tint: Theme.recoveryColor(recovery)
                         )
+                    } else {
+                        Text("Recovery not scored on enough of these nights")
+                            .font(Theme.evidence)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if let sleep = row.avgSleepPerformance {
@@ -36,7 +41,14 @@ struct CycleCorrelationCard: View {
                         barRow(label: "Sleep", value: sleep, tint: Theme.Metric.sleep)
                     }
                 }
-                Text("\(row.nightCount) nights")
+                // Both counts, because they can differ: the sleep mean uses
+                // every night in the phase, the recovery mean only the
+                // nights that actually carry a score.
+                Text(
+                    row.recoveryNightCount == row.nightCount
+                        ? "\(row.nightCount) nights"
+                        : "\(row.nightCount) nights · recovery on \(row.recoveryNightCount)"
+                )
                     .font(.caption2)
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.leading, 78)
@@ -75,10 +87,10 @@ struct CycleCorrelationCard: View {
 
 #Preview("Cycle Correlation") {
     CycleCorrelationCard(correlations: [
-        CyclePhaseCorrelation(phase: .periodDays, nightCount: 4, avgRecoveryPercent: 52, avgSleepPerformance: 78),
-        CyclePhaseCorrelation(phase: .earlier, nightCount: 8, avgRecoveryPercent: 71, avgSleepPerformance: 88),
-        CyclePhaseCorrelation(phase: .middle, nightCount: 3, avgRecoveryPercent: 68, avgSleepPerformance: 84),
-        CyclePhaseCorrelation(phase: .later, nightCount: 10, avgRecoveryPercent: 58, avgSleepPerformance: 75)
+        CyclePhaseCorrelation(phase: .periodDays, nightCount: 4, avgRecoveryPercent: 52, avgSleepPerformance: 78, recoveryNightCount: 4),
+        CyclePhaseCorrelation(phase: .earlier, nightCount: 8, avgRecoveryPercent: 71, avgSleepPerformance: 88, recoveryNightCount: 8),
+        CyclePhaseCorrelation(phase: .middle, nightCount: 3, avgRecoveryPercent: 68, avgSleepPerformance: 84, recoveryNightCount: 3),
+        CyclePhaseCorrelation(phase: .later, nightCount: 10, avgRecoveryPercent: 58, avgSleepPerformance: 75, recoveryNightCount: 10)
     ])
     .padding()
     .nightBackground()

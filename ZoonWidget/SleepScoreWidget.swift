@@ -65,7 +65,7 @@ struct SleepScoreWidgetView: View {
     private var large: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(snapshot.flagshipScore)")
+                Text(snapshot.flagshipScoreText)
                     .font(.system(size: 52, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(scoreColor)
@@ -92,9 +92,9 @@ struct SleepScoreWidgetView: View {
                 // them or the reading could not be made -- the same gate the
                 // watch uses, so a missing score reads as missing, not as 0.
                 stat("Recovery", snapshot.canStateRecovery ? "\(snapshot.recoveryPercent)" : "—")
-                stat("Energy", snapshot.hasRecovery ? "\(snapshot.bodyBattery)" : "—")
+                stat("Energy", snapshot.canStateEnergy ? "\(snapshot.bodyBattery)" : "—")
                 if !snapshot.sleepIntelligenceBand.isEmpty {
-                    stat("Sleep Intel", "\(snapshot.sleepIntelligencePercent)")
+                    stat("Sleep Intel", snapshot.canStateSleepIntelligence ? "\(snapshot.sleepIntelligencePercent)" : "—")
                 }
             }
 
@@ -141,7 +141,7 @@ struct SleepScoreWidgetView: View {
 
             Spacer(minLength: 0)
 
-            Text("\(snapshot.flagshipScore)")
+            Text(snapshot.flagshipScoreText)
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(scoreColor)
@@ -163,7 +163,7 @@ struct SleepScoreWidgetView: View {
     private var medium: some View {
         HStack(spacing: 16) {
             VStack(spacing: 2) {
-                Text("\(snapshot.flagshipScore)")
+                Text(snapshot.flagshipScoreText)
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(scoreColor)
@@ -185,7 +185,7 @@ struct SleepScoreWidgetView: View {
                     // an empty band -- omit the stat rather than show a
                     // misleading "0".
                     if !snapshot.sleepIntelligenceBand.isEmpty {
-                        stat("Sleep Intel", "\(snapshot.sleepIntelligencePercent)")
+                        stat("Sleep Intel", snapshot.canStateSleepIntelligence ? "\(snapshot.sleepIntelligencePercent)" : "—")
                     }
                 }
 
@@ -222,7 +222,7 @@ struct SleepScoreWidgetView: View {
             // opts these two lines into the system's own Lock Screen
             // privacy redaction (Settings > Notifications > Show Previews),
             // the same mechanism first-party widgets use.
-            Text("\(snapshot.flagshipScore) · \(snapshot.flagshipBand)")
+            Text("\(snapshot.flagshipScoreText) · \(snapshot.flagshipBand)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .privacySensitive()
             Text(snapshot.insightSummary)
@@ -238,7 +238,7 @@ struct SleepScoreWidgetView: View {
         Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
             Image(systemName: "moonphase.waxing.crescent")
         } currentValueLabel: {
-            Text("\(snapshot.flagshipScore)")
+            Text(snapshot.flagshipScoreText)
                 .font(.system(.body, design: .rounded).weight(.semibold))
         }
         .gaugeStyle(.accessoryCircular)
@@ -247,7 +247,7 @@ struct SleepScoreWidgetView: View {
 
     private var inline: some View {
         Label(
-            "\(snapshot.flagshipScore) · \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))",
+            "\(snapshot.flagshipScoreText) · \(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))",
             systemImage: "moonphase.waxing.crescent"
         )
         .privacySensitive()

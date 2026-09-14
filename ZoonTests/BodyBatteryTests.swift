@@ -115,7 +115,7 @@ final class BodyBatteryTests: XCTestCase {
 
     func testPersonalBaselineIsMarkedPersonalized() {
         let wake = Date.now
-        let battery = BodyBattery.build(
+        var battery = BodyBattery.build(
             startLevel: 64,
             wakeTime: wake,
             hourlyHeartRate: [],
@@ -123,8 +123,32 @@ final class BodyBatteryTests: XCTestCase {
             maxHeartRate: 180,
             restingBaselineSource: .personalBaseline
         )
+        // `build` cannot know what charged the battery -- `DayContextBuilder`
+        // assigns provenance from Recovery afterwards -- so it has to be said
+        // here too, or the fixture is a personal drawdown hanging off a
+        // charge that came from nowhere.
+        battery.provenance = .fullPhysiologicalRecovery
+
         XCTAssertFalse(battery.isEstimate)
         XCTAssertNil(battery.confidenceNote)
+    }
+
+    /// The drawdown being personal does not excuse the charge. Energy that
+    /// started from sleep alone says so even when the resting baseline is the
+    /// user's own.
+    func testAPersonalBaselineDoesNotSilenceAnUngroundedCharge() throws {
+        var battery = BodyBattery.build(
+            startLevel: 64,
+            wakeTime: .now,
+            hourlyHeartRate: [],
+            restingHeartRate: 54,
+            maxHeartRate: 180,
+            restingBaselineSource: .personalBaseline
+        )
+        battery.provenance = .sleepDerivedEstimate
+
+        let note = try XCTUnwrap(battery.confidenceNote)
+        XCTAssertTrue(note.lowercased().contains("sleep alone"))
     }
 
     // MARK: - band / guidance / spentToday

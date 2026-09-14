@@ -180,7 +180,11 @@ final class SleepSnapshotSerializationTests: XCTestCase {
         XCTAssertEqual(decoded.tonightTargetLabel, "")
         XCTAssertEqual(decoded.headlineFindingText, "")
         XCTAssertEqual(decoded.badgeSymbol, "hexagon.fill")
-        XCTAssertEqual(decoded.bodySignalsLabel, "Nothing unusual")
+        // Was "Nothing unusual" -- the second test pinning the fabricated
+        // default in place. A payload from before the field existed carries
+        // no body-signal reading and must not assert one.
+        XCTAssertEqual(decoded.bodySignalsLabel, "")
+        XCTAssertEqual(decoded.bodySignalsState, "")
         XCTAssertEqual(decoded.recoveryConfidence, "")
         // No nap is the same nil as a snapshot written before the fields
         // existed, and that is correct: both mean "no nap to show".

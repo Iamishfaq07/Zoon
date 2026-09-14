@@ -96,6 +96,11 @@ struct CyclePhaseCorrelation: Identifiable, Sendable {
     let nightCount: Int
     let avgRecoveryPercent: Double?
     let avgSleepPerformance: Double?
+    /// How many of `nightCount` actually carried a Recovery score. Reported
+    /// because the two averages in this struct can rest on different numbers
+    /// of observations, and a mean over four nights should not be presented
+    /// like a mean over twenty.
+    let recoveryNightCount: Int
 
     var id: String { phase.rawValue }
 
@@ -103,8 +108,14 @@ struct CyclePhaseCorrelation: Identifiable, Sendable {
     /// performance within each. Phases with fewer than three nights are
     /// dropped — same reasoning as everywhere else in the app that a
     /// two-night average isn't a pattern yet.
+    /// - Parameter nights: `recoveryPercent` is optional and **must** stay
+    ///   optional. The call site previously substituted 50 for a night with
+    ///   no stored Recovery, which is a fabricated observation in the middle
+    ///   of a user's own correlation: it drags every phase mean toward the
+    ///   midpoint and makes a phase with two real scores look as well
+    ///   evidenced as one with twenty. Missing is not 50.
     static func compute(
-        nights: [(date: Date, recoveryPercent: Int, sleepPerformance: Double)],
+        nights: [(date: Date, recoveryPercent: Int?, sleepPerformance: Double)],
         periodStarts: [Date],
         calendar: Calendar = .current
     ) -> [CyclePhaseCorrelation] {
@@ -112,7 +123,7 @@ struct CyclePhaseCorrelation: Identifiable, Sendable {
             starts: periodStarts, calendar: calendar
         ) else { return [] }
 
-        var byPhase: [CyclePhase: [(Int, Double)]] = [:]
+        var byPhase: [CyclePhase: [(Int?, Double)]] = [:]
         for night in nights {
             guard let day = CycleContext.compute(date: night.date, starts: periodStarts, calendar: calendar).cycleDay
             else { continue }
@@ -124,11 +135,21 @@ struct CyclePhaseCorrelation: Identifiable, Sendable {
 
         return CyclePhase.allCases.compactMap { phase in
             guard let values = byPhase[phase], values.count >= 3 else { return nil }
-            let recovery = values.map { Double($0.0) }.reduce(0, +) / Double(values.count)
+
+            // Recovery is averaged over the nights that have one, and is
+            // withheld entirely below the same three-observation floor the
+            // phase itself has to clear. A phase can therefore report a sleep
+            // mean and no recovery mean, which is the honest outcome when the
+            // scores were never computed for those nights.
+            let recoveries = values.compactMap(\.0)
+            let recovery = recoveries.count >= 3
+                ? Double(recoveries.reduce(0, +)) / Double(recoveries.count)
+                : nil
             let sleep = values.map(\.1).reduce(0, +) / Double(values.count)
             return CyclePhaseCorrelation(
                 phase: phase, nightCount: values.count,
-                avgRecoveryPercent: recovery, avgSleepPerformance: sleep
+                avgRecoveryPercent: recovery, avgSleepPerformance: sleep,
+                recoveryNightCount: recoveries.count
             )
         }
     }

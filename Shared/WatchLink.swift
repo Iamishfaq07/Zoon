@@ -63,12 +63,26 @@ final class WatchLink: NSObject {
     /// watch's session has activated (cold launch straight into a Log
     /// button) is held here and flushed from the activation callback rather
     /// than dropped.
-    private var pendingQuickActions: [WatchQuickAction] = []
+    /// Envelopes, not actions: the envelope carries the identifier the phone
+    /// echoes back, so a log held across activation is still the same log
+    /// when it finally goes out.
+    private var pendingQuickActions: [WatchActionEnvelope] = []
 
     /// Key for a watch quick action in a `transferUserInfo` payload -- see
     /// `sendQuickAction(_:)` below for why this is a different transport from
     /// the snapshot's `updateApplicationContext`.
-    private static let quickActionKey = "quickAction"
+    private nonisolated static let quickActionKey = "quickAction"
+    /// Key for the phone's reply to a quick action, phone -> watch. Same
+    /// transport, opposite direction: an acknowledgement matters individually
+    /// and must not be overwritten by the next one.
+    private nonisolated static let acknowledgementKey = "quickActionAck"
+
+    /// Watch side: how far each wrist-logged action has actually got.
+    ///
+    /// Lives on the link rather than in a view because the round trip
+    /// outlives the sheet that started it -- a log tapped in a lift can be
+    /// acknowledged minutes later, with the Quick Log screen long dismissed.
+    let logSync = WatchLogSyncTracker()
 
     /// Phone side only: set by whoever owns the journal/nap stores, to apply
     /// an action the watch sent. `WatchLink` itself has no business touching
@@ -153,20 +167,61 @@ final class WatchLink: NSObject {
     /// A logged caffeine tap is the opposite -- every one of them matters, and
     /// two taps a minute apart must arrive as two deliveries, not collapse
     /// into whichever was still queued when the phone reconnects.
-    func sendQuickAction(_ action: WatchQuickAction) {
+    /// Returns the envelope identifier so a caller can follow this one log
+    /// through `logSync` -- the watch UI shows "Queued" until the phone says
+    /// otherwise, rather than claiming the write happened.
+    @discardableResult
+    func sendQuickAction(_ action: WatchQuickAction) -> UUID {
+        let envelope = WatchActionEnvelope(action: action, snapshotDate: snapshot?.date)
+        transfer(envelope)
+        return envelope.id
+    }
+
+    private func transfer(_ envelope: WatchActionEnvelope) {
         #if canImport(WatchConnectivity)
-        guard WCSession.isSupported() else { return }
+        guard WCSession.isSupported() else {
+            logSync.record(envelope.id, .failed(reason: "This device can't reach your phone."))
+            return
+        }
         let session = WCSession.default
         guard session.activationState == .activated else {
-            pendingQuickActions.append(action)
+            pendingQuickActions.append(envelope)
+            logSync.record(envelope.id, .queued)
             return
         }
 
         do {
-            let data = try JSONEncoder().encode(WatchActionEnvelope(action: action, snapshotDate: snapshot?.date))
+            let data = try JSONEncoder().encode(envelope)
             session.transferUserInfo([Self.quickActionKey: data])
+            // Queued is the honest resting state: `transferUserInfo` returning
+            // means WatchConnectivity accepted the payload, nothing more.
+            logSync.record(envelope.id, .queued)
         } catch {
+            logSync.record(envelope.id, .failed(reason: "This log couldn't be encoded."))
             logger.error("Could not send quick action: \(error.localizedDescription, privacy: .public)")
+        }
+        #else
+        logSync.record(envelope.id, .failed(reason: "This device can't reach your phone."))
+        #endif
+    }
+
+    /// Phone side: tell the watch what became of one envelope.
+    ///
+    /// Sent for rejections too. A watch left showing "Queued" forever is the
+    /// same lie as one showing "Saved" -- the wearer needs to know the tap
+    /// did not land so they can log it again from the phone.
+    private func acknowledge(_ id: UUID, accepted: Bool, reason: String? = nil) {
+        #if canImport(WatchConnectivity)
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return }
+        do {
+            let data = try JSONEncoder().encode(
+                WatchActionAcknowledgement(id: id, accepted: accepted, reason: reason)
+            )
+            session.transferUserInfo([Self.acknowledgementKey: data])
+        } catch {
+            logger.error("Could not acknowledge quick action: \(error.localizedDescription, privacy: .public)")
         }
         #endif
     }
@@ -220,7 +275,14 @@ extension WatchLink: WCSessionDelegate {
                 }
                 let queued = pendingQuickActions
                 pendingQuickActions = []
-                for action in queued { sendQuickAction(action) }
+                for envelope in queued { transfer(envelope) }
+            } else {
+                // Nothing in flight can ever be confirmed now. Leaving those
+                // rows spinning would be worse than saying so.
+                pendingQuickActions = []
+                logSync.failAllPending(
+                    reason: error?.localizedDescription ?? "Your phone isn't connected."
+                )
             }
         }
     }
@@ -243,18 +305,63 @@ extension WatchLink: WCSessionDelegate {
         didReceiveUserInfo userInfo: [String: Any]
     ) {
         Task { @MainActor in
+            if let data = userInfo[Self.acknowledgementKey] as? Data {
+                applyAcknowledgement(data)
+                return
+            }
             guard let data = userInfo[Self.quickActionKey] as? Data else { return }
             do {
                 // Untimestamped legacy packets cannot safely be assigned to a night.
                 let event = try JSONDecoder().decode(WatchActionEnvelope.self, from: data)
+                guard let onQuickAction else { return }
                 let receipts = WatchActionReceiptStore(defaults: .standard)
-                guard let onQuickAction, receipts.accepts(event) else { return }
+                // Already applied: the write happened, this is a redelivery.
+                // "We have it" is a success from the wrist's point of view.
+                if receipts.hasRecorded(event) {
+                    acknowledge(event.id, accepted: true)
+                    return
+                }
+                guard receipts.accepts(event) else {
+                    acknowledge(event.id, accepted: false, reason: "Your phone couldn't file this log.")
+                    return
+                }
                 onQuickAction(event)
                 receipts.record(event)
+                acknowledge(event.id, accepted: true)
             } catch {
                 logger.error("Could not decode quick action: \(error.localizedDescription, privacy: .public)")
             }
         }
+    }
+
+    /// Watch side: a transfer left the device (or failed to).
+    ///
+    /// Delivery is not persistence, so a clean finish moves the row to
+    /// `.sending` -- handed over, still waiting on the phone's word -- and
+    /// never to `.saved`.
+    nonisolated func session(
+        _ session: WCSession,
+        didFinish userInfoTransfer: WCSessionUserInfoTransfer,
+        error: Error?
+    ) {
+        guard let data = userInfoTransfer.userInfo[Self.quickActionKey] as? Data,
+              let id = try? JSONDecoder().decode(WatchActionEnvelope.self, from: data).id
+        else { return }
+        Task { @MainActor in
+            if let error {
+                logSync.record(id, .failed(reason: error.localizedDescription))
+            } else if logSync.state(for: id) == .queued {
+                logSync.record(id, .sending)
+            }
+        }
+    }
+
+    private func applyAcknowledgement(_ data: Data) {
+        guard let ack = try? JSONDecoder().decode(WatchActionAcknowledgement.self, from: data) else {
+            logger.error("Could not decode quick action acknowledgement")
+            return
+        }
+        logSync.record(ack.id, ack.state)
     }
 
     // Required on iOS only, and both are no-ops here: the session is

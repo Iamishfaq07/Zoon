@@ -267,6 +267,10 @@ struct CoachChatView: View {
                     .foregroundStyle(input.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.inkSecondary : Theme.Metric.sleep)
             }
             .disabled(input.trimmingCharacters(in: .whitespaces).isEmpty || chat.isResponding)
+            // Without this VoiceOver reads the SF Symbol's name -- "arrow up
+            // circle fill" -- which describes the glyph rather than what
+            // pressing it does.
+            .accessibilityLabel("Send")
         }
         .padding(.horizontal)
         .padding(.vertical, 10)

@@ -33,7 +33,19 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// cannot turn the numeric default above into a real-looking score of 0.
     var hasRecovery: Bool = false
     var bodyBattery: Int = 0
+    /// Presence signal for `bodyBattery`, on the same principle as
+    /// `hasRecovery`.
+    ///
+    /// A snapshot written before Energy existed decoded `bodyBattery` to 0,
+    /// and every consumer drew "Energy 0" — a believable, alarming reading
+    /// for a metric that was simply never in the payload. Missing is not
+    /// zero.
+    var hasEnergy: Bool = false
     var strain: Double = 0
+    /// Presence signal for `strain`. Same failure as Energy: a legacy
+    /// snapshot rendered "Load 0.0", which reads as a rest day rather than
+    /// as an absent field.
+    var hasLoad: Bool = false
     var sleepPerformance: Double = 0
 
     /// Added alongside the Sleep Intelligence redesign. Defaulted to 0/"" so a
@@ -76,7 +88,15 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// is: an older snapshot on disk still decodes, and the Watch app
     /// treats the default the same as a genuinely clear reading rather than
     /// failing to render.
-    var bodySignalsLabel: String = "Nothing unusual"
+    /// Raw value of `HealthRadar.State`'s short form — "Building", "No data",
+    /// "Typical", "Watch" or "Notable" — written by the phone.
+    ///
+    /// Empty for a legacy snapshot, which is the honest reading: a payload
+    /// from before this existed cannot tell us the body signals were fine.
+    /// The previous default was the string "Nothing unusual", so every old
+    /// snapshot actively asserted that they were.
+    var bodySignalsState: String = ""
+    var bodySignalsLabel: String = ""
 
     /// `MetricConfidence.rawValue` for the recovery score, or "" for a
     /// snapshot written before this field existed.
@@ -87,6 +107,25 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// covered night states that as confidently as one off a month. The
     /// watch needs the second half of that pair to be able to decline.
     var recoveryConfidence: String = ""
+    /// `MetricConfidence.rawValue` for the Sleep Intelligence score.
+    ///
+    /// Empty for a payload written before this field existed. The phone's own
+    /// hero has printed "Low confidence · 40% data coverage" beside this
+    /// number for a while; the widgets, the watch and the complications
+    /// printed the same number bare. `SleepIntelligenceScore` can genuinely
+    /// return `.insufficient` -- a night that produced nothing but a
+    /// sleep-minutes figure -- so that was a score being stated on glass that
+    /// the phone was already declining to stand behind.
+    var sleepIntelligenceConfidence: String = ""
+    /// `MetricConfidence.rawValue` for Energy.
+    ///
+    /// `hasEnergy` answers "is there a number", which is not the same
+    /// question. Energy inherits Recovery's verdict through
+    /// `BodyBattery.provenance`, so `.insufficient` is reachable with a
+    /// perfectly present number behind it -- and the glance surfaces were
+    /// showing that number while the phone's own card carried a caveat under
+    /// it.
+    var energyConfidence: String = ""
 
     /// A nap running on the phone right now, as of this snapshot.
     ///
@@ -252,8 +291,46 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
         return confidence > .insufficient
     }
 
+    /// Whether the Sleep Intelligence score in this payload is one to state.
+    ///
+    /// Same shape and same legacy rule as `canStateRecovery`: an empty
+    /// confidence means the payload predates the field, and those came from a
+    /// build that showed the number unconditionally. Hiding it retroactively
+    /// would read on the wrist as lost data rather than as new honesty.
+    var canStateSleepIntelligence: Bool {
+        guard hasSleepIntelligence else { return false }
+        guard let confidence = MetricConfidence(rawValue: sleepIntelligenceConfidence) else {
+            return true
+        }
+        return confidence > .insufficient
+    }
+
+    /// Whether the Energy figure in this payload is one to state. Same legacy
+    /// rule as `canStateRecovery`: unknown confidence shows the number.
+    var canStateEnergy: Bool {
+        guard hasEnergy else { return false }
+        guard let confidence = MetricConfidence(rawValue: energyConfidence) else { return true }
+        return confidence > .insufficient
+    }
+
     var flagshipScore: Int {
         hasSleepIntelligence ? sleepIntelligencePercent : score
+    }
+
+    /// Whether `flagshipScore` is worth printing.
+    ///
+    /// When the payload carries no Sleep Intelligence, the flagship falls
+    /// back to the older `score`, which records no confidence of its own --
+    /// so there is nothing to withhold and behaviour is unchanged.
+    var canStateFlagshipScore: Bool {
+        hasSleepIntelligence ? canStateSleepIntelligence : true
+    }
+
+    /// `flagshipScore` as a glance surface should print it: the number, or a
+    /// dash when it is not one to state. Every widget and complication that
+    /// draws the score bare goes through this.
+    var flagshipScoreText: String {
+        canStateFlagshipScore ? "\(flagshipScore)" : "—"
     }
 
     /// The band belonging to `flagshipScore`, from the same payload. Never
@@ -323,7 +400,15 @@ extension SleepSnapshot {
         hasRecovery = try container.decodeIfPresent(Bool.self, forKey: .hasRecovery)
             ?? container.contains(.recoveryPercent)
         bodyBattery = try container.decodeIfPresent(Int.self, forKey: .bodyBattery) ?? 0
+        // Same migration evidence as `hasRecovery`: a build that wrote the
+        // number had the number, so the key's presence is proof. Absent key
+        // means the field never existed in that payload -- honestly missing,
+        // not zero.
+        hasEnergy = try container.decodeIfPresent(Bool.self, forKey: .hasEnergy)
+            ?? container.contains(.bodyBattery)
         strain = try container.decodeIfPresent(Double.self, forKey: .strain) ?? 0
+        hasLoad = try container.decodeIfPresent(Bool.self, forKey: .hasLoad)
+            ?? container.contains(.strain)
         sleepPerformance = try container.decodeIfPresent(Double.self, forKey: .sleepPerformance) ?? 0
         sleepIntelligencePercent = try container.decodeIfPresent(Int.self, forKey: .sleepIntelligencePercent) ?? 0
         sleepIntelligenceBand = try container.decodeIfPresent(String.self, forKey: .sleepIntelligenceBand) ?? ""
@@ -336,8 +421,23 @@ extension SleepSnapshot {
         badgesTotal = try container.decodeIfPresent(Int.self, forKey: .badgesTotal) ?? 0
         nextBadgeTitle = try container.decodeIfPresent(String.self, forKey: .nextBadgeTitle) ?? ""
         nextBadgeProgress = try container.decodeIfPresent(Double.self, forKey: .nextBadgeProgress) ?? 0
-        bodySignalsLabel = try container.decodeIfPresent(String.self, forKey: .bodySignalsLabel) ?? "Nothing unusual"
+        bodySignalsLabel = try container.decodeIfPresent(String.self, forKey: .bodySignalsLabel) ?? ""
+        // A payload that actually carried a label was written by a phone that
+        // had run the radar, so that label is a real reading and its state can
+        // be recovered from it. A payload with no label at all is the one that
+        // must not claim anything -- it used to default to "Nothing unusual"
+        // and assert the user was fine.
+        if let state = try container.decodeIfPresent(String.self, forKey: .bodySignalsState) {
+            bodySignalsState = state
+        } else if container.contains(.bodySignalsLabel) {
+            bodySignalsState = bodySignalsLabel == "Nothing unusual" ? "Typical" : "Watch"
+        } else {
+            bodySignalsState = ""
+        }
         recoveryConfidence = try container.decodeIfPresent(String.self, forKey: .recoveryConfidence) ?? ""
+        sleepIntelligenceConfidence = try container
+            .decodeIfPresent(String.self, forKey: .sleepIntelligenceConfidence) ?? ""
+        energyConfidence = try container.decodeIfPresent(String.self, forKey: .energyConfidence) ?? ""
         isShiftWorkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isShiftWorkModeEnabled) ?? false
 
         // Tonight's plan and tomorrow's range. Missing here until now, which
@@ -375,8 +475,8 @@ extension SleepSnapshot {
         goalMinutes: Double,
         recoveryPercent: Int = 0,
         hasRecovery: Bool = true,
-        bodyBattery: Int = 0,
-        strain: Double = 0,
+        bodyBattery: Int? = nil,
+        strain: Double? = nil,
         sleepPerformance: Double = 0,
         sleepIntelligencePercent: Int = 0,
         sleepIntelligenceBand: String = "",
@@ -393,8 +493,12 @@ extension SleepSnapshot {
         self.generatedAt = .now
         self.recoveryPercent = recoveryPercent
         self.hasRecovery = hasRecovery
-        self.bodyBattery = bodyBattery
-        self.strain = strain
+        // Presence is derived from whether the builder had a value at all,
+        // so a caller cannot set the number and forget the flag.
+        self.bodyBattery = bodyBattery ?? 0
+        self.hasEnergy = bodyBattery != nil
+        self.strain = strain ?? 0
+        self.hasLoad = strain != nil
         self.sleepPerformance = sleepPerformance
         self.sleepIntelligencePercent = sleepIntelligencePercent
         self.sleepIntelligenceBand = sleepIntelligenceBand

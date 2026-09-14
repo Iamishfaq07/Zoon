@@ -352,39 +352,24 @@ struct StreakCard: View {
     let nights: [SleepNightFeatures]
     let goalMinutes: Double
 
-    private var currentStreak: Int {
-        var count = 0
-        for night in nights.reversed() {
-            guard night.timeAsleepMinutes >= goalMinutes else { break }
-            count += 1
-        }
-        return count
-    }
-
-    private var bestStreak: Int {
-        var best = 0, running = 0
-        for night in nights {
-            if night.timeAsleepMinutes >= goalMinutes {
-                running += 1
-                best = max(best, running)
-            } else {
-                running = 0
-            }
-        }
-        return best
-    }
-
-    private var consistencyDays: Int {
-        nights.suffix(30).filter { $0.timeAsleepMinutes >= goalMinutes }.count
+    /// All three figures from `SleepStreakEngine`, so the card cannot
+    /// disagree with achievements, insights or widgets about the same run.
+    ///
+    /// The previous local implementation walked the nights array and broke
+    /// only on a night under goal, so Mon-Tue-[no record]-Thu-Fri counted as
+    /// four consecutive nights. It also measured `timeAsleepMinutes` while
+    /// the shortfall and need on every other screen use the 24-hour total.
+    private var streak: SleepStreakEngine.Result {
+        SleepStreakEngine.evaluate(nights: nights, goalMinutes: goalMinutes)
     }
 
     var body: some View {
         HStack(spacing: 0) {
-            stat("\(currentStreak)", "night streak", Theme.Metric.recoveryHigh, "flame.fill")
+            stat("\(streak.current)", "night streak", Theme.Metric.recoveryHigh, "flame.fill")
             divider
-            stat("\(bestStreak)", "personal best", Theme.Metric.sleep, "trophy.fill")
+            stat("\(streak.best)", "personal best", Theme.Metric.sleep, "trophy.fill")
             divider
-            stat("\(consistencyDays)/30", "goal met", Theme.Metric.battery, "checkmark.seal.fill")
+            stat("\(streak.metInWindow)/\(streak.windowSize)", "goal met", Theme.Metric.battery, "checkmark.seal.fill")
         }
         .glassCard()
     }

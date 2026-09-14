@@ -15,10 +15,9 @@ struct DayContextBuilder {
 
     /// Window for the two "habitual timing" metrics -- `SleepRegularity` and
     /// `BodyClock` -- that, unlike their siblings below, don't do any
-    /// internal windowing of their own: `CardiovascularAge` re-slices to its
-    /// own `.suffix(30)` and `HealthRadar` to its own recent + baseline
-    /// windows regardless of how much history is handed to them, but
-    /// `SleepRegularity.compute`/`BodyClock.compute` use exactly the array
+    /// internal windowing of their own: `HealthRadar` re-slices to its own
+    /// recent + baseline windows regardless of how much history is handed to
+    /// it, but `SleepRegularity.compute`/`BodyClock.compute` use exactly the array
     /// they're given. Passing them the ever-growing full record meant a
     /// habitual bedtime or regularity index quietly became a lifetime
     /// average -- a genuine schedule change (new job, new baby, a permanent
@@ -105,8 +104,13 @@ struct DayContextBuilder {
         )
 
         // --- Body battery -------------------------------------------------
+        // Energy inherits Recovery's own verdict rather than its raw number.
+        // A score the app declines to show must not silently charge the
+        // battery as if it were measured.
+        let recoveryState = recovery.presentation
+        let energyProvenance = BodyBattery.provenance(for: recoveryState)
         let startLevel = BodyBattery.overnightCharge(
-            recoveryPercent: recovery.percent,
+            recoveryPercent: recoveryState.score,
             sleepPerformance: sleepNeed.performancePercent
         )
         let restingInput: (value: Double, source: BodyBattery.RestingBaselineSource)? = {
@@ -115,7 +119,7 @@ struct DayContextBuilder {
             if let value = night.minHeartRate { return (value, .sleepingLowEstimate) }
             return nil
         }()
-        let bodyBattery: BodyBattery
+        var bodyBattery: BodyBattery
         if let restingInput {
             bodyBattery = BodyBattery.build(
                 startLevel: startLevel,
@@ -128,6 +132,7 @@ struct DayContextBuilder {
         } else {
             bodyBattery = BodyBattery.overnightOnly(startLevel: startLevel, wakeTime: night.wakeTime)
         }
+        bodyBattery.provenance = energyProvenance
 
         // --- Vitals -------------------------------------------------------
         let vitals = VitalsStatus.evaluate(
@@ -227,11 +232,6 @@ struct DayContextBuilder {
             chronotype: chronotype,
             regularity: regularity,
             healthRadar: HealthRadar.detect(nights: fullHistory),
-            // Keep the legacy estimator internal for compatibility, but never
-            // surface an unvalidated biological-age claim to users. A future
-            // Baseline & Resilience view can replace it with longitudinal,
-            // provenance-aware trends.
-            cardiovascularAge: nil,
             bodyClock: bodyClock,
             hourlyHeartRate: inputs.hourlyHeartRate,
             cognitiveEnergy: cognitiveEnergy,
@@ -260,7 +260,6 @@ struct DayContextBuilder {
     /// available. Closer to observed values across adult ages than the older
     /// 220−age rule, which systematically underestimates for over-40s.
     static func estimatedMaxHeartRate(age: Int?) -> Double {
-        guard let age, age > 0, age < 120 else { return 190 }
-        return 208 - 0.7 * Double(age)
+        HeartRateZoneIntegrator.maximumHeartRate(age: age).bpm
     }
 }

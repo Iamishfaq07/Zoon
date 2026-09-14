@@ -186,13 +186,20 @@ struct SleepIntelligenceComplicationView: View {
     private var percent: Int { entry.snapshot.flagshipScore }
     private var band: String { entry.snapshot.flagshipBand }
 
+    /// The same refusal `RecoveryComplicationView` already makes below.
+    /// `SleepIntelligenceScore` returns `.insufficient` for a night that
+    /// produced nothing but a sleep-minutes figure, and the phone's own hero
+    /// has said so beside this number for a while -- the faces were the
+    /// surface still stating it bare.
+    private var scoreText: String { entry.snapshot.flagshipScoreText }
+
     var body: some View {
         if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
         case .accessoryInline:
-            Text("Sleep \(percent)")
+            Text("Sleep \(scoreText)")
                 .privacySensitive()
 
         case .accessoryRectangular:
@@ -200,7 +207,7 @@ struct SleepIntelligenceComplicationView: View {
                 Label("Last Night", systemImage: "moonphase.waxing.crescent")
                     .font(Theme.text(13, weight: .semibold))
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text("\(percent)")
+                    Text(scoreText)
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .monospacedDigit()
                     Text(entry.isPlaceholder ? "Sample" : band)
@@ -218,7 +225,7 @@ struct SleepIntelligenceComplicationView: View {
             Gauge(value: Double(percent), in: 0...100) {
                 Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
-                Text("\(percent)").monospacedDigit()
+                Text(scoreText).monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
@@ -256,13 +263,15 @@ struct BodySignalsComplicationView: View {
     let entry: WatchComplicationEntry
     @Environment(\.widgetFamily) private var family
 
-    private var isNormal: Bool { entry.snapshot.bodySignalsLabel == "Nothing unusual" }
-    private var symbol: String { isNormal ? "checkmark.circle.fill" : "dot.radiowaves.left.and.right" }
+    /// Shared with the watch app and the widgets, so the same snapshot
+    /// cannot read "Typical" on a complication and "Building" in the app.
+    private var signals: SnapshotBodySignals { SnapshotBodySignals(snapshot: entry.snapshot) }
+    private var symbol: String { signals.symbol }
 
-    /// "Typical" rather than the stored "Nothing unusual": the complication
-    /// has one line, and the spec's own wording for the quiet state is the
-    /// shorter one.
-    private var summary: String { isNormal ? "Typical" : entry.snapshot.bodySignalsLabel }
+    /// One line, so the short form. A complication has no room to explain
+    /// itself, which makes it the worst place to assert reassurance the data
+    /// does not support — "—" is the honest glyph when nothing is known.
+    private var summary: String { signals.shortLabel }
 
     var body: some View {
         if entry.snapshot.scoreLightMode {
@@ -293,7 +302,7 @@ struct BodySignalsComplicationView: View {
             VStack(spacing: 1) {
                 Image(systemName: symbol)
                     .font(.system(size: 16, weight: .semibold))
-                Text(isNormal ? "OK" : "Drift")
+                Text(signals.shortLabel)
                     .font(.system(size: 11, weight: .semibold))
             }
             .privacySensitive()
@@ -456,7 +465,7 @@ struct SleepBankComplicationView: View {
             Gauge(value: Double(entry.snapshot.flagshipScore), in: 0...100) {
                 Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
-                Text("\(entry.snapshot.flagshipScore)").monospacedDigit()
+                Text(entry.snapshot.flagshipScoreText).monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
             .privacySensitive()
@@ -861,6 +870,7 @@ struct CircadianPhaseComplicationView: View {
     WatchComplicationEntry(date: .now, snapshot: {
         var snapshot = MockData.snapshotWithBadges
         snapshot.bodySignalsLabel = "Several signals moving"
+        snapshot.bodySignalsState = "Notable"
         return snapshot
     }(), isPlaceholder: false)
 }

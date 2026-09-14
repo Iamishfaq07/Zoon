@@ -32,6 +32,11 @@ struct MetricInfoButton: View {
                 .foregroundStyle(Theme.inkTertiary)
         }
         .buttonStyle(.plain)
+        // This button is repeated beside most metrics in the app, so an
+        // unlabelled one is not one bad control but dozens: VoiceOver read
+        // every single one as "info circle".
+        .accessibilityLabel("About \(title)")
+        .accessibilityHint("Explains what this metric measures")
         .sheet(isPresented: $isPresented) {
             MetricInfoSheet(
                 title: title, symbol: symbol, tint: tint,

@@ -35,7 +35,15 @@ struct TodayView: View {
     @State private var setup = PersonalSetupStore.shared
 
     private var scoreLight: Bool { setup.value.scoreLight }
-    private var moment: ZoonAmbientBackground.Band { .current() }
+    /// The band Today is drawing for.
+    ///
+    /// Was a computed `.current()`, which is correct whenever the body runs
+    /// and never causes the body to run: leave the screen open at 16:59 and
+    /// at 17:01 it still shows the day hero. State plus
+    /// `refreshingOnPhaseBoundary` makes the change itself the invalidation,
+    /// from the same `Band` the background uses -- one set of boundaries for
+    /// the greeting, the hero, the cards and the gradient.
+    @State private var moment: ZoonAmbientBackground.Band = .current()
 
     var body: some View {
         NavigationStack {
@@ -52,6 +60,9 @@ struct TodayView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .zoonGlobalToolbar()
             .refreshable { await coordinator.refresh() }
+            // The hero, greeting and card set all key off `moment`. Without
+            // this the screen keeps drawing the band it opened in.
+            .refreshingOnPhaseBoundary($moment)
         }
     }
 
@@ -326,13 +337,7 @@ struct TodayView: View {
     /// safe.
     private func plannedBedtime(_ context: DayContext) -> Date? {
         guard let minutes = autopilotPlan(context)?.targetBedtimeMinutes else { return nil }
-        let calendar = Calendar.current
-        let wrapped = (minutes.rounded().truncatingRemainder(dividingBy: 1440) + 1440)
-            .truncatingRemainder(dividingBy: 1440)
-        let midnight = calendar.startOfDay(for: .now)
-        let candidate = midnight.addingTimeInterval(wrapped * 60)
-        // An after-midnight bedtime lands before now; it belongs to tomorrow.
-        return candidate > .now ? candidate : candidate.addingTimeInterval(86_400)
+        return PlannedBedtimeResolver.nextOccurrence(ofMinutesFromMidnight: minutes, after: .now)
     }
 
     // MARK: - Hero helpers
@@ -374,10 +379,7 @@ struct TodayView: View {
             Text(context.recovery.confidence.label)
                 .font(Theme.text(13))
                 .foregroundStyle(Theme.inkSecondary)
-            Text(coordinator.todayStress?.baselineContextNote ?? "Based on last night's recovery; daytime change appears when enough quiet data is available.")
-                .font(Theme.evidence)
-                .foregroundStyle(Theme.inkTertiary)
-                .multilineTextAlignment(.center)
+            RightNowLine(load: coordinator.todayStress)
         }
         .frame(maxWidth: .infinity)
     }
@@ -387,6 +389,16 @@ struct TodayView: View {
     /// local preference and empty is a real answer; nothing here nags for it
     /// or invents one.
     private func openingLine(_ context: DayContext) -> String {
+        // The band is a reading of the same score the ring may be declining
+        // to state. Saying "your body needs moderate output today" off a
+        // score built from sleep duration alone is the same claim in prose.
+        guard context.recovery.presentation.isShowable else {
+            let name = preferences.displayName
+            let line = "here is last night. Recovery needs more physiological data before it can call today."
+            return name.isEmpty
+                ? line.prefix(1).uppercased() + line.dropFirst()
+                : "\(name), \(line)"
+        }
         let body = switch context.recovery.band {
         case .high: "your body can take load today."
         case .moderate: "your body needs moderate output today."
@@ -596,4 +608,59 @@ struct TodayView: View {
 
 #Preview("Today - large text") {
     TodayView().zoonPreviewEnvironment().environment(\.dynamicTypeSize, .accessibility3)
+}
+
+
+/// The one line on Today that is about *now* rather than about last night.
+///
+/// The ring above it is Morning Recovery: scored from the night that ended
+/// and unchanged for the rest of the day. This used to be followed by
+/// `StressScore.baselineContextNote` on its own -- a sentence about how the
+/// *load* comparison was made, sitting directly under the *recovery* number,
+/// with no label to say it had changed subject. Worse, the fallback when no
+/// load score existed read "Based on last night's recovery; daytime change
+/// appears when enough quiet data is available", which describes the morning
+/// figure as though it were something that moves during the day. That is
+/// exactly the conflation the naming work was meant to end.
+///
+/// So it says which is which. There is no fourth score here and deliberately
+/// so: Zoon already has a verdict on the night (Morning Recovery), an
+/// accounting curve for the day (Energy) and a live measurement against your
+/// own waking baseline (Physiological Load). A "Readiness Now" number
+/// recombining those three would be a new claim resting on no new evidence.
+/// Composition, not invention.
+private struct RightNowLine: View {
+
+    let load: StressScore?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if let load {
+                Text("Right now: \(load.band.label.lowercased())")
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(tint(load.band))
+                Text(load.baselineContextNote)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+            } else {
+                Text("Right now: not enough quiet daytime readings yet.")
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                Text(RecoveryPresentationState.timingNote)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func tint(_ band: StressScore.Band) -> Color {
+        switch band {
+        case .calm: Theme.Metric.recoveryHigh
+        case .elevated: Theme.Metric.recoveryMid
+        case .high: Theme.Metric.recoveryLow
+        }
+    }
 }

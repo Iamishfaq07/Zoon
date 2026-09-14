@@ -69,7 +69,10 @@ struct TodayActionPlan: View {
     }
 
     var body: some View {
-        if detail.isEmpty {
+        // A plan is advice derived from the band, and the band is the score.
+        // When the score cannot be stated the advice cannot either; the
+        // energy windows below remain available on their own screen.
+        if !recovery.presentation.isShowable || detail.isEmpty {
             EmptyView()
         } else {
             HStack(alignment: .top, spacing: 12) {

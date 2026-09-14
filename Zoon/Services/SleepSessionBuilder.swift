@@ -42,9 +42,10 @@ struct SleepSessionBuilder {
     /// with no record at all -- not shown as short, just absent, which reads
     /// to a user as "the app didn't track last night" rather than "you slept
     /// less than usual." 15 minutes is a genuine sensor-noise floor; nothing
-    /// above it gets classified as main-sleep-vs-nap yet (that's a larger
-    /// change -- `latestSession` still just takes the most recent cluster),
-    /// but it no longer disappears.
+    /// above it gets classified as main-sleep-vs-nap here -- that happens
+    /// downstream, where `preferredMainSleep(in:)` picks the night's row and
+    /// `SleepDataCoordinator.classify` labels the rest -- but it no longer
+    /// disappears.
     var minimumSessionDuration: TimeInterval = 60 * 15
 
     /// A single sample longer than this is not a real sleep record, and is
@@ -146,11 +147,6 @@ struct SleepSessionBuilder {
                     && $0.totalAsleepMinutes > 0
             }
             .sorted { $0.start < $1.start }
-    }
-
-    /// The most recent qualifying session — "last night".
-    func latestSession(from samples: [HKCategorySample]) -> SleepSession? {
-        buildSessions(from: samples).last
     }
 
     /// Chooses the episode most likely to be the main sleep when several end

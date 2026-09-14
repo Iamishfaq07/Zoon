@@ -14,24 +14,87 @@ struct SleepEra: Identifiable, Equatable {
 }
 
 enum SleepEras {
+
+    /// Consecutive shifted nights before a change is called an era.
+    ///
+    /// One night used to be enough: a single flight, a newborn's bad night,
+    /// one late shift, and the history was cut in two and told the reader
+    /// their sleep had entered a new period. An era is a claim about a
+    /// *stretch* of someone's life, and one night is not one.
+    ///
+    /// Three, not more: two consecutive shifted nights happens by chance
+    /// often enough to be noise -- the same reasoning `HealthRadar` uses for
+    /// its own three-night rule -- and a threshold high enough to exclude a
+    /// week away would also exclude a genuine schedule change someone made
+    /// last Monday.
+    ///
+    /// What this deliberately does *not* do is try to tell a holiday from a
+    /// permanent move. That distinction needs the future. A week away shows
+    /// as a short era between two similar ones, which is descriptive and
+    /// true; calling it "temporary" would be a guess about what happens next.
+    static let sustainedNights = 3
+
     static func detect(in nights: [SleepNightFeatures], minimumNights: Int = 7) -> [SleepEra] {
         let ordered = nights.sorted { $0.date < $1.date }
         guard ordered.count >= minimumNights else { return [] }
         var groups: [[SleepNightFeatures]] = []
         var current: [SleepNightFeatures] = []
+        /// Shifted nights not yet numerous enough to call an era. Absorbed
+        /// back into `current` the moment sleep returns to the old pattern.
+        var pending: [SleepNightFeatures] = []
 
         for night in ordered {
-            if current.isEmpty { current = [night]; continue }
-            let reference = current.suffix(minimumNights)
-            let timing = abs(circularDelta(minutes(night), medianMinutes(reference.map { minutes($0) })))
-            let duration = abs(night.timeAsleepMinutes - (Statistics.median(reference.map(\.timeAsleepMinutes)) ?? 0))
-            if current.count >= minimumNights && (timing >= 45 || duration >= 60) {
-                groups.append(current)
+            if current.isEmpty {
                 current = [night]
-            } else {
-                current.append(night)
+                continue
             }
+
+            let reference = current.suffix(minimumNights)
+            let referenceBedtime = medianMinutes(reference.map { minutes($0) })
+            let referenceDuration = Statistics.median(reference.map(\.timeAsleepMinutes)) ?? 0
+
+            // An era needs a floor of its own before it can be left.
+            guard current.count >= minimumNights else {
+                current.append(night)
+                continue
+            }
+
+            let timing = abs(circularDelta(minutes(night), referenceBedtime))
+            let duration = abs(night.timeAsleepMinutes - referenceDuration)
+            let isShifted = timing >= 45 || duration >= 60
+
+            guard isShifted else {
+                // Back to the old pattern: whatever was pending was a
+                // disruption, not a new era, and belongs to this one.
+                current.append(contentsOf: pending)
+                current.append(night)
+                pending.removeAll()
+                continue
+            }
+
+            pending.append(night)
+            guard pending.count >= Self.sustainedNights else { continue }
+
+            // The run is long enough. It also has to still be shifted *as a
+            // group*: three nights that each cleared the threshold in
+            // different directions are unsettled sleep, not a new schedule.
+            let pendingBedtime = medianMinutes(pending.map { minutes($0) })
+            let pendingDuration = Statistics.median(pending.map(\.timeAsleepMinutes)) ?? 0
+            let groupTiming = abs(circularDelta(pendingBedtime, referenceBedtime))
+            let groupDuration = abs(pendingDuration - referenceDuration)
+
+            if groupTiming >= 45 || groupDuration >= 60 {
+                groups.append(current)
+                current = pending
+            } else {
+                current.append(contentsOf: pending)
+            }
+            pending.removeAll()
         }
+
+        // A run that never reached the threshold ends inside the era it
+        // interrupted, not as one of its own.
+        current.append(contentsOf: pending)
         if !current.isEmpty { groups.append(current) }
 
         // Avoid tiny tail fragments: merge them into the preceding era.

@@ -683,6 +683,23 @@ final class HealthKitManager {
         ) { $0.sumQuantity() }
     }
 
+    /// Average HRV per hour, for the waking time-of-day baseline
+    /// (`DaytimeBaseline`).
+    ///
+    /// HRV is written far less often than heart rate -- a handful of readings
+    /// a day on most watches -- so most hours come back absent. That is the
+    /// correct shape: an hour with no reading is not an hour of average HRV,
+    /// and `binnedSeries` omits rather than zero-fills.
+    func hourlyHeartRateVariability(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
+        try await binnedSeries(
+            .heartRateVariabilitySDNN,
+            unit: .secondUnit(with: .milli),
+            options: .discreteAverage,
+            interval: interval,
+            binMinutes: 60
+        ) { $0.averageQuantity() }
+    }
+
     /// Same average heart rate series `hourlyHeartRate` returns, at a finer
     /// bin size -- used for `heartRateZones` below. See that function's doc
     /// comment for why 60-minute bins were never fine enough.
@@ -749,10 +766,6 @@ final class HealthKitManager {
         }
     }
 
-    /// Bin width `heartRateZones` below buckets heart rate into before
-    /// assigning zone minutes -- see that function's doc comment.
-    static let zoneBinMinutes = 10
-
     /// Minutes spent in each heart-rate zone across an interval.
     ///
     /// Zones are defined on **heart-rate reserve** (Karvonen) rather than raw
@@ -760,38 +773,69 @@ final class HealthKitManager {
     /// Two people with the same max but a 20bpm difference in resting HR are not
     /// working equally hard at 140bpm, and a %max model says they are.
     ///
-    /// Built from means over `zoneBinMinutes`-wide bins, so it's still an
-    /// approximation -- a bin containing a shorter interval session averages
-    /// out to something moderate -- but a 10-minute bin is a fraction of the
-    /// distortion a 60-minute one was: the old hourly version could credit
-    /// an entire hour to one zone off a single mean that blended twenty
-    /// minutes of hard effort into forty minutes sitting still. It's
-    /// directionally right and it's what's cheaply available from
-    /// `HKStatisticsCollectionQuery`'s own bucketing; the UI flags strain as
-    /// an estimate whenever coverage is thin.
+    /// Time-integrated from raw samples by `HeartRateZoneIntegrator`, not
+    /// from statistics bins.
+    ///
+    /// The bin approach credited a whole 10-minute bin to whatever zone its
+    /// mean fell in, so one passive reading of 142 bpm became ten minutes of
+    /// vigorous exercise -- inflating time-in-zone and Load most for the
+    /// users sampling least often. See that type for the integration rule and
+    /// the interpolation cap.
     func heartRateZones(
         in interval: DateInterval,
         restingHeartRate: Double,
         maxHeartRate: Double
     ) async throws -> (zones: [StrainScore.Zone: Double], coverage: Double) {
 
-        let binned = try await binnedHeartRate(in: interval, binMinutes: Self.zoneBinMinutes)
-        guard !binned.isEmpty else { return ([:], 0) }
+        let samples = try await heartRateSamples(in: interval)
+        guard !samples.isEmpty else { return ([:], 0) }
 
-        let reserve = max(20, maxHeartRate - restingHeartRate)
-        var zones: [StrainScore.Zone: Double] = [:]
+        let result = HeartRateZoneIntegrator.integrate(
+            samples: samples,
+            restingHeartRate: restingHeartRate,
+            maxHeartRate: maxHeartRate,
+            interval: interval
+        )
+        return (result.zoneMinutes, result.coverage)
+    }
 
-        for sample in binned {
-            let hrr = (sample.bpm - restingHeartRate) / reserve
-            // Highest zone whose lower bound is cleared.
-            guard let zone = StrainScore.Zone.allCases
-                .filter({ hrr >= $0.lowerBoundHRR })
-                .max(by: { $0.lowerBoundHRR < $1.lowerBoundHRR }) else { continue }
-            zones[zone, default: 0] += Double(Self.zoneBinMinutes)
+    /// Raw heart-rate samples, for time-integrated zone attribution.
+    ///
+    /// Statistics bins cannot support this: a bin reports a mean and hides
+    /// how many readings produced it, so one sample and two hundred look
+    /// identical. The integrator needs the timestamps.
+    func heartRateSamples(
+        in interval: DateInterval
+    ) async throws -> [HeartRateZoneIntegrator.Sample] {
+        let type = HKQuantityType(.heartRate)
+        let predicate = HKQuery.predicateForSamples(
+            withStart: interval.start, end: interval.end, options: .strictStartDate
+        )
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: type,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [
+                    NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+                ]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                let unit = HKUnit.count().unitDivided(by: .minute())
+                let mapped = (samples as? [HKQuantitySample] ?? []).map {
+                    HeartRateZoneIntegrator.Sample(
+                        date: $0.startDate,
+                        bpm: $0.quantity.doubleValue(for: unit)
+                    )
+                }
+                continuation.resume(returning: mapped)
+            }
+            store.execute(query)
         }
-
-        let expectedBins = max(1, interval.duration / Double(Self.zoneBinMinutes * 60))
-        return (zones, min(1, Double(binned.count) / expectedBins))
     }
 
     // MARK: - Workouts
@@ -870,6 +914,13 @@ struct WorkoutSummary: Identifiable, Hashable, Sendable {
     let start: Date
     let durationMinutes: Double
     let activeEnergyKcal: Double?
+    /// Which writer this came from, on the same ladder sleep arbitration
+    /// uses. Carried so the same session recorded by a Watch and mirrored
+    /// by a third-party app can be collapsed to one -- see
+    /// `WorkoutDeduplicator`.
+    var priority: SourcePriority = .phoneOrManual
+
+    var end: Date { start.addingTimeInterval(durationMinutes * 60) }
 
     init(workout: HKWorkout) {
         self.id = workout.uuid
@@ -878,17 +929,44 @@ struct WorkoutSummary: Identifiable, Hashable, Sendable {
         self.activeEnergyKcal = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
             .sumQuantity()?.doubleValue(for: .kilocalorie())
         (self.activityLabel, self.symbol) = Self.describe(workout.workoutActivityType)
+        self.priority = SourcePriority.classify(
+            hardwareVersion: workout.device?.hardwareVersion
+                ?? workout.sourceRevision.productType,
+            bundleIdentifier: workout.sourceRevision.source.bundleIdentifier,
+            sourceName: workout.sourceRevision.source.name
+        )
     }
 
     /// Direct construction for previews and tests, where there's no real
     /// `HKWorkout` to build one from.
-    init(id: UUID = UUID(), activityLabel: String, symbol: String, start: Date, durationMinutes: Double, activeEnergyKcal: Double?) {
+    init(
+        id: UUID = UUID(),
+        activityLabel: String,
+        symbol: String,
+        start: Date,
+        durationMinutes: Double,
+        activeEnergyKcal: Double?,
+        priority: SourcePriority = .phoneOrManual
+    ) {
         self.id = id
         self.activityLabel = activityLabel
         self.symbol = symbol
         self.start = start
         self.durationMinutes = durationMinutes
         self.activeEnergyKcal = activeEnergyKcal
+        self.priority = priority
+    }
+
+    /// This summary as arbitration input. The deduplicator is deliberately
+    /// ignorant of `HKWorkout` so it can be tested without one.
+    var deduplicationCandidate: WorkoutDeduplicator.Candidate {
+        .init(
+            id: id,
+            activityLabel: activityLabel,
+            start: start,
+            end: end,
+            priority: priority
+        )
     }
 
     /// Apple defines ~80 activity types; only the common ones get a

@@ -81,8 +81,11 @@ struct EnergyDetailView: View {
                     Text(context.strain.band)
                         .font(Theme.text(10))
                         .foregroundStyle(Theme.inkTertiary)
-                    if context.strain.isEstimate {
-                        Text("· estimated")
+                    // Sparse coverage and guessed zone boundaries are
+                    // different weaknesses; `confidenceTag` names whichever
+                    // is binding rather than either going unsaid.
+                    if let tag = context.strain.confidenceTag {
+                        Text("· \(tag)")
                             .font(Theme.text(10))
                             .foregroundStyle(Theme.inkTertiary)
                     }
@@ -96,7 +99,7 @@ struct EnergyDetailView: View {
                 explanation: [
                     "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
                     "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
-                ]
+                ] + [context.strain.confidenceNote].compactMap { $0 }
             )
         }
         .glassCard()

@@ -12,6 +12,23 @@ import SwiftUI
 struct BodyBatteryCard: View {
     let battery: BodyBattery
 
+    /// Whether a precise Energy number may be printed.
+    ///
+    /// `BodyBattery.Provenance.isPresentable` has existed to answer exactly
+    /// this and nothing asked it. The watch and the widgets already decline
+    /// to state Energy they cannot stand behind; this card printed a
+    /// two-digit level and three more precise stats regardless, which is the
+    /// same asymmetry the other way round.
+    ///
+    /// The chart below stays either way: a shape is an indication, a numeral
+    /// is a claim -- the same line drawn for the Recovery ring and the
+    /// watch's sleep dial.
+    private var showsNumbers: Bool { battery.provenance.isPresentable }
+
+    private func number(_ value: Int) -> String {
+        showsNumbers ? "\(value)" : "—"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -27,28 +44,40 @@ struct BodyBatteryCard: View {
                     ]
                 )
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("\(battery.current)")
+                    Text(number(battery.current))
                         .font(Theme.numeral(28))
                         .monospacedDigit()
-                        .foregroundStyle(Theme.batteryColor(Double(battery.current)))
-                    Text("/100")
-                        .font(Theme.label(12))
-                        .foregroundStyle(Theme.inkTertiary)
+                        .foregroundStyle(
+                            showsNumbers
+                                ? Theme.batteryColor(Double(battery.current))
+                                : Theme.inkSecondary
+                        )
+                    if showsNumbers {
+                        Text("/100")
+                            .font(Theme.label(12))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
                 }
             }
 
             BodyBatteryChart(battery: battery)
 
             AdaptiveStack(spacing: 14) {
-                stat("Woke at", "\(battery.morningPeak)")
-                stat("Spent", "\(battery.spentToday)")
-                stat("Low", "\(battery.dayLow)")
+                stat("Woke at", number(battery.morningPeak))
+                stat("Spent", number(battery.spentToday))
+                stat("Low", number(battery.dayLow))
             }
 
-            Text(battery.guidance)
-                .font(.caption)
-                .foregroundStyle(Theme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            // Guidance is a reading of the number above it ("running low,
+            // take it easy"), so it cannot outlive the number. Printing a
+            // dash and then advice derived from the hidden value would be
+            // worse than printing neither.
+            if showsNumbers {
+                Text(battery.guidance)
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let note = battery.confidenceNote {
                 Label(note, systemImage: "info.circle")
                     .font(.caption2)

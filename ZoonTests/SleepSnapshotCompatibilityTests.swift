@@ -60,14 +60,22 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         XCTAssertEqual(snapshot.recoveryPercent, 0)
         XCTAssertFalse(snapshot.hasRecovery)
         XCTAssertFalse(snapshot.canStateRecovery)
-        XCTAssertEqual(snapshot.bodyBattery, 0)
+        // Not "Energy 0". A payload from before Energy existed has no
+        // opinion about it, and the presence flag is what every consumer
+        // reads; the raw 0 is only a decoding artefact.
+        XCTAssertFalse(snapshot.hasEnergy)
+        XCTAssertFalse(snapshot.hasLoad)
         XCTAssertEqual(snapshot.sleepIntelligencePercent, 0)
         // The Watch and widget both treat an empty band as "nothing to show
         // yet" rather than a real zero -- see SleepSnapshot's doc comment.
         XCTAssertEqual(snapshot.sleepIntelligenceBand, "")
         XCTAssertEqual(snapshot.badgeSymbol, "hexagon.fill")
         XCTAssertEqual(snapshot.badgesUnlocked, 0)
-        XCTAssertEqual(snapshot.bodySignalsLabel, "Nothing unusual")
+        // Previously this asserted the string "Nothing unusual" -- a test
+        // pinning fabricated reassurance in place. A legacy payload knows
+        // nothing about the user's body signals and must say so.
+        XCTAssertEqual(snapshot.bodySignalsState, "")
+        XCTAssertEqual(snapshot.bodySignalsLabel, "")
         XCTAssertFalse(snapshot.isMock)
         XCTAssertFalse(snapshot.isShiftWorkModeEnabled)
     }
@@ -96,8 +104,12 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         XCTAssertEqual(snapshot.recoveryPercent, 68)
         XCTAssertTrue(snapshot.hasRecovery)
         XCTAssertEqual(snapshot.bodyBattery, 74)
-        // Newer than that build: still defaults.
-        XCTAssertEqual(snapshot.bodySignalsLabel, "Nothing unusual")
+        // The key was written, so the value is real and Energy is showable.
+        XCTAssertTrue(snapshot.hasEnergy)
+        // Load was not in that build's payload at all.
+        XCTAssertFalse(snapshot.hasLoad)
+        // Newer than that build: no body-signal claim either way.
+        XCTAssertEqual(snapshot.bodySignalsState, "")
         XCTAssertEqual(snapshot.badgeSymbol, "hexagon.fill")
     }
 

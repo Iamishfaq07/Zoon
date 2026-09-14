@@ -50,6 +50,7 @@ struct SleepDetailView: View {
                 } label: {
                     Image(systemName: "bubble.left.and.bubble.right")
                 }
+                .accessibilityLabel("Ask Zoon about this night")
             }
         }
     }
