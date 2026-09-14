@@ -201,6 +201,7 @@ struct WeeklyReport {
 
         return WeeklyReport(
             periodStart: periodStart, periodEnd: periodEnd, nightCount: nightCount,
+            recoveryNightCount: recoveryNightCount,
             averageRecovery: averageRecovery, averageSleepPerformance: averageSleepPerformance,
             averageSleepMinutes: averageSleepMinutes, averageHRV: averageHRV,
             averageRestingHR: averageRestingHR, totalStrain: totalStrain,
