@@ -337,13 +337,7 @@ struct TodayView: View {
     /// safe.
     private func plannedBedtime(_ context: DayContext) -> Date? {
         guard let minutes = autopilotPlan(context)?.targetBedtimeMinutes else { return nil }
-        let calendar = Calendar.current
-        let wrapped = (minutes.rounded().truncatingRemainder(dividingBy: 1440) + 1440)
-            .truncatingRemainder(dividingBy: 1440)
-        let midnight = calendar.startOfDay(for: .now)
-        let candidate = midnight.addingTimeInterval(wrapped * 60)
-        // An after-midnight bedtime lands before now; it belongs to tomorrow.
-        return candidate > .now ? candidate : candidate.addingTimeInterval(86_400)
+        return PlannedBedtimeResolver.nextOccurrence(ofMinutesFromMidnight: minutes, after: .now)
     }
 
     // MARK: - Hero helpers
