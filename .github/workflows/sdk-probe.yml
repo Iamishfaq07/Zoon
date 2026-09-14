@@ -10,8 +10,14 @@ name: SDK probe
 # Prints to stdout rather than only the step summary: the job log is what the
 # REST API serves, and that is the only channel available from outside.
 
+# Dispatch needs the workflow on the default branch to be addressable, and it
+# is not there yet -- so it triggers on changes to itself instead. That runs it
+# exactly once, when it is added or edited, and never on unrelated pushes.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/sdk-probe.yml'
 
 jobs:
   probe:
