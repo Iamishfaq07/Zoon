@@ -272,30 +272,21 @@ enum AchievementEngine {
 
     /// Longest consecutive run of nights at goal, over the whole record.
     ///
-    /// Consecutive by *calendar day*, so a missing night breaks the run rather
-    /// than silently bridging a gap — two nights either side of a week away
-    /// are not "in a row".
+    /// Delegates to `SleepStreakEngine`, which is the one definition of what
+    /// "in a row" means in this app. It used to count runs here with
+    /// `dateComponents([.day], from:to:).day == 1` over raw instants in the
+    /// device's current calendar — a second implementation that could
+    /// disagree with the streak card about the same history, and that counted
+    /// elapsed periods rather than civil dates, so a DST day or a flight
+    /// could add or drop a night.
+    ///
+    /// Badges and the streak card now cannot contradict each other, because
+    /// there is nothing left to contradict with.
     static func longestRun(
         _ nights: [SleepNightFeatures],
-        goalMinutes: Double,
-        calendar: Calendar = .current
+        goalMinutes: Double
     ) -> Int {
-        var best = 0
-        var current = 0
-        var previous: Date?
-
-        for night in nights {
-            // Same total24hAsleepMinutes convention as `atGoal` above.
-            let metGoal = night.total24hAsleepMinutes >= goalMinutes
-            let isNextDay = previous.map {
-                calendar.dateComponents([.day], from: $0, to: night.date).day == 1
-            } ?? false
-
-            current = (metGoal && isNextDay) ? current + 1 : (metGoal ? 1 : 0)
-            best = max(best, current)
-            previous = night.date
-        }
-        return best
+        SleepStreakEngine.evaluate(nights: nights, goalMinutes: goalMinutes).best
     }
 
     /// The most recently earned badge, for the widget and the More tab.

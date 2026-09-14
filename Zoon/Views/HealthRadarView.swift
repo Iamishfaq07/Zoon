@@ -53,7 +53,7 @@ struct HealthRadarView: View {
                             .accessibilityHint("Show \(metric.kind.label) trend")
                         }
                     }
-                    if context.healthRadar.isActive {
+                    if context.healthRadar.state.isActionable {
                         multiSignalNote(context.healthRadar)
                     }
                     disclaimerCard
@@ -94,31 +94,30 @@ struct HealthRadarView: View {
                 .tracking(1.0)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.inkSecondary)
-            Text(radar.isActive ? radar.severity.label : "Nothing unusual")
+            // Was `isActive ? severity.label : "Nothing unusual"`, which
+            // printed reassurance for a user on night four and for a phone
+            // recording no physiology at all. The state decides.
+            Text(radar.stateHeadline)
                 .font(.system(size: 30, weight: .light, design: .rounded))
-                .foregroundStyle(radar.isActive ? tint(for: radar.severity) : .primary)
-            Text("Each signal against your own recent overnight baseline.")
+                .foregroundStyle(radar.state.tint)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(radar.stateDetail)
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-    }
-
-    private func tint(for severity: HealthRadar.Severity) -> Color {
-        switch severity {
-        case .clear: Theme.Family.recovery
-        case .watch: Theme.Family.attention
-        case .notable: Theme.Family.deviation
-        }
     }
 
     private func multiSignalNote(_ radar: HealthRadar) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("\(radar.signals.count) signals moved together", systemImage: "dot.radiowaves.left.and.right")
                 .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(tint(for: radar.severity))
-            Text(radar.detail)
+                .foregroundStyle(radar.state.tint)
+            Text(radar.stateDetail)
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

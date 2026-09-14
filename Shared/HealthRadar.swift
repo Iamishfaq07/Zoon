@@ -202,8 +202,6 @@ struct HealthRadar: Codable, Hashable, Sendable {
 
 extension HealthRadar {
 
-    var isActive: Bool { !signals.isEmpty }
-
     /// What the radar can actually say — the one place that decides it.
     ///
     /// The bug this replaces: `signals.isEmpty` was read as "nothing
@@ -224,6 +222,34 @@ extension HealthRadar {
         case notable([Signal])
 
         var isReassurance: Bool { self == .typical }
+
+        /// Semantic colour role, without importing SwiftUI into the engine.
+        ///
+        /// `.neutral` is load-bearing: an indeterminate state must not be
+        /// painted green. Colour is a verdict, and "we don't know yet" is not
+        /// a verdict.
+        enum Tone: Equatable, Sendable {
+            case neutral, good, caution, alert
+        }
+
+        var tone: Tone {
+            switch self {
+            case .buildingBaseline, .insufficientSignals: .neutral
+            case .typical: .good
+            case .watch: .caution
+            case .notable: .alert
+            }
+        }
+
+        /// True only when something is actually drifting. What a "For You"
+        /// surface should gate on: neither reassurance nor "not yet" is a
+        /// thing to put in front of someone as a notice.
+        var isActionable: Bool {
+            switch self {
+            case .watch, .notable: true
+            case .buildingBaseline, .insufficientSignals, .typical: false
+            }
+        }
 
         /// True when the honest answer is "not yet", not "you are fine".
         var isIndeterminate: Bool {
@@ -253,28 +279,6 @@ extension HealthRadar {
         return .typical
     }
 
-    /// Severity rises with how many signals moved together, because
-    /// co-movement is the actual signal — one drifting metric is common,
-    /// three at once is not.
-    enum Severity: String, Sendable {
-        case clear, watch, notable
-
-        var label: String {
-            switch self {
-            case .clear: "Nothing unusual"
-            case .watch: "Worth watching"
-            case .notable: "Several signals moving"
-            }
-        }
-    }
-
-    var severity: Severity {
-        switch signals.count {
-        case 0: .clear
-        case 1...2: .watch
-        default: .notable
-        }
-    }
 
     /// One line for the state, used by Today, the watch and complications so
     /// they cannot word the same situation three different ways.
@@ -304,32 +308,51 @@ extension HealthRadar {
         }
     }
 
-    var headline: String {
-        guard isActive else { return "No sustained changes" }
-        let names = signals.map(\.kind.label).joined(separator: ", ")
-        return names
+
+    /// The paragraph under the headline, decided by the same state as the
+    /// headline itself.
+    ///
+    /// The old version gated only on night count, so a phone-only user with
+    /// three weeks of sleep and no physiology read "Nothing has been drifting
+    /// from your baseline" -- a clean bill of health issued over an empty
+    /// instrument panel.
+    var stateDetail: String {
+        switch state {
+        case .buildingBaseline(let nights, let required):
+            return "Zoon needs about \(required) nights before it can spot sustained changes. \(nights) so far."
+        case .insufficientSignals(let domains, let required):
+            return domains == 0
+                ? "No overnight body signals are being recorded, so there is nothing here to watch yet. An Apple Watch worn overnight is what fills this in."
+                : "Only \(domains) of the \(required) body signals Zoon watches has enough history. That is not enough to say whether anything is drifting."
+        case .typical:
+            return "Nothing has been drifting from your baseline for three nights or more."
+        case .watch(let signals), .notable(let signals):
+            let base = "\(signals.count == 1 ? "This signal has" : "These signals have") been outside your usual range for \(Self.minimumConsecutiveNights) nights running."
+            // The interpretation is only offered when several signals move
+            // together -- a single drifting metric has too many explanations
+            // to narrow usefully.
+            return signals.count >= 3
+                ? base + " Several moving at once often accompanies illness onset, a heavy training block, alcohol, or travel. Worth easing off and watching."
+                : base + " One or two signals drifting is common and usually resolves on its own."
+        }
     }
 
-    var detail: String {
-        guard nightCount >= Self.minimumBaselineNights else {
-            return "Zoon needs about two weeks of nights before it can spot sustained changes."
-        }
-        guard isActive else {
-            return "Nothing has been drifting from your baseline for three nights or more."
-        }
+    /// A second line for a card that has room for one, or `nil`.
+    var stateSubtitle: String? {
+        if case .notable = state { return "Possible illness or heavy strain signal" }
+        return nil
+    }
 
-        let base = "\(signals.count == 1 ? "This signal has" : "These signals have") been outside your usual range for \(Self.minimumConsecutiveNights) nights running."
-
-        // The interpretation is only offered when several signals move
-        // together — a single drifting metric has too many explanations to
-        // narrow usefully.
-        switch severity {
-        case .notable:
-            return base + " Several moving at once often accompanies illness onset, a heavy training block, alcohol, or travel. Worth easing off and watching."
-        case .watch:
-            return base + " One or two signals drifting is common and usually resolves on its own."
-        case .clear:
-            return base
+    /// What a compact strip prints where a count would go.
+    ///
+    /// This is where "Signals — OK" came from: the strip printed the signal
+    /// count when there were signals and the word OK when there were none,
+    /// which is reassurance drawn from an empty instrument.
+    var stateCountLabel: String {
+        switch state {
+        case .buildingBaseline, .insufficientSignals: "—"
+        case .typical: "0"
+        case .watch(let signals), .notable(let signals): "\(signals.count)"
         }
     }
 }

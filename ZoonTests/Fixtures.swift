@@ -73,10 +73,20 @@ enum Fixture {
         wristTempMeasured: Bool? = nil,
         /// Who wrote each measurement. Empty by default, which is the honest
         /// shape of every night recorded before provenance was captured.
-        measurementSources: NightMeasurementSources = .empty
+        measurementSources: NightMeasurementSources = .empty,
+        /// The zone the night was recorded in. Travel tests need this: day
+        /// identity is a civil date reckoned where the sleeper was, and the
+        /// whole point of `SleepDayKey` is that it survives the sleeper
+        /// moving between zones.
+        timeZoneIdentifier: String = TimeZone.current.identifier,
+        /// Anchors the night on a specific wake day instead of counting back
+        /// from now, so a test can sit a run of nights across a known DST
+        /// boundary or a known flight.
+        wakeDay: Date? = nil
     ) -> SleepNightFeatures {
-        let calendar = Calendar.current
-        let wake = calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        let wake = wakeDay ?? calendar.date(byAdding: .day, value: -daysAgo, to: .now)!
         let bedtime: Date
         let wakeTime: Date
         if let bedtimeHour {
@@ -129,6 +139,7 @@ enum Fixture {
             sourceName: sourceName,
             sourceBundleIdentifier: sourceBundleIdentifier,
             isMock: true,
+            timeZoneIdentifier: timeZoneIdentifier,
             measurementSources: measurementSources,
             wristTempMeasured: wristTempMeasured ?? (wristTempDeltaC != nil)
         )

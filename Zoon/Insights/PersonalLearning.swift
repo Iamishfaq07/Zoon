@@ -153,8 +153,8 @@ enum PersonalLearning {
     static func proactiveItems(nights: [SleepNightFeatures], radar: HealthRadar) -> [ProactiveItem] {
         guard let latest = nights.sorted(by: { $0.date < $1.date }).last else { return [] }
         var items: [ProactiveItem] = []
-        if radar.isActive {
-            items.append(.init(kind: .bodySignals, title: "Body signals changed together", detail: radar.detail, action: "Review body signals"))
+        if radar.state.isActionable {
+            items.append(.init(kind: .bodySignals, title: "Body signals changed together", detail: radar.stateDetail, action: "Review body signals"))
         }
         if let debt = latest.sleepDebtMinutes, debt >= 240 {
             items.append(.init(kind: .debt, title: "Sleep debt is building", detail: "Your recent shortfall is about \(Int((debt / 60).rounded())) hours.", action: "Plan tonight"))

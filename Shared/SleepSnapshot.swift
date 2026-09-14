@@ -82,7 +82,7 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     var nextBadgeTitle: String = ""
     var nextBadgeProgress: Double = 0
 
-    /// `HealthRadar.Severity.label` as of the last publish -- "Nothing
+    /// `HealthRadar.stateShortLabel` as of the last publish -- "Nothing
     /// unusual", "Worth watching", or "Several signals moving". Defaulted
     /// for the same reason every other field added after the first release
     /// is: an older snapshot on disk still decodes, and the Watch app

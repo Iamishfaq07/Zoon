@@ -100,9 +100,11 @@ struct HealthPulseStrip: View {
 
     private var bodySignalsTile: some View {
         let radar = context.healthRadar
-        let tint: Color = radar.isActive
-            ? (radar.severity == .notable ? Theme.Metric.recoveryLow : Theme.Metric.recoveryMid)
-            : Theme.Metric.recoveryHigh
+        let state = radar.state
+        // One mapping, shared with every other radar surface. The dots were
+        // painted green whenever the signal list was empty -- which is also
+        // true on night four and on a phone with no physiology.
+        let tint: Color = state.tint
 
         return NavigationLink {
             HealthRadarView()
@@ -116,19 +118,15 @@ struct HealthPulseStrip: View {
                     }
                 }
                 .frame(height: 22)
-                pulseLabel("Signals", value: radar.isActive ? "\(radar.signals.count)" : "OK")
+                pulseLabel("Signals", value: radar.stateCountLabel)
             }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Body Signals")
-        // `isActive` is false for a clear fortnight, for night four, and for
-        // a phone with no physiology. Only the first is reassurance.
-        .accessibilityValue(
-            radar.isActive
-                ? "\(radar.signals.count) signals drifting"
-                : radar.stateHeadline
-        )
+        // Reads the same state the dots are painted from, so the spoken
+        // value and the visible one cannot disagree.
+        .accessibilityValue(radar.stateHeadline)
         .accessibilityHint("View body signals")
     }
 
