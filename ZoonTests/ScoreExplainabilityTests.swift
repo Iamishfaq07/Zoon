@@ -76,7 +76,7 @@ final class ScoreExplainabilityTests: XCTestCase {
         // has no stage detail -- Stage Pattern is the component that needs it.
         let unstaged = SleepIntelligenceScore.compute(.init(
             night: Fixture.night(daysAgo: 0, staged: false),
-            history: Fixture.consecutiveNights(30),
+            history: variedHistory(),
             sleepNeedMinutes: 480,
             regularityIndex: 85, habitualMidpointHours: -3
         ))
@@ -100,7 +100,7 @@ final class ScoreExplainabilityTests: XCTestCase {
     func testWorstContributorIsFirst() {
         let score = SleepIntelligenceScore.compute(.init(
             night: Fixture.night(daysAgo: 0, timeAsleepMinutes: 290, timeInBedMinutes: 420, wakeCount: 9),
-            history: Fixture.consecutiveNights(30),
+            history: variedHistory(),
             sleepNeedMinutes: 480,
             regularityIndex: 85, habitualMidpointHours: -3
         ))
@@ -114,10 +114,34 @@ final class ScoreExplainabilityTests: XCTestCase {
         }
     }
 
+    /// History with real night-to-night variation in deep and REM.
+    ///
+    /// `Fixture.consecutiveNights` builds identical nights, and identical is
+    /// degenerate here: Stage Pattern scores tonight's split as a robust
+    /// z against the history's median absolute deviation, and thirty
+    /// identical nights have a MAD of zero, so `robustZ` correctly returns
+    /// nil and the component is correctly dropped. That is right behaviour
+    /// on a history no person has, and a test that treats it as a full
+    /// model is testing the fixture rather than the score.
+    private func variedHistory(_ count: Int = 30) -> [SleepNightFeatures] {
+        Fixture.consecutiveNights(count) { daysAgo in
+            // Deterministic, not random: a test that fails one run in twenty
+            // is worse than no test. The offsets are small enough to stay an
+            // ordinary night and large enough to give the MAD something to
+            // measure.
+            let wobble = Double((daysAgo * 7) % 11) - 5
+            return Fixture.night(
+                daysAgo: daysAgo,
+                deepMinutes: 81 + wobble,
+                remMinutes: 99 - wobble
+            )
+        }
+    }
+
     private func fullyPopulatedScore() -> SleepIntelligenceScore {
         SleepIntelligenceScore.compute(.init(
             night: Fixture.night(daysAgo: 0),
-            history: Fixture.consecutiveNights(30),
+            history: variedHistory(),
             sleepNeedMinutes: 480,
             // Both supplied: a "fully populated" night that leaves Regularity
             // and Timing out because the caller passed nil would prove
