@@ -843,6 +843,8 @@ APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppI
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
 				INFOPLIST_KEY_NSAlarmKitUsageDescription = "{ALARM_DESC}";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
 				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

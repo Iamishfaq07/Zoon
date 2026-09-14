@@ -146,6 +146,13 @@ struct CoachTabView: View {
                         symbol: "checklist",
                         tint: Theme.Family.circadian
                     ) { SleepPlaybookView() }
+
+                    ExploreTile(
+                        title: "Tomorrow",
+                        subtitle: "One plan for a morning that has a start time",
+                        symbol: "sunrise.fill",
+                        tint: Theme.Family.sleep
+                    ) { ZoonTomorrowView() }
                 }
                 .entrance(3)
 

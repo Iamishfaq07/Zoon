@@ -33,6 +33,7 @@ struct SleepDetailView: View {
             VStack(spacing: Theme.stackSpacing) {
                 headline
                 hypnogramCard
+                AwakeningInspectorCard(night: context.night, sounds: soundEventStore.recentEvents)
                 storyPreviewCard
                 breakdownCard
                 RelatedReading(placement: .sleepStages, title: "What the stages mean")

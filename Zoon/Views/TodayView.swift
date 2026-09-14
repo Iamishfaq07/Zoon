@@ -165,6 +165,13 @@ struct TodayView: View {
                     .entrance(3)
                 TravelTonightCard()
                     .entrance(3)
+                NavigationLink {
+                    ZoonTomorrowView()
+                } label: {
+                    tomorrowCard(context)
+                }
+                .buttonStyle(.plain)
+                .entrance(4)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
             } else {
@@ -239,11 +246,26 @@ struct TodayView: View {
 
             if moment == .day {
                 energySection(context).entrance(5)
+                MovementContextCard(
+                    snapshot: MovementContext.snapshot(
+                        stepsSoFar: nil,
+                        typicalStepsByNow: nil,
+                        weekday: Calendar.current.component(.weekday, from: .now)
+                    )
+                )
+                .entrance(5)
             }
 
             if moment == .morning || moment == .day {
                 TonightSection(context: context, autopilot: autopilotPlan(context))
                     .entrance(6)
+                NavigationLink {
+                    ZoonTomorrowView()
+                } label: {
+                    tomorrowCard(context)
+                }
+                .buttonStyle(.plain)
+                .entrance(6)
             }
 
             if moment == .day {
@@ -412,6 +434,45 @@ struct TodayView: View {
 
     /// One construction, shared by the plan card and the energy section, so
     /// the window the plan names is the window the curve draws.
+    private func tomorrowCard(_ context: DayContext) -> some View {
+        let event = preferences.tomorrowEventEnabled
+            ? ZoonTomorrow.Event(start: preferences.tomorrowEventDate(), isAllDay: false, source: .manual)
+            : nil
+        let plan = ZoonTomorrow.plan(
+            event: event,
+            nights: coordinator.recentNights,
+            sleepNeedMinutes: context.sleepNeed.totalNeedMinutes,
+            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            napMinutesToday: napMinutesToday
+        )
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Tomorrow", systemImage: "sunrise.fill")
+            if let plan {
+                Text(plan.sentence)
+                    .font(Theme.text(17, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                HorizonStrip(
+                    nodes: plan.nodes,
+                    sleepWindowStart: plan.sleepWindowStart,
+                    sleepWindowEnd: plan.sleepWindowEnd
+                )
+                Text(plan.caveat)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Name a morning start time and Zoon will arrange tonight around it.")
+                    .font(Theme.text(15))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+        .accessibilityHint("Opens Tomorrow")
+    }
+
     private func energyForecast(_ context: DayContext) -> EnergyForecast {
         EnergyForecast.compute(
             wakeTime: context.night.wakeTime,

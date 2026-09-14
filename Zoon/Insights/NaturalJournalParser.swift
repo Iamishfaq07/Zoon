@@ -40,7 +40,11 @@ enum NaturalJournalParser {
     private static let negations = ["no", "didn't", "without", "avoided", "skipped", "not"]
 
     static func proposals(from text: String) -> [Proposal] {
-        let lower = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current).lowercased()
+        proposals(from: text, customNames: [])
+    }
+
+    static func proposals(from text: String, customNames: [String]) -> [Proposal] {
+        let lower = text.folding(options: .diacriticInsensitive, locale: .current).lowercased()
         var output: [Proposal] = []
         for rule in rules {
             guard var phrase = rule.phrases.first(where: { range(of: $0, in: lower) != nil }) else { continue }
@@ -57,6 +61,7 @@ enum NaturalJournalParser {
             output.append(Proposal(tag: tag, state: state, matchedText: timing.map { "\(phrase) at \(formatHour($0))" } ?? phrase, confidence: confidence))
         }
         if output.contains(where: { $0.tag == .caffeineLate }) { output.removeAll { $0.tag == .caffeine } }
+        _ = customNames
         return output
     }
 

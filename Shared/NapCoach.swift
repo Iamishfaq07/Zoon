@@ -39,7 +39,7 @@ enum NapCoach {
         if napMinutesToday >= 30 {
             return Recommendation(
                 advice: .avoid,
-                reason: "You've already napped \(Int(napMinutesToday)) minutes today. Another nap risks cutting into tonight's sleep drive."
+                reason: "Based on your schedule, another nap is more likely to cut into tonight's sleep drive."
             )
         }
 
@@ -48,30 +48,30 @@ enum NapCoach {
         if let hours = hoursUntilBedtime, hours < 6 {
             return Recommendation(
                 advice: .avoid,
-                reason: "Bedtime is under 6 hours away. A nap this close would likely reduce tonight's sleep pressure rather than add to today's."
+                reason: "Bedtime is under 6 hours away. A nap this close is more likely to reduce tonight's sleep pressure than add to today."
             )
         }
 
         if debtMinutes < 20 {
             return Recommendation(
                 advice: .optional,
-                reason: "Estimated debt is minimal right now, so a nap isn't necessary -- but a short one won't cost you anything either."
+                reason: "Estimated debt is minimal right now, so a nap isn't necessary — a short one is less likely to shift tonight."
             )
         }
 
         if debtMinutes >= 90, let hours = hoursUntilBedtime, hours >= 8 {
             return Recommendation(
                 advice: .recommended(durationMinutes: 90),
-                reason: "Debt is high enough, and bedtime is far enough away, that a longer ~90 minute recovery nap -- roughly one full sleep cycle -- is unlikely to interfere with tonight."
+                reason: "Debt is high enough, and bedtime is far enough away, that a longer ~90 minute nap may allow more complete sleep-stage progression, though cycle length varies. Based on your schedule, it is less likely to interfere with tonight."
             )
         }
 
         let debtNote = debtMinutes >= 20
-            ? " and should ease some of today's \(Int(debtMinutes)) minutes of estimated debt"
+            ? " and may ease some of today's \(Int(debtMinutes)) minutes of estimated debt"
             : ""
         return Recommendation(
             advice: .recommended(durationMinutes: 20),
-            reason: "A short 15-25 minute power nap now is unlikely to interfere with tonight's sleep\(debtNote)."
+            reason: "Based on your schedule, a short 15–25 minute nap now is less likely to interfere with tonight's sleep\(debtNote)."
         )
     }
 }

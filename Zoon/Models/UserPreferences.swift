@@ -40,6 +40,10 @@ final class UserPreferences {
         static let preferredSleepSourceName = "zoon.pref.preferredSleepSourceName"
         static let preferredSleepSourceBundleIdentifier = "zoon.pref.preferredSleepSourceBundleIdentifier"
         static let trackedBehaviorTagIdentifiers = "zoon.pref.trackedBehaviorTagIdentifiers"
+        static let calendarAccessEnabled = "zoon.pref.calendarAccessEnabled"
+        static let tomorrowEventEnabled = "zoon.pref.tomorrowEventEnabled"
+        static let tomorrowHour = "zoon.pref.tomorrowHour"
+        static let tomorrowMinute = "zoon.pref.tomorrowMinute"
     }
 
     private let defaults: UserDefaults
@@ -207,6 +211,38 @@ final class UserPreferences {
     /// default, requested from Settings the same way bedtime reminders are.
     var morningBriefEnabled: Bool {
         didSet { defaults.set(morningBriefEnabled, forKey: Key.morningBriefEnabled) }
+    }
+
+    /// Opt-in EventKit read. Off by default. Only tomorrow's first start time
+    /// is requested; titles are not persisted.
+    var calendarAccessEnabled: Bool {
+        didSet { defaults.set(calendarAccessEnabled, forKey: Key.calendarAccessEnabled) }
+    }
+
+    /// Whether Tomorrow should protect a named morning start time.
+    var tomorrowEventEnabled: Bool {
+        didSet { defaults.set(tomorrowEventEnabled, forKey: Key.tomorrowEventEnabled) }
+    }
+
+    var tomorrowHour: Int {
+        didSet { defaults.set(tomorrowHour, forKey: Key.tomorrowHour) }
+    }
+
+    var tomorrowMinute: Int {
+        didSet { defaults.set(tomorrowMinute, forKey: Key.tomorrowMinute) }
+    }
+
+    func tomorrowEventDate(now: Date = .now, calendar: Calendar = .current) -> Date {
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+        return calendar.date(
+            bySettingHour: tomorrowHour, minute: tomorrowMinute, second: 0, of: tomorrow
+        ) ?? tomorrow
+    }
+
+    func setTomorrowEvent(date: Date, calendar: Calendar = .current) {
+        tomorrowHour = calendar.component(.hour, from: date)
+        tomorrowMinute = calendar.component(.minute, from: date)
+        tomorrowEventEnabled = true
     }
 
     /// System / Dark / Light. Defaults to Dark, not System: the palette was
@@ -594,6 +630,12 @@ final class UserPreferences {
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
         self.wakeAlarmEnabled = defaults.bool(forKey: Key.wakeAlarmEnabled)
         self.morningBriefEnabled = defaults.bool(forKey: Key.morningBriefEnabled)
+        self.calendarAccessEnabled = defaults.bool(forKey: Key.calendarAccessEnabled)
+        self.tomorrowEventEnabled = defaults.object(forKey: Key.tomorrowEventEnabled) as? Bool ?? true
+        let storedHour = defaults.object(forKey: Key.tomorrowHour) as? Int
+        self.tomorrowHour = storedHour ?? 8
+        let storedMinute = defaults.object(forKey: Key.tomorrowMinute) as? Int
+        self.tomorrowMinute = storedMinute ?? 30
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: Key.appearance) ?? ""
         ) ?? .dark
@@ -656,6 +698,10 @@ final class UserPreferences {
         smartWakeEnabled = false
         wakeAlarmEnabled = false
         morningBriefEnabled = false
+        calendarAccessEnabled = false
+        tomorrowEventEnabled = true
+        tomorrowHour = 8
+        tomorrowMinute = 30
         appearance = .dark
         displayName = ""
         age = nil
@@ -690,6 +736,10 @@ final class UserPreferences {
             Key.smartWakeEnabled,
             Key.wakeAlarmEnabled,
             Key.morningBriefEnabled,
+            Key.calendarAccessEnabled,
+            Key.tomorrowEventEnabled,
+            Key.tomorrowHour,
+            Key.tomorrowMinute,
             Key.appearance,
             Key.recoveryModeDate,
             Key.experimentDesign,
