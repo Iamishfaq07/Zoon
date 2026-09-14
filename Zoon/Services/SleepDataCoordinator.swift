@@ -1288,7 +1288,24 @@ final class SleepDataCoordinator {
         let interval = DateInterval(start: samplingStart, end: now)
 
         let workouts = (try? await healthKit.workouts(in: interval)) ?? []
-        todayWorkouts = workouts.map(WorkoutSummary.init).sorted { $0.start < $1.start }
+        // One row per real session. A run recorded by the Watch and mirrored
+        // by a third-party app arrives as two workouts with different UUIDs,
+        // and the day's list showed it twice.
+        //
+        // The exclusion intervals below are deliberately built from the raw
+        // `workouts`, not the deduplicated list: subtracting the same window
+        // twice removes it once, so duplicates are harmless there, and using
+        // the full set keeps the quiet-sampling windows correct even when
+        // two records of one session disagree slightly at the edges.
+        let summaries = workouts.map(WorkoutSummary.init)
+        let keptIDs = Set(
+            WorkoutDeduplicator
+                .deduplicate(summaries.map(\.deduplicationCandidate))
+                .map(\.id)
+        )
+        todayWorkouts = summaries
+            .filter { keptIDs.contains($0.id) }
+            .sorted { $0.start < $1.start }
         // Extended past the workout's own end: heart rate and HRV don't snap
         // back to a resting state the instant a session stops, so the
         // minutes right after a hard effort still read as exertion, not

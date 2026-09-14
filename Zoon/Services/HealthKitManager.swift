@@ -897,6 +897,13 @@ struct WorkoutSummary: Identifiable, Hashable, Sendable {
     let start: Date
     let durationMinutes: Double
     let activeEnergyKcal: Double?
+    /// Which writer this came from, on the same ladder sleep arbitration
+    /// uses. Carried so the same session recorded by a Watch and mirrored
+    /// by a third-party app can be collapsed to one -- see
+    /// `WorkoutDeduplicator`.
+    var priority: SourcePriority = .phoneOrManual
+
+    var end: Date { start.addingTimeInterval(durationMinutes * 60) }
 
     init(workout: HKWorkout) {
         self.id = workout.uuid
@@ -905,17 +912,44 @@ struct WorkoutSummary: Identifiable, Hashable, Sendable {
         self.activeEnergyKcal = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
             .sumQuantity()?.doubleValue(for: .kilocalorie())
         (self.activityLabel, self.symbol) = Self.describe(workout.workoutActivityType)
+        self.priority = SourcePriority.classify(
+            hardwareVersion: workout.device?.hardwareVersion
+                ?? workout.sourceRevision.productType,
+            bundleIdentifier: workout.sourceRevision.source.bundleIdentifier,
+            sourceName: workout.sourceRevision.source.name
+        )
     }
 
     /// Direct construction for previews and tests, where there's no real
     /// `HKWorkout` to build one from.
-    init(id: UUID = UUID(), activityLabel: String, symbol: String, start: Date, durationMinutes: Double, activeEnergyKcal: Double?) {
+    init(
+        id: UUID = UUID(),
+        activityLabel: String,
+        symbol: String,
+        start: Date,
+        durationMinutes: Double,
+        activeEnergyKcal: Double?,
+        priority: SourcePriority = .phoneOrManual
+    ) {
         self.id = id
         self.activityLabel = activityLabel
         self.symbol = symbol
         self.start = start
         self.durationMinutes = durationMinutes
         self.activeEnergyKcal = activeEnergyKcal
+        self.priority = priority
+    }
+
+    /// This summary as arbitration input. The deduplicator is deliberately
+    /// ignorant of `HKWorkout` so it can be tested without one.
+    var deduplicationCandidate: WorkoutDeduplicator.Candidate {
+        .init(
+            id: id,
+            activityLabel: activityLabel,
+            start: start,
+            end: end,
+            priority: priority
+        )
     }
 
     /// Apple defines ~80 activity types; only the common ones get a
