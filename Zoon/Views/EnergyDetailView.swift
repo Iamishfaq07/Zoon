@@ -25,7 +25,11 @@ struct EnergyDetailView: View {
                 .padding(.bottom, 8)
                 .entrance(0)
 
-                BodyBatteryCard(battery: context.bodyBattery).entrance(1)
+                BodyBatteryCard(
+                    battery: context.bodyBattery,
+                    workouts: coordinator.todayWorkouts.map(\.namedInterval)
+                )
+                .entrance(1)
 
                 if let stress = coordinator.todayStress {
                     StressCard(stress: stress, todayStrain: context.strain.value).entrance(2)

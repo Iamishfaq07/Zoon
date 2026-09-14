@@ -11,6 +11,9 @@ import SwiftUI
 
 struct BodyBatteryCard: View {
     let battery: BodyBattery
+    /// Named periods to attribute the day's drain to. Defaulted so the
+    /// existing call sites and previews are unchanged.
+    var workouts: [EnergyDrivers.NamedInterval] = []
 
     /// Whether a precise Energy number may be printed.
     ///
@@ -27,6 +30,46 @@ struct BodyBatteryCard: View {
 
     private func number(_ value: Int) -> String {
         showsNumbers ? "\(value)" : "—"
+    }
+
+    /// What moved the curve, named.
+    ///
+    /// Energy has always known its own hourly deltas and never said what was
+    /// happening in those hours. This is the sentence the "Readiness Now"
+    /// idea was really asking for -- *down 18 since waking, because of the
+    /// afternoon run* -- without a second score built on weights nothing
+    /// calibrates.
+    @ViewBuilder
+    private var drivers: some View {
+        let state = EnergyDrivers.explain(
+            battery: battery, workouts: workouts, isPresentable: showsNumbers
+        )
+        if case .notEnoughYet = state {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(state.headline)
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                ForEach(state.drivers) { driver in
+                    HStack(spacing: 6) {
+                        Image(systemName: driver.symbol)
+                            .font(Theme.text(11))
+                            .foregroundStyle(Theme.Metric.battery)
+                            .frame(width: 16)
+                        Text(driver.label)
+                            .font(Theme.text(12))
+                        Spacer(minLength: 4)
+                        Text("−\(driver.spent)")
+                            .font(Theme.label(12, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
     }
 
     var body: some View {
@@ -61,6 +104,8 @@ struct BodyBatteryCard: View {
             }
 
             BodyBatteryChart(battery: battery)
+
+            drivers
 
             AdaptiveStack(spacing: 14) {
                 stat("Woke at", number(battery.morningPeak))
