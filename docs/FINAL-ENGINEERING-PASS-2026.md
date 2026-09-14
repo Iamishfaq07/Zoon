@@ -70,6 +70,36 @@ correct. They are recorded here as **inspected and left alone**: adding a basis
 to each tile would be more text than the numbers are worth, and the section
 heading "Weekly Averages" is a weaker claim than a named night count.
 
+**A withheld score drew a filled ring.** `SleepSnapshot.flagshipScoreText`
+gated the *number* on every glance surface, and every one of them used it.
+Nothing gated the *shape*. So the watch dial, both circular widget gauges and
+the circular complication printed "—" in the middle of a ring drawn to the
+real score — the precision withheld, the claim kept. A ring two thirds of the
+way round says "about two thirds" whether or not the digits are there.
+
+This one is different from the other reconnections here, and worth flagging
+rather than burying. The watch dial had the *opposite* rule written into it
+deliberately: "the ring still draws to `value`, because the shape is a rough
+indication and the numeral is the claim." The phone applies the reverse at the
+same decision point. Two surfaces of one app carried explicit, contradicting
+rationales, so one of them had to lose; this resolves toward the stricter
+side, and the reasoning for reversing the authored note is in the doc comment
+rather than only in a commit message. `flagshipGaugeValue` now sits beside the
+text gate it has to agree with, and `FlagshipGaugeTests` asserts the two can
+never disagree — including that a legacy payload with no Sleep Intelligence
+keeps drawing, which this change must not have broken.
+
+**Three controls VoiceOver could reach but not describe.** The soundscape
+volume slider had no name and was announced as a bare percentage, with the two
+speaker glyphs either side focusable and read as "speaker" and "speaker wave
+3" — neither of which is a thing you can do. `AudioStudioView`'s slider
+already carried a label. Onboarding's sleep-goal slider was worse: no name,
+and its value read as a fraction of the 5...11 range rather than as a
+duration, on the one control that sets the number the rest of the app is
+measured against. The clinician-report checkboxes announced their state as the
+SF Symbol's name — "checkmark square fill" — which is an implementation
+detail, not a state.
+
 **Performance: `HealthPulseStrip`.** `BreathingHealth` was a computed property
 read three times, inside a `ViewThatFits` that builds both layouts — six sorts
 plus two medians over the whole night history to draw one 22pt waveform, on
@@ -235,13 +265,34 @@ Covered in §1. One fix on the morning path; one class of recomputation
 inspected and left alone with the reasoning recorded. **No profiling was
 performed.**
 
+## 9a. Suspicions that were wrong
+
+Recorded because a list of only the findings that panned out misrepresents how
+the pass actually went, and because the discipline is the transferable part.
+
+An automated sweep for icon-only buttons with no accessibility label returned
+ten hits; six were false positives, where the match window was too short to
+see the `Text` already inside the button. Each was opened before anything was
+written, and only the clinician-report checkbox was real.
+
+The Trends chart summaries looked like they carried the same basis defect as
+the weekly report — "N nights, averaging X" where the average is over a
+`compactMap`ed subset. They do not: `points` is already pre-filtered to the
+nights that carry the reading, so the count *is* the basis. No change made.
+
+Earlier in the pass the same check was skipped once, and two duplicate chart
+accessibility helpers were half-written before it emerged the charts already
+had summaries through a modifier the grep did not match. They were deleted
+before commit. That is the cost of not verifying first, and it is why these
+two are written down.
+
 ## 10. Tests
 
 155 test files, 1,551 test methods. Added this pass:
 `HealthRadarPresentationTests`, `SleepDayKeyTests`, `SleepStreakTravelTests`,
 `LoadConfidenceTests`, `EnergyDriversTests`, `ZoonFlowLayoutTests`,
 `NightSkyPresenceTests`, `SleepSessionInvariantTests`,
-`ScoreExplainabilityTests`.
+`ScoreExplainabilityTests`, `WeeklyReportBasisTests`, `FlagshipGaugeTests`.
 
 Two of these earned their keep immediately: the invariant tests found the
 stage-overlap defect, and the explainability tests found that the standard
@@ -268,11 +319,22 @@ flows, and nothing else. The UI layer's real coverage in this project is the
 
 ## 12. Screenshots
 
-The committed visual-regression screenshots were regenerated earlier in the
-pass and inspected as images. Two screens could not be verified by any capture
-producible here: the Patterns constellation and the Evidence maturity view
-both need correlations to render, and the demo data produces none. They are
-implemented; they are unphotographed.
+Regenerated after this pass's visual changes and inspected as images. Three
+changes are confirmed rendering correctly: the Coach evidence line ("Reading
+30 nights, on this device.", with the journal clause correctly suppressed at
+zero entries and the model clause correctly absent when the model is
+available), the Patterns empty state, and the unified chart glyph on the
+Insights tab.
+
+Two changes are not photographable from here: the merged metric-sheet panel
+sits behind a tap, and the Health Pulse strip is below the fold on Today —
+though its change was a computation hoist with identical layout, so there is
+nothing visual to check.
+
+The Patterns capture independently confirms what §13 says about the
+constellation: the demo data has zero logged nights, so no correlation can
+exist and the empty state is what renders. The same is true of the Evidence
+maturity view. Both are implemented; both are unphotographable with this data.
 
 ## 13. Remaining blockers
 
@@ -291,14 +353,22 @@ pass and the arithmetic was **not** changed on a guess. The exposure is
 bounded — that path already reports low confidence — and the gate list now
 names it.
 
-**Phases not completed:** 12 (Today overhaul — the morning/day/evening
-structure was inspected and found already present), 16 and 17 (constellation
-and evidence maturity — built, unverifiable here), 18–21 (Soundscapes,
-Breathing, Trends, Sleep Detail beyond the accessibility and chart fixes
-above), 25/26 beyond the motion tokens that already existed, 28 (splash —
-`Motion.splash` and `splashHold` exist and were left alone), 31 (watch visuals
-beyond haptics), 39 (insights language — audited clean in a prior pass), 41
-(a fresh screenshot regeneration after this pass's visual changes).
+**Phases verified already-correct and deliberately unchanged:** 12 (Today has
+a real `moment` enum — `.morning`/`.day`/`.evening`/`.night` — driving a dozen
+content branches), 23 (floating capsule over a hidden system tab bar, with
+`.ultraThinMaterial` and a shared bottom safe-area inset so no tab can hide
+its own last row), 24 (light mode has per-band Dawn identity), 25/26 (`Motion`
+already carries micro/standard/hero/navigation plus draw, scrub, splash and
+stateChange, each routed through `respecting(reduceMotion:)`), 28 (splash),
+31 (`ZoonWatchDial` is geometry-driven with Always-On and reduce-motion
+handling — only its ring gate was wrong), 32 (widgets already handle both the
+withheld-score mode and the placeholder state, and already decline to invent a
+Tonight Plan section for data `SleepSnapshot` does not carry), 39 (insights
+language, audited clean in a prior pass), 42 (the gate list).
+
+**Phases not completed:** 16 and 17 (constellation and evidence maturity —
+built, unverifiable with demo data that produces no correlations), and 18–21
+beyond the accessibility, chart-glyph and slider fixes recorded above.
 
 **This is not a statement of production readiness.** Simulator CI is green.
 The list above is what stands between that and a submission.
