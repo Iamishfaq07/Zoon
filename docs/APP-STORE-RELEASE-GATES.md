@@ -72,7 +72,11 @@ OS version, Watch model, and pass/fail evidence for every run.
 - [ ] Complete VoiceOver navigation on onboarding, Today, Sleep, Trends, Journal, and More.
 - [ ] Verify largest Dynamic Type, Bold Text, Increase Contrast, and Reduce Transparency.
 - [ ] Verify Reduce Motion removes travel/scale without losing selection feedback.
-- [ ] Confirm interactive targets remain at least 44 by 44 points.
+- [ ] Confirm interactive targets remain at least 44 by 44 points. The metric info
+      buttons are the known risk: a 13-point glyph with no explicit frame, repeated
+      beside most metrics in the app. Their labels are fixed; the hit area needs a
+      rendered check, because enlarging it blind would change the height of the
+      compact rows they sit in.
 - [ ] Profile refresh query count/duration with 30 nights and multiple years of history.
 - [ ] Profile scrolling and animation on the oldest supported iPhone and Watch.
 - [ ] Measure memory for hypnogram, Sleep Replay, Patterns, Sensor Truth, Twin, and reports.
