@@ -54,6 +54,22 @@ confirmed log, a rejected one and a scrub detent felt identical. Implemented
 the watchOS branch of the shared vocabulary and routed the call sites through
 it.
 
+**A mean labelled with the wrong basis.** `WeeklyReport.averageRecovery` is a
+mean over whichever nights carried a Recovery score; `nightCount` counts every
+night in the window. The report header read "average recovery across 7 nights"
+off the second while showing the first, so a week where four nights had no
+score presented a three-night mean as a seven-night one. `CyclePhaseCorrelation`
+already drew exactly this distinction, with its own `recoveryNightCount` and a
+card that claims the full count only when the two agree; this was the one
+surface not following the rule. The header now says "across 3 of 7 nights"
+when they differ, rather than picking whichever number is larger.
+
+Two tiles on the same screen — HRV and Resting HR — are also means over
+`compactMap`ed subsets, but they state no count, so there is no false claim to
+correct. They are recorded here as **inspected and left alone**: adding a basis
+to each tile would be more text than the numbers are worth, and the section
+heading "Weekly Averages" is a weaker claim than a named night count.
+
 **Performance: `HealthPulseStrip`.** `BreathingHealth` was a computed property
 read three times, inside a `ViewThatFits` that builds both layouts — six sorts
 plus two medians over the whole night history to draw one 22pt waveform, on
