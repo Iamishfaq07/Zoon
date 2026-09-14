@@ -932,7 +932,7 @@ struct MorePage: View {
 
             HStack(spacing: 10) {
                 WatchMiniStat(
-                    value: snapshot.hasEnergy ? "\(snapshot.bodyBattery)" : "—",
+                    value: snapshot.canStateEnergy ? "\(snapshot.bodyBattery)" : "—",
                     label: "energy",
                     tint: Theme.Metric.battery
                 )

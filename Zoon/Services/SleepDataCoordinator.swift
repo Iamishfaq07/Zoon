@@ -1157,6 +1157,8 @@ final class SleepDataCoordinator {
         // Same reason, same rule: the glance surfaces lead with Sleep
         // Intelligence and need to know when not to state it.
         snapshot.sleepIntelligenceConfidence = context.sleepIntelligence.confidence.rawValue
+        // Energy inherits Recovery's verdict; the wrist needs that too.
+        snapshot.energyConfidence = context.bodyBattery.confidence.rawValue
         // The radar's own state, not `isActive` collapsed to a reassurance.
         // `!isActive` is true of a clear fortnight, of night four, and of a
         // phone that records sleep but no physiology; only the first of those

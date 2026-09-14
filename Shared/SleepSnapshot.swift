@@ -117,6 +117,15 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// sleep-minutes figure -- so that was a score being stated on glass that
     /// the phone was already declining to stand behind.
     var sleepIntelligenceConfidence: String = ""
+    /// `MetricConfidence.rawValue` for Energy.
+    ///
+    /// `hasEnergy` answers "is there a number", which is not the same
+    /// question. Energy inherits Recovery's verdict through
+    /// `BodyBattery.provenance`, so `.insufficient` is reachable with a
+    /// perfectly present number behind it -- and the glance surfaces were
+    /// showing that number while the phone's own card carried a caveat under
+    /// it.
+    var energyConfidence: String = ""
 
     /// A nap running on the phone right now, as of this snapshot.
     ///
@@ -296,6 +305,14 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
         return confidence > .insufficient
     }
 
+    /// Whether the Energy figure in this payload is one to state. Same legacy
+    /// rule as `canStateRecovery`: unknown confidence shows the number.
+    var canStateEnergy: Bool {
+        guard hasEnergy else { return false }
+        guard let confidence = MetricConfidence(rawValue: energyConfidence) else { return true }
+        return confidence > .insufficient
+    }
+
     var flagshipScore: Int {
         hasSleepIntelligence ? sleepIntelligencePercent : score
     }
@@ -420,6 +437,7 @@ extension SleepSnapshot {
         recoveryConfidence = try container.decodeIfPresent(String.self, forKey: .recoveryConfidence) ?? ""
         sleepIntelligenceConfidence = try container
             .decodeIfPresent(String.self, forKey: .sleepIntelligenceConfidence) ?? ""
+        energyConfidence = try container.decodeIfPresent(String.self, forKey: .energyConfidence) ?? ""
         isShiftWorkModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isShiftWorkModeEnabled) ?? false
 
         // Tonight's plan and tomorrow's range. Missing here until now, which

@@ -230,13 +230,32 @@ struct BodyBattery: Codable, Hashable, Sendable {
         )
     }
 
+    /// One line naming the weakest thing this curve rests on.
+    ///
+    /// Energy has two independent weaknesses and this used to report only the
+    /// second. The *charge* sets the level the day starts from, and comes
+    /// from Recovery -- so an Energy figure built from sleep alone, with no
+    /// recovery score behind it, showed no caveat at all as long as the
+    /// resting baseline happened to be personal. The *drawdown* needs a
+    /// resting rate to measure effort against.
+    ///
+    /// The charge is named first when both are weak: it sets the number the
+    /// whole day is subtracted from, so a wrong starting level is wrong all
+    /// day, while a rough drawdown only drifts.
     var confidenceNote: String? {
-        switch restingBaselineSource {
+        let fromCharge: String? = switch provenance {
+        case .fullPhysiologicalRecovery: nil
+        case .partialRecovery: "Charged from a partial recovery score, so this morning's level is approximate."
+        case .sleepDerivedEstimate: "Charged from sleep alone — no recovery score was available for last night."
+        case .insufficient: "Not enough of last night to charge this reliably."
+        }
+        let fromDrawdown: String? = switch restingBaselineSource {
         case .personalBaseline: nil
         case .nightlyRestingHeartRate: "Estimated from last night's resting heart rate while your personal baseline builds."
         case .sleepingLowEstimate: "Estimated from the night's lowest heart-rate reading; daytime drain may be less reliable."
         case .unavailable: "Overnight reserve only. Daytime change needs a personal resting heart-rate baseline."
         }
+        return fromCharge ?? fromDrawdown
     }
 }
 

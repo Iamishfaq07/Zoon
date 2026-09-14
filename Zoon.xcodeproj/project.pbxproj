@@ -771,6 +771,7 @@
 		C9B15020CD092211AD3906BA /* SleepSourceArbitration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCC204477232E68E017061A /* SleepSourceArbitration.swift */; };
 		C9E11F58E708C31FE69D679F /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
 		C9EEE0A6986569EB49033EB1 /* SleepReplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE0980BAD4F97A00BC192866 /* SleepReplay.swift */; };
+		CA0E0961C067F5DC061E8735 /* EnergyConfidenceSurfacingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B724D477AE9FC55DE149B09 /* EnergyConfidenceSurfacingTests.swift */; };
 		CA39731D128EEA1E31F3E4CB /* CyclePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 449A6ED264EB4AB017A39AF5 /* CyclePhase.swift */; };
 		CA72B7857AEACD4952A94A56 /* SleepDaySummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DF84481F1211BF95927815 /* SleepDaySummaryTests.swift */; };
 		CAAB22DD20C1446BEE2FD802 /* ZoonMetricPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAD1473EE6E80B4F51FCDBF /* ZoonMetricPrimitives.swift */; };
@@ -1235,6 +1236,7 @@
 		5916908C5ABDE5191F03FFF2 /* JournalCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalCorrelatorTests.swift"; sourceTree = "<group>"; };
 		597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalLLMInsightEngine.swift"; sourceTree = "<group>"; };
 		59E7C7D9E2871356A6863BF2 /* ExperimentPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExperimentPlanner.swift"; sourceTree = "<group>"; };
+		5B724D477AE9FC55DE149B09 /* EnergyConfidenceSurfacingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyConfidenceSurfacingTests.swift"; sourceTree = "<group>"; };
 		5B7D50CE5067638BEB5554AA /* pond.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "pond.mp3"; sourceTree = "<group>"; };
 		5BC1633667837266E354EB2A /* MorningInThree.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningInThree.swift"; sourceTree = "<group>"; };
 		5BFFA2C02EE15C5E13B57E9B /* StressScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StressScore.swift"; sourceTree = "<group>"; };
@@ -1904,6 +1906,7 @@
 				B09AAE232662DB23667D64EB,
 				AACAEA80A0FF49BC1F5ED343,
 				F381FE30E3EFE052D944E960,
+				5B724D477AE9FC55DE149B09,
 				2F1D3D8C86204A5AA8EE1BF2,
 				1DDE379459EFEC55884E3FB4,
 				5CB15B2930CDA0CED202C925,
@@ -3102,6 +3105,7 @@
 				DB5EBF20EB28BA0CCE6FDF31,
 				BC44ED703509F77CD32C1B57,
 				B279C694B155187C534FB73C,
+				CA0E0961C067F5DC061E8735,
 				C3D36F9B9975C1DD8B177243,
 				B3A0A5AEE52DEC8541BF05A6,
 				F5B9157E3BA10ADD82F4B95D,
