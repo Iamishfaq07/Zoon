@@ -244,7 +244,11 @@ including the stage-overlap fix (whose invariant tests pass with no regression
 in the existing `SleepSessionBuilderTests`) and the fixture correction for the
 `ScoreExplainabilityTests` described in §2.
 
-No UI test run is included: `ZoonUITests` is skipped in this workflow.
+`ZoonUITests` also ran on that build and reported `Executed 2 tests, with 0
+failures`. Two is worth naming rather than rounding up to "UI tests pass":
+they cover launching to the tab bar and opening the core sleep and coach
+flows, and nothing else. The UI layer's real coverage in this project is the
+1,551 logic tests behind it plus previews, not the UI test target.
 
 ## 12. Screenshots
 
