@@ -48,8 +48,13 @@ final class LoadProvenanceTests: XCTestCase {
     func testEstimateAndLegacyCarryNoZoneProvenance() throws {
         XCTAssertNil(StrainScore.estimate(activeEnergyKcal: 400, exerciseMinutes: 30).zoneProvenance)
 
+        // `zoneMinutes` is an array, not an object. Swift's JSONEncoder only
+        // writes a dictionary as a JSON object when its key is literally
+        // `String` or `Int`; a String-backed enum key is not special-cased,
+        // so it encodes as a flat [key, value, key, value] array. Worth
+        // pinning: anything hand-writing or reading this payload has to know.
         let legacy = """
-        {"value":8.2,"zoneMinutes":{},"isEstimate":false}
+        {"value":8.2,"zoneMinutes":[],"isEstimate":false}
         """.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(StrainScore.self, from: legacy)
         XCTAssertNil(decoded.zoneProvenance)
