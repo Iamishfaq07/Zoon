@@ -256,10 +256,23 @@ struct OnboardingView: View {
                 }
             }
             .frame(width: 150, height: 150)
+            // One spoken statement of the goal, not two. The slider below
+            // carries the same number as its value, and it is the element
+            // that can actually change it.
+            .accessibilityHidden(true)
 
+            // Named, and read as a duration. Unlabelled, VoiceOver announced
+            // this as a bare percentage of the 5...11 range -- so the one
+            // control that sets the number the whole app is measured against
+            // could be adjusted without ever being told what it was setting
+            // or what it now said. The ring above states the same value; it
+            // is a separate element, and a slider is adjusted without
+            // leaving it.
             Slider(value: $goalHours, in: 5...11, step: 0.25)
                 .tint(Theme.Metric.sleep)
                 .padding(.horizontal, 40)
+                .accessibilityLabel("Sleep goal")
+                .accessibilityValue(SleepNightFeatures.formatMinutes(goalHours * 60))
         }
         .frame(height: 236)
     }
