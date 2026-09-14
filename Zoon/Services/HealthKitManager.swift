@@ -683,6 +683,23 @@ final class HealthKitManager {
         ) { $0.sumQuantity() }
     }
 
+    /// Average HRV per hour, for the waking time-of-day baseline
+    /// (`DaytimeBaseline`).
+    ///
+    /// HRV is written far less often than heart rate -- a handful of readings
+    /// a day on most watches -- so most hours come back absent. That is the
+    /// correct shape: an hour with no reading is not an hour of average HRV,
+    /// and `binnedSeries` omits rather than zero-fills.
+    func hourlyHeartRateVariability(in interval: DateInterval) async throws -> [(date: Date, bpm: Double)] {
+        try await binnedSeries(
+            .heartRateVariabilitySDNN,
+            unit: .secondUnit(with: .milli),
+            options: .discreteAverage,
+            interval: interval,
+            binMinutes: 60
+        ) { $0.averageQuantity() }
+    }
+
     /// Same average heart rate series `hourlyHeartRate` returns, at a finer
     /// bin size -- used for `heartRateZones` below. See that function's doc
     /// comment for why 60-minute bins were never fine enough.

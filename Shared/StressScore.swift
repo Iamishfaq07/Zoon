@@ -54,6 +54,25 @@ struct StressScore: Codable, Hashable, Sendable {
     let hrvBaseline: Double?
     /// False once there's baseline history to compare against honestly.
     let isEstimate: Bool
+    /// Which kind of baseline each component was actually measured against.
+    ///
+    /// Carried rather than inferred, because the two are not interchangeable
+    /// and the difference is the whole reason this score was labelled
+    /// experimental. `nil` when that component had no baseline at all.
+    var hrBasis: BaselineBasis?
+    var hrvBasis: BaselineBasis?
+
+    /// What a reading was compared against.
+    enum BaselineBasis: String, Codable, Hashable, Sendable {
+        /// The person's own waking readings at this hour of the day. The
+        /// comparison this score always wanted.
+        case wakingTimeOfDay
+        /// Overnight resting physiology. Kept as a fallback because it is
+        /// better than no comparison, but sleeping and calm-waking values do
+        /// not live on the same scale -- a normal desk-bound heart rate can
+        /// read 30% above a normal sleeping one.
+        case overnightResting
+    }
 
     enum Band: String, Codable, Sendable {
         case calm, elevated, high
@@ -68,7 +87,7 @@ struct StressScore: Codable, Hashable, Sendable {
 
         var detail: String {
             switch self {
-            case .calm: "Autonomic load today is at or below your usual."
+            case .calm: "Autonomic load today is around your usual."
             case .elevated: "Running a bit hot today. Not urgent, worth noticing."
             case .high: "Well above your usual for today. Consider easing off."
             }
@@ -78,42 +97,73 @@ struct StressScore: Codable, Hashable, Sendable {
     /// Baseline nights required before this is more than a guess.
     static let minimumBaselineNights = 7
 
-    /// The current comparison baseline comes from sleep, not matched waking
-    /// hours. Keep this on the model so every surface can disclose the same
-    /// limitation instead of relying on a detail screen being opened.
-    var baselineContextNote: String {
-        "Compared with your overnight baseline; waking physiology normally differs."
+    /// True when every component used was compared against waking readings
+    /// from this hour of the day, so the scale mismatch does not apply.
+    var isScaleMatched: Bool {
+        let used = [hrBasis, hrvBasis].compactMap { $0 }
+        return !used.isEmpty && used.allSatisfy { $0 == .wakingTimeOfDay }
     }
 
+    /// What this number was measured against. Kept on the model so every
+    /// surface discloses the same thing instead of relying on a detail screen
+    /// being opened.
+    var baselineContextNote: String {
+        switch (hrBasis, hrvBasis) {
+        case (.wakingTimeOfDay, .wakingTimeOfDay),
+             (.wakingTimeOfDay, nil), (nil, .wakingTimeOfDay):
+            return "Compared with your own waking readings from this time of day."
+        case (nil, nil):
+            return "Compared with your overnight baseline; waking physiology normally differs."
+        default:
+            return "Partly compared with your overnight baseline, where there aren't enough waking readings from this hour yet."
+        }
+    }
+
+    /// - Parameters:
+    ///   - wakingHRBaseline: this hour's own waking centre, when there is one.
+    ///     Preferred over `hrBaseline` whenever present -- it is the same
+    ///     physiological state as the reading being scored.
+    ///   - wakingHRVBaseline: the same for HRV.
     static func compute(
         avgHeartRate: Double?,
         avgHRV: Double?,
         hrBaseline: Double?,
         hrvBaseline: Double?,
         sampledMinutes: Double,
-        baselineNightCount: Int
+        baselineNightCount: Int,
+        wakingHRBaseline: Double? = nil,
+        wakingHRVBaseline: Double? = nil
     ) -> StressScore? {
         // Needs at least one live signal today — a score built from zero
         // samples would just be restating the baseline back as "calm".
         guard avgHeartRate != nil || avgHRV != nil else { return nil }
 
         var points: [Double] = []
+        // The waking centre wins wherever it exists: comparing a waking
+        // reading against a sleeping one is the defect this replaces, and a
+        // fallback that silently takes over would reintroduce it.
+        let hrComparison = wakingHRBaseline ?? hrBaseline
+        let hrvComparison = wakingHRVBaseline ?? hrvBaseline
+        var hrBasis: BaselineBasis?
+        var hrvBasis: BaselineBasis?
 
         // HR component: higher than baseline reads as more stressed. Maps
         // ±20% around baseline onto 0…1 (so +10% → 0.75, +20% → 1.0); the
         // divisor is the full width of that band, the same convention
         // `RecoveryScore` uses.
-        if let hr = avgHeartRate, let base = hrBaseline, base > 0 {
+        if let hr = avgHeartRate, let base = hrComparison, base > 0 {
             let deviation = (hr - base) / base
             points.append(clamp01(0.5 + deviation / 0.40))
+            hrBasis = wakingHRBaseline != nil ? .wakingTimeOfDay : .overnightResting
         }
 
         // HRV component: inverted — lower than baseline reads as more
         // stressed. HRV is the noisier of the two, so it gets the wider
         // band: ±35% around baseline onto 0…1 (−35% → 1.0).
-        if let hrv = avgHRV, let base = hrvBaseline, base > 0 {
+        if let hrv = avgHRV, let base = hrvComparison, base > 0 {
             let deviation = (hrv - base) / base
             points.append(clamp01(0.5 - deviation / 0.70))
+            hrvBasis = wakingHRVBaseline != nil ? .wakingTimeOfDay : .overnightResting
         }
 
         // Neither baseline is available yet: there is nothing to compare
@@ -127,9 +177,21 @@ struct StressScore: Codable, Hashable, Sendable {
         let normalized = points.reduce(0, +) / Double(points.count)
         let value = Int((normalized * 100).rounded())
 
+        // Re-centred with the baseline fix, and only defensible because of
+        // it. The scale is 50 at your usual, and the old bands called 50
+        // "Elevated" -- which was survivable only while the comparison was
+        // against sleeping physiology, where a normal waking reading sat far
+        // above 50 anyway. Against a matched waking baseline those bands
+        // would have reported a perfectly typical day as elevated, every day.
+        //
+        // Stated as deviation from usual, which is what the scale means:
+        //   under +5%        calm
+        //   +5% up to +15%   elevated
+        //   +15% and above   high
+        // (`value` is 50 + deviation/0.40 x 50, so those are 63 and 88.)
         let band: Band = switch value {
-        case ..<40: .calm
-        case 40..<70: .elevated
+        case ..<63: .calm
+        case 63..<88: .elevated
         default: .high
         }
 
@@ -139,9 +201,15 @@ struct StressScore: Codable, Hashable, Sendable {
             sampledMinutes: sampledMinutes,
             avgHeartRate: avgHeartRate,
             avgHRV: avgHRV,
-            hrBaseline: hrBaseline,
-            hrvBaseline: hrvBaseline,
-            isEstimate: baselineNightCount < minimumBaselineNights
+            hrBaseline: hrComparison,
+            hrvBaseline: hrvComparison,
+            // A waking baseline stands on its own history, so a thin *night*
+            // count no longer makes the score an estimate when nothing was
+            // drawn from the nights.
+            isEstimate: [hrBasis, hrvBasis].contains(.overnightResting)
+                && baselineNightCount < minimumBaselineNights,
+            hrBasis: hrBasis,
+            hrvBasis: hrvBasis
         )
     }
 

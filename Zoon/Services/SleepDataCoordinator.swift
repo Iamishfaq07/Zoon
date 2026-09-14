@@ -1271,7 +1271,20 @@ final class SleepDataCoordinator {
     ///
     /// How long after a workout ends its elevated HR/HRV are still treated
     /// as exertion rather than autonomic load, for `refreshTodayStress`.
-    private static let postWorkoutBufferMinutes: TimeInterval = 30
+    /// How long after a workout still reads as exertion rather than
+    /// autonomic load.
+    ///
+    /// Was 30. Heart rate does not come back to a resting level that fast
+    /// after anything but the lightest session, and this window now also
+    /// defines the *baseline* (`DaytimeBaseline`), where the cost of being
+    /// too short is the worse one: post-exercise readings raise what counts
+    /// as usual, and an inflated baseline makes genuinely elevated days look
+    /// normal. Ninety minutes covers an ordinary session's recovery with
+    /// margin; the high-movement-hour filter below catches the rest.
+    ///
+    /// A judgement call, not a measurement -- stated here rather than left as
+    /// a bare number.
+    private static let postWorkoutBufferMinutes: TimeInterval = 90
     /// Active-energy-per-hour above which an unlogged hour is treated as
     /// genuinely active rather than sedentary. A resting hour is typically
     /// well under this; a brisk walk or light chores can approach it, a
@@ -1353,6 +1366,7 @@ final class SleepDataCoordinator {
         let avgHRV = await hrvTask ?? nil
 
         let baseline = store.baseline(for: dayStart, goalMinutes: preferences.sleepGoalMinutes)
+        let waking = await wakingBaselines(endingAt: dayStart, calendar: calendar)
 
         todayStress = StressScore.compute(
             avgHeartRate: avgHR,
@@ -1360,7 +1374,76 @@ final class SleepDataCoordinator {
             hrBaseline: baseline.restingHeartRate7DayAvg,
             hrvBaseline: baseline.hrv7DayAvg,
             sampledMinutes: samplingIntervals.reduce(0) { $0 + $1.duration } / 60,
-            baselineNightCount: baseline.sampleCount
+            baselineNightCount: baseline.sampleCount,
+            wakingHRBaseline: waking.heartRate?.bin(for: now, calendar: calendar)?.median,
+            wakingHRVBaseline: waking.hrv?.bin(for: now, calendar: calendar)?.median
+        )
+    }
+
+    /// This person's own waking heart rate and HRV, by time of day.
+    ///
+    /// Built from the same quiet windows today's reading is sampled from --
+    /// workouts and the window after them, high-movement hours, and now sleep
+    /// itself removed -- so both sides of the comparison are the same
+    /// quantity. Sleep matters here and not for today's reading: today only
+    /// samples from waking onward, but a fortnight of history is mostly
+    /// nights, and a bin that swallowed them would be back to comparing
+    /// waking readings against sleeping ones, which is the entire defect this
+    /// replaces.
+    ///
+    /// Two binned queries per metric rather than a query per bin: HealthKit
+    /// buckets in its own store, so a fortnight costs four statistics
+    /// collections in total, not a hundred.
+    private func wakingBaselines(
+        endingAt end: Date,
+        calendar: Calendar
+    ) async -> (heartRate: DaytimeBaseline?, hrv: DaytimeBaseline?) {
+        guard let start = calendar.date(
+            byAdding: .day, value: -DaytimeBaseline.windowDays, to: end
+        ), start < end else { return (nil, nil) }
+        let window = DateInterval(start: start, end: end)
+
+        let workouts = (try? await healthKit.workouts(in: window)) ?? []
+        let workoutIntervals = workouts.map {
+            DateInterval(
+                start: $0.startDate,
+                end: $0.endDate.addingTimeInterval(Self.postWorkoutBufferMinutes * 60)
+            )
+        }
+        let hourlyEnergy = (try? await healthKit.hourlyActiveEnergy(in: window)) ?? []
+        let movementIntervals = hourlyEnergy
+            .filter { $0.bpm >= Self.highMovementKcalPerHour }
+            .map { DateInterval(start: $0.date, duration: 3600) }
+        let sleepIntervals = store.nights(inLast: DaytimeBaseline.windowDays + 1)
+            .compactMap { night -> DateInterval? in
+                guard night.wakeTime > night.bedtime else { return nil }
+                return DateInterval(start: night.bedtime, end: night.wakeTime)
+            }
+
+        let quiet = DateInterval.subtracting(
+            workoutIntervals + movementIntervals + sleepIntervals, from: window
+        )
+        guard !quiet.isEmpty else { return (nil, nil) }
+
+        func baseline(from series: [(date: Date, bpm: Double)]) -> DaytimeBaseline? {
+            // An hourly bucket is kept only when its whole hour is quiet. A
+            // bucket that straddles the end of a workout averages the tail of
+            // it in, and there is no way to take that back out of a mean.
+            let samples = series.compactMap { point -> DaytimeBaseline.Sample? in
+                let hour = DateInterval(start: point.date, duration: 3600)
+                guard quiet.contains(where: { $0.contains(hour.start) && $0.end >= hour.end })
+                else { return nil }
+                return DaytimeBaseline.Sample(date: point.date, value: point.bpm)
+            }
+            let built = DaytimeBaseline.build(samples: samples, calendar: calendar)
+            return built.isEmpty ? nil : built
+        }
+
+        async let hrTask = try? healthKit.hourlyHeartRate(in: window)
+        async let hrvTask = try? healthKit.hourlyHeartRateVariability(in: window)
+        return (
+            baseline(from: await hrTask ?? []),
+            baseline(from: await hrvTask ?? [])
         )
     }
 
