@@ -21,10 +21,6 @@ struct FloatingTabBar<Tab: Hashable>: View {
     let items: [Item]
     @Binding var selection: Tab
 
-    /// What a scroll view underneath has to clear: the capsule's height plus
-    /// the space it floats above the safe area.
-    static var contentInset: CGFloat { 90 }
-
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var indicator
 

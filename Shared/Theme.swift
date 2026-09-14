@@ -1044,6 +1044,12 @@ struct StatusPill: View {
             }
             Text(text)
                 .font(Theme.label(11))
+                // Without this the pill stacked its text a letter per line at
+                // accessibility sizes -- "Sample" became a column of six
+                // letters inside a capsule six lines tall. The row around it
+                // wraps instead (`ZoonFlowLayout`), which is the layout answer
+                // rather than shrinking the text back down.
+                .lineLimit(1)
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 5)

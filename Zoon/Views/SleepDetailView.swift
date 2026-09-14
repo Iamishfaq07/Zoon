@@ -65,7 +65,11 @@ struct SleepDetailView: View {
                 .font(Theme.label(13))
                 .foregroundStyle(Theme.inkSecondary)
 
-            HStack(spacing: 8) {
+            // Wraps rather than compresses. As an HStack at the largest
+            // accessibility size these three pills became tall blobs with
+            // their text broken mid-word and, for "Sample", one letter per
+            // line.
+            ZoonFlowLayout(spacing: 8, lineSpacing: 8) {
                 StatusPill(
                     text: "\(Int(context.sleepNeed.performancePercent))% of need",
                     tint: Theme.Metric.sleep

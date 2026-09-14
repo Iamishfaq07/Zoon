@@ -55,7 +55,7 @@ struct StressDetailView: View {
             }
             .frame(width: 96, height: 96)
 
-            HStack(spacing: 6) {
+            ZoonFlowLayout(spacing: 6, lineSpacing: 6) {
                 if stress.experimentalReason != nil {
                     StatusPill(text: "Experimental", tint: Theme.inkSecondary)
                 }
