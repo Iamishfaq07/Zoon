@@ -545,6 +545,7 @@
 		862F336BA6B2E6BD81C02870 /* ocean.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3EF70FCAEC5DB960C4760917 /* ocean.mp3 */; };
 		867EE3711FCA6561B7453603 /* AlertnessCheckStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5898B654730918383EDD4109 /* AlertnessCheckStore.swift */; };
 		869A51FF9BAA6569A58A6DE9 /* PastNightDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACAE597AA889C96CF598DA3C /* PastNightDetailView.swift */; };
+		86FFB1B90A9F3E2DBEEEC851 /* WeeklyReportBasisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8975796C6CC728A306841949 /* WeeklyReportBasisTests.swift */; };
 		872685A3CCC5DF9978AE8912 /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		8758E73526D3F61C2E41BAB1 /* SleepHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF614D35BFFE603C238A0E5 /* SleepHealth.swift */; };
 		8764AE483BC7BC2959EBEAB3 /* SleepNightRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = F85F8220F4ECA3D51EACAA15 /* SleepNightRecord.swift */; };
@@ -1392,6 +1393,7 @@
 		87F2897E3ADA5D23D6240D42 /* CustomBehaviorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CustomBehaviorsView.swift"; sourceTree = "<group>"; };
 		8893FEADB992DD685D86F75E /* CognitiveEnergyCurveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CognitiveEnergyCurveTests.swift"; sourceTree = "<group>"; };
 		890C0E2A92FB4929DA9077A2 /* ScoreMeaningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScoreMeaningTests.swift"; sourceTree = "<group>"; };
+		8975796C6CC728A306841949 /* WeeklyReportBasisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyReportBasisTests.swift"; sourceTree = "<group>"; };
 		8A1B41B351A84AFEB312B3AB /* AnchorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AnchorStore.swift"; sourceTree = "<group>"; };
 		8A683B513F52D71BA94BEE54 /* SleepSoundsHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSoundsHero.swift"; sourceTree = "<group>"; };
 		8A8AE2D45055DCC9C281205C /* ShiftWorkMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftWorkMode.swift"; sourceTree = "<group>"; };
@@ -2086,6 +2088,7 @@
 				B27657219BF72B613FB2A27B,
 				E8D6C839052D7DCB70020712,
 				61A4B80233B38D8A26C58D1F,
+				8975796C6CC728A306841949,
 				32391DFF099379A08D5BD5A4,
 				CED9DABEBE8BDDAD5960B8B9,
 				2D73DBEA8BBD67C287B016A2,
@@ -3322,6 +3325,7 @@
 				1E49F29568A8E4D380F2A925,
 				96A66F3C0710D7CAEA312C72,
 				BF927CC8EA8AD4FC7B7B7A29,
+				86FFB1B90A9F3E2DBEEEC851,
 				DC31EF25FEAF86F5DAA8405E,
 				BE4D84352302A766451A9C52,
 				23702FF41F7AB4BB8747143F,

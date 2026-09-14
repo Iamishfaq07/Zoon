@@ -11,6 +11,15 @@ struct WeeklyReport {
     let periodStart: Date
     let periodEnd: Date
     let nightCount: Int
+    /// How many of `nightCount` actually carried a Recovery score.
+    ///
+    /// The same distinction `CyclePhaseCorrelation` already draws, for the
+    /// same reason: `averageRecovery` is a mean over whichever nights had one,
+    /// while `nightCount` counts every night in the window. The report header
+    /// read "average recovery across 7 nights" off `nightCount` regardless,
+    /// so a week where four nights had no Recovery score presented a
+    /// three-night mean as a seven-night one.
+    let recoveryNightCount: Int
 
     let averageRecovery: Double?
     let averageSleepPerformance: Double?
@@ -83,6 +92,7 @@ struct WeeklyReport {
             periodStart: start,
             periodEnd: end,
             nightCount: sorted.count,
+            recoveryNightCount: recoveryValues.count,
             averageRecovery: avgRecovery,
             averageSleepPerformance: avgPerformance,
             averageSleepMinutes: avgSleep,

@@ -45,6 +45,16 @@ struct ReportView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// "average recovery across 5 nights", or "across 5 of 7 nights" when
+    /// the window held more nights than had a score.
+    private func recoveryBasis(_ report: WeeklyReport) -> String {
+        let scored = report.recoveryNightCount
+        guard scored < report.nightCount else {
+            return "average recovery across \(scored.pluralized("night"))"
+        }
+        return "average recovery across \(scored) of \(report.nightCount.pluralized("night"))"
+    }
+
     private func header(_ report: WeeklyReport) -> some View {
         VStack(spacing: 6) {
             Text("\(report.periodStart, format: .dateTime.month().day()) – \(report.periodEnd, format: .dateTime.month().day())")
@@ -58,7 +68,13 @@ struct ReportView: View {
                     .foregroundStyle(Theme.recoveryColor(recovery))
                 // WeeklyReport only guards `nightCount > 0`, so a one-night
                 // week is reachable and read "across 1 nights".
-                Text("average recovery across \(report.nightCount.pluralized("night"))")
+                //
+                // Counted off `recoveryNightCount`, not `nightCount`: the
+                // mean is over the nights that had a Recovery score, and
+                // naming the window's total instead overstates what the
+                // number rests on. When they differ, the week is named too,
+                // so the reader can see both.
+                Text(recoveryBasis(report))
                     .font(Theme.label(12))
                     .foregroundStyle(Theme.inkSecondary)
             }
