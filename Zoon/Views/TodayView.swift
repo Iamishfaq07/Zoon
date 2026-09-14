@@ -379,10 +379,7 @@ struct TodayView: View {
             Text(context.recovery.confidence.label)
                 .font(Theme.text(13))
                 .foregroundStyle(Theme.inkSecondary)
-            Text(coordinator.todayStress?.baselineContextNote ?? "Based on last night's recovery; daytime change appears when enough quiet data is available.")
-                .font(Theme.evidence)
-                .foregroundStyle(Theme.inkTertiary)
-                .multilineTextAlignment(.center)
+            RightNowLine(load: coordinator.todayStress)
         }
         .frame(maxWidth: .infinity)
     }
@@ -611,4 +608,59 @@ struct TodayView: View {
 
 #Preview("Today - large text") {
     TodayView().zoonPreviewEnvironment().environment(\.dynamicTypeSize, .accessibility3)
+}
+
+
+/// The one line on Today that is about *now* rather than about last night.
+///
+/// The ring above it is Morning Recovery: scored from the night that ended
+/// and unchanged for the rest of the day. This used to be followed by
+/// `StressScore.baselineContextNote` on its own -- a sentence about how the
+/// *load* comparison was made, sitting directly under the *recovery* number,
+/// with no label to say it had changed subject. Worse, the fallback when no
+/// load score existed read "Based on last night's recovery; daytime change
+/// appears when enough quiet data is available", which describes the morning
+/// figure as though it were something that moves during the day. That is
+/// exactly the conflation the naming work was meant to end.
+///
+/// So it says which is which. There is no fourth score here and deliberately
+/// so: Zoon already has a verdict on the night (Morning Recovery), an
+/// accounting curve for the day (Energy) and a live measurement against your
+/// own waking baseline (Physiological Load). A "Readiness Now" number
+/// recombining those three would be a new claim resting on no new evidence.
+/// Composition, not invention.
+private struct RightNowLine: View {
+
+    let load: StressScore?
+
+    var body: some View {
+        VStack(spacing: 2) {
+            if let load {
+                Text("Right now: \(load.band.label.lowercased())")
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(tint(load.band))
+                Text(load.baselineContextNote)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+            } else {
+                Text("Right now: not enough quiet daytime readings yet.")
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                Text(RecoveryPresentationState.timingNote)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func tint(_ band: StressScore.Band) -> Color {
+        switch band {
+        case .calm: Theme.Metric.recoveryHigh
+        case .elevated: Theme.Metric.recoveryMid
+        case .high: Theme.Metric.recoveryLow
+        }
+    }
 }

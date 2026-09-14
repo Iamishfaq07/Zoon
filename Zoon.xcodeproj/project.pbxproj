@@ -830,6 +830,7 @@
 		D58E1401390B8C95FAA132C6 /* PhaseBoundaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 351A93379712BC5A1CDBC006 /* PhaseBoundaryTests.swift */; };
 		D5B2AB8453BE04089FAB875E /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		D5D7BF8B181F62A6FA3C93CE /* SleepVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24D0E274A10CDD544D1B02C /* SleepVocabulary.swift */; };
+		D763B83F608544A712DF994B /* RightNowCompositionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46F2639706463F2BDEE60275 /* RightNowCompositionTests.swift */; };
 		D7743D7200174D8A290F0236 /* forest.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2E03AFA4718620CC22B5D2C0 /* forest.mp3 */; };
 		D7C6FD8BD94D75FDCA219D7B /* DiagnosticLanguageGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133EB3E89E56B82FF6F25EB8 /* DiagnosticLanguageGuard.swift */; };
 		D7D169BB1F8B1ECCEC71D8FF /* TonightsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C365D992738195A18CB7033A /* TonightsData.swift */; };
@@ -1202,6 +1203,7 @@
 		45BD278DECF74ABF8C86F7E7 /* TravelPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TravelPlan.swift"; sourceTree = "<group>"; };
 		461844263A110B620C83794B /* mountain.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "mountain.mp3"; sourceTree = "<group>"; };
 		469BCF3127DF7FA96C3D679A /* MorningInThreeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningInThreeTests.swift"; sourceTree = "<group>"; };
+		46F2639706463F2BDEE60275 /* RightNowCompositionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RightNowCompositionTests.swift"; sourceTree = "<group>"; };
 		47010EC420AEBC0B23F7F476 /* SoundEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundEvent.swift"; sourceTree = "<group>"; };
 		472B3E86E4947B9B9304E8FB /* StrainScoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StrainScoreTests.swift"; sourceTree = "<group>"; };
 		47BC319A68574029649CCE8F /* BodyBatteryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyBatteryTests.swift"; sourceTree = "<group>"; };
@@ -1962,6 +1964,7 @@
 				7BBB8AC2DC2EDE57E416F633,
 				728522C938EB304A352B98B0,
 				4DDA4FDA0CAE8B6ECF6BF699,
+				46F2639706463F2BDEE60275,
 				9D6BA693E9476B3989FEB75F,
 				EB28A2C016F35BBA85E47C76,
 				890C0E2A92FB4929DA9077A2,
@@ -3167,6 +3170,7 @@
 				E639330A56E2267CC5E477FE,
 				8B838995599BC2BFFAC52ECC,
 				D8D8819C21CFE5E7DEDC2D62,
+				D763B83F608544A712DF994B,
 				93AA7361FCCD00EAD308307C,
 				21B11D3F51334EFC2291604C,
 				736C62D343018E0159032651,
