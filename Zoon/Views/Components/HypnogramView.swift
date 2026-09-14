@@ -313,6 +313,28 @@ struct StageProportionBar: View {
         .frame(height: height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Stage proportions")
+        .accessibilityValue(accessibilitySummary)
+    }
+
+    /// The split, spoken. `children: .ignore` collapses the capsules into one
+    /// element, which is right -- four unlabelled shapes are not four things
+    /// to swipe through -- but it left the element carrying a title and no
+    /// content, so VoiceOver announced "Stage proportions" and stopped.
+    ///
+    /// A value rather than `accessibilityHidden`, because two of this view's
+    /// four call sites (`RootView`, `TodayCards`) have no `StageLegend` under
+    /// them: there the bar is the only statement of the night's stage split,
+    /// and hiding it would remove the information rather than de-duplicate
+    /// it. On the two screens that do carry a legend this repeats what the
+    /// legend says, and repeating beats silence.
+    private var accessibilitySummary: String {
+        guard total > 0 else { return "No stage data for this night." }
+        return parts
+            .map { part in
+                let percent = Int((part.minutes / total * 100).rounded())
+                return "\(part.stage.displayName) \(percent) percent"
+            }
+            .joined(separator: ", ")
     }
 }
 
