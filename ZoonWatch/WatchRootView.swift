@@ -339,15 +339,17 @@ private struct TonightPage: View {
 /// page rather than their own dedicated swipe pages.
 ///
 /// Sent over `WatchLink.sendQuickAction`, which queues via
-/// `transferUserInfo` -- delivery is not immediate or confirmed back to the
-/// watch, so every action here shows an optimistic local confirmation
-/// (checkmark + haptic) rather than waiting on a round trip the phone might
-/// not complete for hours if it's out of range.
+/// `transferUserInfo`. Delivery is neither immediate nor guaranteed, so each
+/// row reports where its log actually is -- Queued, Sending, Saved, or Not
+/// saved -- instead of the checkmark it used to show the instant the button
+/// was pressed. Only the phone can say Saved, and it says so by echoing the
+/// envelope's identifier back.
 struct QuickLogView: View {
 
     @Environment(WatchLink.self) private var link
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmedID: String?
+    /// Row identifier -> the envelope that row last sent.
+    @State private var sent: [String: UUID] = [:]
 
     var body: some View {
         NavigationStack {
@@ -394,19 +396,15 @@ struct QuickLogView: View {
     }
 
     @ViewBuilder
-    private func logRow(id: String, label: String, symbol: String, action: @escaping () -> Void) -> some View {
+    private func logRow(id: String, label: String, symbol: String, action: @escaping () -> UUID) -> some View {
         Button {
-            WKInterfaceDevice.current().play(.success)
-            action()
-            confirmedID = id
+            WKInterfaceDevice.current().play(.click)
+            sent[id] = action()
         } label: {
             HStack {
                 Label(label, systemImage: symbol)
                 Spacer()
-                if confirmedID == id {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Theme.Metric.recoveryHigh)
-                }
+                WatchLogSyncBadge(id: sent[id])
             }
         }
     }
@@ -714,6 +712,7 @@ struct OneQuestionCard: View {
 
     @Environment(WatchLink.self) private var link
     @State private var answered: Bool?
+    @State private var sentID: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -723,9 +722,12 @@ struct OneQuestionCard: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let answered {
-                Text(answered ? "Logged: yes" : "Logged: no")
-                    .font(Theme.label(11, weight: .semibold))
-                    .foregroundStyle(Theme.Metric.sleep)
+                HStack(spacing: 4) {
+                    Text(answered ? "Yes" : "No")
+                        .font(Theme.label(11, weight: .semibold))
+                        .foregroundStyle(Theme.Metric.sleep)
+                    WatchLogSyncBadge(id: sentID)
+                }
             } else {
                 HStack(spacing: 5) {
                     answerButton("Yes", happened: true)
@@ -742,7 +744,7 @@ struct OneQuestionCard: View {
     private func answerButton(_ title: String, happened: Bool) -> some View {
         Button {
             WKInterfaceDevice.current().play(.click)
-            link.sendQuickAction(.behaviorAnswer(rawValue: tag, happened: happened))
+            sentID = link.sendQuickAction(.behaviorAnswer(rawValue: tag, happened: happened))
             answered = happened
         } label: {
             Text(title)
@@ -764,7 +766,9 @@ struct OneQuestionCard: View {
 struct QuickLogActions: View {
 
     @Environment(WatchLink.self) private var link
-    @State private var confirmedID: String?
+    /// Tile identifier -> the envelope that tile last sent. Nap and Feeling
+    /// open a sheet rather than sending, so they never appear here.
+    @State private var sent: [String: UUID] = [:]
     @State private var presented: Sheet?
 
     private enum Sheet: String, Identifiable {
@@ -776,10 +780,10 @@ struct QuickLogActions: View {
         VStack(spacing: 5) {
             HStack(spacing: 5) {
                 action(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
-                    link.sendQuickAction(.caffeine())
+                    sent["caffeine"] = link.sendQuickAction(.caffeine())
                 }
                 action(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
-                    link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                    sent["alcohol"] = link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
                 }
             }
             HStack(spacing: 5) {
@@ -801,16 +805,16 @@ struct QuickLogActions: View {
         symbol: String,
         perform: @escaping () -> Void
     ) -> some View {
-        Button {
-            WKInterfaceDevice.current().play(.success)
+        let state = sent[id].map { link.logSync.state(for: $0) } ?? .idle
+        return Button {
+            WKInterfaceDevice.current().play(.click)
             perform()
-            confirmedID = id
         } label: {
             VStack(spacing: 2) {
-                Image(systemName: confirmedID == id ? "checkmark.circle.fill" : symbol)
+                Image(systemName: state == .idle ? symbol : state.symbol)
                     .font(Theme.text(15, weight: .semibold))
-                    .foregroundStyle(confirmedID == id ? Theme.Metric.recoveryHigh : Theme.Metric.sleep)
-                Text(label)
+                    .foregroundStyle(state == .idle ? Theme.Metric.sleep : WatchLogSyncBadge.tint(state))
+                Text(state == .idle ? label : state.label)
                     .font(Theme.label(10, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -832,7 +836,7 @@ struct NapDurationSheet: View {
             List {
                 ForEach([10, 20, 30], id: \.self) { minutes in
                     Button("\(minutes) min") {
-                        WKInterfaceDevice.current().play(.success)
+                        WKInterfaceDevice.current().play(.click)
                         link.sendQuickAction(.nap(minutes: minutes))
                         dismiss()
                     }
@@ -853,7 +857,7 @@ struct MorningFeelingSheet: View {
             List {
                 ForEach(1...5, id: \.self) { rawValue in
                     Button {
-                        WKInterfaceDevice.current().play(.success)
+                        WKInterfaceDevice.current().play(.click)
                         link.sendQuickAction(.morningFeeling(rawValue: rawValue))
                         dismiss()
                     } label: {
@@ -1069,4 +1073,62 @@ extension WatchQuickAction {
 #Preview("Quick Log") {
     QuickLogView()
         .environment(WatchLink())
+}
+
+/// One line of truth about where a wrist log actually is.
+///
+/// Renders nothing before anything has been sent, and nothing for `.idle`:
+/// a row that has not been tapped should look untouched, not pending.
+///
+/// The colours are the same three the rest of the app uses for a verdict --
+/// green for confirmed, amber for in flight, red for not landed -- so the
+/// state reads at a glance without the label being legible, which matters on
+/// a wrist at arm's length.
+struct WatchLogSyncBadge: View {
+
+    @Environment(WatchLink.self) private var link
+    let id: UUID?
+    var showsLabel: Bool = true
+
+    private var state: WatchLogSyncState {
+        id.map { link.logSync.state(for: $0) } ?? .idle
+    }
+
+    static func tint(_ state: WatchLogSyncState) -> Color {
+        switch state {
+        case .idle: Theme.Metric.sleep
+        case .queued, .sending: Theme.Metric.recoveryMid
+        case .saved: Theme.Metric.recoveryHigh
+        case .failed: Theme.Metric.recoveryLow
+        }
+    }
+
+    var body: some View {
+        let current = state
+        if current != .idle {
+            HStack(spacing: 3) {
+                Image(systemName: current.symbol)
+                    .font(Theme.text(11, weight: .semibold))
+                if showsLabel {
+                    Text(current.label)
+                        .font(Theme.label(10, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+            .foregroundStyle(Self.tint(current))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityLabel(for: current))
+        }
+    }
+
+    private func accessibilityLabel(for state: WatchLogSyncState) -> String {
+        switch state {
+        case .idle: ""
+        case .queued: "Queued. Will send when your phone is in range."
+        case .sending: "Sending to your phone."
+        case .saved: "Saved on your phone."
+        case .failed(let reason): "Not saved. \(reason)"
+        }
+    }
 }

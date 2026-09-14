@@ -58,6 +58,14 @@ struct WatchActionReceiptStore {
         return !(defaults.stringArray(forKey: key) ?? []).contains(event.id.uuidString)
     }
 
+    /// Whether this exact envelope has already been applied. Distinguishes
+    /// the two reasons `accepts` says no: a redelivery of something already
+    /// written (which the watch should be told succeeded) from a packet out
+    /// of window or erased (which it should be told failed).
+    func hasRecorded(_ event: WatchActionEnvelope) -> Bool {
+        (defaults.stringArray(forKey: key) ?? []).contains(event.id.uuidString)
+    }
+
     func record(_ event: WatchActionEnvelope) {
         var receipts = defaults.stringArray(forKey: key) ?? []
         receipts.append(event.id.uuidString)
