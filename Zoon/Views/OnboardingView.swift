@@ -32,7 +32,7 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-            NightSky()
+            NightSky(presence: .immersive)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {

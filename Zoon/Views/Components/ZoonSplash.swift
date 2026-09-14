@@ -34,7 +34,7 @@ struct ZoonSplash: View {
             ZoonNightGround()
                 .ignoresSafeArea()
 
-            NightSky(starCount: 46)
+            NightSky(starCount: 46, presence: .immersive)
                 .opacity(starsIn ? 0.55 : 0)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
