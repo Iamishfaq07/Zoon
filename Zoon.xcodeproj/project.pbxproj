@@ -960,6 +960,7 @@
 		EC31392EB0C37EB00F820C17 /* DataQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE9B5F417E53291DB0A4770F /* DataQualityTests.swift */; };
 		EC4E8A5EDF6C822B89EB8072 /* DiagnosticLanguageGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 133EB3E89E56B82FF6F25EB8 /* DiagnosticLanguageGuard.swift */; };
 		EC6D39F3378AA329398742F5 /* garden.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = E70815EE58261F22EC9FEB7C /* garden.mp3 */; };
+		EC9B094C46BFF7D4B5496E83 /* FlagshipGaugeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21ACF000A7CA836C9A5E78E7 /* FlagshipGaugeTests.swift */; };
 		ED797A91583C40B1387FDDBD /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */; };
 		ED7B341BC5A27BE5AF558C31 /* WatchLogSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE777D202192B95A561880A /* WatchLogSyncState.swift */; };
 		ED7ED29F1723170A18B51711 /* SleepIntelligenceScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6868DEFF98DF1C38239CDC19 /* SleepIntelligenceScore.swift */; };
@@ -1169,6 +1170,7 @@
 		213BE1CB4CA529DD53B50FD5 /* MetricRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricRing.swift"; sourceTree = "<group>"; };
 		213D22A6A83EC98AD923972A /* WhyScoreWaterfall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WhyScoreWaterfall.swift"; sourceTree = "<group>"; };
 		216EB437148ED22ED068EE3E /* SourcePriority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SourcePriority.swift"; sourceTree = "<group>"; };
+		21ACF000A7CA836C9A5E78E7 /* FlagshipGaugeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FlagshipGaugeTests.swift"; sourceTree = "<group>"; };
 		222AA307323FF3B9A1DFE1F8 /* ShiftWorkModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftWorkModeTests.swift"; sourceTree = "<group>"; };
 		22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthKitManager.swift"; sourceTree = "<group>"; };
 		22AE15E7567ACF0A7042B950 /* DemographicBaseline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DemographicBaseline.swift"; sourceTree = "<group>"; };
@@ -1982,6 +1984,7 @@
 				EA7710078DC7380114F1BA65,
 				B252571BC594EE7DCEE28E66,
 				844B434C335D18DD6B927A95,
+				21ACF000A7CA836C9A5E78E7,
 				2135A8CBD44D449B01F90A94,
 				F9D161E199A78597F89A52D9,
 				2A088D94B376B7C6652E976B,
@@ -3219,6 +3222,7 @@
 				5B3ACA73B284E3A4105444B3,
 				030793DD5CB811C22893FFCE,
 				5C04B1B5AB2945E5CDFB21A5,
+				EC9B094C46BFF7D4B5496E83,
 				01E4CA226CB04D52DD87DEE5,
 				728E1AA5461D144B2450A89E,
 				21D5835007FCFA81EF145704,

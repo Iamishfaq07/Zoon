@@ -148,7 +148,7 @@ struct SleepDebtWidgetView: View {
     // widget is still identifiable at a glance.
 
     private var circular: some View {
-        Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
+        Gauge(value: snapshot.flagshipGaugeValue, in: 0...100) {
             Image(systemName: "moon.zzz.fill")
         } currentValueLabel: {
             Text(snapshot.flagshipScoreText)

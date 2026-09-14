@@ -333,6 +333,23 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
         canStateFlagshipScore ? "\(flagshipScore)" : "—"
     }
 
+    /// `flagshipScore` as a ring, arc or gauge should draw it: the value, or
+    /// **zero** when it is not one to state.
+    ///
+    /// The text gate above existed and every glance surface used it. The
+    /// shape gate did not, so the watch dial, both circular widget gauges and
+    /// the circular complication printed "—" in the middle of a ring filled
+    /// to the real score. That withholds the precision while keeping the
+    /// claim: a ring two thirds of the way round says "about two thirds"
+    /// whether or not the digits are there.
+    ///
+    /// Zero rather than `nil` because every caller here is a `Gauge` or a
+    /// `trim`, and an empty track is exactly the right rendering for a value
+    /// that is not being asserted -- the same thing the phone's rings do.
+    var flagshipGaugeValue: Double {
+        canStateFlagshipScore ? min(Double(flagshipScore), 100) : 0
+    }
+
     /// The band belonging to `flagshipScore`, from the same payload. Never
     /// mix these: `scoreBand` grades `score`, and pairing one score's number
     /// with another's label is the mistake `RecoveryComplicationView` made.
