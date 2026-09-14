@@ -46,10 +46,28 @@ enum RecoveryPresentationState: Equatable, Sendable {
         }
     }
 
+    /// What Recovery actually is, in full.
+    ///
+    /// It grades the night that just ended: the autonomic state someone woke
+    /// in, against their own baseline. It is not a live readout that falls
+    /// as the day tires them or rises after a nap — nothing in it is
+    /// recomputed after waking. Surfaces with room say so, because
+    /// "Recovery: 71" beside a clock reading 6pm invites exactly the wrong
+    /// reading. Current-readiness-during-the-day is a different metric and
+    /// is not this one.
+    static let longName = "Morning Recovery"
+    /// For a complication, a widget stat row, or a chart axis, where the
+    /// surrounding context already says which night it is about and the full
+    /// name would truncate.
+    static let shortName = "Recovery"
+
+    /// One line pinning the score to when it was measured.
+    static let timingNote = "Scored from last night. It doesn't move during the day."
+
     /// The heading a detail view or hero uses.
     var title: String {
         switch self {
-        case .available: "Recovery"
+        case .available: Self.longName
         case .limited: "Limited recovery data"
         case .buildingBaseline: "Building your baseline"
         case .unavailable: "Recovery unavailable"

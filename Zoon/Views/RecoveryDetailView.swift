@@ -15,6 +15,10 @@ struct RecoveryDetailView: View {
         ScrollView {
             CascadeStack(spacing: Theme.stackSpacing) {
                 if let context {
+                    Text(RecoveryPresentationState.timingNote)
+                        .font(Theme.evidence)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     RecoveryBreakdownCard(recovery: context.recovery)
                     HRVStatusCard(status: context.hrvStatus)
                 } else {
@@ -31,7 +35,7 @@ struct RecoveryDetailView: View {
             .padding()
         }
         .nightBackground()
-        .navigationTitle("Recovery")
+        .navigationTitle(RecoveryPresentationState.longName)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

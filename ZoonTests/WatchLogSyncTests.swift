@@ -116,3 +116,28 @@ final class WatchLogSyncTests: XCTestCase {
         XCTAssertFalse(store.hasRecorded(future), "a rejected packet was never written and must not read as saved")
     }
 }
+
+/// Recovery grades the night that ended. Nothing recomputes it after waking,
+/// so the name has to say which moment it belongs to — "Recovery: 71" beside
+/// an evening clock reads as a live gauge, which it is not.
+final class MorningRecoveryNamingTests: XCTestCase {
+
+    func testAvailableStateIsNamedForTheMorning() {
+        let state = RecoveryPresentationState.available(score: 71, confidence: .high)
+        XCTAssertEqual(state.title, "Morning Recovery")
+        XCTAssertEqual(RecoveryPresentationState.longName, "Morning Recovery")
+    }
+
+    func testTimingNoteSaysItDoesNotMove() {
+        let note = RecoveryPresentationState.timingNote.lowercased()
+        XCTAssertTrue(note.contains("last night"), "the note must pin the score to a night")
+        XCTAssertTrue(note.contains("doesn't move") || note.contains("does not move"))
+    }
+
+    /// The short name still exists for complications and stat rows, where the
+    /// full one would truncate — but it is a deliberate shortening, not the
+    /// metric's definition.
+    func testShortNameRemainsAvailableForGlanceSurfaces() {
+        XCTAssertEqual(RecoveryPresentationState.shortName, "Recovery")
+    }
+}

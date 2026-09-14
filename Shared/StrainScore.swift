@@ -2,14 +2,18 @@ import Foundation
 
 /// Cardiovascular load for a day, on a 0–21 scale.
 ///
-/// Whoop's Strain scale, reimplemented from the published concept. The scale is
-/// **logarithmic**, which is the part that matters and the part people get
-/// wrong: going from 8 to 10 is an ordinary harder day, going from 16 to 18 is
-/// brutal. A linear 0–100 "activity score" flatters easy days and compresses the
-/// hard ones into indistinguishable mush at the top.
+/// The scale is **logarithmic**, which is the part that matters and the part
+/// people get wrong: going from 8 to 10 is an ordinary harder day, going from
+/// 16 to 18 is brutal. A linear 0–100 "activity score" flatters easy days and
+/// compresses the hard ones into indistinguishable mush at the top.
 ///
 /// Built from time spent in heart-rate zones, weighted by zone, because that's
 /// what's actually derivable from HealthKit without a proprietary model.
+///
+/// A 0–21 range is a convention several load metrics share; sharing a range
+/// is not sharing a definition. A day scored here is not interchangeable with
+/// the same day scored by another product, and nothing in the app should
+/// suggest it is.
 struct StrainScore: Codable, Hashable, Sendable {
 
     /// 0...21
@@ -62,8 +66,9 @@ struct StrainScore: Codable, Hashable, Sendable {
         }
     }
 
-    /// Scale ceiling. Whoop's 21 is `ln`-derived; we match the shape so the
-    /// numbers mean roughly what a user coming from that world expects.
+    /// Scale ceiling. `ln`-derived, so the top of the range compresses rather
+    /// than clipping: the hardest days someone actually has stay
+    /// distinguishable from one another instead of all reading "max".
     static let maxValue = 21.0
 
     /// Raw weighted load at which the scale saturates.

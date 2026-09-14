@@ -71,11 +71,11 @@ final class WatchLink: NSObject {
     /// Key for a watch quick action in a `transferUserInfo` payload -- see
     /// `sendQuickAction(_:)` below for why this is a different transport from
     /// the snapshot's `updateApplicationContext`.
-    private static let quickActionKey = "quickAction"
+    private nonisolated static let quickActionKey = "quickAction"
     /// Key for the phone's reply to a quick action, phone -> watch. Same
     /// transport, opposite direction: an acknowledgement matters individually
     /// and must not be overwritten by the next one.
-    private static let acknowledgementKey = "quickActionAck"
+    private nonisolated static let acknowledgementKey = "quickActionAck"
 
     /// Watch side: how far each wrist-logged action has actually got.
     ///

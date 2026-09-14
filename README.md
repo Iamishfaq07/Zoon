@@ -37,29 +37,34 @@ It behaves identically.
 
 ## What it does
 
-Zoon borrows the metrics that each of the big platforms does best, and computes
-all of them locally.
+Zoon covers the same *questions* the big platforms answer — how recovered am
+I, how hard did I go, how much sleep do I need — and computes its own answers
+locally. Its numbers are Zoon's, built from the inputs listed below; they are
+not any other product's metric and are not comparable to one, even where a
+range happens to look familiar.
 
 ### Today
 - **Morning Brief** — one confidence-aware headline, the three strongest
   drivers, and one concrete action before the detailed dashboards.
-- **Recovery %** (Whoop-style) — HRV and resting HR against *your own* 30-day
-  baseline, plus sleep performance and respiratory stability. Shows its working:
-  every input is broken out with its deviation from baseline.
-- **Strain 0–21** (Whoop-style) — heart-rate-zone load on a logarithmic scale, so
+- **Morning Recovery %** — HRV and resting HR against *your own* 30-day
+  baseline, plus sleep performance and respiratory stability. Scored from the
+  night that just ended and unchanged through the day — it is not a live
+  readiness gauge. Shows its working: every input is broken out with its
+  deviation from baseline.
+- **Strain 0–21** — heart-rate-zone load on a logarithmic scale, so
   16→18 reads as much harder than 8→10. Paired with recovery, because strain
   alone is a vanity metric.
-- **Body Battery** (Garmin-style) — an energy reserve that charges overnight and
+- **Energy** — an energy reserve that charges overnight and
   drains hour by hour with heart rate. The most legible number in the app.
-- **Vitals** (Apple Health iOS 18-style) — six overnight metrics checked against
+- **Vitals** — six overnight metrics checked against
   your personal typical range, flagging outliers without ever implying diagnosis.
-- **HRV Status** (Garmin-style) — the last week against a 90-day baseline:
+- **HRV Status** — the last week against a 90-day baseline:
   balanced, unbalanced, low, or poor.
 
 ### Sleep
 - **Hypnogram** — the full stage timeline, drawn in `Canvas` with connective
   risers so the night reads as one continuous trace.
-- **Sleep Need** (Whoop-style) — baseline + debt payback + yesterday's strain −
+- **Sleep Need** — baseline + debt payback + yesterday's strain −
   nap credit, as a stacked bar against what you actually slept.
 - **Sleep sounds** — brown, pink and white **generated** so they never seam;
   weather, night and room as **bundled recorded loops** (rain, ocean, fire,
@@ -69,7 +74,7 @@ all of them locally.
   against tonight's need.
 - **Bedtime countdown** — the time to be asleep by, derived from your own wake
   pattern and tonight's need.
-- **Chronotype** (Fitbit-style) — lion, bear, wolf, or dolphin from habitual
+- **Chronotype** — lion, bear, wolf, or dolphin from habitual
   timing.
 
 ### Insights
@@ -81,12 +86,12 @@ all of them locally.
 - **Cause Finder** — Helps / Hurts / No Effect / Still Learning, built on
   matched-pair comparisons and a paired bootstrap confidence interval, not a
   simple tagged-vs-untagged average.
-- **Journal** (Whoop-style) — 25 tagged behaviours across four categories, and a
+- **Journal** — 25 tagged behaviours across four categories, and a
   correlation engine that reports what actually tracks with better nights. It
   refuses to call anything a pattern without enough tagged *and* untagged nights,
   and it says "pattern", never "cause". Reached from a sheet rather than its own
   tab.
-- **Weekly report** (Whoop/Garmin-style) — averages, week-over-week trends,
+- **Weekly report** — averages, week-over-week trends,
   narrative highlights, best and worst night.
 
 ### What Zoon knows
