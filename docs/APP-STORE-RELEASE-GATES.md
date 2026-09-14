@@ -100,10 +100,22 @@ Recorded rather than left implicit. Every item here needs a Mac with Xcode, a
 paired device, or a product decision — none can be closed by simulator CI, and
 none should be reported as done on the strength of a green build.
 
-- **2026 HealthKit and watchOS SDK review.** Whether newer APIs (workout zones
-  among them) would replace anything Zoon derives itself. This needs the
-  current SDK headers and documentation open on a Mac. Nothing has been guessed
-  at or referenced against an API that has not been read.
+- **2026 HealthKit and watchOS SDK review.** Partly answered, and answered by
+  asking the toolchain rather than from memory: a throwaway CI job grepped the
+  installed iOS and watchOS SDKs (Xcode 26.6, iPhoneOS 26.5) for workout-zone
+  APIs.
+
+  Result: there is no public one. `HKWorkoutZone`, `HKWorkoutZonesSample` and
+  `HKWorkoutZonesType` exist only in `HealthKit.tbd`, the linker stub listing
+  every class in the shipped binary, next to plainly private ones such as
+  `_HKDaemonPreferences` and `_HKEntitlements`. No public header, no
+  `.swiftinterface`, no `.apinotes`, on either platform. Reading them would
+  mean hand-declaring private interfaces, so Zoon keeps its own sample-aware
+  integration and `HRZoneProvenance` records why the Apple case is absent.
+
+  Still open: the rest of the SDK surface. A broader review — whether anything
+  else Zoon derives itself now has a public API — wants the documentation and
+  headers open on a Mac, not a grep.
 - **Device validation of everything above.** The checklist is the record; a
   green CI run is not evidence for any line in it.
 

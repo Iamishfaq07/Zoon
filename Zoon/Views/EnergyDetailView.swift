@@ -89,6 +89,12 @@ struct EnergyDetailView: View {
                             .font(Theme.text(10))
                             .foregroundStyle(Theme.inkTertiary)
                     }
+                    // Both weaknesses, in one word. A fully-sampled day
+                    // sorted by a guessed ceiling is not a high-confidence
+                    // number, and the tag alone did not say so.
+                    Text("· \(context.strain.confidence.label)")
+                        .font(Theme.text(10))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             Spacer(minLength: 4)

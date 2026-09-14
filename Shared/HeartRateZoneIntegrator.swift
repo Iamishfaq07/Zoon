@@ -6,6 +6,19 @@ import Foundation
 /// second-by-second heart rate and still be an estimate, because the zones
 /// those beats are sorted into rest on a guessed maximum. Coverage answers
 /// "did we watch?"; this answers "do we know what we were watching for?".
+/// **Why there is no `appleWorkoutZones` case.** The obvious fifth source
+/// would be Apple's own workout zones. As of Xcode 26.6 / iPhoneOS 26.5 there
+/// is no public API for them: `HKWorkoutZone`, `HKWorkoutZonesSample` and
+/// `HKWorkoutZonesType` exist in `HealthKit.tbd` -- the linker stub listing
+/// every class in the shipped binary -- alongside plainly private ones like
+/// `_HKDaemonPreferences` and `_HKEntitlements`, and are declared in no public
+/// header, no `.swiftinterface` and no `.apinotes`, on iOS or watchOS. That
+/// was checked against the installed SDK rather than recalled.
+///
+/// Reading them would mean declaring private interfaces by hand. A case that
+/// can never be produced is worse than no case, so this documents the gap
+/// instead of pretending to fill it. If Apple publishes the API, it belongs
+/// at the top of `isPersonalized` -- measured zones beat every estimate here.
 enum HRZoneProvenance: String, Codable, Hashable, Sendable, CaseIterable {
     /// Boundaries the user set themselves.
     case userConfigured
