@@ -30,7 +30,7 @@ struct PersonalizationProgressCard: View {
                 SectionHeader(
                     title: "Learning your sleep",
                     subtitle: "Your baseline is built from your own history, not other users.",
-                    systemImage: "chart.line.uptrend.xyaxis.circle"
+                    systemImage: "chart.xyaxis.line.circle"
                 )
                 ForEach(rows, id: \.label) { row in
                     row_(row)

@@ -163,7 +163,7 @@ struct MetricTrendView: View {
 
     private func chartCard(_ sorted: [(date: Date, value: Double)]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Recent nights", systemImage: "chart.line.uptrend.xyaxis")
+            SectionHeader(title: "Recent nights", systemImage: "chart.xyaxis.line")
             Chart {
                 ForEach(sorted, id: \.date) { point in
                     LineMark(

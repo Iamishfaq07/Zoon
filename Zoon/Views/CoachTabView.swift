@@ -99,7 +99,7 @@ struct CoachTabView: View {
                     CoachChatView(night: night)
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                        Image(systemName: "bubble.left.and.text.bubble.right")
                             .foregroundStyle(Theme.Family.sleep)
                         Text("Ask something else in your own words")
                             .font(Theme.label(14, weight: .medium))

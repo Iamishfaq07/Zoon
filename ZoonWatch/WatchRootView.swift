@@ -66,7 +66,7 @@ struct WatchRootView: View {
         // see `LogPage`. A gesture with no affordance is not a route
         // someone discovers.
         .onLongPressGesture {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             showsQuickLog = true
         }
         .sheet(isPresented: $showsQuickLog) {
@@ -75,6 +75,26 @@ struct WatchRootView: View {
         .onChange(of: link.snapshot?.generatedAt, initial: true) { _, _ in
             chooseOpeningPage()
         }
+        // The only haptic in the app that reports an outcome rather than a
+        // touch. Every quick-log button taps on press, which says "received",
+        // not "saved" -- the phone may be out of range and the envelope may
+        // sit queued for an hour. This fires when the phone has actually
+        // confirmed it persisted the envelope, or said it could not, which
+        // is the moment worth feeling on a wrist you are not looking at.
+        .onChange(of: latestSyncSignature) { _, _ in
+            switch link.logSync.latest?.state {
+            case .saved: Haptics.success()
+            case .failed: Haptics.warning()
+            default: break
+            }
+        }
+    }
+
+    /// `logSync.latest` is a tuple, which `onChange` cannot compare. The id
+    /// is in the signature as well as the state so two logs resolving the
+    /// same way in a row are two events, not one.
+    private var latestSyncSignature: String? {
+        link.logSync.latest.map { "\($0.id)/\($0.state.label)" }
     }
 
     private func hasTonight(_ snapshot: SleepSnapshot) -> Bool {
@@ -172,7 +192,7 @@ private struct MidnightAwakeningShortcut: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay(alignment: .bottom) {
             Button {
-                WKInterfaceDevice.current().play(.click)
+                Haptics.tap()
                 link.sendQuickAction(.midnightAwakening)
             } label: {
                 Color.clear.frame(width: 1, height: 1)
@@ -403,7 +423,7 @@ struct QuickLogView: View {
     @ViewBuilder
     private func logRow(id: String, label: String, symbol: String, action: @escaping () -> UUID) -> some View {
         Button {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             sent[id] = action()
         } label: {
             HStack {
@@ -681,7 +701,7 @@ struct LogPage: View {
                 QuickLogActions()
 
                 Button {
-                    WKInterfaceDevice.current().play(.click)
+                    Haptics.tap()
                     showsFullLog = true
                 } label: {
                     Text("More")
@@ -751,7 +771,7 @@ struct OneQuestionCard: View {
 
     private func answerButton(_ title: String, happened: Bool) -> some View {
         Button {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             sentID = link.sendQuickAction(.behaviorAnswer(rawValue: tag, happened: happened))
             answered = happened
         } label: {
@@ -815,7 +835,7 @@ struct QuickLogActions: View {
     ) -> some View {
         let state = sent[id].map { link.logSync.state(for: $0) } ?? .idle
         return Button {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             perform()
         } label: {
             VStack(spacing: 2) {
@@ -844,7 +864,7 @@ struct NapDurationSheet: View {
             List {
                 ForEach([10, 20, 30], id: \.self) { minutes in
                     Button("\(minutes) min") {
-                        WKInterfaceDevice.current().play(.click)
+                        Haptics.tap()
                         link.sendQuickAction(.nap(minutes: minutes))
                         dismiss()
                     }
@@ -865,7 +885,7 @@ struct MorningFeelingSheet: View {
             List {
                 ForEach(1...5, id: \.self) { rawValue in
                     Button {
-                        WKInterfaceDevice.current().play(.click)
+                        Haptics.tap()
                         link.sendQuickAction(.morningFeeling(rawValue: rawValue))
                         dismiss()
                     } label: {

@@ -83,7 +83,7 @@ struct MorningBrief: View {
                     CoachChatView(night: context.night)
                 } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                        Image(systemName: "bubble.left.and.text.bubble.right")
                         Text("Ask a follow-up")
                     }
                     .font(Theme.text(11, weight: .semibold))

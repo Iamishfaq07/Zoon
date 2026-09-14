@@ -517,6 +517,40 @@ extension SleepIntelligenceScore {
             .sorted { $0.pointContribution < $1.pointContribution }
     }
 
+    /// Components the model could not run tonight, in table order.
+    ///
+    /// Read off `nominalWeights` rather than a second list of names, so a
+    /// sixth component cannot be added without every surface that explains
+    /// an incomplete score knowing about it.
+    var missingComponentLabels: [String] {
+        SleepIntelligenceScore.nominalWeights
+            .map(\.component)
+            .filter { label in !components.contains { $0.label == label } }
+    }
+
+    /// Why the score carries the confidence it does, as a sentence -- which
+    /// part of the model could not run, rather than a restatement of the
+    /// band. `nil` when the whole model ran, because there is then nothing
+    /// to caveat and a reassuring sentence is still a sentence to read.
+    ///
+    /// Lives here rather than in the card because the score is what knows
+    /// which components ran; a view deriving it a second time is a second
+    /// thing to keep in step.
+    var confidenceReason: String? {
+        guard dataCompletenessPercent < 100 else { return nil }
+        let missing = missingComponentLabels
+        guard !missing.isEmpty else {
+            // Completeness is below 100 with every component present: a
+            // component ran on partial inputs rather than being dropped.
+            return "\(dataCompletenessPercent)% of the model ran tonight."
+        }
+        let named = missing.count == 1
+            ? missing[0]
+            : missing.dropLast().joined(separator: ", ") + " and " + missing[missing.count - 1]
+        let pronoun = missing.count == 1 ? "it" : "them"
+        return "Scored without \(named) — there wasn't enough data for \(pronoun) tonight."
+    }
+
     /// Neither helped nor held the night back. Most components, most nights.
     ///
     /// Split out because it used to be invisible: the two lists above

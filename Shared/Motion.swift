@@ -1,4 +1,10 @@
 import SwiftUI
+#if os(watchOS)
+// For `WKInterfaceDevice`, the only haptic API the watch has. Guarded
+// because this file compiles into every target, and WatchKit exists on
+// none of the others.
+import WatchKit
+#endif
 
 /// Zoon's motion vocabulary.
 ///
@@ -336,6 +342,46 @@ enum Haptics {
     /// A moment on a timeline being reached, or a milestone completing.
     static func milestone() {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+    #elseif os(watchOS)
+    // The watch had no `Haptics` at all: every call site played
+    // `WKInterfaceDevice.current().play(.click)` directly, so a confirmed
+    // alarm, a rejected input and a scrub detent all felt identical, and the
+    // vocabulary the phone teaches did not survive onto the wrist.
+    //
+    // `WKHapticType` is a fixed set of system patterns rather than an
+    // intensity an app chooses, so these are mappings onto the closest
+    // system meaning, not reproductions of the phone's feel.
+    static func tap() {
+        WKInterfaceDevice.current().play(.click)
+    }
+
+    static func select() {
+        WKInterfaceDevice.current().play(.click)
+    }
+
+    static func success() {
+        WKInterfaceDevice.current().play(.success)
+    }
+
+    /// `.notification`, not `.failure`. A warning here means something wants
+    /// attention, not that an action was rejected -- `.failure` is the
+    /// stronger, more final pattern and would overstate it.
+    static func warning() {
+        WKInterfaceDevice.current().play(.notification)
+    }
+
+    /// The same pattern the crown itself uses for a detent, which is what
+    /// scrubbing on the watch is usually driven by.
+    static func scrubDetent() {
+        WKInterfaceDevice.current().play(.click)
+    }
+
+    /// `.start` marks a transition being reached rather than an outcome
+    /// being delivered, which is what a milestone is. `.success` is reserved
+    /// for something the person actually completed.
+    static func milestone() {
+        WKInterfaceDevice.current().play(.start)
     }
     #else
     static func tap() {}

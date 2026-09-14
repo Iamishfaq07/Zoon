@@ -103,7 +103,7 @@ struct WorthNoticing: View {
         case let .learning(nights, tagged):
             VStack(alignment: .leading, spacing: 8) {
                 noticeText(
-                    symbol: "chart.line.uptrend.xyaxis.circle",
+                    symbol: "chart.xyaxis.line.circle",
                     tint: Theme.Family.sleep,
                     headline: "Zoon is still learning what normal looks like for you",
                     detail: "Personal baselines are built from your own nights, not other people's. Scores get more trustworthy over the next couple of weeks."

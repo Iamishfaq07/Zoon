@@ -15,12 +15,12 @@ struct EnergyForecastCard: View {
                 SectionHeader(
                     title: "Estimated Alertness",
                     subtitle: forecast.confidenceLabel + " · from wake time" + (forecast.isGenericWindDown ? "" : " and body clock"),
-                    systemImage: "chart.line.uptrend.xyaxis"
+                    systemImage: "chart.xyaxis.line"
                 )
                 Spacer(minLength: 8)
                 MetricInfoButton(
                     title: "Estimated Alertness",
-                    symbol: "chart.line.uptrend.xyaxis",
+                    symbol: "chart.xyaxis.line",
                     tint: Theme.Metric.battery,
                     explanation: [
                         "A heuristic estimate, not a measurement -- nothing on a wrist measures circadian phase directly. This models the well-documented shape most people's alertness follows through a day: rising after sleep inertia clears, peaking mid-morning, dipping mid-afternoon, a second rise in the evening, then winding down.",
