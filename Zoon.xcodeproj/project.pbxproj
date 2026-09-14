@@ -331,6 +331,7 @@
 		51FB889BCB44685E1327F157 /* WatchLogSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE777D202192B95A561880A /* WatchLogSyncState.swift */; };
 		525F04445EAA8E4875107CEB /* BreathingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC432720166E6624FE4B4078 /* BreathingView.swift */; };
 		528C7C5C9AFC2F8501558D8E /* ArchiveCipher.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7FB7ED912EC5DA6CCB20F99 /* ArchiveCipher.swift */; };
+		52BD76EE8D83E3F2CC66E7D0 /* EnergyPresentabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3543E789EC5AE233680E7029 /* EnergyPresentabilityTests.swift */; };
 		52C16D1645ED631246F3B6C1 /* BehaviorObservation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B71499926BBCC880385250 /* BehaviorObservation.swift */; };
 		52D67586495A4B113B337C92 /* ExperimentEvidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41783EC0A471DBC1E32CEF98 /* ExperimentEvidence.swift */; };
 		53E6BA65541896145AF5CA8A /* EvidenceNotebookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9BD2D71FCBA3594B5DDA19C /* EvidenceNotebookTests.swift */; };
@@ -1170,6 +1171,7 @@
 		32DF84481F1211BF95927815 /* SleepDaySummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDaySummaryTests.swift"; sourceTree = "<group>"; };
 		330761C5EA614104E6172BEB /* IntegrationFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntegrationFlowTests.swift"; sourceTree = "<group>"; };
 		351A93379712BC5A1CDBC006 /* PhaseBoundaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PhaseBoundaryTests.swift"; sourceTree = "<group>"; };
+		3543E789EC5AE233680E7029 /* EnergyPresentabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyPresentabilityTests.swift"; sourceTree = "<group>"; };
 		359A6C66E7D3A1CF1406C6C6 /* DataPrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataPrivacyView.swift"; sourceTree = "<group>"; };
 		35D25F2515856E1F2C18D447 /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchRootView.swift"; sourceTree = "<group>"; };
 		370C5BDEA4F3E5D7B868D1EE /* ClinicianReportRowsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClinicianReportRowsTests.swift"; sourceTree = "<group>"; };
@@ -1921,6 +1923,7 @@
 				F381FE30E3EFE052D944E960,
 				5B724D477AE9FC55DE149B09,
 				2F1D3D8C86204A5AA8EE1BF2,
+				3543E789EC5AE233680E7029,
 				1DDE379459EFEC55884E3FB4,
 				5CB15B2930CDA0CED202C925,
 				A9BD2D71FCBA3594B5DDA19C,
@@ -3127,6 +3130,7 @@
 				B279C694B155187C534FB73C,
 				CA0E0961C067F5DC061E8735,
 				C3D36F9B9975C1DD8B177243,
+				52BD76EE8D83E3F2CC66E7D0,
 				B3A0A5AEE52DEC8541BF05A6,
 				F5B9157E3BA10ADD82F4B95D,
 				53E6BA65541896145AF5CA8A,
