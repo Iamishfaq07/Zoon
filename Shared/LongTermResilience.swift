@@ -95,7 +95,13 @@ enum LongTermResilience {
             ? nil
             : (lowerIsFavourable ? delta < 0 : delta > 0)
 
-        let daysHeld = runLength(inWindow, baseline: baseline, tolerance: tolerance, below: lowerIsFavourable)
+        // Counted on the side the value is *actually* on, which is the side
+        // the sentence below names. Passing `lowerIsFavourable` counted runs
+        // on the favourable side regardless, so whenever the current value
+        // sat on the unfavourable side the run started at zero and "for N
+        // days" was dropped from exactly the sentences that most needed it —
+        // an eighteen-day drift the wrong way read as a bare one-off.
+        let daysHeld = runLength(inWindow, baseline: baseline, tolerance: tolerance, below: delta < 0)
 
         let confidence: MetricConfidence = inWindow.count >= 60 ? .high : (inWindow.count >= 30 ? .moderate : .low)
 

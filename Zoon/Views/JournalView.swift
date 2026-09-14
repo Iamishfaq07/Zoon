@@ -337,10 +337,7 @@ struct JournalView: View {
     }
 
     private func parseNaturalJournal() {
-        naturalProposals = NaturalJournalParser.proposals(
-            from: naturalText,
-            customNames: customStore.behaviors.filter(\.isActive).map(\.name)
-        )
+        naturalProposals = NaturalJournalParser.proposals(from: naturalText)
         naturalStates = Dictionary(uniqueKeysWithValues: naturalProposals.map { ($0.tag, $0.state) })
         Haptics.tap()
     }

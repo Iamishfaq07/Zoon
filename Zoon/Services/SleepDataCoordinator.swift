@@ -154,6 +154,12 @@ final class SleepDataCoordinator {
     /// Purely a display list; see `WorkoutSummary`'s doc comment for why
     /// this doesn't feed `StrainScore` itself.
     private(set) var todayWorkouts: [WorkoutSummary] = []
+    /// Today's step count against what this weekday usually looks like by
+    /// now. `nil` until a sample actually arrives — the card was previously
+    /// constructed with hardcoded `nil`s at the call site, so it reported
+    /// "steps have not been recorded" to everyone forever while the step read
+    /// scope fed nothing.
+    private(set) var todayMovement: MovementContext.Snapshot?
     /// Populated only when cycle tracking is on. Empty otherwise, including
     /// on every code path that never asks HealthKit for it.
     private(set) var cyclePeriodStarts: [Date] = []
@@ -489,6 +495,7 @@ final class SleepDataCoordinator {
         defer { syncMetrics.lastRefreshSeconds = Date.now.timeIntervalSince(startedAt) }
         #endif
         await refreshTodayStress()
+        await refreshTodayMovement()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
         if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
 
@@ -1016,6 +1023,64 @@ final class SleepDataCoordinator {
     /// two overlapping records the way the full dedupe does -- naps rarely
     /// produce that, and Sleep Story is an illustrative account, not a
     /// total that needs to be exactly right.
+    /// Every logged nap paired with the night that followed it.
+    ///
+    /// `NapLearning` needs the join, not the naps: what it reports is whether
+    /// naps of a given shape have sat alongside a later bedtime or a shorter
+    /// night, which is only answerable with both halves. The engine was added
+    /// with tests and no caller, so nothing ever built these.
+    ///
+    /// Strictly observational, and the engine's own wording keeps it that
+    /// way -- a nap and a later bedtime appearing together is not the nap
+    /// causing it.
+    func napObservations() -> [NapLearning.Observation] {
+        var out: [NapLearning.Observation] = []
+        for night in recentNights {
+            let naps = napIntervals(before: night.date, timeZone: night.timeZone)
+            guard !naps.isEmpty else { continue }
+
+            var calendar = Calendar.current
+            calendar.timeZone = night.timeZone
+            let bedtimeHour = Double(calendar.component(.hour, from: night.bedtime))
+                + Double(calendar.component(.minute, from: night.bedtime)) / 60
+            let recovery = recoveryHistory[night.date].map(Double.init)
+
+            for nap in naps {
+                out.append(NapLearning.Observation(
+                    napStartHour: Double(calendar.component(.hour, from: nap.start))
+                        + Double(calendar.component(.minute, from: nap.start)) / 60,
+                    napMinutes: nap.duration / 60,
+                    bedtimeHour: bedtimeHour,
+                    latencyMinutes: night.sleepLatencyMinutes,
+                    nextAsleepMinutes: night.timeAsleepMinutes,
+                    nextRecoveryPercent: recovery
+                ))
+            }
+        }
+        return out
+    }
+
+    /// Long-term baselines for the two vitals with enough history behind them
+    /// to have one. `LongTermResilience` shipped with tests and no caller.
+    func longTermSignals(window: LongTermResilience.Window) -> [LongTermResilience.Signal] {
+        let rhr = recentNights.compactMap { night in
+            night.restingHeartRate.map { LongTermResilience.Point(date: night.date, value: $0) }
+        }
+        let hrv = recentNights.compactMap { night in
+            night.avgHRV.map { LongTermResilience.Point(date: night.date, value: $0) }
+        }
+        return [
+            LongTermResilience.measure(
+                name: "resting heart rate", points: rhr, window: window,
+                unit: "bpm", lowerIsFavourable: true
+            ),
+            LongTermResilience.measure(
+                name: "HRV", points: hrv, window: window,
+                unit: "ms", lowerIsFavourable: false
+            )
+        ]
+    }
+
     func napIntervals(before night: Date, timeZone: TimeZone) -> [DateInterval] {
         var calendar = Calendar.current
         calendar.timeZone = timeZone
@@ -1303,6 +1368,52 @@ final class SleepDataCoordinator {
     /// differently from sleep does -- which is why this presents as
     /// "Physiological Load — Experimental" rather than a confident clinical-
     /// sounding "Stress" number. See `StressCard`'s own doc comment.
+    /// Today's movement, compared with the same weekday at the same hour.
+    ///
+    /// "Typical" is the median of the same clock window on the previous four
+    /// matching weekdays. A median rather than a mean because one holiday or
+    /// one marathon should not redefine an ordinary Tuesday, and four weeks
+    /// rather than more because step habits drift.
+    ///
+    /// Any weekday with no step data contributes nothing rather than a zero:
+    /// a day the phone spent on a desk is not a day with no walking, and
+    /// averaging it in as zero is exactly the error `MovementContext` exists
+    /// to avoid.
+    private func refreshTodayMovement() async {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        let weekday = calendar.component(.weekday, from: now)
+
+        // Same idiom as `strain(in:...)` above: a throw and a no-data result
+        // both collapse to nil, and nil steps is a reportable state rather
+        // than a failure -- it is what "movement is unknown" means.
+        let todaySteps = (try? await healthKit.sum(
+            .stepCount, unit: .count(), in: DateInterval(start: startOfToday, end: now)
+        )) ?? nil
+
+        // Same elapsed slice of the day, four same-weekdays back.
+        let elapsed = now.timeIntervalSince(startOfToday)
+        var priors: [Double] = []
+        for weeksBack in 1...4 {
+            guard let day = calendar.date(byAdding: .day, value: -7 * weeksBack, to: startOfToday),
+                  let end = calendar.date(byAdding: .second, value: Int(elapsed), to: day) else { continue }
+            let steps = (try? await healthKit.sum(
+                .stepCount, unit: .count(), in: DateInterval(start: day, end: end)
+            )) ?? nil
+            guard let steps else { continue }
+            priors.append(steps)
+        }
+
+        let typical = Statistics.median(priors).map { Int($0.rounded()) }
+        todayMovement = MovementContext.snapshot(
+            stepsSoFar: todaySteps.map { Int($0.rounded()) },
+            typicalStepsByNow: typical,
+            weekday: weekday,
+            now: now
+        )
+    }
+
     private func refreshTodayStress() async {
         guard DataEnvironment.current.isLive else {
             todayStress = AppMockData.stress
@@ -1722,6 +1833,7 @@ final class SleepDataCoordinator {
         recoveryHistory = [:]
         todayStress = nil
         todayWorkouts = []
+        todayMovement = nil
         lastRecordedNightSet = nil
         cyclePeriodStarts = []
         todayLifestyleInsights = nil

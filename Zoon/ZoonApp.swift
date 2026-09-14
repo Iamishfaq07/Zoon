@@ -21,6 +21,7 @@ struct ZoonApp: App {
     /// Starts true on demo/screenshot launches so nothing waits behind it.
     @State private var splashFinished = !LaunchOptions.showsSplash
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let preferences = UserPreferences()
@@ -106,6 +107,15 @@ struct ZoonApp: App {
                 }
             }
             .animation(Motion.respecting(reduceMotion, .smooth(duration: 0.5)), value: splashFinished)
+            // `PrepareTomorrowIntent` writes the Tomorrow time to
+            // `UserDefaults` and may do it from its own process, so the
+            // running app's in-memory copy does not hear about it. Picking it
+            // up on the way back to the foreground is what makes "Prepare me
+            // for 9am", which opens the app, actually show 9am.
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                preferences.reloadTomorrowSettings()
+            }
         }
     }
 

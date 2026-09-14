@@ -8,6 +8,11 @@ struct HorizonStrip: View {
     var selectedID: String?
     var onSelect: (ZoonTomorrow.Node) -> Void = { _ in }
 
+    /// Wide enough for "Wind-down" and a short time, narrow enough that six
+    /// nodes on one evening do not sit on top of one another.
+    private let captionWidth: CGFloat = 58
+    private let captionHeight: CGFloat = 30
+
     var body: some View {
         let t0 = nodes.first?.date.timeIntervalSince1970 ?? 0
         let t1 = nodes.last?.date.timeIntervalSince1970 ?? 1
@@ -49,21 +54,34 @@ struct HorizonStrip: View {
             }
             .frame(height: 22)
 
-            HStack(alignment: .top, spacing: 0) {
+            // Captions sit under their own dot, using the identical offset
+            // the dots are drawn with. They were laid out in an `HStack` of
+            // equal columns while the dots were placed time-proportionally,
+            // so the two rows only agreed when the times happened to be
+            // evenly spaced -- which on a real evening they never are. A
+            // caption naming the wrong node is worse than no caption.
+            GeometryReader { geo in
+                let width = geo.size.width
                 ForEach(nodes) { node in
+                    let x = CGFloat((node.date.timeIntervalSince1970 - t0) / span)
                     VStack(spacing: 2) {
                         Text(node.title)
                             .font(Theme.label(10, weight: .semibold))
                             .foregroundStyle(Theme.inkTertiary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
                         Text(node.date.formatted(date: .omitted, time: .shortened))
                             .font(Theme.label(11, weight: .semibold))
                             .monospacedDigit()
                     }
-                    .frame(maxWidth: .infinity)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    // Fixed width centred on the node, so a caption grows
+                    // symmetrically about the dot it belongs to instead of
+                    // pushing its neighbours along the row.
+                    .frame(width: captionWidth)
+                    .position(x: 11 + x * (width - 20), y: captionHeight / 2)
                 }
             }
+            .frame(height: captionHeight)
         }
         .accessibilityElement(children: .contain)
     }

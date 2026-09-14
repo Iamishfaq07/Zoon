@@ -12,6 +12,9 @@ struct TrendsView: View {
 
     @State private var window: Window = .week
     @State private var selectedNight: SleepNightFeatures?
+    /// 90 days by default: long enough for a baseline to mean something,
+    /// short enough that most installs have the history for one.
+    @State private var baselineWindow: LongTermResilience.Window = .days90
 
     enum Window: String, CaseIterable, Identifiable {
         case week = "7 Days"
@@ -102,6 +105,11 @@ struct TrendsView: View {
                     .entrance(1)
                     SleepResilienceCard(nights: coordinator.recentNights)
                         .entrance(2)
+                    LongTermBaselineCard(
+                        signals: coordinator.longTermSignals(window: baselineWindow),
+                        window: $baselineWindow
+                    )
+                    .entrance(2)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)

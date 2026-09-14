@@ -228,6 +228,32 @@ final class UserPreferences {
         didSet { defaults.set(tomorrowHour, forKey: Key.tomorrowHour) }
     }
 
+    /// Re-reads the Tomorrow settings from disk.
+    ///
+    /// `PrepareTomorrowIntent` writes these, and an App Intent may run in its
+    /// own process — so it cannot hand the running app's `@Observable`
+    /// instance a new value, and a shared singleton would not help across a
+    /// process boundary either. The write lands in `UserDefaults` correctly;
+    /// what was missing is anything telling the app to pick it up, so
+    /// "Prepare me for 9am" set the time and then opened a Tomorrow screen
+    /// still showing the old one.
+    ///
+    /// Scoped to these three keys on purpose. A blanket reload would also
+    /// overwrite whatever the user is part-way through editing on a Settings
+    /// screen at the moment the app returns to the foreground.
+    func reloadTomorrowSettings() {
+        if let hour = defaults.object(forKey: Key.tomorrowHour) as? Int, hour != tomorrowHour {
+            tomorrowHour = hour
+        }
+        if let minute = defaults.object(forKey: Key.tomorrowMinute) as? Int, minute != tomorrowMinute {
+            tomorrowMinute = minute
+        }
+        if let enabled = defaults.object(forKey: Key.tomorrowEventEnabled) as? Bool,
+           enabled != tomorrowEventEnabled {
+            tomorrowEventEnabled = enabled
+        }
+    }
+
     var tomorrowMinute: Int {
         didSet { defaults.set(tomorrowMinute, forKey: Key.tomorrowMinute) }
     }

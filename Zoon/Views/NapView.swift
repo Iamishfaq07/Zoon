@@ -55,6 +55,7 @@ struct NapView: View {
                     startButton
                 }
                 historyCard
+                NapLearningCard(findings: NapLearning.findings(from: coordinator.napObservations()))
                 guidance
             }
             .padding(.horizontal)

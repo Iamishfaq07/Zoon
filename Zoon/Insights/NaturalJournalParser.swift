@@ -39,11 +39,23 @@ enum NaturalJournalParser {
 
     private static let negations = ["no", "didn't", "without", "avoided", "skipped", "not"]
 
+    /// Proposals for the built-in behaviour vocabulary.
+    ///
+    /// There was a second overload taking `customNames:` that ended with
+    /// `_ = customNames` — it accepted the list and discarded it, so the
+    /// Journal's natural-language box silently ignored every custom signal a
+    /// person had defined while appearing to support them.
+    ///
+    /// Parsing them is not the missing piece on its own: `Proposal.tag` is a
+    /// `BehaviorTag`, a closed enum with no custom case, and
+    /// `SleepDataCoordinator.setBehavior` records against that same enum, so
+    /// there is nowhere to *store* a confirmed custom observation either.
+    /// Wiring this end to end means giving custom signals an observation
+    /// path of their own. Until that exists the honest surface is no
+    /// parameter rather than one that is quietly dropped — custom signals
+    /// still list under "Your signals" on Journal, which is what they did
+    /// before.
     static func proposals(from text: String) -> [Proposal] {
-        proposals(from: text, customNames: [])
-    }
-
-    static func proposals(from text: String, customNames: [String]) -> [Proposal] {
         let lower = text.folding(options: .diacriticInsensitive, locale: .current).lowercased()
         var output: [Proposal] = []
         for rule in rules {
@@ -61,7 +73,6 @@ enum NaturalJournalParser {
             output.append(Proposal(tag: tag, state: state, matchedText: timing.map { "\(phrase) at \(formatHour($0))" } ?? phrase, confidence: confidence))
         }
         if output.contains(where: { $0.tag == .caffeineLate }) { output.removeAll { $0.tag == .caffeine } }
-        _ = customNames
         return output
     }
 

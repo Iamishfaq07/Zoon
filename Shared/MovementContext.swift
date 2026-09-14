@@ -50,6 +50,18 @@ enum MovementContext {
             sentence = "\(format(steps)) steps so far. There is not yet a typical \(weekdayName(weekday)) by this time to compare with."
             confidence = .low
             provenance = "Today's steps only"
+        // A typical of zero is a real observation -- a weekday this person
+        // genuinely has not moved by this hour in the past -- but it makes
+        // the percentage undefined, so `percent` is nil and the tuple fell
+        // through to `default`, reporting *recorded* steps as unknown.
+        // Missing is not zero was the principle; this was its mirror image,
+        // zero treated as missing.
+        case (let steps?, let typical?, nil) where typical == 0:
+            sentence = steps == 0
+                ? "No steps yet, and no steps by this time on a typical \(weekdayName(weekday)) either."
+                : "\(format(steps)) steps so far. A typical \(weekdayName(weekday)) has none by this time, so there is no percentage to compare."
+            confidence = .low
+            provenance = "Today versus same weekday at this hour"
         case (let steps?, let typical?, let delta?):
             let absPct = Int((abs(delta) * 100).rounded())
             if abs(delta) < 0.08 {
