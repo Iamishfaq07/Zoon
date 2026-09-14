@@ -10,6 +10,10 @@ With permission, Zoon reads selected Apple Health categories used to produce sle
 
 Zoon requests read access only. It does not write or modify data in Apple Health.
 
+## Calendar use
+
+Calendar access is off by default. When enabled, Zoon reads only tomorrow's first morning event start time to arrange Tonight and Tomorrow. Event titles, attendees, locations and notes are not copied or stored. Calendar can be turned off at any time in Tomorrow.
+
 ## Microphone use
 
 Snore Check uses the microphone only while the user runs a monitoring session. Short audio buffers are analyzed in memory for low-frequency energy and cadence, and by Apple's on-device sound classifier. Audio, speech, and waveforms are not recorded or saved. What is retained on the device is a derived nightly monitored-minutes and estimated-snore-minutes summary, plus up to 200 timestamped sound-event labels from the most recent session -- each one is only a category identifier (for example "snoring" or "cough"), the time it was heard, and a confidence value. These labels are included in a JSON export and are removed by Delete Everything.

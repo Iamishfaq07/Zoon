@@ -128,6 +128,33 @@ struct GetBedtimeIntent: AppIntent {
     }
 }
 
+struct PrepareTomorrowIntent: AppIntent {
+    static var title: LocalizedStringResource = "Prepare Me for Tomorrow"
+    static var description = IntentDescription("Open Zoon Tomorrow to protect a morning start time.")
+    static var openAppWhenRun = true
+
+    @Parameter(title: "Hour", default: 8)
+    var hour: Int
+
+    @Parameter(title: "Minute", default: 30)
+    var minute: Int
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Prepare me for \(\.$hour):\(\.$minute) tomorrow in Zoon")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let boundedHour = min(13, max(0, hour))
+        let boundedMinute = min(59, max(0, minute))
+        let prefs = UserPreferences()
+        prefs.tomorrowHour = boundedHour
+        prefs.tomorrowMinute = boundedMinute
+        prefs.tomorrowEventEnabled = true
+        return .result(dialog: "Zoon will arrange tonight around \(boundedHour):\(String(format: "%02d", boundedMinute)). Open Tomorrow on Today to see the plan.")
+    }
+}
+
 /// Registers the phrases Siri matches to each intent, and gives Shortcuts a
 /// curated set to suggest rather than requiring the user to search for them.
 struct ZoonShortcuts: AppShortcutsProvider {
@@ -185,6 +212,15 @@ struct ZoonShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Tonight's Bedtime",
             systemImageName: "bed.double.fill"
+        )
+        AppShortcut(
+            intent: PrepareTomorrowIntent(),
+            phrases: [
+                "Prepare me for tomorrow in \(.applicationName)",
+                "Set up tomorrow in \(.applicationName)"
+            ],
+            shortTitle: "Tomorrow",
+            systemImageName: "sunrise.fill"
         )
     }
 }

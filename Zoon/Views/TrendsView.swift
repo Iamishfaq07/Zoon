@@ -100,6 +100,8 @@ struct TrendsView: View {
                         selected: $selectedNight
                     )
                     .entrance(1)
+                    SleepResilienceCard(nights: coordinator.recentNights)
+                        .entrance(2)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)

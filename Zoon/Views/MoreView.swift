@@ -33,6 +33,9 @@ struct MoreView: View {
 
                     sectionLabel("This week")
                     navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
+                    navRow("Tomorrow", "Protect a morning start time", "sunrise.fill", Theme.Metric.battery) {
+                        ZoonTomorrowView()
+                    }
                     navRow("Travel plan", "Active trip sits on Tonight", "airplane", Theme.Metric.strain) {
                         TravelPlanView()
                     }

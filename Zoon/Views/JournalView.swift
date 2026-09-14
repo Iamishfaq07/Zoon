@@ -18,6 +18,7 @@ struct JournalView: View {
     @State private var naturalText: String = ""
     @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
     @State private var naturalStates: [BehaviorTag: BehaviorObservationState] = [:]
+    @State private var customStore = CustomBehaviorStore.shared
     @FocusState private var noteFieldFocused: Bool
 
     // The source of truth for what each chip shows. Read from the stores
@@ -73,6 +74,7 @@ struct JournalView: View {
                     lifestyleInsightsCard
                     tonightsAsk
                     naturalJournalCard
+                    customSignals
                     tagSections
                     noteCard
                     correlationsSection
@@ -311,8 +313,34 @@ struct JournalView: View {
         .glassCard()
     }
 
+    private var customSignals: some View {
+        let store = customStore
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Your signals", subtitle: "Custom tags stay observational until there are enough nights.", systemImage: "plus.circle")
+            if store.behaviors.isEmpty {
+                Text("Add signals like magnesium or prayer in More → Custom behaviours.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+            } else {
+                FlowLayout(spacing: 8) {
+                    ForEach(store.behaviors.filter(\.isActive)) { behavior in
+                        Label(behavior.name, systemImage: behavior.symbol)
+                            .font(Theme.label(12, weight: .medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Theme.Metric.sleep.opacity(0.18), in: Capsule())
+                    }
+                }
+            }
+        }
+        .glassCard()
+    }
+
     private func parseNaturalJournal() {
-        naturalProposals = NaturalJournalParser.proposals(from: naturalText)
+        naturalProposals = NaturalJournalParser.proposals(
+            from: naturalText,
+            customNames: customStore.behaviors.filter(\.isActive).map(\.name)
+        )
         naturalStates = Dictionary(uniqueKeysWithValues: naturalProposals.map { ($0.tag, $0.state) })
         Haptics.tap()
     }
