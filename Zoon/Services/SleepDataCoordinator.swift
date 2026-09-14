@@ -873,7 +873,7 @@ final class SleepDataCoordinator {
         let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
             .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) }
 
-        let maximum = DayContextBuilder.maximumHeartRate(age: preferences.age)
+        let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
         let maxHR = maximum.bpm
         // True RHR first (see SleepNightFeatures.restingHeartRate), falling
         // back to the sleep-window low only when no daily RHR sample exists

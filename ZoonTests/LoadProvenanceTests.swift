@@ -66,22 +66,23 @@ final class LoadProvenanceTests: XCTestCase {
     }
 
     func testMaximumHeartRateReportsHowItWasDerived() {
-        let withAge = DayContextBuilder.maximumHeartRate(age: 40)
+        let withAge = HeartRateZoneIntegrator.maximumHeartRate(age: 40)
         XCTAssertEqual(withAge.provenance, .ageEstimated)
         XCTAssertEqual(withAge.bpm, 208 - 0.7 * 40, accuracy: 0.001)
         XCTAssertFalse(withAge.provenance.isPersonalized, "a formula is not a measurement of this person")
 
-        XCTAssertEqual(DayContextBuilder.maximumHeartRate(age: nil).provenance, .genericFallback)
-        XCTAssertEqual(DayContextBuilder.maximumHeartRate(age: 0).provenance, .genericFallback)
-        XCTAssertEqual(DayContextBuilder.maximumHeartRate(age: 130).provenance, .genericFallback)
+        XCTAssertEqual(HeartRateZoneIntegrator.maximumHeartRate(age: nil).provenance, .genericFallback)
+        XCTAssertEqual(HeartRateZoneIntegrator.maximumHeartRate(age: 0).provenance, .genericFallback)
+        XCTAssertEqual(HeartRateZoneIntegrator.maximumHeartRate(age: 130).provenance, .genericFallback)
     }
 
-    /// The wrapper the older call sites still use must not drift from it.
-    func testLegacyHelperReturnsTheSameNumber() {
+    /// Tanaka, not 220 - age. The older rule underestimates for over-40s,
+    /// and every zone boundary sits below whichever is used.
+    func testTanakaRatherThanTwoTwentyMinusAge() {
         for age in [nil, 25, 40, 65] as [Int?] {
             XCTAssertEqual(
-                DayContextBuilder.estimatedMaxHeartRate(age: age),
-                DayContextBuilder.maximumHeartRate(age: age).bpm
+                HeartRateZoneIntegrator.maximumHeartRate(age: age).bpm,
+                age.map { Double(208) - 0.7 * Double($0) } ?? 190
             )
         }
     }

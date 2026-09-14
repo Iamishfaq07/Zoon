@@ -52,6 +52,30 @@ enum HRZoneProvenance: String, Codable, Hashable, Sendable, CaseIterable {
 /// no weight, and the failure this fixes was overstating hard minutes.
 enum HeartRateZoneIntegrator {
 
+    /// Age-predicted maximum heart rate (Tanaka), with where it came from.
+    ///
+    /// Closer to observed values across adult ages than the older 220−age
+    /// rule, which systematically underestimates for over-40s. Still a
+    /// population formula applied to one person: two people the same age can
+    /// differ by 20 bpm at maximum, which moves every zone boundary below and
+    /// the Load score with them. The provenance travels with the number so a
+    /// surface can say that rather than presenting a guessed ceiling as a
+    /// measured one.
+    ///
+    /// `.observedPersonalized` and `.userConfigured` are not produced here:
+    /// nothing in the app records a maximum someone actually hit, and there is
+    /// no setting for one. Those cases exist so that when either arrives it
+    /// has a name, and so "is this personal" has a single answer today rather
+    /// than being rewritten then.
+    ///
+    /// Lives beside the zones rather than in the app target because the zones
+    /// are meaningless without it -- and because the test target compiles
+    /// `Shared` directly.
+    static func maximumHeartRate(age: Int?) -> (bpm: Double, provenance: HRZoneProvenance) {
+        guard let age, age > 0, age < 120 else { return (190, .genericFallback) }
+        return (208 - 0.7 * Double(age), .ageEstimated)
+    }
+
     struct Sample {
         let date: Date
         let bpm: Double
