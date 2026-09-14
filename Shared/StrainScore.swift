@@ -181,13 +181,16 @@ extension StrainScore {
             return "Estimated from active energy — not enough heart-rate coverage to build zones."
         }
         switch zoneProvenance {
-        case .some(let provenance) where provenance.isPersonalized:
+        case .userConfigured, .observedPersonalized:
             return nil
-        case .some(.ageEstimated):
+        case .ageEstimated:
             return "Zones from an age-estimated maximum heart rate, not one you've hit."
-        case .some(.genericFallback):
+        case .genericFallback:
             return "Zones from a default maximum heart rate. Add your age in Settings to sharpen this."
-        case .none:
+        case nil:
+            // Genuinely unknown -- a legacy payload, or the active-energy
+            // fallback, which sorts nothing into zones. Not the same as a
+            // known-bad default, and not something to caveat.
             return nil
         }
     }
