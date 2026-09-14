@@ -1,0 +1,55 @@
+name: SDK probe
+
+# Answers one question and then gets deleted: what does the *installed*
+# HealthKit SDK actually expose for workout heart-rate zones?
+#
+# There is no Mac in the authoring environment, so the alternative is to guess
+# at API names from memory and find out at compile time — which is how invented
+# APIs get written down as though they were real. This asks the toolchain.
+#
+# Prints to stdout rather than only the step summary: the job log is what the
+# REST API serves, and that is the only channel available from outside.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: Inspect installed HealthKit SDK
+    runs-on: macos-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          echo "---- SDKs ----"
+          xcodebuild -showsdks | grep -i "ios" || true
+
+      - name: Locate HealthKit headers
+        id: locate
+        run: |
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "SDK=$SDK"
+          echo "sdk=$SDK" >> "$GITHUB_OUTPUT"
+          ls "$SDK/System/Library/Frameworks/HealthKit.framework/Headers" | head -60
+
+      - name: Zone-related symbols in HealthKit
+        run: |
+          SDK="${{ steps.locate.outputs.sdk }}"
+          H="$SDK/System/Library/Frameworks/HealthKit.framework/Headers"
+          echo "===== lines mentioning Zone ====="
+          grep -rn "Zone" "$H" | grep -v "TimeZone\|NSTimeZone" | head -80 || echo "(none)"
+          echo ""
+          echo "===== declared types/enums containing Zone ====="
+          grep -rhoE "(HK[A-Za-z]*Zone[A-Za-z]*)" "$H" | sort -u | head -40 || echo "(none)"
+          echo ""
+          echo "===== workout-statistics and time-in-zone style symbols ====="
+          grep -rhoE "(timeInZone[A-Za-z]*|zoneConfiguration[A-Za-z]*|HKWorkoutActivityMovingTime[A-Za-z]*)" "$H" | sort -u | head -20 || echo "(none)"
+
+      - name: Zone-related symbols anywhere in the SDK
+        run: |
+          SDK="${{ steps.locate.outputs.sdk }}"
+          echo "===== HK*Zone* across all framework headers ====="
+          grep -rhoE "HK[A-Za-z]*Zone[A-Za-z]*" "$SDK/System/Library/Frameworks" 2>/dev/null \
+            | grep -v "TimeZone" | sort -u | head -40 || echo "(none)"
