@@ -74,7 +74,11 @@ struct StressCard: View {
                     HStack(spacing: 6) {
                         Text("Load today")
                             .font(Theme.label(13, weight: .semibold))
-                        StatusPill(text: "Experimental", tint: Theme.inkSecondary)
+                        // Only while the reason holds -- see
+                        // `StressScore.experimentalReason`.
+                        if stress.experimentalReason != nil {
+                            StatusPill(text: "Experimental", tint: Theme.inkSecondary)
+                        }
                         if stress.isEstimate {
                             StatusPill(text: "Estimate", tint: Theme.inkSecondary)
                         }

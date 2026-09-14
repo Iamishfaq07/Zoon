@@ -73,6 +73,22 @@ final class StressBaselineBasisTests: XCTestCase {
         XCTAssertTrue(overnight.baselineContextNote.lowercased().contains("overnight"))
     }
 
+    // MARK: - The label follows the fact
+
+    /// A caveat that outlives its own cause stops being read. The
+    /// Experimental label had exactly one stated reason -- the scale
+    /// mismatch -- so it has to be able to come off when that is gone.
+    func testExperimentalComesOffOnceTheComparisonIsLikeForLike() throws {
+        let waking = try XCTUnwrap(score(hr: 70, overnightHR: 54, wakingHR: 70))
+        XCTAssertNil(waking.experimentalReason)
+    }
+
+    func testExperimentalStaysWhileTheWakingBaselineIsNotReady() throws {
+        let overnight = try XCTUnwrap(score(hr: 70, overnightHR: 54, wakingHR: nil))
+        let reason = try XCTUnwrap(overnight.experimentalReason)
+        XCTAssertTrue(reason.lowercased().contains("overnight"), "the label must say why it is there")
+    }
+
     /// One of each is the awkward case, and it must not claim to be either.
     func testAMixedComparisonSaysSo() throws {
         let mixed = try XCTUnwrap(
@@ -89,5 +105,9 @@ final class StressBaselineBasisTests: XCTestCase {
         )
         XCTAssertFalse(mixed.isScaleMatched)
         XCTAssertTrue(mixed.baselineContextNote.lowercased().contains("partly"))
+        XCTAssertNotNil(
+            mixed.experimentalReason,
+            "half a fix is not a fix -- the label stays until every component is matched"
+        )
     }
 }

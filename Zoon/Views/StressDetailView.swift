@@ -56,7 +56,9 @@ struct StressDetailView: View {
             .frame(width: 96, height: 96)
 
             HStack(spacing: 6) {
-                StatusPill(text: "Experimental", tint: Theme.inkSecondary)
+                if stress.experimentalReason != nil {
+                    StatusPill(text: "Experimental", tint: Theme.inkSecondary)
+                }
                 if stress.isEstimate {
                     StatusPill(text: "Estimate", tint: Theme.inkSecondary)
                 }
@@ -150,9 +152,12 @@ struct StressDetailView: View {
 
     private var explanationCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Compares your heart rate and HRV so far today against your own rolling baseline -- a live, same-day reading rather than a look back at last night. Not a measure of psychological stress.")
+            Text("Compares your heart rate and HRV so far today against your own baseline -- a live, same-day reading rather than a look back at last night. Not a measure of psychological stress.")
             Text("Workouts, the minutes right after them, and unlogged high-movement hours are excluded before averaging, so ordinary exertion doesn't read as elevated load. That exclusion is hour-grained, not perfect -- check today's Daily Load if this reads high and you know you've been active.")
-            Text("Marked Experimental because the baseline it compares against is built from overnight resting physiology, and even a genuinely calm waking hour doesn't sit on the same scale sleep does. Resolution is also limited by however much of the day has elapsed, which is why it's additionally shown as an estimate until there's enough baseline history.")
+            if let reason = stress.experimentalReason {
+                Text(reason)
+            }
+            Text("Resolution is limited by however much of the day has elapsed so far, which is why this reads as \"so far today\" rather than a final number.")
         }
         .font(Theme.text(12))
         .foregroundStyle(Theme.inkSecondary)

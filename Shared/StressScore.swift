@@ -22,7 +22,7 @@ import Foundation
 /// gets whatever discrete samples happened to land. Good enough to say
 /// "elevated today", not good enough to say "elevated at 2:14pm".
 ///
-/// ## Why "Experimental"
+/// ## Why "Experimental" -- and when it stops being
 ///
 /// Excluding workouts, the minutes after them, and high-movement hours (see
 /// `SleepDataCoordinator.refreshTodayStress`) removes the worst source of
@@ -33,9 +33,18 @@ import Foundation
 /// wakefulness. A perfectly relaxed waking hour can still read as
 /// "Elevated" simply because waking and sleeping HR/HRV don't live on the
 /// same scale. A genuine fix needs a real activity-and-time-of-day-aware
-/// daytime baseline built from historical daytime samples, which is
-/// materially larger than this pass -- until then, the honest label is
-/// "Physiological Load — Experimental," not a confident "Stress" number.
+/// daytime baseline built from historical daytime samples.
+///
+/// `DaytimeBaseline` is that baseline, and where it has enough history this
+/// score now compares waking readings with waking readings. The Experimental
+/// label follows the fact rather than the feature: `experimentalReason` is
+/// `nil` once every component used a waking comparison, and the label comes
+/// off. A caveat that outlives its own cause stops being read, and teaches
+/// people to read past every other caveat too.
+///
+/// It stays on wherever the waking baseline is not ready -- a new user, a
+/// quiet hour with too little history -- because there the original problem
+/// is still exactly as described above.
 struct StressScore: Codable, Hashable, Sendable {
 
     /// 0–100. Higher means further from baseline in the stressed direction.
@@ -96,6 +105,23 @@ struct StressScore: Codable, Hashable, Sendable {
 
     /// Baseline nights required before this is more than a guess.
     static let minimumBaselineNights = 7
+
+    /// Why this score is still marked Experimental, or `nil` once it isn't.
+    ///
+    /// The label had one stated reason: the baseline came from overnight
+    /// resting physiology, and calm wakefulness does not sit on that scale.
+    /// `DaytimeBaseline` removes that reason wherever it has enough history,
+    /// so the label has to be able to come off.
+    ///
+    /// The *other* limitation the detail view names -- resolution, one
+    /// average over however much of the day has elapsed -- is unchanged, and
+    /// is carried by `sampledMinutes` and the Estimate pill, which is where
+    /// it belongs.
+    var experimentalReason: String? {
+        isScaleMatched
+            ? nil
+            : "Marked Experimental because part of this compares waking readings against your overnight baseline, and even a genuinely calm waking hour doesn't sit on the scale sleep does. Once there are enough quiet readings from this time of day, it compares like with like instead."
+    }
 
     /// True when every component used was compared against waking readings
     /// from this hour of the day, so the scale mismatch does not apply.
