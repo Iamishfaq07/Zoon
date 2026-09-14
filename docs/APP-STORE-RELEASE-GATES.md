@@ -14,6 +14,19 @@ OS version, Watch model, and pass/fail evidence for every run.
 - [ ] Test no sleep, one night, 30 nights, and multiple years of data.
 - [ ] Test missing HRV, temperature, stages, respiratory rate, and blood oxygen independently.
 - [ ] Test two overlapping wearable sources and an explicit preferred source.
+- [ ] Specifically: a third-party writer that records a coarse asleep or core block and
+      *also* writes finer deep/REM segments inside it without removing the coarse one.
+      Apple writes the three stages disjoint, so this arrangement never occurs on Watch
+      data and no simulator fixture produces it from real HealthKit. Staged minutes
+      must not exceed total asleep. Resolved in `SleepSessionBuilder` and covered by
+      `SleepSessionInvariantTests`, but the resolution has never run against a real
+      third-party writer's samples.
+- [ ] Active energy with both an iPhone and a Watch writing it: confirm Daily Load's
+      estimate path does not double-count. `HKStatisticsQuery` with `.cumulativeSum`
+      is queried across all sources deliberately, and whether HealthKit de-duplicates
+      overlapping cumulative samples for this type was not established from the SDK in
+      this pass. The exposure is bounded -- that path already reports low confidence --
+      but the arithmetic is unverified.
 - [ ] Delete and edit Apple Health samples, then confirm Zoon reconciles stored nights.
 - [ ] Confirm late-arriving HRV updates the correct night without duplicating it.
 - [ ] Cross daylight-saving boundaries and east/west timezone travel.
@@ -61,6 +74,16 @@ OS version, Watch model, and pass/fail evidence for every run.
       wrist's point of view.
 - [ ] Turn the phone off, quick-log, and confirm the row reports Not saved rather than
       spinning indefinitely.
+- [ ] Feel the confirmation haptic, not just see the label. A quick-log taps on press,
+      and the wrist plays a distinct success pattern only when the phone confirms it
+      persisted the envelope (and a warning pattern when it says it could not). With
+      the phone out of range, the press must feel the same and the confirmation must
+      not arrive until the phone reconnects. This is the whole point of the haptic --
+      it is what tells someone in the dark, not looking at the watch, that the log
+      landed -- and it can only be checked on a real pair.
+- [ ] Check the haptic vocabulary is distinguishable on the wrist: tap, success and
+      warning are three different WatchKit patterns, and if they cannot be told apart
+      through a sleeve at night the mapping is wrong regardless of what the code says.
 - [ ] Start/end a nap on each device, including delayed WatchConnectivity delivery.
 - [ ] Reboot phone and Watch and verify stale/fresh snapshot labels.
 - [ ] Test every supported complication family with fresh, stale, and missing snapshots.
@@ -100,10 +123,22 @@ Recorded rather than left implicit. Every item here needs a Mac with Xcode, a
 paired device, or a product decision — none can be closed by simulator CI, and
 none should be reported as done on the strength of a green build.
 
-- **2026 HealthKit and watchOS SDK review.** Whether newer APIs (workout zones
-  among them) would replace anything Zoon derives itself. This needs the
-  current SDK headers and documentation open on a Mac. Nothing has been guessed
-  at or referenced against an API that has not been read.
+- **2026 HealthKit and watchOS SDK review.** Partly answered, and answered by
+  asking the toolchain rather than from memory: a throwaway CI job grepped the
+  installed iOS and watchOS SDKs (Xcode 26.6, iPhoneOS 26.5) for workout-zone
+  APIs.
+
+  Result: there is no public one. `HKWorkoutZone`, `HKWorkoutZonesSample` and
+  `HKWorkoutZonesType` exist only in `HealthKit.tbd`, the linker stub listing
+  every class in the shipped binary, next to plainly private ones such as
+  `_HKDaemonPreferences` and `_HKEntitlements`. No public header, no
+  `.swiftinterface`, no `.apinotes`, on either platform. Reading them would
+  mean hand-declaring private interfaces, so Zoon keeps its own sample-aware
+  integration and `HRZoneProvenance` records why the Apple case is absent.
+
+  Still open: the rest of the SDK surface. A broader review — whether anything
+  else Zoon derives itself now has a public API — wants the documentation and
+  headers open on a Mac, not a grep.
 - **Device validation of everything above.** The checklist is the record; a
   green CI run is not evidence for any line in it.
 

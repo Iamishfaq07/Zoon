@@ -20,6 +20,15 @@ struct SleepIntelligenceCard: View {
         }
     }
 
+
+    /// The component that cost the most points, named. A score with nothing
+    /// holding it back gets no action: the honest answer is that the night
+    /// was fine.
+    private var weakestComponentAction: String? {
+        guard let worst = score.negativeContributors.first else { return nil }
+        return "\(worst.label) cost the most tonight. \(worst.detail)"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -43,7 +52,17 @@ struct SleepIntelligenceCard: View {
                         // it that appear nowhere else in the app.
                         "Combines five sleep-period components -- Duration, Continuity, Regularity, Timing, and Stage Pattern. Recovery and body-signal anomalies are reported separately.",
                         "A component with no data tonight (not enough timing history or no stage detail) is left out and the rest are reweighted to fill 100% -- missing data never counts against you."
-                    ]
+                    ],
+                    // No baseline facet. Each component is already scored
+                    // against its own `expectedNeutral`, so "your usual" is
+                    // built into the number rather than being a separate
+                    // range to quote -- and there is no personal baseline
+                    // for the composite itself to state honestly.
+                    facets: MetricFacets(
+                        confidence: score.confidence,
+                        confidenceReason: score.confidenceReason,
+                        action: weakestComponentAction
+                    )
                 )
             }
 

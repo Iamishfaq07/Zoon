@@ -43,6 +43,9 @@ struct SoundscapeView: View {
             VStack(spacing: 14) {
                 AudioWaveform(isActive: true)
                     .frame(height: 56)
+                    // Decoration for audio that is already playing and whose
+                    // name is announced on the next line.
+                    .accessibilityHidden(true)
 
                 Text(sound.label)
                     .font(Theme.numeral(26))
@@ -72,17 +75,29 @@ struct SoundscapeView: View {
         }
     }
 
+    /// The two speaker glyphs are the scale, not controls: they say which end
+    /// of the slider is quiet without either of them being tappable. Hidden
+    /// from VoiceOver for exactly that reason -- left in, they are announced
+    /// as "speaker" and "speaker wave 3" either side of the one element that
+    /// actually does something, and neither is a thing you can do.
+    ///
+    /// The slider itself had no name at all, so it was announced as a bare
+    /// percentage. This is the same defect as the unlabelled info button:
+    /// a control VoiceOver can reach and adjust but cannot describe.
     private var volumeSlider: some View {
         @Bindable var engine = engine
         return HStack(spacing: 10) {
             Image(systemName: "speaker.fill")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
+                .accessibilityHidden(true)
             Slider(value: $engine.volume, in: 0...1)
                 .tint(Theme.Metric.battery)
+                .accessibilityLabel("Volume")
             Image(systemName: "speaker.wave.3.fill")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 4)
     }

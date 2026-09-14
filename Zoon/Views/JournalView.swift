@@ -660,7 +660,7 @@ struct JournalView: View {
             SectionHeader(
                 title: "What your habits cost you",
                 subtitle: "Behaviours with enough tagged nights to compare. Patterns, not proof of cause.",
-                systemImage: "chart.line.uptrend.xyaxis"
+                systemImage: "chart.xyaxis.line"
             )
 
             if findings.isEmpty {

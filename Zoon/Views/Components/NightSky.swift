@@ -5,25 +5,40 @@ import SwiftUI
 struct NightSky: View {
     var parallax: CGSize = .zero
     var starCount: Int = 56
+    /// See `NightSkyField.Presence`. Ambient by default: most uses are
+    /// texture behind content, not the content.
+    var presence: NightSkyField.Presence = .ambient
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Motion stops when it cannot be seen or cannot be afforded.
+    ///
+    /// Reduce Motion was already honoured. A backgrounded scene and Low Power
+    /// Mode were not: the timeline kept ticking behind the app switcher, and
+    /// kept ticking on a phone whose owner had explicitly asked it to
+    /// conserve.
+    private var isPaused: Bool {
+        reduceMotion
+            || scenePhase != .active
+            || ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? 10 : 1 / 12, paused: reduceMotion)) { timeline in
+        let stars = NightSkyField.stars(
+            count: starCount, twinklingEvery: presence.twinklingEvery
+        )
+        TimelineView(.animation(minimumInterval: presence.interval, paused: isPaused)) { timeline in
             Canvas { context, size in
-                let t = reduceMotion ? 0.0 : timeline.date.timeIntervalSinceReferenceDate
-                for i in 0..<starCount {
-                    let u = Self.frac(Double(i) * 0.6180339887)
-                    let v = Self.frac(Double(i) * 0.4142135623)
-                    let depth = 0.35 + Self.frac(Double(i) * 0.27) * 0.85
-                    let x = u * size.width + parallax.width * depth
-                    let y = v * size.height + parallax.height * depth
-                    let twinkle = reduceMotion
+                let t = isPaused ? 0.0 : timeline.date.timeIntervalSinceReferenceDate
+                for star in stars {
+                    let x = star.u * size.width + parallax.width * star.depth
+                    let y = star.v * size.height + parallax.height * star.depth
+                    let twinkle = (isPaused || !star.twinkles)
                         ? 0.62
-                        : 0.32 + 0.68 * abs(sin(t * (0.32 + u) + Double(i)))
-                    let r = 0.7 + 1.7 * Self.frac(Double(i) * 0.19)
+                        : 0.32 + 0.68 * abs(sin(t * star.speed + star.phase))
                     context.fill(
-                        Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r)),
+                        Path(ellipseIn: CGRect(x: x, y: y, width: star.radius, height: star.radius)),
                         with: .color(Color.white.opacity(twinkle * 0.9))
                     )
                 }
@@ -31,10 +46,6 @@ struct NightSky: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-    }
-
-    private static func frac(_ x: Double) -> Double {
-        x - floor(x)
     }
 }
 

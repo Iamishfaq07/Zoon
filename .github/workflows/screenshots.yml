@@ -12,8 +12,13 @@ name: Screenshots
 #
 # Deliberately not on every push: booting a simulator is slow, and macOS
 # minutes bill at 10x on private repos. This comment-only edit exists to
-# retrigger a capture after the Liquid Glass sheen change (Theme.GlassCard)
-# landed, to check it visually rather than merging a design change blind.
+# retrigger a capture after the final engineering pass changed things that
+# only a render can check: the metric sheet's provenance and facets merged
+# into one panel, six charts swapped off the uptrend glyph onto the neutral
+# one, the Coach header replaced with an evidence line whose length now
+# depends on how much history exists, and Today's Health Pulse strip
+# restructured around a hoisted computation. Every one of those is a layout
+# risk that compiles perfectly.
 # Two ways to run it:
 #
 #   - **Actions tab → Screenshots → Run workflow.** Note that GitHub only

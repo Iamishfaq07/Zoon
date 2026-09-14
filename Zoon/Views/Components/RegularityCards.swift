@@ -169,16 +169,14 @@ struct HealthRadarCard: View {
 
     let radar: HealthRadar
 
-    private var tint: Color {
-        switch radar.severity {
-        case .clear: Theme.Metric.recoveryHigh
-        case .watch: Theme.Metric.recoveryMid
-        case .notable: Theme.Metric.recoveryLow
-        }
-    }
+    private var tint: Color { radar.state.tint }
 
     var body: some View {
-        if radar.isActive {
+        // Only when something is drifting. The card deliberately renders
+        // nothing otherwise -- including while the baseline is still
+        // building, where a card saying "all clear" would be a claim rather
+        // than an absence.
+        if radar.state.isActionable {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     // Explicit "illness risk" wording rather than a second,
@@ -189,7 +187,7 @@ struct HealthRadarCard: View {
                     // building a second model that would just restate this one.
                     SectionHeader(
                         title: "Body Signals",
-                        subtitle: radar.severity == .notable ? "Possible illness or heavy strain signal" : nil,
+                        subtitle: radar.stateSubtitle,
                         systemImage: "dot.radiowaves.left.and.right"
                     )
                     Spacer()
@@ -202,7 +200,7 @@ struct HealthRadarCard: View {
                             "This is a wellness observation, not a diagnosis. It cannot identify illness, only flag a pattern worth paying attention to."
                         ]
                     )
-                    StatusPill(text: radar.severity.label, tint: tint)
+                    StatusPill(text: radar.stateShortLabel, tint: tint)
                 }
 
                 ForEach(radar.signals) { signal in
@@ -233,7 +231,7 @@ struct HealthRadarCard: View {
                     }
                 }
 
-                Text(radar.detail)
+                Text(radar.stateDetail)
                     .font(.caption)
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)

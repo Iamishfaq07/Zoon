@@ -128,9 +128,7 @@ struct CoreIntelligenceGrid: View {
 
     private var bodySignalsTile: some View {
         let radar = context.healthRadar
-        let tint: Color = radar.isActive
-            ? (radar.severity == .notable ? Theme.Metric.recoveryLow : Theme.Metric.recoveryMid)
-            : Theme.Metric.recoveryHigh
+        let tint: Color = radar.state.tint
 
         return module(
             title: "Body Signals",
@@ -148,7 +146,7 @@ struct CoreIntelligenceGrid: View {
             }
             .frame(height: 20)
         } stat: {
-            radar.isActive ? "\(radar.signals.count) drifting" : radar.stateShortLabel
+            radar.stateShortLabel
         }
     }
 

@@ -235,7 +235,7 @@ struct SleepScoreWidgetView: View {
     }
 
     private var circular: some View {
-        Gauge(value: min(Double(snapshot.flagshipScore), 100), in: 0...100) {
+        Gauge(value: snapshot.flagshipGaugeValue, in: 0...100) {
             Image(systemName: "moonphase.waxing.crescent")
         } currentValueLabel: {
             Text(snapshot.flagshipScoreText)

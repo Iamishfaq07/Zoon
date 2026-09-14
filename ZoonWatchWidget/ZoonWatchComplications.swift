@@ -462,7 +462,7 @@ struct SleepBankComplicationView: View {
             // Score rather than duration in the circular slot: a percentage
             // fills a gauge honestly, where "7h 32m" has no natural maximum to
             // draw an arc against.
-            Gauge(value: Double(entry.snapshot.flagshipScore), in: 0...100) {
+            Gauge(value: entry.snapshot.flagshipGaugeValue, in: 0...100) {
                 Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
                 Text(entry.snapshot.flagshipScoreText).monospacedDigit()

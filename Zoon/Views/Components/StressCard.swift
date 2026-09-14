@@ -71,7 +71,9 @@ struct StressCard: View {
                 .frame(width: 44, height: 44)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
+                    // Two caveat pills beside a title is exactly the row
+                    // that overflows first at accessibility sizes.
+                    ZoonFlowLayout(spacing: 6, lineSpacing: 6, alignment: .leading) {
                         Text("Load today")
                             .font(Theme.label(13, weight: .semibold))
                         // Only while the reason holds -- see

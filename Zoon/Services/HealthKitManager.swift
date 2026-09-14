@@ -959,6 +959,15 @@ struct WorkoutSummary: Identifiable, Hashable, Sendable {
 
     /// This summary as arbitration input. The deduplicator is deliberately
     /// ignorant of `HKWorkout` so it can be tested without one.
+    /// The framework-free shape `EnergyDrivers` attributes hours to, mapped
+    /// here for the same reason `deduplicationCandidate` is: the engine lives
+    /// in `Shared` and cannot see HealthKit.
+    var namedInterval: EnergyDrivers.NamedInterval {
+        EnergyDrivers.NamedInterval(
+            label: activityLabel, symbol: symbol, start: start, end: end
+        )
+    }
+
     var deduplicationCandidate: WorkoutDeduplicator.Candidate {
         .init(
             id: id,

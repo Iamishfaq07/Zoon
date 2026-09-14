@@ -291,7 +291,7 @@ struct EvidenceView: View {
         switch strength {
         case .tested: "checkmark.seal.fill"
         case .associated: "link"
-        case .observed: "chart.line.uptrend.xyaxis"
+        case .observed: "chart.xyaxis.line"
         case .anecdote: "moon.zzz.fill"
         }
     }

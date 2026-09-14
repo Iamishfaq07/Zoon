@@ -20,20 +20,26 @@ struct HealthPulseStrip: View {
     /// itself makes, so the two can never disagree about tonight's pattern.
     let recentNights: [SleepNightFeatures]
 
-    private var breathing: BreathingHealth { BreathingHealth.compute(nights: recentNights) }
 
     /// V8: sits on the page between two hairlines rather than inside a glass
     /// card, so it reads as a status line under the hero rather than as the
     /// first of a stack of boxes. At accessibility text sizes the four
     /// tiles reflow to a 2×2 grid instead of squeezing.
     var body: some View {
-        VStack(spacing: 0) {
+        // Computed once per render, not per read. This was a computed
+        // property, and `breathingTile` reads it three times (tint, value
+        // label, accessibility value) while `ViewThatFits` builds both
+        // layouts -- so opening Today ran a sort plus two medians over the
+        // whole night history six times to draw one 22pt waveform.
+        let breathing = BreathingHealth.compute(nights: recentNights)
+
+        return VStack(spacing: 0) {
             Rectangle().fill(Theme.cardStroke).frame(height: 1)
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 0) {
                     tile(recoveryTile)
                     tile(bodySignalsTile)
-                    tile(breathingTile)
+                    tile(breathingTile(breathing))
                     tile(regularityTile)
                 }
                 VStack(spacing: 14) {
@@ -42,7 +48,7 @@ struct HealthPulseStrip: View {
                         tile(bodySignalsTile)
                     }
                     HStack(spacing: 0) {
-                        tile(breathingTile)
+                        tile(breathingTile(breathing))
                         tile(regularityTile)
                     }
                 }
@@ -100,9 +106,11 @@ struct HealthPulseStrip: View {
 
     private var bodySignalsTile: some View {
         let radar = context.healthRadar
-        let tint: Color = radar.isActive
-            ? (radar.severity == .notable ? Theme.Metric.recoveryLow : Theme.Metric.recoveryMid)
-            : Theme.Metric.recoveryHigh
+        let state = radar.state
+        // One mapping, shared with every other radar surface. The dots were
+        // painted green whenever the signal list was empty -- which is also
+        // true on night four and on a phone with no physiology.
+        let tint: Color = state.tint
 
         return NavigationLink {
             HealthRadarView()
@@ -116,25 +124,21 @@ struct HealthPulseStrip: View {
                     }
                 }
                 .frame(height: 22)
-                pulseLabel("Signals", value: radar.isActive ? "\(radar.signals.count)" : "OK")
+                pulseLabel("Signals", value: radar.stateCountLabel)
             }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Body Signals")
-        // `isActive` is false for a clear fortnight, for night four, and for
-        // a phone with no physiology. Only the first is reassurance.
-        .accessibilityValue(
-            radar.isActive
-                ? "\(radar.signals.count) signals drifting"
-                : radar.stateHeadline
-        )
+        // Reads the same state the dots are painted from, so the spoken
+        // value and the visible one cannot disagree.
+        .accessibilityValue(radar.stateHeadline)
         .accessibilityHint("View body signals")
     }
 
     // MARK: - Breathing -- a small three-bar waveform.
 
-    private var breathingTile: some View {
+    private func breathingTile(_ breathing: BreathingHealth) -> some View {
         let tint: Color = {
             switch breathing.pattern {
             case .insufficientData: Theme.inkSecondary
@@ -154,7 +158,7 @@ struct HealthPulseStrip: View {
                     }
                 }
                 .frame(height: 22)
-                pulseLabel("Breathing", value: breathingValueLabel)
+                pulseLabel("Breathing", value: breathingValueLabel(breathing))
             }
         }
         .buttonStyle(.plain)
@@ -164,7 +168,7 @@ struct HealthPulseStrip: View {
         .accessibilityHint("View breathing health")
     }
 
-    private var breathingValueLabel: String {
+    private func breathingValueLabel(_ breathing: BreathingHealth) -> String {
         switch breathing.pattern {
         case .insufficientData: "--"
         // Not "OK". There are readings, but nothing has been classified, and

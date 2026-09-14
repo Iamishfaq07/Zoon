@@ -70,7 +70,7 @@ struct InsightCard: View {
                     CoachChatView(night: night)
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                        Image(systemName: "bubble.left.and.text.bubble.right")
                         Text("Ask a follow-up")
                         Spacer()
                         Image(systemName: "chevron.right")

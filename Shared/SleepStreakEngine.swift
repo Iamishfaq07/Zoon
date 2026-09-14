@@ -12,9 +12,24 @@ import Foundation
 ///
 /// Canonical sleep-day mapping: a night is attributed to
 /// `SleepNightFeatures.date`, the wake day, which is what every other engine
-/// here uses. Adjacency is calendar-day adjacency in the night's own
-/// timezone, so DST days (23 or 25 hours long) and travel do not create or
-/// break streaks by arithmetic accident.
+/// here uses. Day identity and adjacency are both `SleepDayKey` — a civil
+/// date, not an instant.
+///
+/// That distinction was a real bug rather than a nicety. Days were keyed by
+/// `startOfDay` computed in each night's *own* timezone, then looked up with
+/// the *device's current* calendar. Local midnight in Delhi and in London are
+/// five and a half hours apart, so the day after flying home every stored key
+/// missed its lookup and a genuine streak broke for no visible reason.
+/// Comparing dates instead is immune to travel and to DST alike: a 23- or
+/// 25-hour day still has exactly one date.
+///
+/// **Known limitation, stated rather than hidden.** Crossing the
+/// International Date Line westward skips a civil date entirely — the
+/// traveller never lives the 4th. Zoon has no record for that day, so it
+/// reads as a missing night and breaks the streak. Recognising it would mean
+/// inferring a timezone for a day with no data, which is a guess; a broken
+/// streak is the honest outcome of the rule "a night with no record is not a
+/// night in a row".
 ///
 /// Goal basis: `total24hAsleepMinutes` — main sleep plus naps credited to
 /// that night. This is a product decision applied in one place rather than
@@ -39,22 +54,23 @@ enum SleepStreakEngine {
     ///   - nights: any order; sorted internally.
     ///   - goalMinutes: the night's own need where the caller has one.
     ///   - windowSize: trailing nights counted for `metInWindow`.
+    ///
+    /// Takes no `Calendar`: day identity is a civil date, so there is no
+    /// calendar for a caller to get wrong. The old signature accepted one
+    /// and quietly used it to look up keys built in a different zone.
     static func evaluate(
         nights: [SleepNightFeatures],
         goalMinutes: Double,
-        windowSize: Int = 30,
-        calendar: Calendar = .current
+        windowSize: Int = 30
     ) -> Result {
         let sorted = nights.sorted { $0.date < $1.date }
 
         // Duplicate records for one calendar day must not count twice. Keep
         // the longest, which is the one a duplicate-import scenario should
         // resolve to.
-        var byDay: [Date: SleepNightFeatures] = [:]
+        var byDay: [SleepDayKey: SleepNightFeatures] = [:]
         for night in sorted {
-            var local = calendar
-            local.timeZone = night.timeZone
-            let key = local.startOfDay(for: night.date)
+            let key = night.sleepDayKey
             if let existing = byDay[key], existing.total24hAsleepMinutes >= night.total24hAsleepMinutes {
                 continue
             }
@@ -71,21 +87,21 @@ enum SleepStreakEngine {
             var cursor = last
             while met.contains(cursor) {
                 current += 1
-                guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+                let previous = cursor.previous
                 // A day with no record at all is a break, not a skip.
-                guard byDay[calendar.startOfDay(for: previous)] != nil else { break }
-                cursor = calendar.startOfDay(for: previous)
+                guard byDay[previous] != nil else { break }
+                cursor = previous
             }
         }
 
         var best = 0
         var running = 0
-        var expected: Date?
+        var previousDay: SleepDayKey?
         for day in days {
-            let isAdjacent = expected.map { calendar.isDate(day, inSameDayAs: $0) } ?? false
+            let isAdjacent = previousDay.map { day.isDayAfter($0) } ?? false
             running = (met.contains(day) && (isAdjacent || running == 0)) ? running + 1 : (met.contains(day) ? 1 : 0)
             best = max(best, running)
-            expected = calendar.date(byAdding: .day, value: 1, to: day)
+            previousDay = day
         }
 
         let window = days.suffix(windowSize)

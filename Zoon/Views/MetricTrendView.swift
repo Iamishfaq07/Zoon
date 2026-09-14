@@ -163,7 +163,7 @@ struct MetricTrendView: View {
 
     private func chartCard(_ sorted: [(date: Date, value: Double)]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Recent nights", systemImage: "chart.line.uptrend.xyaxis")
+            SectionHeader(title: "Recent nights", systemImage: "chart.xyaxis.line")
             Chart {
                 ForEach(sorted, id: \.date) { point in
                     LineMark(
@@ -202,7 +202,11 @@ struct MetricTrendView: View {
             }
             .frame(height: 140)
             .chartXSelection(value: $selectedDate)
-            .accessibilityElement(children: .contain)
+            // `.ignore`, not `.contain`: with the marks left focusable
+            // VoiceOver reads the chart as a list of bare numbers, one per
+            // night, after announcing the label. The summary below is the
+            // thing someone opened the chart to learn.
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(kind.label) over the last \(sorted.count) nights")
             .accessibilityValue(selectedPointDescription(in: sorted) ?? "")
         }

@@ -37,7 +37,10 @@ struct WorthNoticing: View {
     /// into an unbounded advice feed.
     var items: [Item] {
         var ranked: [Item] = []
-        if context.healthRadar.isActive { ranked.append(.radar(context.healthRadar)) }
+        // Only when something is genuinely drifting. "Still building a
+        // baseline" is covered by the `.learning` item below and is not a
+        // thing to raise as a notice.
+        if context.healthRadar.state.isActionable { ranked.append(.radar(context.healthRadar)) }
         if let stress, stress.band != .calm { ranked.append(.stress(stress)) }
         if let recoveryMode { ranked.append(.recoveryMode(recoveryMode)) }
         if let lightGuidance { ranked.append(.light(lightGuidance)) }
@@ -68,9 +71,9 @@ struct WorthNoticing: View {
         case let .radar(radar):
             notice(
                 symbol: "dot.radiowaves.left.and.right",
-                tint: radar.severity == .notable ? Theme.Family.deviation : Theme.Family.attention,
-                headline: radar.headline,
-                detail: radar.detail,
+                tint: radar.state.tint,
+                headline: radar.stateHeadline,
+                detail: radar.stateDetail,
                 linkLabel: "View Body Signals"
             ) { HealthRadarView() }
 
@@ -100,7 +103,7 @@ struct WorthNoticing: View {
         case let .learning(nights, tagged):
             VStack(alignment: .leading, spacing: 8) {
                 noticeText(
-                    symbol: "chart.line.uptrend.xyaxis.circle",
+                    symbol: "chart.xyaxis.line.circle",
                     tint: Theme.Family.sleep,
                     headline: "Zoon is still learning what normal looks like for you",
                     detail: "Personal baselines are built from your own nights, not other people's. Scores get more trustworthy over the next couple of weeks."

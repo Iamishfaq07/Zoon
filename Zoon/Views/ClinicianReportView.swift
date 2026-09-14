@@ -78,6 +78,12 @@ struct ClinicianReportView: View {
                     HStack {
                         Image(systemName: selectedSections.contains(section) ? "checkmark.square.fill" : "square")
                             .foregroundStyle(selectedSections.contains(section) ? Theme.Metric.sleep : Theme.inkSecondary)
+                            // The box is the state, and VoiceOver was
+                            // announcing it as the SF Symbol's name --
+                            // "checkmark square fill" -- which is not a state,
+                            // it is an implementation detail. The trait below
+                            // is how a checkbox says it is checked.
+                            .accessibilityHidden(true)
                         Text(section.rawValue)
                             .font(Theme.label(13))
                             .foregroundStyle(.primary)
@@ -86,6 +92,10 @@ struct ClinicianReportView: View {
                     .padding(.vertical, 3)
                 }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(
+                    selectedSections.contains(section) ? [.isButton, .isSelected] : .isButton
+                )
+                .accessibilityHint("Include this section in the report")
             }
         }
         .glassCard()

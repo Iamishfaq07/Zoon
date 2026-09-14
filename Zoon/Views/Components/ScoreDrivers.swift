@@ -143,13 +143,25 @@ struct ScoreDrivers: View {
         }
     }
 
+    /// Deliberately neutral.
+    ///
+    /// This strip was running two colour languages at once: a family hue per
+    /// signal on the icon, and a verdict hue on the qualifier beneath it.
+    /// Four rows, eight colour decisions, under a hero ring that is itself a
+    /// three-stop gradient -- so the screen showed five or more strong hues
+    /// competing, and none of them dominated.
+    ///
+    /// The verdict colour is the one carrying something a reader acts on.
+    /// The family hue was identity, and the symbol beside it already says
+    /// which signal this is. So the icon steps back and the verdict keeps its
+    /// colour, which leaves the ring as the screen's one accent.
+    ///
+    /// The family hues are not gone -- they are what the ring's own signal
+    /// markers use, and what each metric's detail screen opens in. Colour
+    /// arrives on selection rather than all at once.
     private static func tint(for label: String) -> Color {
-        switch label {
-        case "HRV": Theme.Family.recovery
-        case "Resting HR": Theme.Family.bodySignals
-        case "Sleep": Theme.Family.sleep
-        default: Theme.Family.breathing
-        }
+        _ = label
+        return Theme.inkSecondary
     }
 
     private static func symbol(for label: String) -> String {

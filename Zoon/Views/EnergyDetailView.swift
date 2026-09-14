@@ -25,7 +25,11 @@ struct EnergyDetailView: View {
                 .padding(.bottom, 8)
                 .entrance(0)
 
-                BodyBatteryCard(battery: context.bodyBattery).entrance(1)
+                BodyBatteryCard(
+                    battery: context.bodyBattery,
+                    workouts: coordinator.todayWorkouts.map(\.namedInterval)
+                )
+                .entrance(1)
 
                 if let stress = coordinator.todayStress {
                     StressCard(stress: stress, todayStrain: context.strain.value).entrance(2)
@@ -64,6 +68,26 @@ struct EnergyDetailView: View {
         )
     }
 
+    /// The one thing worth doing about today's load, or nothing.
+    ///
+    /// A light or moderate day needs no instruction -- a sheet that always
+    /// ends with advice teaches people to stop reading the advice. Only the
+    /// two bands that actually change tonight's sleep need say so, and the
+    /// weak-zone case says the thing that would sharpen every future score.
+    private var loadAction: String? {
+        if context.strain.zoneProvenance == .genericFallback {
+            return "Add your age in Settings so your zones stop resting on a default maximum heart rate."
+        }
+        switch context.strain.value {
+        case 14...:
+            return "Give tonight extra time in bed — a day this hard raises what your body needs to recover from it."
+        case 10..<14:
+            return "Protect your usual bedtime tonight; a strenuous day is the one most easily undone by a late one."
+        default:
+            return nil
+        }
+    }
+
     /// Daily Load, exactly as `TodayView.dailyLoadRow` drew it.
     private var loadCard: some View {
         HStack(spacing: 8) {
@@ -89,6 +113,12 @@ struct EnergyDetailView: View {
                             .font(Theme.text(10))
                             .foregroundStyle(Theme.inkTertiary)
                     }
+                    // Both weaknesses, in one word. A fully-sampled day
+                    // sorted by a guessed ceiling is not a high-confidence
+                    // number, and the tag alone did not say so.
+                    Text("· \(context.strain.confidence.label)")
+                        .font(Theme.text(10))
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             Spacer(minLength: 4)
@@ -99,7 +129,16 @@ struct EnergyDetailView: View {
                 explanation: [
                     "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
                     "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
-                ] + [context.strain.confidenceNote].compactMap { $0 }
+                ],
+                // `confidenceNote` used to be appended to the prose above,
+                // where it read as a third paragraph about the metric rather
+                // than a caveat on today's number. It is the same sentence;
+                // it now sits in the row that is labelled as the caveat.
+                facets: MetricFacets(
+                    confidence: context.strain.confidence,
+                    confidenceReason: context.strain.confidenceNote,
+                    action: loadAction
+                )
             )
         }
         .glassCard()

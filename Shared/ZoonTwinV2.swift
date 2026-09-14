@@ -320,7 +320,7 @@ enum ZoonTwinV2 {
 
         let covariateMetrics = covariates(lever: lever)
         let ordered = nights.sorted { $0.date < $1.date }
-        guard let earliest = ordered.first?.date else {
+        guard let earliest = ordered.first?.sleepDayKey else {
             return .unsupported(.notEnoughNights(have: 0, need: minimumPairs * 2))
         }
 
@@ -342,7 +342,12 @@ enum ZoonTwinV2 {
 
             var nightCalendar = calendar
             nightCalendar.timeZone = night.timeZone
-            let days = nightCalendar.dateComponents([.day], from: earliest, to: night.date).day ?? 0
+            // Civil dates, so the era index does not shift with travel or a
+            // daylight-saving transition. Counting elapsed 24-hour periods
+            // between instants answers a different question and gave a
+            // different number depending on which night's timezone the
+            // calendar happened to be set to.
+            let days = night.sleepDayKey.daysSince(earliest)
 
             usable.append((
                 leverValue,

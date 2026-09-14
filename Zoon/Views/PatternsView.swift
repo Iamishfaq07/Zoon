@@ -109,10 +109,25 @@ struct PatternsView: View {
             sectionHeader("Things Zoon has noticed", "sparkles", Theme.Family.sleep)
 
             if findings.isEmpty {
-                Text("Nothing yet. Log what you did on a few more nights and Zoon can start comparing them against each other.")
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                // The designed learning state, not a sentence over a void.
+                // This screen's empty case is the one most readers see first
+                // -- correlations need tagged nights, and nobody has tagged
+                // any on day one -- and it was a line of grey text above two
+                // thirds of an empty screen. It now says what Zoon is
+                // collecting and how far along it is, which is the difference
+                // between "there is nothing here" and "there is nothing here
+                // yet".
+                ZoonEmptyState(
+                    kind: .learning(
+                        collected: coordinator.journal.taggedNightCount(),
+                        // The engine's own floor, not a number invented for
+                        // the copy: a finding needs `minimumMatchedPairs`
+                        // matched pairs, and a pair needs one night you
+                        // logged the behaviour on and one you did not.
+                        typicallyNeeded: JournalCorrelator.minimumMatchedPairs...(JournalCorrelator.minimumMatchedPairs * 2),
+                        message: "Patterns come from comparing nights you logged something on against nights you didn't. Log what you did on a few more nights and Zoon can start comparing them."
+                    )
+                )
             } else {
                 ForEach(Array(findings.enumerated()), id: \.element.id) { index, finding in
                     if index > 0 {

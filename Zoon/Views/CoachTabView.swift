@@ -99,7 +99,7 @@ struct CoachTabView: View {
                     CoachChatView(night: night)
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                        Image(systemName: "bubble.left.and.text.bubble.right")
                             .foregroundStyle(Theme.Family.sleep)
                         Text("Ask something else in your own words")
                             .font(Theme.label(14, weight: .medium))
@@ -328,11 +328,44 @@ struct CoachTabView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Ask Zoon")
                 .font(Theme.numeral(28))
-            Text("Your sleep intelligence assistant")
+            // Was "Your sleep intelligence assistant", which is a tagline:
+            // true of the screen before any data existed and after all of it
+            // was deleted. `capabilityCard` states the evidence base
+            // properly, but it sits at the bottom, below every question --
+            // so the one thing that decides whether an answer is worth
+            // asking for arrived after the asking. This is the short form of
+            // it, in the space the tagline was wasting.
+            Text(evidenceLine)
                 .font(Theme.text(13))
                 .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // The two lines are one statement, and VoiceOver reading "Ask Zoon"
+        // and the evidence line as separate elements invites swiping past
+        // the half that qualifies the other.
+        .accessibilityElement(children: .combine)
+    }
+
+    /// What the coach is actually reading from, in one line.
+    ///
+    /// Counts, not adjectives. "Reading 42 nights" is checkable against the
+    /// card at the bottom of this screen; "your sleep intelligence
+    /// assistant" is not checkable against anything.
+    private var evidenceLine: String {
+        let nights = coordinator.recentNights.count
+        let history = "Reading \(nights) night\(nights == 1 ? "" : "s")"
+        let entries = journalEntryCount
+        let journal = entries > 0
+            ? " and \(entries) journal entr\(entries == 1 ? "y" : "ies")"
+            : ""
+        // Named only when it is not available. When everything works, the
+        // sentence is about the data, and a reassurance nobody asked for is
+        // noise on a screen whose whole job is the next tap.
+        let model = CoachChat.unavailabilityReason == nil
+            ? ""
+            : ". Generated explanations unavailable — answers are the local ones"
+        return history + journal + ", on this device" + model + "."
     }
 
     /// Picks up to three prompts whose underlying signal actually moved last

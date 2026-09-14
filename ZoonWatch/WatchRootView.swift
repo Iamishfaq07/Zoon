@@ -66,7 +66,7 @@ struct WatchRootView: View {
         // see `LogPage`. A gesture with no affordance is not a route
         // someone discovers.
         .onLongPressGesture {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             showsQuickLog = true
         }
         .sheet(isPresented: $showsQuickLog) {
@@ -75,6 +75,26 @@ struct WatchRootView: View {
         .onChange(of: link.snapshot?.generatedAt, initial: true) { _, _ in
             chooseOpeningPage()
         }
+        // The only haptic in the app that reports an outcome rather than a
+        // touch. Every quick-log button taps on press, which says "received",
+        // not "saved" -- the phone may be out of range and the envelope may
+        // sit queued for an hour. This fires when the phone has actually
+        // confirmed it persisted the envelope, or said it could not, which
+        // is the moment worth feeling on a wrist you are not looking at.
+        .onChange(of: latestSyncSignature) { _, _ in
+            switch link.logSync.latest?.state {
+            case .saved: Haptics.success()
+            case .failed: Haptics.warning()
+            default: break
+            }
+        }
+    }
+
+    /// `logSync.latest` is a tuple, which `onChange` cannot compare. The id
+    /// is in the signature as well as the state so two logs resolving the
+    /// same way in a row are two events, not one.
+    private var latestSyncSignature: String? {
+        link.logSync.latest.map { "\($0.id)/\($0.state.label)" }
     }
 
     private func hasTonight(_ snapshot: SleepSnapshot) -> Bool {
@@ -118,10 +138,24 @@ struct ZoonWatchDial: View {
     let tint: Color
     let accessibilityDescription: String
     /// Overrides the numeral in the centre. `nil` prints `value`; a caller
-    /// passes "—" when the score exists but is not one to state. The ring
-    /// still draws to `value`, because the shape is a rough indication and
-    /// the numeral is the claim.
+    /// passes "—" when the score exists but is not one to state.
+    ///
+    /// A withheld score draws **no arc**, not a quiet one. This used to draw
+    /// the ring to `value` anyway, on the reasoning that "the shape is a
+    /// rough indication and the numeral is the claim" -- but the phone
+    /// applies the opposite rule at the same decision point
+    /// (`HealthPulseStrip`, `RecoveryDetailView`), and the phone is right: a
+    /// ring filled two thirds of the way round states the magnitude whether
+    /// or not the digits are printed. Withholding the numeral and drawing
+    /// the arc withholds the precision while keeping the claim, which is the
+    /// one combination that cannot be defended.
+    ///
+    /// Two surfaces of one app had explicit, opposite rationales written into
+    /// them for the same question. This resolves it toward the stricter one.
     var displayText: String? = nil
+
+    /// Whether the value is a claim this dial is willing to make.
+    private var statesValue: Bool { displayText == nil }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
@@ -134,10 +168,12 @@ struct ZoonWatchDial: View {
             let progress = min(1, max(0, Double(value) / 100))
             ZStack {
                 Circle().stroke(Color.white.opacity(isLuminanceReduced ? 0.08 : 0.12), lineWidth: lineWidth)
-                Circle()
-                    .trim(from: 0, to: revealed || reduceMotion ? progress : 0)
-                    .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+                if statesValue {
+                    Circle()
+                        .trim(from: 0, to: revealed || reduceMotion ? progress : 0)
+                        .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
                 VStack(spacing: 0) {
                     Text(displayText ?? "\(value)")
                         .font(.system(size: diameter * 0.25, weight: .semibold, design: .rounded))
@@ -172,7 +208,7 @@ private struct MidnightAwakeningShortcut: ViewModifier {
     func body(content: Content) -> some View {
         content.overlay(alignment: .bottom) {
             Button {
-                WKInterfaceDevice.current().play(.click)
+                Haptics.tap()
                 link.sendQuickAction(.midnightAwakening)
             } label: {
                 Color.clear.frame(width: 1, height: 1)
@@ -403,7 +439,7 @@ struct QuickLogView: View {
     @ViewBuilder
     private func logRow(id: String, label: String, symbol: String, action: @escaping () -> UUID) -> some View {
         Button {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             sent[id] = action()
         } label: {
             HStack {
@@ -681,7 +717,7 @@ struct LogPage: View {
                 QuickLogActions()
 
                 Button {
-                    WKInterfaceDevice.current().play(.click)
+                    Haptics.tap()
                     showsFullLog = true
                 } label: {
                     Text("More")
@@ -751,7 +787,7 @@ struct OneQuestionCard: View {
 
     private func answerButton(_ title: String, happened: Bool) -> some View {
         Button {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             sentID = link.sendQuickAction(.behaviorAnswer(rawValue: tag, happened: happened))
             answered = happened
         } label: {
@@ -815,7 +851,7 @@ struct QuickLogActions: View {
     ) -> some View {
         let state = sent[id].map { link.logSync.state(for: $0) } ?? .idle
         return Button {
-            WKInterfaceDevice.current().play(.click)
+            Haptics.tap()
             perform()
         } label: {
             VStack(spacing: 2) {
@@ -844,7 +880,7 @@ struct NapDurationSheet: View {
             List {
                 ForEach([10, 20, 30], id: \.self) { minutes in
                     Button("\(minutes) min") {
-                        WKInterfaceDevice.current().play(.click)
+                        Haptics.tap()
                         link.sendQuickAction(.nap(minutes: minutes))
                         dismiss()
                     }
@@ -865,7 +901,7 @@ struct MorningFeelingSheet: View {
             List {
                 ForEach(1...5, id: \.self) { rawValue in
                     Button {
-                        WKInterfaceDevice.current().play(.click)
+                        Haptics.tap()
                         link.sendQuickAction(.morningFeeling(rawValue: rawValue))
                         dismiss()
                     } label: {

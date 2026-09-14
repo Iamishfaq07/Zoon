@@ -115,7 +115,7 @@ struct SleepDebtView: View {
         let nights = coordinator.recentNights.suffix(30).filter { $0.sleepDebtMinutes != nil }
         if nights.count >= 3 {
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "Running balance, last 30 nights", systemImage: "chart.line.uptrend.xyaxis")
+                SectionHeader(title: "Running balance, last 30 nights", systemImage: "chart.xyaxis.line")
                 Chart {
                     ForEach(nights, id: \.date) { night in
                         AreaMark(

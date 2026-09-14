@@ -195,6 +195,30 @@ extension StrainScore {
         }
     }
 
+    /// How much this number is worth, from both things that can weaken it.
+    ///
+    /// Coverage and the zone model fail independently, and a score is only as
+    /// good as the weaker of the two -- the same rule Recovery and Energy
+    /// already use. A full day of second-by-second heart rate sorted into
+    /// zones drawn from `208 - 0.7 x age` is a well-observed day measured
+    /// against a guessed ceiling, and calling that high confidence because
+    /// the sampling was good would be reading only half the question.
+    ///
+    /// Unknown provenance does not constrain. A score decoded from a payload
+    /// written before provenance was recorded genuinely does not know what
+    /// its zones rested on, and "we did not record it" is not evidence that
+    /// it was bad.
+    var confidence: MetricConfidence {
+        let fromCoverage: MetricConfidence = isEstimate ? .low : .high
+        guard let zoneProvenance else { return fromCoverage }
+        let fromZones: MetricConfidence = switch zoneProvenance {
+        case .userConfigured, .observedPersonalized: .high
+        case .ageEstimated: .moderate
+        case .genericFallback: .low
+        }
+        return min(fromCoverage, fromZones)
+    }
+
     /// Short enough for a row beside the band.
     var confidenceTag: String? {
         if isEstimate { return "estimated" }

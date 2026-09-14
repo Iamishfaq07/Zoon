@@ -336,7 +336,7 @@ struct DurationChartCard: View {
             // swiping in (`.contain`, not `.combine`) -- the redesign spec's
             // "VoiceOver summary" and "selected-point description" for every
             // chart, previously none of them had either.
-            .accessibilityElement(children: .contain)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilitySummary)
             .accessibilityValue(selectedPointDescription ?? "")
         }
@@ -479,7 +479,7 @@ struct HRVChartCard: View {
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartYAxisLabel("ms")
                 .chartXSelection(value: $selectedDate)
-                .accessibilityElement(children: .contain)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(accessibilitySummary)
                 .accessibilityValue(selectedPointDescription ?? "")
             }
@@ -599,7 +599,7 @@ struct SleepDebtChartCard: View {
             }
             .chartYAxisLabel("hours owed")
             .chartXSelection(value: $selectedDate)
-            .accessibilityElement(children: .contain)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilitySummary)
             .accessibilityValue(selectedPointDescription ?? "")
         }
@@ -728,7 +728,7 @@ struct ConsistencyChartCard: View {
                 }
             }
             .chartXSelection(value: $selectedDate)
-            .accessibilityElement(children: .contain)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilitySummary)
             .accessibilityValue(selectedPointDescription ?? "")
         }

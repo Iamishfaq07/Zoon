@@ -34,6 +34,30 @@ final class CopyCorrectnessTests: XCTestCase {
         XCTAssertEqual(3.pluralized("journal entry", "journal entries"), "3 journal entries")
     }
 
+    // MARK: - Possessives
+
+    /// "Your today's action plan" shipped on the app's most-viewed screen and
+    /// survived several audits, because a double possessive reads as slightly
+    /// odd rather than as wrong and nothing in a compiler or a test notices
+    /// it. Caught by looking at a screenshot.
+    func testNoDoublePossessiveInUserFacingHeadings() {
+        let headings = [
+            "Your plan for today",
+            "Your patterns",
+            "Your typical range",
+        ]
+        for heading in headings {
+            XCTAssertFalse(
+                heading.lowercased().contains("your today's"),
+                "\(heading) stacks two possessives"
+            )
+            XCTAssertFalse(
+                heading.lowercased().hasPrefix("your your"),
+                "\(heading) repeats the possessive"
+            )
+        }
+    }
+
     // MARK: - MetricConfidence
 
     func testConfidenceLabelsAlreadyContainTheWordConfidence() {

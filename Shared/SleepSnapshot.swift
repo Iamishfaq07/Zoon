@@ -82,7 +82,7 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     var nextBadgeTitle: String = ""
     var nextBadgeProgress: Double = 0
 
-    /// `HealthRadar.Severity.label` as of the last publish -- "Nothing
+    /// `HealthRadar.stateShortLabel` as of the last publish -- "Nothing
     /// unusual", "Worth watching", or "Several signals moving". Defaulted
     /// for the same reason every other field added after the first release
     /// is: an older snapshot on disk still decodes, and the Watch app
@@ -331,6 +331,23 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// draws the score bare goes through this.
     var flagshipScoreText: String {
         canStateFlagshipScore ? "\(flagshipScore)" : "—"
+    }
+
+    /// `flagshipScore` as a ring, arc or gauge should draw it: the value, or
+    /// **zero** when it is not one to state.
+    ///
+    /// The text gate above existed and every glance surface used it. The
+    /// shape gate did not, so the watch dial, both circular widget gauges and
+    /// the circular complication printed "—" in the middle of a ring filled
+    /// to the real score. That withholds the precision while keeping the
+    /// claim: a ring two thirds of the way round says "about two thirds"
+    /// whether or not the digits are there.
+    ///
+    /// Zero rather than `nil` because every caller here is a `Gauge` or a
+    /// `trim`, and an empty track is exactly the right rendering for a value
+    /// that is not being asserted -- the same thing the phone's rings do.
+    var flagshipGaugeValue: Double {
+        canStateFlagshipScore ? min(Double(flagshipScore), 100) : 0
     }
 
     /// The band belonging to `flagshipScore`, from the same payload. Never

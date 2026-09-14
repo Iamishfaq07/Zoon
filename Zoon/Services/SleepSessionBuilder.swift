@@ -479,8 +479,22 @@ struct SleepSessionBuilder {
     /// an undifferentiated asleep block alongside the core/deep/REM it was
     /// later refined into. Counting both sides credits minutes the source
     /// itself said were awake, or counts the same asleep minute twice.
-    /// Awake wins over every asleep stage; staged sleep wins over
-    /// `unspecified`. `inBed` is left alone -- it spans the night by design.
+    /// Awake wins over every asleep stage; a more specific stage wins over a
+    /// less specific one. `inBed` is left alone -- it spans the night by
+    /// design.
+    ///
+    /// Precedence among the three staged sleeps is `deep`, then `rem`, then
+    /// `core`. Core is the label a writer emits when it has not
+    /// differentiated; deep and REM are positive identifications, and a
+    /// source that writes both is refining, not contradicting.
+    ///
+    /// That last step was missing, and an invariant test found it: a source
+    /// writing core 23:00-04:00 *and* deep 01:00-03:00 had both counted in
+    /// full, so a five-hour night reported seven hours of stages. Apple
+    /// writes the three disjoint, so this never bit on Watch data -- but the
+    /// arrangement is exactly what a third-party writer produces when it
+    /// refines a coarse block and leaves the coarse block in place, and
+    /// nothing downstream was defending against it.
     static func resolvingStageOverlap(_ merged: [SleepStage: [DateInterval]]) -> [SleepStage: [DateInterval]] {
         var resolved = merged
         let awake = merged[.awake] ?? []
@@ -490,7 +504,18 @@ struct SleepSessionBuilder {
                 resolved[stage] = intervals.flatMap { DateInterval.subtracting(awake, from: $0) }
             }
         }
-        let staged = [SleepStage.core, .deep, .rem].flatMap { resolved[$0] ?? [] }
+
+        // Peers: a minute cannot be two stages at once.
+        let precedence: [SleepStage] = [.deep, .rem, .core]
+        for (index, stage) in precedence.enumerated() where index > 0 {
+            let stronger = precedence[..<index].flatMap { resolved[$0] ?? [] }
+            guard !stronger.isEmpty, let intervals = resolved[stage] else { continue }
+            resolved[stage] = intervals.flatMap { DateInterval.subtracting(stronger, from: $0) }
+        }
+
+        // Subtracting among the peers above does not change their union, so
+        // this sees the same staged span either way round.
+        let staged = precedence.flatMap { resolved[$0] ?? [] }
         if !staged.isEmpty, let unspecified = resolved[.unspecified] {
             resolved[.unspecified] = unspecified.flatMap { DateInterval.subtracting(staged, from: $0) }
         }
