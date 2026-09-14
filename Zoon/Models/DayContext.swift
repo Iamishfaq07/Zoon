@@ -23,7 +23,6 @@ struct DayContext: Equatable {
     let chronotype: Chronotype
     let regularity: SleepRegularity
     let healthRadar: HealthRadar
-    let cardiovascularAge: CardiovascularAge?
     /// Habitual sleep window. Nil until there is any history at all.
     let bodyClock: BodyClock?
     /// Hourly heart rate for today -- also drives the body battery curve.
@@ -65,7 +64,6 @@ struct DayContext: Equatable {
             chronotype: chronotype,
             regularity: regularity,
             healthRadar: healthRadar,
-            cardiovascularAge: cardiovascularAge,
             bodyClock: bodyClock,
             hourlyHeartRate: hourlyHeartRate,
             cognitiveEnergy: cognitiveEnergy,

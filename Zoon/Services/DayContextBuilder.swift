@@ -15,10 +15,9 @@ struct DayContextBuilder {
 
     /// Window for the two "habitual timing" metrics -- `SleepRegularity` and
     /// `BodyClock` -- that, unlike their siblings below, don't do any
-    /// internal windowing of their own: `CardiovascularAge` re-slices to its
-    /// own `.suffix(30)` and `HealthRadar` to its own recent + baseline
-    /// windows regardless of how much history is handed to them, but
-    /// `SleepRegularity.compute`/`BodyClock.compute` use exactly the array
+    /// internal windowing of their own: `HealthRadar` re-slices to its own
+    /// recent + baseline windows regardless of how much history is handed to
+    /// it, but `SleepRegularity.compute`/`BodyClock.compute` use exactly the array
     /// they're given. Passing them the ever-growing full record meant a
     /// habitual bedtime or regularity index quietly became a lifetime
     /// average -- a genuine schedule change (new job, new baby, a permanent
@@ -233,11 +232,6 @@ struct DayContextBuilder {
             chronotype: chronotype,
             regularity: regularity,
             healthRadar: HealthRadar.detect(nights: fullHistory),
-            // Keep the legacy estimator internal for compatibility, but never
-            // surface an unvalidated biological-age claim to users. A future
-            // Baseline & Resilience view can replace it with longitudinal,
-            // provenance-aware trends.
-            cardiovascularAge: nil,
             bodyClock: bodyClock,
             hourlyHeartRate: inputs.hourlyHeartRate,
             cognitiveEnergy: cognitiveEnergy,

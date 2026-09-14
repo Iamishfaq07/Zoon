@@ -73,6 +73,7 @@ struct MetricTrendView: View {
                     )
                     .padding(.top, 40)
                 }
+                resilienceCard
                 evidenceCard
             }
             .padding()
@@ -81,6 +82,49 @@ struct MetricTrendView: View {
         .askZoonSheet(about: $asking, night: askedNight)
         .navigationTitle(kind.label)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// How long this signal takes to come back after it leaves the band.
+    ///
+    /// This is what stands where a Cardiovascular Age used to be planned. It
+    /// is measured against the person's own typical range -- the same
+    /// baseline and tolerance the chart above draws -- rather than against a
+    /// population curve, so it makes no claim about anyone's heart but the
+    /// one it measured.
+    ///
+    /// Rendered in every state, including the ones with no number: "needs
+    /// more nights" and "hasn't left your range" are both answers, and
+    /// hiding the card in those cases would leave the screen looking as
+    /// though resilience had never been considered.
+    @ViewBuilder
+    private var resilienceCard: some View {
+        if let metric = currentMetric,
+           let baseline = metric.baseline,
+           let tolerance = metric.tolerance {
+            let result = SleepResilience.measure(
+                observations: points.map {
+                    SleepResilience.Observation(date: $0.date, value: $0.value)
+                },
+                baseline: baseline,
+                tolerance: tolerance,
+                direction: .forVital(kind)
+            )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("RESILIENCE")
+                    .font(Theme.label(9, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+                Text(result.headline)
+                    .font(Theme.label(17, weight: .semibold))
+                Text(result.explanation(metric: kind.label))
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+            .accessibilityElement(children: .combine)
+        }
     }
 
     private var hero: some View {
