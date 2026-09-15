@@ -8,10 +8,50 @@ struct HorizonStrip: View {
     var selectedID: String?
     var onSelect: (ZoonTomorrow.Node) -> Void = { _ in }
 
-    /// Wide enough for "Wind-down" and a short time, narrow enough that six
-    /// nodes on one evening do not sit on top of one another.
-    private let captionWidth: CGFloat = 58
-    private let captionHeight: CGFloat = 30
+    /// Wide enough for "Wind-down" over a short time.
+    private let captionWidth: CGFloat = 56
+    /// One caption row. Captions alternate between two of these.
+    private let rowHeight: CGFloat = 30
+    /// The closest two captions in the *same* row may sit, centre to centre.
+    /// Below this they are pushed apart.
+    private var minimumCaptionGap: CGFloat { captionWidth + 4 }
+
+    /// Caption centres: ideal time-proportional positions, then separated.
+    ///
+    /// Two passes over each row. Left to right guarantees the minimum gap and
+    /// the left edge; right to left restores the right edge, which the first
+    /// pass can violate when it pushes a run of close nodes rightward. Nodes
+    /// arrive sorted by time, so index order is position order.
+    private func captionLayout(width: CGFloat, t0: TimeInterval, span: TimeInterval) -> [CGFloat] {
+        let half = captionWidth / 2
+        var centres = nodes.map { node -> CGFloat in
+            let x = CGFloat((node.date.timeIntervalSince1970 - t0) / span)
+            return 11 + x * max(0, width - 20)
+        }
+        guard width > captionWidth else { return centres }
+
+        for row in 0..<2 {
+            let indices = centres.indices.filter { $0 % 2 == row }
+            guard indices.count > 1 else { continue }
+            for (position, index) in indices.enumerated() {
+                let floor = position == 0 ? half : centres[indices[position - 1]] + minimumCaptionGap
+                centres[index] = max(centres[index], floor)
+            }
+            for (position, index) in indices.enumerated().reversed() {
+                let ceiling = position == indices.count - 1
+                    ? width - half
+                    : centres[indices[position + 1]] - minimumCaptionGap
+                centres[index] = min(centres[index], ceiling)
+            }
+            // A row too crowded to satisfy both edges: keep everything on
+            // screen rather than letting the first pass win and pushing the
+            // last caption off the right edge.
+            for index in indices {
+                centres[index] = min(max(centres[index], half), width - half)
+            }
+        }
+        return centres
+    }
 
     var body: some View {
         let t0 = nodes.first?.date.timeIntervalSince1970 ?? 0
@@ -54,16 +94,25 @@ struct HorizonStrip: View {
             }
             .frame(height: 22)
 
-            // Captions sit under their own dot, using the identical offset
-            // the dots are drawn with. They were laid out in an `HStack` of
-            // equal columns while the dots were placed time-proportionally,
-            // so the two rows only agreed when the times happened to be
-            // evenly spaced -- which on a real evening they never are. A
-            // caption naming the wrong node is worse than no caption.
+            // Captions sit under their own dot, then are pushed apart so
+            // they cannot collide.
+            //
+            // Two earlier attempts each failed one way. An `HStack` of equal
+            // columns never overlapped but pointed at the wrong dot whenever
+            // the times were not evenly spaced. Positioning each caption on
+            // its own dot fixed that and introduced the opposite bug: on a
+            // real evening Wind-down and Sleep window are ninety minutes
+            // apart and Wake and Event are fifty, so on a phone those pairs
+            // printed straight through one another -- "Wsilnedd-odwonw".
+            //
+            // So: alternate rows, which separates neighbours that are close
+            // in time, and a declutter pass within each row that enforces a
+            // minimum gap and clamps to the edges. Alignment degrades
+            // gracefully under pressure instead of the text becoming
+            // unreadable.
             GeometryReader { geo in
-                let width = geo.size.width
-                ForEach(nodes) { node in
-                    let x = CGFloat((node.date.timeIntervalSince1970 - t0) / span)
+                let layout = captionLayout(width: geo.size.width, t0: t0, span: span)
+                ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
                     VStack(spacing: 2) {
                         Text(node.title)
                             .font(Theme.label(10, weight: .semibold))
@@ -74,14 +123,14 @@ struct HorizonStrip: View {
                     }
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    // Fixed width centred on the node, so a caption grows
-                    // symmetrically about the dot it belongs to instead of
-                    // pushing its neighbours along the row.
                     .frame(width: captionWidth)
-                    .position(x: 11 + x * (width - 20), y: captionHeight / 2)
+                    .position(
+                        x: layout[index],
+                        y: index.isMultiple(of: 2) ? rowHeight / 2 : rowHeight * 1.5
+                    )
                 }
             }
-            .frame(height: captionHeight)
+            .frame(height: rowHeight * 2)
         }
         .accessibilityElement(children: .contain)
     }

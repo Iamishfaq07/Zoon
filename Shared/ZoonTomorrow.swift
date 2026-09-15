@@ -211,6 +211,8 @@ enum ZoonTomorrow {
 
         let sentence = makeSentence(
             targetSleep: targetSleep,
+            bedtime: bedtime,
+            wake: wake,
             windowStart: windowStart,
             windowEnd: windowEnd,
             morning: morning,
@@ -349,14 +351,41 @@ enum ZoonTomorrow {
         return why
     }
 
+    /// How far the plan may fall short of the target before the sentence has
+    /// to say so rather than quote the target.
+    static let sentenceShortfallTolerance = 15.0
+
     private static func makeSentence(
         targetSleep: Double,
+        bedtime: Date,
+        wake: Date,
         windowStart: Date,
         windowEnd: Date,
         morning: Event?,
         calendar: Calendar
     ) -> String {
-        var text = "Aim for \(SleepNightFeatures.formatMinutes(targetSleep)) tonight. Suggested sleep window: \(clock(windowStart, calendar: calendar)) – \(clock(windowEnd, calendar: calendar))."
+        // What this plan actually delivers, rather than what was aimed at.
+        //
+        // The sentence used to quote `targetSleep` unconditionally. Once the
+        // bedtime goes through SleepAutopilot's rate limiter it frequently
+        // cannot reach that target, and a device screenshot caught the result:
+        // "Aim for 10h 12m tonight. Suggested sleep window: 2:20 AM - 2:50 AM.
+        // Wake leaves 50 minutes before 8:30 AM." — a five-hour window under a
+        // ten-hour promise, in one sentence.
+        //
+        // A fixed wake and a bedtime that may only move so far in one night
+        // are both deliberate. The shortfall they produce is real, and naming
+        // it is the honest version of this sentence.
+        let achievable = max(0, wake.timeIntervalSince(bedtime) / 60)
+        let window = "Suggested sleep window: \(clock(windowStart, calendar: calendar)) – \(clock(windowEnd, calendar: calendar))."
+
+        var text: String
+        if targetSleep - achievable > sentenceShortfallTolerance {
+            text = "This window gives about \(SleepNightFeatures.formatMinutes(achievable)), short of the \(SleepNightFeatures.formatMinutes(targetSleep)) you need. \(window)"
+        } else {
+            text = "Aim for \(SleepNightFeatures.formatMinutes(targetSleep)) tonight. \(window)"
+        }
+
         if let morning {
             text += " Wake leaves \(Int(readyBufferMinutes)) minutes before \(clock(morning.start, calendar: calendar))."
         }

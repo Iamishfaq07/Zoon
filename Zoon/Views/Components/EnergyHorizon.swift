@@ -178,8 +178,58 @@ struct EnergyHorizon: View {
         }
     }
 
+    /// The markers this chart draws, in time order.
+    private var markerWindows: [EnergyForecast.Window] {
+        forecast.windows
+            .filter { $0.kind != .morningRise && $0.kind != .eveningRise }
+            .sorted { $0.time < $1.time }
+    }
+
+    /// The closest two marker captions may sit horizontally before one of
+    /// them has to move to the other side of the curve.
+    private static let minimumMarkerSpacing: CGFloat = 76
+
+    /// Whether each marker's caption goes above the curve.
+    ///
+    /// Vertical clamping already kept a caption inside the chart. Nothing
+    /// kept two *neighbouring* captions off each other, and on a real device
+    /// "Peak focus 10:24 AM" and "Afternoon dip 11:54 AM" — ninety minutes
+    /// apart, so barely separated on a phone-width axis — printed straight
+    /// through one another.
+    ///
+    /// Alternating the colliding one to the opposite side keeps both legible
+    /// and keeps each attached to its own dot, which moving them sideways
+    /// would not.
+    private func markerPlacements(width: CGFloat, height: CGFloat) -> [Bool] {
+        let labelHeight: CGFloat = 32
+        var placements: [Bool] = []
+        var previousX: CGFloat?
+
+        for window in markerWindows {
+            let level = Self.interpolate(window.time, in: samples)
+            let p = point(for: (window.time, level), width: width, height: height)
+            var above = p.y - 22 - labelHeight / 2 >= 0
+
+            if let previousX, let previousAbove = placements.last,
+               abs(p.x - previousX) < Self.minimumMarkerSpacing,
+               above == previousAbove {
+                // Flip, but only where the flipped side actually has room;
+                // two captions stacked is better than one off the chart.
+                let flippedFits = above
+                    ? p.y + 22 + labelHeight / 2 <= height
+                    : p.y - 22 - labelHeight / 2 >= 0
+                if flippedFits { above.toggle() }
+            }
+
+            placements.append(above)
+            previousX = p.x
+        }
+        return placements
+    }
+
     private func markers(width: CGFloat, height: CGFloat) -> some View {
-        ForEach(forecast.windows.filter { $0.kind != .morningRise && $0.kind != .eveningRise }) { window in
+        let placements = markerPlacements(width: width, height: height)
+        return ForEach(Array(markerWindows.enumerated()), id: \.element.id) { index, window in
             // Read the marker's height off the sampled curve rather than
             // re-declaring the anchor levels here: the curve already passes
             // through every anchor, and one source of truth means the dot
@@ -196,7 +246,9 @@ struct EnergyHorizon: View {
             // so it rendered outside the chart and landed on the readout
             // above: "Peak focus 1:01 PM" written through "Winding down".
             let labelHeight: CGFloat = 32
-            let roomAbove = p.y - 22 - labelHeight / 2 >= 0
+            let roomAbove = placements.indices.contains(index)
+                ? placements[index]
+                : p.y - 22 - labelHeight / 2 >= 0
             let dot = Circle()
                 .fill(tint(for: window.kind))
                 .frame(width: 6, height: 6)
