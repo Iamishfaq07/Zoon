@@ -161,52 +161,66 @@ struct RecoveryRadar: View {
 
             let isSelected = selectedID == component.id
 
-            Image(systemName: Self.symbol(for: component.label))
-                .font(Theme.text(10, weight: .semibold))
-                // The disc behind it is a fixed 22 points, so the glyph has
-                // to be too -- left to scale it grew out of its own circle at
-                // accessibility sizes.
-                .dynamicTypeSize(...DynamicTypeSize.large)
-                .foregroundStyle(component.isAvailable ? .white : Theme.inkTertiary)
-                .frame(width: 22, height: 22)
-                .background {
-                    Circle()
-                        .fill(component.isAvailable ? tint : Color.clear)
-                        .overlay {
-                            Circle().stroke(
-                                component.isAvailable ? .clear : Theme.neutral(0.25),
-                                style: StrokeStyle(lineWidth: 1, dash: [2, 2])
-                            )
+            if isSelected {
+                // Hollow ring at the vertex. The filled disc-plus-icon used
+                // to sit on top of the centre reading — "15.1 br/min" written
+                // through the lungs mark — because a selected respiratory
+                // axis is the left vertex, right where the wide numeral lands.
+                // The centre text is now the selection; the vertex keeps its
+                // place as a ring so the polygon does not look like it lost a
+                // signal.
+                Circle()
+                    .stroke(tint, lineWidth: 1.5)
+                    .frame(width: 12, height: 12)
+                    .position(x: p.x, y: p.y)
+                    .opacity(grown)
+                    .contentShape(Circle().inset(by: -16))
+                    .onTapGesture {
+                        Haptics.select()
+                        withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
+                            selectedID = nil
                         }
-                }
-                // A selected marker wears a halo rather than growing: the
-                // disc sits on its own vertex, and a marker that changed
-                // size would read as the reading having changed.
-                .overlay {
-                    Circle()
-                        .stroke(tint, lineWidth: 2)
-                        .padding(-4)
-                        .opacity(isSelected ? 1 : 0)
-                }
-                .scaleEffect(isSelected ? 1.08 : 1)
-                .position(x: p.x, y: p.y)
-                .opacity(grown)
-                // 44 points of touch target around a 22-point disc, without
-                // enlarging the drawn marker.
-                .contentShape(Circle().inset(by: -11))
-                .onTapGesture {
-                    Haptics.select()
-                    withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
-                        selectedID = isSelected ? nil : component.id
                     }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(
-                    component.isAvailable
-                        ? "\(component.label), \(component.detail)"
-                        : "\(component.label), not measured"
-                )
-                .accessibilityAddTraits(.isButton)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(
+                        component.isAvailable
+                            ? "\(component.label), \(component.detail), selected"
+                            : "\(component.label), not measured"
+                    )
+                    .accessibilityAddTraits([.isButton, .isSelected])
+            } else {
+                Image(systemName: Self.symbol(for: component.label))
+                    .font(Theme.text(10, weight: .semibold))
+                    .dynamicTypeSize(...DynamicTypeSize.large)
+                    .foregroundStyle(component.isAvailable ? .white : Theme.inkTertiary)
+                    .frame(width: 22, height: 22)
+                    .background {
+                        Circle()
+                            .fill(component.isAvailable ? tint : Color.clear)
+                            .overlay {
+                                Circle().stroke(
+                                    component.isAvailable ? .clear : Theme.neutral(0.25),
+                                    style: StrokeStyle(lineWidth: 1, dash: [2, 2])
+                                )
+                            }
+                    }
+                    .position(x: p.x, y: p.y)
+                    .opacity(grown)
+                    .contentShape(Circle().inset(by: -11))
+                    .onTapGesture {
+                        Haptics.select()
+                        withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
+                            selectedID = component.id
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(
+                        component.isAvailable
+                            ? "\(component.label), \(component.detail)"
+                            : "\(component.label), not measured"
+                    )
+                    .accessibilityAddTraits(.isButton)
+            }
         }
     }
 }

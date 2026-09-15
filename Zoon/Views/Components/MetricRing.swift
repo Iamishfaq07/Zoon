@@ -195,7 +195,8 @@ struct RecoveryRing<Inner: View>: View {
     /// it answers a question about one signal without spending room on the
     /// resting screen.
     private func signalContent(_ component: RecoveryScore.Component) -> some View {
-        VStack(spacing: 2) {
+        let parts = MetricReading.split(component.isAvailable ? component.detail : "Not measured")
+        return VStack(spacing: 2) {
             Text(component.label.uppercased())
                 .font(Theme.label(10, weight: .heavy))
                 .tracking(1.6)
@@ -203,12 +204,19 @@ struct RecoveryRing<Inner: View>: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
-            Text(component.isAvailable ? component.detail : "Not measured")
+            Text(parts.value)
                 .font(Theme.numeral(size * 0.14))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.5)
+                .minimumScaleFactor(0.6)
                 .foregroundStyle(Theme.ink)
+
+            if let unit = parts.unit {
+                Text(unit)
+                    .font(Theme.label(11, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(1)
+            }
 
             if component.isAvailable {
                 Text("\(Int((component.effectiveWeight * 100).rounded()))% of the score")
@@ -224,24 +232,31 @@ struct RecoveryRing<Inner: View>: View {
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
         }
-        // Wide enough to clear the radar's own axis markers.
+        // Hard cap so the stack cannot reach the radar vertices.
         //
         // `RecoveryRadar` is drawn at 190 inside a 236 ring, so its left and
         // right vertices — and the signal dots on them — sit about 95 out
         // from the centre, on exactly the vertical band this text occupies.
-        // At the old 0.18 a long detail string ("15.1 br/min") reached them:
-        // on a device the value printed straight through the lung and heart
-        // markers either side of it.
-        //
-        // 0.22 leaves a half-width of about 66 against an inner edge near 84.
-        // The smaller numeral and lower floor above are the other half of it:
-        // the string has to be allowed to shrink rather than only be clipped.
-        .padding(.horizontal, size * 0.22)
+        // "15.1 br/min" as one numeral still reached them after the 0.22
+        // padding: value and unit stack so the wide string is gone, and the
+        // selected vertex itself becomes a hollow ring (see RecoveryRadar).
+        .frame(maxWidth: size * 0.52)
+        .padding(.horizontal, size * 0.24)
         .contentShape(Rectangle())
         .onTapGesture {
             Haptics.select()
             selectedSignalID = nil
         }
+    }
+}
+
+/// "15.1 br/min", "62 ms", "70 bpm", "45% of need" — value on one line,
+/// unit on the next, so a selected reading does not become a 200-point
+/// string that writes through the radar marker beside it.
+enum MetricReading {
+    static func split(_ detail: String) -> (value: String, unit: String?) {
+        guard let space = detail.firstIndex(of: " ") else { return (detail, nil) }
+        return (String(detail[..<space]), String(detail[detail.index(after: space)...]))
     }
 }
 

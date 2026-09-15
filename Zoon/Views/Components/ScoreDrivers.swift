@@ -57,11 +57,7 @@ struct ScoreDrivers: View {
                 Text(Self.shortLabel(for: component.label))
                     .font(Theme.label(11, weight: .semibold))
 
-                Text(component.isAvailable ? component.detail : "—")
-                    .font(Theme.label(12, weight: .bold))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                reading(for: component)
 
                 Text("(\(Self.qualifier(for: component)))")
                     .font(Theme.text(11))
@@ -72,6 +68,23 @@ struct ScoreDrivers: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(Self.Describe(component: component))
+    }
+
+    @ViewBuilder
+    private func reading(for component: RecoveryScore.Component) -> some View {
+        let parts = MetricReading.split(component.isAvailable ? component.detail : "—")
+        Text(parts.value)
+            .font(Theme.label(12, weight: .bold))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        if let unit = parts.unit {
+            Text(unit)
+                .font(Theme.text(10))
+                .foregroundStyle(Theme.inkSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
     }
 
     /// One signal per line once the type is large.

@@ -61,7 +61,8 @@ struct EnergyHorizon: View {
                     }
                 }
             }
-            .frame(height: 110)
+            .frame(height: 148)
+            .clipped()
             .zoonScrubbable(fraction: $scrubFraction, detent: hourDetent)
             .drawOnce(id: forecast, progress: $progress)
 
@@ -134,8 +135,13 @@ struct EnergyHorizon: View {
     private func point(for sample: (time: Date, level: Double), width: CGFloat, height: CGFloat) -> CGPoint {
         guard let span else { return .zero }
         let x = width * CGFloat(sample.time.timeIntervalSince(span.start) / span.end.timeIntervalSince(span.start))
-        // Leave headroom for marker labels above the peak.
-        let y = height * (1 - CGFloat(sample.level)) * 0.82 + height * 0.12
+        // Headroom for a 28-pt caption above a peak and below a dip.
+        // Without it a peak near the top cannot sit above its own dot, so
+        // it goes below and meets the dip coming up — "Peak focus" written
+        // through "Afternoon dip" on the 3:27 PM screenshot.
+        let topPad = height * 0.28
+        let bottomPad = height * 0.22
+        let y = topPad + CGFloat(1 - sample.level) * (height - topPad - bottomPad)
         return CGPoint(x: x, y: y)
     }
 
@@ -185,102 +191,75 @@ struct EnergyHorizon: View {
             .sorted { $0.time < $1.time }
     }
 
-    /// The closest two marker captions may sit horizontally before one of
-    /// them has to move to the other side of the curve.
-    private static let minimumMarkerSpacing: CGFloat = 76
-
-    /// Whether each marker's caption goes above the curve.
-    ///
-    /// Vertical clamping already kept a caption inside the chart. Nothing
-    /// kept two *neighbouring* captions off each other, and on a real device
-    /// "Peak focus 10:24 AM" and "Afternoon dip 11:54 AM" — ninety minutes
-    /// apart, so barely separated on a phone-width axis — printed straight
-    /// through one another.
-    ///
-    /// Alternating the colliding one to the opposite side keeps both legible
-    /// and keeps each attached to its own dot, which moving them sideways
-    /// would not.
-    private func markerPlacements(width: CGFloat, height: CGFloat) -> [Bool] {
-        let labelHeight: CGFloat = 32
-        var placements: [Bool] = []
-        var previousX: CGFloat?
-
-        for window in markerWindows {
-            let level = Self.interpolate(window.time, in: samples)
-            let p = point(for: (window.time, level), width: width, height: height)
-            var above = p.y - 22 - labelHeight / 2 >= 0
-
-            if let previousX, let previousAbove = placements.last,
-               abs(p.x - previousX) < Self.minimumMarkerSpacing,
-               above == previousAbove {
-                // Flip, but only where the flipped side actually has room;
-                // two captions stacked is better than one off the chart.
-                let flippedFits = above
-                    ? p.y + 22 + labelHeight / 2 <= height
-                    : p.y - 22 - labelHeight / 2 >= 0
-                if flippedFits { above.toggle() }
-            }
-
-            placements.append(above)
-            previousX = p.x
+    /// Longest on-curve label is "Afternoon dip"; measured at the 9-pt
+    /// caption face plus a little slack so a 12-hour clock time still fits
+    /// underneath. Layout needs a width up front because SwiftUI will not
+    /// tell it after the fact.
+    private static func captionWidth(for kind: EnergyForecast.Window.Kind) -> Double {
+        switch kind {
+        case .afternoonDip: 88
+        case .morningPeak, .windDown: 74
+        default: 80
         }
-        return placements
     }
 
     private func markers(width: CGFloat, height: CGFloat) -> some View {
-        let placements = markerPlacements(width: width, height: height)
-        return ForEach(Array(markerWindows.enumerated()), id: \.element.id) { index, window in
-            // Read the marker's height off the sampled curve rather than
-            // re-declaring the anchor levels here: the curve already passes
-            // through every anchor, and one source of truth means the dot
-            // can't drift off the line if the model's levels ever change.
+        let windows = markerWindows
+        let requests: [ChartLabelLayout.Request] = windows.map { window in
             let level = Self.interpolate(window.time, in: samples)
             let p = point(for: (window.time, level), width: width, height: height)
-            // Above the point where there is room, below it where there is
-            // not.
-            //
-            // `.position` centres a view on its point, and this sat
-            // unconditionally at `p.y - 22` with nothing clamping it. A peak
-            // near the top of the curve -- which is exactly what a good
-            // morning looks like -- put the label's centre at a negative y,
-            // so it rendered outside the chart and landed on the readout
-            // above: "Peak focus 1:01 PM" written through "Winding down".
-            let labelHeight: CGFloat = 32
-            let roomAbove = placements.indices.contains(index)
-                ? placements[index]
-                : p.y - 22 - labelHeight / 2 >= 0
-            let dot = Circle()
-                .fill(tint(for: window.kind))
-                .frame(width: 6, height: 6)
-            let caption = VStack(spacing: 3) {
-                Text(window.kind.label)
-                    .font(Theme.text(9, weight: .semibold))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .lineLimit(1)
-                Text(window.time, format: .dateTime.hour().minute())
-                    .font(Theme.text(9))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .monospacedDigit()
-            }
+            return ChartLabelLayout.Request(
+                x: Double(p.x),
+                y: Double(p.y),
+                width: Self.captionWidth(for: window.kind),
+                height: 28,
+                prefersAbove: Self.prefersCaptionAbove(kind: window.kind, y: p.y, height: height)
+            )
+        }
+        let placements = ChartLabelLayout.place(
+            requests,
+            canvasWidth: Double(width),
+            canvasHeight: Double(height)
+        )
 
-            VStack(spacing: 3) {
-                if roomAbove {
-                    caption
-                    dot
-                } else {
-                    dot
-                    caption
+        return ForEach(Array(windows.enumerated()), id: \.element.id) { index, window in
+            let level = Self.interpolate(window.time, in: samples)
+            let p = point(for: (window.time, level), width: width, height: height)
+            let placement = placements[index]
+            ZStack {
+                Circle()
+                    .fill(tint(for: window.kind))
+                    .frame(width: 6, height: 6)
+                    .position(p)
+
+                if placement.showCaption {
+                    VStack(spacing: 1) {
+                        Text(window.kind.label)
+                            .font(Theme.text(9, weight: .semibold))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .lineLimit(1)
+                        Text(window.time, format: .dateTime.hour().minute())
+                            .font(Theme.text(9))
+                            .foregroundStyle(Theme.inkTertiary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                    }
+                    .fixedSize()
+                    .position(x: CGFloat(placement.x), y: CGFloat(placement.y))
                 }
             }
-            .fixedSize()
-            .position(
-                x: min(max(p.x, 28), width - 28),
-                y: roomAbove
-                    ? p.y - 22
-                    : min(p.y + 22, height - labelHeight / 2)
-            )
             .opacity(progress >= fraction(of: window.time) ? 1 : 0)
             .animation(Motion.respecting(reduceMotion, .easeOut(duration: 0.2)), value: progress)
+        }
+    }
+
+    /// Peaks belong above their dot, dips below. Geometry then keeps them
+    /// there when there is room, which the padded plot is sized to give.
+    private static func prefersCaptionAbove(kind: EnergyForecast.Window.Kind, y: CGFloat, height: CGFloat) -> Bool {
+        switch kind {
+        case .morningPeak: true
+        case .afternoonDip: false
+        default: y > height * 0.4
         }
     }
 
