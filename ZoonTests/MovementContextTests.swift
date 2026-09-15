@@ -59,8 +59,27 @@ final class MovementContextTests: XCTestCase {
         XCTAssertEqual(snapshot.confidence, .moderate)
     }
 
+    /// A real baseline today has genuinely dwarfed reads as a multiple, not
+    /// as a four-digit percentage. 25,000 steps against a true 1,000-step
+    /// Tuesday is 2400% — honest, and unreadable.
+    func testALargeHonestRatioReadsAsAMultiple() {
+        let snapshot = MovementContext.snapshot(
+            stepsSoFar: 25000,
+            typicalStepsByNow: 1000,
+            weekday: 3
+        )
+
+        XCTAssertTrue(snapshot.sentence.contains("×"), "expected a multiple: \(snapshot.sentence)")
+        XCTAssertTrue(snapshot.sentence.contains("25×"), "expected 25×: \(snapshot.sentence)")
+        XCTAssertFalse(snapshot.sentence.contains("%"), "a multiple replaces the percentage, not joins it")
+        // Still a real comparison against a real baseline, so it keeps the
+        // confidence the ordinary comparison has.
+        XCTAssertEqual(snapshot.confidence, .moderate)
+    }
+
     /// No sentence in this type may ever state a percentage in the thousands,
-    /// whatever the inputs. This is the guard the device screenshot needed.
+    /// whatever the inputs. This is the guard the device screenshot needed,
+    /// and the one that caught the multiple case being missing.
     func testNoInputProducesAnAbsurdPercentage() {
         for typical in [1, 50, 119, 399, 400, 1000, 5000] {
             for steps in [0, 500, 3173, 25000] {
