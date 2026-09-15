@@ -30,10 +30,24 @@ enum EventKitCommitmentReader {
         let start = calendar.startOfDay(for: tomorrow)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return nil }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
-        let events = store.events(matching: predicate).map { event in
-            CalendarCommitment(
-                start: event.startDate,
-                durationMinutes: event.endDate.timeIntervalSince(event.startDate) / 60,
+        // `startDate` and `endDate` are implicitly-unwrapped optionals on
+        // `EKEvent`: EventKit declares them non-null but they are bridged from
+        // Objective-C and a malformed or partially-synced event can hand back
+        // nil, which would trap here rather than skip one row. This is the
+        // only new path in the app reading data another application wrote, so
+        // it gets the guard rather than the assumption.
+        //
+        // `compactMap`, so an unusable event is dropped and the rest of
+        // tomorrow still produces a plan.
+        let events = store.events(matching: predicate).compactMap { event -> CalendarCommitment? in
+            guard let start = event.startDate as Date? else { return nil }
+            let end = event.endDate as Date?
+            return CalendarCommitment(
+                start: start,
+                // A missing end is a zero-length commitment rather than a
+                // dropped one: the start time is what anchors wake, and that
+                // is the field this reader exists for.
+                durationMinutes: max(0, (end?.timeIntervalSince(start) ?? 0) / 60),
                 isAllDay: event.isAllDay,
                 source: .calendar
             )

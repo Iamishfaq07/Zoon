@@ -47,6 +47,11 @@ enum ZoonTomorrow {
     struct Plan: Hashable, Sendable {
         let event: Event?
         let targetSleepMinutes: Double
+        /// The centre of the sleep window -- the single time the rest of the
+        /// plan is built from. The window, wind-down and caffeine cutoff are
+        /// all offsets from it, so exposing only the window left every caller
+        /// to reconstruct the one number that generated them.
+        let bedtime: Date
         let sleepWindowStart: Date
         let sleepWindowEnd: Date
         let windDown: Date
@@ -112,16 +117,42 @@ enum ZoonTomorrow {
 
         let wake: Date
         let bedtime: Date
+        // Whether the shown bedtime is the one SleepAutopilot rate-limited.
+        // The `why` line claims a 20-minute cap, and it may only say so when
+        // the number it is describing actually went through the cap.
+        var bedtimeIsRateLimited = false
         if let wakeFromEvent {
             wake = wakeFromEvent
-            bedtime = calendar.date(
-                byAdding: .minute, value: -Int(targetSleep.rounded()), to: wake
-            ) ?? wake
+            // The event wake is already handed to `SleepAutopilot.plan` as
+            // `obligationWakeMinutes`, so `targetBedtimeMinutes` is the
+            // rate-limited, deadbanded answer *for this obligation*. Deriving
+            // the bedtime as `wake - targetSleep` instead threw that away and
+            // could move bedtime by hours while the `why` line underneath
+            // still said it had only moved twenty minutes.
+            //
+            // Capping means the plan may not reach `targetSleep` tonight.
+            // That is the honest outcome: the alarm cannot move, and a
+            // bedtime nobody will keep is not a plan.
+            if let autopilot,
+               let bed = PlannedBedtimeResolver.nextOccurrence(
+                ofMinutesFromMidnight: autopilot.targetBedtimeMinutes, after: now, calendar: calendar
+               ) {
+                bedtime = bed
+                bedtimeIsRateLimited = true
+            } else {
+                // No autopilot plan means not enough history to have a
+                // habitual bedtime to move *from*, so there is no shift to
+                // cap and nothing to claim about one.
+                bedtime = calendar.date(
+                    byAdding: .minute, value: -Int(targetSleep.rounded()), to: wake
+                ) ?? wake
+            }
         } else if let autopilot,
                   let bed = PlannedBedtimeResolver.nextOccurrence(
                     ofMinutesFromMidnight: autopilot.targetBedtimeMinutes, after: now, calendar: calendar
                   ) {
             bedtime = bed
+            bedtimeIsRateLimited = true
             wake = calendar.date(
                 byAdding: .minute, value: Int(autopilot.targetSleepMinutes.rounded()), to: bed
             ) ?? bed
@@ -150,7 +181,10 @@ enum ZoonTomorrow {
             napMinutesToday: napMinutesToday
         )
 
-        let shift = autopilot?.shiftMinutes ?? 0
+        // Only the shift that actually shaped the shown bedtime. When the
+        // bedtime did not come through the rate limiter there is no cap to
+        // describe, and describing one anyway is the failure this guards.
+        let shift = bedtimeIsRateLimited ? (autopilot?.shiftMinutes ?? 0) : 0
         let holding = autopilot?.isHolding ?? true
         let confidence = combinedConfidence(nights: nights.count, hasEvent: morning != nil)
 
@@ -186,6 +220,7 @@ enum ZoonTomorrow {
         return Plan(
             event: morning,
             targetSleepMinutes: targetSleep,
+            bedtime: bedtime,
             sleepWindowStart: windowStart,
             sleepWindowEnd: windowEnd,
             windDown: windDown,

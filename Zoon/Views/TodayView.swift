@@ -246,14 +246,20 @@ struct TodayView: View {
 
             if moment == .day {
                 energySection(context).entrance(5)
-                MovementContextCard(
-                    snapshot: MovementContext.snapshot(
-                        stepsSoFar: nil,
-                        typicalStepsByNow: nil,
-                        weekday: Calendar.current.component(.weekday, from: .now)
-                    )
-                )
-                .entrance(5)
+                // Real steps, from `refreshTodayMovement`. This used to build
+                // the snapshot inline with literal nils, so the card told
+                // every user their steps had not been recorded regardless of
+                // what HealthKit held -- and the step read scope the PR added
+                // fed nothing at all.
+                //
+                // Absent until the first sample lands: the card's own job is
+                // to distinguish unknown from low, and rendering it before
+                // anything has been read would make it say "unknown" for a
+                // reason that is about timing rather than about the person.
+                if let movement = coordinator.todayMovement {
+                    MovementContextCard(snapshot: movement)
+                        .entrance(5)
+                }
             }
 
             if moment == .morning || moment == .day {

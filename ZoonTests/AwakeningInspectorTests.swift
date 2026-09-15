@@ -27,7 +27,14 @@ final class AwakeningInspectorTests: XCTestCase {
         XCTAssertTrue(sequence.markers.contains(where: { $0.kind == .snore || $0.kind == .soundEnded }))
         XCTAssertTrue(sequence.markers.contains(where: { $0.kind == .stageResume }))
         XCTAssertTrue(sequence.caveat.lowercased().contains("same time"))
-        XCTAssertFalse(sequence.caveat.lowercased().contains("caused"))
+        // The caveat must *disclaim* causation, which means the word "caused"
+        // appears in it -- "Zoon does not claim that one caused the
+        // awakening". Asserting the substring is absent failed the correct
+        // sentence and would have passed a caveat that said nothing at all.
+        XCTAssertTrue(
+            sequence.caveat.lowercased().contains("does not claim"),
+            "the caveat has to disclaim causation, not merely avoid the word"
+        )
     }
 
     func testMissingStreamsAreListedNotInvented() {
