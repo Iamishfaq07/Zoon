@@ -49,17 +49,20 @@ struct HorizonStrip: View {
             }
             .frame(height: 22)
 
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .top, spacing: 4) {
                 ForEach(nodes) { node in
                     VStack(spacing: 2) {
                         Text(node.title)
                             .font(Theme.label(10, weight: .semibold))
                             .foregroundStyle(Theme.inkTertiary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .minimumScaleFactor(0.75)
                         Text(node.date.formatted(date: .omitted, time: .shortened))
                             .font(Theme.label(11, weight: .semibold))
                             .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity)
                 }

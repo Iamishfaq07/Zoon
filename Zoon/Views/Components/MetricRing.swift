@@ -195,7 +195,8 @@ struct RecoveryRing<Inner: View>: View {
     /// it answers a question about one signal without spending room on the
     /// resting screen.
     private func signalContent(_ component: RecoveryScore.Component) -> some View {
-        VStack(spacing: 2) {
+        let parts = Self.splitDetail(component.isAvailable ? component.detail : "Not measured")
+        return VStack(spacing: 2) {
             Text(component.label.uppercased())
                 .font(Theme.label(10, weight: .heavy))
                 .tracking(1.6)
@@ -203,12 +204,19 @@ struct RecoveryRing<Inner: View>: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
-            Text(component.isAvailable ? component.detail : "Not measured")
-                .font(Theme.numeral(size * 0.16))
+            Text(parts.value)
+                .font(Theme.numeral(size * 0.18))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .foregroundStyle(Theme.ink)
+
+            if let unit = parts.unit {
+                Text(unit)
+                    .font(Theme.label(11, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(1)
+            }
 
             if component.isAvailable {
                 Text("\(Int((component.effectiveWeight * 100).rounded()))% of the score")
@@ -224,12 +232,20 @@ struct RecoveryRing<Inner: View>: View {
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
         }
-        .padding(.horizontal, size * 0.18)
+        .padding(.horizontal, size * 0.22)
         .contentShape(Rectangle())
         .onTapGesture {
             Haptics.select()
             selectedSignalID = nil
         }
+    }
+
+    /// "15.1 br/min", "62 ms", "70 bpm", "45% of need" — value on one line,
+    /// unit on the next, so a selected reading does not become a 200-point
+    /// string that writes through the radar marker beside it.
+    static func splitDetail(_ detail: String) -> (value: String, unit: String?) {
+        guard let space = detail.firstIndex(of: " ") else { return (detail, nil) }
+        return (String(detail[..<space]), String(detail[detail.index(after: space)...]))
     }
 }
 
