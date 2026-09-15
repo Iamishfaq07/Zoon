@@ -31,7 +31,11 @@ struct EnergyForecastCard: View {
 
             horizon
 
-            HStack(spacing: 0) {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8)
+            ], spacing: 10) {
                 ForEach(forecast.windows) { window in
                     VStack(spacing: 4) {
                         Image(systemName: window.kind.symbol)
@@ -40,11 +44,13 @@ struct EnergyForecastCard: View {
                         Text(forecast.timeRangeLabel(for: window))
                             .font(Theme.label(11, weight: .semibold))
                             .monospacedDigit()
+                            .lineLimit(1)
                             .minimumScaleFactor(0.7)
                         Text(window.kind.label)
-                            .font(Theme.text(8))
+                            .font(Theme.text(10))
                             .foregroundStyle(Theme.inkTertiary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
                             .minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity)
