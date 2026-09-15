@@ -204,10 +204,10 @@ struct RecoveryRing<Inner: View>: View {
                 .minimumScaleFactor(0.7)
 
             Text(component.isAvailable ? component.detail : "Not measured")
-                .font(Theme.numeral(size * 0.16))
+                .font(Theme.numeral(size * 0.14))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(Theme.ink)
 
             if component.isAvailable {
@@ -224,7 +224,19 @@ struct RecoveryRing<Inner: View>: View {
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
         }
-        .padding(.horizontal, size * 0.18)
+        // Wide enough to clear the radar's own axis markers.
+        //
+        // `RecoveryRadar` is drawn at 190 inside a 236 ring, so its left and
+        // right vertices — and the signal dots on them — sit about 95 out
+        // from the centre, on exactly the vertical band this text occupies.
+        // At the old 0.18 a long detail string ("15.1 br/min") reached them:
+        // on a device the value printed straight through the lung and heart
+        // markers either side of it.
+        //
+        // 0.22 leaves a half-width of about 66 against an inner edge near 84.
+        // The smaller numeral and lower floor above are the other half of it:
+        // the string has to be allowed to shrink rather than only be clipped.
+        .padding(.horizontal, size * 0.22)
         .contentShape(Rectangle())
         .onTapGesture {
             Haptics.select()

@@ -194,4 +194,71 @@ final class ZoonTomorrowTests: XCTestCase {
             calendar: calendar
         ))
     }
+
+    /// The device screenshot: "Aim for 10h 12m tonight. Suggested sleep
+    /// window: 2:20 AM - 2:50 AM. Wake leaves 50 minutes before 8:30 AM." A
+    /// five-hour window under a ten-hour promise, in one sentence.
+    ///
+    /// The shortfall itself is legitimate — a fixed wake and a bedtime that
+    /// may only move so far in one night both are. Quoting the target as
+    /// though the window reached it is what is not.
+    func testSentenceNeverPromisesSleepTheWindowCannotDeliver() throws {
+        let now = date(2026, 9, 15, 11, 57)
+        // Habitually late, so a morning event demands a shift far past the cap.
+        let history = (0..<14).map { index in
+            Fixture.night(
+                daysAgo: 14 - index,
+                timeAsleepMinutes: 300,
+                timeInBedMinutes: 320,
+                bedtimeHour: 2,
+                bedtimeMinuteOffset: 30
+            )
+        }
+        let event = ZoonTomorrow.Event(start: date(2026, 9, 16, 8, 30), isAllDay: false, source: .manual)
+        let plan = try XCTUnwrap(ZoonTomorrow.plan(
+            now: now,
+            event: event,
+            nights: history,
+            sleepNeedMinutes: 580,
+            sleepDebtMinutes: 600,
+            calendar: calendar
+        ))
+
+        let achievable = plan.wake.timeIntervalSince(plan.bedtime) / 60
+        guard plan.targetSleepMinutes - achievable > ZoonTomorrow.sentenceShortfallTolerance else {
+            // Not the shape this test is about; the assertion below would be
+            // vacuous rather than wrong.
+            return
+        }
+
+        XCTAssertFalse(
+            plan.sentence.hasPrefix("Aim for"),
+            "the sentence promises the target while the window falls \(Int(plan.targetSleepMinutes - achievable))m short: \(plan.sentence)"
+        )
+        XCTAssertTrue(
+            plan.sentence.lowercased().contains("short of"),
+            "the shortfall has to be named: \(plan.sentence)"
+        )
+    }
+
+    /// And when the window does reach the target, the sentence stays the
+    /// plain encouraging one — the shortfall wording must not leak into
+    /// ordinary nights.
+    func testSentenceStaysPlainWhenTheWindowReachesTheTarget() throws {
+        let plan = try XCTUnwrap(ZoonTomorrow.plan(
+            now: date(2026, 9, 14, 18, 0),
+            event: nil,
+            nights: nights(),
+            sleepNeedMinutes: 420,
+            calendar: calendar
+        ))
+
+        let achievable = plan.wake.timeIntervalSince(plan.bedtime) / 60
+        if plan.targetSleepMinutes - achievable <= ZoonTomorrow.sentenceShortfallTolerance {
+            XCTAssertTrue(
+                plan.sentence.hasPrefix("Aim for"),
+                "a plan that reaches its target should read plainly: \(plan.sentence)"
+            )
+        }
+    }
 }
