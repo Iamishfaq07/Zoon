@@ -372,3 +372,79 @@ beyond the accessibility, chart-glyph and slider fixes recorded above.
 
 **This is not a statement of production readiness.** Simulator CI is green.
 The list above is what stands between that and a submission.
+
+---
+
+# Addendum: what landed after this pass
+
+This document described the state of `main` at `0bca371` (#330). Two further
+pull requests have landed since, and leaving the record at #330 would make it
+wrong rather than merely incomplete.
+
+## #331 — Tomorrow horizon, Awakening Inspector, Log, movement, resilience
+
+A feature PR: Zoon Tomorrow (one horizon from now to tomorrow's first
+commitment), opt-in EventKit calendar reading, the Awakening Inspector,
+movement context, sleep resilience, nap learning, and a Coach tool catalog.
+
+It merged with CI red — two of its own tests were failing — and #332 is the
+fix. Recording that plainly because the sequence matters to anyone reading the
+history: `ac3c1b9` is a commit where `main` did not build green.
+
+## #332 — the review findings on #331
+
+Thirteen findings, twelve fixed. The two that matter most:
+
+**A stated reason that was not the reason.** `ZoonTomorrow` derived the
+event-path bedtime as `wake - targetSleep`, bypassing SleepAutopilot's rate
+limiter, while the `why` line still quoted `autopilot.shiftMinutes` — so a
+140-minute jump could be shown under "Bedtime only moves 20 minutes earlier
+because larger jumps are hard to keep." The event wake is already handed to
+the autopilot as its obligation, so the rate-limited bedtime was there to use.
+This is the same failure this whole pass was about, arriving in new code the
+week after: a surface stating something the engine did not do.
+
+**Two features that could not run.** The movement card was built with literal
+`nil` steps, so it reported "steps have not been recorded" to everyone while
+the step read scope fed nothing. Three engines — `CoachToolCatalog`,
+`NapLearning`, `LongTermResilience` — were referenced only from tests.
+
+**A test asserting the wrong thing.** `AwakeningInspectorTests` checked that
+the caveat does *not* contain "caused". The caveat is "Zoon does not claim
+that one caused the awakening" — the disclaimer trips its own check, and a
+caveat saying nothing at all would have passed.
+
+### Deliberately not fixed
+
+- **`CoachToolCatalog` is still unsurfaced.** Its consumer is the Foundation
+  Models tool-calling loop that #331's own description lists as out of scope.
+  Inventing a confirm-to-write UI for it would be guessing at product intent
+  rather than fixing a defect. It is the one genuinely unreachable type in
+  `Shared/`, and that is a known state rather than an oversight.
+- **Custom signals still do not parse.** `NaturalJournalParser` accepted a
+  `customNames:` list and discarded it. The parameter is gone rather than
+  implemented: `Proposal.tag` is a closed `BehaviorTag` and
+  `SleepDataCoordinator.setBehavior` records against the same enum, so there
+  is nowhere to store a confirmed custom observation. Wiring it end to end
+  needs an observation path of its own.
+- **The Awakening Inspector's heart-rate and movement markers stay absent.**
+  The app reads heart rate hourly, and an hourly bucket cannot place a rise
+  inside a four-minute awakening. Feeding it in would have invented precision,
+  so the wording changed instead — it now distinguishes "not read at this
+  resolution" from "not recorded" rather than blaming the sensor.
+
+## Current state
+
+`main` at `a71bce6`: build, `ZoonTests`, `ZoonUITests` and the
+source-completeness check all green, and TestFlight build 101 archived,
+signed and uploaded from it.
+
+The verification boundary is unchanged and unchanged by shipping: **nothing
+here has been validated on hardware.** Build 101 is the first build where the
+Calendar permission flow and the real step reads can be exercised at all, and
+both are in `docs/APP-STORE-RELEASE-GATES.md` rather than claimed as working.
+
+One operational note that is not a code defect: the last three TestFlight runs
+each minted a fresh distribution certificate rather than importing the cached
+one, which is the cycle that exhausted the account's certificate slots on
+2026-09-08. `IOS_P12_PASSWORD` appears not to be set.
