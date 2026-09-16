@@ -289,8 +289,8 @@ final class AlertnessCheckTests: XCTestCase {
     }
 
     func testNothingTheEngineSaysAssessesThePerson() {
-        let latest = session(median: 520, lapses: 3, daysAgo: 0)
-        let outcomes = [
+        let latest = session(median: 520, daysAgo: 0, lapses: 3)
+        let outcomes: [AlertnessCheck.Outcome] = [
             AlertnessCheck.evaluate(latest: latest, history: [latest]),
             AlertnessCheck.evaluate(latest: latest, history: history(5) + [latest]),
             AlertnessCheck.evaluate(latest: latest, history: history(10) + [latest]),
@@ -299,7 +299,7 @@ final class AlertnessCheckTests: XCTestCase {
                 history: history(10) + [latest]
             )
         ]
-        var lines = outcomes.map(\.sentence)
+        var lines = outcomes.map { $0.sentence }
         lines.append(AlertnessCheck.lapseCaveat)
         lines.append(AlertnessCheck.falseStartNote(2) ?? "")
 
