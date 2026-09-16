@@ -9,12 +9,41 @@ final class CoachToolCatalogTests: XCTestCase {
         XCTAssertNil(call?.confirmationPrompt)
     }
 
+    /// The expectation here used to be `5 * 60` — five in the morning — which
+    /// pinned the bug rather than the behaviour. A bare hour in a request to
+    /// log caffeine is the afternoon: reading it as 05:00 recorded the
+    /// exposure as `.caffeine` instead of `.caffeineLate`, understating the
+    /// very thing the late-caffeine behaviour exists to capture.
     func testLogCoffeeRequiresConfirmationAndDoesNotInventAScore() {
         let call = CoachToolCatalog.interpret("Log coffee at 5.")
         XCTAssertEqual(call?.kind, .logCaffeine)
         XCTAssertEqual(call?.kind.requiresConfirmation, true)
         XCTAssertTrue(call?.confirmationPrompt?.contains("caffeine") == true)
-        XCTAssertEqual(call?.proposedMinutes, 5 * 60)
+        XCTAssertEqual(call?.proposedMinutes, 17 * 60)
+    }
+
+    /// An explicit meridiem always wins over the assumption.
+    func testAnExplicitMorningCaffeineTimeIsTakenAtItsWord() {
+        XCTAssertEqual(CoachToolCatalog.interpret("Log coffee at 5 am")?.proposedMinutes, 5 * 60)
+        XCTAssertEqual(CoachToolCatalog.interpret("Log coffee at 5 pm")?.proposedMinutes, 17 * 60)
+    }
+
+    /// Hours that already say which half of the day they are in are not
+    /// shifted: noon and midnight are unambiguous, and so is anything past 12.
+    func testUnambiguousHoursAreNotShifted() {
+        XCTAssertEqual(CoachToolCatalog.interpret("Log caffeine at 12")?.proposedMinutes, 12 * 60)
+        XCTAssertEqual(CoachToolCatalog.interpret("Log caffeine at 16:30")?.proposedMinutes, 16 * 60 + 30)
+        XCTAssertEqual(CoachToolCatalog.interpret("Log caffeine at 0")?.proposedMinutes, 0)
+    }
+
+    /// The other call site reads a bare hour the other way, because a morning
+    /// commitment at "9" is nine in the morning — and `latestMorningEventHour`
+    /// would reject a 9 PM one anyway.
+    func testABareHourForTomorrowIsReadAsTheMorning() {
+        XCTAssertEqual(
+            CoachToolCatalog.interpret("Prepare me for my 9 meeting tomorrow")?.proposedMinutes,
+            9 * 60
+        )
     }
 
     func testRejectedOrUnknownUtteranceIsNil() {

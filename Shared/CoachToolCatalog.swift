@@ -82,7 +82,7 @@ enum CoachToolCatalog {
 
         // Writes. Each one confirms before it does anything.
         if matches(q, ["log coffee", "log caffeine", "had coffee", "coffee at"]) {
-            let minutes = parseTimeOfDayMinutes(q)
+            let minutes = parseTimeOfDayMinutes(q, bareHour: .afternoon)
             let label = minutes.map { "Log caffeine at approximately \(clock(minutes: $0))?" }
                 ?? "Log caffeine for today?"
             return Call(kind: .logCaffeine, proposedMinutes: minutes, confirmationPrompt: label)
@@ -96,7 +96,7 @@ enum CoachToolCatalog {
             )
         }
         if matches(q, ["prepare me", "get me ready", "big day", "meeting tomorrow", "presentation tomorrow"]) {
-            let minutes = parseTimeOfDayMinutes(q)
+            let minutes = parseTimeOfDayMinutes(q, bareHour: .morning)
             let prompt = minutes.map { "Prepare you for \(clock(minutes: $0)) tomorrow?" }
                 ?? "Open Tomorrow and set a morning start time?"
             return Call(kind: .prepareTomorrow, proposedMinutes: minutes, confirmationPrompt: prompt)
@@ -143,7 +143,28 @@ enum CoachToolCatalog {
     /// A bare hour with no am/pm is still ambiguous and is left as written;
     /// the confirmation prompt is what catches a wrong reading, which is the
     /// whole reason these tools confirm.
-    private static func parseTimeOfDayMinutes(_ q: String) -> Int? {
+    /// How to read a bare hour with no am/pm on it.
+    ///
+    /// "Log coffee at 5" and "prepare me for 9" both give a number and no
+    /// meridiem, and they mean opposite halves of the day. Reading both as
+    /// written — which is what this did — resolved the caffeine one to 05:00,
+    /// so the brief's own example ("Log coffee at 5." → "Log caffeine at
+    /// approximately 5:00 PM?") came out as five in the morning and was
+    /// recorded as `.caffeine` rather than `.caffeineLate`, understating the
+    /// exposure it exists to capture.
+    ///
+    /// The defaults are per call site rather than global because the contexts
+    /// genuinely differ: caffeine at a bare hour is the afternoon, a morning
+    /// commitment at a bare hour is the morning, and `latestMorningEventHour`
+    /// would reject a 9 PM "meeting" anyway. A wrong guess is visible and
+    /// cancellable — everything using this is behind a confirmation — which
+    /// is what makes choosing the more likely reading the right call rather
+    /// than refusing to guess.
+    enum BareHour {
+        case morning, afternoon
+    }
+
+    private static func parseTimeOfDayMinutes(_ q: String, bareHour: BareHour) -> Int? {
         let pattern = #"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: q, range: NSRange(q.startIndex..., in: q)),
@@ -160,6 +181,9 @@ enum CoachToolCatalog {
         }()
         if meridiem == "pm", hour < 12 { hour += 12 }
         if meridiem == "am", hour == 12 { hour = 0 }
+        // Only 1 through 11 are ambiguous: 0, 12 and 13-23 already say which
+        // half of the day they are in.
+        if meridiem == nil, bareHour == .afternoon, (1...11).contains(hour) { hour += 12 }
         guard (0...23).contains(hour) else { return nil }
         return hour * 60 + minute
     }
