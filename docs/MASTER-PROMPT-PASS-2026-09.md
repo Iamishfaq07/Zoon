@@ -621,6 +621,64 @@ the first draft of `ShiftPlan`:
    eight hours. The threshold was right and the example was wrong, so the
    example changed rather than the threshold.
 
+### C8 — Awakening Inspector, upgraded (§25)
+
+Filed under features rather than bugs because the screen was not wrong — it was
+honestly reporting a limitation, and the work was removing the limitation.
+
+```
+Purpose:      show a real ±12-minute context window around an awakening, with
+              the layers the brief lists: stage, heart rate, movement, sound,
+              respiratory.
+Files:        Shared/AwakeningInspector.swift,
+              Zoon/Views/Components/AwakeningInspectorCard.swift,
+              Zoon/Services/HealthKitManager.swift (binnedRespiratoryRate),
+              Zoon/Services/SleepDataCoordinator.swift (refreshAwakeningSeries),
+              Zoon/Views/SleepDetailView.swift
+What changed: the screen printed "Zoon doesn't read heart rate minute by
+              minute yet" -- true when written, because the only overnight
+              series fetched was hourly and an hourly bucket cannot place a
+              rise inside a four-minute awakening. `binnedHeartRate` already
+              took any bin width, so the fix was to go and get the resolution
+              rather than to relax the standard. Heart rate, active energy and
+              respiratory rate are now fetched across the night at one-minute
+              bins, once per night rather than once per awakening.
+Bin width:    one minute, not the five §23 uses. At five, a ±12-minute window
+              holds three bins before the awakening -- not enough to be a
+              baseline *and* a candidate, so the rise could never have fired.
+              Found by simulation, before CI. Every gate counts readings
+              rather than bins, because at this width most bins are empty.
+Refusals:     the rise is measured against the awakening's own preceding
+              minutes, never a population figure or the night's average -- a
+              heart rate that runs high all night has not risen. Fewer than
+              three readings behind a candidate means no rise rather than a
+              guess. Movement is inferred from active energy and carries that
+              provenance wherever it appears, because Zoon has no overnight
+              motion stream. Breathing is a difference within this person's
+              own night, never against a reference range.
+Disclosure:   the trace sits behind a DisclosureGroup and is dropped entirely
+              at accessibility sizes, where the markers carry every figure it
+              does. Gaps are drawn as gaps -- joining across unmeasured
+              minutes reads as a steady heart rate rather than as an absence.
+Language:     the brief's sentence is unchanged: "These events occurred around
+              the same time." Nothing claims cause.
+Tests:        ZoonTests/AwakeningInspectorSeriesTests.swift (18). The four
+              existing AwakeningInspectorTests are untouched -- the handed-in
+              entry point still works and the derivation delegates to it, so
+              the timeline, sounds and caveat live in one place.
+Limitations:  never seen against a real HealthKit store, so the true overnight
+              sparsity of a one-minute series is unmeasured. The movement
+              proxy has never been checked against an actual motion reading.
+              No screenshot of the expanded trace.
+```
+
+**A test of mine that would have failed on correct copy.** The language sweep
+initially checked every line for the word "caused", including the caveat — which
+mentions cause precisely in order to disclaim it ("Zoon does not claim that one
+caused the awakening"). The caveat is now asserted on its own terms and exempted
+from the blanket sweep. A guard that fires on the sentence the brief asks for is
+a broken guard, not a finding.
+
 ---
 
 ## D. Apple APIs used
@@ -727,7 +785,7 @@ Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
 no Mac and no local toolchain in this environment, so this is the only place
 any Swift in this branch has ever been compiled or executed.
 
-**Suite size.** 1,853 `func test…` methods across 177 files in `ZoonTests`,
+**Suite size.** 1,871 `func test…` methods across 178 files in `ZoonTests`,
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
@@ -786,8 +844,9 @@ check the bedtime shift printed in minutes matched `"h "`, which occurs inside
 `xcodebuild` on `macos-latest`, iOS Simulator destination. Every verification
 in this document is a 12–20 minute CI round trip; there is no local compile.
 
-- **Build runs #1501 (`ed5bb63`), #1503 (`dbc7531`), #1507 (`d79e077`) and
-  #1513 (`9fac96b`, the branch head): success.** Both jobs green — "Validate project
+- **Build runs #1501 (`ed5bb63`), #1503 (`dbc7531`), #1507 (`d79e077`),
+  #1513 (`9fac96b`) and #1517 (`b718fab`, the branch head): success.** Both
+  jobs green — "Validate project
   file" (ubuntu) and "Build (iOS Simulator)" (macos).
 - `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
   `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
@@ -866,15 +925,16 @@ data.
 
 ### Not implemented from the brief
 
-§22 Personal Sensitivity Curves, §25 Awakening Inspector upgrade, §26 Morning
-Alertness, §27 Movement Context refinement,
+§22 Personal Sensitivity Curves, §26 Morning Alertness, §27 Movement Context
+refinement,
 §29–§36 visual system, §37 Watch information architecture, §38–§39 Soundscapes
 and Breathing, §40 Dawn theme, §41 motion pass, §42 splash audit, §43 NightSky
 profiling, §44 widgets, §52 performance pass, §54 full visual regression
 review.
 
-Three corrections to an earlier draft of this list. §23 Restorative Windows
-and §24 Shift Roster Planner are now implemented — see C6 and C7. §28 Long-Term Resilience UI was listed as a gap and
+Four corrections to an earlier draft of this list. §23 Restorative Windows,
+§24 Shift Roster Planner and §25 Awakening Inspector are now implemented — see
+C6, C7 and C8. §28 Long-Term Resilience UI was listed as a gap and
 is not one: `LongTermBaselineCard` reached `TrendsView` on `main` before this
 pass began, and A6 rewrote the engine behind it rather than adding the
 surface.
