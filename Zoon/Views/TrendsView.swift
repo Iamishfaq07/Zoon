@@ -171,7 +171,7 @@ struct TrendsView: View {
                         .entrance(3)
                     }
                     DiscoveriesStream(
-                        findings: JournalCorrelator().findings(from: coordinator.journalObservations()),
+                        findings: JournalCorrelator().findings(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog),
                         activeExperiment: preferences.activeExperimentTag.map { tag in
                             (tag, GuidedExperiment.status(
                                 for: tag,

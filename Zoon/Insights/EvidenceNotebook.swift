@@ -169,7 +169,7 @@ enum EvidenceNotebook {
             entries.append(Entry(
                 id: "finding-\(finding.id)",
                 date: nil,
-                headline: "\(finding.tag.label) goes with \(direction) \(finding.metric.shortLabel).",
+                headline: "\(finding.label) goes with \(direction) \(finding.metric.shortLabel).",
                 strength: .associated,
                 confidence: confidence
             ))

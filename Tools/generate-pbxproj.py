@@ -136,6 +136,13 @@ TESTS_EXTRA_APP_FILES = [
     # in Zoon/Models rather than Shared/ because it is keyed by BehaviorTag,
     # which the widget and watch targets have no model layer for.
     "Zoon/Models/BehaviorObservation.swift",
+    # Foundation only -- the identity that lets a custom behaviour travel
+    # through the same observation, correlation and evidence machinery as a
+    # built-in one. `BehaviorCatalog` is what resolves a name for it, and the
+    # correlator now takes one, so both have to compile into the tests that
+    # exercise that path.
+    "Zoon/Models/BehaviorID.swift",
+    "Zoon/Models/CustomBehavior.swift",
     # Foundation/SwiftData only -- the @Model row behind a durable per-night
     # behaviour answer, and the provisional-night-key helper the coordinator
     # falls back to. Same in-test-bundle SwiftData pattern as JournalEntry

@@ -27,7 +27,7 @@ struct EvidenceView: View {
             // search over it; both the planner and the notebook need the
             // same answer, and CauseFinderView documents the same hazard.
             let observations = coordinator.journalObservations()
-            let findings = JournalCorrelator().findings(from: observations)
+            let findings = JournalCorrelator().findings(from: observations, catalog: coordinator.behaviorCatalog)
 
             LazyVStack(alignment: .leading, spacing: 18) {
                 nextExperiment(observations: observations, findings: findings)
@@ -194,7 +194,12 @@ struct EvidenceView: View {
             ordered.append(active)
         }
         for finding in findings.sorted(by: { Self.rank($0.confidence) > Self.rank($1.confidence) }) {
-            if !ordered.contains(finding.tag) { ordered.append(finding.tag) }
+            // Built-ins only. The ledger below is built around guided
+            // experiments, and an experiment is always on a behaviour Zoon
+            // ships -- there is no protocol it could propose for a signal it
+            // knows nothing about. A custom behaviour's evidence lives in the
+            // tiers underneath, which do carry it.
+            if let tag = finding.tag, !ordered.contains(tag) { ordered.append(tag) }
         }
         return Array(ordered.prefix(3))
     }
@@ -216,7 +221,7 @@ struct EvidenceView: View {
     ) -> some View {
         if let proposal = ExperimentPlanner.next(
             observations: observations,
-            associatedTags: Set(findings.map(\.tag)),
+            associatedTags: Set(findings.compactMap(\.tag)),
             settledTags: Set(coordinator.experiments.outcomes.map(\.tag))
         ) {
             VStack(alignment: .leading, spacing: 8) {

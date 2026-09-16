@@ -89,7 +89,7 @@ struct ZoonPairedPlot: View {
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.inkSecondary)
             Spacer()
-            Text(finding.tag.label)
+            Text(finding.label)
                 .font(Theme.kicker)
                 .tracking(1.0)
                 .textCase(.uppercase)
@@ -240,12 +240,12 @@ struct ZoonPairedPlot: View {
     // MARK: - Accessibility
 
     private var chartLabel: String {
-        "\(finding.tag.label) against \(finding.metric.shortLabel), matched pairs"
+        "\(finding.label) against \(finding.metric.shortLabel), matched pairs"
     }
 
     private var chartSummaryText: String {
         let direction = finding.isImprovement ? "better" : "worse"
-        return "\(finding.matchedPairCount.pluralized("pair")). On the typical pair, \(finding.metric.shortLabel) was \(finding.metric.format(finding.delta)), \(direction), with \(finding.tag.label.lowercased()). \(finding.confidence.label)."
+        return "\(finding.matchedPairCount.pluralized("pair")). On the typical pair, \(finding.metric.shortLabel) was \(finding.metric.format(finding.delta)), \(direction), with \(finding.label.lowercased()). \(finding.confidence.label)."
     }
 
     private var selectedPairDescription: String? {

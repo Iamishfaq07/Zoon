@@ -66,10 +66,10 @@ struct DiscoveriesStream: View {
         let tint = finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Image(systemName: finding.tag.symbol)
+                Image(systemName: finding.symbol)
                     .font(Theme.text(12, weight: .semibold))
                     .foregroundStyle(tint)
-                Text(finding.tag.label)
+                Text(finding.label)
                     .font(Theme.label(15, weight: .semibold))
                 Spacer(minLength: 0)
                 ZoonEvidenceBadge(confidence: Self.metricConfidence(finding.confidence))

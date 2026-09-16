@@ -6,11 +6,15 @@ enum NaturalJournalParser {
     enum Confidence: String, Codable, Sendable { case high, medium, low }
 
     struct Proposal: Identifiable, Equatable {
-        let tag: BehaviorTag
+        let behavior: BehaviorID
+        /// What to call it. A custom behaviour has no enum case to ask.
+        let label: String
         let state: BehaviorObservationState
         let matchedText: String
         let confidence: Confidence
-        var id: String { tag.rawValue }
+        var id: String { behavior.identifier }
+        /// The built-in tag, when this proposal is about one.
+        var tag: BehaviorTag? { behavior.builtIn }
     }
 
     private struct Rule { let tag: BehaviorTag; let phrases: [String] }
@@ -39,23 +43,27 @@ enum NaturalJournalParser {
 
     private static let negations = ["no", "didn't", "without", "avoided", "skipped", "not"]
 
-    /// Proposals for the built-in behaviour vocabulary.
+    /// Proposals for the built-in vocabulary plus whatever the person has
+    /// named themselves.
     ///
-    /// There was a second overload taking `customNames:` that ended with
-    /// `_ = customNames` — it accepted the list and discarded it, so the
-    /// Journal's natural-language box silently ignored every custom signal a
-    /// person had defined while appearing to support them.
+    /// An earlier version took a `customNames:` parameter and ended with
+    /// `_ = customNames`: it accepted the list and discarded it, so the
+    /// natural-language box silently ignored every custom signal while
+    /// appearing to support them. That parameter was removed rather than
+    /// filled in, because parsing was not the missing piece —
+    /// `Proposal.tag` was a closed enum with no custom case, and
+    /// `setBehavior` recorded against that same enum, so there was nowhere
+    /// to *store* a confirmed custom observation even if the text had been
+    /// understood. `BehaviorID` is that missing piece, so the parameter is
+    /// back, and now it does something.
     ///
-    /// Parsing them is not the missing piece on its own: `Proposal.tag` is a
-    /// `BehaviorTag`, a closed enum with no custom case, and
-    /// `SleepDataCoordinator.setBehavior` records against that same enum, so
-    /// there is nowhere to *store* a confirmed custom observation either.
-    /// Wiring this end to end means giving custom signals an observation
-    /// path of their own. Until that exists the honest surface is no
-    /// parameter rather than one that is quietly dropped — custom signals
-    /// still list under "Your signals" on Journal, which is what they did
-    /// before.
-    static func proposals(from text: String) -> [Proposal] {
+    /// Nothing here is evidence. A proposal is a suggestion the person
+    /// confirms or discards, which is the rule for built-ins too: Zoon never
+    /// silently saves an inferred behaviour.
+    static func proposals(
+        from text: String,
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> [Proposal] {
         let lower = text.folding(options: .diacriticInsensitive, locale: .current).lowercased()
         var output: [Proposal] = []
         for rule in rules {
@@ -70,9 +78,37 @@ enum NaturalJournalParser {
             let isLateCaffeine = rule.tag == .caffeine && (lower.contains("late coffee") || lower.contains("coffee late") || timing.map { $0 >= 15 } == true)
             let tag: BehaviorTag = isLateCaffeine ? .caffeineLate : rule.tag
             let confidence: Confidence = timing != nil || state == .no ? .high : (phrase.count > 5 ? .medium : .low)
-            output.append(Proposal(tag: tag, state: state, matchedText: timing.map { "\(phrase) at \(formatHour($0))" } ?? phrase, confidence: confidence))
+            output.append(Proposal(
+                behavior: tag.behaviorID,
+                label: tag.label,
+                state: state,
+                matchedText: timing.map { "\(phrase) at \(formatHour($0))" } ?? phrase,
+                confidence: confidence
+            ))
         }
         if output.contains(where: { $0.tag == .caffeineLate }) { output.removeAll { $0.tag == .caffeine } }
+
+        // Custom signals match on their own name, whole-word, the same rule
+        // the built-in phrases use -- so a signal called "tea" is not found
+        // inside "steady". Confidence is never `.high` from a name alone:
+        // the person chose the word, Zoon has no vocabulary around it, and a
+        // single mention is a weaker signal than a matched phrase with a time
+        // attached.
+        for behavior in catalog.custom where behavior.isActive {
+            let name = behavior.name
+                .folding(options: .diacriticInsensitive, locale: .current)
+                .lowercased()
+            guard !name.isEmpty, range(of: name, in: lower) != nil else { continue }
+            let state = state(for: name, in: lower)
+            guard state != .unknown else { continue }
+            output.append(Proposal(
+                behavior: behavior.behaviorID,
+                label: behavior.name,
+                state: state,
+                matchedText: name,
+                confidence: state == .no ? .medium : .low
+            ))
+        }
         return output
     }
 

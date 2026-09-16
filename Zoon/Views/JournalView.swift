@@ -17,7 +17,7 @@ struct JournalView: View {
     @State private var note: String = ""
     @State private var naturalText: String = ""
     @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
-    @State private var naturalStates: [BehaviorTag: BehaviorObservationState] = [:]
+    @State private var naturalStates: [BehaviorID: BehaviorObservationState] = [:]
     @State private var customStore = CustomBehaviorStore.shared
     @FocusState private var noteFieldFocused: Bool
 
@@ -278,10 +278,10 @@ struct JournalView: View {
                 FlowLayout(spacing: 8) {
                     ForEach(naturalProposals) { proposal in
                         Button {
-                            naturalStates[proposal.tag] = nextNaturalState(from: naturalStates[proposal.tag] ?? proposal.state)
+                            naturalStates[proposal.behavior] = nextNaturalState(from: naturalStates[proposal.behavior] ?? proposal.state)
                         } label: {
-                            let state = naturalStates[proposal.tag] ?? proposal.state
-                            Label("\(proposal.tag.label) · \(naturalStateLabel(state))", systemImage: naturalStateSymbol(state))
+                            let state = naturalStates[proposal.behavior] ?? proposal.state
+                            Label("\(proposal.label) · \(naturalStateLabel(state))", systemImage: naturalStateSymbol(state))
                                 .font(Theme.label(12, weight: .medium))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
@@ -324,30 +324,39 @@ struct JournalView: View {
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(store.behaviors.filter(\.isActive)) { behavior in
-                        Label(behavior.name, systemImage: behavior.symbol)
-                            .font(Theme.label(12, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .background(Theme.Metric.sleep.opacity(0.18), in: Capsule())
+                        behaviorChip(
+                            behavior.behaviorID,
+                            label: behavior.name,
+                            symbol: behavior.symbol
+                        )
                     }
                 }
+                Text("Zoon will describe what these went with once there are enough comparable nights. It will not tell you what to do about them.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .glassCard()
     }
 
     private func parseNaturalJournal() {
-        naturalProposals = NaturalJournalParser.proposals(from: naturalText)
-        naturalStates = Dictionary(uniqueKeysWithValues: naturalProposals.map { ($0.tag, $0.state) })
+        naturalProposals = NaturalJournalParser.proposals(
+            from: naturalText, catalog: coordinator.behaviorCatalog
+        )
+        naturalStates = Dictionary(
+            naturalProposals.map { ($0.behavior, $0.state) },
+            uniquingKeysWith: { first, _ in first }
+        )
         Haptics.tap()
     }
 
     private func confirmNaturalJournal() {
-        for (tag, state) in naturalStates where state != .unknown {
-            coordinator.setBehavior(state, for: tag, on: targetNightDate, nightKey: selectedNightKey)
+        for (behavior, state) in naturalStates where state != .unknown {
+            coordinator.setBehavior(state, for: behavior, on: targetNightDate, nightKey: selectedNightKey)
         }
         answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
         naturalText = ""
         naturalProposals = []
         naturalStates = [:]
@@ -450,7 +459,7 @@ struct JournalView: View {
         Button {
             coordinator.setBehavior(state, for: tag, on: targetNightDate, nightKey: selectedNightKey)
             answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
             Haptics.tap()
         } label: {
             Text(title)
@@ -539,7 +548,18 @@ struct JournalView: View {
     /// negative is something you say rather than something inferred from
     /// your silence.
     private func tagChip(_ tag: BehaviorTag) -> some View {
-        let state = answers.state(for: tag)
+        behaviorChip(tag.behaviorID, label: tag.label, symbol: tag.symbol)
+    }
+
+    /// The same chip for any behaviour, built-in or custom.
+    ///
+    /// Custom signals used to render here as flat capsules with no tap target
+    /// at all -- a row of labels for a feature that did not exist. They go
+    /// through the identical control now, which is the point: one cycle, one
+    /// haptic, one accessibility contract, and answers that land in the same
+    /// observation store every engine already reads.
+    private func behaviorChip(_ behavior: BehaviorID, label: String, symbol: String) -> some View {
+        let state = answers.state(forIdentifier: behavior.identifier)
         let tint: Color = switch state {
         case .yes: Theme.Metric.sleep
         case .no: Theme.neutral(0.55)
@@ -552,17 +572,17 @@ struct JournalView: View {
         }
 
         return Button {
-            coordinator.cycleBehavior(for: tag, on: targetNightDate, nightKey: selectedNightKey)
+            coordinator.cycleBehavior(for: behavior, on: targetNightDate, nightKey: selectedNightKey)
             answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
             // Selection is a physical act here — the haptic confirms the tap
             // landed without needing to look for a colour change.
             Haptics.tap()
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: tag.symbol)
+                Image(systemName: symbol)
                     .font(Theme.text(11, weight: .medium))
-                Text(tag.label)
+                Text(label)
                     .font(Theme.label(12, weight: .medium))
                 // Never colour alone. Yes and no carry distinct glyphs and a
                 // solid border, unanswered carries no glyph and a dashed one,
@@ -590,7 +610,7 @@ struct JournalView: View {
             .foregroundStyle(state == .yes ? Color.white : Color.secondary)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tag.label)
+        .accessibilityLabel(label)
         .accessibilityValue(Self.description(for: state))
         .accessibilityHint("Cycles between yes, no, and not answered.")
         .accessibilityAddTraits(state == .yes ? [.isSelected, .isButton] : .isButton)
@@ -634,7 +654,7 @@ struct JournalView: View {
                         on: targetNightDate, nightKey: selectedNightKey, candidates: tracked
                     )
                     answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-                    findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+                    findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
                     Haptics.tap()
                 } label: {
                     HStack(spacing: 6) {
@@ -709,7 +729,7 @@ struct JournalView: View {
     private func reload() {
         note = entry.note ?? ""
         answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
     }
 }
 
@@ -723,13 +743,13 @@ struct CorrelationRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: finding.tag.symbol)
+                Image(systemName: finding.symbol)
                     .font(Theme.text(12))
                     .foregroundStyle(tint)
                     .frame(width: 22, height: 22)
                     .background(tint.opacity(0.15), in: Circle())
 
-                Text(finding.tag.label)
+                Text(finding.label)
                     .font(Theme.label(13, weight: .semibold))
 
                 Spacer()

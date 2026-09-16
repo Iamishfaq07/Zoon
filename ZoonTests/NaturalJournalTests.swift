@@ -5,7 +5,7 @@ final class NaturalJournalTests: XCTestCase {
         let proposals = NaturalJournalParser.proposals(
             from: "I had two coffees, went to the gym at 7 and ate late."
         )
-        XCTAssertEqual(Set(proposals.map(\.tag)), [.caffeine, .hardTraining, .lateMeal])
+        XCTAssertEqual(Set(proposals.compactMap(\.tag)), [.caffeine, .hardTraining, .lateMeal])
     }
 
     func testParserDoesNotInventAnObservation() {
@@ -20,14 +20,14 @@ final class NaturalJournalTests: XCTestCase {
 
     func testMorningDaylightIsAvailableToPersonalLearning() {
         XCTAssertEqual(
-            NaturalJournalParser.proposals(from: "I took a morning walk outside this morning").map(\.tag),
+            NaturalJournalParser.proposals(from: "I took a morning walk outside this morning").compactMap(\.tag),
             [.morningDaylight]
         )
     }
 
     func testTimeBelongsToEntityInsteadOfCreatingCaffeineFalsePositive() {
         let gym = NaturalJournalParser.proposals(from: "I went to the gym after 3 PM")
-        XCTAssertEqual(Set(gym.map(\.tag)), [.hardTraining])
+        XCTAssertEqual(Set(gym.compactMap(\.tag)), [.hardTraining])
         XCTAssertFalse(gym.contains { $0.tag == .caffeineLate })
     }
 
@@ -42,7 +42,7 @@ final class NaturalJournalTests: XCTestCase {
 
     func testExplicitLateCaffeineKeepsEntityAndTime() {
         let proposals = NaturalJournalParser.proposals(from: "I had two coffees, last one at 4:30 PM")
-        XCTAssertEqual(proposals.first?.tag, .caffeineLate)
+        XCTAssertEqual(proposals.first?.behavior, BehaviorTag.caffeineLate.behaviorID)
         XCTAssertEqual(proposals.first?.state, .yes)
         XCTAssertEqual(proposals.first?.confidence, .high)
         XCTAssertTrue(proposals.first?.matchedText.contains("4pm") == true)
@@ -52,16 +52,16 @@ final class NaturalJournalTests: XCTestCase {
     /// and "steak" used to propose caffeine by way of "tea".
     func testATimeWithNoSpaceBeforeTheMeridiemStillParses() {
         let proposals = NaturalJournalParser.proposals(from: "Had steak, then two coffees at 4pm")
-        XCTAssertEqual(proposals.map(\.tag), [.caffeineLate])
+        XCTAssertEqual(proposals.compactMap(\.tag), [.caffeineLate])
         XCTAssertEqual(proposals.first?.state, .yes)
         XCTAssertEqual(proposals.first?.confidence, .high)
         XCTAssertEqual(proposals.first?.matchedText, "coffees at 4pm")
     }
 
     func testTwelveIsHandledOnBothSidesOfNoon() {
-        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 12pm").first?.tag, .caffeine)
-        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 12am").first?.tag, .caffeine)
-        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 3pm").first?.tag, .caffeineLate)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 12pm").first?.behavior, BehaviorTag.caffeine.behaviorID)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 12am").first?.behavior, BehaviorTag.caffeine.behaviorID)
+        XCTAssertEqual(NaturalJournalParser.proposals(from: "coffee at 3pm").first?.behavior, BehaviorTag.caffeineLate.behaviorID)
     }
 
     /// Keywords match whole words. A steady day contains "tea" and is not a
@@ -113,5 +113,66 @@ final class AlertnessCheckStoreTests: XCTestCase {
         let store = AlertnessCheckStore(defaults: defaults)
         store.save(reactions: [0.2, 0.3, 0.4], subjectiveAlertness: 3)
         XCTAssertTrue(store.results.isEmpty)
+    }
+
+    // MARK: - Custom signals
+
+    private func catalog(_ names: [String], active: Bool = true) -> BehaviorCatalog {
+        BehaviorCatalog(custom: names.map { CustomBehavior(name: $0, isActive: active) })
+    }
+
+    /// The parameter this restores used to end in `_ = customNames`: it
+    /// accepted the list and dropped it, so the box appeared to support
+    /// custom signals and silently ignored every one of them.
+    func testACustomSignalIsProposedByName() throws {
+        let catalog = catalog(["magnesium glycinate", "prayer"])
+        let proposals = NaturalJournalParser.proposals(
+            from: "Took magnesium glycinate before bed", catalog: catalog
+        )
+        let proposal = try XCTUnwrap(proposals.first { $0.behavior.isCustom })
+        XCTAssertEqual(proposal.label, "magnesium glycinate")
+        XCTAssertEqual(proposal.state, .yes)
+    }
+
+    func testACustomSignalCanBeNegated() throws {
+        let proposals = NaturalJournalParser.proposals(
+            from: "No prayer today", catalog: catalog(["prayer"])
+        )
+        let proposal = try XCTUnwrap(proposals.first { $0.behavior.isCustom })
+        XCTAssertEqual(proposal.state, .no)
+    }
+
+    /// Whole-word, the same rule the built-in phrases use.
+    func testACustomSignalDoesNotMatchInsideAnotherWord() {
+        let proposals = NaturalJournalParser.proposals(
+            from: "It was a steady day", catalog: catalog(["tea"])
+        )
+        XCTAssertTrue(proposals.filter { $0.behavior.isCustom }.isEmpty)
+    }
+
+    func testAnInactiveCustomSignalIsNotProposed() {
+        let proposals = NaturalJournalParser.proposals(
+            from: "Took magnesium glycinate", catalog: catalog(["magnesium glycinate"], active: false)
+        )
+        XCTAssertTrue(proposals.filter { $0.behavior.isCustom }.isEmpty)
+    }
+
+    /// A name alone is weaker evidence than a matched phrase with a time on
+    /// it. Zoon chose none of these words.
+    func testACustomSignalIsNeverHighConfidenceFromANameAlone() throws {
+        let proposals = NaturalJournalParser.proposals(
+            from: "Did my breathing practice", catalog: catalog(["breathing practice"])
+        )
+        let proposal = try XCTUnwrap(proposals.first { $0.behavior.isCustom })
+        XCTAssertNotEqual(proposal.confidence, .high)
+    }
+
+    /// Built-ins and custom signals coexist in one sentence.
+    func testBuiltInAndCustomProposalsCoexist() {
+        let proposals = NaturalJournalParser.proposals(
+            from: "Two coffees and my evening medication", catalog: catalog(["evening medication"])
+        )
+        XCTAssertTrue(proposals.contains { $0.tag == .caffeine })
+        XCTAssertTrue(proposals.contains { $0.behavior.isCustom })
     }
 }

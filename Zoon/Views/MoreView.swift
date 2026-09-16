@@ -244,7 +244,8 @@ struct MoreView: View {
                     soundEvents: SoundEventStore().recentEvents,
                     behaviorObservations: coordinator.behaviorObservationsForExport(),
                     evidenceHistory: coordinator.evidenceHistoryForExport(),
-                    personalSetup: setup.value
+                    personalSetup: setup.value,
+                    customBehaviors: CustomBehaviorStore.shared.behaviors
                 )
                 let plain = try DataExporter.jsonData(archive)
                 let data = encryptBackup ? try ArchiveCipher.seal(plain, passphrase: archivePassphrase) : plain

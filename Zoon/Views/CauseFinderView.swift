@@ -36,7 +36,7 @@ struct CauseFinderView: View {
     }
 
     private func findings(from observations: [JournalCorrelator.Observation]) -> [JournalCorrelator.Finding] {
-        JournalCorrelator().findings(from: observations)
+        JournalCorrelator().findings(from: observations, catalog: coordinator.behaviorCatalog)
     }
 
     var body: some View {
@@ -150,14 +150,17 @@ struct CauseFinderView: View {
                 ForEach(harmful) { CauseFinderRow(finding: $0) }
             }
         case .noEffect:
-            let noEffect = JournalCorrelator().testedNoEffect(from: observations)
+            let catalog = coordinator.behaviorCatalog
+            let noEffect = JournalCorrelator().testedNoEffect(from: observations, catalog: catalog)
             if noEffect.isEmpty {
                 emptyState("Nothing here yet. Behaviours land in this tab once there's enough logged data to test them, whether or not a pattern turns up.")
             } else {
-                ForEach(noEffect) { NoEffectRow(tag: $0) }
+                ForEach(noEffect, id: \.self) { behavior in
+                    NoEffectRow(label: catalog.label(for: behavior), symbol: catalog.symbol(for: behavior))
+                }
             }
         case .learning:
-            let learning = JournalCorrelator().stillLearning(from: observations)
+            let learning = JournalCorrelator().stillLearning(from: observations, catalog: coordinator.behaviorCatalog)
             if learning.isEmpty {
                 emptyState("Tag a behaviour in the Journal on a few nights and it'll show up here while Zoon builds enough comparable nights to say anything about it.")
             } else {
@@ -197,12 +200,12 @@ private struct CauseFinderRow: View {
                 Haptics.select()
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: finding.tag.symbol)
+                    Image(systemName: finding.symbol)
                         .foregroundStyle(tint)
                         .frame(width: 24, height: 24)
                         .background(tint.opacity(0.15), in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(finding.tag.label)
+                        Text(finding.label)
                             .font(Theme.label(14, weight: .semibold))
                         Text("\(finding.metric.format(finding.delta)) \(finding.metric.shortLabel)")
                             .font(Theme.text(11))
@@ -251,11 +254,11 @@ private struct LearningRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Image(systemName: tag.tag.symbol)
+                Image(systemName: tag.symbol)
                     .foregroundStyle(Theme.inkSecondary)
                     .frame(width: 24, height: 24)
                     .background(Theme.neutral(0.06), in: Circle())
-                Text(tag.tag.label)
+                Text(tag.label)
                     .font(Theme.label(14, weight: .semibold))
                 Spacer()
                 Text("\(tag.loggedNights) / \(JournalCorrelator.minimumMatchedPairs)")
@@ -283,16 +286,17 @@ private struct LearningRow: View {
 }
 
 private struct NoEffectRow: View {
-    let tag: BehaviorTag
+    let label: String
+    let symbol: String
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: tag.symbol)
+            Image(systemName: symbol)
                 .foregroundStyle(Theme.inkSecondary)
                 .frame(width: 24, height: 24)
                 .background(Theme.neutral(0.06), in: Circle())
             VStack(alignment: .leading, spacing: 1) {
-                Text(tag.label)
+                Text(label)
                     .font(Theme.label(14, weight: .semibold))
                 Text("No meaningful difference found in your data so far.")
                     .font(Theme.text(11))

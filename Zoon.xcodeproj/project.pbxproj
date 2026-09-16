@@ -33,6 +33,7 @@
 		0321555C521A00EF47CADF27 /* SleepVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24D0E274A10CDD544D1B02C /* SleepVocabulary.swift */; };
 		032C6B14D3F96F99ED9344B4 /* EnergyForecastCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B1CA5190E455E50384AA62 /* EnergyForecastCard.swift */; };
 		035399DC9B7B9ACE19D72706 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
+		03A49DCF5A14518D4DCAA674 /* CustomBehavior.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23D069BA4208005D98198E7B /* CustomBehavior.swift */; };
 		03E7869606F5553CA5B649F2 /* HRVStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46AFE40EF6A03AB6D2D1BE /* HRVStatus.swift */; };
 		03EBF055E8DAC3970890E5FF /* SoundEventClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6304DF11AEA03F4B1B314387 /* SoundEventClassifier.swift */; };
 		03EE18478EFE5E4DF95AE608 /* MovementContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A240BFE3763939A33E61F11A /* MovementContext.swift */; };
@@ -601,6 +602,7 @@
 		8AB927207BE8600B778534C8 /* TonightTimelineCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011868DA12535FA43F1A467E /* TonightTimelineCard.swift */; };
 		8AEC1C0C5B405DF30754F84A /* SoundEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47010EC420AEBC0B23F7F476 /* SoundEvent.swift */; };
 		8B35F5EF125312CC8435A46E /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
+		8B4598BF4A4C3BEB7EC36562 /* BehaviorID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D0553F8C85DACC727E3AF3 /* BehaviorID.swift */; };
 		8B7038ED93B97636A1357706 /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		8B838995599BC2BFFAC52ECC /* RecoveryScoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728522C938EB304A352B98B0 /* RecoveryScoreTests.swift */; };
 		8BC21D127DE84C05356C6EF6 /* LightCoachTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F5DD7E52B2623F0A7D68849 /* LightCoachTests.swift */; };
@@ -651,6 +653,7 @@
 		965FF743CE5080F050623B97 /* JournalStoreIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 752C7D764C48DF46664CFA7F /* JournalStoreIntegrationTests.swift */; };
 		96A66F3C0710D7CAEA312C72 /* WeekOverWeekTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D6C839052D7DCB70020712 /* WeekOverWeekTests.swift */; };
 		96D6CE130542E5B6CF20B83B /* ChartRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B695F3694C1C1509E14BE78C /* ChartRequest.swift */; };
+		96F6A78607BD8FD467BF379A /* CustomBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9682A3669B91E1624BC43F47 /* CustomBehaviorTests.swift */; };
 		96F939EF1F8F92D4E152A63B /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		9715C5BD2335132F4F8AC6B5 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22668C3DACB2DCC8884CF14D /* HealthKitManager.swift */; };
 		9771ED5D6E8518AF451EE095 /* MorningInThree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC1633667837266E354EB2A /* MorningInThree.swift */; };
@@ -707,6 +710,7 @@
 		A3D820675575D8846DBF7418 /* ZoonIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8B4D93DD23601661ABF27 /* ZoonIcons.swift */; };
 		A3EBF7B5EFD48C63E368324B /* WatchActionEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8606120C4F55B28506D369CC /* WatchActionEnvelope.swift */; };
 		A4044DEBAD8303B65A79371E /* MockHealthKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F46BC3EE713C870940781F8 /* MockHealthKitStore.swift */; };
+		A44FE6FCF006D1200FDC4A42 /* BehaviorID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20D0553F8C85DACC727E3AF3 /* BehaviorID.swift */; };
 		A45CDD950681787A91BF5B5D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F4977AA8C1CBFC108D7F5ACA /* PrivacyInfo.xcprivacy */; };
 		A4B7411879E841FB3F1FB605 /* AlgorithmTransparencyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D546FAA3F177B70FB23B107A /* AlgorithmTransparencyView.swift */; };
 		A4DF9B86868B631A453A85F1 /* SyncRange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1B6C018B5F60F2D07DFDFB /* SyncRange.swift */; };
@@ -1235,6 +1239,7 @@
 		20051AA4F0722E9EB7B93777 /* ZoonTwinV2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonTwinV2Tests.swift"; sourceTree = "<group>"; };
 		200AF56E3BA9B27B1BF5A0F5 /* EvidenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceView.swift"; sourceTree = "<group>"; };
 		20808B046D108AB5BB14AA89 /* SleepSufficiencyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSufficiencyEngine.swift"; sourceTree = "<group>"; };
+		20D0553F8C85DACC727E3AF3 /* BehaviorID.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorID.swift"; sourceTree = "<group>"; };
 		2135A8CBD44D449B01F90A94 /* FlagshipScoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FlagshipScoreTests.swift"; sourceTree = "<group>"; };
 		213BE1CB4CA529DD53B50FD5 /* MetricRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricRing.swift"; sourceTree = "<group>"; };
 		213D22A6A83EC98AD923972A /* WhyScoreWaterfall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WhyScoreWaterfall.swift"; sourceTree = "<group>"; };
@@ -1496,6 +1501,7 @@
 		947D81CC8078E9EA4B13BE00 /* VoiceJournalRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VoiceJournalRecorder.swift"; sourceTree = "<group>"; };
 		94863AD57BC6DF42B748A3BB /* SleepMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepMap.swift"; sourceTree = "<group>"; };
 		95D96F772674728F1B4DAB52 /* SleepFingerprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFingerprintView.swift"; sourceTree = "<group>"; };
+		9682A3669B91E1624BC43F47 /* CustomBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CustomBehaviorTests.swift"; sourceTree = "<group>"; };
 		96CE93F98BD1B309DFF4A17D /* ZoonUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonUITests.swift"; sourceTree = "<group>"; };
 		97851BDC0CB8EE6780A3E49D /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MoreView.swift"; sourceTree = "<group>"; };
 		979012F3570B3E81F02B236E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
@@ -1964,6 +1970,7 @@
 			children = (
 				B124910D4BF411B8AA63C68C,
 				4D709620B56B9CA53E54024C,
+				20D0553F8C85DACC727E3AF3,
 				99B71499926BBCC880385250,
 				FC3793DA0BC899092FF4BE4C,
 				23D069BA4208005D98198E7B,
@@ -2066,6 +2073,7 @@
 				9DD2CE6F9C1672F401886F96,
 				64CF3AFB3F90453076AA3237,
 				706F052B52B73EA14F1B1061,
+				9682A3669B91E1624BC43F47,
 				8B737B1F7FDB18E09C5DA47F,
 				EBD8E590A508113B7C7E45AE,
 				275F0131A98765781C43B872,
@@ -2873,6 +2881,7 @@
 				B14CE3E0336C3BC2A34B75C7,
 				2233FE64FFCC356E0CC0FE26,
 				30FF7946056827D5365A7ECF,
+				A44FE6FCF006D1200FDC4A42,
 				52C16D1645ED631246F3B6C1,
 				627D9D798CD6465FEB80D128,
 				B2A386232ABB3C3567E9B35C,
@@ -3360,6 +3369,7 @@
 				152A3ACED5323D7DA3AC34CE,
 				DD3E19CEF586A462AD026253,
 				18078929F1E541BEC6DDDA87,
+				96F6A78607BD8FD467BF379A,
 				4E7EB3F8D27E76CE7A4117CB,
 				3C47CC1CD3387EFA735C2E38,
 				4F2E87506FDADC731060A171,
@@ -3643,6 +3653,8 @@
 				85BFC5F54D68B3EEC76F0672,
 				63E5D4209DB615B5CDCBE371,
 				30E5AF233E194415274098D9,
+				8B4598BF4A4C3BEB7EC36562,
+				03A49DCF5A14518D4DCAA674,
 				5AEB023AF9A06BCF5A6337A2,
 				5FD483E0FF8C627A8E1F8F44,
 				1120114EC0F30EA48C6D834F,

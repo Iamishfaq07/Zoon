@@ -307,14 +307,14 @@ struct ReportView: View {
     @ViewBuilder
     private var topHabitCard: some View {
         let finding = JournalCorrelator()
-            .topFindingPerTag(from: coordinator.journalObservations())
+            .topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
             .first
 
         if let finding {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(title: "Top Habit Association", systemImage: "sparkle.magnifyingglass")
                 HStack(alignment: .top, spacing: 11) {
-                    Image(systemName: finding.tag.symbol)
+                    Image(systemName: finding.symbol)
                         .font(Theme.text(13))
                         .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
                         .frame(width: 26, height: 26)

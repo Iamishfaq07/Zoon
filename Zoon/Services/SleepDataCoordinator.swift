@@ -1699,6 +1699,9 @@ final class SleepDataCoordinator {
         // synthesising rows here would claim the archive recorded answers
         // it never held.
         let restoredObservations = behaviors.importObservations(archive.behaviorObservations ?? [])
+        // The definitions, so the restored answers have names. Existing ones
+        // win, the same rule every other importer here follows.
+        CustomBehaviorStore.shared.importBehaviors(archive.customBehaviors ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -1906,11 +1909,11 @@ final class SleepDataCoordinator {
     private func recordAssociations() {
         let observations = journalObservations()
         let correlator = JournalCorrelator()
-        let findings = correlator.topFindingPerTag(from: observations)
+        let findings = correlator.topFindingPerTag(from: observations, catalog: behaviorCatalog)
         for finding in findings {
             store.recordBelief(
                 EvidenceLedger.Revision(
-                    claimID: EvidenceLedger.Claim.behaviour(tag: finding.tag.rawValue).id,
+                    claimID: EvidenceLedger.Claim.behaviour(tag: finding.behavior.identifier).id,
                     recordedAt: .now,
                     status: status(for: finding),
                     headline: finding.plainSentence,
@@ -2048,7 +2051,7 @@ final class SleepDataCoordinator {
     /// path -- the snapshot publisher -- where there is nothing to hoist.
     func notebookEntries() -> [EvidenceNotebook.Entry] {
         notebookEntries(
-            findings: JournalCorrelator().findings(from: journalObservations())
+            findings: JournalCorrelator().findings(from: journalObservations(), catalog: behaviorCatalog)
         )
     }
 
@@ -2095,12 +2098,19 @@ final class SleepDataCoordinator {
     /// yes" preserves all three without giving it a second meaning.
     func setBehavior(
         _ state: BehaviorObservationState,
-        for tag: BehaviorTag,
+        for behavior: BehaviorID,
         on date: Date,
         nightKey: String?
     ) {
         let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
-        behaviors.set(state, for: tag, nightKey: key)
+        behaviors.set(state, for: behavior, nightKey: key)
+        // The legacy tag set is built-in only and stays that way. It exists
+        // for the journal badge count, the archive export and the historical
+        // fallback in `exposureState`, all three of which predate custom
+        // behaviours; widening it would give it a second meaning rather than
+        // preserve the one it has. A custom behaviour's answer lives in the
+        // observation record, which is what every engine actually reads.
+        guard let tag = behavior.builtIn else { return }
         let entry = journal.entryOrCreate(for: date, nightKey: nightKey)
         // The tag set tracks yes and nothing else, so an explicit no and
         // a cleared answer both remove it.
@@ -2109,18 +2119,33 @@ final class SleepDataCoordinator {
         }
     }
 
+    func setBehavior(
+        _ state: BehaviorObservationState,
+        for tag: BehaviorTag,
+        on date: Date,
+        nightKey: String?
+    ) {
+        setBehavior(state, for: tag.behaviorID, on: date, nightKey: nightKey)
+    }
+
     /// Advances one behaviour through unanswered, yes, no, unanswered.
     /// - Returns: the state now recorded.
     @discardableResult
-    func cycleBehavior(for tag: BehaviorTag, on date: Date, nightKey: String?) -> BehaviorObservationState {
-        let current = behaviorAnswers(on: date, nightKey: nightKey).state(for: tag)
+    func cycleBehavior(for behavior: BehaviorID, on date: Date, nightKey: String?) -> BehaviorObservationState {
+        let current = behaviorAnswers(on: date, nightKey: nightKey)
+            .state(forIdentifier: behavior.identifier)
         let next: BehaviorObservationState = switch current {
         case .unknown: .yes
         case .yes: .no
         case .no: .unknown
         }
-        setBehavior(next, for: tag, on: date, nightKey: nightKey)
+        setBehavior(next, for: behavior, on: date, nightKey: nightKey)
         return next
+    }
+
+    @discardableResult
+    func cycleBehavior(for tag: BehaviorTag, on date: Date, nightKey: String?) -> BehaviorObservationState {
+        cycleBehavior(for: tag.behaviorID, on: date, nightKey: nightKey)
     }
 
     /// Answers every still-unanswered tracked behaviour `.no` for a day.
@@ -2130,6 +2155,14 @@ final class SleepDataCoordinator {
         let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
         return behaviors.answerRemainingNo(nightKey: key, candidates: candidates)
     }
+
+    /// Every behaviour the analysis should consider: the built-ins plus
+    /// whatever the person has invented.
+    ///
+    /// Read through the coordinator rather than each view reaching for the
+    /// singleton, so a correlator call that forgets the catalogue is a
+    /// visible omission at one layer instead of a silent one at nine.
+    var behaviorCatalog: BehaviorCatalog { CustomBehaviorStore.shared.catalog }
 
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
@@ -2298,7 +2331,7 @@ final class SleepDataCoordinator {
     /// that's merely more context than any single question needs. Live
     /// tool-calling is a clearly scoped follow-up, not implemented here.
     func coachContextDigest() -> String {
-        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations())
+        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations(), catalog: behaviorCatalog)
             .sorted { abs($0.percentChange) > abs($1.percentChange) }
             .prefix(5)
 
@@ -2322,7 +2355,7 @@ final class SleepDataCoordinator {
             activeExperimentTag: preferences.activeExperimentTag?.label,
             causeFinderFindings: findings.map {
                 CoachContextDigest.CorrelatorFinding(
-                    behavior: $0.tag.label,
+                    behavior: $0.label,
                     metric: $0.metric.shortLabel,
                     percentChange: Int($0.percentChange.rounded()),
                     isImprovement: $0.isImprovement,
@@ -2363,7 +2396,7 @@ final class SleepDataCoordinator {
                 observations: journalObservations(),
                 associatedTags: Set(findings.map(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
-            )?.tag.label,
+            )?.label,
             tonightTarget: context.flatMap {
                 SleepAutopilot.plan(
                     nights: recentNights,

@@ -125,12 +125,19 @@ struct JournalCorrelator {
         ///
         /// There is deliberately no path from "this night has a journal
         /// row" to `.no`.
-        func exposureState(for tag: BehaviorTag) -> ExposureState {
-            switch answers.state(for: tag) {
+        func exposureState(for behavior: BehaviorID) -> ExposureState {
+            switch answers.state(forIdentifier: behavior.identifier) {
             case .yes: return .yes
             case .no: return .no
             case .unknown: break
             }
+            // Everything below is built-in only, and correctly so. The
+            // legacy tag set and the measured upgrades both describe
+            // behaviours Zoon shipped; there is no HealthKit sample for
+            // "magnesium" and no derived rule that could invent one. A
+            // custom behaviour is exactly as known as the person said it
+            // was, which is the whole of its evidence.
+            guard let tag = behavior.builtIn else { return .unknown }
             if tags.contains(tag) { return .yes }
             switch tag {
             case .alcohol:
@@ -143,6 +150,10 @@ struct JournalCorrelator {
                 break
             }
             return .unknown
+        }
+
+        func exposureState(for tag: BehaviorTag) -> ExposureState {
+            exposureState(for: tag.behaviorID)
         }
 
         /// Whether anything at all is known about this night's behaviours.
@@ -176,7 +187,13 @@ struct JournalCorrelator {
     static let algorithmVersion = 1
 
     struct Finding: Identifiable, Hashable {
-        let tag: BehaviorTag
+        /// Which behaviour, built-in or custom.
+        let behavior: BehaviorID
+        /// Resolved when the finding is built rather than looked up on
+        /// display, so a row cannot render a bare UUID because whoever drew
+        /// it did not have the catalogue to hand.
+        let label: String
+        let symbol: String
         let metric: Metric
         /// Median outcome on the tagged nights actually used in a match, for
         /// display context only -- `delta` below is not derived from this.
@@ -223,7 +240,12 @@ struct JournalCorrelator {
         /// reads this, the full `ZoonPairedPlot` reads `pairs`.
         var pairDeltas: [Double] { pairs.map(\.delta) }
 
-        var id: String { "\(tag.rawValue)-\(metric.rawValue)" }
+        var id: String { "\(behavior.identifier)-\(metric.rawValue)" }
+
+        /// The built-in tag, when this finding is about one. `nil` for a
+        /// custom behaviour, which is what the surfaces that key on a
+        /// `BehaviorTag` need to be told rather than left to assume.
+        var tag: BehaviorTag? { behavior.builtIn }
 
         var delta: Double { pairDeltaMedian }
 
@@ -382,12 +404,15 @@ struct JournalCorrelator {
     /// Runs every tag × metric pair through matched-pair comparison, keeping
     /// only findings that clear both the sample-size and effect-size bars.
     /// Sorted by magnitude, strongest first.
-    func findings(from observations: [Observation]) -> [Finding] {
+    func findings(
+        from observations: [Observation],
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> [Finding] {
         var results: [Finding] = []
 
-        for tag in BehaviorTag.allCases {
+        for behavior in catalog.analysable {
             for metric in Metric.allCases {
-                guard let pairs = matchedPairs(tag: tag, metric: metric, observations: observations),
+                guard let pairs = matchedPairs(behavior: behavior, metric: metric, observations: observations),
                       pairs.count >= Self.minimumMatchedPairs else { continue }
 
                 let taggedValues = pairs.map(\.exposedValue)
@@ -405,7 +430,9 @@ struct JournalCorrelator {
                 let ci = Statistics.pairedBootstrapCI(deltas: pairDeltas)
 
                 results.append(Finding(
-                    tag: tag,
+                    behavior: behavior,
+                    label: catalog.label(for: behavior),
+                    symbol: catalog.symbol(for: behavior),
                     metric: metric,
                     taggedMedian: taggedMedian,
                     matchedMedian: matchedMedian,
@@ -423,9 +450,13 @@ struct JournalCorrelator {
     }
 
     struct LearningTag: Identifiable, Hashable {
-        let tag: BehaviorTag
+        let behavior: BehaviorID
+        let label: String
+        let symbol: String
         let loggedNights: Int
-        var id: String { tag.rawValue }
+        var id: String { behavior.identifier }
+        /// The built-in tag, for the surfaces that still key on one.
+        var tag: BehaviorTag? { behavior.builtIn }
         var remainingNights: Int { max(0, JournalCorrelator.minimumMatchedPairs - loggedNights) }
         var progress: Double { min(1, Double(loggedNights) / Double(JournalCorrelator.minimumMatchedPairs)) }
     }
@@ -434,17 +465,35 @@ struct JournalCorrelator {
     /// comparison yet -- the "still learning" tab, so logging a behaviour
     /// once shows *something* happening rather than silence until the
     /// threshold is cleared.
-    func stillLearning(from observations: [Observation]) -> [LearningTag] {
-        let found = Set(findings(from: observations).map(\.tag))
-        var counts: [BehaviorTag: Int] = [:]
+    func stillLearning(
+        from observations: [Observation],
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> [LearningTag] {
+        let found = Set(findings(from: observations, catalog: catalog).map(\.behavior))
+        // Counted from the answers, not from the legacy tag set. The tag set
+        // only ever held built-ins, so counting it left every custom
+        // behaviour at zero logged nights however diligently it had been
+        // recorded -- silence indistinguishable from "you have never used
+        // this", on the one screen whose whole job is to show progress.
+        var counts: [BehaviorID: Int] = [:]
         for observation in observations {
-            for tag in observation.tags {
-                counts[tag, default: 0] += 1
+            for behavior in catalog.analysable
+            where observation.exposureState(for: behavior) == .yes {
+                counts[behavior, default: 0] += 1
             }
         }
         return counts
-            .filter { tag, count in count > 0 && count < Self.minimumMatchedPairs && !found.contains(tag) }
-            .map { LearningTag(tag: $0.key, loggedNights: $0.value) }
+            .filter { behavior, count in
+                count > 0 && count < Self.minimumMatchedPairs && !found.contains(behavior)
+            }
+            .map {
+                LearningTag(
+                    behavior: $0.key,
+                    label: catalog.label(for: $0.key),
+                    symbol: catalog.symbol(for: $0.key),
+                    loggedNights: $0.value
+                )
+            }
             .sorted { $0.loggedNights > $1.loggedNights }
     }
 
@@ -461,30 +510,37 @@ struct JournalCorrelator {
     /// still a real finding by `findings`' own thresholds, just a post-hoc
     /// one. `findings` itself is unchanged: every metric that cleared the
     /// bar is still there for a screen that shows them all.
-    func topFindingPerTag(from observations: [Observation]) -> [Finding] {
-        let all = findings(from: observations)
-        var chosen: [BehaviorTag: Finding] = [:]
+    func topFindingPerTag(
+        from observations: [Observation],
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> [Finding] {
+        let all = findings(from: observations, catalog: catalog)
+        var chosen: [BehaviorID: Finding] = [:]
         for finding in all {
             let isPrimary = finding.metric == Metric.primaryForAssociations
-            if let existing = chosen[finding.tag],
+            if let existing = chosen[finding.behavior],
                existing.metric == Metric.primaryForAssociations || !isPrimary {
                 continue
             }
-            chosen[finding.tag] = finding
+            chosen[finding.behavior] = finding
         }
-        // `all` is strongest-first; keeping its order ranks tags by the
+        // `all` is strongest-first; keeping its order ranks behaviours by the
         // finding actually shown.
-        return all.filter { chosen[$0.tag]?.id == $0.id }
+        return all.filter { chosen[$0.behavior]?.id == $0.id }
     }
 
     /// The largest matched-pair pool any metric currently offers for `tag`
     /// -- what a withdrawn association's sample size should say, since "how
     /// many comparable nights are there now" is the question `findings`
     /// asks before it will report anything.
-    func matchedPairCount(for tag: BehaviorTag, observations: [Observation]) -> Int {
+    func matchedPairCount(for behavior: BehaviorID, observations: [Observation]) -> Int {
         Metric.allCases
-            .map { matchedPairs(tag: tag, metric: $0, observations: observations)?.count ?? 0 }
+            .map { matchedPairs(behavior: behavior, metric: $0, observations: observations)?.count ?? 0 }
             .max() ?? 0
+    }
+
+    func matchedPairCount(for tag: BehaviorTag, observations: [Observation]) -> Int {
+        matchedPairCount(for: tag.behaviorID, observations: observations)
     }
 
     /// Behaviours that actually got a fair test -- enough comparable nights
@@ -502,14 +558,17 @@ struct JournalCorrelator {
     /// residual case is rare enough in practice, and correctly falls back to
     /// simply not appearing in any tab, matching this method's prior
     /// (unhandled) behaviour rather than a regression.
-    func testedNoEffect(from observations: [Observation]) -> [BehaviorTag] {
-        let foundTags = Set(findings(from: observations).map(\.tag))
-        let learningTags = Set(stillLearning(from: observations).map(\.tag))
+    func testedNoEffect(
+        from observations: [Observation],
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> [BehaviorID] {
+        let found = Set(findings(from: observations, catalog: catalog).map(\.behavior))
+        let learning = Set(stillLearning(from: observations, catalog: catalog).map(\.behavior))
 
-        return BehaviorTag.allCases.filter { tag in
-            guard !foundTags.contains(tag), !learningTags.contains(tag) else { return false }
+        return catalog.analysable.filter { behavior in
+            guard !found.contains(behavior), !learning.contains(behavior) else { return false }
             return Metric.allCases.contains { metric in
-                (matchedPairs(tag: tag, metric: metric, observations: observations)?.count ?? 0)
+                (matchedPairs(behavior: behavior, metric: metric, observations: observations)?.count ?? 0)
                     >= Self.minimumMatchedPairs
             }
         }
@@ -533,19 +592,19 @@ struct JournalCorrelator {
     /// numbers are. Sleep debt and bedtime are soft, nearest-distance
     /// matches; a night more than a fairly loose tolerance away is treated
     /// as no match at all rather than forced into a bad pair.
-    private func matchedPairs(tag: BehaviorTag, metric: Metric, observations: [Observation]) -> [MatchedPair]? {
-        let exposed = observations.filter { $0.exposureState(for: tag) == .yes }
+    private func matchedPairs(behavior: BehaviorID, metric: Metric, observations: [Observation]) -> [MatchedPair]? {
+        let exposed = observations.filter { $0.exposureState(for: behavior) == .yes }
         guard exposed.count >= Self.minimumMatchedPairs else { return nil }
 
         // `.no` only, never `.unknown` -- an un-journaled night has told
         // Zoon nothing about whether this tag applied, so it can't stand in
         // as a confident comparison night. See `ExposureState`'s doc comment.
-        var pool = observations.filter { $0.exposureState(for: tag) == .no }
+        var pool = observations.filter { $0.exposureState(for: behavior) == .no }
         var pairs: [MatchedPair] = []
 
         for night in exposed.sorted(by: { $0.date < $1.date }) {
             guard let exposedValue = metric.value(from: night) else { continue }
-            guard let (index, distance) = bestMatch(for: night, in: pool, confounderTag: tag) else { continue }
+            guard let (index, distance) = bestMatch(for: night, in: pool, under: behavior) else { continue }
             guard distance < 3.0 else { continue }
             let candidate = pool[index]
             guard let candidateValue = metric.value(from: candidate) else { continue }
@@ -557,16 +616,18 @@ struct JournalCorrelator {
         return pairs
     }
 
-    /// `confounderTag` is the behaviour being tested -- travel/illness are
-    /// skipped as hard constraints when *they're* the tag under test,
-    /// otherwise every exposed night (travel = true) could only ever match
-    /// against pool nights that are by definition travel = false, producing
-    /// zero matches for those two tags specifically.
+    /// `behavior` is the one being tested -- travel/illness are skipped as
+    /// hard constraints when *they* are under test, otherwise every exposed
+    /// night (travel = true) could only ever match against pool nights that
+    /// are by definition travel = false, producing zero matches for those
+    /// two specifically. A custom behaviour is never travel or illness, so
+    /// both constraints always apply to it.
     private func bestMatch(
         for night: Observation,
         in pool: [Observation],
-        confounderTag: BehaviorTag
+        under behavior: BehaviorID
     ) -> (index: Int, distance: Double)? {
+        let confounderTag = behavior.builtIn
         var best: (index: Int, distance: Double)?
 
         for (index, candidate) in pool.enumerated() {
