@@ -78,4 +78,43 @@ enum EventKitCommitmentReader {
         return .unavailable
         #endif
     }
+
+    /// The first morning commitment on each of the next `days` days, keyed by
+    /// the start of the local day it falls on.
+    ///
+    /// For the Sleep Runway, which needs a horizon rather than one night.
+    /// Read live and never persisted: `StoredCommitment` deliberately holds
+    /// exactly one dated record with expiry semantics, and a second store
+    /// keyed by day would be a second thing that can go stale — which is the
+    /// bug that model exists to prevent. A planning screen can afford to ask
+    /// EventKit when it appears.
+    ///
+    /// Still only start times. No titles, no attendees, nothing persisted.
+    static func mornings(
+        through days: Int,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) async -> [Date: Date] {
+        #if canImport(EventKit)
+        let store = EKEventStore()
+        guard #available(iOS 17.0, *),
+              let granted = try? await store.requestFullAccessToEvents(), granted,
+              let firstMorning = PlanningDay.morning(after: now, calendar: calendar)?.start,
+              let end = calendar.date(byAdding: .day, value: days, to: firstMorning)
+        else { return [:] }
+
+        let predicate = store.predicateForEvents(withStart: firstMorning, end: end, calendars: nil)
+        var earliest: [Date: Date] = [:]
+        for event in store.events(matching: predicate) {
+            guard !event.isAllDay, let start = event.startDate as Date? else { continue }
+            guard calendar.component(.hour, from: start) < ZoonTomorrow.latestMorningEventHour else { continue }
+            let day = calendar.startOfDay(for: start)
+            if let existing = earliest[day], existing <= start { continue }
+            earliest[day] = start
+        }
+        return earliest
+        #else
+        return [:]
+        #endif
+    }
 }

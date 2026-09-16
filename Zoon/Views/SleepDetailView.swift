@@ -35,6 +35,13 @@ struct SleepDetailView: View {
                 hypnogramCard
                 AwakeningInspectorCard(night: context.night, sounds: soundEventStore.recentEvents)
                 storyPreviewCard
+                if let opportunity = SleepOpportunity.make(
+                    night: context.night,
+                    needMinutes: context.sleepNeed.totalNeedMinutes,
+                    history: coordinator.recentNights.filter { $0.date < context.night.date }
+                ) {
+                    SleepOpportunityCard(opportunity: opportunity)
+                }
                 breakdownCard
                 RelatedReading(placement: .sleepStages, title: "What the stages mean")
             }

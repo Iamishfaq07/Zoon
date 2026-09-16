@@ -6,6 +6,10 @@ struct ZoonTomorrowView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
     @State private var selectedID: String?
+    /// Read live when the screen appears and never persisted: one dated
+    /// stored record with expiry semantics is the model, and a second store
+    /// keyed by day would be a second thing that can go stale.
+    @State private var horizonCommitments: [Date: Date] = [:]
 
     var body: some View {
         ScrollView {
@@ -57,6 +61,10 @@ struct ZoonTomorrowView: View {
                     )
                 }
 
+                if let runway {
+                    SleepRunwayCard(plan: runway)
+                }
+
                 timePicker
                 readyBuffer
                 calendarToggle
@@ -72,8 +80,12 @@ struct ZoonTomorrowView: View {
                 // Switching Calendar off forgets the borrowed fact. The
                 // manual time is the person's own and stays.
                 preferences.forgetCalendarCommitment()
+                horizonCommitments = [:]
                 return
             }
+            horizonCommitments = await EventKitCommitmentReader.mornings(
+                through: SleepRunway.horizonDays
+            )
             switch await EventKitCommitmentReader.firstTomorrow() {
             case let .read(commitment):
                 // Including `nil`. "Nothing tomorrow" is an answer, and
@@ -89,6 +101,21 @@ struct ZoonTomorrowView: View {
     }
 
     private var commitment: CommitmentResolver.Outcome { preferences.commitment() }
+
+    /// The week ahead. Tomorrow answers one night; this answers where the
+    /// schedule stops leaving room, while there is still time to move
+    /// something.
+    private var runway: SleepRunway.Plan? {
+        SleepRunway.build(
+            nights: coordinator.recentNights,
+            sleepNeedMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes ?? preferences.sleepGoalMinutes,
+            sleepDebtMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
+            commitments: horizonCommitments,
+            manual: preferences.manualCommitment,
+            obligationWeekdays: preferences.obligationWeekdays,
+            readyBufferMinutes: preferences.morningReadyBufferMinutes
+        )
+    }
 
     private var plan: ZoonTomorrow.Plan? {
         ZoonTomorrow.plan(

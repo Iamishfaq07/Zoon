@@ -267,7 +267,7 @@ struct JournalCorrelator {
         /// association claim is not allowed to sound like a causal one.
         var plainSentence: String {
             FindingSentence.association(
-                behaviour: tag.label,
+                behaviour: label,
                 outcome: metric.shortLabel,
                 isImprovement: isImprovement
             )
@@ -284,7 +284,7 @@ struct JournalCorrelator {
         var headline: String {
             let direction = isImprovement ? "better" : "worse"
             let magnitude = abs(percentChange)
-            return "\(tag.label): \(String(format: "%.0f%%", magnitude)) \(direction) \(metric.shortLabel)"
+            return "\(label): \(String(format: "%.0f%%", magnitude)) \(direction) \(metric.shortLabel)"
         }
 
         var detail: String {
@@ -293,7 +293,7 @@ struct JournalCorrelator {
                 rangeClause = " 95% range: \(metric.format(lower)) to \(metric.format(upper))."
             }
             return """
-            Across \(matchedPairCount) nights you logged \(tag.label.lowercased()), matched against \
+            Across \(matchedPairCount) nights you logged \(label.lowercased()), matched against \
             comparable nights without it (similar weekday/weekend, sleep debt, and bedtime), \
             \(metric.shortLabel) differed by \(metric.format(delta)) on the typical matched pair.\(rangeClause) \
             \(confidence.label). An association in your data, not proof of cause.

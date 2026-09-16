@@ -82,7 +82,14 @@ enum Fixture {
         /// Anchors the night on a specific wake day instead of counting back
         /// from now, so a test can sit a run of nights across a known DST
         /// boundary or a known flight.
-        wakeDay: Date? = nil
+        wakeDay: Date? = nil,
+        /// Whether the source reported a time in bed of its own. `false` --
+        /// measured -- keeps every existing caller unchanged. Apple Watch
+        /// alone never reports one, and a night whose window was inferred
+        /// from the sleep period has an efficiency that is an artefact of
+        /// that inference rather than a measurement of anything, which is
+        /// the distinction `SleepOpportunity` refuses to attribute across.
+        timeInBedIsEstimated: Bool = false
     ) -> SleepNightFeatures {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -112,6 +119,7 @@ enum Fixture {
             bedtime: bedtime,
             wakeTime: wakeTime,
             timeInBedMinutes: timeInBedMinutes,
+            timeInBedIsEstimated: timeInBedIsEstimated,
             timeAsleepMinutes: timeAsleepMinutes,
             sleepEfficiencyPercent: timeInBedMinutes > 0
                 ? min(100, timeAsleepMinutes / timeInBedMinutes * 100) : 0,
