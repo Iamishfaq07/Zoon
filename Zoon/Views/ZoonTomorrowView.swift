@@ -61,6 +61,16 @@ struct ZoonTomorrowView: View {
                     )
                 }
 
+                if let plan {
+                    WhatIfTonightCard(
+                        plan: plan,
+                        needMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes
+                            ?? preferences.sleepGoalMinutes,
+                        shortfallMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
+                        napMinutesToday: naps.minutes(on: .now)
+                    )
+                }
+
                 if let runway {
                     SleepRunwayCard(plan: runway)
                 }
