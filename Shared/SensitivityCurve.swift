@@ -364,20 +364,28 @@ enum SensitivityCurve {
         ]
     )
 
-    /// Dimensions the brief asks for that cannot be built from what is stored,
-    /// named so the gap is visible in the app rather than only in a document.
-    static let unavailable: [(behaviour: String, reason: String)] = [
-        (
-            "Caffeine timing",
-            "Zoon records how much late caffeine there was, not the clock time of each drink."
+    /// A dimension the brief asks for that cannot be built from what is
+    /// stored. A named type rather than a tuple because the view iterates
+    /// these, and Swift has no key paths into a tuple to identify them by.
+    struct Gap: Hashable, Sendable, Identifiable {
+        let behaviour: String
+        let reason: String
+        var id: String { behaviour }
+    }
+
+    /// Named so the gap is visible in the app rather than only in a document.
+    static let unavailable: [Gap] = [
+        Gap(
+            behaviour: "Caffeine timing",
+            reason: "Zoon records how much late caffeine there was, not the clock time of each drink."
         ),
-        (
-            "Light timing",
-            "Daylight is stored as a total for the day, so Zoon cannot tell morning light from evening light."
+        Gap(
+            behaviour: "Light timing",
+            reason: "Daylight is stored as a total for the day, so Zoon cannot tell morning light from evening light."
         ),
-        (
-            "Workout load",
-            "Workout intensity is not carried on a night, only how long before bed the last one ended."
+        Gap(
+            behaviour: "Workout load",
+            reason: "Workout intensity is not carried on a night, only how long before bed the last one ended."
         )
     ]
 }

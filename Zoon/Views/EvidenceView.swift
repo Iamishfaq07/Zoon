@@ -36,6 +36,17 @@ struct EvidenceView: View {
 
                 sensorTruthLink.entrance(0)
 
+                // §22, and the brief asks for it here: a dose-response band is
+                // evidence about a behaviour, so it belongs on the screen
+                // organised by how much to believe things. Each curve is
+                // absent entirely until it has the nights to support it.
+                ForEach(Array(coordinator.sensitivityCurves().enumerated()), id: \.element.dose) {
+                    index, curve in
+                    SensitivityCurveCard(curve: curve).entrance(index)
+                }
+
+                SensitivityGapsCard().entrance(1)
+
                 ledgers(observations: observations, findings: findings)
                     .entrance(1)
 

@@ -1141,6 +1141,7 @@
 		FAE6A235B1033EAF2CD2DFD5 /* SleepDayKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB0716483B53D50F81083840 /* SleepDayKey.swift */; };
 		FB30B37FCD53870A2B8E5230 /* NapCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4980E3BEBDBC7753D6697D62 /* NapCoach.swift */; };
 		FB653BDD763662866376DE9F /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
+		FBBD796FE295964A55CC063A /* SensitivityCurveCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9BA9E9BE6A9CC976CA5E86 /* SensitivityCurveCard.swift */; };
 		FC190B60CF0DA792E57F648A /* CaffeineCutoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA6626DD8F329DC2CDC07427 /* CaffeineCutoff.swift */; };
 		FC1D90B78CCBC21C380EB178 /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
 		FC28D6C2000CED4FDC8C414A /* HealthRadar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03508B538C62AC65FD8AD914 /* HealthRadar.swift */; };
@@ -1285,6 +1286,7 @@
 		1A0585470E2FCD7DD8379563 /* fan.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "fan.mp3"; sourceTree = "<group>"; };
 		1A3E015E3D97D277509CFAF8 /* EvidenceHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceHistoryView.swift"; sourceTree = "<group>"; };
 		1A572D9FB17470E31AB20EEE /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MockData.swift"; sourceTree = "<group>"; };
+		1A9BA9E9BE6A9CC976CA5E86 /* SensitivityCurveCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensitivityCurveCard.swift"; sourceTree = "<group>"; };
 		1AF6BFEAF25ED5145D61FB79 /* SleepExperimentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepExperimentStore.swift"; sourceTree = "<group>"; };
 		1AF7A821884D28359F2AEB46 /* ZoonTomorrowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonTomorrowView.swift"; sourceTree = "<group>"; };
 		1B7019651EFEC9BBAB163A15 /* RecoveryConfidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryConfidenceTests.swift"; sourceTree = "<group>"; };
@@ -1931,6 +1933,7 @@
 				87660F95EBEBDD0369FCE858,
 				58CD5E812FA0AEA96478E500,
 				B330742BC93A341EC2474419,
+				1A9BA9E9BE6A9CC976CA5E86,
 				44CC139890F8A8D2060790A0,
 				E0CF402DBC021FA713DAE344,
 				ECE30B82E446955CA1BDB5BB,
@@ -3113,6 +3116,7 @@
 				4967E84F22018D4D19177B7A,
 				8EC2A1F4100DD6A4636D2A36,
 				18EDFF1FB2B8773118D410AC,
+				FBBD796FE295964A55CC063A,
 				8020AE370E8E0742E6271DAB,
 				65B6BC14376BEF5569F00978,
 				C7D2DEF7B9FDA579511A6D4E,

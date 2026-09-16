@@ -2298,6 +2298,80 @@ final class SleepDataCoordinator {
     /// visible omission at one layer instead of a silent one at nine.
     var behaviorCatalog: BehaviorCatalog { CustomBehaviorStore.shared.catalog }
 
+    /// §22. The sensitivity curves this person has enough nights to support.
+    ///
+    /// Built on demand rather than stored: the inputs are `recentNights` and
+    /// the nap store, both already in memory, and a cached copy would be one
+    /// more thing that can go stale behind a night arriving late.
+    ///
+    /// Only the four dimensions carrying a real quantity are attempted --
+    /// `SensitivityCurve` says why -- and each one is dropped entirely rather
+    /// than shown thin when it cannot clear its own thresholds.
+    func sensitivityCurves() -> [SensitivityCurve.Curve] {
+        let nights = recentNights
+        guard !nights.isEmpty else { return [] }
+
+        /// A night's value for whichever outcome is being read. `Outcome` is
+        /// `Hashable`, so this matches the presets themselves rather than
+        /// dispatching on one of their strings.
+        func outcome(_ night: SleepNightFeatures, _ kind: SensitivityCurve.Outcome) -> Double? {
+            if kind == .sleepOnset { return night.sleepLatencyMinutes }
+            if kind == .asleepMinutes { return night.timeAsleepMinutes }
+            return Double(night.wakeCount)
+        }
+
+        func curve(
+            dose: SensitivityCurve.Dose,
+            outcome kind: SensitivityCurve.Outcome,
+            value: (SleepNightFeatures) -> Double?
+        ) -> SensitivityCurve.Curve? {
+            let observations = nights.compactMap { night -> SensitivityCurve.Observation? in
+                guard let dose = value(night), let result = outcome(night, kind) else { return nil }
+                return SensitivityCurve.Observation(dose: dose, outcome: result)
+            }
+            return SensitivityCurve.build(dose: dose, outcome: kind, observations: observations)
+        }
+
+        /// The longest nap credited to the day before a night, and when it
+        /// started. The longest rather than the total: two twenty-minute naps
+        /// are not one forty-minute nap, and adding them would put a day in a
+        /// band neither nap belongs to.
+        func longestNap(before night: SleepNightFeatures) -> DateInterval? {
+            napIntervals(before: night.date, timeZone: night.timeZone)
+                .max { $0.duration < $1.duration }
+        }
+
+        var calendar = Calendar.current
+
+        return [
+            // Caffeine and workouts read straight off the night.
+            curve(dose: SensitivityCurve.lateCaffeine, outcome: .sleepOnset) {
+                // A night with no late caffeine recorded is a real zero here
+                // *only* when Lifestyle Insights was on to record it. Without
+                // it the field is absent, and absent is not none.
+                $0.lateCaffeineMg
+            },
+            curve(dose: SensitivityCurve.workoutTiming, outcome: .sleepOnset) {
+                $0.lastWorkoutHoursBeforeBed
+            },
+            // Naps come from the nap store, keyed to the day before the night.
+            //
+            // The two nap curves treat a napless day differently on purpose.
+            // For duration, no nap is a real zero and is the control band --
+            // that is the comparison the curve exists to make. For timing,
+            // a napless day has no nap *hour* at all, and putting it in a band
+            // would be inventing one, so it drops out.
+            curve(dose: SensitivityCurve.napDuration, outcome: .asleepMinutes) { night in
+                longestNap(before: night).map { $0.duration / 60 } ?? 0
+            },
+            curve(dose: SensitivityCurve.napTiming, outcome: .sleepOnset) { night in
+                guard let nap = longestNap(before: night) else { return nil }
+                calendar.timeZone = night.timeZone
+                return Statistics.clockMinutes(nap.start, calendar: calendar) / 60
+            }
+        ].compactMap { $0 }
+    }
+
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
         let answersByNightKey = behaviors.allAnswersByNightKey()
