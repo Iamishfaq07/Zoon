@@ -58,6 +58,7 @@ struct ZoonTomorrowView: View {
                 }
 
                 timePicker
+                readyBuffer
                 calendarToggle
             }
             .padding(.horizontal)
@@ -67,30 +68,36 @@ struct ZoonTomorrowView: View {
         .navigationTitle("Tomorrow")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: preferences.calendarAccessEnabled) {
-            guard preferences.calendarAccessEnabled else { return }
-            if let commitment = await EventKitCommitmentReader.firstTomorrow() {
-                preferences.setTomorrowEvent(date: commitment.start)
+            guard preferences.calendarAccessEnabled else {
+                // Switching Calendar off forgets the borrowed fact. The
+                // manual time is the person's own and stays.
+                preferences.forgetCalendarCommitment()
+                return
+            }
+            switch await EventKitCommitmentReader.firstTomorrow() {
+            case let .read(commitment):
+                // Including `nil`. "Nothing tomorrow" is an answer, and
+                // recording it is what stops yesterday's meeting surviving
+                // into a day it was never on.
+                preferences.recordCalendarRead(commitment)
+            case .unavailable:
+                // Permission withdrawn or EventKit unreachable. Zoon did not
+                // look, so it may not assert what it last saw either.
+                preferences.forgetCalendarCommitment()
             }
         }
     }
 
+    private var commitment: CommitmentResolver.Outcome { preferences.commitment() }
+
     private var plan: ZoonTomorrow.Plan? {
-        let event: ZoonTomorrow.Event?
-        if preferences.tomorrowEventEnabled {
-            event = ZoonTomorrow.Event(
-                start: preferences.tomorrowEventDate(),
-                isAllDay: false,
-                source: .manual
-            )
-        } else {
-            event = nil
-        }
-        return ZoonTomorrow.plan(
-            event: event,
+        ZoonTomorrow.plan(
+            event: commitment.event,
             nights: coordinator.recentNights,
             sleepNeedMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes ?? preferences.sleepGoalMinutes,
             sleepDebtMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
-            napMinutesToday: naps.minutes(on: .now)
+            napMinutesToday: naps.minutes(on: .now),
+            readyBufferMinutes: preferences.morningReadyBufferMinutes
         )
     }
 
@@ -115,6 +122,35 @@ struct ZoonTomorrowView: View {
         .glassCard()
     }
 
+    /// Getting-ready time, which used to be a fifty-minute constant inside
+    /// the planner. It is a fact about this person's morning — commute,
+    /// shower, children — not about physiology, so it is theirs to set.
+    private var readyBuffer: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(title: "Getting ready takes me", systemImage: "figure.walk")
+            Stepper(
+                value: Binding(
+                    get: { preferences.morningReadyBufferMinutes },
+                    set: { preferences.morningReadyBufferMinutes = $0 }
+                ),
+                in: ZoonTomorrow.readyBufferRange,
+                step: 5
+            ) {
+                Text(preferences.morningReadyBufferMinutes < 1
+                     ? "No time needed"
+                     : SleepNightFeatures.formatMinutes(preferences.morningReadyBufferMinutes))
+                    .font(Theme.numeral(20))
+                    .monospacedDigit()
+            }
+            .onChange(of: preferences.morningReadyBufferMinutes) { _, _ in Haptics.select() }
+            Text("Zoon wakes you this long before the commitment. It is your estimate, not a physiological constant.")
+                .font(Theme.evidence)
+                .foregroundStyle(Theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .glassCard()
+    }
+
     private var calendarToggle: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: "Calendar", systemImage: "calendar")
@@ -126,7 +162,28 @@ struct ZoonTomorrowView: View {
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
+            if preferences.calendarAccessEnabled {
+                Text(calendarStatus)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .glassCard()
+    }
+
+    /// What Zoon currently holds from Calendar, in words.
+    ///
+    /// Worth showing because the interesting state is the empty one: a person
+    /// who sees "no qualifying event" understands why the plan fell back to
+    /// their own time, where silence would read as Zoon having ignored the
+    /// calendar.
+    private var calendarStatus: String {
+        guard case let .calendar(event) = commitment else {
+            return preferences.calendarCommitmentRecord == nil
+                ? "No qualifying morning event found for tomorrow. Tonight's plan is using the time you set."
+                : "The last event Zoon read no longer applies to tomorrow, so it is not being used."
+        }
+        return "Using tomorrow's first commitment at \(event.start.formatted(date: .omitted, time: .shortened))."
     }
 }

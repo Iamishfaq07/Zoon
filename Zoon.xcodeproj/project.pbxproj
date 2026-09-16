@@ -117,6 +117,7 @@
 		1357713220C69D4CA6CFAC21 /* SleepStreakEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B0A0EC5506FF9F69067618 /* SleepStreakEngine.swift */; };
 		136B301DD045AB52B80281FC /* WeeklyWrappedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F39A93CBDC0796684C98A6E4 /* WeeklyWrappedCard.swift */; };
 		1392657BC356A10710540C9C /* ZoonWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F963BC4B2CA2A8F04DCD42 /* ZoonWidgetBundle.swift */; };
+		152A3ACED5323D7DA3AC34CE /* CommitmentResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DD2CE6F9C1672F401886F96 /* CommitmentResolverTests.swift */; };
 		154E2FFCB3D5DD24C50D2651 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A572D9FB17470E31AB20EEE /* MockData.swift */; };
 		1571D7AF395B12F0076834B5 /* BehaviorObservationStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA1729029D787AC916B77DF /* BehaviorObservationStoreTests.swift */; };
 		15C8E559302E2E0D768BC27D /* NapLearningCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5130D7DF163DADAAD1BDB9A5 /* NapLearningCard.swift */; };
@@ -1509,6 +1510,7 @@
 		9D6BA693E9476B3989FEB75F /* ScheduleReconciliationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScheduleReconciliationTests.swift"; sourceTree = "<group>"; };
 		9DAF6E7CFD47A57165A1556D /* HeartRateZoneIntegratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HeartRateZoneIntegratorTests.swift"; sourceTree = "<group>"; };
 		9DCC204477232E68E017061A /* SleepSourceArbitration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSourceArbitration.swift"; sourceTree = "<group>"; };
+		9DD2CE6F9C1672F401886F96 /* CommitmentResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CommitmentResolverTests.swift"; sourceTree = "<group>"; };
 		9DF8E12D97498DC7515AA69D /* PersonalLearningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersonalLearningView.swift"; sourceTree = "<group>"; };
 		9F2A40EEF1B872BD18832EB5 /* CoachEvidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoachEvidenceTests.swift"; sourceTree = "<group>"; };
 		9F6E6954AE9E93E1873800C5 /* StatisticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StatisticsTests.swift"; sourceTree = "<group>"; };
@@ -2051,6 +2053,7 @@
 				FFBF5D7530B48025E6C386CD,
 				E7CAE69D8521F6EE716F7F7D,
 				8893FEADB992DD685D86F75E,
+				9DD2CE6F9C1672F401886F96,
 				64CF3AFB3F90453076AA3237,
 				706F052B52B73EA14F1B1061,
 				8B737B1F7FDB18E09C5DA47F,
@@ -3338,6 +3341,7 @@
 				5314F45E4500BE469037BD99,
 				CE43890CC17CA33E3C46211B,
 				9C8709E92001899175705B2E,
+				152A3ACED5323D7DA3AC34CE,
 				DD3E19CEF586A462AD026253,
 				18078929F1E541BEC6DDDA87,
 				4E7EB3F8D27E76CE7A4117CB,

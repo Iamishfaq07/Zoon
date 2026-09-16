@@ -44,6 +44,8 @@ final class UserPreferences {
         static let tomorrowEventEnabled = "zoon.pref.tomorrowEventEnabled"
         static let tomorrowHour = "zoon.pref.tomorrowHour"
         static let tomorrowMinute = "zoon.pref.tomorrowMinute"
+        static let calendarCommitmentRecord = "zoon.pref.calendarCommitmentRecord"
+        static let morningReadyBufferMinutes = "zoon.pref.morningReadyBufferMinutes"
     }
 
     private let defaults: UserDefaults
@@ -258,13 +260,83 @@ final class UserPreferences {
         didSet { defaults.set(tomorrowMinute, forKey: Key.tomorrowMinute) }
     }
 
-    func tomorrowEventDate(now: Date = .now, calendar: Calendar = .current) -> Date {
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
-        return calendar.date(
-            bySettingHour: tomorrowHour, minute: tomorrowMinute, second: 0, of: tomorrow
-        ) ?? tomorrow
+    /// Minutes between waking and the morning commitment, so getting ready
+    /// is possible.
+    ///
+    /// Fifty was a constant in `ZoonTomorrow`, which quietly made a claim
+    /// about the person: that showering, eating and travelling take them the
+    /// same fifty minutes it takes everyone else. It is a preference, not
+    /// physiology, and someone who works from home and someone with a
+    /// forty-minute commute should not be handed the same wake time.
+    var morningReadyBufferMinutes: Double {
+        didSet { defaults.set(morningReadyBufferMinutes, forKey: Key.morningReadyBufferMinutes) }
     }
 
+    /// The last Calendar read Zoon kept, with the context that says when it
+    /// expires. `nil` means "no qualifying event", which is a real answer and
+    /// distinct from "not looked".
+    ///
+    /// Stored as JSON rather than as loose hour/minute scalars on purpose:
+    /// the whole `StoredCommitment` — instant, identifier, fetch time,
+    /// timezone — is what makes expiry decidable, and splitting it back into
+    /// scalars is exactly the bug this replaced.
+    private(set) var calendarCommitmentRecord: StoredCommitment? {
+        didSet {
+            if let calendarCommitmentRecord,
+               let data = try? JSONEncoder().encode(calendarCommitmentRecord) {
+                defaults.set(data, forKey: Key.calendarCommitmentRecord)
+            } else {
+                defaults.removeObject(forKey: Key.calendarCommitmentRecord)
+            }
+        }
+    }
+
+    /// The standing morning time the person set, when they have asked Zoon to
+    /// protect one.
+    var manualCommitment: ManualCommitment? {
+        tomorrowEventEnabled ? ManualCommitment(hour: tomorrowHour, minute: tomorrowMinute) : nil
+    }
+
+    /// Which commitment tonight's plan should be built around.
+    func commitment(now: Date = .now, calendar: Calendar = .current) -> CommitmentResolver.Outcome {
+        CommitmentResolver.resolve(
+            calendarRecord: calendarCommitmentRecord,
+            manual: manualCommitment,
+            now: now,
+            calendar: calendar
+        )
+    }
+
+    /// Records the result of a Calendar read.
+    ///
+    /// A read that found nothing *clears* the record. The version of this
+    /// that only ever wrote on success is the whole stale-commitment bug:
+    /// Tuesday's 8:30 meeting was stored as an hour and a minute, Wednesday's
+    /// read found nothing and wrote nothing, and 8:30 went on being asserted
+    /// as a Wednesday commitment that did not exist.
+    func recordCalendarRead(_ commitment: CalendarCommitment?, at date: Date = .now) {
+        calendarCommitmentRecord = commitment.map {
+            StoredCommitment(commitment: $0, fetchedAt: date)
+        }
+    }
+
+    /// Drops any stored Calendar commitment without touching the manual one.
+    ///
+    /// Used when Calendar access is switched off or permission is withdrawn:
+    /// the manual intent is the person's own and survives, the borrowed fact
+    /// does not.
+    func forgetCalendarCommitment() {
+        calendarCommitmentRecord = nil
+    }
+
+    /// Where the manual morning time lands on the morning being planned for.
+    func tomorrowEventDate(now: Date = .now, calendar: Calendar = .current) -> Date {
+        ManualCommitment(hour: tomorrowHour, minute: tomorrowMinute).start(now: now, calendar: calendar)
+            ?? now
+    }
+
+    /// Sets the *manual* commitment. Calendar reads no longer come through
+    /// here — they have their own record, with their own expiry.
     func setTomorrowEvent(date: Date, calendar: Calendar = .current) {
         tomorrowHour = calendar.component(.hour, from: date)
         tomorrowMinute = calendar.component(.minute, from: date)
@@ -662,6 +734,10 @@ final class UserPreferences {
         self.tomorrowHour = storedHour ?? 8
         let storedMinute = defaults.object(forKey: Key.tomorrowMinute) as? Int
         self.tomorrowMinute = storedMinute ?? 30
+        let storedBuffer = defaults.double(forKey: Key.morningReadyBufferMinutes)
+        self.morningReadyBufferMinutes = storedBuffer > 0 ? storedBuffer : ZoonTomorrow.readyBufferMinutes
+        self.calendarCommitmentRecord = (defaults.data(forKey: Key.calendarCommitmentRecord))
+            .flatMap { try? JSONDecoder().decode(StoredCommitment.self, from: $0) }
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: Key.appearance) ?? ""
         ) ?? .dark
@@ -728,6 +804,8 @@ final class UserPreferences {
         tomorrowEventEnabled = true
         tomorrowHour = 8
         tomorrowMinute = 30
+        morningReadyBufferMinutes = ZoonTomorrow.readyBufferMinutes
+        calendarCommitmentRecord = nil
         appearance = .dark
         displayName = ""
         age = nil
@@ -766,6 +844,8 @@ final class UserPreferences {
             Key.tomorrowEventEnabled,
             Key.tomorrowHour,
             Key.tomorrowMinute,
+            Key.morningReadyBufferMinutes,
+            Key.calendarCommitmentRecord,
             Key.appearance,
             Key.recoveryModeDate,
             Key.experimentDesign,

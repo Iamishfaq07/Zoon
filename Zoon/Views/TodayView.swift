@@ -441,15 +441,18 @@ struct TodayView: View {
     /// One construction, shared by the plan card and the energy section, so
     /// the window the plan names is the window the curve draws.
     private func tomorrowCard(_ context: DayContext) -> some View {
-        let event = preferences.tomorrowEventEnabled
-            ? ZoonTomorrow.Event(start: preferences.tomorrowEventDate(), isAllDay: false, source: .manual)
-            : nil
+        // One resolution, shared with the Tomorrow screen. Today used to
+        // build a `.manual` event out of the stored hour and minute whatever
+        // the actual source was, so a Calendar-derived commitment appeared
+        // here labelled as something the person had typed in.
+        let event = preferences.commitment().event
         let plan = ZoonTomorrow.plan(
             event: event,
             nights: coordinator.recentNights,
             sleepNeedMinutes: context.sleepNeed.totalNeedMinutes,
             sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
-            napMinutesToday: napMinutesToday
+            napMinutesToday: napMinutesToday,
+            readyBufferMinutes: preferences.morningReadyBufferMinutes
         )
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Tomorrow", systemImage: "sunrise.fill")
