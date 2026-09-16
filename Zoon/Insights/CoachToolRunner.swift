@@ -29,6 +29,7 @@ struct CoachToolRunner {
         case .getRecovery: recovery()
         case .getShortfall: shortfall()
         case .getEnergy: energy()
+        case .getMovement: movement()
         case .getTonight: tonight()
         case .getTomorrow: tomorrow()
         case .logCaffeine: logCaffeine(minutes: call.proposedMinutes)
@@ -55,6 +56,21 @@ struct CoachToolRunner {
         // measurement of the night that has happened; it is not a live
         // daytime state and this sentence must not imply it is.
         return "This morning's Recovery was \(recovery.percent) out of 100, \(recovery.band.label.lowercased()). \(recovery.confidence.label). It describes the night you had, not how you are right now."
+    }
+
+    /// §27's second consumer. Movement had exactly one surface -- a card on
+    /// Today -- against the seven places the brief names it should reach.
+    ///
+    /// Reads the snapshot and adds nothing: the sentence, the other measures
+    /// where they exist, and no inference about what the movement *means* for
+    /// sleep. The brief's line about steps never entering a score applies
+    /// here most of all, because a chat answer is exactly where a number would
+    /// quietly become a verdict.
+    private func movement() -> String? {
+        guard let snapshot = coordinator.todayMovement else { return nil }
+        var parts = [snapshot.sentence]
+        if let detail = snapshot.detail { parts.append(detail + ".") }
+        return parts.joined(separator: " ")
     }
 
     private func shortfall() -> String? {

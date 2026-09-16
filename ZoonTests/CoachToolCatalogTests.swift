@@ -126,13 +126,14 @@ final class CoachToolCatalogTests: XCTestCase {
         let utterances = [
             "How did I sleep last night?", "What's my recovery", "Am I behind on sleep",
             "What's my energy now", "When should I sleep", "What's my tomorrow plan",
-            "Log coffee at 5.", "Start a 25 minute nap",
+            "How much have I moved", "Log coffee at 5.", "Start a 25 minute nap",
             "Prepare me for my 9 AM meeting tomorrow", "Set my alarm"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
-        for kind in [CoachToolCatalog.Kind.getSleepScore, .getRecovery, .getShortfall,
-                     .getEnergy, .getTonight, .getTomorrow, .logCaffeine,
-                     .startNap, .prepareTomorrow, .setAlarm] {
+        // Over `allCases`, not a list beside this one: a tool nobody can ask
+        // for is a tool that does not exist, and a hand-written list would
+        // simply not mention it.
+        for kind in CoachToolCatalog.Kind.allCases {
             XCTAssertTrue(reached.contains(kind), "\(kind.rawValue) is unreachable")
         }
     }
@@ -152,18 +153,39 @@ final class CoachToolCatalogTests: XCTestCase {
     /// because the failure this guards against is a *new* tool being added
     /// to the enum and quietly defaulting to the read-only branch.
     func testEveryWritingToolRequiresConfirmation() {
-        let writes: [CoachToolCatalog.Kind] = [.logCaffeine, .startNap, .prepareTomorrow, .setAlarm]
-        for kind in writes {
+        // Iterating every case rather than a list of the writes, which is what
+        // this test's own reason for existing requires: a new tool that
+        // changes state has to be caught here, and it cannot be if the test
+        // has to be told about it first.
+        for kind in CoachToolCatalog.Kind.allCases where kind.changesState {
             XCTAssertTrue(kind.requiresConfirmation, "\(kind.rawValue) would run unasked")
         }
     }
 
     func testNoReadingToolAsksForConfirmation() {
-        let reads: [CoachToolCatalog.Kind] = [
-            .getSleepScore, .getRecovery, .getShortfall, .getEnergy, .getTonight, .getTomorrow
-        ]
-        for kind in reads {
-            XCTAssertFalse(kind.requiresConfirmation, "\(kind.rawValue) asks for nothing and should not prompt")
+        for kind in CoachToolCatalog.Kind.allCases where !kind.changesState {
+            XCTAssertFalse(
+                kind.requiresConfirmation,
+                "\(kind.rawValue) asks for nothing and should not prompt"
+            )
+        }
+    }
+
+    /// Movement is a read. It reports what a person already did today and
+    /// changes nothing, and §27 is explicit that none of it reaches a score.
+    func testMovementIsAReadingTool() {
+        XCTAssertFalse(CoachToolCatalog.Kind.getMovement.changesState)
+        XCTAssertFalse(CoachToolCatalog.Kind.getMovement.requiresConfirmation)
+    }
+
+    func testMovementIsReachableFromTheWordsPeopleUse() {
+        for utterance in [
+            "How many steps today", "How much have I moved", "Have I moved today",
+            "What's my movement today"
+        ] {
+            XCTAssertEqual(
+                CoachToolCatalog.interpret(utterance)?.kind, .getMovement, utterance
+            )
         }
     }
 

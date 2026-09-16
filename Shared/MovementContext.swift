@@ -1,10 +1,23 @@
 import Foundation
 
-/// Steps and active energy as context, never as a score input.
+/// Movement as context, never as a score input.
 ///
 /// Missing is not zero: a nil step count is "not recorded", not a sedentary
 /// day. The sentence compares *so far today* against *this weekday by this
 /// time*, so a Monday morning is not judged against a Saturday afternoon.
+///
+/// **The §27 line this must not cross.** The brief is explicit that steps do
+/// not go into Sleep Score or Recovery, and nothing here returns a number any
+/// score reads. `Snapshot` is a sentence, a confidence and the figures behind
+/// them; it is passed to screens and to the Coach, and to nothing that scores.
+///
+/// **What the refinement added.** The type carried `activeEnergyKcal` and then
+/// discarded it — there was a literal `_ = activeEnergyKcal` in the builder, so
+/// the field was on the struct, visible to callers, and part of no sentence.
+/// §27 names five inputs; this now reads four of them (steps, active energy,
+/// exercise minutes, workouts) and says which it has, rather than carrying
+/// them silently. Distance is the fifth and is deliberately absent: see
+/// `distanceNote`.
 enum MovementContext {
 
     struct Snapshot: Hashable, Sendable {
@@ -12,11 +25,63 @@ enum MovementContext {
         let typicalStepsByNow: Int?
         let percentVsTypical: Double?
         let activeEnergyKcal: Double?
+        /// Apple Exercise Minutes so far today.
+        var exerciseMinutes: Double?
+        /// Workouts logged today. Zero is a real observation here — unlike a
+        /// step count, "no workouts today" is something the store can say
+        /// positively — so this is not optional.
+        var workoutCount: Int = 0
         let weekday: Int
         let sentence: String
         let confidence: MetricConfidence
         let provenance: String
+
+        /// The other measures, as one line, or nothing when none were
+        /// recorded. Kept apart from `sentence` so a caller can show the
+        /// comparison without the inventory.
+        var detail: String? {
+            var parts: [String] = []
+            if let activeEnergyKcal, activeEnergyKcal >= 1 {
+                parts.append("\(Int(activeEnergyKcal.rounded())) kcal active")
+            }
+            if let exerciseMinutes, exerciseMinutes >= 1 {
+                parts.append("\(Int(exerciseMinutes.rounded())) exercise minutes")
+            }
+            if workoutCount > 0 {
+                parts.append(workoutCount.pluralized("workout"))
+            }
+            guard !parts.isEmpty else { return nil }
+            return parts.joined(separator: " · ")
+        }
+
+        /// The brief's second example shape: a qualitative line for a surface
+        /// with no room for figures — the Coach's answer, a driver row.
+        /// Returns `nil` rather than guessing when there is no comparison to
+        /// make, because "movement has been typical" and "we do not know" must
+        /// not read the same.
+        var shortLine: String? {
+            guard let percentVsTypical else { return nil }
+            let day = MovementContext.weekdayName(weekday)
+            if abs(percentVsTypical) < 0.08 {
+                return "Today's movement is about usual for a \(day)."
+            }
+            return percentVsTypical < 0
+                ? "Today's movement has been lower than your usual \(day)."
+                : "Today's movement has been higher than your usual \(day)."
+        }
     }
+
+    /// Why distance is not among the figures above.
+    ///
+    /// §27 lists walking/running distance, and HealthKit does carry it — but
+    /// on a phone it is derived from the same step stream already reported
+    /// here, scaled by an estimated stride. Printing both would show one
+    /// measurement twice and imply two independent readings agreed. Distance
+    /// becomes worth adding when it comes from a watch's own GPS, which is a
+    /// provenance Zoon does not currently distinguish.
+    static let distanceNote =
+        "Distance is not shown separately: on a phone it is estimated from the same steps above."
+
 
     /// The smallest typical step count a percentage may be stated against.
     ///
@@ -46,6 +111,8 @@ enum MovementContext {
         stepsSoFar: Int?,
         typicalStepsByNow: Int?,
         activeEnergyKcal: Double? = nil,
+        exerciseMinutes: Double? = nil,
+        workoutCount: Int = 0,
         weekday: Int,
         now: Date = .now
     ) -> Snapshot {
@@ -117,12 +184,13 @@ enum MovementContext {
         }
 
         _ = now
-        _ = activeEnergyKcal
         return Snapshot(
             stepsSoFar: stepsSoFar,
             typicalStepsByNow: typicalStepsByNow,
             percentVsTypical: percent,
             activeEnergyKcal: activeEnergyKcal,
+            exerciseMinutes: exerciseMinutes,
+            workoutCount: max(0, workoutCount),
             weekday: weekday,
             sentence: sentence,
             confidence: confidence,
@@ -136,7 +204,7 @@ enum MovementContext {
         return formatter.string(from: NSNumber(value: steps)) ?? "\(steps)"
     }
 
-    private static func weekdayName(_ weekday: Int) -> String {
+    static func weekdayName(_ weekday: Int) -> String {
         let symbols = Calendar.current.weekdaySymbols
         let index = max(0, min(symbols.count - 1, weekday - 1))
         return symbols[index]

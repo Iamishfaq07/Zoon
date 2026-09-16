@@ -1448,10 +1448,26 @@ final class SleepDataCoordinator {
             priors.append(steps)
         }
 
+        // The other measures §27 names. Each is optional for the same reason
+        // steps are: an absent reading is not a zero one, and the snapshot
+        // omits what it did not get rather than reporting none of it.
+        let interval = DateInterval(start: startOfToday, end: now)
+        let exercise = (try? await healthKit.sum(
+            .appleExerciseTime, unit: .minute(), in: interval
+        )) ?? nil
+        let activeEnergy = (try? await healthKit.sum(
+            .activeEnergyBurned, unit: .kilocalorie(), in: interval
+        )) ?? nil
+
         let typical = Statistics.median(priors).map { Int($0.rounded()) }
         todayMovement = MovementContext.snapshot(
             stepsSoFar: todaySteps.map { Int($0.rounded()) },
             typicalStepsByNow: typical,
+            activeEnergyKcal: activeEnergy,
+            exerciseMinutes: exercise,
+            // Already deduplicated by `refreshTodayStress`, which runs first:
+            // a run mirrored by a second app is one workout, not two.
+            workoutCount: todayWorkouts.count,
             weekday: weekday,
             now: now
         )

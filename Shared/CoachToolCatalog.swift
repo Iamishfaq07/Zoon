@@ -8,11 +8,17 @@ import Foundation
 /// remain the source of truth at execution time.
 enum CoachToolCatalog {
 
-    enum Kind: String, Hashable, Sendable {
+    /// `CaseIterable` so the tests can enumerate every tool rather than
+    /// restating a list beside this one. The confirmation contract's whole
+    /// point is to catch a tool added without being classified, and a
+    /// hand-written list in the test cannot do that — it was the list that
+    /// would need updating.
+    enum Kind: String, Hashable, Sendable, CaseIterable {
         case getSleepScore
         case getRecovery
         case getShortfall
         case getEnergy
+        case getMovement
         case getTonight
         case getTomorrow
         case logCaffeine
@@ -20,12 +26,23 @@ enum CoachToolCatalog {
         case prepareTomorrow
         case setAlarm
 
-        var requiresConfirmation: Bool {
+        /// Whether running this tool changes anything.
+        ///
+        /// Written as an explicit switch with no `default`, so a tool added to
+        /// the enum fails to compile until somebody says which side of the
+        /// line it is on. The previous `default: false` silently made every
+        /// new tool a read.
+        var changesState: Bool {
             switch self {
-            case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm: true
-            default: false
+            case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+                true
+            case .getSleepScore, .getRecovery, .getShortfall, .getEnergy,
+                 .getMovement, .getTonight, .getTomorrow:
+                false
             }
         }
+
+        var requiresConfirmation: Bool { changesState }
 
         var summary: String {
             switch self {
@@ -33,6 +50,7 @@ enum CoachToolCatalog {
             case .getRecovery: "Read morning Recovery."
             case .getShortfall: "Read sleep shortfall."
             case .getEnergy: "Read Energy now."
+            case .getMovement: "Read today's movement against your usual day."
             case .getTonight: "Read tonight's sleep window."
             case .getTomorrow: "Read the Tomorrow plan, if one exists."
             case .logCaffeine: "Log caffeine after you confirm."
@@ -69,6 +87,13 @@ enum CoachToolCatalog {
         }
         if matches(q, ["energy now", "body battery", "how alert"]) {
             return Call(kind: .getEnergy, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        // Movement is asked about in the app's own words ("moved", "steps")
+        // and in the words people actually use. Checked before the sleep
+        // window, because "have I moved enough today" contains none of that
+        // block's phrases but "active" appears in questions about both.
+        if matches(q, ["steps", "how much have i moved", "moved today", "movement today", "active today"]) {
+            return Call(kind: .getMovement, proposedMinutes: nil, confirmationPrompt: nil)
         }
         if matches(q, ["sleep window", "tonight's plan", "when should i sleep", "bedtime"]) {
             return Call(kind: .getTonight, proposedMinutes: nil, confirmationPrompt: nil)
