@@ -7,9 +7,20 @@ struct AlertnessCheckView: View {
     @State private var phase: Phase = .intro
     @State private var trial = 0
     @State private var reactions: [TimeInterval] = []
+    /// Taps before the signal. The brief asks for these; the old version
+    /// showed a "too soon" message and then forgot it happened.
+    @State private var falseStarts = 0
     @State private var appearedAt: ContinuousClock.Instant?
     @State private var waitTask: Task<Void, Never>?
     @State private var subjective = 3
+    /// What the engine was willing to say about the run just saved, which for
+    /// the first several runs is deliberately that it is not saying anything.
+    @State private var outcome: AlertnessCheck.Outcome?
+    /// Set when a run was too short to store. The old screen showed a tick
+    /// either way.
+    @State private var wasNotSaved = false
+
+    @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let trials = 6
@@ -19,7 +30,7 @@ struct AlertnessCheckView: View {
             CascadeStack(spacing: Theme.stackSpacing) {
                 header
                 testSurface
-                if !store.results.isEmpty { history }
+                if !store.sessions.isEmpty { history }
             }
             .padding()
         }
@@ -65,11 +76,30 @@ struct AlertnessCheckView: View {
                 }.pickerStyle(.wheel).frame(height: 120)
                 Button("Save result") { finish() }.buttonStyle(.borderedProminent)
             case .complete:
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 54)).foregroundStyle(Theme.Metric.recoveryHigh)
-                Text("Saved on this device").font(Theme.numeral(24))
-                if let latest = store.results.first {
-                    Text("Median \(latest.medianReactionMilliseconds) ms · \(latest.lapses) \(latest.lapses == 1 ? "lapse" : "lapses") · alertness \(latest.subjectiveAlertness)/5")
+                if wasNotSaved {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 54)).foregroundStyle(Theme.Metric.recoveryMid)
+                    Text("Not saved").font(Theme.numeral(24))
+                    Text("Too few responses to make a median worth keeping.")
                         .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 54)).foregroundStyle(Theme.Metric.recoveryHigh)
+                    Text("Saved on this device").font(Theme.numeral(24))
+                    if let latest = store.sessions.first {
+                        summary(latest)
+                    }
+                    // The engine's verdict, which for the first several checks
+                    // is that it has none. Shown rather than hidden, because
+                    // "not enough yet" is the honest answer and silence reads
+                    // as an app that simply does nothing with this.
+                    if let outcome {
+                        Text(outcome.sentence)
+                            .font(Theme.text(14))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Button("Done") { reset() }.buttonStyle(.bordered)
             }
@@ -91,21 +121,56 @@ struct AlertnessCheckView: View {
         }.buttonStyle(.plain).accessibilityLabel(phase == .ready ? "Tap now" : "Wait")
     }
 
+    /// One saved check, as the figures the brief asks to track.
+    private func summary(_ session: AlertnessCheck.Session) -> some View {
+        VStack(spacing: 4) {
+            Text("Median \(Int(session.medianMilliseconds.rounded())) ms")
+                .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
+            // Each of these appears only when it was measured. A zero spread
+            // or a zero false-start count on a record that never held one
+            // would be a claim rather than a reading.
+            if let iqr = session.iqrMilliseconds {
+                Text("Spread \(Int(iqr.rounded())) ms")
+                    .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
+            }
+            if session.lapses > 0 {
+                Text("\(session.lapses.pluralized("lapse"))")
+                    .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
+            }
+            if let note = AlertnessCheck.falseStartNote(session.falseStarts) {
+                Text(note).font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
+            }
+            if let minutes = session.minutesSinceWaking {
+                Text("\(SleepNightFeatures.formatMinutes(minutes)) after waking")
+                    .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
+            }
+        }
+        .multilineTextAlignment(.center)
+    }
+
     private var history: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Recent checks", subtitle: "Compare with your own history, not other people.", systemImage: "chart.xyaxis.line")
-            ForEach(store.results.prefix(7)) { result in
+            ForEach(store.sessions.prefix(7)) { session in
                 HStack {
-                    Text(result.date, format: .dateTime.month(.abbreviated).day()).font(Theme.text(12))
+                    Text(session.date, format: .dateTime.month(.abbreviated).day()).font(Theme.text(12))
                     Spacer()
-                    Text("\(result.medianReactionMilliseconds) ms").font(Theme.label(13, weight: .semibold)).monospacedDigit()
-                    Text("· \(result.subjectiveAlertness)/5").font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
+                    Text("\(Int(session.medianMilliseconds.rounded())) ms")
+                        .font(Theme.label(13, weight: .semibold)).monospacedDigit()
+                    if let rating = session.subjectiveAlertness {
+                        Text("· \(rating)/5").font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
+                    }
                 }
+            }
+            if store.sessions.contains(where: { $0.lapses > 0 }) {
+                Text(AlertnessCheck.lapseCaveat)
+                    .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }.glassCard()
     }
 
-    private func begin() { trial = 0; reactions = []; scheduleTrial() }
+    private func begin() { trial = 0; reactions = []; falseStarts = 0; scheduleTrial() }
     private func scheduleTrial() {
         waitTask?.cancel(); phase = .waiting
         waitTask = Task {
@@ -115,15 +180,46 @@ struct AlertnessCheckView: View {
             appearedAt = .now; phase = .ready; Haptics.tap()
         }
     }
-    private func tooSoon() { waitTask?.cancel(); phase = .tooSoon; Haptics.warning() }
+    private func tooSoon() {
+        waitTask?.cancel()
+        falseStarts += 1
+        phase = .tooSoon
+        Haptics.warning()
+    }
     private func recordTap() {
         guard let appearedAt else { return }
-        reactions.append(Double(appearedAt.duration(to: .now).components.attoseconds) / 1e18 + Double(appearedAt.duration(to: .now).components.seconds))
+        // The clock is read once. This used to call `.now` twice -- once for
+        // the seconds and once for the attoseconds -- so the two halves came
+        // from two different instants, adding jitter to the one thing on this
+        // screen that is actually a measurement.
+        let elapsed = appearedAt.duration(to: .now).components
+        reactions.append(Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18)
         trial += 1; Haptics.tap()
         if trial >= trials { phase = .rating } else { scheduleTrial() }
     }
-    private func finish() { store.save(reactions: reactions, subjectiveAlertness: subjective); phase = .complete; Haptics.success() }
-    private func reset() { phase = .intro; trial = 0; reactions = []; appearedAt = nil }
+
+    private func finish() {
+        let saved = store.save(
+            reactions: reactions,
+            falseStarts: falseStarts,
+            subjectiveAlertness: subjective,
+            wakeTime: coordinator.state.context?.night.wakeTime
+        )
+        outcome = saved
+        wasNotSaved = saved == nil
+        phase = .complete
+        if saved == nil { Haptics.warning() } else { Haptics.success() }
+    }
+
+    private func reset() {
+        phase = .intro
+        trial = 0
+        reactions = []
+        falseStarts = 0
+        appearedAt = nil
+        outcome = nil
+        wasNotSaved = false
+    }
 }
 
-#Preview { NavigationStack { AlertnessCheckView() }.preferredColorScheme(.dark) }
+#Preview { NavigationStack { AlertnessCheckView() }.zoonPreviewEnvironment() }
