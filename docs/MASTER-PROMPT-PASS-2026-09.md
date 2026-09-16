@@ -749,6 +749,79 @@ step look like a twenty-minute hang. `get_workflow_job` against the job id
 returns the true state. Worth knowing before diagnosing a stall that is not
 happening.
 
+### C10 — Personal Sensitivity Curves (§22)
+
+§M carried this as blocked for most of the pass, and it is still blocked for
+most behaviours. The brief's instruction for that case is to implement the
+strongest defensible alternative and document the limitation, so this builds
+the four dimensions that carry a real number and names the three it cannot.
+
+```
+Purpose:      move past binary behaviour labels wherever a dose or a time
+              actually exists.
+Files:        Shared/SensitivityCurve.swift, Shared/Statistics.swift
+              (unpairedBootstrapCI),
+              Zoon/Views/Components/SensitivityCurveCard.swift,
+              Zoon/Services/SleepDataCoordinator.swift (sensitivityCurves),
+              Zoon/Views/EvidenceView.swift
+Built:        late caffeine in mg, last workout in hours before bed, nap
+              duration in minutes, nap start hour. All four read a real
+              quantity off a night or the nap store.
+Refused:      caffeine *timing* (only the late total is stored, not each
+              drink's clock time), light timing (daylight is a daily total),
+              workout load (intensity is not carried on a night). Named in the
+              app beside the curves, not only here -- a feature that silently
+              covers half of what it was asked about reads as broken.
+Method:       bands, not a fitted curve. A smooth line through a few dozen
+              nights implies a resolution nobody has, and its shape between
+              two sparse regions is the model talking. Each band needs 5
+              nights; a curve needs 2 qualifying bands, because one group has
+              nothing to be compared against.
+Statistics:   `unpairedBootstrapCI` added. The existing paired bootstrap
+              resamples a list of differences, valid only when each value is a
+              difference between two observations of the same thing. The
+              nights at 200 mg are different nights from those at 50 mg and
+              there is no pairing; using the paired interval would have
+              reported a band far narrower than the data supports.
+The verdict:  three answers, where most apps ship two. Interval excludes zero
+              -> association. Interval sits entirely inside the outcome's own
+              practical threshold -> a meaningful difference has been *ruled
+              out*, the brief's "little observed difference". Interval spans
+              both -> uncertain, because calling that "no effect" claims a
+              null nobody established.
+Nap asymmetry: for duration a napless day is a real zero and is the control
+              band; for timing it has no nap hour at all and drops out rather
+              than being placed in one.
+Surface:      on Evidence, as the brief asks. Intervals are folded away rather
+              than dropped -- several bands will rest on five or six nights
+              and hiding their width would leave the verdicts looking more
+              certain than they are. Only an association is tinted; colouring
+              "uncertain" would turn a statement about evidence into a verdict
+              about the behaviour.
+Tests:        ZoonTests/SensitivityCurveTests.swift (18).
+Limitations:  no screenshot -- every curve needs five nights per band in two
+              bands, and the screenshot fixtures have nothing like that, so
+              the cards correctly render nothing. The band edges (100/200 mg,
+              3/6 hours, 15/35 minutes) are conventional cup and nap scales,
+              not measurements of this person. Never seen against a real
+              HealthKit store.
+```
+
+**The storage change that would unblock the rest.** `BehaviorObservationRecord`
+would need a `quantity`, a `unit` and an `eventTime`. With those, caffeine
+timing and light timing become the same engine with different bands; without
+them, any curve for those is drawn through a yes and a no.
+
+**A flake, distinguished from a failure.** Run #1529 was red on
+`ZoonUITests.testCoreSleepAndCoachFlowsOpen` with "Timed out while launching
+application via Xcode" — not an assertion. Four things said infrastructure:
+`testLaunchesToTabBar` passed exercising the same tabs, `ZoonTests` passed in
+full, the failure was a launch timeout, and the commit touched only `Shared/`
+files that had no caller in app code yet. Re-run and the following commit's run
+(#1531) both passed the same test in 3m29s. Recorded rather than quietly
+re-run, because "it was flaky" is the easiest thing in the world to say about a
+real failure.
+
 ---
 
 ## D. Apple APIs used
@@ -855,7 +928,7 @@ Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
 no Mac and no local toolchain in this environment, so this is the only place
 any Swift in this branch has ever been compiled or executed.
 
-**Suite size.** 1,896 `func test…` methods across 179 files in `ZoonTests`,
+**Suite size.** 1,914 `func test…` methods across 180 files in `ZoonTests`,
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
@@ -923,8 +996,8 @@ arithmetic has been the reliable part, and the joins around it have not.
 in this document is a 12–20 minute CI round trip; there is no local compile.
 
 - **Build runs #1501 (`ed5bb63`), #1503 (`dbc7531`), #1507 (`d79e077`),
-  #1513 (`9fac96b`), #1517 (`b718fab`) and #1525 (`c295cfc`, the branch head):
-  success.** Both jobs green — "Validate project
+  #1513 (`9fac96b`), #1517 (`b718fab`), #1525 (`c295cfc`) and #1531
+  (`7535a89`, the branch head): success.** Both jobs green — "Validate project
   file" (ubuntu) and "Build (iOS Simulator)" (macos).
 - `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
   `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
@@ -1003,24 +1076,27 @@ data.
 
 ### Not implemented from the brief
 
-§22 Personal Sensitivity Curves, §27 Movement Context refinement,
+§27 Movement Context refinement,
 §29–§36 visual system, §37 Watch information architecture, §38–§39 Soundscapes
 and Breathing, §40 Dawn theme, §41 motion pass, §42 splash audit, §43 NightSky
 profiling, §44 widgets, §52 performance pass, §54 full visual regression
 review.
 
-Five corrections to an earlier draft of this list. §23 Restorative Windows,
-§24 Shift Roster Planner, §25 Awakening Inspector and §26 Morning Alertness are
-now implemented — see C6, C7, C8 and C9. §28 Long-Term Resilience UI was listed as a gap and
+Six corrections to an earlier draft of this list. §22 Personal Sensitivity
+Curves, §23 Restorative Windows, §24 Shift Roster Planner, §25 Awakening
+Inspector and §26 Morning Alertness are now implemented — see C6 through C10.
+§22 is implemented only for the dimensions that carry a real quantity; C10
+names the three it still cannot build and the storage change that would
+unblock them. §28 Long-Term Resilience UI was listed as a gap and
 is not one: `LongTermBaselineCard` reached `TrendsView` on `main` before this
 pass began, and A6 rewrote the engine behind it rather than adding the
 surface.
 
-§22 additionally needs storage that does not exist: `BehaviorObservationRecord`
-holds yes/no/unknown with no `quantity`, `unit` or `eventTime`, so a dose- or
-time-resolved curve can only be built today for naps (NapStore has real
-start/end), workouts (`lastWorkoutHoursBeforeBed`) and caffeine amount
-(`lateCaffeineMg`). A curve for anything else would be invented.
+That §22 note is now C10's subject rather than a gap: the curve engine ships
+for exactly the dimensions named there — naps, workout timing and caffeine
+amount — and the app itself names the three it cannot build. The storage
+change that would unblock those is a `quantity`, a `unit` and an `eventTime`
+on `BehaviorObservationRecord`.
 
 ### Hardware never exercised
 
