@@ -743,6 +743,20 @@ final class HealthKitManager {
         ) { $0.averageQuantity() }
     }
 
+    /// Respiratory rate at an arbitrary bin, for the Awakening Inspector's
+    /// breathing layer. Like HRV, this is written a handful of times a night,
+    /// so most bins come back absent -- which is why the inspector reports it
+    /// as a level over the window rather than as an event at an instant.
+    func binnedRespiratoryRate(in interval: DateInterval, binMinutes: Int) async throws -> [(date: Date, bpm: Double)] {
+        try await binnedSeries(
+            .respiratoryRate,
+            unit: HKUnit.count().unitDivided(by: .minute()),
+            options: .discreteAverage,
+            interval: interval,
+            binMinutes: binMinutes
+        ) { $0.averageQuantity() }
+    }
+
     private func binnedSeries(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,

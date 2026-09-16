@@ -33,7 +33,11 @@ struct SleepDetailView: View {
             VStack(spacing: Theme.stackSpacing) {
                 headline
                 hypnogramCard
-                AwakeningInspectorCard(night: context.night, sounds: soundEventStore.recentEvents)
+                AwakeningInspectorCard(
+                    night: context.night,
+                    sounds: soundEventStore.recentEvents,
+                    series: coordinator.awakeningSeries
+                )
                 storyPreviewCard
                 if let opportunity = SleepOpportunity.make(
                     night: context.night,

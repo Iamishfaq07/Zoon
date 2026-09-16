@@ -136,6 +136,7 @@
 		17E20F77C3F9E3A12553EC09 /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		17F1F32ECCE94547CB95F327 /* JournalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 796AF05941A49BBC5BC53802 /* JournalStore.swift */; };
 		18078929F1E541BEC6DDDA87 /* CopyCorrectnessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706F052B52B73EA14F1B1061 /* CopyCorrectnessTests.swift */; };
+		1808479A30A37BE186115C17 /* AwakeningInspectorSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD9B956F82E92BC29D959B2 /* AwakeningInspectorSeriesTests.swift */; };
 		185D49F8F16071C038BEC0FB /* NightSkyField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670B0306EED366AB0C047B43 /* NightSkyField.swift */; };
 		18EDFF1FB2B8773118D410AC /* ScoreDrivers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B330742BC93A341EC2474419 /* ScoreDrivers.swift */; };
 		1947BD9640EB9DBB7AD6586D /* SourceCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE4A990528A240EACB4B9AB /* SourceCoverage.swift */; };
@@ -1311,6 +1312,7 @@
 		2AC91DA7AA1B296DCFF7CD1E /* WearableSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WearableSource.swift"; sourceTree = "<group>"; };
 		2B29305656C5FD1D21F084DA /* street.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "street.mp3"; sourceTree = "<group>"; };
 		2B50A94B6FCAD440E1EF0A19 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = ".gitignore"; sourceTree = "<group>"; };
+		2BD9B956F82E92BC29D959B2 /* AwakeningInspectorSeriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AwakeningInspectorSeriesTests.swift"; sourceTree = "<group>"; };
 		2C4E7C578ABEA241EBDD3384 /* PatternsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PatternsView.swift"; sourceTree = "<group>"; };
 		2CD50E712746E68436F3A59B /* SeededGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SeededGenerator.swift"; sourceTree = "<group>"; };
 		2CEEC938F70D39622049AB5E /* LightCoachCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachCard.swift"; sourceTree = "<group>"; };
@@ -2119,6 +2121,7 @@
 				FDF025B9FE132BD8106CA328,
 				64228777507BB45421BDB205,
 				E50EC5A8E37A7C304F240966,
+				2BD9B956F82E92BC29D959B2,
 				62800921DB19CE9DC1D6FE74,
 				D5A09B1262A734AEBB874E0F,
 				FCA1729029D787AC916B77DF,
@@ -3453,6 +3456,7 @@
 				63F310BFE23A6D05D2AA38DC,
 				31FB8744B6164B0E0F905A91,
 				CCA2B049CAD7A841F7B2AABC,
+				1808479A30A37BE186115C17,
 				814F7B8B47D5DE99C1BC3938,
 				2C8B6CB64D294A921BFB99DA,
 				1571D7AF395B12F0076834B5,

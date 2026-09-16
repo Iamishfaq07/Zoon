@@ -161,6 +161,15 @@ final class SleepDataCoordinator {
     /// honest answer whenever the baseline has not earned a block yet --
     /// see `RestorativeWindow`.
     private(set) var todayRestorativeWindows: [RestorativeWindow.Window] = []
+
+    /// Minute-level overnight series for the Awakening Inspector (§25).
+    ///
+    /// Fetched once for the whole night rather than per awakening: a night
+    /// holds a handful of them, and three queries beat three per awakening.
+    /// Empty until `refreshAwakeningSeries` has run, and empty on a night with
+    /// no watch -- which the inspector reports as a missing stream rather than
+    /// as a flat line.
+    private(set) var awakeningSeries = AwakeningInspector.Series()
     /// Today's step count against what this weekday usually looks like by
     /// now. `nil` until a sample actually arrives — the card was previously
     /// constructed with hardcoded `nil`s at the call site, so it reported
@@ -503,6 +512,7 @@ final class SleepDataCoordinator {
         #endif
         await refreshTodayStress()
         await refreshRestorativeWindows()
+        await refreshAwakeningSeries()
         await refreshTodayMovement()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
         if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
@@ -1510,6 +1520,36 @@ final class SleepDataCoordinator {
             baseline: baseline,
             excluded: excluded,
             calendar: calendar
+        )
+    }
+
+    /// §25. The overnight series the inspector derives its layers from.
+    ///
+    /// One minute rather than the five `RestorativeWindow` asks for: that one
+    /// looks for a settled half hour, this one has to place an event inside a
+    /// twelve-minute window, and at five minutes there are not enough readings
+    /// before an awakening to say what a rise would be a rise against.
+    private func refreshAwakeningSeries() async {
+        guard DataEnvironment.current.isLive, let night = store.latestNight else {
+            awakeningSeries = AwakeningInspector.Series()
+            return
+        }
+        guard night.wakeTime > night.bedtime else { return }
+        let window = DateInterval(start: night.bedtime, end: night.wakeTime)
+        let bin = AwakeningInspector.binMinutes
+
+        async let hrTask = try? healthKit.binnedHeartRate(in: window, binMinutes: bin)
+        async let energyTask = try? healthKit.binnedActiveEnergy(in: window, binMinutes: bin)
+        async let breathTask = try? healthKit.binnedRespiratoryRate(in: window, binMinutes: bin)
+
+        func samples(_ series: [(date: Date, bpm: Double)]) -> [AwakeningInspector.Sample] {
+            series.map { AwakeningInspector.Sample(date: $0.date, value: $0.bpm) }
+        }
+
+        awakeningSeries = AwakeningInspector.Series(
+            heartRate: samples(await hrTask ?? []),
+            movement: samples(await energyTask ?? []),
+            respiratory: samples(await breathTask ?? [])
         )
     }
 
