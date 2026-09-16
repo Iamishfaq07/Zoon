@@ -510,6 +510,46 @@ Tests:        CoachToolCatalogTests.
 Limitations:  the confirmation UI is not covered by an automated test.
 ```
 
+### C6 — Restorative Windows (§23)
+
+```
+Purpose:      name the stretches of today where this person's physiology sat
+              below their own usual figure for that hour.
+Files:        Shared/RestorativeWindow.swift,
+              Zoon/Views/Components/RestorativeWindowsCard.swift,
+              Zoon/Services/SleepDataCoordinator.swift (refreshRestorativeWindows),
+              Zoon/Services/HealthKitManager.swift (binnedActiveEnergy,
+              binnedHeartRateVariability), Zoon/Views/EnergyDetailView.swift
+Inputs:       five-minute heart rate, five-minute active energy, sparse HRV,
+              DaytimeBaseline (per-three-hour-block median and MAD, quiet
+              samples only), workouts + 90-minute buffer, sleep.
+Gates:        all three the brief names -- movement low (150 kcal/hour pro
+              rata, the same figure the baseline itself excludes on),
+              coverage sufficient (60% of a run's bins carry a reading), heart
+              rate favourable against the *comparable* personal baseline
+              (-0.5 robust z inside the block's own spread). Minimum 15
+              minutes.
+Refusals:     no qualifying baseline block, no window -- a fixed bpm threshold
+              across a day marks every morning and no evening, which is a
+              clock reading. Degenerate block spread is refused rather than
+              divided by. An absent movement reading is not a low one. The
+              card renders nothing at all when the list is empty, because an
+              empty list and an empty Health store are the same array.
+HRV:          describes a window, never decides one. Most five-minute bins
+              hold no SDNN reading, so a gate on it would reject almost every
+              genuine window; absence is stated rather than implied away.
+Language:     "Your physiology was relatively settled during this period." No
+              "calm", "relaxed", "mindful" or "meditation" anywhere -- a
+              settled autonomic state is not a settled mind.
+Tests:        ZoonTests/RestorativeWindowTests.swift -- 20 cases. Green on the
+              first run (#1507), after the thresholds and the run-splitting
+              were simulated in Python first.
+Limitations:  never seen with a real HealthKit store, so the five-minute
+              series' real sparsity is unmeasured; no screenshot, because the
+              simulator's store is empty and the card correctly renders
+              nothing.
+```
+
 ---
 
 ## D. Apple APIs used
@@ -616,7 +656,7 @@ Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
 no Mac and no local toolchain in this environment, so this is the only place
 any Swift in this branch has ever been compiled or executed.
 
-**Suite size.** 1,796 `func test…` methods across 174 files in `ZoonTests`,
+**Suite size.** 1,816 `func test…` methods across 175 files in `ZoonTests`,
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
@@ -754,12 +794,18 @@ data.
 
 ### Not implemented from the brief
 
-§22 Personal Sensitivity Curves, §23 Restorative Windows, §24 Shift Roster
-Planner, §25 Awakening Inspector upgrade, §26 Morning Alertness, §27 Movement
-Context refinement, §28 Long-Term Resilience UI, §29–§36 visual system, §37
-Watch information architecture, §38–§39 Soundscapes and Breathing, §40 Dawn
-theme, §41 motion pass, §42 splash audit, §43 NightSky profiling, §44 widgets,
-§52 performance pass, §54 full visual regression review.
+§22 Personal Sensitivity Curves, §24 Shift Roster Planner, §25 Awakening
+Inspector upgrade, §26 Morning Alertness, §27 Movement Context refinement,
+§29–§36 visual system, §37 Watch information architecture, §38–§39 Soundscapes
+and Breathing, §40 Dawn theme, §41 motion pass, §42 splash audit, §43 NightSky
+profiling, §44 widgets, §52 performance pass, §54 full visual regression
+review.
+
+Two corrections to an earlier draft of this list. §23 Restorative Windows is
+now implemented — see C6. §28 Long-Term Resilience UI was listed as a gap and
+is not one: `LongTermBaselineCard` reached `TrendsView` on `main` before this
+pass began, and A6 rewrote the engine behind it rather than adding the
+surface.
 
 §22 additionally needs storage that does not exist: `BehaviorObservationRecord`
 holds yes/no/unknown with no `quantity`, `unit` or `eventTime`, so a dose- or
