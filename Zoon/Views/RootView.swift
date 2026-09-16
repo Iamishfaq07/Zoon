@@ -471,7 +471,8 @@ struct SleepTabView: View {
                     }
                 // Owned by the More tab; unreachable here, but the switch has
                 // to stay exhaustive.
-                case .report, .settings, .badges, .evidence, .patterns, .sensorTruth: EmptyView()
+                case .report, .settings, .badges, .evidence, .patterns, .sensorTruth, .tomorrow:
+                    EmptyView()
                 // Owned by the Journal tab; never pushed onto this stack.
                 case .journal: EmptyView()
                 }
