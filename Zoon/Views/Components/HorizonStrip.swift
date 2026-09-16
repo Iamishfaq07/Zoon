@@ -8,10 +8,24 @@ struct HorizonStrip: View {
     var selectedID: String?
     var onSelect: (ZoonTomorrow.Node) -> Void = { _ in }
 
-    /// Wide enough for "Wind-down" over a short time.
-    private let captionWidth: CGFloat = 56
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Wide enough for "Wind-down" over a short time, and it grows with the
+    /// text it holds.
+    ///
+    /// These were fixed points while the captions use `Theme.label`, which
+    /// maps to a Dynamic Type text style and therefore scales. At anything
+    /// above the default setting the text outgrew the box that was supposed
+    /// to keep it off its neighbour, which is why the strip still overlapped
+    /// after the declutter pass below was already correct — the pass was
+    /// solving the right problem with numbers that had stopped being true.
+    ///
+    /// `ZoonUncertaintyBand` and `ExploreTiles` already adapt to
+    /// `dynamicTypeSize`; this is the same rule applied to the surface that
+    /// was not following it.
+    @ScaledMetric(relativeTo: .caption) private var captionWidth: CGFloat = 56
     /// One caption row. Captions alternate between two of these.
-    private let rowHeight: CGFloat = 30
+    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 30
     /// The closest two captions in the *same* row may sit, centre to centre.
     /// Below this they are pushed apart.
     private var minimumCaptionGap: CGFloat { captionWidth + 4 }
@@ -110,27 +124,53 @@ struct HorizonStrip: View {
             // minimum gap and clamps to the edges. Alignment degrades
             // gracefully under pressure instead of the text becoming
             // unreadable.
-            GeometryReader { geo in
-                let layout = captionLayout(width: geo.size.width, t0: t0, span: span)
-                ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
-                    VStack(spacing: 2) {
-                        Text(node.title)
-                            .font(Theme.label(10, weight: .semibold))
-                            .foregroundStyle(Theme.inkTertiary)
-                        Text(node.date.formatted(date: .omitted, time: .shortened))
-                            .font(Theme.label(11, weight: .semibold))
-                            .monospacedDigit()
+            // Past the accessibility sizes no horizontal arrangement works:
+            // six captions at that scale need more width than a phone has,
+            // and the declutter pass can only choose which of two bad
+            // outcomes to produce. So the strip stops being a strip and
+            // becomes a list, which cannot overlap at any size.
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(nodes) { node in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Circle()
+                                .fill(tint(for: node.kind))
+                                .frame(width: 8, height: 8)
+                            Text(node.title)
+                                .font(Theme.label(10, weight: .semibold))
+                                .foregroundStyle(Theme.inkTertiary)
+                            Spacer(minLength: 8)
+                            Text(node.date.formatted(date: .omitted, time: .shortened))
+                                .font(Theme.label(11, weight: .semibold))
+                                .monospacedDigit()
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
                     }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: captionWidth)
-                    .position(
-                        x: layout[index],
-                        y: index.isMultiple(of: 2) ? rowHeight / 2 : rowHeight * 1.5
-                    )
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                GeometryReader { geo in
+                    let layout = captionLayout(width: geo.size.width, t0: t0, span: span)
+                    ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
+                        VStack(spacing: 2) {
+                            Text(node.title)
+                                .font(Theme.label(10, weight: .semibold))
+                                .foregroundStyle(Theme.inkTertiary)
+                            Text(node.date.formatted(date: .omitted, time: .shortened))
+                                .font(Theme.label(11, weight: .semibold))
+                                .monospacedDigit()
+                        }
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(width: captionWidth)
+                        .position(
+                            x: layout[index],
+                            y: index.isMultiple(of: 2) ? rowHeight / 2 : rowHeight * 1.5
+                        )
+                    }
+                }
+                .frame(height: rowHeight * 2)
             }
-            .frame(height: rowHeight * 2)
         }
         .accessibilityElement(children: .contain)
     }

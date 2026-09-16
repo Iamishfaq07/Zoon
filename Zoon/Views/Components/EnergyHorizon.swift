@@ -25,6 +25,14 @@ struct EnergyHorizon: View {
     @State private var progress: Double = 0
     @State private var scrubFraction: CGFloat?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// The marker caption's height, and the gap two captions need before one
+    /// has to move. Both were fixed points beside `Theme.text`, which scales
+    /// with Dynamic Type — so above the default setting the captions grew and
+    /// the numbers keeping them apart did not.
+    @ScaledMetric(relativeTo: .caption2) private var markerLabelHeight: CGFloat = 32
+    @ScaledMetric(relativeTo: .caption2) private var markerSpacing: CGFloat = 76
 
     /// Sampled once per view value rather than on every helper call -- the
     /// curve, the markers, the readout and the now-marker all read it.
@@ -185,10 +193,6 @@ struct EnergyHorizon: View {
             .sorted { $0.time < $1.time }
     }
 
-    /// The closest two marker captions may sit horizontally before one of
-    /// them has to move to the other side of the curve.
-    private static let minimumMarkerSpacing: CGFloat = 76
-
     /// Whether each marker's caption goes above the curve.
     ///
     /// Vertical clamping already kept a caption inside the chart. Nothing
@@ -201,7 +205,7 @@ struct EnergyHorizon: View {
     /// and keeps each attached to its own dot, which moving them sideways
     /// would not.
     private func markerPlacements(width: CGFloat, height: CGFloat) -> [Bool] {
-        let labelHeight: CGFloat = 32
+        let labelHeight = markerLabelHeight
         var placements: [Bool] = []
         var previousX: CGFloat?
 
@@ -211,7 +215,7 @@ struct EnergyHorizon: View {
             var above = p.y - 22 - labelHeight / 2 >= 0
 
             if let previousX, let previousAbove = placements.last,
-               abs(p.x - previousX) < Self.minimumMarkerSpacing,
+               abs(p.x - previousX) < markerSpacing,
                above == previousAbove {
                 // Flip, but only where the flipped side actually has room;
                 // two captions stacked is better than one off the chart.
@@ -228,7 +232,14 @@ struct EnergyHorizon: View {
     }
 
     private func markers(width: CGFloat, height: CGFloat) -> some View {
-        let placements = markerPlacements(width: width, height: height)
+        // At accessibility sizes two captions are wider than the gap between
+        // any two points on a phone-width curve, so no placement rule can
+        // separate them. The dots stay, the curve stays, and the times are
+        // read from the chart's accessibility summary and the readout above
+        // it rather than printed on top of one another.
+        let placements = dynamicTypeSize.isAccessibilitySize
+            ? []
+            : markerPlacements(width: width, height: height)
         return ForEach(Array(markerWindows.enumerated()), id: \.element.id) { index, window in
             // Read the marker's height off the sampled curve rather than
             // re-declaring the anchor levels here: the curve already passes
@@ -245,7 +256,7 @@ struct EnergyHorizon: View {
             // morning looks like -- put the label's centre at a negative y,
             // so it rendered outside the chart and landed on the readout
             // above: "Peak focus 1:01 PM" written through "Winding down".
-            let labelHeight: CGFloat = 32
+            let labelHeight = markerLabelHeight
             let roomAbove = placements.indices.contains(index)
                 ? placements[index]
                 : p.y - 22 - labelHeight / 2 >= 0
@@ -264,7 +275,9 @@ struct EnergyHorizon: View {
             }
 
             VStack(spacing: 3) {
-                if roomAbove {
+                if dynamicTypeSize.isAccessibilitySize {
+                    dot
+                } else if roomAbove {
                     caption
                     dot
                 } else {

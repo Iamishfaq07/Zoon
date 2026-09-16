@@ -120,12 +120,27 @@ struct RecoveryRing<Inner: View>: View {
         return parts.isEmpty ? head : head + ". From " + parts
     }
 
+    /// Everything drawn inside the ring, with its text growth bounded.
+    ///
+    /// The ring is a fixed circle — 236 points on Today — while the labels
+    /// inside it use `Theme.label` and `Theme.text`, which map to Dynamic
+    /// Type styles and scale. Above the default setting the stack grew and
+    /// the circle did not, so the value printed over the radar's own axis
+    /// markers and, in the four-line signal state, over the web itself.
+    ///
+    /// Clamping rather than scaling the ring: the numerals here are already
+    /// 30 to 60 points, several times body size, and the ring's diameter is
+    /// load-bearing for the whole hero layout. `ExploreTiles` bounds its
+    /// tiles the same way for the same reason.
     @ViewBuilder private var content: some View {
-        if let selected {
-            signalContent(selected)
-        } else {
-            scoreContent
+        Group {
+            if let selected {
+                signalContent(selected)
+            } else {
+                scoreContent
+            }
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     @ViewBuilder private var scoreContent: some View {
