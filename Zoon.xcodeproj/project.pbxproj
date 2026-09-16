@@ -576,6 +576,7 @@
 		7F554E3156E082CC5CF0CC53 /* MorningBriefCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB4B171A15A7BE8F3599BC6 /* MorningBriefCopy.swift */; };
 		7FBD6DB787C2B85C5986DE58 /* SleepApneaEventSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87B28A8A75CC1E3786389CB3 /* SleepApneaEventSummary.swift */; };
 		7FDD4E38B9615C011B18F904 /* Pluralization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66AB7D457143EE80D839E0D /* Pluralization.swift */; };
+		8020AE370E8E0742E6271DAB /* ShiftPlanCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44CC139890F8A8D2060790A0 /* ShiftPlanCard.swift */; };
 		806C8BBACD3D2E658528446B /* BehaviorObservationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00AE87DBDA56AC4CCB5B66 /* BehaviorObservationStore.swift */; };
 		80CCD5FECD02AB0662A26658 /* SleepRegularityIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 393CFDA7030A91780B725DEF /* SleepRegularityIndex.swift */; };
 		80FDDCD8D8006B95DAA56E4D /* VitalsStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC392B5759BE3200B53F48D /* VitalsStatus.swift */; };
@@ -861,6 +862,7 @@
 		C1996F2547CD476775D58F63 /* NaturalJournalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06902ACD41EC18AE77E3413F /* NaturalJournalTests.swift */; };
 		C1A1A299E033E992DD7306FE /* CoachTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12596A7336DD73648024FF0C /* CoachTabView.swift */; };
 		C1F173421CCF2617E80B07AA /* NightDetectiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF8A3FDEA744A3C1FD02525 /* NightDetectiveTests.swift */; };
+		C26B3C161587FA852F76AF3C /* ShiftRosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0FFD4EE16184D614C2B9342 /* ShiftRosterView.swift */; };
 		C286634AE25F50A8CDC04E6F /* ZoonWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C2BBDB18FB532658E1FFC823 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
 		C2BDF540A9833E65B04430BC /* SleepToolsStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9148AC5FFBB89875A4B656E /* SleepToolsStrip.swift */; };
@@ -1361,6 +1363,7 @@
 		44354442EF56D3F66F5A44C9 /* ContextForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContextForecast.swift"; sourceTree = "<group>"; };
 		445F8A134A58B330BC70BD4E /* ZoonCoverageMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonCoverageMatrix.swift"; sourceTree = "<group>"; };
 		449A6ED264EB4AB017A39AF5 /* CyclePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CyclePhase.swift"; sourceTree = "<group>"; };
+		44CC139890F8A8D2060790A0 /* ShiftPlanCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftPlanCard.swift"; sourceTree = "<group>"; };
 		44CDDE704425E14E8BE8AC0C /* BreathingHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingHealthView.swift"; sourceTree = "<group>"; };
 		44F44E13AE5A512DF79F5896 /* ShiftRosterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftRosterTests.swift"; sourceTree = "<group>"; };
 		45237B7D4C6548BAEC55290F /* InsightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightCard.swift"; sourceTree = "<group>"; };
@@ -1586,6 +1589,7 @@
 		A07C6E6223A226E40D9B14AB /* SleepResilienceCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepResilienceCard.swift"; sourceTree = "<group>"; };
 		A08C0FC759927724DB5C51C9 /* ShiftPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftPlan.swift"; sourceTree = "<group>"; };
 		A0C4E13A2C7D5D231786E8CB /* ZoonPairedPlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonPairedPlot.swift"; sourceTree = "<group>"; };
+		A0FFD4EE16184D614C2B9342 /* ShiftRosterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShiftRosterView.swift"; sourceTree = "<group>"; };
 		A1232A774FB22CCFA6F3FECC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		A240BFE3763939A33E61F11A /* MovementContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MovementContext.swift"; sourceTree = "<group>"; };
 		A266B25D9732E28AB9C8A587 /* YearHeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YearHeatmapView.swift"; sourceTree = "<group>"; };
@@ -1909,6 +1913,7 @@
 				87660F95EBEBDD0369FCE858,
 				58CD5E812FA0AEA96478E500,
 				B330742BC93A341EC2474419,
+				44CC139890F8A8D2060790A0,
 				E0CF402DBC021FA713DAE344,
 				ECE30B82E446955CA1BDB5BB,
 				423CBBEE5037B19C59780D54,
@@ -2550,6 +2555,7 @@
 				406D31EF0E61E462C6DAC9C5,
 				6DE8982C23D4D9CA3E186C1E,
 				90AD8CB0B86EA29FC8EBEF2B,
+				A0FFD4EE16184D614C2B9342,
 				C04C95F7B4CAD642DA384A03,
 				F89C5DEE01809047EF6230EF,
 				54A3BF86FDE87485002498C7,
@@ -3082,6 +3088,7 @@
 				4967E84F22018D4D19177B7A,
 				8EC2A1F4100DD6A4636D2A36,
 				18EDFF1FB2B8773118D410AC,
+				8020AE370E8E0742E6271DAB,
 				65B6BC14376BEF5569F00978,
 				C7D2DEF7B9FDA579511A6D4E,
 				21C99678C209300372D988F8,
@@ -3143,6 +3150,7 @@
 				5EA91DA4CE2DC82C8268D79F,
 				88ADDB95DD257E6E64896A81,
 				280DC4B2F8180261BC53D2E2,
+				C26B3C161587FA852F76AF3C,
 				10002633F956390118F079A1,
 				E11AF6F8F50A25A70CB39D3C,
 				213619B45F0EC47B2663B5F0,

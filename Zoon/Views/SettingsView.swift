@@ -32,6 +32,7 @@ struct SettingsView: View {
                 NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
                 NavigationLink("Repair sleep data") { DataRepairView() }
                 NavigationLink("Custom behaviours") { CustomBehaviorsView() }
+                NavigationLink("Work roster") { ShiftRosterView() }
             }
             goalSection
             appearanceSection

@@ -75,6 +75,14 @@ struct ZoonTomorrowView: View {
                     SleepRunwayCard(plan: runway)
                 }
 
+                // Above the runway would put one shift ahead of the week it
+                // sits in; below it, the week reads first and the next shift
+                // is the detail. Absent entirely when no roster is kept, which
+                // is most people.
+                if let shiftPlan {
+                    ShiftPlanCard(plan: shiftPlan)
+                }
+
                 timePicker
                 readyBuffer
                 calendarToggle
@@ -123,6 +131,25 @@ struct ZoonTomorrowView: View {
             commitments: horizonCommitments,
             manual: preferences.manualCommitment,
             obligationWeekdays: preferences.obligationWeekdays,
+            readyBufferMinutes: preferences.morningReadyBufferMinutes
+        )
+    }
+
+    /// The next shift on the roster, and the one after it -- the second is
+    /// what caps the sleep window behind the first, and is the only thing
+    /// that can produce a shortfall.
+    private var shiftPlan: ShiftPlan.Plan? {
+        let upcoming = preferences.shiftRoster.occurrences(
+            in: DateInterval(start: .now, duration: Double(SleepRunway.horizonDays) * 86_400)
+        )
+        guard let next = upcoming.first else { return nil }
+        return ShiftPlan.make(
+            shift: next,
+            nextShift: upcoming.dropFirst().first,
+            sleepNeedMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes
+                ?? preferences.sleepGoalMinutes,
+            habit: SleepRunway.Habit(nights: coordinator.recentNights, calendar: .current),
+            commuteMinutes: preferences.shiftCommuteMinutes,
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )
     }

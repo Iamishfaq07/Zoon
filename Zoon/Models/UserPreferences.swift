@@ -46,6 +46,8 @@ final class UserPreferences {
         static let tomorrowMinute = "zoon.pref.tomorrowMinute"
         static let calendarCommitmentRecord = "zoon.pref.calendarCommitmentRecord"
         static let morningReadyBufferMinutes = "zoon.pref.morningReadyBufferMinutes"
+        static let shiftRoster = "zoon.pref.shiftRoster"
+        static let shiftCommuteMinutes = "zoon.pref.shiftCommuteMinutes"
     }
 
     private let defaults: UserDefaults
@@ -289,6 +291,28 @@ final class UserPreferences {
                 defaults.removeObject(forKey: Key.calendarCommitmentRecord)
             }
         }
+    }
+
+    /// This person's work roster, when they keep one. Stored as the rule they
+    /// entered rather than as the dates it produces -- see `ShiftRoster`.
+    ///
+    /// An empty roster and no roster are the same thing here, and both mean
+    /// the shift surfaces render nothing. Nobody is asked to confirm that
+    /// they do not work shifts.
+    var shiftRoster: ShiftRoster {
+        didSet {
+            if shiftRoster.isEmpty {
+                defaults.removeObject(forKey: Key.shiftRoster)
+            } else if let data = try? JSONEncoder().encode(shiftRoster) {
+                defaults.set(data, forKey: Key.shiftRoster)
+            }
+        }
+    }
+
+    /// Door-to-door, each way. One figure rather than two -- see
+    /// `ShiftPlan.defaultCommuteMinutes`.
+    var shiftCommuteMinutes: Double {
+        didSet { defaults.set(shiftCommuteMinutes, forKey: Key.shiftCommuteMinutes) }
     }
 
     /// The standing morning time the person set, when they have asked Zoon to
@@ -738,6 +762,10 @@ final class UserPreferences {
         self.morningReadyBufferMinutes = storedBuffer > 0 ? storedBuffer : ZoonTomorrow.readyBufferMinutes
         self.calendarCommitmentRecord = (defaults.data(forKey: Key.calendarCommitmentRecord))
             .flatMap { try? JSONDecoder().decode(StoredCommitment.self, from: $0) }
+        self.shiftRoster = (defaults.data(forKey: Key.shiftRoster))
+            .flatMap { try? JSONDecoder().decode(ShiftRoster.self, from: $0) } ?? ShiftRoster()
+        let storedCommute = defaults.double(forKey: Key.shiftCommuteMinutes)
+        self.shiftCommuteMinutes = storedCommute > 0 ? storedCommute : ShiftPlan.defaultCommuteMinutes
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: Key.appearance) ?? ""
         ) ?? .dark
@@ -806,6 +834,8 @@ final class UserPreferences {
         tomorrowMinute = 30
         morningReadyBufferMinutes = ZoonTomorrow.readyBufferMinutes
         calendarCommitmentRecord = nil
+        shiftRoster = ShiftRoster()
+        shiftCommuteMinutes = ShiftPlan.defaultCommuteMinutes
         appearance = .dark
         displayName = ""
         age = nil
