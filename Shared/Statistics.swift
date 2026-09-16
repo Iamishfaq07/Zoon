@@ -253,4 +253,51 @@ enum Statistics {
               let upper = percentile(resampledMedians, 97.5) else { return nil }
         return (lower, upper)
     }
+
+    /// Percentile-bootstrap 95% interval for the difference between two
+    /// **independent** groups' medians — `median(group) − median(reference)`.
+    ///
+    /// The paired version above resamples one list of differences, which is
+    /// only valid when each value is a difference between two observations of
+    /// the same thing. Sensitivity bands are not paired: the nights with
+    /// 200 mg of caffeine are different nights from the ones with 50 mg, and
+    /// there is no pairing between them. Resampling each group separately is
+    /// the unpaired counterpart, and using the paired one here would report a
+    /// far narrower interval than the data supports.
+    ///
+    /// Deterministic via `SeededGenerator`, for the same reason: a finding's
+    /// stated confidence must not reshuffle between one visit to a screen and
+    /// the next.
+    static func unpairedBootstrapCI(
+        reference: [Double],
+        group: [Double],
+        iterations: Int = 2000,
+        seed: UInt64 = 0x5A0E_1DA7_5EED_0002
+    ) -> (lower: Double, upper: Double)? {
+        guard reference.count >= 3, group.count >= 3 else { return nil }
+
+        var generator = SeededGenerator(seed: seed)
+        var differences: [Double] = []
+        differences.reserveCapacity(iterations)
+
+        for _ in 0..<iterations {
+            var a: [Double] = []
+            a.reserveCapacity(reference.count)
+            for _ in 0..<reference.count {
+                a.append(reference[Int.random(in: 0..<reference.count, using: &generator)])
+            }
+            var b: [Double] = []
+            b.reserveCapacity(group.count)
+            for _ in 0..<group.count {
+                b.append(group[Int.random(in: 0..<group.count, using: &generator)])
+            }
+            if let left = median(a), let right = median(b) {
+                differences.append(right - left)
+            }
+        }
+
+        guard let lower = percentile(differences, 2.5),
+              let upper = percentile(differences, 97.5) else { return nil }
+        return (lower, upper)
+    }
 }
