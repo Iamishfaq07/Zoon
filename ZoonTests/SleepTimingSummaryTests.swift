@@ -10,63 +10,39 @@ import XCTest
 /// sleeper and puts the seam exactly where a shift worker's bedtimes live.
 final class SleepTimingSummaryTests: XCTestCase {
 
-    private var utc: TimeZone { TimeZone(secondsFromGMT: 0)! }
-
-    private var calendar: Calendar {
+    /// Noon on a given September day, in a given zone — a seed for
+    /// `Fixture.night`, which derives the real bedtime and wake from it.
+    private func noon(_ day: Int, in zone: String = "UTC") -> Date {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = utc
-        return calendar
-    }
-
-    private func date(_ day: Int, _ hour: Int, _ minute: Int = 0, in zone: TimeZone? = nil) -> Date {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = zone ?? utc
+        calendar.timeZone = TimeZone(identifier: zone) ?? .current
         return calendar.date(
-            from: DateComponents(year: 2026, month: 9, day: day, hour: hour, minute: minute)
+            from: DateComponents(year: 2026, month: 9, day: day, hour: 12)
         )!
     }
 
-    /// One night with a given bedtime and wake time.
+    /// One night, built through `Fixture.night` rather than by hand.
+    ///
+    /// The hand-rolled `SleepNightFeatures(...)` this replaced listed twenty
+    /// arguments and missed two of them, which is the whole argument for the
+    /// fixture: an initializer that wide is not something a test should be
+    /// restating.
+    ///
+    /// `bedtimeHour` at or after noon anchors the night on the *previous*
+    /// day, so a 23:00 bedtime belongs to the night ending on `wakeDay`.
     private func night(
-        bedtime: Date,
-        wake: Date,
-        zone: TimeZone? = nil
+        bedtimeHour: Int,
+        bedtimeMinute: Int = 0,
+        inBedMinutes: Double = 450,
+        wakeDay: Int,
+        zone: String = "UTC"
     ) -> SleepNightFeatures {
-        // Every stage split is bound to an explicitly typed local rather than
-        // written inline. `SleepNightFeatures.init` takes twenty-odd
-        // arguments, and a handful of `asleep * 0.15` literals among them is
-        // enough to blow the type-checker's budget for the whole call --
-        // which it reports as "unable to type-check this expression in
-        // reasonable time" on the opening line, not on the arithmetic.
-        let asleep: Double = wake.timeIntervalSince(bedtime) / 60
-        let core: Double = asleep * 0.55
-        let deep: Double = asleep * 0.15
-        let rem: Double = asleep * 0.2
-        let awake: Double = asleep * 0.1
-        return SleepNightFeatures(
-            date: wake,
-            bedtime: bedtime,
-            wakeTime: wake,
-            timeInBedMinutes: asleep,
-            timeAsleepMinutes: asleep,
-            sleepEfficiencyPercent: 95,
-            coreMinutes: core,
-            deepMinutes: deep,
-            remMinutes: rem,
-            unspecifiedAsleepMinutes: 0,
-            awakeMinutes: awake,
-            wakeCount: 2,
-            sleepLatencyMinutes: 12,
-            avgHeartRate: 56,
-            minHeartRate: 49,
-            avgHRV: 55,
-            avgRespiratoryRate: 14.5,
-            avgSpO2: 97,
-            wristTempDeltaC: 0,
-            hrv7DayAvg: 55,
-            sleepDebtMinutes: 0,
-            lastWorkoutHoursBeforeBed: nil,
-            timeZone: zone ?? utc
+        Fixture.night(
+            timeAsleepMinutes: inBedMinutes - 25,
+            timeInBedMinutes: inBedMinutes,
+            bedtimeHour: bedtimeHour,
+            bedtimeMinuteOffset: bedtimeMinute,
+            timeZoneIdentifier: zone,
+            wakeDay: noon(wakeDay, in: zone)
         )
     }
 
@@ -74,39 +50,40 @@ final class SleepTimingSummaryTests: XCTestCase {
 
     /// Three nights that are nearly identical must read as nearly identical.
     func testBedtimesStraddlingMidnightClusterRatherThanScatter() throws {
-        let nights = [
-            night(bedtime: date(14, 23, 50), wake: date(15, 7, 0)),
-            night(bedtime: date(16, 0, 0), wake: date(16, 7, 10)),
-            night(bedtime: date(17, 0, 10), wake: date(17, 7, 20))
-        ]
-        let summary = SleepTimingSummary.make(nights: nights)
+        let summary = SleepTimingSummary.make(nights: [
+            night(bedtimeHour: 23, bedtimeMinute: 50, wakeDay: 15),
+            night(bedtimeHour: 0, wakeDay: 16),
+            night(bedtimeHour: 0, bedtimeMinute: 10, wakeDay: 17)
+        ])
 
-        let bedtime = try XCTUnwrap(summary.bedtimeMinutes)
-        XCTAssertEqual(SleepTimingSummary.clockLabel(bedtime), "00:00")
+        XCTAssertEqual(
+            SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "00:00"
+        )
         // Ten minutes, not thirteen and a half hours.
         XCTAssertEqual(try XCTUnwrap(summary.bedtimeVariabilityMinutes), 10, accuracy: 0.5)
     }
 
     /// The seam the shifted representation left behind: two bedtimes twenty
-    /// minutes apart either side of 18:00 came out twenty-four hours apart.
+    /// minutes apart either side of 18:00 came out twenty-four hours apart,
+    /// which is exactly where a shift worker's bedtimes live.
     func testBedtimesStraddlingSixPMAlsoCluster() throws {
-        let nights = [
-            night(bedtime: date(14, 17, 50), wake: date(15, 1, 0)),
-            night(bedtime: date(15, 18, 0), wake: date(16, 1, 10)),
-            night(bedtime: date(16, 18, 10), wake: date(17, 1, 20))
-        ]
-        let summary = SleepTimingSummary.make(nights: nights)
-        XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "18:00")
+        let summary = SleepTimingSummary.make(nights: [
+            night(bedtimeHour: 17, bedtimeMinute: 50, wakeDay: 15),
+            night(bedtimeHour: 18, wakeDay: 16),
+            night(bedtimeHour: 18, bedtimeMinute: 10, wakeDay: 17)
+        ])
+        XCTAssertEqual(
+            SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "18:00"
+        )
         XCTAssertEqual(try XCTUnwrap(summary.bedtimeVariabilityMinutes), 10, accuracy: 0.5)
     }
 
     /// A day sleeper is an ordinary schedule, not an edge case, and nothing
     /// about it should go through a midnight branch at all.
     func testADaySleeperReportsAnAfternoonMidSleep() throws {
-        let nights = (14...20).map { day in
-            night(bedtime: date(day, 9, 0), wake: date(day, 16, 30))
-        }
-        let summary = SleepTimingSummary.make(nights: nights)
+        let summary = SleepTimingSummary.make(
+            nights: (15...21).map { night(bedtimeHour: 9, wakeDay: $0) }
+        )
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "09:00")
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.wakeMinutes)), "16:30")
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.midSleepMinutes)), "12:45")
@@ -116,10 +93,9 @@ final class SleepTimingSummaryTests: XCTestCase {
     /// Mid-sleep for a night that crosses midnight is in the small hours, not
     /// at noon — which is what averaging the two clock readings would give.
     func testMidSleepCrossesMidnightCorrectly() throws {
-        let nights = (14...20).map { day in
-            night(bedtime: date(day, 23, 40), wake: date(day + 1, 7, 10))
-        }
-        let summary = SleepTimingSummary.make(nights: nights)
+        let summary = SleepTimingSummary.make(
+            nights: (15...21).map { night(bedtimeHour: 23, bedtimeMinute: 40, wakeDay: $0) }
+        )
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.midSleepMinutes)), "03:25")
     }
 
@@ -128,10 +104,8 @@ final class SleepTimingSummaryTests: XCTestCase {
     /// One 04:00 night in a fortnight of 23:00 bedtimes must not drag the
     /// reported median across an hour. A vector mean would.
     func testASingleLateNightDoesNotMoveTheMedian() throws {
-        var nights = (1...13).map { day in
-            night(bedtime: date(day, 23, 0), wake: date(day + 1, 6, 30))
-        }
-        nights.append(night(bedtime: date(15, 4, 0), wake: date(15, 9, 0)))
+        var nights = (2...14).map { night(bedtimeHour: 23, wakeDay: $0) }
+        nights.append(night(bedtimeHour: 4, wakeDay: 15))
 
         let summary = SleepTimingSummary.make(nights: nights)
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "23:00")
@@ -140,25 +114,22 @@ final class SleepTimingSummaryTests: XCTestCase {
     /// A genuinely irregular schedule must report a large spread rather than
     /// being smoothed into a tidy one.
     func testAnIrregularScheduleReportsALargeSpread() throws {
-        let bedtimes = [21, 23, 1, 3, 22, 0, 2]
-        let nights = bedtimes.enumerated().map { index, hour in
-            let day = 14 + index
-            let bedtime = date(day, hour)
-            return night(bedtime: bedtime, wake: bedtime.addingTimeInterval(7 * 3600))
-        }
-        let summary = SleepTimingSummary.make(nights: nights)
+        let hours = [21, 23, 1, 3, 22, 0, 2]
+        let summary = SleepTimingSummary.make(
+            nights: hours.enumerated().map { index, hour in
+                night(bedtimeHour: hour, wakeDay: 15 + index)
+            }
+        )
         XCTAssertGreaterThan(try XCTUnwrap(summary.bedtimeVariabilityMinutes), 60)
     }
 
     // MARK: - Provenance the document has to carry
 
     func testTravelAcrossTimezonesIsDeclared() {
-        let tokyo = TimeZone(identifier: "Asia/Tokyo")!
-        let nights = [
-            night(bedtime: date(14, 23, 0), wake: date(15, 7, 0)),
-            night(bedtime: date(15, 23, 0, in: tokyo), wake: date(16, 7, 0, in: tokyo), zone: tokyo)
-        ]
-        let summary = SleepTimingSummary.make(nights: nights)
+        let summary = SleepTimingSummary.make(nights: [
+            night(bedtimeHour: 23, wakeDay: 15),
+            night(bedtimeHour: 23, wakeDay: 16, zone: "Asia/Tokyo")
+        ])
         XCTAssertEqual(summary.timeZoneIdentifiers.count, 2)
         XCTAssertTrue(
             summary.rows.contains { $0.label == "Timezones in this range" },
@@ -170,24 +141,19 @@ final class SleepTimingSummaryTests: XCTestCase {
     /// travelling must not recompute historical bedtimes in the zone the
     /// phone is in now.
     func testEachNightIsReadInItsOwnTimezone() throws {
-        let tokyo = TimeZone(identifier: "Asia/Tokyo")!
-        // 23:00 local in Tokyo every night.
-        let nights = (14...20).map { day in
-            night(bedtime: date(day, 23, 0, in: tokyo), wake: date(day + 1, 7, 0, in: tokyo), zone: tokyo)
-        }
-        let summary = SleepTimingSummary.make(nights: nights)
+        let summary = SleepTimingSummary.make(
+            nights: (15...21).map { night(bedtimeHour: 23, wakeDay: $0, zone: "Asia/Tokyo") }
+        )
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "23:00")
     }
 
     func testTheSampleCountIsReported() {
-        let nights = (14...20).map { day in
-            night(bedtime: date(day, 23, 0), wake: date(day + 1, 7, 0))
-        }
-        let summary = SleepTimingSummary.make(nights: nights)
+        let summary = SleepTimingSummary.make(
+            nights: (15...21).map { night(bedtimeHour: 23, wakeDay: $0) }
+        )
         XCTAssertEqual(summary.nightCount, 7)
         XCTAssertEqual(
-            summary.rows.first(where: { $0.label == "Nights with timing data" })?.value,
-            "7"
+            summary.rows.first(where: { $0.label == "Nights with timing data" })?.value, "7"
         )
     }
 
@@ -226,16 +192,22 @@ final class SleepTimingSummaryTests: XCTestCase {
 
     /// DST: the same 23:00 local bedtime either side of a transition is the
     /// same bedtime, because it is read as a wall clock in its own zone.
+    /// 25 October 2026 is the UK clock change.
     func testDaylightSavingTransitionDoesNotMoveTheClockReading() throws {
-        let london = TimeZone(identifier: "Europe/London")!
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = london
-        // 25 October 2026 is the UK clock change.
-        let nights = (23...27).map { day -> SleepNightFeatures in
-            let bedtime = calendar.date(
-                from: DateComponents(year: 2026, month: 10, day: day, hour: 23, minute: 0)
-            )!
-            return night(bedtime: bedtime, wake: bedtime.addingTimeInterval(8 * 3600), zone: london)
+        calendar.timeZone = TimeZone(identifier: "Europe/London")!
+        // Bedtimes on the 23rd through the 27th, so wake days are the 24th
+        // through the 28th.
+        let nights = (24...28).map { day -> SleepNightFeatures in
+            Fixture.night(
+                timeAsleepMinutes: 425,
+                timeInBedMinutes: 450,
+                bedtimeHour: 23,
+                timeZoneIdentifier: "Europe/London",
+                wakeDay: calendar.date(
+                    from: DateComponents(year: 2026, month: 10, day: day, hour: 12)
+                )!
+            )
         }
         let summary = SleepTimingSummary.make(nights: nights)
         XCTAssertEqual(SleepTimingSummary.clockLabel(try XCTUnwrap(summary.bedtimeMinutes)), "23:00")
