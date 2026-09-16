@@ -679,6 +679,76 @@ caused the awakening"). The caveat is now asserted on its own terms and exempted
 from the blanket sweep. A guard that fires on the sentence the brief asks for is
 a broken guard, not a finding.
 
+### C9 — Morning Alertness, improved (§26)
+
+The brief says "improve, do not rebuild", and the check itself was fine: six
+trials, a median, a lapse count, a self-rating. What it lacked was everything
+that decides whether those numbers mean anything.
+
+```
+Purpose:      let six taps say something, but only once they have earned it.
+Files:        Shared/AlertnessCheck.swift,
+              Zoon/Services/AlertnessCheckStore.swift,
+              Zoon/Views/AlertnessCheckView.swift
+Added:        interquartile range, false starts, time since waking, trial
+              count -- the four things §26 asks to track that were not kept.
+              The spread matters most: a steady 305 ms and a 305 ms built from
+              200 and 600 are the same median and not the same state.
+Practice:     the trap the engine exists for. Reaction time falls over the
+              first few attempts because the task is being learned, so an app
+              plotting session one against session three reports an
+              improvement it caused itself. The first three sessions are
+              excluded from every baseline, and no comparison is offered until
+              five more exist after them -- the first verdict lands on session
+              nine. Simulated before writing the Swift; the first draft was
+              off by one on the countdown.
+Like with like: a check twenty minutes after waking is not compared against
+              one six hours later. Sleep inertia moves reaction time more than
+              most of what this is looking for, so a 90-minute tolerance
+              applies and "nothing comparable" is a stated outcome rather than
+              a silent average.
+Withholding:  the screen says which of practice or baseline-building it is
+              waiting for, and how many checks remain. Silence would read as
+              an app that does nothing with this.
+Bugs fixed:   (1) the reaction timer called `.now` twice, once for seconds and
+              once for attoseconds, so the two halves came from different
+              instants -- jitter in the one thing on that screen that is a
+              measurement. (2) the store dropped runs under the trial minimum
+              while the screen said "Saved on this device" either way; `save`
+              now returns nil and the screen says "Not saved". (3) v1 records
+              cannot be reconstructed, so migrated sessions carry *absent*
+              fields rather than zeros -- a zero spread claims a perfectly
+              consistent run and a zero false-start count claims there were
+              none.
+Lapses:       threshold stays at 500 ms because that is the published
+              convention, and now carries `lapseCaveat`: six taps is not a
+              ten-minute vigilance task, and printing the count bare borrows
+              an authority this does not have.
+Tests:        ZoonTests/AlertnessCheckTests.swift (25), plus three existing
+              store tests carried onto the new API.
+Limitations:  no screenshot -- the interesting states need nine stored
+              sessions and the fixtures have none. Never run on a device, so
+              the true tap latency of the hardware is unmeasured and is part
+              of every figure here. `practiceSessions = 3` is the low end of
+              what the literature reports; it is a judgement, not a
+              measurement of this task.
+```
+
+**Two red runs, both mine, neither in the engine.** Run #1521: a fixture
+argument out of order and a key-path map whose root could not be inferred once
+the first error broke the array literal — the app target built clean, only
+`ZoonTests` failed. Run #1523: renaming `AlertnessCheckStore.results` to
+`sessions` broke three pre-existing tests in `NaturalJournalTests.swift`. **I
+changed a type's public surface without grepping for its callers**, which is the
+same sweep this pass did carefully for `Finding.tag` and skipped here. Green on
+#1525.
+
+A note on reading CI from this environment: `list_workflow_jobs` served stale
+step data for ten minutes after the job finished, which made a 6m27s UI-test
+step look like a twenty-minute hang. `get_workflow_job` against the job id
+returns the true state. Worth knowing before diagnosing a stall that is not
+happening.
+
 ---
 
 ## D. Apple APIs used
@@ -785,7 +855,7 @@ Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
 no Mac and no local toolchain in this environment, so this is the only place
 any Swift in this branch has ever been compiled or executed.
 
-**Suite size.** 1,871 `func test…` methods across 178 files in `ZoonTests`,
+**Suite size.** 1,896 `func test…` methods across 179 files in `ZoonTests`,
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
@@ -835,6 +905,14 @@ One of my own assertions was wrong rather than the code: a nap test meant to
 check the bedtime shift printed in minutes matched `"h "`, which occurs inside
 "with bedtimes". It now asserts the magnitude.
 
+**Later reds, all in the seams rather than the arithmetic.** Every engine added
+after this section was first written went green on its first run — the Python
+pre-simulation caught three dead-constant bugs (§24's nap, §25's five-minute
+bin, §26's practice countdown) before CI ever saw them. The two reds that did
+happen, both on §26, were a fixture argument out of order and a rename I made
+without grepping for its callers. The pattern is worth recording plainly: the
+arithmetic has been the reliable part, and the joins around it have not.
+
 **Not tested.** Nothing here ran on hardware. See M.
 
 ---
@@ -845,8 +923,8 @@ check the bedtime shift printed in minutes matched `"h "`, which occurs inside
 in this document is a 12–20 minute CI round trip; there is no local compile.
 
 - **Build runs #1501 (`ed5bb63`), #1503 (`dbc7531`), #1507 (`d79e077`),
-  #1513 (`9fac96b`) and #1517 (`b718fab`, the branch head): success.** Both
-  jobs green — "Validate project
+  #1513 (`9fac96b`), #1517 (`b718fab`) and #1525 (`c295cfc`, the branch head):
+  success.** Both jobs green — "Validate project
   file" (ubuntu) and "Build (iOS Simulator)" (macos).
 - `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
   `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
@@ -925,16 +1003,15 @@ data.
 
 ### Not implemented from the brief
 
-§22 Personal Sensitivity Curves, §26 Morning Alertness, §27 Movement Context
-refinement,
+§22 Personal Sensitivity Curves, §27 Movement Context refinement,
 §29–§36 visual system, §37 Watch information architecture, §38–§39 Soundscapes
 and Breathing, §40 Dawn theme, §41 motion pass, §42 splash audit, §43 NightSky
 profiling, §44 widgets, §52 performance pass, §54 full visual regression
 review.
 
-Four corrections to an earlier draft of this list. §23 Restorative Windows,
-§24 Shift Roster Planner and §25 Awakening Inspector are now implemented — see
-C6, C7 and C8. §28 Long-Term Resilience UI was listed as a gap and
+Five corrections to an earlier draft of this list. §23 Restorative Windows,
+§24 Shift Roster Planner, §25 Awakening Inspector and §26 Morning Alertness are
+now implemented — see C6, C7, C8 and C9. §28 Long-Term Resilience UI was listed as a gap and
 is not one: `LongTermBaselineCard` reached `TrendsView` on `main` before this
 pass began, and A6 rewrote the engine behind it rather than adding the
 surface.
