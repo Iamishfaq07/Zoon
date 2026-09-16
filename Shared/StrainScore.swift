@@ -29,19 +29,28 @@ struct StrainScore: Codable, Hashable, Sendable {
     /// fallback, which sorts nothing into zones at all. Unknown is not the
     /// same as generic, and the UI must be able to tell them apart.
     let zoneProvenance: HRZoneProvenance?
+    /// Where the resting heart rate in the Karvonen denominator came from.
+    ///
+    /// Optional for the same reason `zoneProvenance` is: a score decoded from
+    /// a payload written before this existed genuinely does not know, and the
+    /// active-energy fallback sorts nothing into zones at all. Unknown is not
+    /// generic.
+    let restingProvenance: RestingHRProvenance?
 
     init(
         value: Double,
         zoneMinutes: [Zone: Double],
         activeEnergyKcal: Double?,
         isEstimate: Bool,
-        zoneProvenance: HRZoneProvenance? = nil
+        zoneProvenance: HRZoneProvenance? = nil,
+        restingProvenance: RestingHRProvenance? = nil
     ) {
         self.value = value
         self.zoneMinutes = zoneMinutes
         self.activeEnergyKcal = activeEnergyKcal
         self.isEstimate = isEstimate
         self.zoneProvenance = zoneProvenance
+        self.restingProvenance = restingProvenance
     }
 
     init(from decoder: Decoder) throws {
@@ -51,6 +60,7 @@ struct StrainScore: Codable, Hashable, Sendable {
         activeEnergyKcal = try container.decodeIfPresent(Double.self, forKey: .activeEnergyKcal)
         isEstimate = try container.decode(Bool.self, forKey: .isEstimate)
         zoneProvenance = try container.decodeIfPresent(HRZoneProvenance.self, forKey: .zoneProvenance)
+        restingProvenance = try container.decodeIfPresent(RestingHRProvenance.self, forKey: .restingProvenance)
     }
 
     enum Zone: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
@@ -108,7 +118,8 @@ struct StrainScore: Codable, Hashable, Sendable {
         zoneMinutes: [Zone: Double],
         activeEnergyKcal: Double?,
         hasHeartRateCoverage: Bool,
-        zoneProvenance: HRZoneProvenance = .genericFallback
+        zoneProvenance: HRZoneProvenance = .genericFallback,
+        restingProvenance: RestingHRProvenance = .genericFallback
     ) -> StrainScore {
 
         let load = zoneMinutes.reduce(0.0) { $0 + $1.value * $1.key.weight }
@@ -123,7 +134,8 @@ struct StrainScore: Codable, Hashable, Sendable {
             zoneMinutes: zoneMinutes,
             activeEnergyKcal: activeEnergyKcal,
             isEstimate: !hasHeartRateCoverage,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance,
+            restingProvenance: restingProvenance
         )
     }
 
@@ -180,9 +192,18 @@ extension StrainScore {
         if isEstimate {
             return "Estimated from active energy — not enough heart-rate coverage to build zones."
         }
+        // Resting rate first among the two boundary problems. A generic
+        // resting rate sits in both the numerator and the denominator of
+        // every reserve fraction, so it moves more than a guessed ceiling
+        // does -- and unlike age, there is nothing the person can type into
+        // Settings to fix it. Wearing the watch is the fix, and the line
+        // should say that.
+        if restingProvenance == .genericFallback {
+            return "No resting heart rate to measure against, so zones use a default. Wearing your watch overnight is what sharpens this."
+        }
         switch zoneProvenance {
         case .userConfigured, .observedPersonalized:
-            return nil
+            break
         case .ageEstimated:
             return "Zones from an age-estimated maximum heart rate, not one you've hit."
         case .genericFallback:
@@ -191,8 +212,12 @@ extension StrainScore {
             // Genuinely unknown -- a legacy payload, or the active-energy
             // fallback, which sorts nothing into zones. Not the same as a
             // known-bad default, and not something to caveat.
-            return nil
+            break
         }
+        if restingProvenance == .sleepDerivedPersonalEstimate {
+            return "Resting rate estimated from your sleep rather than measured by Health."
+        }
+        return nil
     }
 
     /// How much this number is worth, from both things that can weaken it.
@@ -208,20 +233,50 @@ extension StrainScore {
     /// written before provenance was recorded genuinely does not know what
     /// its zones rested on, and "we did not record it" is not evidence that
     /// it was bad.
+    /// - Note: the product in the brief is coverage x max-HR provenance x
+    ///   resting-HR provenance x workout-zone provenance. There is no
+    ///   workout-zone term because there is no public API to produce one --
+    ///   see `HRZoneProvenance` for what was actually checked in the SDK --
+    ///   and a term that is always 1 is not a term. The remaining three are
+    ///   combined as a minimum rather than a product: these are ordinal
+    ///   labels, not probabilities, and multiplying them would invent a
+    ///   precision the inputs do not have. A chain is as strong as its
+    ///   weakest link, which is the same rule Recovery and Energy already
+    ///   apply.
     var confidence: MetricConfidence {
         let fromCoverage: MetricConfidence = isEstimate ? .low : .high
-        guard let zoneProvenance else { return fromCoverage }
-        let fromZones: MetricConfidence = switch zoneProvenance {
-        case .userConfigured, .observedPersonalized: .high
-        case .ageEstimated: .moderate
-        case .genericFallback: .low
+        var worst = fromCoverage
+        if let zoneProvenance {
+            let fromZones: MetricConfidence = switch zoneProvenance {
+            case .userConfigured, .observedPersonalized: .high
+            case .ageEstimated: .moderate
+            case .genericFallback: .low
+            }
+            worst = min(worst, fromZones)
         }
-        return min(fromCoverage, fromZones)
+        // Unknown provenance does not constrain, for the same reason it does
+        // not above: "we did not record it" is not evidence it was bad.
+        if let restingProvenance {
+            worst = min(worst, restingProvenance.confidence)
+        }
+        return worst
+    }
+
+    /// Whether the zone model behind this score describes this person in both
+    /// of its terms.
+    ///
+    /// The point of the property is that it is rarely true. A ceiling from
+    /// `208 - 0.7 x age` and a floor of a flat 60 bpm is a population model
+    /// wearing a personal label, and nothing in the app may call that
+    /// personalized.
+    var isFullyPersonalized: Bool {
+        zoneProvenance?.isPersonalized == true && restingProvenance?.isPersonalized == true
     }
 
     /// Short enough for a row beside the band.
     var confidenceTag: String? {
         if isEstimate { return "estimated" }
+        if restingProvenance == .genericFallback { return "default resting rate" }
         guard let zoneProvenance, !zoneProvenance.isPersonalized else { return nil }
         return "estimated zones"
     }

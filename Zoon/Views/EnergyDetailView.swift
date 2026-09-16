@@ -75,6 +75,14 @@ struct EnergyDetailView: View {
     /// two bands that actually change tonight's sleep need say so, and the
     /// weak-zone case says the thing that would sharpen every future score.
     private var loadAction: String? {
+        // The resting floor comes first. It is the weaker of the two
+        // boundaries when it is missing -- it sits in both the numerator and
+        // the denominator of every reserve fraction -- and it is the one the
+        // person cannot fix from Settings, so the instruction has to be a
+        // different one.
+        if context.strain.restingProvenance == .genericFallback {
+            return "Wear your watch overnight. Without a resting heart rate, your zones are drawn from a default rather than from you."
+        }
         if context.strain.zoneProvenance == .genericFallback {
             return "Add your age in Settings so your zones stop resting on a default maximum heart rate."
         }
@@ -86,6 +94,18 @@ struct EnergyDetailView: View {
         default:
             return nil
         }
+    }
+
+    /// The two boundaries the zones were drawn between, named.
+    ///
+    /// Both are usually estimates and the score has no way to say which kind
+    /// without this. `nil` for the active-energy fallback, which sorts
+    /// nothing into zones and so has no boundaries to describe.
+    private var zoneBasis: String? {
+        guard let zones = context.strain.zoneProvenance,
+              let resting = context.strain.restingProvenance
+        else { return nil }
+        return "Zones run from \(resting.label.lowercased()) up to \(zones.label.lowercased())."
     }
 
     /// Daily Load, exactly as `TodayView.dailyLoadRow` drew it.
@@ -137,6 +157,7 @@ struct EnergyDetailView: View {
                 facets: MetricFacets(
                     confidence: context.strain.confidence,
                     confidenceReason: context.strain.confidenceNote,
+                    baseline: zoneBasis,
                     action: loadAction
                 )
             )

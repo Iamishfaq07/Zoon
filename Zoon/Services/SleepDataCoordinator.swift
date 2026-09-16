@@ -882,19 +882,21 @@ final class SleepDataCoordinator {
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
         let maxHR = maximum.bpm
-        // True RHR first (see SleepNightFeatures.restingHeartRate), falling
-        // back to the sleep-window low only when no daily RHR sample exists
-        // yet — heart-rate-reserve zones are sensitive to this baseline, so
-        // the more accurate figure is worth preferring wherever it's there.
-        let restingHR = history.compactMap(\.restingHeartRate).last
-            ?? night.restingHeartRate
-            ?? history.compactMap(\.minHeartRate).last
-            ?? night.minHeartRate
-            ?? 60
+        // Heart-rate-reserve zones are as sensitive to this floor as to the
+        // ceiling above, and it used to end in a bare `?? 60` -- a population
+        // constant that arrived with no label and made the Load model
+        // generic in both terms while nothing said so.
+        let resting = HeartRateZoneIntegrator.restingHeartRate(
+            measuredToday: night.restingHeartRate,
+            measuredEarlier: history.compactMap(\.restingHeartRate).last,
+            sleepDerived: night.minHeartRate ?? history.compactMap(\.minHeartRate).last
+        )
+        let restingHR = resting.bpm
 
         let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR,
-            zoneProvenance: maximum.provenance
+            zoneProvenance: maximum.provenance,
+            restingProvenance: resting.provenance
         )
 
         guard !isErasing, generation == storeGeneration else { return }
@@ -1060,25 +1062,31 @@ final class SleepDataCoordinator {
         return out
     }
 
-    /// Long-term baselines for the two vitals with enough history behind them
-    /// to have one. `LongTermResilience` shipped with tests and no caller.
+    /// Long-term baselines for the vitals with enough history behind them to
+    /// have one.
+    ///
+    /// Each signal carries its own thresholds and sample floors rather than
+    /// sharing one generic tolerance: HRV swings twenty per cent night to
+    /// night while a resting heart rate that moves five per cent has done
+    /// something, and a single formula across both is tuned for neither.
+    /// Signals whose windows are too thin still appear — an explicit "not
+    /// enough yet" is the honest state, and hiding the row would leave the
+    /// person wondering where respiratory rate went.
     func longTermSignals(window: LongTermResilience.Window) -> [LongTermResilience.Signal] {
-        let rhr = recentNights.compactMap { night in
-            night.restingHeartRate.map { LongTermResilience.Point(date: night.date, value: $0) }
+        func points(_ value: @escaping (SleepNightFeatures) -> Double?) -> [LongTermResilience.Point] {
+            recentNights.compactMap { night in
+                value(night).map { LongTermResilience.Point(date: night.date, value: $0) }
+            }
         }
-        let hrv = recentNights.compactMap { night in
-            night.avgHRV.map { LongTermResilience.Point(date: night.date, value: $0) }
-        }
-        return [
-            LongTermResilience.measure(
-                name: "resting heart rate", points: rhr, window: window,
-                unit: "bpm", lowerIsFavourable: true
-            ),
-            LongTermResilience.measure(
-                name: "HRV", points: hrv, window: window,
-                unit: "ms", lowerIsFavourable: false
-            )
+        let specs: [(LongTermResilience.Spec, [LongTermResilience.Point])] = [
+            (.restingHeartRate, points(\.restingHeartRate)),
+            (.heartRateVariability, points(\.avgHRV)),
+            (.respiratoryRate, points(\.avgRespiratoryRate)),
+            (.sleepDuration, points { $0.timeAsleepMinutes })
         ]
+        return specs.map { spec, values in
+            LongTermResilience.measure(spec: spec, points: values, window: window)
+        }
     }
 
     func napIntervals(before night: Date, timeZone: TimeZone) -> [DateInterval] {
@@ -1106,7 +1114,8 @@ final class SleepDataCoordinator {
         wakeTime: Date,
         restingHR: Double,
         maxHR: Double,
-        zoneProvenance: HRZoneProvenance
+        zoneProvenance: HRZoneProvenance,
+        restingProvenance: RestingHRProvenance
     ) async -> (today: StrainScore, yesterday: StrainScore, hourly: [(date: Date, bpm: Double)]) {
 
         let calendar = Calendar.current
@@ -1115,11 +1124,11 @@ final class SleepDataCoordinator {
 
         async let todayTask = strain(
             in: DateInterval(start: todayStart, end: .now), restingHR: restingHR, maxHR: maxHR,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance, restingProvenance: restingProvenance
         )
         async let yesterdayTask = strain(
             in: DateInterval(start: yesterdayStart, end: todayStart), restingHR: restingHR, maxHR: maxHR,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance, restingProvenance: restingProvenance
         )
 
         let today = await todayTask
@@ -1136,7 +1145,8 @@ final class SleepDataCoordinator {
         in interval: DateInterval,
         restingHR: Double,
         maxHR: Double,
-        zoneProvenance: HRZoneProvenance
+        zoneProvenance: HRZoneProvenance,
+        restingProvenance: RestingHRProvenance
     ) async -> StrainScore {
         guard interval.duration > 0 else { return .zero }
 
@@ -1155,7 +1165,8 @@ final class SleepDataCoordinator {
             zoneMinutes: result.zones,
             activeEnergyKcal: energy,
             hasHeartRateCoverage: true,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance,
+            restingProvenance: restingProvenance
         )
     }
 
