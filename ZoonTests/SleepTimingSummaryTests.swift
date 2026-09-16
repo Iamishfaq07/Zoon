@@ -32,7 +32,17 @@ final class SleepTimingSummaryTests: XCTestCase {
         wake: Date,
         zone: TimeZone? = nil
     ) -> SleepNightFeatures {
-        let asleep = wake.timeIntervalSince(bedtime) / 60
+        // Every stage split is bound to an explicitly typed local rather than
+        // written inline. `SleepNightFeatures.init` takes twenty-odd
+        // arguments, and a handful of `asleep * 0.15` literals among them is
+        // enough to blow the type-checker's budget for the whole call --
+        // which it reports as "unable to type-check this expression in
+        // reasonable time" on the opening line, not on the arithmetic.
+        let asleep: Double = wake.timeIntervalSince(bedtime) / 60
+        let core: Double = asleep * 0.55
+        let deep: Double = asleep * 0.15
+        let rem: Double = asleep * 0.2
+        let awake: Double = asleep * 0.1
         return SleepNightFeatures(
             date: wake,
             bedtime: bedtime,
@@ -40,11 +50,11 @@ final class SleepTimingSummaryTests: XCTestCase {
             timeInBedMinutes: asleep,
             timeAsleepMinutes: asleep,
             sleepEfficiencyPercent: 95,
-            coreMinutes: asleep * 0.55,
-            deepMinutes: asleep * 0.15,
-            remMinutes: asleep * 0.2,
+            coreMinutes: core,
+            deepMinutes: deep,
+            remMinutes: rem,
             unspecifiedAsleepMinutes: 0,
-            awakeMinutes: asleep * 0.1,
+            awakeMinutes: awake,
             wakeCount: 2,
             sleepLatencyMinutes: 12,
             avgHeartRate: 56,
