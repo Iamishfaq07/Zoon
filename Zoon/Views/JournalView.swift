@@ -11,6 +11,7 @@ struct JournalView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var findings: [JournalCorrelator.Finding] = []
@@ -182,7 +183,16 @@ struct JournalView: View {
                     .fill(hasTags ? Theme.Metric.sleep : .clear)
                     .frame(width: 4, height: 4)
             }
-            .frame(width: 46, height: 62)
+            // A fixed 46pt box fits "Mon" and "16" at default sizes and
+            // nothing at accessibility ones, where both lines truncate to an
+            // ellipsis and the dot overflows the bottom edge -- a strip of
+            // identical "..." chips you cannot pick a day from. The box grows
+            // with the text instead, and the strip scrolls horizontally, which
+            // it already did.
+            .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 76 : 46,
+                   minHeight: dynamicTypeSize.isAccessibilitySize ? 84 : 62)
+            .fixedSize(horizontal: true, vertical: true)
+            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 8 : 0)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isSelected ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.05))

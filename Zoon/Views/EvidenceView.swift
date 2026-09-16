@@ -19,6 +19,7 @@ struct EvidenceView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
@@ -250,26 +251,57 @@ struct EvidenceView: View {
         NavigationLink {
             SensorTruthView()
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "sensor.tag.radiowaves.forward.fill")
-                    .font(Theme.text(14))
-                    .foregroundStyle(Theme.Metric.strain)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Where the numbers come from")
-                        .font(Theme.label(14, weight: .semibold))
-                    Text("Which are measured, and which are estimates")
-                        .font(Theme.text(11))
-                        .foregroundStyle(Theme.inkSecondary)
+            // At accessibility sizes the two lines wrap to eight or more,
+            // and a 14pt icon centred against that block floats down beside
+            // the subtitle while the title it belongs to sits alone at the
+            // top. The icon leads the row it labels, so at those sizes it
+            // moves above the text instead of beside it.
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 10) {
+                            sensorTruthIcon
+                            Spacer(minLength: 0)
+                            sensorTruthChevron
+                        }
+                        sensorTruthLabels
+                    }
+                } else {
+                    HStack(spacing: 10) {
+                        sensorTruthIcon
+                        sensorTruthLabels
+                        Spacer(minLength: 0)
+                        sensorTruthChevron
+                    }
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(Theme.text(12, weight: .semibold))
-                    .foregroundStyle(Theme.inkTertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()
         }
         .buttonStyle(.plain)
+    }
+
+    private var sensorTruthIcon: some View {
+        Image(systemName: "sensor.tag.radiowaves.forward.fill")
+            .font(Theme.text(14))
+            .foregroundStyle(Theme.Metric.strain)
+    }
+
+    private var sensorTruthChevron: some View {
+        Image(systemName: "chevron.right")
+            .font(Theme.text(12, weight: .semibold))
+            .foregroundStyle(Theme.inkTertiary)
+    }
+
+    private var sensorTruthLabels: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("Where the numbers come from")
+                .font(Theme.label(14, weight: .semibold))
+            Text("Which are measured, and which are estimates")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkSecondary)
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var emptyState: some View {

@@ -610,6 +610,140 @@ No measured profiling was performed. Two observations, neither measured:
 
 ---
 
+## J. Tests
+
+Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
+no Mac and no local toolchain in this environment, so this is the only place
+any Swift in this branch has ever been compiled or executed.
+
+**Suite size.** 1,796 `func test…` methods across 174 files in `ZoonTests`,
+plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
+runner prints sits mid-log and is not reachable through the API (see K).
+
+**Result on `ed5bb63`** — Build run #1501, job "Build (iOS Simulator)":
+
+| Step | Outcome |
+| --- | --- |
+| Build app and widget | success (3m 03s) |
+| Run ZoonTests | success (5m 18s) |
+| Run ZoonUITests | `** TEST SUCCEEDED **`, `Executed 2 tests, with 0 failures` (3m 42s) |
+| Verify every source compiled | success — every Swift file under `Shared`, `Zoon`, `ZoonWidget`, `ZoonWatch`, `ZoonWatchWidget` appears in the build log |
+| Summarise errors | `Build succeeded.`, no failing-test block emitted |
+
+The failure block that step prints is unconditional when any `error:`,
+`Test Case … failed` or `fatal error` line exists in `test.log` or
+`uitest.log`. It printed nothing, and the job's shell runs under `-e`, so a
+non-zero `xcodebuild` would have failed the step. Green here means the suite
+ran and passed, not that it was skipped.
+
+**Tests added this pass** (~180 assertions): `CommitmentResolverTests` (20
+cases), `RestingHRProvenanceTests` (16), `SleepTimingSummaryTests` (14),
+`CustomBehaviorTests` (20), `SleepOpportunityTests` (15), `SleepRunwayTests`
+(16), `WhatIfTonightTests` (16), `SleepResilienceTypedTests`,
+`NewSurfaceLanguageTests`.
+
+**Reds this pass, and what they were.** Four red runs, every one a real defect
+rather than a flake:
+
+1. A 20-argument `SleepNightFeatures(...)` hand-rolled in
+   `SleepTimingSummaryTests` was missing two arguments, so `ZoonTests` did not
+   compile and **the entire suite silently never ran**. Rewritten through
+   `Fixture.night`.
+2. A type-checker timeout from four inline products inside that same
+   initializer call. Bound to typed locals.
+3. `CoachToolCatalogTests` asserted `5 * 60` for "log coffee at 5", pinning a
+   product bug: a bare afternoon hour parsed as 05:00 and recorded `.caffeine`
+   rather than `.caffeineLate`. Both the parser and the test were wrong; both
+   fixed (A14).
+4. Nine assertions in the pre-existing `LoadConfidenceTests` /
+   `LoadProvenanceTests` after `StrainScore.compute` gained a
+   `restingProvenance` parameter defaulting to `.genericFallback` — callers
+   that had never looked at a resting rate were recorded as having looked and
+   found nothing. The default is now `nil`.
+
+One of my own assertions was wrong rather than the code: a nap test meant to
+check the bedtime shift printed in minutes matched `"h "`, which occurs inside
+"with bedtimes". It now asserts the magnitude.
+
+**Not tested.** Nothing here ran on hardware. See M.
+
+---
+
+## K. Build
+
+`xcodebuild` on `macos-latest`, iOS Simulator destination. Every verification
+in this document is a 12–20 minute CI round trip; there is no local compile.
+
+- **Build run #1501, `ed5bb63`: success.** Both jobs green — "Validate project
+  file" (ubuntu) and "Build (iOS Simulator)" (macos).
+- `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
+  `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
+  objects, root object resolves, no dangling references, schemes resolve, all
+  `Info.plist`s complete. Final counts — 125 shared sources, 221 app, 9 widget,
+  3 watch, 1 watch extension, 174 test sources.
+- Warnings: the job's warning block is only emitted on a red build, so no
+  warning inventory was captured for the green run. Not claimed as zero.
+
+**A workflow change this pass, because the logs were unreadable.** The GitHub
+API serves job logs from the end under a cap of roughly 13–20k characters, and
+the mid-job "Summarise tests" step falls off the back of that window. The
+`test.log` artifact is also unreachable from this environment — the agent proxy
+returns `CONNECT tunnel failed, response 403` for
+`productionresultssa2.blob.core.windows.net`. Three red runs were diagnosed by
+guessing before the final `Summarise errors` step was changed to reprint every
+failing assertion; the fourth was read straight off the log. The proxy was not
+worked around, and TLS verification was not disabled.
+
+---
+
+## L. Screenshots
+
+Screenshots run #95 on `ed5bb63`: success. The workflow commits its output to
+`docs/screenshots/` on the branch (`391da9a`), which is the only reason these
+were readable at all — the artifact upload is behind the same blocked blob
+host as `test.log`.
+
+**Coverage.** 43 renders. The large-text pass was widened this session from 3
+screens to 9 at AX5 (`accessibility-extra-extra-extra-large`): Today, Sleep
+detail, Trends, Patterns, Coach, Evidence, Journal, Settings, Tomorrow — plus
+AX1 (`accessibility-medium`) for Today and Trends, and `tomorrow` added to the
+default-size loop.
+
+**What the AX5 renders showed.** Two real layout defects, both fixed in this
+branch and **both still unverified** — confirming them needs another
+screenshots run:
+
+- **Evidence.** The "Where the numbers come from" row is an `HStack` whose
+  default centre alignment floats its 14pt icon down beside the *subtitle*
+  once the two lines wrap to eight, leaving the title it labels alone at the
+  top. The icon now moves above the text at accessibility sizes.
+- **Journal.** The day-picker chips are a hard `.frame(width: 46, height: 62)`.
+  At AX5 both lines truncate to an ellipsis and the logged-dot overflows the
+  bottom edge — a horizontal strip of identical `...` chips you cannot pick a
+  day from. The box now grows with the text; the strip already scrolled.
+
+The other seven AX5 screens and both AX1 screens hold: text wraps rather than
+clips, nothing overlaps, and content continuing under the tab bar is ordinary
+scroll-view behaviour rather than a defect.
+
+**One defect found and deliberately not fixed.** On Today, the recovery radar's
+markers collide with the ring's centre type at middling scores — the HRV marker
+lands on "RECOVERY" and the heart marker on the percent sign. This is **not** an
+accessibility regression; it is present at the default text size
+(`today-day.jpg`) and predates this pass. A marker's distance from the centre
+*is* its value, so the markers cannot be moved aside without changing what the
+chart says, and every fix that keeps them in place (a scrim, a text shadow) is a
+colour-scheme judgement that cannot be checked from here without spending
+another full screenshots cycle per attempt — and the app has a light mode. It is
+recorded here rather than guessed at.
+
+**Never rendered.** No Watch screen, no complication, no widget on a home
+screen, no light-mode render of the two fixed screens, and no device capture of
+anything. The simulator's HealthKit store is empty, so every screenshot is mock
+data.
+
+---
+
 ## M. Remaining limitations
 
 ### Not implemented from the brief
