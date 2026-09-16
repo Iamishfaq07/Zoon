@@ -195,7 +195,10 @@ struct ExperimentPreview: View {
             VStack(spacing: 32) {
                 DiscoveriesStream(findings: AppMockData.correlationFindings, taggedNights: 20)
                 DiscoveriesStream(findings: [], taggedNights: 3)
-                ExperimentPreview(tag: .caffeineLate, status: .learning(.init(tag: .caffeineLate, loggedNights: 5)))
+                ExperimentPreview(
+                    tag: .caffeineLate,
+                    status: .learning(.init(tag: .caffeineLate, loggedNights: 5))
+                )
             }
             .padding()
         }

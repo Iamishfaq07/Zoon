@@ -7,7 +7,7 @@ import Observation
 /// Observational by default and permanently. Zoon knows nothing about what a
 /// custom behaviour *is*, only when it was logged, so it may describe an
 /// association and may never recommend one.
-struct CustomBehavior: Codable, Identifiable, Equatable, Sendable {
+struct CustomBehavior: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
     var name: String
     var symbol: String

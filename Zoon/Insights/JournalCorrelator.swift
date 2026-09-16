@@ -696,3 +696,18 @@ struct JournalCorrelator {
         }
     }
 }
+
+extension JournalCorrelator.LearningTag {
+    /// Built-in convenience. Declared in an extension so the memberwise
+    /// initializer survives: a built-in tag already knows its own name and
+    /// symbol, while a custom behaviour has to be told both, which is why the
+    /// stored form carries them rather than resolving them on display.
+    init(tag: BehaviorTag, loggedNights: Int) {
+        self.init(
+            behavior: tag.behaviorID,
+            label: tag.label,
+            symbol: tag.symbol,
+            loggedNights: loggedNights
+        )
+    }
+}
