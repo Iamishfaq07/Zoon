@@ -90,11 +90,11 @@ final class AlertnessCheckStoreTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = AlertnessCheckStore(defaults: defaults)
 
-        store.save(reactions: [0.2, 0.3, 0.4, 0.7], subjectiveAlertness: 4)
+        store.save(reactions: [0.2, 0.3, 0.4, 0.45, 0.7], subjectiveAlertness: 4)
 
-        XCTAssertEqual(store.results.first?.medianReactionMilliseconds, 350)
-        XCTAssertEqual(store.results.first?.lapses, 1)
-        XCTAssertEqual(store.results.first?.subjectiveAlertness, 4)
+        XCTAssertEqual(store.sessions.first?.medianMilliseconds, 400)
+        XCTAssertEqual(store.sessions.first?.lapses, 1)
+        XCTAssertEqual(store.sessions.first?.subjectiveAlertness, 4)
     }
 
     func testEvenMedianUsesBothCenterTrials() {
@@ -103,7 +103,7 @@ final class AlertnessCheckStoreTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = AlertnessCheckStore(defaults: defaults)
         store.save(reactions: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6], subjectiveAlertness: 3)
-        XCTAssertEqual(store.results.first?.medianReactionMilliseconds, 350)
+        XCTAssertEqual(store.sessions.first?.medianMilliseconds, 350)
     }
 
     func testIncompleteCheckIsNotSaved() {
@@ -111,8 +111,11 @@ final class AlertnessCheckStoreTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = AlertnessCheckStore(defaults: defaults)
-        store.save(reactions: [0.2, 0.3, 0.4], subjectiveAlertness: 3)
-        XCTAssertTrue(store.results.isEmpty)
+        // The store now says so rather than returning quietly, because the
+        // screen used to show "Saved on this device" over a run it had
+        // dropped.
+        XCTAssertNil(store.save(reactions: [0.2, 0.3, 0.4], subjectiveAlertness: 3))
+        XCTAssertTrue(store.sessions.isEmpty)
     }
 
     // MARK: - Custom signals
