@@ -119,7 +119,10 @@ struct StrainScore: Codable, Hashable, Sendable {
         activeEnergyKcal: Double?,
         hasHeartRateCoverage: Bool,
         zoneProvenance: HRZoneProvenance = .genericFallback,
-        restingProvenance: RestingHRProvenance = .genericFallback
+        // Unknown is not generic. A caller that never looked at the resting
+        // rate leaves this nil, and the score stays silent about it, rather
+        // than reporting a default it was never handed.
+        restingProvenance: RestingHRProvenance? = nil
     ) -> StrainScore {
 
         let load = zoneMinutes.reduce(0.0) { $0 + $1.value * $1.key.weight }

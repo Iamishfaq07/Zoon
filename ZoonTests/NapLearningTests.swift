@@ -161,8 +161,9 @@ final class NapLearningTests: XCTestCase {
         let finding = try XCTUnwrap(findings.first { $0.bucket?.duration == .short })
         XCTAssertEqual(try XCTUnwrap(finding.medianBedtimeShiftMinutes), 20, accuracy: 0.001)
         // Twenty minutes clears the threshold, but only just, and the
-        // sentence says minutes rather than hours.
-        XCTAssertFalse(finding.sentence.contains("h "), finding.sentence)
+        // sentence names the magnitude in minutes rather than hours.
+        XCTAssertTrue(finding.sentence.contains("20m"), finding.sentence)
+        XCTAssertFalse(finding.sentence.contains("0h"), finding.sentence)
     }
 
     /// A shift smaller than the most a bedtime may deliberately move in one
