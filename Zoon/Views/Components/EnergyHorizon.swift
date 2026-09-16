@@ -26,6 +26,20 @@ struct EnergyHorizon: View {
     @State private var scrubFraction: CGFloat?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// How much larger the caption face is than the 9-pt one the widths
+    /// below were measured at.
+    ///
+    /// `ChartLabelLayout` needs a width and height up front, and the ones it
+    /// is given are constants — but the captions use `Theme.text`, which maps
+    /// onto a Dynamic Type style and grows with the reader's text size. Above
+    /// the default setting the layout was resolving collisions from boxes
+    /// smaller than the text actually drawn, so it reported clearance that
+    /// was not there and the captions met anyway.
+    ///
+    /// One scaled value read as a ratio, rather than scaling each constant,
+    /// so the relative widths measured for each label stay in proportion.
+    @ScaledMetric(relativeTo: .caption2) private var captionFaceScale: CGFloat = 100
+
     /// Sampled once per view value rather than on every helper call -- the
     /// curve, the markers, the readout and the now-marker all read it.
     private let samples: [(time: Date, level: Double)]
@@ -195,6 +209,10 @@ struct EnergyHorizon: View {
     /// caption face plus a little slack so a 12-hour clock time still fits
     /// underneath. Layout needs a width up front because SwiftUI will not
     /// tell it after the fact.
+    ///
+    /// These are the *default-size* widths. `captionFaceScale` multiplies
+    /// them for the reader's actual text size at the call site — the numbers
+    /// here stay as measured so the proportions between labels hold.
     private static func captionWidth(for kind: EnergyForecast.Window.Kind) -> Double {
         switch kind {
         case .afternoonDip: 88
@@ -208,11 +226,12 @@ struct EnergyHorizon: View {
         let requests: [ChartLabelLayout.Request] = windows.map { window in
             let level = Self.interpolate(window.time, in: samples)
             let p = point(for: (window.time, level), width: width, height: height)
+            let scale = Double(captionFaceScale / 100)
             return ChartLabelLayout.Request(
                 x: Double(p.x),
                 y: Double(p.y),
-                width: Self.captionWidth(for: window.kind),
-                height: 28,
+                width: Self.captionWidth(for: window.kind) * scale,
+                height: 28 * scale,
                 prefersAbove: Self.prefersCaptionAbove(kind: window.kind, y: p.y, height: height)
             )
         }
