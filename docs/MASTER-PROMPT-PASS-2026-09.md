@@ -620,7 +620,8 @@ any Swift in this branch has ever been compiled or executed.
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
-**Result on `ed5bb63`** — Build run #1501, job "Build (iOS Simulator)":
+**Result on `ed5bb63`** — Build run #1501, job "Build (iOS Simulator)". Build
+run #1503 on `dbc7531`, the head of this branch, is green on the same steps:
 
 | Step | Outcome |
 | --- | --- |
@@ -674,7 +675,7 @@ check the bedtime shift printed in minutes matched `"h "`, which occurs inside
 `xcodebuild` on `macos-latest`, iOS Simulator destination. Every verification
 in this document is a 12–20 minute CI round trip; there is no local compile.
 
-- **Build run #1501, `ed5bb63`: success.** Both jobs green — "Validate project
+- **Build runs #1501 (`ed5bb63`) and #1503 (`dbc7531`): success.** Both jobs green — "Validate project
   file" (ubuntu) and "Build (iOS Simulator)" (macos).
 - `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
   `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
@@ -710,8 +711,8 @@ AX1 (`accessibility-medium`) for Today and Trends, and `tomorrow` added to the
 default-size loop.
 
 **What the AX5 renders showed.** Two real layout defects, both fixed in this
-branch and **both still unverified** — confirming them needs another
-screenshots run:
+branch and both **re-rendered and confirmed** by screenshots run #96 on
+`dbc7531`:
 
 - **Evidence.** The "Where the numbers come from" row is an `HStack` whose
   default centre alignment floats its 14pt icon down beside the *subtitle*
@@ -721,6 +722,11 @@ screenshots run:
   At AX5 both lines truncate to an ellipsis and the logged-dot overflows the
   bottom edge — a horizontal strip of identical `...` chips you cannot pick a
   day from. The box now grows with the text; the strip already scrolled.
+
+After the fix, `evidence-largeText.jpg` shows the icon leading the row from
+above with the chevron opposite it and both lines of text reading in full, and
+`journal-largeText.jpg` shows "Wed 16", "Tue 15", "Mon 14" as distinguishable
+chips scrolling horizontally.
 
 The other seven AX5 screens and both AX1 screens hold: text wraps rather than
 clips, nothing overlaps, and content continuing under the tab bar is ordinary
