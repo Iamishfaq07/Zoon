@@ -550,6 +550,77 @@ Limitations:  never seen with a real HealthKit store, so the five-minute
               nothing.
 ```
 
+### C7 — Shift Roster Planner (§24)
+
+```
+Purpose:      plan the sleep around a work roster, for the people Zoon's
+              circular-time machinery already serves better than most apps.
+Files:        Shared/ShiftRoster.swift, Shared/ShiftPlan.swift,
+              Zoon/Views/ShiftRosterView.swift,
+              Zoon/Views/Components/ShiftPlanCard.swift,
+              Zoon/Models/UserPreferences.swift, Zoon/Views/SettingsView.swift,
+              Zoon/Views/ZoonTomorrowView.swift
+Model:        the roster is stored as the rule the person entered -- start,
+              length, repeating weekdays -- not as the dates it produces. A
+              rule set up in March still generates the right days in
+              September. Occurrences resolve in the local calendar, so a 22:00
+              shift starts at 22:00 on both sides of a clock change; an
+              instant would not. An occurrence belongs to the day it *starts*
+              on, so a night shift is not counted under two days and planned
+              around twice.
+Classifying:  against this person's own habitual sleep, never the clock. An
+              18:00-02:00 shift takes three hours off somebody who sleeps
+              23:00-07:00 and nothing at all off somebody who sleeps
+              03:00-11:00. The habit is SleepRunway.Habit, already built on
+              the shifted circular scale, so the roster and the runway cannot
+              disagree about when this person sleeps.
+Scope:        one sleep need around one shift, not a need per calendar day the
+              shift spans. A night worker's cycle is not a day, and slicing it
+              at midnight asks for sixteen hours of sleep in thirty-six.
+Shortfall:    comes from the *next* shift. A single shift leaves an unbounded
+              window behind it and its shortfall is honestly zero; back-to-back
+              nights are what squeeze it.
+Caffeine:     CaffeineCutoff, anchored on the sleep that follows the shift,
+              which for a night puts the cutoff mid-shift. Reused rather than
+              re-derived, and it keeps its own refusal to print a time long
+              past. The nap is deliberately not an anchor -- eight hours before
+              a thirty-minute nap would land in the previous night.
+Refusals:     no habit, no plan; a clock guess would be wrong for exactly the
+              people this exists for. No schedule import: the brief allows one
+              "where appropriate" and EventKit cannot tell a work calendar from
+              any other, so guessing would produce a roster nobody entered. A
+              shift over 16 hours or under 30 minutes is a typo and is not
+              expanded. A shift with neither weekdays nor a date never happens
+              rather than defaulting to every day.
+Positioning:  the one thing the brief rules out. No fatigue score, no
+              fitness-for-duty verdict, nothing about being safe to work or
+              drive. `ShiftPlan.bannedPositioning` names those words and the
+              tests hold every line to that list and to
+              `DiagnosticLanguageGuard`, across six shift shapes.
+Tests:        ZoonTests/ShiftRosterTests.swift (14) and ShiftPlanTests.swift
+              (23). Green on the first run (#1513) after three real defects
+              were caught by Python simulation rather than by CI -- see below.
+Limitations:  no screenshot: the card only renders for somebody who keeps a
+              roster, and the screenshot fixtures have none. The commute is a
+              single figure nobody has measured. Never seen on a device.
+```
+
+**Three defects the simulation caught before they cost a CI cycle**, all in
+the first draft of `ShiftPlan`:
+
+1. **The nap was unreachable.** With a 60-minute lead before leaving and a
+   90-minute floor on a sleep window, the two conditions were mutually
+   exclusive — every nap the code could describe was one it would never place.
+   Restructured: what is left before a shift, when it is under a sleep cycle,
+   *is* a nap and is named one.
+2. **The shortfall was always zero**, because the post-shift window was
+   unbounded and absorbed whatever the pre-shift window could not. It is now
+   capped by the next shift, which is the only thing that can squeeze it.
+3. **A doc comment was wrong about the code.** It claimed a 22:00 shift would
+   not displace somebody who sleeps from 03:00; it displaces three of their
+   eight hours. The threshold was right and the example was wrong, so the
+   example changed rather than the threshold.
+
 ---
 
 ## D. Apple APIs used
@@ -656,7 +727,7 @@ Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
 no Mac and no local toolchain in this environment, so this is the only place
 any Swift in this branch has ever been compiled or executed.
 
-**Suite size.** 1,816 `func test…` methods across 175 files in `ZoonTests`,
+**Suite size.** 1,853 `func test…` methods across 177 files in `ZoonTests`,
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
@@ -715,7 +786,8 @@ check the bedtime shift printed in minutes matched `"h "`, which occurs inside
 `xcodebuild` on `macos-latest`, iOS Simulator destination. Every verification
 in this document is a 12–20 minute CI round trip; there is no local compile.
 
-- **Build runs #1501 (`ed5bb63`) and #1503 (`dbc7531`): success.** Both jobs green — "Validate project
+- **Build runs #1501 (`ed5bb63`), #1503 (`dbc7531`), #1507 (`d79e077`) and
+  #1513 (`9fac96b`, the branch head): success.** Both jobs green — "Validate project
   file" (ubuntu) and "Build (iOS Simulator)" (macos).
 - `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
   `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
@@ -794,15 +866,15 @@ data.
 
 ### Not implemented from the brief
 
-§22 Personal Sensitivity Curves, §24 Shift Roster Planner, §25 Awakening
-Inspector upgrade, §26 Morning Alertness, §27 Movement Context refinement,
+§22 Personal Sensitivity Curves, §25 Awakening Inspector upgrade, §26 Morning
+Alertness, §27 Movement Context refinement,
 §29–§36 visual system, §37 Watch information architecture, §38–§39 Soundscapes
 and Breathing, §40 Dawn theme, §41 motion pass, §42 splash audit, §43 NightSky
 profiling, §44 widgets, §52 performance pass, §54 full visual regression
 review.
 
-Two corrections to an earlier draft of this list. §23 Restorative Windows is
-now implemented — see C6. §28 Long-Term Resilience UI was listed as a gap and
+Three corrections to an earlier draft of this list. §23 Restorative Windows
+and §24 Shift Roster Planner are now implemented — see C6 and C7. §28 Long-Term Resilience UI was listed as a gap and
 is not one: `LongTermBaselineCard` reached `TrendsView` on `main` before this
 pass began, and A6 rewrote the engine behind it rather than adding the
 surface.
