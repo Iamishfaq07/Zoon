@@ -39,6 +39,13 @@ struct EnergyDetailView: View {
 
                 TodayWorkoutsCard(workouts: coordinator.todayWorkouts).entrance(3)
 
+                // Directly under the workouts, because it is the other half
+                // of the same day: that card is where effort went, this one
+                // is where it did not. Renders nothing when the engine found
+                // nothing, so an empty day shows no gap here.
+                RestorativeWindowsCard(windows: coordinator.todayRestorativeWindows)
+                    .entrance(3)
+
                 if let guidance = LightCoach.guidance(
                     wakeTime: context.night.wakeTime,
                     onsetHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil,

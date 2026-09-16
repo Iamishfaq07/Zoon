@@ -716,6 +716,33 @@ final class HealthKitManager {
         ) { $0.averageQuantity() }
     }
 
+    /// Active energy per bin at whatever width the caller needs, for
+    /// `RestorativeWindow`'s movement gate. The hourly variant above is too
+    /// coarse for it: a window is fifteen to forty minutes, and an hour that
+    /// contains one is mostly not it.
+    func binnedActiveEnergy(in interval: DateInterval, binMinutes: Int) async throws -> [(date: Date, bpm: Double)] {
+        try await binnedSeries(
+            .activeEnergyBurned,
+            unit: .kilocalorie(),
+            options: .cumulativeSum,
+            interval: interval,
+            binMinutes: binMinutes
+        ) { $0.sumQuantity() }
+    }
+
+    /// HRV at a finer bin than an hour. Most bins come back absent, which is
+    /// the correct shape and the reason `RestorativeWindow` lets HRV describe
+    /// a window rather than decide one.
+    func binnedHeartRateVariability(in interval: DateInterval, binMinutes: Int) async throws -> [(date: Date, bpm: Double)] {
+        try await binnedSeries(
+            .heartRateVariabilitySDNN,
+            unit: .secondUnit(with: .milli),
+            options: .discreteAverage,
+            interval: interval,
+            binMinutes: binMinutes
+        ) { $0.averageQuantity() }
+    }
+
     private func binnedSeries(
         _ identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,

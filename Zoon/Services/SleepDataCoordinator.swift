@@ -154,6 +154,13 @@ final class SleepDataCoordinator {
     /// Purely a display list; see `WorkoutSummary`'s doc comment for why
     /// this doesn't feed `StrainScore` itself.
     private(set) var todayWorkouts: [WorkoutSummary] = []
+
+    /// Stretches of today's waking hours where heart rate sat below this
+    /// person's own usual figure for that hour, with movement low. Empty
+    /// until `refreshRestorativeWindows` has run, and empty is also the
+    /// honest answer whenever the baseline has not earned a block yet --
+    /// see `RestorativeWindow`.
+    private(set) var todayRestorativeWindows: [RestorativeWindow.Window] = []
     /// Today's step count against what this weekday usually looks like by
     /// now. `nil` until a sample actually arrives — the card was previously
     /// constructed with hardcoded `nil`s at the call site, so it reported
@@ -495,6 +502,7 @@ final class SleepDataCoordinator {
         defer { syncMetrics.lastRefreshSeconds = Date.now.timeIntervalSince(startedAt) }
         #endif
         await refreshTodayStress()
+        await refreshRestorativeWindows()
         await refreshTodayMovement()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
         if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
@@ -1436,6 +1444,72 @@ final class SleepDataCoordinator {
             typicalStepsByNow: typical,
             weekday: weekday,
             now: now
+        )
+    }
+
+    /// §23. Runs after `refreshTodayStress` because it reuses exactly the
+    /// exclusions that function already computed the coarse version of --
+    /// workouts plus their buffer, and sleep -- and the same waking baseline
+    /// the Physiological Load comparison is made against, so a window and a
+    /// load reading can never be measured against different ideas of "your
+    /// usual".
+    ///
+    /// The three series are asked for at five-minute bins rather than hourly.
+    /// `HKStatisticsCollectionQuery` buckets inside its own store, so the
+    /// finer request costs about what the hourly one does, and an hour is
+    /// wider than most of the windows being looked for.
+    private func refreshRestorativeWindows() async {
+        guard DataEnvironment.current.isLive else {
+            todayRestorativeWindows = []
+            return
+        }
+
+        let calendar = Calendar.current
+        let now = Date.now
+        let dayStart = calendar.startOfDay(for: now)
+        guard dayStart < now else { return }
+        let interval = DateInterval(start: dayStart, end: now)
+
+        let workouts = (try? await healthKit.workouts(in: interval)) ?? []
+        let excluded = workouts.map {
+            DateInterval(
+                start: $0.startDate,
+                end: $0.endDate.addingTimeInterval(Self.postWorkoutBufferMinutes * 60)
+            )
+        } + store.nights(inLast: 2).compactMap { night -> DateInterval? in
+            guard night.wakeTime > night.bedtime else { return nil }
+            return DateInterval(start: night.bedtime, end: night.wakeTime)
+        }
+
+        let bin = RestorativeWindow.binMinutes
+        async let hrTask = try? healthKit.binnedHeartRate(in: interval, binMinutes: bin)
+        async let energyTask = try? healthKit.binnedActiveEnergy(in: interval, binMinutes: bin)
+        async let hrvTask = try? healthKit.binnedHeartRateVariability(in: interval, binMinutes: bin)
+
+        let heartRate = await hrTask ?? []
+        let energy = await energyTask ?? []
+        let hrv = await hrvTask ?? []
+
+        // The baseline is built to the start of today, not to now: a window
+        // found this afternoon must not be compared against a median that
+        // already contains it.
+        guard let baseline = await wakingBaselines(endingAt: dayStart, calendar: calendar).heartRate
+        else {
+            todayRestorativeWindows = []
+            return
+        }
+
+        func samples(_ series: [(date: Date, bpm: Double)]) -> [RestorativeWindow.Sample] {
+            series.map { RestorativeWindow.Sample(date: $0.date, value: $0.bpm) }
+        }
+
+        todayRestorativeWindows = RestorativeWindow.windows(
+            heartRate: samples(heartRate),
+            activeEnergy: samples(energy),
+            hrv: samples(hrv),
+            baseline: baseline,
+            excluded: excluded,
+            calendar: calendar
         )
     }
 
