@@ -19,6 +19,10 @@ struct JournalView: View {
     @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
     @State private var naturalStates: [BehaviorID: BehaviorObservationState] = [:]
     @State private var customStore = CustomBehaviorStore.shared
+    @State private var recorder = VoiceJournalRecorder()
+    /// Text already in the field when dictation started, kept so a running
+    /// transcript is appended to it rather than wiping it.
+    @State private var dictationPrefix = ""
     @FocusState private var noteFieldFocused: Bool
 
     // The source of truth for what each chip shows. Read from the stores
@@ -109,6 +113,10 @@ struct JournalView: View {
             // hand-inlined copy of two of its three lines, which is how
             // switching days left the third one stale.
             .onChange(of: selectedDate) { _, _ in reload() }
+            .onChange(of: recorder.transcript) { _, transcript in
+                guard recorder.isRecording else { return }
+                naturalText = dictationPrefix + transcript
+            }
             .onChange(of: noteFieldFocused) { wasFocused, isFocused in
                 if wasFocused, !isFocused {
                     coordinator.journal.setNote(note, on: targetNightDate, nightKey: selectedNightKey)
@@ -242,13 +250,27 @@ struct JournalView: View {
         .foregroundStyle(Theme.inkSecondary)
     }
 
-    // MARK: - Natural Journal
+    // MARK: - Zoon Log
 
+    /// One place to log, three ways in: speak, type, or tap a chip below.
+    ///
+    /// The flow this replaces was `voice → transcript → manually move into
+    /// Journal`. Voice lived on its own screen in More, whose own copy
+    /// admitted the ending: "the transcript stays here until you copy it into
+    /// Journal." Nobody does that. So dictation was a feature that produced
+    /// text and then abandoned it one step short of being worth anything,
+    /// while the parser that could have understood it sat on a different
+    /// screen behind a different button.
+    ///
+    /// Speaking now fills the same field typing does, which feeds the same
+    /// parser, which produces the same proposals, which the person confirms
+    /// before anything is saved. Nothing is inferred into the record: that
+    /// contract is unchanged and is the reason the review step exists.
     private var naturalJournalCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
-                title: "Say it naturally",
-                subtitle: "Type or dictate a short note. Zoon proposes tags, then waits for your confirmation.",
+                title: "Zoon Log",
+                subtitle: "Speak it, type it, or tap the chips below. Zoon proposes what it understood and waits for you.",
                 systemImage: "waveform.and.mic"
             )
 
@@ -257,14 +279,9 @@ struct JournalView: View {
                 .textFieldStyle(.plain)
                 .padding(12)
                 .background(Theme.neutral(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityHint("You can use the keyboard microphone to dictate.")
+                .accessibilityHint("You can also dictate with the button below, or the keyboard microphone.")
 
-            NavigationLink {
-                VoiceJournalView()
-            } label: {
-                Label("Open voice journal", systemImage: "mic.circle")
-            }
-            .buttonStyle(.bordered)
+            dictationControls
 
             if naturalProposals.isEmpty {
                 Button("Find observations") { parseNaturalJournal() }
@@ -305,12 +322,69 @@ struct JournalView: View {
                 }
             }
 
-            Text("Parsing happens on this device. Proposed observations are not saved or used as evidence until you tap Confirm and save.")
+            Text("Speech and parsing both happen on this device. Audio is never stored, and proposed observations are not saved or used as evidence until you tap Confirm and save.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
+        .onDisappear { recorder.stop() }
+    }
+
+    /// Dictation, in the card rather than on a screen of its own.
+    ///
+    /// The transcript is written straight into `naturalText` as it arrives,
+    /// so a person can start by speaking and finish by typing, or correct a
+    /// misheard word before asking Zoon to read it. `recorder.transcript`
+    /// replaces rather than appends -- that is what `SFSpeechRecognitionTask`
+    /// delivers, a running best guess at the whole utterance -- so anything
+    /// typed before recording started is preserved as a prefix.
+    @ViewBuilder
+    private var dictationControls: some View {
+        HStack(spacing: 10) {
+            Button {
+                Haptics.tap()
+                Task { await toggleDictation() }
+            } label: {
+                Label(
+                    recorder.isRecording ? "Stop" : "Speak",
+                    systemImage: recorder.isRecording ? "stop.circle.fill" : "mic.circle.fill"
+                )
+            }
+            .buttonStyle(.bordered)
+            .tint(recorder.isRecording ? .red : Theme.Metric.sleep)
+
+            if recorder.isRecording {
+                // Never colour alone: the word changes too, and the label
+                // above has already flipped from Speak to Stop.
+                Text("Listening…")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .accessibilityHidden(true)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(recorder.isRecording ? "Stop dictation. Listening." : "Dictate a note")
+
+        if let error = recorder.error {
+            Text(error)
+                .font(Theme.evidence)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func toggleDictation() async {
+        if recorder.isRecording {
+            recorder.stop()
+            return
+        }
+        // Whatever is already typed stays; the transcript is appended after
+        // it rather than replacing the field.
+        dictationPrefix = naturalText.isEmpty ? "" : naturalText + " "
+        recorder.transcript = ""
+        await recorder.toggle()
     }
 
     private var customSignals: some View {

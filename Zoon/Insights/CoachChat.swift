@@ -64,9 +64,39 @@ final class CoachChat {
         }
     }
 
+    /// A tool call that will change something, waiting for a yes.
+    ///
+    /// Held rather than executed. `CoachToolCatalog` has always said which
+    /// kinds need confirming; nothing consulted it, so the catalogue decided
+    /// nothing and no utterance had ever reached a tool at all.
+    struct PendingAction: Identifiable, Sendable {
+        let id: UUID
+        let call: CoachToolCatalog.Call
+        let prompt: String
+
+        init(call: CoachToolCatalog.Call) {
+            self.id = UUID()
+            self.call = call
+            self.prompt = call.confirmationPrompt ?? call.kind.summary
+        }
+    }
+
     var evidence: CoachEvidence?
     private(set) var messages: [Message] = []
     private(set) var isResponding = false
+    private(set) var pendingAction: PendingAction?
+
+    /// Runs a tool against the real engines. Supplied by the view layer,
+    /// which owns them.
+    ///
+    /// A closure rather than a reference to the coordinator, so this type
+    /// stays testable and so the one rule that matters is enforceable by
+    /// construction: every number in a tool answer comes from here, and the
+    /// model is never asked for one. Returning `nil` means the tool had
+    /// nothing to report, which is a real answer -- Recovery before a night
+    /// has been scored, a Tomorrow plan that does not exist yet -- and is
+    /// said plainly rather than handed to the model to phrase around.
+    var runTool: (@MainActor (CoachToolCatalog.Call) -> String?)?
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "CoachChat")
 
@@ -154,6 +184,28 @@ final class CoachChat {
         ))
     }
 
+    /// Executes the proposal the person just agreed to.
+    ///
+    /// Idempotent by construction: the pending action is cleared before the
+    /// tool runs, so a double tap cannot log two coffees.
+    func confirmPendingAction() {
+        guard let action = pendingAction else { return }
+        pendingAction = nil
+        let result = runTool?(action.call)
+        messages.append(Message(
+            role: .assistant,
+            text: result ?? "I could not do that."
+        ))
+    }
+
+    /// Discards it. Nothing was done, and the transcript says so rather than
+    /// going quiet, which would leave the proposal reading as accepted.
+    func cancelPendingAction() {
+        guard pendingAction != nil else { return }
+        pendingAction = nil
+        messages.append(Message(role: .assistant, text: "Cancelled. Nothing was changed."))
+    }
+
     /// Starts a new session with tonight's numbers -- and, when there's
     /// enough history for one, `SleepDataCoordinator.coachContextDigest()`'s
     /// standing-pattern summary -- as context the model already has, so the
@@ -165,6 +217,7 @@ final class CoachChat {
     ///   nights it rests on -- is already computed and is handed over.
     func start(nightSummary: String, contextDigest: String? = nil, chartContext: String? = nil) {
         messages = []
+        pendingAction = nil
         pendingContext = Context(
             nightSummary: nightSummary,
             contextDigest: contextDigest,
@@ -220,6 +273,37 @@ final class CoachChat {
         guard !trimmed.isEmpty, !isResponding else { return }
 
         messages.append(Message(role: .user, text: trimmed))
+
+        // A new utterance supersedes an unanswered proposal. Leaving it
+        // standing would let someone ask an unrelated question and then tap
+        // a Confirm still attached to the sentence before it.
+        pendingAction = nil
+
+        // Tools before the model, always. A tool answer is computed by an
+        // engine; a model answer is prose about numbers it was given. For
+        // "what is my recovery" those are not equally good, they are
+        // different in kind, and the deterministic one is the one that can be
+        // wrong in ways the person can check.
+        if let call = CoachToolCatalog.interpret(trimmed) {
+            if call.kind.requiresConfirmation {
+                let action = PendingAction(call: call)
+                pendingAction = action
+                messages.append(Message(role: .assistant, text: action.prompt))
+                return
+            }
+            if let answer = runTool?(call) {
+                messages.append(Message(role: .assistant, text: answer, groundedIn: call.kind.summary))
+                return
+            }
+            // A read tool with nothing to read. Falling through to the model
+            // here would be the one path by which it could invent the figure.
+            messages.append(Message(
+                role: .assistant,
+                text: "I do not have that yet. \(call.kind.summary)"
+            ))
+            return
+        }
+
         isResponding = true
         defer { isResponding = false }
 

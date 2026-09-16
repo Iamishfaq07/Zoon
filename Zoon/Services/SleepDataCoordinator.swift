@@ -1937,17 +1937,23 @@ final class SleepDataCoordinator {
         // Withdrawn as inconclusive when the comparison pool is still deep
         // enough that the engine looked and found nothing, as learning when
         // the pool itself has thinned below what a comparison needs.
-        let tagByClaimID = Dictionary(
-            uniqueKeysWithValues: BehaviorTag.allCases.map {
-                (EvidenceLedger.Claim.behaviour(tag: $0.rawValue).id, $0)
+        // Built from the catalogue, not from `BehaviorTag.allCases`. A custom
+        // behaviour's association can be withdrawn for exactly the same
+        // reasons a built-in's can, and keying this on the enum meant its
+        // claim ID matched nothing, the `guard` below skipped it, and its
+        // last "Association detected" would have stood in the ledger for
+        // good -- the precise failure the retraction pass exists to prevent.
+        let behaviorByClaimID = Dictionary(
+            uniqueKeysWithValues: behaviorCatalog.analysable.map {
+                (EvidenceLedger.Claim.behaviour(tag: $0.identifier).id, $0)
             }
         )
-        let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.tag.rawValue).id })
+        let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.behavior.identifier).id })
         for latest in EvidenceLedger.associationsToRetract(
             in: store.evidenceHistory(), currentClaimIDs: current, provenance: "JournalCorrelator"
         ) {
-            guard let tag = tagByClaimID[latest.claimID] else { continue }
-            let pairs = correlator.matchedPairCount(for: tag, observations: observations)
+            guard let behavior = behaviorByClaimID[latest.claimID] else { continue }
+            let pairs = correlator.matchedPairCount(for: behavior, observations: observations)
             store.recordBelief(
                 EvidenceLedger.retraction(
                     of: latest,
@@ -2394,9 +2400,11 @@ final class SleepDataCoordinator {
                 },
             suggestedNextTest: ExperimentPlanner.next(
                 observations: journalObservations(),
-                associatedTags: Set(findings.map(\.tag)),
+                // Built-ins only: the planner proposes guided experiments,
+                // and an experiment is always on a behaviour Zoon ships.
+                associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
-            )?.label,
+            )?.tag.label,
             tonightTarget: context.flatMap {
                 SleepAutopilot.plan(
                     nights: recentNights,

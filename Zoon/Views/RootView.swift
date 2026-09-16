@@ -309,7 +309,7 @@ struct RootView: View {
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
-        case .report, .settings, .badges, .evidence, .patterns, .sensorTruth:
+        case .report, .settings, .badges, .evidence, .patterns, .sensorTruth, .tomorrow:
             presentation.presentMore(pushing: destination)
         case .journal:
             presentation.presentJournal()

@@ -113,4 +113,63 @@ final class CoachToolCatalogTests: XCTestCase {
         let b = CoachToolCatalog.interpret("What's my recovery")
         XCTAssertEqual(a, b)
     }
+
+    // MARK: - The confirmation contract
+
+    /// The safety invariant the whole catalogue exists for: nothing that
+    /// changes state may run without being agreed to first.
+    ///
+    /// Written as a property of the kind rather than of one utterance,
+    /// because the failure this guards against is a *new* tool being added
+    /// to the enum and quietly defaulting to the read-only branch.
+    func testEveryWritingToolRequiresConfirmation() {
+        let writes: [CoachToolCatalog.Kind] = [.logCaffeine, .startNap, .prepareTomorrow, .setAlarm]
+        for kind in writes {
+            XCTAssertTrue(kind.requiresConfirmation, "\(kind.rawValue) would run unasked")
+        }
+    }
+
+    func testNoReadingToolAsksForConfirmation() {
+        let reads: [CoachToolCatalog.Kind] = [
+            .getSleepScore, .getRecovery, .getShortfall, .getEnergy, .getTonight, .getTomorrow
+        ]
+        for kind in reads {
+            XCTAssertFalse(kind.requiresConfirmation, "\(kind.rawValue) asks for nothing and should not prompt")
+        }
+    }
+
+    /// A proposal a person is asked to agree to has to say what it will do.
+    /// A bare "Confirm?" is not consent to anything in particular.
+    func testEveryWriteProposesAPromptThatNamesTheAction() throws {
+        let utterances = [
+            "Log coffee at 5.",
+            "Start a 25 minute nap",
+            "Prepare me for my 9 AM meeting tomorrow",
+            "Set my alarm"
+        ]
+        for utterance in utterances {
+            let call = try XCTUnwrap(CoachToolCatalog.interpret(utterance), utterance)
+            let prompt = try XCTUnwrap(call.confirmationPrompt, utterance)
+            XCTAssertFalse(prompt.isEmpty)
+            XCTAssertTrue(prompt.hasSuffix("?"), "\(prompt) is not a question")
+        }
+    }
+
+    /// The hour that decides `.caffeine` from `.caffeineLate`, which the
+    /// runner reads. It has to match what `BehaviorTag.caffeineLate` calls
+    /// itself, or the Coach logs one behaviour and the Journal labels it as
+    /// another.
+    func testLateCaffeineHourMatchesTheBehaviourItSelects() {
+        XCTAssertEqual(CoachToolCatalog.lateCaffeineHour, 16)
+        XCTAssertTrue(BehaviorTag.caffeineLate.label.contains("4pm"))
+    }
+
+    func testAProposedCaffeineTimeSurvivesIntoThePrompt() throws {
+        let call = try XCTUnwrap(CoachToolCatalog.interpret("Log coffee at 5."))
+        let minutes = try XCTUnwrap(call.proposedMinutes)
+        XCTAssertGreaterThanOrEqual(minutes, CoachToolCatalog.lateCaffeineHour * 60,
+                                    "5 in a sleep app is the afternoon")
+        let prompt = try XCTUnwrap(call.confirmationPrompt)
+        XCTAssertTrue(prompt.contains(CoachToolCatalog.clock(minutes: minutes)), prompt)
+    }
 }

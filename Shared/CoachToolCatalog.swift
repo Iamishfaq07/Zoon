@@ -173,7 +173,14 @@ enum CoachToolCatalog {
         return min(90, max(10, minutes))
     }
 
-    private static func clock(minutes: Int) -> String {
+    /// The hour past which caffeine is the `.caffeineLate` behaviour rather
+    /// than `.caffeine`. Matches that tag's own label, "Caffeine after 4pm".
+    static let lateCaffeineHour = 16
+
+    /// Internal rather than private: the runner formats the same proposed
+    /// time back to the person after acting on it, and two spellings of the
+    /// same clock in one exchange reads as two different times.
+    static func clock(minutes: Int) -> String {
         var components = DateComponents()
         components.hour = minutes / 60
         components.minute = minutes % 60
