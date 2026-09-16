@@ -1036,30 +1036,44 @@ final class SleepDataCoordinator {
     /// way -- a nap and a later bedtime appearing together is not the nap
     /// causing it.
     func napObservations() -> [NapLearning.Observation] {
-        var out: [NapLearning.Observation] = []
-        for night in recentNights {
-            let naps = napIntervals(before: night.date, timeZone: night.timeZone)
-            guard !naps.isEmpty else { continue }
+        let sorted = recentNights.sorted { $0.date < $1.date }
+        var priorAsleep: [Date: Double] = [:]
+        for (previous, current) in zip(sorted, sorted.dropFirst()) {
+            priorAsleep[current.date] = previous.timeAsleepMinutes
+        }
 
+        // Every night, not only the ones with a nap. The control arm is the
+        // whole point: the version this replaced skipped no-nap days
+        // outright, so the engine downstream had nothing to compare against
+        // and was reporting associations it had not measured.
+        return sorted.map { night in
             var calendar = Calendar.current
             calendar.timeZone = night.timeZone
-            let bedtimeHour = Double(calendar.component(.hour, from: night.bedtime))
-                + Double(calendar.component(.minute, from: night.bedtime)) / 60
-            let recovery = recoveryHistory[night.date].map(Double.init)
+            let naps = napIntervals(before: night.date, timeZone: night.timeZone)
+            // The longest nap stands for the day. Two observations of one day
+            // would let it back its own comparison twice.
+            let longest = naps.max { $0.duration < $1.duration }
 
-            for nap in naps {
-                out.append(NapLearning.Observation(
-                    napStartHour: Double(calendar.component(.hour, from: nap.start))
-                        + Double(calendar.component(.minute, from: nap.start)) / 60,
-                    napMinutes: nap.duration / 60,
-                    bedtimeHour: bedtimeHour,
-                    latencyMinutes: night.sleepLatencyMinutes,
-                    nextAsleepMinutes: night.timeAsleepMinutes,
-                    nextRecoveryPercent: recovery
-                ))
-            }
+            return NapLearning.Observation(
+                date: night.date,
+                nap: longest.map { nap in
+                    NapLearning.Observation.Nap(
+                        startHour: Double(calendar.component(.hour, from: nap.start))
+                            + Double(calendar.component(.minute, from: nap.start)) / 60,
+                        minutes: nap.duration / 60
+                    )
+                },
+                bedtimeMinutes: Statistics.circularMinutesFromMidnight(
+                    night.bedtime, calendar: calendar
+                ),
+                latencyMinutes: night.sleepLatencyMinutes,
+                nextAsleepMinutes: night.timeAsleepMinutes,
+                isWeekend: calendar.isDateInWeekend(night.date),
+                priorNightAsleepMinutes: priorAsleep[night.date],
+                shortfallMinutes: night.sleepDebtMinutes,
+                timeZoneIdentifier: night.timeZoneIdentifier
+            )
         }
-        return out
     }
 
     /// Long-term baselines for the vitals with enough history behind them to
