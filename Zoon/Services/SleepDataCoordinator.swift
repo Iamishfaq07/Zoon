@@ -2356,6 +2356,32 @@ final class SleepDataCoordinator {
             return SensitivityCurve.build(dose: dose, outcome: kind, observations: observations)
         }
 
+        /// Confirmed structured detail, by behaviour and night key.
+        ///
+        /// Built once for the whole call rather than fetched per night per
+        /// curve: three curves over a history window would otherwise issue a
+        /// fetch per night each, on a path several view bodies already call
+        /// more than once per render -- the same reasoning
+        /// `allAnswersByNightKey` documents.
+        let detailsByBehavior: [String: [String: BehaviorDetail]] = Dictionary(
+            uniqueKeysWithValues: [
+                BehaviorTag.caffeine, .caffeineLate, .hardTraining, .lateTraining
+            ].map { tag in
+                (
+                    tag.rawValue,
+                    Dictionary(
+                        behaviors.details(for: tag.behaviorID)
+                            .map { ($0.nightKey, $0.detail) },
+                        uniquingKeysWith: { first, _ in first }
+                    )
+                )
+            }
+        )
+
+        func detail(_ tag: BehaviorTag, for night: SleepNightFeatures) -> BehaviorDetail? {
+            detailsByBehavior[tag.rawValue]?[night.nightKey]
+        }
+
         /// The longest nap credited to the day before a night, and when it
         /// started. The longest rather than the total: two twenty-minute naps
         /// are not one forty-minute nap, and adding them would put a day in a
@@ -2392,6 +2418,26 @@ final class SleepDataCoordinator {
                 guard let nap = longestNap(before: night) else { return nil }
                 calendar.timeZone = night.timeZone
                 return Statistics.clockMinutes(nap.start, calendar: calendar) / 60
+            },
+
+            // §18. Three dimensions that only exist because observations now
+            // carry a confirmed quantity, time and intensity -- see
+            // `BehaviorDetail`. Each reads from rows somebody confirmed, so a
+            // night with no recorded detail is absent rather than sorted into
+            // a control band it was never measured into.
+            curve(dose: SensitivityCurve.caffeineTiming, outcome: .sleepOnset) { night in
+                guard let detail = detail(BehaviorTag.caffeine, for: night)
+                    ?? detail(BehaviorTag.caffeineLate, for: night) else { return nil }
+                calendar.timeZone = night.timeZone
+                return detail.eventClockMinutes(calendar: calendar).map { $0 / 60 }
+            },
+            curve(dose: SensitivityCurve.caffeineDose, outcome: .sleepOnset) { night in
+                (detail(BehaviorTag.caffeine, for: night)
+                    ?? detail(BehaviorTag.caffeineLate, for: night))?.quantity
+            },
+            curve(dose: SensitivityCurve.workoutLoad, outcome: .asleepMinutes) { night in
+                (detail(BehaviorTag.hardTraining, for: night)
+                    ?? detail(BehaviorTag.lateTraining, for: night))?.intensity
             }
         ].compactMap { $0 }
     }

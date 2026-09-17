@@ -72,12 +72,7 @@ final class SensitivityCurveTests: XCTestCase {
     /// top band is a silent discard, which is the one failure mode this whole
     /// engine is built to avoid.
     func testEveryShippedDoseIsOpenAtOneEnd() {
-        for dose in [
-            SensitivityCurve.lateCaffeine,
-            SensitivityCurve.napDuration,
-            SensitivityCurve.napTiming,
-            SensitivityCurve.workoutTiming
-        ] {
+        for dose in SensitivityCurve.shipped {
             XCTAssertTrue(
                 dose.bands.contains { $0.upper == nil },
                 "\(dose.behaviour) has no open band, so a large enough dose has nowhere to go"
@@ -133,6 +128,88 @@ final class SensitivityCurveTests: XCTestCase {
     /// morning band exists for the person who naps at 11 AM.
     func testTheMorningBandCoversTheShiftWorkersHourWithoutClaimingIt() {
         XCTAssertTrue(SensitivityCurve.napTiming.bands.first?.contains(8) == true)
+    }
+
+    // MARK: - §18, the dimensions §9 unlocked
+
+    /// The brief's own caffeine example: one band ruled out, one uncertain,
+    /// one associated. Built from confirmed clock times, which is the thing
+    /// that did not exist before observations carried a detail.
+    func testCaffeineTimingReadsAsThreeSeparateAnswers() throws {
+        let scattered: [Double] = [2, 45, 8, 60, 15, 38]
+        let observations =
+            quiet.map { SensitivityCurve.Observation(dose: 9, outcome: $0) }        // Before 1 PM
+            + scattered.map { SensitivityCurve.Observation(dose: 14, outcome: $0) } // 1–4 PM
+            + quiet.map { SensitivityCurve.Observation(dose: 18, outcome: $0 + 30) }// After 4 PM
+
+        let curve = try XCTUnwrap(
+            SensitivityCurve.build(
+                dose: SensitivityCurve.caffeineTiming,
+                outcome: .sleepOnset,
+                observations: observations
+            )
+        )
+        XCTAssertEqual(reading(curve, "Before 1 PM")?.verdict, .reference)
+        XCTAssertEqual(reading(curve, "1–4 PM")?.verdict, .uncertain)
+        XCTAssertEqual(reading(curve, "After 4 PM")?.verdict, .associated(higher: true))
+    }
+
+    /// Dose bands start at one, not at zero.
+    ///
+    /// A night with no recorded count is a night with an *unknown* count --
+    /// see `BehaviorDetail` -- and a "none" band would fill itself with every
+    /// night somebody simply did not quantify. That is a control arm built out
+    /// of missing data, which is the failure this whole engine exists to
+    /// avoid.
+    func testTheCaffeineDoseCurveHasNoZeroBand() {
+        XCTAssertEqual(SensitivityCurve.caffeineDose.bands.first?.lower, 1)
+        XCTAssertFalse(SensitivityCurve.caffeineDose.bands.contains { $0.contains(0) })
+    }
+
+    /// Counted in the person's own unit. Converting a cup to milligrams would
+    /// put a fabricated precision on the one number somebody actually stated.
+    func testTheDoseCurveCountsDrinksRatherThanMilligrams() {
+        XCTAssertEqual(SensitivityCurve.caffeineDose.unit, "drinks")
+    }
+
+    /// Workout load spans the whole 0–1 intensity scale, so a session somebody
+    /// described cannot fall outside its own curve.
+    func testWorkoutLoadCoversEveryIntensityAPersonCanRecord() {
+        for word in ["easy", "moderate", "hard"] {
+            let intensity = BehaviorDetail.intensity(forWord: word) ?? -1
+            let matches = SensitivityCurve.workoutLoad.bands.filter { $0.contains(intensity) }
+            XCTAssertEqual(matches.count, 1, "\(word) matched \(matches.map(\.label))")
+        }
+    }
+
+    /// The bands and the words have to agree, or a session logged as "hard"
+    /// would be reported back in a band labelled something else.
+    func testTheLoadBandsAgreeWithTheWordsThatProduceThem() {
+        for word in ["easy", "moderate", "hard"] {
+            let intensity = BehaviorDetail.intensity(forWord: word) ?? -1
+            let band = SensitivityCurve.workoutLoad.bands.first { $0.contains(intensity) }
+            XCTAssertEqual(band?.label.lowercased(), word)
+        }
+    }
+
+    /// Two gaps closed, and the one that did not is still named.
+    ///
+    /// Listing a dimension as impossible once it is merely thin would be as
+    /// wrong as the silence the gap list was added to replace -- a reader
+    /// would stop looking for a curve that is on its way.
+    func testTheClosedGapsAreNoLongerListedAsImpossible() {
+        let named = SensitivityCurve.unavailable.map(\.behaviour)
+        XCTAssertFalse(named.contains("Caffeine timing"))
+        XCTAssertFalse(named.contains("Workout load"))
+        XCTAssertTrue(named.contains("Light timing"), "the remaining gap stopped being named")
+    }
+
+    /// Nothing is listed as both buildable and impossible.
+    func testNoDimensionIsBothShippedAndNamedAsAGap() {
+        let shipped = Set(SensitivityCurve.shipped.map(\.behaviour))
+        for gap in SensitivityCurve.unavailable {
+            XCTAssertFalse(shipped.contains(gap.behaviour), gap.behaviour)
+        }
     }
 
     // MARK: - The three answers
