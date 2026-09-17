@@ -2249,14 +2249,19 @@ final class SleepDataCoordinator {
     /// archive exports, and what `exposureState(for:)` falls back to for
     /// historical nights. Keeping it as exactly "the behaviours answered
     /// yes" preserves all three without giving it a second meaning.
+    /// - Parameter detail: the structured part, when the person confirmed one
+    ///   in the review step. Defaults to `nil`, so every existing caller keeps
+    ///   writing a plain yes or no, and `nil` on an update clears any detail
+    ///   already stored -- see `BehaviorObservationStore.set`.
     func setBehavior(
         _ state: BehaviorObservationState,
         for behavior: BehaviorID,
         on date: Date,
-        nightKey: String?
+        nightKey: String?,
+        detail: BehaviorDetail? = nil
     ) {
         let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
-        behaviors.set(state, for: behavior, nightKey: key)
+        behaviors.set(state, for: behavior, nightKey: key, detail: detail)
         // The legacy tag set is built-in only and stays that way. It exists
         // for the journal badge count, the archive export and the historical
         // fallback in `exposureState`, all three of which predate custom

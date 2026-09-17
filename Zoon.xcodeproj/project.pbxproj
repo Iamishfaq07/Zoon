@@ -699,6 +699,7 @@
 		947C167552B66752BA130362 /* ShiftPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64591C61C9C3F6C341DD3EE9 /* ShiftPlanTests.swift */; };
 		947DA50F518ECCE4A633FC57 /* PersonalSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73634D1D1625805E420C39B /* PersonalSetup.swift */; };
 		94A55EA2DB12E0F4498450CD /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
+		94A9050181B867F379EEECA9 /* BehaviorDetailEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCFC5829E14D137CA70A2A2 /* BehaviorDetailEditor.swift */; };
 		94EDEC05B525B600E91C624F /* SleepBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1C336E0812DB1F21B46D71A /* SleepBuffer.swift */; };
 		9566C36E27BA7636FA45053B /* ZoonTwinV2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B7652878E046A07A3972B42 /* ZoonTwinV2.swift */; };
 		9587EC3395B4D59EFD7D36B3 /* SleepFingerprint.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDB07B1941EF095AA63626FF /* SleepFingerprint.swift */; };
@@ -1677,6 +1678,7 @@
 		ACAE597AA889C96CF598DA3C /* PastNightDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PastNightDetailView.swift"; sourceTree = "<group>"; };
 		ACF7E2FA1A2F147073C0FC56 /* ZoonSplash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonSplash.swift"; sourceTree = "<group>"; };
 		AD9F7BD8ACF0A1F1076E3A07 /* StrainScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StrainScore.swift"; sourceTree = "<group>"; };
+		ADCFC5829E14D137CA70A2A2 /* BehaviorDetailEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorDetailEditor.swift"; sourceTree = "<group>"; };
 		ADE7FA2FF9A6280968D97436 /* ChangePointDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChangePointDetector.swift"; sourceTree = "<group>"; };
 		ADF23C34D1708D038807008F /* BehaviorDetailTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorDetailTests.swift"; sourceTree = "<group>"; };
 		AE124896DF66A305DE386B60 /* SleepScoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreTests.swift"; sourceTree = "<group>"; };
@@ -1930,6 +1932,7 @@
 				F2A5FCBE2C70C5E0F7681DCF,
 				5581466923E8583DEC7B7C77,
 				BE323A154A812CF844797F4A,
+				ADCFC5829E14D137CA70A2A2,
 				B04DB48634B9461AF67635F9,
 				B202E4810C0F1C50E34E2DC3,
 				DF3097C3D54F986AC8D1EB54,
@@ -3131,6 +3134,7 @@
 				BF085A49F51581E10C5377B2,
 				DB2B9136DD37B3227CC1295D,
 				5B06FAA7FC659D9DD72AD43C,
+				94A9050181B867F379EEECA9,
 				0A7C54E3814C703015DAABFB,
 				5FD7E940C881946CF2A5EF92,
 				1F8450E0322BB13349946660,
