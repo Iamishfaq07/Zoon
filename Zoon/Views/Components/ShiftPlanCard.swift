@@ -68,6 +68,25 @@ struct ShiftPlanCard: View {
                 )
             }
 
+            // §20's flow names light timing, and this was the one step of it
+            // the card did not carry.
+            if let light = plan.light {
+                fixedPoint(
+                    "Seek light",
+                    value: "\(light.seekFrom.formatted(.dateTime.hour().minute()))–\(light.seekUntil.formatted(.dateTime.hour().minute()))",
+                    systemImage: "sun.max"
+                )
+                fixedPoint(
+                    "Keep light low",
+                    value: "\(light.dimFrom.formatted(.dateTime.hour().minute()))–\(light.dimUntil.formatted(.dateTime.hour().minute()))",
+                    systemImage: "moon"
+                )
+                Text(light.sentence)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Text(plan.caveat)
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
