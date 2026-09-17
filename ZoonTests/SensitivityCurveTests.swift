@@ -67,6 +67,74 @@ final class SensitivityCurveTests: XCTestCase {
         }
     }
 
+    /// Tiling is not enough on its own: `napTiming` tiled perfectly and still
+    /// stopped at 18:00, so every evening nap fell off the end of it. A closed
+    /// top band is a silent discard, which is the one failure mode this whole
+    /// engine is built to avoid.
+    func testEveryShippedDoseIsOpenAtOneEnd() {
+        for dose in [
+            SensitivityCurve.lateCaffeine,
+            SensitivityCurve.napDuration,
+            SensitivityCurve.napTiming,
+            SensitivityCurve.workoutTiming
+        ] {
+            XCTAssertTrue(
+                dose.bands.contains { $0.upper == nil },
+                "\(dose.behaviour) has no open band, so a large enough dose has nowhere to go"
+            )
+        }
+    }
+
+    /// §10. Every hour of the day lands in exactly one nap-timing band. What
+    /// makes something a nap is the episode architecture's decision — see
+    /// `SensitivityCurve.napTiming` — and once it has made it, the hour may
+    /// not quietly overrule it.
+    func testEveryNapHourLandsInExactlyOneBand() {
+        for hour in 0..<24 {
+            let matches = SensitivityCurve.napTiming.bands.filter { $0.contains(Double(hour)) }
+            XCTAssertEqual(matches.count, 1, "hour \(hour) matched \(matches.map(\.label))")
+        }
+    }
+
+    /// The six cases the brief names, by the hour each one starts.
+    func testTheNamedNapHoursLandWhereTheyShould() {
+        func band(_ hour: Double) -> String? {
+            SensitivityCurve.napTiming.bands.first { $0.contains(hour) }?.label
+        }
+        XCTAssertEqual(band(11), "Morning")              // 11 AM nap
+        XCTAssertEqual(band(14), "Early afternoon")      // 2 PM nap
+        XCTAssertEqual(band(17), "Late afternoon")       // 5 PM nap
+        XCTAssertEqual(band(19), "Evening")              // 7 PM short nap
+        XCTAssertEqual(band(20), "Evening")              // 8 PM, if classified a nap
+        XCTAssertEqual(band(22.5), "Evening")            // late nap near bedtime
+    }
+
+    /// The defect, stated as behaviour rather than as a table: an evening nap
+    /// reaches the curve and is compared, instead of vanishing.
+    func testAnEveningNapIsCurvedRatherThanDiscarded() throws {
+        let observations =
+            quiet.map { SensitivityCurve.Observation(dose: 14, outcome: $0) }
+            + quiet.map { SensitivityCurve.Observation(dose: 19.5, outcome: $0 + 30) }
+        let curve = try XCTUnwrap(
+            SensitivityCurve.build(
+                dose: SensitivityCurve.napTiming,
+                outcome: .sleepOnset,
+                observations: observations
+            )
+        )
+        let evening = try XCTUnwrap(curve.readings.first { $0.band.label == "Evening" })
+        XCTAssertEqual(evening.nights, quiet.count)
+        XCTAssertEqual(evening.verdict, .associated(higher: true))
+    }
+
+    /// A night-shift worker's main sleep beginning at 08:00 is not made a nap
+    /// by landing in the morning band. Nothing in this table decides that —
+    /// only episodes already typed `.nap` are ever handed to it — and the
+    /// morning band exists for the person who naps at 11 AM.
+    func testTheMorningBandCoversTheShiftWorkersHourWithoutClaimingIt() {
+        XCTAssertTrue(SensitivityCurve.napTiming.bands.first?.contains(8) == true)
+    }
+
     // MARK: - The three answers
 
     /// Two groups drawn from the same nights. The interval sits inside what

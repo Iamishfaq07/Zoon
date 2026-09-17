@@ -351,16 +351,37 @@ enum SensitivityCurve {
         ]
     )
 
-    /// The hour a nap started, on a 24-hour clock. Naps do not cross the
-    /// 18:00 seam the circular helpers exist for, so a plain hour is safe
-    /// here — and a nap after 18:00 is not a nap.
+    /// The hour a nap started, on a 24-hour clock.
+    ///
+    /// **The evening band is the point of this table.** These bands used to
+    /// stop at 18:00, on the reasoning that "a nap after 18:00 is not a nap".
+    /// That is a claim about the clock standing in for a claim about the
+    /// episode, and it fails in both directions. A twenty-minute doze at 19:30
+    /// is a nap by any reading, and it is the nap most likely to matter to
+    /// that night's sleep onset — which is the one thing this curve measures.
+    /// Meanwhile a night-shift worker's main sleep can begin at 08:00 and
+    /// would sail straight through "before noon" if the hour were what decided
+    /// eligibility.
+    ///
+    /// It is not. Eligibility is the episode architecture's: `classify`
+    /// labels an episode `.nap` or `.secondarySleep` from its duration and
+    /// the person's schedule, `preferredMainSleep` picks the main block by
+    /// length rather than by hour, and only episodes already typed `.nap`
+    /// reach this curve. These bands only say *when*, and so the last one is
+    /// open: a nap Zoon has classified never falls out of its own curve for
+    /// happening at an inconvenient hour.
+    ///
+    /// Naps do not cross the 18:00 seam the circular helpers exist for — a
+    /// nap band boundary is a boundary, not a discontinuity — so a plain hour
+    /// is still what these take.
     static let napTiming = Dose(
         behaviour: "Nap timing",
         unit: "h",
         bands: [
-            Band(label: "Before noon", lower: 0, upper: 12),
-            Band(label: "Noon–3 PM", lower: 12, upper: 15),
-            Band(label: "After 3 PM", lower: 15, upper: 18)
+            Band(label: "Morning", lower: 0, upper: 12),
+            Band(label: "Early afternoon", lower: 12, upper: 15),
+            Band(label: "Late afternoon", lower: 15, upper: 18),
+            Band(label: "Evening", lower: 18, upper: nil)
         ]
     )
 
