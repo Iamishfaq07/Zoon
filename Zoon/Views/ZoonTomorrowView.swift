@@ -131,8 +131,13 @@ struct ZoonTomorrowView: View {
         guard let context = coordinator.state.context else {
             return SleepPlanningInputs(baselineNeedMinutes: preferences.sleepGoalMinutes)
         }
+        // A shortfall Zoon has not measured is not a shortfall of zero — but
+        // it is not one it may ask anybody to repay either, and a planner has
+        // to be handed a number. Nothing outstanding means nothing repaid, so
+        // the plan falls back to the plain baseline rather than inventing a
+        // debt or refusing to plan the week.
         return context.sleepNeed.planningInputs(
-            outstandingShortfallMinutes: context.night.sleepDebtMinutes
+            outstandingShortfallMinutes: context.night.sleepDebtMinutes ?? 0
         )
     }
 

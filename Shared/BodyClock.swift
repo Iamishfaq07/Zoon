@@ -166,13 +166,8 @@ struct BodyClock: Codable, Hashable, Sendable {
             nightDate = bedtime
         }
         guard let window = window(for: nightDate, calendar: calendar) else { return nil }
-        var drift = bedtime.timeIntervalSince(window.start) / 60
-        if drift > 720 {
-            drift -= 1440
-        } else if drift < -720 {
-            drift += 1440
-        }
-        return drift
+        let raw = bedtime.timeIntervalSince(window.start) / 60
+        return Statistics.circularDifference(raw, 0)
     }
 
     // MARK: - Computation

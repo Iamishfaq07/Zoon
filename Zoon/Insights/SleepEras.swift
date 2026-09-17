@@ -138,9 +138,12 @@ enum SleepEras {
         return calendar
     }
     private static func medianMinutes(_ values: [Double]) -> Double { Statistics.median(values) ?? 0 }
+    /// Signed shortest way round, from the one shared implementation. This was
+    /// a fourth hand-rolled copy of the same three lines; they agreed, which is
+    /// the only reason nobody noticed, and agreement between copies is not a
+    /// property anybody was maintaining.
     private static func circularDelta(_ a: Double, _ b: Double) -> Double {
-        let d = (a - b).truncatingRemainder(dividingBy: 1440)
-        return d > 720 ? d - 1440 : (d < -720 ? d + 1440 : d)
+        Statistics.circularDifference(a, b)
     }
     /// Places folded minutes onto the reference night: `date` is the morning
     /// the night is filed under, so negative minutes land on the evening
