@@ -247,7 +247,8 @@ enum NaturalJournalParser {
     /// Finds a clock hour only when it is attached to the matched entity.
     /// An isolated "after 3" elsewhere can never create caffeine.
     private static func timeNear(phrase: String, in text: String) -> Int? {
-        clockMinutesNear(phrase: phrase, in: text).map { $0 / 60 }
+        clockMinutesNear(phrase: phrase, in: text, requiringUnambiguousHour: false)
+            .map { $0 / 60 }
     }
 
     /// The same match, kept to the minute.
@@ -257,7 +258,25 @@ enum NaturalJournalParser {
     /// `BehaviorDetail.eventTime` is a real clock time somebody will read
     /// back, and rounding "around 4:30" to 4pm in storage would be Zoon
     /// deciding it knew better than the sentence.
-    private static func clockMinutesNear(phrase: String, in text: String) -> Int? {
+    /// - Parameter requiringUnambiguousHour: when true, a bare hour with no
+    ///   am/pm is refused rather than resolved.
+    ///
+    ///   "Last one around 5" means five in the afternoon to everybody who
+    ///   writes it, and nothing in the sentence says so. Resolving it to 05:00
+    ///   would store a morning coffee somebody had in the evening; resolving
+    ///   it to 17:00 would be Zoon guessing, and a guess written into a dose
+    ///   curve is indistinguishable from a measurement once it is there. So a
+    ///   stored `eventTime` needs an explicit meridiem or an hour that can only
+    ///   mean one thing (13 through 23, or a bare 0).
+    ///
+    ///   The lenient form stays for `timeNear`, which feeds the display string
+    ///   and the late-caffeine heuristic. Both are suggestions the person is
+    ///   looking at and can reject; neither is written down.
+    private static func clockMinutesNear(
+        phrase: String,
+        in text: String,
+        requiringUnambiguousHour: Bool = true
+    ) -> Int? {
         guard let matched = range(of: phrase, in: text) else { return nil }
         let tail = String(text[matched.upperBound...].prefix(24))
         guard let timePattern = Self.timePattern,
@@ -274,7 +293,10 @@ enum NaturalJournalParser {
         switch meridiem {
         case "am": hour = rawHour == 12 ? 0 : rawHour
         case "pm": hour = rawHour == 12 ? 12 : rawHour + 12
-        default: hour = rawHour
+        default:
+            // No meridiem. 13-23 can only be one time; 1-12 could be either.
+            if requiringUnambiguousHour, (1...12).contains(rawHour) { return nil }
+            hour = rawHour
         }
         guard (0...23).contains(hour) else { return nil }
         return hour * 60 + minute

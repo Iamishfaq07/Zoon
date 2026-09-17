@@ -28,12 +28,34 @@ final class BehaviorDetailTests: XCTestCase {
 
     // MARK: - Reading the sentence
 
-    /// The brief's own example.
-    func testTwoCoffeesLastOneAroundFiveKeepsBothFacts() throws {
+    /// The brief's own example, and the honest reading of it.
+    ///
+    /// "Two" is a fact: the sentence says it. "Around 5" is not — it means
+    /// five in the afternoon to everybody who writes it, and nothing in the
+    /// sentence says so. Zoon keeps the count and declines the hour rather
+    /// than storing a guess, because a guess written into a dose curve is
+    /// indistinguishable from a measurement once it is there. The person adds
+    /// the time at confirmation if they want it.
+    func testTwoCoffeesLastOneAroundFiveKeepsTheCountAndNotTheGuess() throws {
         let caffeine = try XCTUnwrap(
-            proposal("Had two coffees, last one around 5", tag: .caffeineLate)
+            proposal("Had two coffees, last one around 5", tag: .caffeine)
         )
         XCTAssertEqual(caffeine.quantity, 2)
+        XCTAssertNil(caffeine.eventClockMinutes, "an ambiguous hour was resolved rather than refused")
+    }
+
+    /// Said plainly, it is kept.
+    func testTheSameSentenceWithAMeridiemKeepsTheHour() throws {
+        let caffeine = try XCTUnwrap(
+            proposal("Had two coffees, last one around 5 pm", tag: .caffeineLate)
+        )
+        XCTAssertEqual(caffeine.quantity, 2)
+        XCTAssertEqual(caffeine.eventClockMinutes, 17 * 60)
+    }
+
+    /// An hour past noon can only mean one thing, so no meridiem is needed.
+    func testATwentyFourHourClockNeedsNoMeridiem() throws {
+        let caffeine = try XCTUnwrap(proposal("coffee at 17", tag: .caffeineLate))
         XCTAssertEqual(caffeine.eventClockMinutes, 17 * 60)
     }
 
@@ -108,7 +130,7 @@ final class BehaviorDetailTests: XCTestCase {
     }
 
     func testAMorningTimeLandsOnTheMorningItself() throws {
-        let light = try XCTUnwrap(proposal("morning walk at 7", tag: .morningDaylight))
+        let light = try XCTUnwrap(proposal("morning walk at 7 am", tag: .morningDaylight))
         let detail = try XCTUnwrap(light.detail(onNightDay: nightDay, calendar: calendar))
         let event = try XCTUnwrap(detail.eventTime)
         XCTAssertEqual(calendar.component(.day, from: event), 15)

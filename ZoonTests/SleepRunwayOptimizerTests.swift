@@ -81,14 +81,25 @@ final class SleepRunwayOptimizerTests: XCTestCase {
         XCTAssertTrue(optimized.closesTheGap)
     }
 
-    /// Smallest feasible means smallest. A fifteen-minute gap is one night's
-    /// fifteen minutes, not three nights of five.
+    /// Smallest feasible means smallest. A twenty-minute gap is one night's
+    /// twenty minutes, not three nights of seven.
+    ///
+    /// Twenty rather than fifteen deliberately: `SleepRunway.warningGapMinutes`
+    /// is twenty, so a fifteen-minute gap is not a short night at all and
+    /// there is nothing here to optimize. A test that used fifteen would have
+    /// been asserting against a runway with no constraint on it.
     func testASmallGapIsOneNightsAdjustment() throws {
         let optimized = try XCTUnwrap(
-            SleepRunwayOptimizer.optimize(runway: week(gap: 15), calendar: calendar)
+            SleepRunwayOptimizer.optimize(runway: week(gap: 20), calendar: calendar)
         )
         XCTAssertEqual(optimized.steps.filter { $0.minutes > 0 }.count, 1)
-        XCTAssertEqual(optimized.allocatedMinutes, 15, accuracy: 0.001)
+        XCTAssertEqual(optimized.allocatedMinutes, 20, accuracy: 0.001)
+    }
+
+    /// And a gap below the runway's own warning threshold is not a gap this
+    /// has anything to say about.
+    func testAGapTooSmallToWarnAboutIsNotOptimized() {
+        XCTAssertNil(SleepRunwayOptimizer.optimize(runway: week(gap: 15), calendar: calendar))
     }
 
     // MARK: - The rate limit
