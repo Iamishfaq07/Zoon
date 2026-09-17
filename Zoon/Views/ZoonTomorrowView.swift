@@ -156,16 +156,11 @@ struct ZoonTomorrowView: View {
     /// what caps the sleep window behind the first, and is the only thing
     /// that can produce a shortfall.
     private var shiftPlan: ShiftPlan.Plan? {
+        // Calendar days, not 86,400-second multiples -- see
+        // `ShiftRoster.horizon`, which is where that reasoning and its DST
+        // tests live.
         let upcoming = preferences.shiftRoster.occurrences(
-            // Calendar days, not 86,400-second multiples: a local day is 23 or
-            // 25 hours across a clock change, and seven of them is not seven
-            // times a day's worth of seconds.
-            in: DateInterval(
-                start: .now,
-                end: Calendar.current.date(
-                    byAdding: .day, value: SleepRunway.horizonDays, to: .now
-                ) ?? .now.addingTimeInterval(Double(SleepRunway.horizonDays) * 86_400)
-            )
+            in: ShiftRoster.horizon(days: SleepRunway.horizonDays)
         )
         guard let next = upcoming.first else { return nil }
         return ShiftPlan.make(

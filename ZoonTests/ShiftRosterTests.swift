@@ -151,6 +151,101 @@ final class ShiftRosterTests: XCTestCase {
         XCTAssertNil(ShiftRoster().next(after: monday, calendar: calendar))
     }
 
+    // MARK: - The horizon is days, not seconds (§11)
+
+    /// London's clocks go forward at 01:00 on 29 March 2026, so the week
+    /// containing it is 167 hours long, not 168. Seven times 86,400 seconds
+    /// stops an hour short of the seventh day's end.
+    func testAWeekAcrossASpringForwardIsStillSevenCalendarDays() {
+        var london = Calendar(identifier: .gregorian)
+        london.timeZone = TimeZone(identifier: "Europe/London")!
+        var components = DateComponents()
+        components.year = 2026; components.month = 3; components.day = 26
+        components.hour = 20
+        let start = london.date(from: components)!
+
+        let horizon = ShiftRoster.horizon(days: 7, from: start, calendar: london)
+        XCTAssertEqual(horizon.duration / 3600, 167, accuracy: 0.001)
+        XCTAssertEqual(london.component(.hour, from: horizon.end), 20,
+                       "the horizon ended at a different time of day than it began")
+        XCTAssertNotEqual(horizon.end, start.addingTimeInterval(7 * 86_400))
+    }
+
+    /// And the other way: the week containing 25 October 2026 is 169 hours.
+    func testAWeekAcrossAFallBackIsStillSevenCalendarDays() {
+        var london = Calendar(identifier: .gregorian)
+        london.timeZone = TimeZone(identifier: "Europe/London")!
+        var components = DateComponents()
+        components.year = 2026; components.month = 10; components.day = 22
+        components.hour = 20
+        let start = london.date(from: components)!
+
+        let horizon = ShiftRoster.horizon(days: 7, from: start, calendar: london)
+        XCTAssertEqual(horizon.duration / 3600, 169, accuracy: 0.001)
+        XCTAssertEqual(london.component(.hour, from: horizon.end), 20)
+    }
+
+    /// The hour is not an abstraction: it is a shift the planner either shows
+    /// or does not.
+    ///
+    /// Seven calendar days from Thursday evening reaches the following
+    /// Thursday evening, and a nightly 22:00 shift occurs seven times in it.
+    /// A 604,800-second window spans *more* than seven local days when one of
+    /// them is short, so it reaches into an eighth evening and the "next 7
+    /// days" plan quietly contains eight shifts.
+    func testTheSecondsFormReachesPastTheSeventhDayAcrossASpringForward() {
+        var london = Calendar(identifier: .gregorian)
+        london.timeZone = TimeZone(identifier: "Europe/London")!
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 3
+        components.day = 26
+        components.hour = 21
+        components.minute = 30
+        let start = london.date(from: components)!
+
+        let roster = ShiftRoster(shifts: [nights(weekdays: [1, 2, 3, 4, 5, 6, 7])])
+        let honest = roster.occurrences(
+            in: ShiftRoster.horizon(days: 7, from: start, calendar: london), calendar: london
+        )
+        let seconds = roster.occurrences(
+            in: DateInterval(start: start, duration: 7 * 86_400), calendar: london
+        )
+        XCTAssertEqual(honest.count, 7, "seven calendar days hold seven nightly shifts")
+        XCTAssertEqual(seconds.count, 8, "the seconds form reached into an eighth evening")
+    }
+
+    /// In autumn it runs the other way: 604,800 seconds stop an hour short of
+    /// the seventh evening, and that night's shift disappears from the plan.
+    func testTheSecondsFormLosesTheSeventhDayAcrossAFallBack() {
+        var london = Calendar(identifier: .gregorian)
+        london.timeZone = TimeZone(identifier: "Europe/London")!
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 10
+        components.day = 22
+        components.hour = 22
+        components.minute = 30
+        let start = london.date(from: components)!
+
+        let roster = ShiftRoster(shifts: [nights(weekdays: [1, 2, 3, 4, 5, 6, 7])])
+        let honest = roster.occurrences(
+            in: ShiftRoster.horizon(days: 7, from: start, calendar: london), calendar: london
+        )
+        let seconds = roster.occurrences(
+            in: DateInterval(start: start, duration: 7 * 86_400), calendar: london
+        )
+        XCTAssertEqual(honest.count, 7)
+        XCTAssertEqual(seconds.count, 6, "the seconds form stopped short of the seventh evening")
+    }
+
+    func testAZeroDayHorizonIsEmptyRatherThanBackwards() {
+        let horizon = ShiftRoster.horizon(days: 0, from: monday, calendar: calendar)
+        XCTAssertEqual(horizon.duration, 0)
+        XCTAssertTrue(ShiftRoster(shifts: [nights(weekdays: [2])])
+            .occurrences(in: horizon, calendar: calendar).isEmpty)
+    }
+
     // MARK: - Storage
 
     func testARosterSurvivesARoundTripThroughJSON() throws {
