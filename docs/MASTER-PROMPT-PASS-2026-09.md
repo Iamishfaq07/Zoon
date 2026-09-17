@@ -822,6 +822,56 @@ files that had no caller in app code yet. Re-run and the following commit's run
 re-run, because "it was flaky" is the easiest thing in the world to say about a
 real failure.
 
+### C11 — Movement Context, refined (§27)
+
+```
+Purpose:      use basic movement as context without turning Zoon into a
+              fitness tracker.
+Files:        Shared/MovementContext.swift, Shared/CoachToolCatalog.swift,
+              Zoon/Insights/CoachToolRunner.swift,
+              Zoon/Services/SleepDataCoordinator.swift,
+              Zoon/Views/Components/MovementContextCard.swift
+What was wrong: the type carried `activeEnergyKcal` on its struct, visible to
+              every caller, and discarded it -- there was a literal
+              `_ = activeEnergyKcal` in the builder. A field that looked like
+              it did something and did not.
+Added:        active energy, Apple Exercise Minutes and today's workout count,
+              as a `detail` line kept apart from the comparison sentence, plus
+              a `shortLine` in the brief's second example shape for surfaces
+              with no room for figures.
+Refused:      distance, which §27 lists. On a phone HealthKit derives it from
+              the same step stream already reported, scaled by an estimated
+              stride; printing both shows one measurement twice and implies
+              two independent readings agreed. `distanceNote` says so in the
+              type. It becomes worth adding from a watch's own GPS, a
+              provenance Zoon does not currently distinguish.
+Missing:      still not zero, for the new measures too. A day with only steps
+              prints no inventory rather than a row of zeros. Zero workouts is
+              the one real zero and is still not worth a line.
+The score line: §27 forbids steps reaching Sleep Score or Recovery, and
+              nothing here returns a number any score reads. Asserted.
+Tests:        ZoonTests/MovementContextDetailTests.swift (12). The existing
+              MovementContextTests are untouched -- the sentence logic did not
+              change.
+```
+
+**A latent safety gap, found by walking into it.** Adding the Coach's
+`getMovement` tool exposed that `CoachToolCatalogTests`' confirmation contract
+could not do the job its own doc comment claimed. It said it existed to catch
+"a *new* tool being added to the enum and quietly defaulting to the read-only
+branch" — but the list of tools was hand-written *in the test*, so a new one
+simply went unmentioned, and `Kind.requiresConfirmation` had a `default: false`
+that classified anything new as a read. `Kind` is now `CaseIterable`,
+`changesState` is an exhaustive switch that will not compile until a new tool is
+classified, and both contract tests iterate `allCases`. The gap was never
+exploited — every existing write was listed — but the guard was decorative.
+
+**Consumers, honestly.** §27 names seven places movement should reach. It
+reached one (a card on Today); it now reaches two (the Coach). **Tomorrow
+planning, Patterns, Cause Finder, personal sensitivity analysis and
+longitudinal context are not wired**, and "§27 implemented" should not be read
+as implying otherwise.
+
 ---
 
 ## D. Apple APIs used
@@ -928,7 +978,7 @@ Run on the GitHub Actions macOS runner, iOS Simulator, scheme `Zoon`. There is
 no Mac and no local toolchain in this environment, so this is the only place
 any Swift in this branch has ever been compiled or executed.
 
-**Suite size.** 1,914 `func test…` methods across 180 files in `ZoonTests`,
+**Suite size.** 1,928 `func test…` methods across 181 files in `ZoonTests`,
 plus 2 methods in `ZoonUITests`. Counted from source; the per-suite tally the
 runner prints sits mid-log and is not reachable through the API (see K).
 
@@ -996,8 +1046,8 @@ arithmetic has been the reliable part, and the joins around it have not.
 in this document is a 12–20 minute CI round trip; there is no local compile.
 
 - **Build runs #1501 (`ed5bb63`), #1503 (`dbc7531`), #1507 (`d79e077`),
-  #1513 (`9fac96b`), #1517 (`b718fab`), #1525 (`c295cfc`) and #1531
-  (`7535a89`, the branch head): success.** Both jobs green — "Validate project
+  #1513 (`9fac96b`), #1517 (`b718fab`), #1525 (`c295cfc`), #1531 (`7535a89`)
+  and #1535 (`dbbdb74`, the branch head): success.** Both jobs green — "Validate project
   file" (ubuntu) and "Build (iOS Simulator)" (macos).
 - `project.pbxproj` is generated. `Tools/generate-pbxproj.py` was re-run and
   `Tools/validate-pbxproj.py` plus `Tools/release-audit.py` pass: 1,768
@@ -1076,15 +1126,24 @@ data.
 
 ### Not implemented from the brief
 
-§27 Movement Context refinement,
+**Everything remaining is the visual and platform block**, which is a different
+kind of work from the rest of this pass: it is verified by looking at renders
+rather than by asserting on arithmetic, and each look costs a full Screenshots
+cycle. The Python pre-simulation that caught three dead-constant bugs before CI
+does not transfer to it.
+
 §29–§36 visual system, §37 Watch information architecture, §38–§39 Soundscapes
 and Breathing, §40 Dawn theme, §41 motion pass, §42 splash audit, §43 NightSky
 profiling, §44 widgets, §52 performance pass, §54 full visual regression
 review.
 
-Six corrections to an earlier draft of this list. §22 Personal Sensitivity
-Curves, §23 Restorative Windows, §24 Shift Roster Planner, §25 Awakening
-Inspector and §26 Morning Alertness are now implemented — see C6 through C10.
+**Every engine-shaped item in §56 is now done.** Seven corrections to an
+earlier draft of this list: §22 Personal Sensitivity Curves, §23 Restorative
+Windows, §24 Shift Roster Planner, §25 Awakening Inspector, §26 Morning
+Alertness and §27 Movement Context are implemented — see C6 through C11. Two
+carry qualifications that "implemented" should not be read past. §27 is an
+engine refinement with two of its seven named consumers wired; C11 says which
+five are not.
 §22 is implemented only for the dimensions that carry a real quantity; C10
 names the three it still cannot build and the storage change that would
 unblock them. §28 Long-Term Resilience UI was listed as a gap and
