@@ -44,6 +44,63 @@ enum HRZoneProvenance: String, Codable, Hashable, Sendable, CaseIterable {
     }
 }
 
+/// Where the resting heart rate under a Load score came from.
+///
+/// This is the other half of the zone model and it was invisible. Zones are
+/// Karvonen — `(bpm − resting) / (max − resting)` — so a guessed resting rate
+/// shifts every boundary just as surely as a guessed maximum does, and Zoon
+/// would silently substitute a flat 60 bpm when no measurement existed. A day
+/// scored that way is a population estimate in both terms, and nothing said
+/// so.
+///
+/// Direction of the error is worth stating plainly: someone whose true
+/// resting rate is 48 scored against 60 has every sample's reserve fraction
+/// understated, so their Load is too *low*, not too high. That is the safer
+/// direction — the same one `maxInterpolationWindow` chooses — which is why
+/// the fallback stays rather than being replaced with a different model on a
+/// guess. What changes here is that it can no longer pass itself off as
+/// personal.
+enum RestingHRProvenance: String, Codable, Hashable, Sendable, CaseIterable {
+    /// A resting heart rate Health measured for this day.
+    case measuredDailyRestingHR
+    /// A measured resting heart rate from an earlier day.
+    case historicalPersonalRestingHR
+    /// The low point of the sleep window — this person's own physiology, but
+    /// not the same quantity Health calls resting heart rate.
+    case sleepDerivedPersonalEstimate
+    /// A flat constant. Not this person at all.
+    case genericFallback
+
+    /// Whether the number describes this person.
+    var isPersonalized: Bool { self != .genericFallback }
+
+    var label: String {
+        switch self {
+        case .measuredDailyRestingHR: "Measured today"
+        case .historicalPersonalRestingHR: "Your recent resting rate"
+        case .sleepDerivedPersonalEstimate: "Estimated from your sleep"
+        case .genericFallback: "Generic default"
+        }
+    }
+
+    /// What this source is worth on its own.
+    var confidence: MetricConfidence {
+        switch self {
+        case .measuredDailyRestingHR: .high
+        case .historicalPersonalRestingHR: .high
+        case .sleepDerivedPersonalEstimate: .moderate
+        case .genericFallback: .low
+        }
+    }
+}
+
+/// A resting heart rate and where it came from, so the two cannot be
+/// separated by accident.
+struct RestingHeartRateInput: Hashable, Sendable {
+    let bpm: Double
+    let provenance: RestingHRProvenance
+}
+
 /// Turns heart-rate samples into zone minutes by integrating over time.
 ///
 /// **The bug this replaces.** Zones were built from 10-minute statistics
@@ -87,6 +144,43 @@ enum HeartRateZoneIntegrator {
     static func maximumHeartRate(age: Int?) -> (bpm: Double, provenance: HRZoneProvenance) {
         guard let age, age > 0, age < 120 else { return (190, .genericFallback) }
         return (208 - 0.7 * Double(age), .ageEstimated)
+    }
+
+    /// The generic resting heart rate, used only when nothing personal exists.
+    static let genericRestingHeartRate = 60.0
+
+    /// Picks a resting heart rate and records which of four sources produced
+    /// it.
+    ///
+    /// Order is most-recent-measurement-first, which is also a fix: the
+    /// previous chain reached for the *previous* night's measured value ahead
+    /// of the current night's, so a fresh reading lost to a day-old one. With
+    /// provenance attached the distinction is no longer cosmetic —
+    /// `.measuredDailyRestingHR` and `.historicalPersonalRestingHR` have to
+    /// mean what they say.
+    ///
+    /// Values outside 25–120 bpm are rejected at every tier rather than
+    /// carried into the reserve denominator: a corrupt sample there does not
+    /// produce a slightly wrong Load, it produces a nonsensical one.
+    static func restingHeartRate(
+        measuredToday: Double?,
+        measuredEarlier: Double?,
+        sleepDerived: Double?
+    ) -> RestingHeartRateInput {
+        func plausible(_ value: Double?) -> Double? {
+            guard let value, value >= 25, value <= 120 else { return nil }
+            return value
+        }
+        if let value = plausible(measuredToday) {
+            return RestingHeartRateInput(bpm: value, provenance: .measuredDailyRestingHR)
+        }
+        if let value = plausible(measuredEarlier) {
+            return RestingHeartRateInput(bpm: value, provenance: .historicalPersonalRestingHR)
+        }
+        if let value = plausible(sleepDerived) {
+            return RestingHeartRateInput(bpm: value, provenance: .sleepDerivedPersonalEstimate)
+        }
+        return RestingHeartRateInput(bpm: genericRestingHeartRate, provenance: .genericFallback)
     }
 
     struct Sample {

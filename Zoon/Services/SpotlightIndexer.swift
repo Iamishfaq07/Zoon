@@ -89,6 +89,12 @@ enum SpotlightIndexer {
                 subtitle: "Every claim, ranked by how it was found",
                 keywords: ["evidence", "claims", "proof", "tested", "experiment", "what changed", "discoveries", "believe"]
             )
+        case .tomorrow:
+            Entry(
+                title: "Tomorrow",
+                subtitle: "Arrange tonight around the morning you have to be ready for",
+                keywords: ["tomorrow", "plan", "morning", "wake", "alarm", "meeting", "calendar", "wind down", "getting ready"]
+            )
         case .patterns:
             Entry(
                 title: "Your Patterns",

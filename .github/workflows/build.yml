@@ -299,9 +299,30 @@ jobs:
         # `tee`, not `>>`. The step summary is readable in a browser but cannot
         # be fetched back through the API, so a failure was only diagnosable by
         # someone with the tab open. The log gets a copy.
+        #
+        # This is the *last* step that prints anything, and that placement is
+        # load-bearing. The API serves job logs from the end, capped, so
+        # anything printed earlier falls off the back for a remote reader --
+        # which is why the failing-test summary is repeated here rather than
+        # left to the step that produced it. Three separate red runs were
+        # diagnosed as "tests failed, contents unknown" before this was added,
+        # and the artifact that holds `test.log` is not always reachable
+        # either: an egress policy can refuse the blob-storage host the
+        # download URL points at.
         if: always()
         run: |
           {
+            for log in test.log uitest.log; do
+              [ -s "$log" ] || continue
+              FAILURES=$(grep -E "error:|Test Case.*failed|fatal error" "$log" | sort -u || true)
+              [ -n "$FAILURES" ] || continue
+              echo "### Failing tests in ${log}"
+              echo ""
+              echo '```'
+              printf '%s\n' "$FAILURES" | head -40
+              echo '```'
+              echo ""
+            done
             echo "### Result"
             if [ "${{ steps.build.outcome }}" = "success" ]; then
               echo ""

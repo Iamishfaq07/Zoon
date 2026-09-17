@@ -317,14 +317,14 @@ extension ZoonConstellation {
     static func fromFindings(_ findings: [JournalCorrelator.Finding]) -> (nodes: [Node], edges: [Edge])? {
         guard !findings.isEmpty else { return nil }
 
-        // One edge per behaviour: its strongest finding. A tag with four
-        // findings would otherwise fan out four near-identical lines.
-        var strongest: [BehaviorTag: JournalCorrelator.Finding] = [:]
+        // One edge per behaviour: its strongest finding. A behaviour with
+        // four findings would otherwise fan out four near-identical lines.
+        var strongest: [BehaviorID: JournalCorrelator.Finding] = [:]
         for finding in findings {
-            if let incumbent = strongest[finding.tag], abs(finding.delta) <= abs(incumbent.delta) {
+            if let incumbent = strongest[finding.behavior], abs(finding.delta) <= abs(incumbent.delta) {
                 continue
             } else {
-                strongest[finding.tag] = finding
+                strongest[finding.behavior] = finding
             }
         }
 
@@ -336,16 +336,19 @@ extension ZoonConstellation {
         // all -- the same ranking `JournalCorrelator` uses for ordering.
         let scale = strongest.values.map { relativeEffect($0) }.max() ?? 1
 
-        for (tag, finding) in strongest.sorted(by: { abs($0.value.delta) > abs($1.value.delta) }) {
+        for (behavior, finding) in strongest.sorted(by: { abs($0.value.delta) > abs($1.value.delta) }) {
             nodes.append(Node(
-                id: tag.rawValue,
-                label: tag.label,
-                symbol: tag.symbol,
+                id: behavior.identifier,
+                // The finding carries its own resolved name, which is the
+                // only way a custom behaviour's node can be labelled -- there
+                // is no enum to ask.
+                label: finding.label,
+                symbol: finding.symbol,
                 tint: finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention
             ))
             edges.append(Edge(
                 from: hub.id,
-                to: tag.rawValue,
+                to: behavior.identifier,
                 magnitude: min(relativeEffect(finding) / max(scale, 0.0001), 1),
                 evidence: ZoonPairedPlot.metricConfidence(finding.confidence),
                 detail: finding.headline

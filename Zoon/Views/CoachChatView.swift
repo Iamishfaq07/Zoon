@@ -18,6 +18,8 @@ struct CoachChatView: View {
     var chartQuestion: ChartQuestion? = nil
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
+    @Environment(NapStore.self) private var naps
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var chat = CoachChat()
     @State private var evidence: CoachEvidence?
@@ -48,6 +50,9 @@ struct CoachChatView: View {
                     .font(.caption).foregroundStyle(Theme.inkSecondary).padding(8)
             }
             transcript
+            if let pending = chat.pendingAction {
+                confirmation(pending)
+            }
             composer
         }
         .nightBackground()
@@ -57,6 +62,13 @@ struct CoachChatView: View {
             let frozen = CoachEvidence(night: night, history: coordinator.recentNights)
             evidence = frozen
             chat.evidence = frozen
+            // Every number a tool answer contains comes from here. The model
+            // is never asked for one, which is what makes "what is my
+            // recovery" a `RecoveryScore` read rather than prose about one.
+            let runner = CoachToolRunner(
+                coordinator: coordinator, preferences: preferences, naps: naps
+            )
+            chat.runTool = { runner.run($0) }
             chat.start(
                 nightSummary: night.summaryForLLM,
                 contextDigest: frozen.promptCatalog,
@@ -245,6 +257,51 @@ struct CoachChatView: View {
             }
         }
         .animation(reduceMotion ? nil : Motion.tap, value: isExpanded)
+    }
+
+    /// The confirm step for anything that changes something.
+    ///
+    /// A bar above the composer rather than buttons inside the transcript:
+    /// the proposal is the one thing to act on, it must not scroll away, and
+    /// the composer stays reachable so "actually, make it twenty minutes" is
+    /// still possible — sending anything new discards the proposal, which is
+    /// what stops a stale Confirm sitting under an unrelated question.
+    private func confirmation(_ pending: CoachChat.PendingAction) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(pending.prompt)
+                .font(Theme.label(14, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            // Stacked at accessibility sizes: two buttons side by side is
+            // where a confirm and a cancel start wrapping into each other,
+            // and those are the two words that must never be misread.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { confirmButtons }
+                VStack(spacing: 10) { confirmButtons }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.Metric.sleep.opacity(0.14))
+        .overlay(alignment: .top) { Rectangle().fill(Theme.cardStroke).frame(height: 1) }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    @ViewBuilder
+    private var confirmButtons: some View {
+        Button("Cancel") {
+            Haptics.tap()
+            chat.cancelPendingAction()
+        }
+        .buttonStyle(.bordered)
+        .frame(maxWidth: .infinity)
+
+        Button("Confirm") {
+            Haptics.success()
+            chat.confirmPendingAction()
+        }
+        .buttonStyle(.borderedProminent)
+        .frame(maxWidth: .infinity)
     }
 
     private var composer: some View {

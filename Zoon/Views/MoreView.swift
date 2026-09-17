@@ -54,10 +54,6 @@ struct MoreView: View {
                     navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
                         ArticlesView()
                     }
-                    navRow("Voice journal", "Speak a note and review the transcript",
-                            "mic.circle.fill", Theme.Family.sleep) {
-                        VoiceJournalView()
-                    }
                     navRow("Custom behaviours", "Track signals unique to your routine",
                             "plus.circle.fill", Theme.Family.sleep) {
                         CustomBehaviorsView()
@@ -91,6 +87,7 @@ struct MoreView: View {
                 case .evidence: EvidenceView()
                 case .patterns: PatternsView()
                 case .sensorTruth: SensorTruthView()
+                case .tomorrow: ZoonTomorrowView()
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock: EmptyView()
                 // Presented as its own sheet from GlobalPresentation, not
@@ -244,7 +241,8 @@ struct MoreView: View {
                     soundEvents: SoundEventStore().recentEvents,
                     behaviorObservations: coordinator.behaviorObservationsForExport(),
                     evidenceHistory: coordinator.evidenceHistoryForExport(),
-                    personalSetup: setup.value
+                    personalSetup: setup.value,
+                    customBehaviors: CustomBehaviorStore.shared.behaviors
                 )
                 let plain = try DataExporter.jsonData(archive)
                 let data = encryptBackup ? try ArchiveCipher.seal(plain, passphrase: archivePassphrase) : plain

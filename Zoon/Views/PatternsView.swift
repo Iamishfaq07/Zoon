@@ -102,7 +102,7 @@ struct PatternsView: View {
     @ViewBuilder
     private var noticedSection: some View {
         let findings = JournalCorrelator()
-            .topFindingPerTag(from: coordinator.journalObservations())
+            .topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
             .sorted { Self.rank($0.confidence) > Self.rank($1.confidence) }
 
         VStack(alignment: .leading, spacing: 12) {
@@ -134,7 +134,7 @@ struct PatternsView: View {
                         Divider().overlay(Theme.neutral(0.10))
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(finding.tag.label)
+                        Text(finding.label)
                             .font(Theme.label(14, weight: .semibold))
                         Text(finding.plainSentence)
                             .font(Theme.text(13))
@@ -163,7 +163,7 @@ struct PatternsView: View {
     /// answer narrower questions.
     @ViewBuilder
     private var constellationSection: some View {
-        let findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        let findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
         if let graph = ZoonConstellation.fromFindings(findings) {
             VStack(alignment: .leading, spacing: 12) {
                 sectionHeader("What connects to your sleep", "point.3.filled.connected.trianglepath.dotted", Theme.Family.sleep)

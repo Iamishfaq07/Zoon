@@ -3,23 +3,31 @@ import SwiftUI
 struct AwakeningInspectorCard: View {
     let night: SleepNightFeatures
     var sounds: [SoundEvent] = []
+    /// The overnight minute-level series, when the night has one. Defaulted so
+    /// every existing call site and preview is unchanged and simply gets the
+    /// markers without the trace.
+    var series = AwakeningInspector.Series()
+
     @State private var index = 0
+    /// Progressive disclosure, as §25 asks for: the timeline is the screen and
+    /// the trace is the layer underneath it. Both at once is the unreadable
+    /// chart the brief warns about, and the timeline is what answers the
+    /// question most people came with.
+    @State private var showsTrace = false
 
-    /// Says *why* a stream is absent, which differs by stream.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Says *why* a stream is absent.
+    ///
+    /// This used to draw a distinction that no longer exists: heart rate and
+    /// movement were reported as "not read minute by minute yet", because the
+    /// only overnight series the app fetched was hourly. It now fetches them
+    /// at one minute, so an absent stream here means the same thing it means
+    /// for sound — nothing was recorded for this night. The old wording blamed
+    /// the app for a gap that is now the sensor's, and keeping it would have
+    /// been an apology for a limitation that had been fixed.
     private func missingLine(_ streams: [String]) -> String {
-        let notReadAtThisResolution = streams.filter { $0 == "heart rate" || $0 == "movement" }
-        let notRecorded = streams.filter { !notReadAtThisResolution.contains($0) }
-
-        var parts: [String] = []
-        if !notReadAtThisResolution.isEmpty {
-            parts.append(
-                "Zoon doesn't read \(list(notReadAtThisResolution)) minute by minute yet, so \(notReadAtThisResolution.count == 1 ? "it isn't" : "they aren't") on this timeline."
-            )
-        }
-        if !notRecorded.isEmpty {
-            parts.append("No \(list(notRecorded)) was recorded for this night.")
-        }
-        return parts.joined(separator: " ")
+        "No \(list(streams)) was recorded for this night."
     }
 
     private func list(_ items: [String]) -> String {
@@ -40,7 +48,8 @@ struct AwakeningInspectorCard: View {
             let sequence = AwakeningInspector.inspect(
                 awakening: interval,
                 stages: night.stageSegments,
-                sounds: sounds
+                sounds: sounds,
+                series: series
             )
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -69,21 +78,45 @@ struct AwakeningInspectorCard: View {
                         }
                     }
                 }
+                if let note = sequence.respiratoryNote {
+                    Text(note)
+                        .font(Theme.text(13))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // The trace is a layer, not the headline. It appears only when
+                // there is one to draw and only when asked for, and never at
+                // accessibility sizes, where a 64pt sparkline is decoration
+                // that pushes the markers -- which carry every figure it does
+                // -- off the screen.
+                if sequence.heartRateWindow.contains(where: { $0.value != nil }),
+                   !dynamicTypeSize.isAccessibilitySize {
+                    DisclosureGroup(isExpanded: $showsTrace) {
+                        trace(sequence)
+                            .padding(.top, 8)
+                    } label: {
+                        Text("Heart rate around this awakening")
+                            .font(Theme.label(13, weight: .semibold))
+                    }
+                    .onChange(of: showsTrace) { _, _ in Haptics.select() }
+                }
+
+                if let provenance = sequence.movementProvenance {
+                    Text(provenance)
+                        .font(Theme.evidence)
+                        .foregroundStyle(Theme.inkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Text(sequence.caveat)
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
-                // "Not recorded" blamed the sensor for something Zoon does
-                // not ask for. Heart rate and movement are absent here
-                // because this screen has no minute-level series to read: the
-                // app fetches heart rate hourly, and an hourly bucket cannot
-                // place a rise inside a four-minute awakening. Sound is
-                // genuinely a recording question, so the two are said
-                // differently.
-                //
-                // Feeding the hourly series in as `heartRateRiseAt` would
-                // have filled the gap by inventing a precision the data does
-                // not have, which is the one thing this screen must not do.
+                // Only genuinely absent streams reach here now. A series that
+                // arrived and held no rise is not missing -- the engine strips
+                // it from this list -- so the screen no longer apologises for
+                // data it has.
                 if !sequence.missingStreams.isEmpty {
                     Text(missingLine(sequence.missingStreams))
                         .font(Theme.evidence)
@@ -95,5 +128,61 @@ struct AwakeningInspectorCard: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Awakening at \(interval.start.formatted(date: .omitted, time: .shortened)), \(SleepNightFeatures.formatMinutes(sequence.awakeningMinutes)). \(sequence.caveat)")
         }
+    }
+
+    /// The heart-rate trace across the window, with the awakening marked.
+    ///
+    /// Gaps are drawn as gaps. A watch writes a heart rate every few minutes,
+    /// so most one-minute bins are empty, and joining across them would draw a
+    /// straight line through minutes nobody measured — which on a chart reads
+    /// as a steady heart rate rather than as an absence.
+    private func trace(_ sequence: AwakeningInspector.Sequence) -> some View {
+        let readings = sequence.heartRateWindow.compactMap { sample -> (Date, Double)? in
+            sample.value.map { (sample.date, $0) }
+        }
+        let values = readings.map(\.1)
+        let low = values.min() ?? 0
+        let high = values.max() ?? 1
+        let span = max(1, high - low)
+        let window = sequence.window
+
+        return VStack(alignment: .leading, spacing: 4) {
+            GeometryReader { geo in
+                ZStack(alignment: .topLeading) {
+                    // Where the awakening starts, so the trace can be read
+                    // against it rather than beside it.
+                    let markerX = geo.size.width
+                        * (sequence.awakeningStart.timeIntervalSince(window.start) / window.duration)
+                    Rectangle()
+                        .fill(Theme.cardStroke)
+                        .frame(width: 1)
+                        .offset(x: markerX)
+
+                    ForEach(Array(readings.enumerated()), id: \.offset) { _, reading in
+                        let x = geo.size.width
+                            * (reading.0.timeIntervalSince(window.start) / window.duration)
+                        let y = geo.size.height * (1 - (reading.1 - low) / span)
+                        Circle()
+                            .fill(Theme.Metric.heart)
+                            .frame(width: 4, height: 4)
+                            .offset(x: x - 2, y: y - 2)
+                    }
+                }
+            }
+            .frame(height: 64)
+
+            HStack {
+                Text("\(Int(low.rounded()))–\(Int(high.rounded())) bpm")
+                Spacer()
+                Text("\(readings.count.pluralized("reading")) in 24 minutes")
+            }
+            .font(Theme.evidence)
+            .foregroundStyle(Theme.inkTertiary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Heart rate around this awakening")
+        .accessibilityValue(
+            "\(readings.count.pluralized("reading")), between \(Int(low.rounded())) and \(Int(high.rounded())) beats per minute."
+        )
     }
 }

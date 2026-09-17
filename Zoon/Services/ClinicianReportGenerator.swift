@@ -123,9 +123,7 @@ enum ClinicianReportGenerator {
                     "\(minutesLabel(shortest.total24hAsleepMinutes)) · \(shortest.date.formatted(.dateTime.month().day()))"
                 )
             }
-            if let median = Statistics.median(durations) {
-                drawRow("Median total sleep", minutesLabel(median))
-            }
+            drawRow("Median total sleep", measure(durations, minutesLabel))
             cursor += 6
 
             for section in Section.allCases where sections.contains(section) {
@@ -149,22 +147,17 @@ enum ClinicianReportGenerator {
     ) {
         switch section {
         case .sleepTiming:
-            // Each night's own timezone, not the device's current one -- a
-            // clinician report drawn after the user has traveled shouldn't
-            // silently recompute historical bedtimes in the wrong zone.
-            let bedtimes = nights.map { night -> Double in
-                var calendar = Calendar.current
-                calendar.timeZone = night.timeZone
-                return Statistics.circularMinutesFromMidnight(night.bedtime, calendar: calendar)
+            // Bedtime and wake time are angles. The rows this replaced took
+            // an ordinary median and an ordinary standard deviation of clock
+            // readings that had been shifted at 18:00 to make the arithmetic
+            // work for a night sleeper -- which moves the discontinuity
+            // rather than removing it, and puts it exactly where a shift
+            // worker's bedtimes live. `SleepTimingSummary` computes these on
+            // the circle, and is in Shared/ so the statistics on a document a
+            // clinician may act on are actually tested.
+            for row in SleepTimingSummary.make(nights: nights).rows {
+                drawRow(row.label, row.value)
             }
-            let wakeTimes = nights.map { night -> Double in
-                var calendar = Calendar.current
-                calendar.timeZone = night.timeZone
-                return Statistics.circularMinutesFromMidnight(night.wakeTime, calendar: calendar)
-            }
-            drawRow("Median bedtime", clockLabel(Statistics.median(bedtimes) ?? 0))
-            drawRow("Median wake time", clockLabel(Statistics.median(wakeTimes) ?? 0))
-            drawRow("Bedtime variability (SD)", minutesLabel(Statistics.standardDeviation(bedtimes) ?? 0))
 
         case .sleepDuration:
             // `total24hAsleepMinutes` (main sleep plus naps/secondary
@@ -174,36 +167,43 @@ enum ClinicianReportGenerator {
             // deserves a number that actually includes the nap rather than
             // one that silently doesn't, despite the label's own claim.
             let durations = nights.map(\.total24hAsleepMinutes)
-            drawRow("Median total sleep time", minutesLabel(Statistics.median(durations) ?? 0))
-            drawRow("Range", "\(minutesLabel(durations.min() ?? 0)) – \(minutesLabel(durations.max() ?? 0))")
+            drawRow("Nights with duration data", "\(durations.count)")
+            drawRow("Median total sleep time", measure(durations, minutesLabel))
+            if let low = durations.min(), let high = durations.max() {
+                drawRow("Range", "\(minutesLabel(low)) – \(minutesLabel(high)) across \(durations.count) nights")
+            } else {
+                drawRow("Range", "Not available")
+            }
             drawRow("Sleep goal", minutesLabel(goalMinutes))
             let efficiency = nights.map(\.sleepEfficiencyPercent)
-            drawRow("Median sleep efficiency", String(format: "%.1f%%", Statistics.median(efficiency) ?? 0))
+            drawRow("Median sleep efficiency", measure(efficiency) { String(format: "%.1f%%", $0) })
 
         case .sleepStages:
             let staged = nights.filter(\.hasStageBreakdown)
             if staged.isEmpty {
                 drawRow("Stage data", "Not available for this range")
             } else {
-                drawRow("Median deep sleep", minutesLabel(Statistics.median(staged.map(\.deepMinutes)) ?? 0))
-                drawRow("Median REM sleep", minutesLabel(Statistics.median(staged.map(\.remMinutes)) ?? 0))
-                drawRow("Median core/light sleep", minutesLabel(Statistics.median(staged.map(\.coreMinutes)) ?? 0))
+                drawRow("Median deep sleep", measure(staged.map(\.deepMinutes), minutesLabel))
+                drawRow("Median REM sleep", measure(staged.map(\.remMinutes), minutesLabel))
+                drawRow("Median core/light sleep", measure(staged.map(\.coreMinutes), minutesLabel))
                 drawRow("Nights with stage data", "\(staged.count) of \(nights.count)")
             }
 
         case .awakenings:
             let counts = nights.map { Double($0.wakeCount) }
-            drawRow("Median awakenings per night", String(format: "%.1f", Statistics.median(counts) ?? 0))
-            drawRow("Median awake time", minutesLabel(Statistics.median(nights.map(\.awakeMinutes)) ?? 0))
+            drawRow("Nights with awakening data", "\(counts.count)")
+            drawRow("Median awakenings per night", measure(counts) { String(format: "%.1f", $0) })
+            drawRow("Median awake time", measure(nights.map(\.awakeMinutes), minutesLabel))
 
         case .heartRateHRV:
             let hr = nights.compactMap(\.avgHeartRate)
             let hrv = nights.compactMap(\.avgHRV)
             if !hr.isEmpty {
-                drawRow("Median sleeping heart rate", "\(Int((Statistics.median(hr) ?? 0).rounded())) bpm")
+                drawRow("Median sleeping heart rate", measure(hr) { "\(Int($0.rounded())) bpm" })
+                drawRow("Heart rate nights with data", "\(hr.count) of \(nights.count)")
             }
             if !hrv.isEmpty {
-                drawRow("Median HRV (SDNN)", "\(Int((Statistics.median(hrv) ?? 0).rounded())) ms")
+                drawRow("Median HRV (SDNN)", measure(hrv) { "\(Int($0.rounded())) ms" })
                 drawRow("HRV nights with data", "\(hrv.count) of \(nights.count)")
             }
             if hr.isEmpty && hrv.isEmpty {
@@ -215,7 +215,8 @@ enum ClinicianReportGenerator {
             if rate.isEmpty {
                 drawRow("Respiratory rate", "Not available for this range")
             } else {
-                drawRow("Median respiratory rate", String(format: "%.1f breaths/min", Statistics.median(rate) ?? 0))
+                drawRow("Median respiratory rate", measure(rate) { String(format: "%.1f breaths/min", $0) })
+                drawRow("Nights with data", "\(rate.count) of \(nights.count)")
             }
 
         case .temperature:
@@ -223,7 +224,8 @@ enum ClinicianReportGenerator {
             if deltas.isEmpty {
                 drawRow("Wrist temperature", "Not available for this range")
             } else {
-                drawRow("Median deviation from baseline", String(format: "%+.2f°C", Statistics.median(deltas) ?? 0))
+                drawRow("Median deviation from baseline", measure(deltas) { String(format: "%+.2f°C", $0) })
+                drawRow("Nights with data", "\(deltas.count) of \(nights.count)")
             }
 
         case .breathingDisturbances:
@@ -232,7 +234,8 @@ enum ClinicianReportGenerator {
                 drawRow("Breathing disturbances", "Not available on this device/range")
             } else {
                 let values = measuredNights.compactMap(\.breathingDisturbances)
-                drawRow("Median, % of night", String(format: "%.1f%%", Statistics.median(values) ?? 0))
+                drawRow("Median, % of night", measure(values) { String(format: "%.1f%%", $0) })
+                drawRow("Nights with data", "\(values.count) of \(nights.count)")
 
                 // Only Apple's classification is reported, and only against
                 // the count of nights that actually carry one.
@@ -260,7 +263,8 @@ enum ClinicianReportGenerator {
             if spo2.isEmpty {
                 drawRow("Blood oxygen", "Not available on this device/range")
             } else {
-                drawRow("Median SpO2", String(format: "%.0f%%", Statistics.median(spo2) ?? 0))
+                drawRow("Median SpO2", measure(spo2) { String(format: "%.0f%%", $0) })
+                drawRow("Nights with data", "\(spo2.count) of \(nights.count)")
             }
         }
     }
@@ -278,12 +282,15 @@ enum ClinicianReportGenerator {
         SleepNightFeatures.formatMinutes(abs(minutes))
     }
 
-    private static func clockLabel(_ shiftedMinutes: Double) -> String {
-        var minutes = shiftedMinutes
-        if minutes < 0 { minutes += 24 * 60 }
-        let hour = Int(minutes) / 60 % 24
-        let minute = Int(minutes) % 60
-        return String(format: "%02d:%02d", hour, minute)
+    /// A median, or the words "Not available".
+    ///
+    /// Every row here used to end `?? 0`, which prints `0m`, `00:00` or
+    /// `0.0%` when there is nothing to report. On a document a clinician may
+    /// act on, a plausible-looking zero is the worst possible rendering of
+    /// "we do not know" -- it is indistinguishable from a real measurement.
+    private static func measure(_ values: [Double], _ format: (Double) -> String) -> String {
+        guard let median = Statistics.median(values) else { return "Not available" }
+        return format(median)
     }
 
     static func filename(rangeDays: Int) -> String {

@@ -154,6 +154,22 @@ final class SleepDataCoordinator {
     /// Purely a display list; see `WorkoutSummary`'s doc comment for why
     /// this doesn't feed `StrainScore` itself.
     private(set) var todayWorkouts: [WorkoutSummary] = []
+
+    /// Stretches of today's waking hours where heart rate sat below this
+    /// person's own usual figure for that hour, with movement low. Empty
+    /// until `refreshRestorativeWindows` has run, and empty is also the
+    /// honest answer whenever the baseline has not earned a block yet --
+    /// see `RestorativeWindow`.
+    private(set) var todayRestorativeWindows: [RestorativeWindow.Window] = []
+
+    /// Minute-level overnight series for the Awakening Inspector (§25).
+    ///
+    /// Fetched once for the whole night rather than per awakening: a night
+    /// holds a handful of them, and three queries beat three per awakening.
+    /// Empty until `refreshAwakeningSeries` has run, and empty on a night with
+    /// no watch -- which the inspector reports as a missing stream rather than
+    /// as a flat line.
+    private(set) var awakeningSeries = AwakeningInspector.Series()
     /// Today's step count against what this weekday usually looks like by
     /// now. `nil` until a sample actually arrives — the card was previously
     /// constructed with hardcoded `nil`s at the call site, so it reported
@@ -495,6 +511,8 @@ final class SleepDataCoordinator {
         defer { syncMetrics.lastRefreshSeconds = Date.now.timeIntervalSince(startedAt) }
         #endif
         await refreshTodayStress()
+        await refreshRestorativeWindows()
+        await refreshAwakeningSeries()
         await refreshTodayMovement()
         if preferences.cycleTrackingEnabled { await refreshCycleData() }
         if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
@@ -882,19 +900,21 @@ final class SleepDataCoordinator {
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
         let maxHR = maximum.bpm
-        // True RHR first (see SleepNightFeatures.restingHeartRate), falling
-        // back to the sleep-window low only when no daily RHR sample exists
-        // yet — heart-rate-reserve zones are sensitive to this baseline, so
-        // the more accurate figure is worth preferring wherever it's there.
-        let restingHR = history.compactMap(\.restingHeartRate).last
-            ?? night.restingHeartRate
-            ?? history.compactMap(\.minHeartRate).last
-            ?? night.minHeartRate
-            ?? 60
+        // Heart-rate-reserve zones are as sensitive to this floor as to the
+        // ceiling above, and it used to end in a bare `?? 60` -- a population
+        // constant that arrived with no label and made the Load model
+        // generic in both terms while nothing said so.
+        let resting = HeartRateZoneIntegrator.restingHeartRate(
+            measuredToday: night.restingHeartRate,
+            measuredEarlier: history.compactMap(\.restingHeartRate).last,
+            sleepDerived: night.minHeartRate ?? history.compactMap(\.minHeartRate).last
+        )
+        let restingHR = resting.bpm
 
         let (todayStrain, yesterdayStrain, hourly) = await loadActivity(
             wakeTime: night.wakeTime, restingHR: restingHR, maxHR: maxHR,
-            zoneProvenance: maximum.provenance
+            zoneProvenance: maximum.provenance,
+            restingProvenance: resting.provenance
         )
 
         guard !isErasing, generation == storeGeneration else { return }
@@ -1034,51 +1054,71 @@ final class SleepDataCoordinator {
     /// way -- a nap and a later bedtime appearing together is not the nap
     /// causing it.
     func napObservations() -> [NapLearning.Observation] {
-        var out: [NapLearning.Observation] = []
-        for night in recentNights {
-            let naps = napIntervals(before: night.date, timeZone: night.timeZone)
-            guard !naps.isEmpty else { continue }
+        let sorted = recentNights.sorted { $0.date < $1.date }
+        var priorAsleep: [Date: Double] = [:]
+        for (previous, current) in zip(sorted, sorted.dropFirst()) {
+            priorAsleep[current.date] = previous.timeAsleepMinutes
+        }
 
+        // Every night, not only the ones with a nap. The control arm is the
+        // whole point: the version this replaced skipped no-nap days
+        // outright, so the engine downstream had nothing to compare against
+        // and was reporting associations it had not measured.
+        return sorted.map { night in
             var calendar = Calendar.current
             calendar.timeZone = night.timeZone
-            let bedtimeHour = Double(calendar.component(.hour, from: night.bedtime))
-                + Double(calendar.component(.minute, from: night.bedtime)) / 60
-            let recovery = recoveryHistory[night.date].map(Double.init)
+            let naps = napIntervals(before: night.date, timeZone: night.timeZone)
+            // The longest nap stands for the day. Two observations of one day
+            // would let it back its own comparison twice.
+            let longest = naps.max { $0.duration < $1.duration }
 
-            for nap in naps {
-                out.append(NapLearning.Observation(
-                    napStartHour: Double(calendar.component(.hour, from: nap.start))
-                        + Double(calendar.component(.minute, from: nap.start)) / 60,
-                    napMinutes: nap.duration / 60,
-                    bedtimeHour: bedtimeHour,
-                    latencyMinutes: night.sleepLatencyMinutes,
-                    nextAsleepMinutes: night.timeAsleepMinutes,
-                    nextRecoveryPercent: recovery
-                ))
-            }
+            return NapLearning.Observation(
+                date: night.date,
+                nap: longest.map { nap in
+                    NapLearning.Observation.Nap(
+                        startHour: Double(calendar.component(.hour, from: nap.start))
+                            + Double(calendar.component(.minute, from: nap.start)) / 60,
+                        minutes: nap.duration / 60
+                    )
+                },
+                bedtimeMinutes: Statistics.circularMinutesFromMidnight(
+                    night.bedtime, calendar: calendar
+                ),
+                latencyMinutes: night.sleepLatencyMinutes,
+                nextAsleepMinutes: night.timeAsleepMinutes,
+                isWeekend: calendar.isDateInWeekend(night.date),
+                priorNightAsleepMinutes: priorAsleep[night.date],
+                shortfallMinutes: night.sleepDebtMinutes,
+                timeZoneIdentifier: night.timeZoneIdentifier
+            )
         }
-        return out
     }
 
-    /// Long-term baselines for the two vitals with enough history behind them
-    /// to have one. `LongTermResilience` shipped with tests and no caller.
+    /// Long-term baselines for the vitals with enough history behind them to
+    /// have one.
+    ///
+    /// Each signal carries its own thresholds and sample floors rather than
+    /// sharing one generic tolerance: HRV swings twenty per cent night to
+    /// night while a resting heart rate that moves five per cent has done
+    /// something, and a single formula across both is tuned for neither.
+    /// Signals whose windows are too thin still appear — an explicit "not
+    /// enough yet" is the honest state, and hiding the row would leave the
+    /// person wondering where respiratory rate went.
     func longTermSignals(window: LongTermResilience.Window) -> [LongTermResilience.Signal] {
-        let rhr = recentNights.compactMap { night in
-            night.restingHeartRate.map { LongTermResilience.Point(date: night.date, value: $0) }
+        func points(_ value: @escaping (SleepNightFeatures) -> Double?) -> [LongTermResilience.Point] {
+            recentNights.compactMap { night in
+                value(night).map { LongTermResilience.Point(date: night.date, value: $0) }
+            }
         }
-        let hrv = recentNights.compactMap { night in
-            night.avgHRV.map { LongTermResilience.Point(date: night.date, value: $0) }
-        }
-        return [
-            LongTermResilience.measure(
-                name: "resting heart rate", points: rhr, window: window,
-                unit: "bpm", lowerIsFavourable: true
-            ),
-            LongTermResilience.measure(
-                name: "HRV", points: hrv, window: window,
-                unit: "ms", lowerIsFavourable: false
-            )
+        let specs: [(LongTermResilience.Spec, [LongTermResilience.Point])] = [
+            (.restingHeartRate, points(\.restingHeartRate)),
+            (.heartRateVariability, points(\.avgHRV)),
+            (.respiratoryRate, points(\.avgRespiratoryRate)),
+            (.sleepDuration, points { $0.timeAsleepMinutes })
         ]
+        return specs.map { spec, values in
+            LongTermResilience.measure(spec: spec, points: values, window: window)
+        }
     }
 
     func napIntervals(before night: Date, timeZone: TimeZone) -> [DateInterval] {
@@ -1106,7 +1146,8 @@ final class SleepDataCoordinator {
         wakeTime: Date,
         restingHR: Double,
         maxHR: Double,
-        zoneProvenance: HRZoneProvenance
+        zoneProvenance: HRZoneProvenance,
+        restingProvenance: RestingHRProvenance
     ) async -> (today: StrainScore, yesterday: StrainScore, hourly: [(date: Date, bpm: Double)]) {
 
         let calendar = Calendar.current
@@ -1115,11 +1156,11 @@ final class SleepDataCoordinator {
 
         async let todayTask = strain(
             in: DateInterval(start: todayStart, end: .now), restingHR: restingHR, maxHR: maxHR,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance, restingProvenance: restingProvenance
         )
         async let yesterdayTask = strain(
             in: DateInterval(start: yesterdayStart, end: todayStart), restingHR: restingHR, maxHR: maxHR,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance, restingProvenance: restingProvenance
         )
 
         let today = await todayTask
@@ -1136,7 +1177,8 @@ final class SleepDataCoordinator {
         in interval: DateInterval,
         restingHR: Double,
         maxHR: Double,
-        zoneProvenance: HRZoneProvenance
+        zoneProvenance: HRZoneProvenance,
+        restingProvenance: RestingHRProvenance
     ) async -> StrainScore {
         guard interval.duration > 0 else { return .zero }
 
@@ -1155,7 +1197,8 @@ final class SleepDataCoordinator {
             zoneMinutes: result.zones,
             activeEnergyKcal: energy,
             hasHeartRateCoverage: true,
-            zoneProvenance: zoneProvenance
+            zoneProvenance: zoneProvenance,
+            restingProvenance: restingProvenance
         )
     }
 
@@ -1405,12 +1448,124 @@ final class SleepDataCoordinator {
             priors.append(steps)
         }
 
+        // The other measures §27 names. Each is optional for the same reason
+        // steps are: an absent reading is not a zero one, and the snapshot
+        // omits what it did not get rather than reporting none of it.
+        let interval = DateInterval(start: startOfToday, end: now)
+        let exercise = (try? await healthKit.sum(
+            .appleExerciseTime, unit: .minute(), in: interval
+        )) ?? nil
+        let activeEnergy = (try? await healthKit.sum(
+            .activeEnergyBurned, unit: .kilocalorie(), in: interval
+        )) ?? nil
+
         let typical = Statistics.median(priors).map { Int($0.rounded()) }
         todayMovement = MovementContext.snapshot(
             stepsSoFar: todaySteps.map { Int($0.rounded()) },
             typicalStepsByNow: typical,
+            activeEnergyKcal: activeEnergy,
+            exerciseMinutes: exercise,
+            // Already deduplicated by `refreshTodayStress`, which runs first:
+            // a run mirrored by a second app is one workout, not two.
+            workoutCount: todayWorkouts.count,
             weekday: weekday,
             now: now
+        )
+    }
+
+    /// §23. Runs after `refreshTodayStress` because it reuses exactly the
+    /// exclusions that function already computed the coarse version of --
+    /// workouts plus their buffer, and sleep -- and the same waking baseline
+    /// the Physiological Load comparison is made against, so a window and a
+    /// load reading can never be measured against different ideas of "your
+    /// usual".
+    ///
+    /// The three series are asked for at five-minute bins rather than hourly.
+    /// `HKStatisticsCollectionQuery` buckets inside its own store, so the
+    /// finer request costs about what the hourly one does, and an hour is
+    /// wider than most of the windows being looked for.
+    private func refreshRestorativeWindows() async {
+        guard DataEnvironment.current.isLive else {
+            todayRestorativeWindows = []
+            return
+        }
+
+        let calendar = Calendar.current
+        let now = Date.now
+        let dayStart = calendar.startOfDay(for: now)
+        guard dayStart < now else { return }
+        let interval = DateInterval(start: dayStart, end: now)
+
+        let workouts = (try? await healthKit.workouts(in: interval)) ?? []
+        let excluded = workouts.map {
+            DateInterval(
+                start: $0.startDate,
+                end: $0.endDate.addingTimeInterval(Self.postWorkoutBufferMinutes * 60)
+            )
+        } + store.nights(inLast: 2).compactMap { night -> DateInterval? in
+            guard night.wakeTime > night.bedtime else { return nil }
+            return DateInterval(start: night.bedtime, end: night.wakeTime)
+        }
+
+        let bin = RestorativeWindow.binMinutes
+        async let hrTask = try? healthKit.binnedHeartRate(in: interval, binMinutes: bin)
+        async let energyTask = try? healthKit.binnedActiveEnergy(in: interval, binMinutes: bin)
+        async let hrvTask = try? healthKit.binnedHeartRateVariability(in: interval, binMinutes: bin)
+
+        let heartRate = await hrTask ?? []
+        let energy = await energyTask ?? []
+        let hrv = await hrvTask ?? []
+
+        // The baseline is built to the start of today, not to now: a window
+        // found this afternoon must not be compared against a median that
+        // already contains it.
+        guard let baseline = await wakingBaselines(endingAt: dayStart, calendar: calendar).heartRate
+        else {
+            todayRestorativeWindows = []
+            return
+        }
+
+        func samples(_ series: [(date: Date, bpm: Double)]) -> [RestorativeWindow.Sample] {
+            series.map { RestorativeWindow.Sample(date: $0.date, value: $0.bpm) }
+        }
+
+        todayRestorativeWindows = RestorativeWindow.windows(
+            heartRate: samples(heartRate),
+            activeEnergy: samples(energy),
+            hrv: samples(hrv),
+            baseline: baseline,
+            excluded: excluded,
+            calendar: calendar
+        )
+    }
+
+    /// §25. The overnight series the inspector derives its layers from.
+    ///
+    /// One minute rather than the five `RestorativeWindow` asks for: that one
+    /// looks for a settled half hour, this one has to place an event inside a
+    /// twelve-minute window, and at five minutes there are not enough readings
+    /// before an awakening to say what a rise would be a rise against.
+    private func refreshAwakeningSeries() async {
+        guard DataEnvironment.current.isLive, let night = store.latestNight else {
+            awakeningSeries = AwakeningInspector.Series()
+            return
+        }
+        guard night.wakeTime > night.bedtime else { return }
+        let window = DateInterval(start: night.bedtime, end: night.wakeTime)
+        let bin = AwakeningInspector.binMinutes
+
+        async let hrTask = try? healthKit.binnedHeartRate(in: window, binMinutes: bin)
+        async let energyTask = try? healthKit.binnedActiveEnergy(in: window, binMinutes: bin)
+        async let breathTask = try? healthKit.binnedRespiratoryRate(in: window, binMinutes: bin)
+
+        func samples(_ series: [(date: Date, bpm: Double)]) -> [AwakeningInspector.Sample] {
+            series.map { AwakeningInspector.Sample(date: $0.date, value: $0.bpm) }
+        }
+
+        awakeningSeries = AwakeningInspector.Series(
+            heartRate: samples(await hrTask ?? []),
+            movement: samples(await energyTask ?? []),
+            respiratory: samples(await breathTask ?? [])
         )
     }
 
@@ -1688,6 +1843,9 @@ final class SleepDataCoordinator {
         // synthesising rows here would claim the archive recorded answers
         // it never held.
         let restoredObservations = behaviors.importObservations(archive.behaviorObservations ?? [])
+        // The definitions, so the restored answers have names. Existing ones
+        // win, the same rule every other importer here follows.
+        CustomBehaviorStore.shared.importBehaviors(archive.customBehaviors ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -1895,11 +2053,11 @@ final class SleepDataCoordinator {
     private func recordAssociations() {
         let observations = journalObservations()
         let correlator = JournalCorrelator()
-        let findings = correlator.topFindingPerTag(from: observations)
+        let findings = correlator.topFindingPerTag(from: observations, catalog: behaviorCatalog)
         for finding in findings {
             store.recordBelief(
                 EvidenceLedger.Revision(
-                    claimID: EvidenceLedger.Claim.behaviour(tag: finding.tag.rawValue).id,
+                    claimID: EvidenceLedger.Claim.behaviour(tag: finding.behavior.identifier).id,
                     recordedAt: .now,
                     status: status(for: finding),
                     headline: finding.plainSentence,
@@ -1923,17 +2081,23 @@ final class SleepDataCoordinator {
         // Withdrawn as inconclusive when the comparison pool is still deep
         // enough that the engine looked and found nothing, as learning when
         // the pool itself has thinned below what a comparison needs.
-        let tagByClaimID = Dictionary(
-            uniqueKeysWithValues: BehaviorTag.allCases.map {
-                (EvidenceLedger.Claim.behaviour(tag: $0.rawValue).id, $0)
+        // Built from the catalogue, not from `BehaviorTag.allCases`. A custom
+        // behaviour's association can be withdrawn for exactly the same
+        // reasons a built-in's can, and keying this on the enum meant its
+        // claim ID matched nothing, the `guard` below skipped it, and its
+        // last "Association detected" would have stood in the ledger for
+        // good -- the precise failure the retraction pass exists to prevent.
+        let behaviorByClaimID = Dictionary(
+            uniqueKeysWithValues: behaviorCatalog.analysable.map {
+                (EvidenceLedger.Claim.behaviour(tag: $0.identifier).id, $0)
             }
         )
-        let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.tag.rawValue).id })
+        let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.behavior.identifier).id })
         for latest in EvidenceLedger.associationsToRetract(
             in: store.evidenceHistory(), currentClaimIDs: current, provenance: "JournalCorrelator"
         ) {
-            guard let tag = tagByClaimID[latest.claimID] else { continue }
-            let pairs = correlator.matchedPairCount(for: tag, observations: observations)
+            guard let behavior = behaviorByClaimID[latest.claimID] else { continue }
+            let pairs = correlator.matchedPairCount(for: behavior, observations: observations)
             store.recordBelief(
                 EvidenceLedger.retraction(
                     of: latest,
@@ -2037,7 +2201,7 @@ final class SleepDataCoordinator {
     /// path -- the snapshot publisher -- where there is nothing to hoist.
     func notebookEntries() -> [EvidenceNotebook.Entry] {
         notebookEntries(
-            findings: JournalCorrelator().findings(from: journalObservations())
+            findings: JournalCorrelator().findings(from: journalObservations(), catalog: behaviorCatalog)
         )
     }
 
@@ -2084,12 +2248,19 @@ final class SleepDataCoordinator {
     /// yes" preserves all three without giving it a second meaning.
     func setBehavior(
         _ state: BehaviorObservationState,
-        for tag: BehaviorTag,
+        for behavior: BehaviorID,
         on date: Date,
         nightKey: String?
     ) {
         let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
-        behaviors.set(state, for: tag, nightKey: key)
+        behaviors.set(state, for: behavior, nightKey: key)
+        // The legacy tag set is built-in only and stays that way. It exists
+        // for the journal badge count, the archive export and the historical
+        // fallback in `exposureState`, all three of which predate custom
+        // behaviours; widening it would give it a second meaning rather than
+        // preserve the one it has. A custom behaviour's answer lives in the
+        // observation record, which is what every engine actually reads.
+        guard let tag = behavior.builtIn else { return }
         let entry = journal.entryOrCreate(for: date, nightKey: nightKey)
         // The tag set tracks yes and nothing else, so an explicit no and
         // a cleared answer both remove it.
@@ -2098,18 +2269,33 @@ final class SleepDataCoordinator {
         }
     }
 
+    func setBehavior(
+        _ state: BehaviorObservationState,
+        for tag: BehaviorTag,
+        on date: Date,
+        nightKey: String?
+    ) {
+        setBehavior(state, for: tag.behaviorID, on: date, nightKey: nightKey)
+    }
+
     /// Advances one behaviour through unanswered, yes, no, unanswered.
     /// - Returns: the state now recorded.
     @discardableResult
-    func cycleBehavior(for tag: BehaviorTag, on date: Date, nightKey: String?) -> BehaviorObservationState {
-        let current = behaviorAnswers(on: date, nightKey: nightKey).state(for: tag)
+    func cycleBehavior(for behavior: BehaviorID, on date: Date, nightKey: String?) -> BehaviorObservationState {
+        let current = behaviorAnswers(on: date, nightKey: nightKey)
+            .state(forIdentifier: behavior.identifier)
         let next: BehaviorObservationState = switch current {
         case .unknown: .yes
         case .yes: .no
         case .no: .unknown
         }
-        setBehavior(next, for: tag, on: date, nightKey: nightKey)
+        setBehavior(next, for: behavior, on: date, nightKey: nightKey)
         return next
+    }
+
+    @discardableResult
+    func cycleBehavior(for tag: BehaviorTag, on date: Date, nightKey: String?) -> BehaviorObservationState {
+        cycleBehavior(for: tag.behaviorID, on: date, nightKey: nightKey)
     }
 
     /// Answers every still-unanswered tracked behaviour `.no` for a day.
@@ -2118,6 +2304,88 @@ final class SleepDataCoordinator {
     func answerRemainingBehaviorsNo(on date: Date, nightKey: String?, candidates: [BehaviorTag]) -> Int {
         let key = nightKey ?? BehaviorObservationRecord.provisionalNightKey(for: date)
         return behaviors.answerRemainingNo(nightKey: key, candidates: candidates)
+    }
+
+    /// Every behaviour the analysis should consider: the built-ins plus
+    /// whatever the person has invented.
+    ///
+    /// Read through the coordinator rather than each view reaching for the
+    /// singleton, so a correlator call that forgets the catalogue is a
+    /// visible omission at one layer instead of a silent one at nine.
+    var behaviorCatalog: BehaviorCatalog { CustomBehaviorStore.shared.catalog }
+
+    /// §22. The sensitivity curves this person has enough nights to support.
+    ///
+    /// Built on demand rather than stored: the inputs are `recentNights` and
+    /// the nap store, both already in memory, and a cached copy would be one
+    /// more thing that can go stale behind a night arriving late.
+    ///
+    /// Only the four dimensions carrying a real quantity are attempted --
+    /// `SensitivityCurve` says why -- and each one is dropped entirely rather
+    /// than shown thin when it cannot clear its own thresholds.
+    func sensitivityCurves() -> [SensitivityCurve.Curve] {
+        let nights = recentNights
+        guard !nights.isEmpty else { return [] }
+
+        /// A night's value for whichever outcome is being read. `Outcome` is
+        /// `Hashable`, so this matches the presets themselves rather than
+        /// dispatching on one of their strings.
+        func outcome(_ night: SleepNightFeatures, _ kind: SensitivityCurve.Outcome) -> Double? {
+            if kind == .sleepOnset { return night.sleepLatencyMinutes }
+            if kind == .asleepMinutes { return night.timeAsleepMinutes }
+            return Double(night.wakeCount)
+        }
+
+        func curve(
+            dose: SensitivityCurve.Dose,
+            outcome kind: SensitivityCurve.Outcome,
+            value: (SleepNightFeatures) -> Double?
+        ) -> SensitivityCurve.Curve? {
+            let observations = nights.compactMap { night -> SensitivityCurve.Observation? in
+                guard let dose = value(night), let result = outcome(night, kind) else { return nil }
+                return SensitivityCurve.Observation(dose: dose, outcome: result)
+            }
+            return SensitivityCurve.build(dose: dose, outcome: kind, observations: observations)
+        }
+
+        /// The longest nap credited to the day before a night, and when it
+        /// started. The longest rather than the total: two twenty-minute naps
+        /// are not one forty-minute nap, and adding them would put a day in a
+        /// band neither nap belongs to.
+        func longestNap(before night: SleepNightFeatures) -> DateInterval? {
+            napIntervals(before: night.date, timeZone: night.timeZone)
+                .max { $0.duration < $1.duration }
+        }
+
+        var calendar = Calendar.current
+
+        return [
+            // Caffeine and workouts read straight off the night.
+            curve(dose: SensitivityCurve.lateCaffeine, outcome: .sleepOnset) {
+                // A night with no late caffeine recorded is a real zero here
+                // *only* when Lifestyle Insights was on to record it. Without
+                // it the field is absent, and absent is not none.
+                $0.lateCaffeineMg
+            },
+            curve(dose: SensitivityCurve.workoutTiming, outcome: .sleepOnset) {
+                $0.lastWorkoutHoursBeforeBed
+            },
+            // Naps come from the nap store, keyed to the day before the night.
+            //
+            // The two nap curves treat a napless day differently on purpose.
+            // For duration, no nap is a real zero and is the control band --
+            // that is the comparison the curve exists to make. For timing,
+            // a napless day has no nap *hour* at all, and putting it in a band
+            // would be inventing one, so it drops out.
+            curve(dose: SensitivityCurve.napDuration, outcome: .asleepMinutes) { night in
+                longestNap(before: night).map { $0.duration / 60 } ?? 0
+            },
+            curve(dose: SensitivityCurve.napTiming, outcome: .sleepOnset) { night in
+                guard let nap = longestNap(before: night) else { return nil }
+                calendar.timeZone = night.timeZone
+                return Statistics.clockMinutes(nap.start, calendar: calendar) / 60
+            }
+        ].compactMap { $0 }
     }
 
     func journalObservations() -> [JournalCorrelator.Observation] {
@@ -2287,7 +2555,7 @@ final class SleepDataCoordinator {
     /// that's merely more context than any single question needs. Live
     /// tool-calling is a clearly scoped follow-up, not implemented here.
     func coachContextDigest() -> String {
-        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations())
+        let findings = JournalCorrelator().topFindingPerTag(from: journalObservations(), catalog: behaviorCatalog)
             .sorted { abs($0.percentChange) > abs($1.percentChange) }
             .prefix(5)
 
@@ -2311,7 +2579,7 @@ final class SleepDataCoordinator {
             activeExperimentTag: preferences.activeExperimentTag?.label,
             causeFinderFindings: findings.map {
                 CoachContextDigest.CorrelatorFinding(
-                    behavior: $0.tag.label,
+                    behavior: $0.label,
                     metric: $0.metric.shortLabel,
                     percentChange: Int($0.percentChange.rounded()),
                     isImprovement: $0.isImprovement,
@@ -2350,7 +2618,9 @@ final class SleepDataCoordinator {
                 },
             suggestedNextTest: ExperimentPlanner.next(
                 observations: journalObservations(),
-                associatedTags: Set(findings.map(\.tag)),
+                // Built-ins only: the planner proposes guided experiments,
+                // and an experiment is always on a behaviour Zoon ships.
+                associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
             )?.tag.label,
             tonightTarget: context.flatMap {

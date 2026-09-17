@@ -13,7 +13,13 @@ import Foundation
 /// morning commitment and is ignored as a wake anchor.
 enum ZoonTomorrow {
 
-    /// Minutes before the commitment to wake, so getting ready is possible.
+    /// Default minutes before the commitment to wake, so getting ready is
+    /// possible.
+    ///
+    /// A default, not a constant. How long it takes to shower, eat and travel
+    /// is a fact about a person's morning, not about human physiology, and
+    /// `UserPreferences.morningReadyBufferMinutes` is what callers actually
+    /// pass. This value is what a new install starts from.
     static let readyBufferMinutes = 50.0
     /// Wind-down lead used when the reminder system has not supplied one.
     static let windDownLeadMinutes = 40.0
@@ -68,6 +74,9 @@ enum ZoonTomorrow {
         let sentence: String
     }
 
+    /// The range the ready buffer may be set to, in minutes.
+    static let readyBufferRange: ClosedRange<Double> = 0...180
+
     /// A morning commitment that is allowed to move wake, or `nil`.
     static func meaningfulMorningEvent(_ event: Event?, calendar: Calendar = .current) -> Event? {
         guard let event, !event.isAllDay else { return nil }
@@ -88,6 +97,7 @@ enum ZoonTomorrow {
     ///   - sleepDebtMinutes: outstanding shortfall, never negative.
     ///   - napMinutesToday: already-banked nap minutes.
     ///   - windDownLeadMinutes: from the reminder system when known.
+    ///   - readyBufferMinutes: the person's own getting-ready time.
     static func plan(
         now: Date = .now,
         event: Event?,
@@ -96,12 +106,16 @@ enum ZoonTomorrow {
         sleepDebtMinutes: Double = 0,
         napMinutesToday: Double = 0,
         windDownLeadMinutes: Double = windDownLeadMinutes,
+        readyBufferMinutes: Double = readyBufferMinutes,
         calendar: Calendar = .current
     ) -> Plan? {
         guard sleepNeedMinutes > 0 else { return nil }
 
+        let buffer = min(max(readyBufferMinutes, readyBufferRange.lowerBound), readyBufferRange.upperBound)
         let morning = meaningfulMorningEvent(event, calendar: calendar)
-        let wakeFromEvent = morning.flatMap { eventWake(for: $0, calendar: calendar) }
+        let wakeFromEvent = morning.flatMap {
+            eventWake(for: $0, bufferMinutes: buffer, calendar: calendar)
+        }
         let obligationMinutes = wakeFromEvent.map { minutesFromMidnight($0, calendar: calendar) }
 
         let autopilot = SleepAutopilot.plan(
@@ -206,6 +220,7 @@ enum ZoonTomorrow {
             holding: holding,
             debtMinutes: sleepDebtMinutes,
             caffeine: caffeine,
+            readyBufferMinutes: buffer,
             calendar: calendar
         )
 
@@ -246,8 +261,8 @@ enum ZoonTomorrow {
         Double(calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date))
     }
 
-    private static func eventWake(for event: Event, calendar: Calendar) -> Date? {
-        calendar.date(byAdding: .minute, value: -Int(readyBufferMinutes), to: event.start)
+    private static func eventWake(for event: Event, bufferMinutes: Double, calendar: Calendar) -> Date? {
+        calendar.date(byAdding: .minute, value: -Int(bufferMinutes.rounded()), to: event.start)
     }
 
     private static func combinedConfidence(nights: Int, hasEvent: Bool) -> MetricConfidence {
@@ -325,13 +340,21 @@ enum ZoonTomorrow {
         holding: Bool,
         debtMinutes: Double,
         caffeine: Date?,
+        readyBufferMinutes: Double,
         calendar: Calendar
     ) -> [String] {
         var why: [String] = []
         if let morning {
-            why.append(
-                "Tomorrow's first commitment is at \(clock(morning.start, calendar: calendar)), so wake is \(Int(readyBufferMinutes)) minutes earlier."
-            )
+            let source = morning.source == .calendar
+                ? "Tomorrow's first Calendar commitment"
+                : "The time you asked Zoon to protect"
+            if readyBufferMinutes >= 1 {
+                why.append(
+                    "\(source) is at \(clock(morning.start, calendar: calendar)), so wake is \(SleepNightFeatures.formatMinutes(readyBufferMinutes)) earlier — your getting-ready time, which you can change."
+                )
+            } else {
+                why.append("\(source) is at \(clock(morning.start, calendar: calendar)), and you have asked for no getting-ready time before it.")
+            }
         }
         why.append("Aim for \(SleepNightFeatures.formatMinutes(targetSleep)) tonight, measured against your own sleep need.")
         if !holding, abs(shift) >= 1 {

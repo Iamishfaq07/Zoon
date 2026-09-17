@@ -77,12 +77,12 @@ final class BehaviorObservationStore {
     /// row is the single representation of "never answered".
     func set(
         _ state: BehaviorObservationState,
-        for tag: BehaviorTag,
+        for behavior: BehaviorID,
         nightKey: String,
         source: BehaviorObservationSource = .manual
     ) {
         guard state != .unknown else {
-            clear(tag, nightKey: nightKey)
+            clear(behavior, nightKey: nightKey)
             return
         }
 
@@ -107,17 +107,17 @@ final class BehaviorObservationStore {
         // `.unknown`, which is the truth) survives either way.
         guard state != .no || source == .manual else {
             logger.error("""
-                Refused a .no for \(tag.rawValue, privacy: .public) from                 \(source.rawValue, privacy: .public): only a manual answer                 can assert that a behaviour did not happen.
+                Refused a .no for \(behavior.identifier, privacy: .public) from                 \(source.rawValue, privacy: .public): only a manual answer                 can assert that a behaviour did not happen.
                 """)
             return
         }
-        if let existing = record(nightKey: nightKey, behaviorIdentifier: tag.rawValue) {
+        if let existing = record(nightKey: nightKey, behaviorIdentifier: behavior.identifier) {
             existing.state = state
             existing.source = source
         } else {
             context.insert(BehaviorObservationRecord(
                 nightKey: nightKey,
-                behaviorIdentifier: tag.rawValue,
+                behaviorIdentifier: behavior.identifier,
                 state: state,
                 source: source
             ))
@@ -125,10 +125,25 @@ final class BehaviorObservationStore {
         save()
     }
 
-    func clear(_ tag: BehaviorTag, nightKey: String) {
-        guard let existing = record(nightKey: nightKey, behaviorIdentifier: tag.rawValue) else { return }
+    /// Built-in convenience. The identifier written is `tag.rawValue`, which
+    /// is what every row ever written already uses, so nothing migrates.
+    func set(
+        _ state: BehaviorObservationState,
+        for tag: BehaviorTag,
+        nightKey: String,
+        source: BehaviorObservationSource = .manual
+    ) {
+        set(state, for: tag.behaviorID, nightKey: nightKey, source: source)
+    }
+
+    func clear(_ behavior: BehaviorID, nightKey: String) {
+        guard let existing = record(nightKey: nightKey, behaviorIdentifier: behavior.identifier) else { return }
         context.delete(existing)
         save()
+    }
+
+    func clear(_ tag: BehaviorTag, nightKey: String) {
+        clear(tag.behaviorID, nightKey: nightKey)
     }
 
     /// Advances one behaviour through unanswered, yes, no, unanswered.
@@ -137,15 +152,20 @@ final class BehaviorObservationStore {
     /// and any App Intent cannot each implement a slightly different cycle.
     /// - Returns: the state now recorded.
     @discardableResult
-    func cycle(_ tag: BehaviorTag, nightKey: String) -> BehaviorObservationState {
+    func cycle(_ behavior: BehaviorID, nightKey: String) -> BehaviorObservationState {
         let next: BehaviorObservationState
-        switch answers(forNightKey: nightKey).state(for: tag) {
+        switch answers(forNightKey: nightKey).state(forIdentifier: behavior.identifier) {
         case .unknown: next = .yes
         case .yes: next = .no
         case .no: next = .unknown
         }
-        set(next, for: tag, nightKey: nightKey)
+        set(next, for: behavior, nightKey: nightKey)
         return next
+    }
+
+    @discardableResult
+    func cycle(_ tag: BehaviorTag, nightKey: String) -> BehaviorObservationState {
+        cycle(tag.behaviorID, nightKey: nightKey)
     }
 
     /// Answers every still-unanswered candidate `.no` for one night.

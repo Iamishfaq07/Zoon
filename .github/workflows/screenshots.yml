@@ -11,14 +11,15 @@ name: Screenshots
 # enough to draw a frame, and the run fails if it doesn't.
 #
 # Deliberately not on every push: booting a simulator is slow, and macOS
-# minutes bill at 10x on private repos. This comment-only edit exists to
-# retrigger a capture after the final engineering pass changed things that
-# only a render can check: the metric sheet's provenance and facets merged
-# into one panel, six charts swapped off the uptrend glyph onto the neutral
-# one, the Coach header replaced with an evidence line whose length now
-# depends on how much history exists, and Today's Health Pulse strip
-# restructured around a hoisted computation. Every one of those is a layout
-# risk that compiles perfectly.
+# minutes bill at 10x on private repos.
+#
+# This run exists to answer a question two rounds of code changes could not.
+# A device reported text overlapping "everywhere" at a raised text size, and
+# large-text capture only ever covered three screens -- so every fix since has
+# been reasoned about rather than looked at. The accessibility block below now
+# photographs the nine screens the layout work actually touches, at AX5 and
+# again at AX1, and Tomorrow joins the default-size set so there is a baseline
+# to compare each of them against.
 # Two ways to run it:
 #
 #   - **Actions tab → Screenshots → Run workflow.** Note that GitHub only
@@ -204,6 +205,15 @@ jobs:
                 output="today-day-light"
                 appearance_args=(-zoonMoment day -zoon.pref.appearance light)
                 ;;
+              accessibilityMedium)
+                output="${tab}-accessibilityMedium"
+                ;;
+              dayAccessibilityMedium)
+                # Same reasoning as `dayLargeText`: the hero under test only
+                # exists in the `day` band.
+                output="today-accessibilityMedium"
+                appearance_args=(-zoonMoment day)
+                ;;
               dayLargeText)
                 # The hero being checked at large type -- ring, radar, score
                 # drivers, plan -- only exists in the `day` band, so an
@@ -316,7 +326,7 @@ jobs:
           FAILED=0
           for tab in onboarding today sleep trends coach journal more \
                      sleepDetail nightHistory bodyClock soundscapes nap breathing snoreCheck \
-                     report settings badges evidence patterns sensorTruth; do
+                     report settings badges evidence patterns sensorTruth tomorrow; do
             shoot "$tab" || FAILED=1
           done
           # The app is dark-first, but Light is a real preference. Keep
@@ -369,8 +379,30 @@ jobs:
           xcrun simctl ui "$UDID" content_size accessibility-extra-extra-extra-large || \
             echo "::warning::Could not set content size; large-text shots will match the default."
           shoot today dayLargeText || FAILED=1
-          shoot sleepDetail largeText || FAILED=1
-          shoot trends largeText || FAILED=1
+          # The rest of the screens a large-text report has to cover. Three of
+          # them had never been photographed above the default size at all,
+          # and the failure mode is silent overlap rather than a crash -- so a
+          # green build and a passing test suite said nothing about any of
+          # this. A device did, twice, which is how these came to be added.
+          #
+          # Patterns and Evidence are here because they are the two screens
+          # built out of laid-out graphics rather than stacked text: a
+          # constellation's node labels and a ledger's dated spine both place
+          # text at computed positions, which is exactly what stops fitting
+          # first. Coach and Tomorrow carry the longest sentences in the app.
+          # Journal is the densest grid of pills, and a pill is where text
+          # collapses to one character per line.
+          for tab in sleepDetail trends patterns evidence coach journal settings tomorrow; do
+            shoot "$tab" largeText || FAILED=1
+          done
+          # One step below the ceiling as well. AX5 is the extreme and the
+          # easy thing to design for; AX1 is the size people actually use,
+          # and a layout that reflows correctly at the extreme can still be
+          # wrong in the band before it reaches the reflow.
+          echo "Dropping to the first accessibility size"
+          xcrun simctl ui "$UDID" content_size accessibility-medium || true
+          shoot today dayAccessibilityMedium || FAILED=1
+          shoot trends accessibilityMedium || FAILED=1
           xcrun simctl ui "$UDID" content_size medium || true
 
           # --- Launch once WITHOUT demo mode -------------------------------

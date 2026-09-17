@@ -181,14 +181,14 @@ struct CoachTabView: View {
         let nights = coordinator.recentNights
         let trend: String = nights.count >= 14 ? "What changed this month?" : "What's Zoon learning about my sleep so far?"
 
-        let findings = JournalCorrelator().findings(from: coordinator.journalObservations())
+        let findings = JournalCorrelator().findings(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
         let week = WeeklyQuestion.make(
-            strongestTag: findings.first?.tag.label,
+            strongestTag: findings.first?.label,
             deltaMinutes: findings.first?.pairDeltaMedian
         )
         let discovery: String = {
             if let strongest = findings.first {
-                return "Is \(strongest.tag.label.lowercased()) actually affecting me?"
+                return "Is \(strongest.label.lowercased()) actually affecting me?"
             }
             return "Which of my habits might be affecting my sleep?"
         }()

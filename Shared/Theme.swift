@@ -1069,19 +1069,33 @@ struct SectionHeader: View {
     /// unaffected.
     var icon: AnyView?
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                if let icon {
-                    icon
-                        .frame(width: 13, height: 13)
-                } else if let systemImage {
-                    Image(systemName: systemImage)
-                        .font(Theme.text(12, weight: .semibold))
-                        .foregroundStyle(Theme.inkSecondary)
+            // At accessibility sizes a long title wraps to three or four
+            // lines, and an `HStack`'s default centre alignment floats the
+            // icon down to sit beside the middle of the block -- so a
+            // bar-chart mark ends up next to the second word of "Last workout
+            // before bed" rather than leading the heading.
+            //
+            // Fixed here rather than at a call site. `EvidenceView` grew a
+            // local version of this fix earlier in the same pass, which left
+            // every other card with the same defect; this is the shared
+            // component, so it is where the fix belongs.
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    mark
+                    Text(title)
+                        .font(Theme.label(16, weight: .bold))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(title)
-                    .font(Theme.label(16, weight: .bold))
+            } else {
+                HStack(spacing: 6) {
+                    mark
+                    Text(title)
+                        .font(Theme.label(16, weight: .bold))
+                }
             }
             if let subtitle {
                 Text(subtitle)
@@ -1091,5 +1105,16 @@ struct SectionHeader: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var mark: some View {
+        if let icon {
+            icon
+                .frame(width: 13, height: 13)
+        } else if let systemImage {
+            Image(systemName: systemImage)
+                .font(Theme.text(12, weight: .semibold))
+                .foregroundStyle(Theme.inkSecondary)
+        }
     }
 }

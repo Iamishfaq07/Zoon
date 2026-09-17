@@ -179,7 +179,7 @@ struct DiscoveriesCard: View {
                     SectionHeader(title: "Discoveries", systemImage: "sparkle.magnifyingglass")
                     ForEach(top) { finding in
                         HStack(spacing: 10) {
-                            Image(systemName: finding.tag.symbol)
+                            Image(systemName: finding.symbol)
                                 .font(Theme.text(13))
                                 .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
                                 .frame(width: 20)

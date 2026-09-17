@@ -8,11 +8,17 @@ import Foundation
 /// remain the source of truth at execution time.
 enum CoachToolCatalog {
 
-    enum Kind: String, Hashable, Sendable {
+    /// `CaseIterable` so the tests can enumerate every tool rather than
+    /// restating a list beside this one. The confirmation contract's whole
+    /// point is to catch a tool added without being classified, and a
+    /// hand-written list in the test cannot do that — it was the list that
+    /// would need updating.
+    enum Kind: String, Hashable, Sendable, CaseIterable {
         case getSleepScore
         case getRecovery
         case getShortfall
         case getEnergy
+        case getMovement
         case getTonight
         case getTomorrow
         case logCaffeine
@@ -20,12 +26,23 @@ enum CoachToolCatalog {
         case prepareTomorrow
         case setAlarm
 
-        var requiresConfirmation: Bool {
+        /// Whether running this tool changes anything.
+        ///
+        /// Written as an explicit switch with no `default`, so a tool added to
+        /// the enum fails to compile until somebody says which side of the
+        /// line it is on. The previous `default: false` silently made every
+        /// new tool a read.
+        var changesState: Bool {
             switch self {
-            case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm: true
-            default: false
+            case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+                true
+            case .getSleepScore, .getRecovery, .getShortfall, .getEnergy,
+                 .getMovement, .getTonight, .getTomorrow:
+                false
             }
         }
+
+        var requiresConfirmation: Bool { changesState }
 
         var summary: String {
             switch self {
@@ -33,6 +50,7 @@ enum CoachToolCatalog {
             case .getRecovery: "Read morning Recovery."
             case .getShortfall: "Read sleep shortfall."
             case .getEnergy: "Read Energy now."
+            case .getMovement: "Read today's movement against your usual day."
             case .getTonight: "Read tonight's sleep window."
             case .getTomorrow: "Read the Tomorrow plan, if one exists."
             case .logCaffeine: "Log caffeine after you confirm."
@@ -70,6 +88,13 @@ enum CoachToolCatalog {
         if matches(q, ["energy now", "body battery", "how alert"]) {
             return Call(kind: .getEnergy, proposedMinutes: nil, confirmationPrompt: nil)
         }
+        // Movement is asked about in the app's own words ("moved", "steps")
+        // and in the words people actually use. Checked before the sleep
+        // window, because "have I moved enough today" contains none of that
+        // block's phrases but "active" appears in questions about both.
+        if matches(q, ["steps", "how much have i moved", "moved today", "movement today", "active today"]) {
+            return Call(kind: .getMovement, proposedMinutes: nil, confirmationPrompt: nil)
+        }
         if matches(q, ["sleep window", "tonight's plan", "when should i sleep", "bedtime"]) {
             return Call(kind: .getTonight, proposedMinutes: nil, confirmationPrompt: nil)
         }
@@ -82,7 +107,7 @@ enum CoachToolCatalog {
 
         // Writes. Each one confirms before it does anything.
         if matches(q, ["log coffee", "log caffeine", "had coffee", "coffee at"]) {
-            let minutes = parseTimeOfDayMinutes(q)
+            let minutes = parseTimeOfDayMinutes(q, bareHour: .afternoon)
             let label = minutes.map { "Log caffeine at approximately \(clock(minutes: $0))?" }
                 ?? "Log caffeine for today?"
             return Call(kind: .logCaffeine, proposedMinutes: minutes, confirmationPrompt: label)
@@ -96,7 +121,7 @@ enum CoachToolCatalog {
             )
         }
         if matches(q, ["prepare me", "get me ready", "big day", "meeting tomorrow", "presentation tomorrow"]) {
-            let minutes = parseTimeOfDayMinutes(q)
+            let minutes = parseTimeOfDayMinutes(q, bareHour: .morning)
             let prompt = minutes.map { "Prepare you for \(clock(minutes: $0)) tomorrow?" }
                 ?? "Open Tomorrow and set a morning start time?"
             return Call(kind: .prepareTomorrow, proposedMinutes: minutes, confirmationPrompt: prompt)
@@ -143,7 +168,28 @@ enum CoachToolCatalog {
     /// A bare hour with no am/pm is still ambiguous and is left as written;
     /// the confirmation prompt is what catches a wrong reading, which is the
     /// whole reason these tools confirm.
-    private static func parseTimeOfDayMinutes(_ q: String) -> Int? {
+    /// How to read a bare hour with no am/pm on it.
+    ///
+    /// "Log coffee at 5" and "prepare me for 9" both give a number and no
+    /// meridiem, and they mean opposite halves of the day. Reading both as
+    /// written — which is what this did — resolved the caffeine one to 05:00,
+    /// so the brief's own example ("Log coffee at 5." → "Log caffeine at
+    /// approximately 5:00 PM?") came out as five in the morning and was
+    /// recorded as `.caffeine` rather than `.caffeineLate`, understating the
+    /// exposure it exists to capture.
+    ///
+    /// The defaults are per call site rather than global because the contexts
+    /// genuinely differ: caffeine at a bare hour is the afternoon, a morning
+    /// commitment at a bare hour is the morning, and `latestMorningEventHour`
+    /// would reject a 9 PM "meeting" anyway. A wrong guess is visible and
+    /// cancellable — everything using this is behind a confirmation — which
+    /// is what makes choosing the more likely reading the right call rather
+    /// than refusing to guess.
+    enum BareHour {
+        case morning, afternoon
+    }
+
+    private static func parseTimeOfDayMinutes(_ q: String, bareHour: BareHour) -> Int? {
         let pattern = #"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: q, range: NSRange(q.startIndex..., in: q)),
@@ -160,6 +206,9 @@ enum CoachToolCatalog {
         }()
         if meridiem == "pm", hour < 12 { hour += 12 }
         if meridiem == "am", hour == 12 { hour = 0 }
+        // Only 1 through 11 are ambiguous: 0, 12 and 13-23 already say which
+        // half of the day they are in.
+        if meridiem == nil, bareHour == .afternoon, (1...11).contains(hour) { hour += 12 }
         guard (0...23).contains(hour) else { return nil }
         return hour * 60 + minute
     }
@@ -173,7 +222,14 @@ enum CoachToolCatalog {
         return min(90, max(10, minutes))
     }
 
-    private static func clock(minutes: Int) -> String {
+    /// The hour past which caffeine is the `.caffeineLate` behaviour rather
+    /// than `.caffeine`. Matches that tag's own label, "Caffeine after 4pm".
+    static let lateCaffeineHour = 16
+
+    /// Internal rather than private: the runner formats the same proposed
+    /// time back to the person after acting on it, and two spellings of the
+    /// same clock in one exchange reads as two different times.
+    static func clock(minutes: Int) -> String {
         var components = DateComponents()
         components.hour = minutes / 60
         components.minute = minutes % 60

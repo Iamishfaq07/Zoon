@@ -119,22 +119,101 @@ enum Statistics {
         return min(delta, period - delta)
     }
 
+    /// Wall-clock minutes since local midnight, 0..<1440.
+    ///
+    /// The unshifted companion to `circularMinutesFromMidnight`. That one
+    /// re-centres on midnight so ordinary arithmetic works for night
+    /// sleepers, at the cost of a discontinuity at 18:00 — two bedtimes ten
+    /// minutes apart either side of it come out 24 hours apart. This form
+    /// has no discontinuity because it is not meant for ordinary arithmetic:
+    /// it is what the circular statistics below take.
+    ///
+    /// - Parameter calendar: pass one with its `timeZone` set to the night's
+    ///   own timezone for historical values, for the same reason
+    ///   `circularMinutesFromMidnight` says so.
+    static func clockMinutes(_ date: Date, calendar: Calendar = .current) -> Double {
+        let components = calendar.dateComponents([.hour, .minute], from: date)
+        return Double((components.hour ?? 0) * 60 + (components.minute ?? 0))
+    }
+
+    /// Signed shortest way round from `reference` to `value`, in
+    /// `(-period/2, period/2]`.
+    ///
+    /// Negative means earlier. Unlike `circularDistance` this keeps the
+    /// direction, which is what a "bedtime moved 40 minutes later" statement
+    /// needs and what an ordinary subtraction gets wrong by 23 hours and 20
+    /// minutes whenever the pair straddles midnight.
+    static func circularDifference(_ value: Double, _ reference: Double, period: Double = 1440) -> Double {
+        let raw = (value - reference).truncatingRemainder(dividingBy: period)
+        let wrapped = raw < 0 ? raw + period : raw
+        return wrapped > period / 2 ? wrapped - period : wrapped
+    }
+
+    /// The observed value minimising total circular distance to the rest — a
+    /// circular medoid.
+    ///
+    /// Robust, but pinned to a sample: with three bedtimes it can only ever
+    /// return one of those three. `circularMedian` refines it.
+    static func circularMedoid(_ values: [Double], period: Double = 1440) -> Double? {
+        let normalized = normalizedOntoCircle(values, period: period)
+        return normalized.min(by: { candidate, other in
+            let candidateTotal = normalized.reduce(0) { $0 + circularDistance($1, candidate, period: period) }
+            let otherTotal = normalized.reduce(0) { $0 + circularDistance($1, other, period: period) }
+            return candidateTotal < otherTotal
+        })
+    }
+
+    /// Robust circular centre.
+    ///
+    /// The medoid locates roughly where the cluster is; the offsets from it
+    /// are then small and one-dimensional, so an ordinary median of those
+    /// offsets is well defined and gets added back. 23:50, 00:00 and 00:10
+    /// come out as 00:00 rather than as the 07:56 an arithmetic mean of
+    /// 1430, 0 and 10 produces.
+    ///
+    /// Robust rather than vector-mean on purpose: on a clinician document a
+    /// single 04:00 night must not drag the reported median across an hour.
+    static func circularMedian(_ values: [Double], period: Double = 1440) -> Double? {
+        guard let medoid = circularMedoid(values, period: period) else { return nil }
+        let offsets = normalizedOntoCircle(values, period: period)
+            .map { circularDifference($0, medoid, period: period) }
+        guard let offset = median(offsets) else { return medoid }
+        let centre = (medoid + offset).truncatingRemainder(dividingBy: period)
+        return centre < 0 ? centre + period : centre
+    }
+
     /// Robust circular median absolute distance. The centre is the observed
     /// point that minimises total circular distance (a circular medoid), then
     /// dispersion is the median distance from that centre. This is the
     /// circular analogue of MAD and remains stable around midnight.
     static func circularMedianAbsoluteDeviation(_ values: [Double], period: Double = 1440) -> Double? {
+        guard let centre = circularMedoid(values, period: period) else { return nil }
+        return circularMedianAbsoluteDeviation(values, around: centre, period: period)
+    }
+
+    /// Circular MAD measured from a centre the caller already has.
+    ///
+    /// Exists so a summary can report a centre and a spread taken about the
+    /// *same* point. Quoting a `circularMedian` beside a dispersion measured
+    /// from the medoid is a small inconsistency, but it is the kind of small
+    /// inconsistency a clinician is entitled to not have to think about.
+    static func circularMedianAbsoluteDeviation(
+        _ values: [Double],
+        around centre: Double,
+        period: Double = 1440
+    ) -> Double? {
         guard !values.isEmpty else { return nil }
-        let normalized = values.map { value in
+        return median(
+            normalizedOntoCircle(values, period: period)
+                .map { circularDistance($0, centre, period: period) }
+        )
+    }
+
+    private static func normalizedOntoCircle(_ values: [Double], period: Double) -> [Double] {
+        values.map { value in
             let remainder = value.truncatingRemainder(dividingBy: period)
             return remainder >= 0 ? remainder : remainder + period
         }
-        guard let centre = normalized.min(by: { candidate, other in
-            let candidateTotal = normalized.reduce(0) { $0 + circularDistance($1, candidate, period: period) }
-            let otherTotal = normalized.reduce(0) { $0 + circularDistance($1, other, period: period) }
-            return candidateTotal < otherTotal
-        }) else { return nil }
-        return median(normalized.map { circularDistance($0, centre, period: period) })
     }
 
     /// Percentile-bootstrap 95% confidence interval for the median of
@@ -172,6 +251,53 @@ enum Statistics {
 
         guard let lower = percentile(resampledMedians, 2.5),
               let upper = percentile(resampledMedians, 97.5) else { return nil }
+        return (lower, upper)
+    }
+
+    /// Percentile-bootstrap 95% interval for the difference between two
+    /// **independent** groups' medians — `median(group) − median(reference)`.
+    ///
+    /// The paired version above resamples one list of differences, which is
+    /// only valid when each value is a difference between two observations of
+    /// the same thing. Sensitivity bands are not paired: the nights with
+    /// 200 mg of caffeine are different nights from the ones with 50 mg, and
+    /// there is no pairing between them. Resampling each group separately is
+    /// the unpaired counterpart, and using the paired one here would report a
+    /// far narrower interval than the data supports.
+    ///
+    /// Deterministic via `SeededGenerator`, for the same reason: a finding's
+    /// stated confidence must not reshuffle between one visit to a screen and
+    /// the next.
+    static func unpairedBootstrapCI(
+        reference: [Double],
+        group: [Double],
+        iterations: Int = 2000,
+        seed: UInt64 = 0x5A0E_1DA7_5EED_0002
+    ) -> (lower: Double, upper: Double)? {
+        guard reference.count >= 3, group.count >= 3 else { return nil }
+
+        var generator = SeededGenerator(seed: seed)
+        var differences: [Double] = []
+        differences.reserveCapacity(iterations)
+
+        for _ in 0..<iterations {
+            var a: [Double] = []
+            a.reserveCapacity(reference.count)
+            for _ in 0..<reference.count {
+                a.append(reference[Int.random(in: 0..<reference.count, using: &generator)])
+            }
+            var b: [Double] = []
+            b.reserveCapacity(group.count)
+            for _ in 0..<group.count {
+                b.append(group[Int.random(in: 0..<group.count, using: &generator)])
+            }
+            if let left = median(a), let right = median(b) {
+                differences.append(right - left)
+            }
+        }
+
+        guard let lower = percentile(differences, 2.5),
+              let upper = percentile(differences, 97.5) else { return nil }
         return (lower, upper)
     }
 }

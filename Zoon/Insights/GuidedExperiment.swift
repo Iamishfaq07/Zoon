@@ -91,7 +91,7 @@ enum GuidedExperiment {
             )
         }
 
-        if correlator.testedNoEffect(from: observations).contains(tag) {
+        if correlator.testedNoEffect(from: observations).contains(tag.behaviorID) {
             return .noEffect
         }
 

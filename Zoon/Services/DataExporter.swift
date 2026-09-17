@@ -63,6 +63,15 @@ enum DataExporter {
         let behaviorObservations: [BehaviorObservationRecordExport]?
         var evidenceHistory: [EvidenceLedger.Revision]? = nil
         var personalSetup: PersonalSetup? = nil
+        /// The person's own behaviour definitions.
+        ///
+        /// Their observations already travel in `behaviorObservations`,
+        /// which is identifier-keyed and so carries custom rows without
+        /// knowing it. The names did not, so a restore produced a history of
+        /// answers about signals the app could no longer name. `nil` for any
+        /// archive taken before this existed, which imports as no
+        /// definitions -- honest, and the observations still restore.
+        var customBehaviors: [CustomBehavior]? = nil
 
         struct EpisodeRecord: Codable {
             let id: String
@@ -211,7 +220,8 @@ enum DataExporter {
         soundEvents: [SoundEvent] = [],
         behaviorObservations: [Archive.BehaviorObservationRecordExport] = [],
         evidenceHistory: [EvidenceLedger.Revision] = [],
-        personalSetup: PersonalSetup? = nil
+        personalSetup: PersonalSetup? = nil,
+        customBehaviors: [CustomBehavior] = []
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -267,7 +277,8 @@ enum DataExporter {
             soundEvents: soundEvents,
             behaviorObservations: behaviorObservations,
             evidenceHistory: evidenceHistory,
-            personalSetup: personalSetup
+            personalSetup: personalSetup,
+            customBehaviors: customBehaviors
         )
     }
 

@@ -11,14 +11,19 @@ struct JournalView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var findings: [JournalCorrelator.Finding] = []
     @State private var note: String = ""
     @State private var naturalText: String = ""
     @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
-    @State private var naturalStates: [BehaviorTag: BehaviorObservationState] = [:]
+    @State private var naturalStates: [BehaviorID: BehaviorObservationState] = [:]
     @State private var customStore = CustomBehaviorStore.shared
+    @State private var recorder = VoiceJournalRecorder()
+    /// Text already in the field when dictation started, kept so a running
+    /// transcript is appended to it rather than wiping it.
+    @State private var dictationPrefix = ""
     @FocusState private var noteFieldFocused: Bool
 
     // The source of truth for what each chip shows. Read from the stores
@@ -109,6 +114,10 @@ struct JournalView: View {
             // hand-inlined copy of two of its three lines, which is how
             // switching days left the third one stale.
             .onChange(of: selectedDate) { _, _ in reload() }
+            .onChange(of: recorder.transcript) { _, transcript in
+                guard recorder.isRecording else { return }
+                naturalText = dictationPrefix + transcript
+            }
             .onChange(of: noteFieldFocused) { wasFocused, isFocused in
                 if wasFocused, !isFocused {
                     coordinator.journal.setNote(note, on: targetNightDate, nightKey: selectedNightKey)
@@ -174,7 +183,16 @@ struct JournalView: View {
                     .fill(hasTags ? Theme.Metric.sleep : .clear)
                     .frame(width: 4, height: 4)
             }
-            .frame(width: 46, height: 62)
+            // A fixed 46pt box fits "Mon" and "16" at default sizes and
+            // nothing at accessibility ones, where both lines truncate to an
+            // ellipsis and the dot overflows the bottom edge -- a strip of
+            // identical "..." chips you cannot pick a day from. The box grows
+            // with the text instead, and the strip scrolls horizontally, which
+            // it already did.
+            .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 76 : 46,
+                   minHeight: dynamicTypeSize.isAccessibilitySize ? 84 : 62)
+            .fixedSize(horizontal: true, vertical: true)
+            .padding(.horizontal, dynamicTypeSize.isAccessibilitySize ? 8 : 0)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(isSelected ? Theme.Metric.sleep.opacity(0.25) : Theme.neutral(0.05))
@@ -242,13 +260,27 @@ struct JournalView: View {
         .foregroundStyle(Theme.inkSecondary)
     }
 
-    // MARK: - Natural Journal
+    // MARK: - Zoon Log
 
+    /// One place to log, three ways in: speak, type, or tap a chip below.
+    ///
+    /// The flow this replaces was `voice → transcript → manually move into
+    /// Journal`. Voice lived on its own screen in More, whose own copy
+    /// admitted the ending: "the transcript stays here until you copy it into
+    /// Journal." Nobody does that. So dictation was a feature that produced
+    /// text and then abandoned it one step short of being worth anything,
+    /// while the parser that could have understood it sat on a different
+    /// screen behind a different button.
+    ///
+    /// Speaking now fills the same field typing does, which feeds the same
+    /// parser, which produces the same proposals, which the person confirms
+    /// before anything is saved. Nothing is inferred into the record: that
+    /// contract is unchanged and is the reason the review step exists.
     private var naturalJournalCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
-                title: "Say it naturally",
-                subtitle: "Type or dictate a short note. Zoon proposes tags, then waits for your confirmation.",
+                title: "Zoon Log",
+                subtitle: "Speak it, type it, or tap the chips below. Zoon proposes what it understood and waits for you.",
                 systemImage: "waveform.and.mic"
             )
 
@@ -257,14 +289,9 @@ struct JournalView: View {
                 .textFieldStyle(.plain)
                 .padding(12)
                 .background(Theme.neutral(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityHint("You can use the keyboard microphone to dictate.")
+                .accessibilityHint("You can also dictate with the button below, or the keyboard microphone.")
 
-            NavigationLink {
-                VoiceJournalView()
-            } label: {
-                Label("Open voice journal", systemImage: "mic.circle")
-            }
-            .buttonStyle(.bordered)
+            dictationControls
 
             if naturalProposals.isEmpty {
                 Button("Find observations") { parseNaturalJournal() }
@@ -278,10 +305,10 @@ struct JournalView: View {
                 FlowLayout(spacing: 8) {
                     ForEach(naturalProposals) { proposal in
                         Button {
-                            naturalStates[proposal.tag] = nextNaturalState(from: naturalStates[proposal.tag] ?? proposal.state)
+                            naturalStates[proposal.behavior] = nextNaturalState(from: naturalStates[proposal.behavior] ?? proposal.state)
                         } label: {
-                            let state = naturalStates[proposal.tag] ?? proposal.state
-                            Label("\(proposal.tag.label) · \(naturalStateLabel(state))", systemImage: naturalStateSymbol(state))
+                            let state = naturalStates[proposal.behavior] ?? proposal.state
+                            Label("\(proposal.label) · \(naturalStateLabel(state))", systemImage: naturalStateSymbol(state))
                                 .font(Theme.label(12, weight: .medium))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 8)
@@ -305,12 +332,69 @@ struct JournalView: View {
                 }
             }
 
-            Text("Parsing happens on this device. Proposed observations are not saved or used as evidence until you tap Confirm and save.")
+            Text("Speech and parsing both happen on this device. Audio is never stored, and proposed observations are not saved or used as evidence until you tap Confirm and save.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
+        .onDisappear { recorder.stop() }
+    }
+
+    /// Dictation, in the card rather than on a screen of its own.
+    ///
+    /// The transcript is written straight into `naturalText` as it arrives,
+    /// so a person can start by speaking and finish by typing, or correct a
+    /// misheard word before asking Zoon to read it. `recorder.transcript`
+    /// replaces rather than appends -- that is what `SFSpeechRecognitionTask`
+    /// delivers, a running best guess at the whole utterance -- so anything
+    /// typed before recording started is preserved as a prefix.
+    @ViewBuilder
+    private var dictationControls: some View {
+        HStack(spacing: 10) {
+            Button {
+                Haptics.tap()
+                Task { await toggleDictation() }
+            } label: {
+                Label(
+                    recorder.isRecording ? "Stop" : "Speak",
+                    systemImage: recorder.isRecording ? "stop.circle.fill" : "mic.circle.fill"
+                )
+            }
+            .buttonStyle(.bordered)
+            .tint(recorder.isRecording ? .red : Theme.Metric.sleep)
+
+            if recorder.isRecording {
+                // Never colour alone: the word changes too, and the label
+                // above has already flipped from Speak to Stop.
+                Text("Listening…")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .accessibilityHidden(true)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(recorder.isRecording ? "Stop dictation. Listening." : "Dictate a note")
+
+        if let error = recorder.error {
+            Text(error)
+                .font(Theme.evidence)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func toggleDictation() async {
+        if recorder.isRecording {
+            recorder.stop()
+            return
+        }
+        // Whatever is already typed stays; the transcript is appended after
+        // it rather than replacing the field.
+        dictationPrefix = naturalText.isEmpty ? "" : naturalText + " "
+        recorder.transcript = ""
+        await recorder.toggle()
     }
 
     private var customSignals: some View {
@@ -324,30 +408,39 @@ struct JournalView: View {
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(store.behaviors.filter(\.isActive)) { behavior in
-                        Label(behavior.name, systemImage: behavior.symbol)
-                            .font(Theme.label(12, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 8)
-                            .background(Theme.Metric.sleep.opacity(0.18), in: Capsule())
+                        behaviorChip(
+                            behavior.behaviorID,
+                            label: behavior.name,
+                            symbol: behavior.symbol
+                        )
                     }
                 }
+                Text("Zoon will describe what these went with once there are enough comparable nights. It will not tell you what to do about them.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .glassCard()
     }
 
     private func parseNaturalJournal() {
-        naturalProposals = NaturalJournalParser.proposals(from: naturalText)
-        naturalStates = Dictionary(uniqueKeysWithValues: naturalProposals.map { ($0.tag, $0.state) })
+        naturalProposals = NaturalJournalParser.proposals(
+            from: naturalText, catalog: coordinator.behaviorCatalog
+        )
+        naturalStates = Dictionary(
+            naturalProposals.map { ($0.behavior, $0.state) },
+            uniquingKeysWith: { first, _ in first }
+        )
         Haptics.tap()
     }
 
     private func confirmNaturalJournal() {
-        for (tag, state) in naturalStates where state != .unknown {
-            coordinator.setBehavior(state, for: tag, on: targetNightDate, nightKey: selectedNightKey)
+        for (behavior, state) in naturalStates where state != .unknown {
+            coordinator.setBehavior(state, for: behavior, on: targetNightDate, nightKey: selectedNightKey)
         }
         answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
         naturalText = ""
         naturalProposals = []
         naturalStates = [:]
@@ -450,7 +543,7 @@ struct JournalView: View {
         Button {
             coordinator.setBehavior(state, for: tag, on: targetNightDate, nightKey: selectedNightKey)
             answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
             Haptics.tap()
         } label: {
             Text(title)
@@ -539,7 +632,18 @@ struct JournalView: View {
     /// negative is something you say rather than something inferred from
     /// your silence.
     private func tagChip(_ tag: BehaviorTag) -> some View {
-        let state = answers.state(for: tag)
+        behaviorChip(tag.behaviorID, label: tag.label, symbol: tag.symbol)
+    }
+
+    /// The same chip for any behaviour, built-in or custom.
+    ///
+    /// Custom signals used to render here as flat capsules with no tap target
+    /// at all -- a row of labels for a feature that did not exist. They go
+    /// through the identical control now, which is the point: one cycle, one
+    /// haptic, one accessibility contract, and answers that land in the same
+    /// observation store every engine already reads.
+    private func behaviorChip(_ behavior: BehaviorID, label: String, symbol: String) -> some View {
+        let state = answers.state(forIdentifier: behavior.identifier)
         let tint: Color = switch state {
         case .yes: Theme.Metric.sleep
         case .no: Theme.neutral(0.55)
@@ -552,17 +656,17 @@ struct JournalView: View {
         }
 
         return Button {
-            coordinator.cycleBehavior(for: tag, on: targetNightDate, nightKey: selectedNightKey)
+            coordinator.cycleBehavior(for: behavior, on: targetNightDate, nightKey: selectedNightKey)
             answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+            findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
             // Selection is a physical act here — the haptic confirms the tap
             // landed without needing to look for a colour change.
             Haptics.tap()
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: tag.symbol)
+                Image(systemName: symbol)
                     .font(Theme.text(11, weight: .medium))
-                Text(tag.label)
+                Text(label)
                     .font(Theme.label(12, weight: .medium))
                 // Never colour alone. Yes and no carry distinct glyphs and a
                 // solid border, unanswered carries no glyph and a dashed one,
@@ -590,7 +694,7 @@ struct JournalView: View {
             .foregroundStyle(state == .yes ? Color.white : Color.secondary)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tag.label)
+        .accessibilityLabel(label)
         .accessibilityValue(Self.description(for: state))
         .accessibilityHint("Cycles between yes, no, and not answered.")
         .accessibilityAddTraits(state == .yes ? [.isSelected, .isButton] : .isButton)
@@ -634,7 +738,7 @@ struct JournalView: View {
                         on: targetNightDate, nightKey: selectedNightKey, candidates: tracked
                     )
                     answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-                    findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+                    findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
                     Haptics.tap()
                 } label: {
                     HStack(spacing: 6) {
@@ -709,7 +813,7 @@ struct JournalView: View {
     private func reload() {
         note = entry.note ?? ""
         answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
-        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations())
+        findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
     }
 }
 
@@ -723,13 +827,13 @@ struct CorrelationRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: finding.tag.symbol)
+                Image(systemName: finding.symbol)
                     .font(Theme.text(12))
                     .foregroundStyle(tint)
                     .frame(width: 22, height: 22)
                     .background(tint.opacity(0.15), in: Circle())
 
-                Text(finding.tag.label)
+                Text(finding.label)
                     .font(Theme.label(13, weight: .semibold))
 
                 Spacer()
