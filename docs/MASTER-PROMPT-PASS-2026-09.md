@@ -3,11 +3,17 @@
 Against `Zoon_Ultimate_Claude_Code_Master_Prompt.md`, following its §56
 implementation order. Written to that brief's §58 structure.
 
-**Scope note, stated once.** This pass covers §56 items 1–17 plus 13–14 out of
-order where they shared machinery. Items 18–41 — Personal Sensitivity Curves,
-Restorative Windows, Shift Roster Planner, Awakening Inspector, Morning
-Alertness, and the visual/motion/Watch/widget/performance passes — are **not
-started**, and §M says so rather than this document implying otherwise.
+**Scope note, stated once.** This pass covers §56 items 1–17, plus §22–§27 —
+Personal Sensitivity Curves, Restorative Windows, Shift Roster Planner, the
+Awakening Inspector upgrade, Morning Alertness and Movement Context — as C6
+through C11. Every engine-shaped item in §56 is done.
+
+What remains is the visual and platform block: §29–§44, §52 and §54. It is
+**not started**, and §M says so rather than this document implying otherwise.
+
+Two of the implemented items carry qualifications that "implemented" should not
+be read past: §22 covers only the dimensions that store a real quantity, and
+§27 wires two of the seven consumers the brief names. C10 and C11 say which.
 
 **Nothing here was verified on hardware.** No physical iPhone, no Apple Watch,
 no HealthKit store, no EventKit store, no microphone, no AlarmKit, no signed
