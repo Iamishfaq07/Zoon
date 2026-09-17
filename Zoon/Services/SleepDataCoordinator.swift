@@ -1435,14 +1435,17 @@ final class SleepDataCoordinator {
             .stepCount, unit: .count(), in: DateInterval(start: startOfToday, end: now)
         )) ?? nil
 
-        // Same elapsed slice of the day, four same-weekdays back.
-        let elapsed = now.timeIntervalSince(startOfToday)
+        // The same *point in the day*, four same-weekdays back. The slice is
+        // `MovementContext`'s to define -- see `comparableSlice`, which is
+        // where the DST reasoning and the seam tests live.
         var priors: [Double] = []
         for weeksBack in 1...4 {
             guard let day = calendar.date(byAdding: .day, value: -7 * weeksBack, to: startOfToday),
-                  let end = calendar.date(byAdding: .second, value: Int(elapsed), to: day) else { continue }
+                  let slice = MovementContext.comparableSlice(
+                      of: day, matching: now, calendar: calendar
+                  ) else { continue }
             let steps = (try? await healthKit.sum(
-                .stepCount, unit: .count(), in: DateInterval(start: day, end: end)
+                .stepCount, unit: .count(), in: slice
             )) ?? nil
             guard let steps else { continue }
             priors.append(steps)

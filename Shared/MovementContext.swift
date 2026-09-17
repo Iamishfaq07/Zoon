@@ -102,6 +102,40 @@ enum MovementContext {
     /// number people convert and starts being a number they recoil from.
     static let multipleThreshold = 3.0
 
+    /// The matching slice of an earlier day: that day's midnight up to the
+    /// same *wall-clock* time it is now.
+    ///
+    /// Time of day, not elapsed seconds. A day containing a DST transition is
+    /// twenty-three or twenty-five hours long, so counting today's seconds
+    /// since midnight into it lands an hour off: on the week after a
+    /// spring-forward, "how much had I walked by 15:00" was answered against
+    /// 14:00 on the comparison day, and an hour of somebody's walking went
+    /// missing from the baseline they were measured against. In autumn it
+    /// went the other way and the baseline gained an hour they had not been
+    /// given credit for.
+    ///
+    /// `nil` when that clock time did not happen on that day -- 02:30 does not
+    /// exist on the morning the clocks go forward. The day is then dropped
+    /// rather than approximated, for the reason every other absence here is
+    /// dropped: a day Zoon cannot measure the same slice of is not a day of
+    /// no walking.
+    static func comparableSlice(
+        of day: Date,
+        matching now: Date,
+        calendar: Calendar = .current
+    ) -> DateInterval? {
+        let start = calendar.startOfDay(for: day)
+        let time = calendar.dateComponents([.hour, .minute, .second], from: now)
+        guard let end = calendar.date(
+            bySettingHour: time.hour ?? 0,
+            minute: time.minute ?? 0,
+            second: time.second ?? 0,
+            of: start,
+            matchingPolicy: .strict
+        ), end > start else { return nil }
+        return DateInterval(start: start, end: end)
+    }
+
     /// - Parameters:
     ///   - stepsSoFar: HealthKit step count today, or `nil` if unauthorized
     ///     or not recorded. Never pass 0 to mean "unknown".

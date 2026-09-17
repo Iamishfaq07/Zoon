@@ -601,6 +601,7 @@
 		8244F98542528575434DEA30 /* SleepSessionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */; };
 		824C97782F617E56A7FBC296 /* MockHealthKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F46BC3EE713C870940781F8 /* MockHealthKitStore.swift */; };
 		82813C4DF5DF91AC39A79B89 /* ZoonFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = F391276C405F9068E6CC3FD7 /* ZoonFlowLayout.swift */; };
+		82FE2C614222550A594D42B9 /* MovementContextSliceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCAA77F4C7048457195AA74D /* MovementContextSliceTests.swift */; };
 		832182A7BA8480AF7A8C6534 /* UncertaintyForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F00AE51EE430FC83A3DDCB /* UncertaintyForecastTests.swift */; };
 		832A22E1C514A0EB80949DDA /* AdaptiveJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278FC31FA8DF17C3CB00F096 /* AdaptiveJournal.swift */; };
 		832ABF0FCCC28444627CC92C /* CustomBehaviorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87F2897E3ADA5D23D6240D42 /* CustomBehaviorsView.swift */; };
@@ -1689,6 +1690,7 @@
 		BADFBFF192F82BF1AF28487A /* ZoonIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonIntents.swift"; sourceTree = "<group>"; };
 		BC88A480C8F27B44488BD752 /* MovementContextCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MovementContextCard.swift"; sourceTree = "<group>"; };
 		BC8A4858CAB89927182D8A26 /* TrendEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendEngineTests.swift"; sourceTree = "<group>"; };
+		BCAA77F4C7048457195AA74D /* MovementContextSliceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MovementContextSliceTests.swift"; sourceTree = "<group>"; };
 		BCC58B54AF485ADA01A24AF9 /* DataExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataExporter.swift"; sourceTree = "<group>"; };
 		BCEE5B7C1B654D90B6BEE36F /* ZoonUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZoonUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BDB07B1941EF095AA63626FF /* SleepFingerprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFingerprint.swift"; sourceTree = "<group>"; };
@@ -2226,6 +2228,7 @@
 				B6A1E27EBE86B02315182828,
 				469BCF3127DF7FA96C3D679A,
 				172AB0D3C6D18DBEC9823BED,
+				BCAA77F4C7048457195AA74D,
 				39C11002592E1C7A2DF6A372,
 				9C78F8DC837A9459797ADB0B,
 				6434E568C91CC4E7D199CBF7,
@@ -3579,6 +3582,7 @@
 				B857B1C9AC79ABCE5959AD59,
 				D2505DC2AAB5960AABA9DB8D,
 				9432C21641249A1771A1ABD2,
+				82FE2C614222550A594D42B9,
 				1F951931EC7F06244100CF87,
 				01933AFC7F3E026D7BF0F43E,
 				EC7E148C974AC82398BC36F7,
