@@ -62,6 +62,31 @@ jobs:
           echo "Available SDKs:"
           xcodebuild -showsdks | grep -i ios || true
 
+      # §12 asks what workout-zone API the *installed* SDK actually has,
+      # rather than what a comment written against an older one believed.
+      # Reading the headers is the only way to answer that from here: this
+      # repository is developed without a Mac, so the runner's SDK is the
+      # only copy of it anybody can look at.
+      - name: Probe HealthKit workout-zone API
+        run: |
+          set +e
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          HK="$SDK/System/Library/Frameworks/HealthKit.framework/Headers"
+          {
+            echo "### HealthKit zone API in $(basename "$SDK")"
+            echo ""
+            echo '```'
+            if [ -d "$HK" ]; then
+              grep -rhoE "\b(HK[A-Za-z]*Zone[A-Za-z]*)\b" "$HK" | sort -u
+              echo "--- declarations ---"
+              grep -rhnE "Zone" "$HK" | grep -E "@interface|@property|- \(|\+ \(|typedef|API_AVAILABLE" | sort -u | head -60
+            else
+              echo "No HealthKit headers at $HK"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
       - name: Build app and widget
         id: build
         run: |
