@@ -48,6 +48,29 @@ enum BehaviorTag: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// Whether "hard" or "easy" means anything for this behaviour.
+    ///
+    /// §9 asks for intensity "where appropriate", and appropriate is narrow.
+    /// A hard workout and an easy one are different events with different
+    /// consequences for a night; a hard cup of coffee is not a thing, and
+    /// storing an intensity for one would put a number on a sentence that
+    /// never carried it. `BehaviorDetail.intensity` documents the wider rule:
+    /// this is what the person said, not what a heart rate implied.
+    ///
+    /// Exhaustive rather than a default, so a tag added later has to be
+    /// considered rather than silently inheriting "no".
+    var takesIntensity: Bool {
+        switch self {
+        case .hardTraining, .lateTraining, .stretching, .sauna, .coldPlunge:
+            true
+        case .alcohol, .caffeine, .caffeineLate, .nicotine, .cannabis, .sleepAid,
+             .magnesium, .lateMeal, .largeDinner, .fasted, .hydrated, .restDay,
+             .morningDaylight, .screenBeforeBed, .readBeforeBed, .stressfulDay,
+             .travelled, .sharedBed, .coolRoom, .sick:
+            false
+        }
+    }
+
     /// Whether Zoon may ever propose *increasing* this, and whether it is
     /// something a person elects at all.
     ///

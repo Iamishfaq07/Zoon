@@ -126,13 +126,30 @@ enum MovementContext {
     ) -> DateInterval? {
         let start = calendar.startOfDay(for: day)
         let time = calendar.dateComponents([.hour, .minute, .second], from: now)
-        guard let end = calendar.date(
-            bySettingHour: time.hour ?? 0,
-            minute: time.minute ?? 0,
-            second: time.second ?? 0,
-            of: start,
-            matchingPolicy: .strict
-        ), end > start else { return nil }
+
+        // Built from components and then checked, rather than with
+        // `date(bySettingHour:…)`.
+        //
+        // That call is a *search*: given a clock time that does not exist on
+        // the day asked about, `.strict` does not return nil -- it looks
+        // forward, across day boundaries, for the next instant that matches,
+        // and the answer comes back on a different day than the one handed
+        // in. Constructing the components and verifying the result is
+        // deterministic, does no searching, and says nil when it means nil.
+        var components = calendar.dateComponents([.year, .month, .day], from: start)
+        components.hour = time.hour ?? 0
+        components.minute = time.minute ?? 0
+        components.second = time.second ?? 0
+
+        guard let end = calendar.date(from: components),
+              // A skipped hour comes back shifted rather than refused, so the
+              // clock time is read back and compared. This is the check that
+              // drops the morning the clocks went forward.
+              calendar.component(.hour, from: end) == components.hour,
+              calendar.component(.minute, from: end) == components.minute,
+              calendar.isDate(end, inSameDayAs: start),
+              end > start
+        else { return nil }
         return DateInterval(start: start, end: end)
     }
 

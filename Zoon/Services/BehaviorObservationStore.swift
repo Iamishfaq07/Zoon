@@ -75,11 +75,21 @@ final class BehaviorObservationStore {
     ///
     /// Clearing deletes the row rather than storing `.unknown`, so an absent
     /// row is the single representation of "never answered".
+    /// - Parameter detail: the structured part, when the person confirmed
+    ///   one. Never inferred: the default is `nil`, every existing caller
+    ///   keeps writing yes/no rows, and the only thing that supplies a value
+    ///   is a confirmation the person made. See `BehaviorDetail`.
+    ///
+    ///   Passing `nil` on an update **clears** any detail already stored, for
+    ///   the same reason clearing a state deletes the row: if editing an
+    ///   answer left last week's quantity attached to it, the row would be a
+    ///   mixture of two answers and nothing downstream could tell.
     func set(
         _ state: BehaviorObservationState,
         for behavior: BehaviorID,
         nightKey: String,
-        source: BehaviorObservationSource = .manual
+        source: BehaviorObservationSource = .manual,
+        detail: BehaviorDetail? = nil
     ) {
         guard state != .unknown else {
             clear(behavior, nightKey: nightKey)
@@ -111,15 +121,22 @@ final class BehaviorObservationStore {
                 """)
             return
         }
+        // A behaviour that did not happen has no quantity, no time and no
+        // intensity. Storing them against a `.no` would be detail about an
+        // event nobody had.
+        let detail = state == .no ? nil : detail
+
         if let existing = record(nightKey: nightKey, behaviorIdentifier: behavior.identifier) {
             existing.state = state
             existing.source = source
+            existing.detail = detail
         } else {
             context.insert(BehaviorObservationRecord(
                 nightKey: nightKey,
                 behaviorIdentifier: behavior.identifier,
                 state: state,
-                source: source
+                source: source,
+                detail: detail
             ))
         }
         save()
@@ -131,9 +148,25 @@ final class BehaviorObservationStore {
         _ state: BehaviorObservationState,
         for tag: BehaviorTag,
         nightKey: String,
-        source: BehaviorObservationSource = .manual
+        source: BehaviorObservationSource = .manual,
+        detail: BehaviorDetail? = nil
     ) {
-        set(state, for: tag.behaviorID, nightKey: nightKey, source: source)
+        set(state, for: tag.behaviorID, nightKey: nightKey, source: source, detail: detail)
+    }
+
+    /// Every stored detail for a behaviour, with the night it belongs to.
+    ///
+    /// The read side §18's curves take: a dose or a clock time per night,
+    /// drawn only from rows somebody confirmed. Nights with no detail are
+    /// absent rather than zero -- a night recorded as "coffee" with no number
+    /// is a night with an unknown number of coffees, and putting it in the
+    /// control band would build a curve out of nothing.
+    func details(for behavior: BehaviorID) -> [(nightKey: String, detail: BehaviorDetail)] {
+        allRecords()
+            .filter { $0.behaviorIdentifier == behavior.identifier && $0.state == .yes }
+            .compactMap { record in
+                record.detail.map { (nightKey: record.nightKey, detail: $0) }
+            }
     }
 
     func clear(_ behavior: BehaviorID, nightKey: String) {

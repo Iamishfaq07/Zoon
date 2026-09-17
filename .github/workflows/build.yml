@@ -70,21 +70,33 @@ jobs:
       - name: Probe HealthKit workout-zone API
         run: |
           set +e
-          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
-          HK="$SDK/System/Library/Frameworks/HealthKit.framework/Headers"
           {
-            echo "### HealthKit zone API in $(basename "$SDK")"
-            echo ""
-            echo '```'
-            if [ -d "$HK" ]; then
-              grep -rhoE "\b(HK[A-Za-z]*Zone[A-Za-z]*)\b" "$HK" | sort -u
-              echo "--- declarations ---"
-              grep -rhnE "Zone" "$HK" | grep -E "@interface|@property|- \(|\+ \(|typedef|API_AVAILABLE" | sort -u | head -60
-            else
-              echo "No HealthKit headers at $HK"
-            fi
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+            for SDKNAME in iphoneos watchos; do
+              SDK=$(xcrun --sdk "$SDKNAME" --show-sdk-path 2>/dev/null)
+              echo "### HealthKit zone API in ${SDK:-<$SDKNAME sdk not installed>}"
+              echo ""
+              echo '```'
+              HK="$SDK/System/Library/Frameworks/HealthKit.framework"
+              if [ -n "$SDK" ] && [ -d "$HK" ]; then
+                echo "-- symbols named *Zone* in public headers, .swiftinterface and .apinotes --"
+                grep -rhoE "\b(HK[A-Za-z]*Zone[A-Za-z]*)\b" \
+                  "$HK/Headers" "$HK/Modules" "$HK/HealthKit.apinotes" 2>/dev/null \
+                  | sort -u
+                echo "-- declarations mentioning Zone --"
+                grep -rhE "Zone" "$HK/Headers" "$HK/Modules" 2>/dev/null \
+                  | grep -E "@interface|@property|^- \(|^\+ \(|typedef|func |var |public " \
+                  | sort -u | head -40
+                echo "-- for contrast, the same search over the linker stub --"
+                for TBD in "$HK/HealthKit.tbd" "$SDK/System/Library/Frameworks/HealthKit.framework/HealthKit.tbd"; do
+                  [ -f "$TBD" ] && grep -ohE "_?HK[A-Za-z]*Zone[A-Za-z]*" "$TBD" | sort -u | head -20
+                done
+              else
+                echo "No HealthKit framework at $HK"
+              fi
+              echo '```'
+              echo ""
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
           exit 0
 
       - name: Build app and widget
