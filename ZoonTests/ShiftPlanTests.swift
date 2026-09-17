@@ -72,6 +72,22 @@ final class ShiftPlanTests: XCTestCase {
         )
     }
 
+    /// A night shift with somewhere to sleep afterwards.
+    ///
+    /// `now` is the evening of the shift, not the morning before it, and that
+    /// matters: from 09:00 the planner can fit the entire need into a
+    /// pre-shift window, so `remaining` is zero and no post-shift sleep window
+    /// is built at all. The light guidance hangs off that window, so a fixture
+    /// anchored at 09:00 produces no guidance for reasons that have nothing to
+    /// do with light.
+    private func nightShift() -> ShiftPlan.Plan? {
+        plan(
+            shift(from: 22, hours: 8),
+            next: shift(from: 22, hours: 8, dayOffset: 1),
+            now: at(20)
+        )
+    }
+
     private func window(_ plan: ShiftPlan.Plan, _ role: ShiftPlan.Window.Role) -> ShiftPlan.Window? {
         plan.windows.first { $0.role == role }
     }
@@ -299,7 +315,7 @@ final class ShiftPlanTests: XCTestCase {
     /// already here, which is why this is a gap being closed rather than a
     /// second planning system.
     func testANightShiftPlanCarriesBothLightWindows() throws {
-        let plan = try XCTUnwrap(plan(shift(from: 22, hours: 8), next: shift(from: 22, hours: 8, dayOffset: 1), now: at(9)))
+        let plan = try XCTUnwrap(nightShift())
         let light = try XCTUnwrap(plan.light)
         XCTAssertEqual(light.seekFrom, plan.shift.start, "seeking light starts with the shift")
         XCTAssertLessThanOrEqual(light.seekUntil, plan.shift.end)
@@ -308,7 +324,7 @@ final class ShiftPlanTests: XCTestCase {
 
     /// Dim light runs up to the moment sleep is meant to start, never past it.
     func testTheDimWindowEndsWhenSleepBegins() throws {
-        let plan = try XCTUnwrap(plan(shift(from: 22, hours: 8), next: shift(from: 22, hours: 8, dayOffset: 1), now: at(9)))
+        let plan = try XCTUnwrap(nightShift())
         let light = try XCTUnwrap(plan.light)
         let sleep = try XCTUnwrap(plan.windows.first { $0.role == .postShiftSleep })
         XCTAssertEqual(light.dimUntil, sleep.start)
@@ -328,7 +344,7 @@ final class ShiftPlanTests: XCTestCase {
     /// will adapt, will feel better, or is fit to do anything -- the same bar
     /// the rest of this feature is held to.
     func testTheLightSentenceMakesNoClaimAboutAdaptationOrFitness() throws {
-        let plan = try XCTUnwrap(plan(shift(from: 22, hours: 8), next: shift(from: 22, hours: 8, dayOffset: 1), now: at(9)))
+        let plan = try XCTUnwrap(nightShift())
         let sentence = try XCTUnwrap(plan.light?.sentence)
         for banned in ShiftPlan.bannedPositioning {
             XCTAssertFalse(sentence.lowercased().contains(banned), "\(banned) in: \(sentence)")

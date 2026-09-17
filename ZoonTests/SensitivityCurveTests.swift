@@ -406,10 +406,15 @@ final class SensitivityCurveTests: XCTestCase {
     /// The gaps are named in the app rather than only in a document, because a
     /// missing curve with no explanation reads as a feature that does not work.
     func testTheDimensionsThatCannotBeBuiltAreNamedWithTheirReason() {
+        // Caffeine timing and workout load used to be asserted here. §9 gave
+        // observations a confirmed time and intensity, so both are curves now
+        // and `testTheClosedGapsAreNoLongerListedAsImpossible` asserts their
+        // absence. Leaving the old assertions standing would have made this
+        // file contradict itself -- which is exactly what it did until CI said
+        // so.
         let behaviours = SensitivityCurve.unavailable.map(\.behaviour)
-        XCTAssertTrue(behaviours.contains("Caffeine timing"))
         XCTAssertTrue(behaviours.contains("Light timing"))
-        XCTAssertTrue(behaviours.contains("Workout load"))
+        XCTAssertFalse(SensitivityCurve.unavailable.isEmpty, "the gap list stopped naming anything")
         for entry in SensitivityCurve.unavailable {
             XCTAssertFalse(entry.reason.isEmpty, entry.behaviour)
         }
