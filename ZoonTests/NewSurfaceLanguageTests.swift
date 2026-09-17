@@ -95,6 +95,7 @@ final class NewSurfaceLanguageTests: XCTestCase {
                 wake: date(15, 7),
                 needMinutes: 465,
                 shortfallMinutes: 90,
+                baseNeedMinutes: 465,
                 reference: reference
             )
             check(model.sentence(calendar: calendar))
