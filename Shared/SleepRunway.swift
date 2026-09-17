@@ -105,8 +105,10 @@ enum SleepRunway {
     /// - Parameters:
     ///   - nights: history, any order. Fewer than `minimumNights` produces
     ///     `nil` rather than a runway drawn from a habit nobody has yet.
-    ///   - sleepNeedMinutes: the person's own need.
-    ///   - sleepDebtMinutes: outstanding shortfall now.
+    ///   - planning: baseline need and the outstanding shortfall, with the
+    ///     repayment **not** yet applied. The horizon walks the ledger itself,
+    ///     night by night, so a pre-composed total would be repaid twice --
+    ///     see `SleepPlanningInputs`.
     ///   - commitments: start times of known morning obligations, keyed by
     ///     the start of the local day they fall on. Only mornings before
     ///     `ZoonTomorrow.latestMorningEventHour` move a wake time.
@@ -119,15 +121,19 @@ enum SleepRunway {
     static func build(
         now: Date = .now,
         nights: [SleepNightFeatures],
-        sleepNeedMinutes: Double,
-        sleepDebtMinutes: Double = 0,
+        planning: SleepPlanningInputs,
         commitments: [Date: Date] = [:],
         manual: ManualCommitment? = nil,
         obligationWeekdays: Set<Int> = [],
         readyBufferMinutes: Double = ZoonTomorrow.readyBufferMinutes,
         calendar: Calendar = .current
     ) -> Plan? {
-        guard sleepNeedMinutes > 0 else { return nil }
+        // Every night on the horizon is planned from the baseline. Today's
+        // strain bonus and nap credit are deliberately absent: they are facts
+        // about tonight, and spreading them across a week would plan Friday
+        // around Monday's hard session.
+        let baseNeed = planning.futureNightNeedMinutes
+        guard baseNeed > 0 else { return nil }
         let history = nights.sorted { $0.date < $1.date }.suffix(28)
         guard history.count >= minimumNights else { return nil }
         guard let firstMorning = PlanningDay.morning(after: now, calendar: calendar)?.start else {
@@ -140,7 +146,7 @@ enum SleepRunway {
         }
 
         var days: [Day] = []
-        var shortfall = max(0, sleepDebtMinutes)
+        var shortfall = planning.currentShortfallMinutes
         var usedCalendar = false
 
         for offset in 0..<horizonDays {
@@ -197,14 +203,11 @@ enum SleepRunway {
 
             let opportunity = max(0, wake.timeIntervalSince(bedtime) / 60)
 
-            // The same repayment rule the single-night planner uses, applied
-            // to the shortfall as it stands going into this night, rather
-            // than a second rule invented for the horizon.
-            let repayment = min(
-                shortfall * SleepAutopilot.debtRepaymentRate,
-                SleepAutopilot.maximumDebtRepayment
-            )
-            let need = sleepNeedMinutes + repayment
+            // One repayment rule, owned by `SleepPlanningInputs`, applied to
+            // the shortfall as it stands going into *this* night. The need
+            // handed in carries no repayment of its own, so this is the only
+            // place the debt is serviced.
+            let need = baseNeed + SleepPlanningInputs.repayment(for: shortfall)
 
             // The ledger moves against the *base* need, not the target.
             // Repayment raises what to aim for; it is not a second debt to
@@ -212,7 +215,7 @@ enum SleepRunway {
             // comfortably covers the need still grew the shortfall, so a debt
             // could never be paid off -- the arithmetic would have made its
             // own warning permanent.
-            shortfall = max(0, shortfall + sleepNeedMinutes - opportunity)
+            shortfall = max(0, shortfall + baseNeed - opportunity)
 
             days.append(Day(
                 date: morning,

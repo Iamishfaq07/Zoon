@@ -65,7 +65,7 @@ final class ShiftPlanTests: XCTestCase {
         ShiftPlan.make(
             shift: occurrence,
             nextShift: next,
-            sleepNeedMinutes: need,
+            planning: SleepPlanningInputs(baselineNeedMinutes: need),
             habit: habit(bedHour: bedHour, wakeHour: wakeHour),
             now: now,
             calendar: calendar
@@ -224,7 +224,7 @@ final class ShiftPlanTests: XCTestCase {
         XCTAssertNil(
             ShiftPlan.make(
                 shift: shift(from: 22, hours: 8),
-                sleepNeedMinutes: 480,
+                planning: SleepPlanningInputs(baselineNeedMinutes: 480),
                 habit: SleepRunway.Habit(nights: [], calendar: calendar),
                 now: at(9),
                 calendar: calendar

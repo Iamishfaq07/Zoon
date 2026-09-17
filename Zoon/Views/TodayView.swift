@@ -449,8 +449,12 @@ struct TodayView: View {
         let plan = ZoonTomorrow.plan(
             event: event,
             nights: coordinator.recentNights,
-            sleepNeedMinutes: context.sleepNeed.totalNeedMinutes,
-            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            // Baseline plus the outstanding shortfall, not the composed total:
+            // that already carries a repayment, and the planner applies its
+            // own. See `SleepPlanningInputs`.
+            planning: context.sleepNeed.planningInputs(
+                outstandingShortfallMinutes: context.night.sleepDebtMinutes ?? 0
+            ),
             napMinutesToday: napMinutesToday,
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )

@@ -155,6 +155,8 @@ enum ShiftPlan {
     ///     it there is no way to tell a shift that displaces sleep from one
     ///     that does not, and guessing from the clock would be wrong for
     ///     exactly the people this feature exists for.
+    ///   - planning: baseline need. Only `futureNightNeedMinutes` is read —
+    ///     see the note in `make`.
     ///   - nextShift: the occurrence after this one, when the roster holds
     ///     one. It caps the sleep window after this shift, which is the only
     ///     thing that can produce a shortfall — a single shift leaves an
@@ -164,7 +166,7 @@ enum ShiftPlan {
     static func make(
         shift: ShiftRoster.Occurrence,
         nextShift: ShiftRoster.Occurrence? = nil,
-        sleepNeedMinutes: Double,
+        planning: SleepPlanningInputs,
         habit: SleepRunway.Habit,
         commuteMinutes: Double = defaultCommuteMinutes,
         readyBufferMinutes: Double = ZoonTomorrow.readyBufferMinutes,
@@ -172,6 +174,12 @@ enum ShiftPlan {
         calendar: Calendar = .current
     ) -> Plan? {
 
+        // The baseline, not tonight's target. A rostered shift may be days
+        // out, and carrying today's strain bonus or this afternoon's nap
+        // credit into it would plan Thursday's night around Monday. The
+        // shortfall is likewise the horizon's problem, not one shift's --
+        // `SleepRunway` walks that ledger.
+        let sleepNeedMinutes = planning.futureNightNeedMinutes
         guard sleepNeedMinutes > 0 else { return nil }
         guard let habitualBedtime = habit.overallBedtime, let habitualWake = habit.overallWake
         else { return nil }

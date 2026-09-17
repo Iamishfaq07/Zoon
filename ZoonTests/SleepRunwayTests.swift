@@ -52,8 +52,10 @@ final class SleepRunwayTests: XCTestCase {
         SleepRunway.build(
             now: now,
             nights: nights ?? history(),
-            sleepNeedMinutes: need,
-            sleepDebtMinutes: debt,
+            planning: SleepPlanningInputs(
+                baselineNeedMinutes: need,
+                currentShortfallMinutes: debt
+            ),
             commitments: commitments,
             manual: manual,
             obligationWeekdays: obligationWeekdays,

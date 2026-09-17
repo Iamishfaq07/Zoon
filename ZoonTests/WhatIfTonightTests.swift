@@ -33,6 +33,10 @@ final class WhatIfTonightTests: XCTestCase {
             wake: resolvedWake,
             needMinutes: need,
             shortfallMinutes: shortfall,
+            // The fixture's `need` is already a plain target, so the ledger
+            // moves against the same figure. A caller composing from
+            // `SleepPlanningInputs` passes the pre-repayment value here.
+            baseNeedMinutes: need,
             reference: reference
                 ? WhatIfTonight.Reference(bedtime: date(14, 23, 15), wake: date(15, 7))
                 : nil

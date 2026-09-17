@@ -30,9 +30,18 @@ struct WhatIfTonight: Hashable, Sendable {
 
     let bedtime: Date
     let wake: Date
+    /// Tonight's target, repayment included. For display and for the gap.
     let needMinutes: Double
     /// Outstanding shortfall going into tonight.
     let shortfallMinutes: Double
+    /// Tonight's need *before* repayment — what the ledger moves against.
+    ///
+    /// Separate from `needMinutes` for the reason `SleepRunway` documents:
+    /// repayment raises what to aim for, it is not a second debt to service.
+    /// Advancing the ledger by the repaid target would mean a window that
+    /// comfortably covers the need still grew the shortfall, and the debt
+    /// could never be paid off.
+    let baseNeedMinutes: Double
     let reference: Reference?
 
     /// The most sleep this window leaves room for.
@@ -49,7 +58,7 @@ struct WhatIfTonight: Hashable, Sendable {
     /// in principle repay anything is the finding worth surfacing; whether a
     /// window that could actually does is a question about the night.
     var projectedShortfallMinutes: Double {
-        max(0, shortfallMinutes + needMinutes - opportunityMinutes)
+        max(0, shortfallMinutes + baseNeedMinutes - opportunityMinutes)
     }
 
     /// Wind-down target: a fixed lead before the window opens.

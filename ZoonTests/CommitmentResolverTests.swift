@@ -312,7 +312,7 @@ final class CommitmentResolverTests: XCTestCase {
                 now: now,
                 event: event,
                 nights: [],
-                sleepNeedMinutes: 450,
+                planning: SleepPlanningInputs(baselineNeedMinutes: 450),
                 readyBufferMinutes: buffer,
                 calendar: calendar
             ))
@@ -333,7 +333,7 @@ final class CommitmentResolverTests: XCTestCase {
             now: now,
             event: event,
             nights: [],
-            sleepNeedMinutes: 450,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 450),
             readyBufferMinutes: 10_000,
             calendar: calendar
         ))
@@ -352,7 +352,7 @@ final class CommitmentResolverTests: XCTestCase {
             now: now,
             event: ZoonTomorrow.Event(start: date(8, day: 15, minute: 30), isAllDay: false, source: .calendar),
             nights: [],
-            sleepNeedMinutes: 450,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 450),
             calendar: calendar
         ))
         XCTAssertTrue(

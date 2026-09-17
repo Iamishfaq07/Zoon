@@ -75,7 +75,7 @@ final class NewSurfaceLanguageTests: XCTestCase {
             let plan = try XCTUnwrap(SleepRunway.build(
                 now: date(14, 21),
                 nights: nights,
-                sleepNeedMinutes: 465,
+                planning: SleepPlanningInputs(baselineNeedMinutes: 465),
                 commitments: commitments,
                 calendar: calendar
             ))

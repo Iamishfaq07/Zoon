@@ -93,8 +93,9 @@ enum ZoonTomorrow {
     ///     has named one. Titles are never an input.
     ///   - nights: recent history, any order. Fewer than seven still produces
     ///     a plan from need + event; confidence drops.
-    ///   - sleepNeedMinutes: the person's own need, never a guideline.
-    ///   - sleepDebtMinutes: outstanding shortfall, never negative.
+    ///   - planning: baseline need, the outstanding shortfall and tonight's
+    ///     own modifiers, with no repayment applied yet. See
+    ///     `SleepPlanningInputs` for why a composed total must not be passed.
     ///   - napMinutesToday: already-banked nap minutes.
     ///   - windDownLeadMinutes: from the reminder system when known.
     ///   - readyBufferMinutes: the person's own getting-ready time.
@@ -102,14 +103,14 @@ enum ZoonTomorrow {
         now: Date = .now,
         event: Event?,
         nights: [SleepNightFeatures],
-        sleepNeedMinutes: Double,
-        sleepDebtMinutes: Double = 0,
+        planning: SleepPlanningInputs,
         napMinutesToday: Double = 0,
         windDownLeadMinutes: Double = windDownLeadMinutes,
         readyBufferMinutes: Double = readyBufferMinutes,
         calendar: Calendar = .current
     ) -> Plan? {
-        guard sleepNeedMinutes > 0 else { return nil }
+        guard planning.baselineNeedMinutes > 0 else { return nil }
+        let sleepDebtMinutes = planning.currentShortfallMinutes
 
         let buffer = min(max(readyBufferMinutes, readyBufferRange.lowerBound), readyBufferRange.upperBound)
         let morning = meaningfulMorningEvent(event, calendar: calendar)
@@ -118,16 +119,18 @@ enum ZoonTomorrow {
         }
         let obligationMinutes = wakeFromEvent.map { minutesFromMidnight($0, calendar: calendar) }
 
+        // The autopilot owns the repayment rule, so it is handed the need
+        // *before* one has been applied. It used to receive a composed total
+        // that already contained 33% of the debt and then added 25% of it
+        // again -- the double count `SleepPlanningInputs` exists to end.
         let autopilot = SleepAutopilot.plan(
             nights: nights,
-            sleepNeedMinutes: sleepNeedMinutes,
+            sleepNeedMinutes: planning.tonightNeedBeforeRepaymentMinutes,
             obligationWakeMinutes: obligationMinutes,
-            sleepDebtMinutes: max(sleepDebtMinutes, 0)
+            sleepDebtMinutes: sleepDebtMinutes
         )
 
-        let targetSleep = autopilot?.targetSleepMinutes
-            ?? (sleepNeedMinutes + min(max(sleepDebtMinutes, 0) * SleepAutopilot.debtRepaymentRate,
-                                       SleepAutopilot.maximumDebtRepayment))
+        let targetSleep = autopilot?.targetSleepMinutes ?? planning.tonightNeedMinutes
 
         let wake: Date
         let bedtime: Date
