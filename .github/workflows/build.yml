@@ -86,6 +86,13 @@ jobs:
                 grep -rhE "Zone" "$HK/Headers" "$HK/Modules" 2>/dev/null \
                   | grep -E "@interface|@property|^- \(|^\+ \(|typedef|func |var |public " \
                   | sort -u | head -40
+                echo "-- §21: cycle and menopause identifiers --"
+                grep -rhoE "\b(HK[A-Za-z]*(Menopaus|Perimenopaus|Climacteric|Cycle|Menstrual)[A-Za-z]*)\b" \
+                  "$HK/Headers" "$HK/Modules" "$HK/HealthKit.apinotes" 2>/dev/null \
+                  | sort -u
+                echo "-- category identifiers mentioning those concepts --"
+                grep -rhiE "menopaus|perimenopaus|climacteric" "$HK/Headers" "$HK/Modules" 2>/dev/null \
+                  | sort -u | head -20
                 echo "-- for contrast, the same search over the linker stub --"
                 for TBD in "$HK/HealthKit.tbd" "$SDK/System/Library/Frameworks/HealthKit.framework/HealthKit.tbd"; do
                   [ -f "$TBD" ] && grep -ohE "_?HK[A-Za-z]*Zone[A-Za-z]*" "$TBD" | sort -u | head -20
