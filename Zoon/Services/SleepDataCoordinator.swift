@@ -2363,20 +2363,21 @@ final class SleepDataCoordinator {
         /// fetch per night each, on a path several view bodies already call
         /// more than once per render -- the same reasoning
         /// `allAnswersByNightKey` documents.
-        let detailsByBehavior: [String: [String: BehaviorDetail]] = Dictionary(
-            uniqueKeysWithValues: [
-                BehaviorTag.caffeine, .caffeineLate, .hardTraining, .lateTraining
-            ].map { tag in
-                (
-                    tag.rawValue,
-                    Dictionary(
-                        behaviors.details(for: tag.behaviorID)
-                            .map { ($0.nightKey, $0.detail) },
-                        uniquingKeysWith: { first, _ in first }
-                    )
-                )
+        //
+        // Written as a plain loop with explicit types on purpose. The
+        // expression form -- a `Dictionary(uniqueKeysWithValues:)` over a map
+        // that builds another `Dictionary` from tuples -- is the shape Swift's
+        // type checker is worst at, and a single slow expression in a file
+        // this size is paid on every build by everybody.
+        let detailTags: [BehaviorTag] = [.caffeine, .caffeineLate, .hardTraining, .lateTraining]
+        var detailsByBehavior: [String: [String: BehaviorDetail]] = [:]
+        for tag in detailTags {
+            var byNight: [String: BehaviorDetail] = [:]
+            for row in behaviors.details(for: tag.behaviorID) where byNight[row.nightKey] == nil {
+                byNight[row.nightKey] = row.detail
             }
-        )
+            detailsByBehavior[tag.rawValue] = byNight
+        }
 
         func detail(_ tag: BehaviorTag, for night: SleepNightFeatures) -> BehaviorDetail? {
             detailsByBehavior[tag.rawValue]?[night.nightKey]
