@@ -25,13 +25,30 @@ final class StageTrustTests: XCTestCase {
     }
 
     /// A night from before the priority was carried knows only that something
-    /// wrote stages. Guessing upward is the failure this type exists to stop,
-    /// so the floor is the level that promises least.
+    /// wrote stages. Guessing upward is the failure this type exists to stop.
     func testAnUnknownSourceDoesNotGetTheBenefitOfTheDoubt() {
         let graded = StageTrust.grade(priority: nil, hasStages: true)
-        XCTAssertEqual(graded, .inferred)
+        XCTAssertEqual(graded, .unrecorded)
         XCTAssertLessThan(graded, .wearable)
         XCTAssertFalse(graded.supportsStageFigures)
+    }
+
+    /// Unknown and known-manual are different facts, and the wording has to
+    /// differ. Saying stages were "inferred from a schedule" when the app does
+    /// not know what wrote them is a claim about somebody's data that nothing
+    /// supports -- and it would be wrong for every Apple Watch night recorded
+    /// before the source column existed.
+    func testAnUnknownSourceIsNotDescribedAsASchedule() {
+        XCTAssertNotEqual(StageTrust.unrecorded, .inferred)
+        XCTAssertNotEqual(StageTrust.unrecorded.provenance, StageTrust.inferred.provenance)
+        XCTAssertFalse(
+            StageTrust.unrecorded.provenance.lowercased().contains("schedule"),
+            StageTrust.unrecorded.provenance
+        )
+        XCTAssertFalse(
+            StageTrust.unrecorded.provenance.lowercased().contains("manual"),
+            StageTrust.unrecorded.provenance
+        )
     }
 
     /// Stage minutes are presented as measurements only where something
@@ -40,11 +57,13 @@ final class StageTrustTests: XCTestCase {
         XCTAssertTrue(StageTrust.watch.supportsStageFigures)
         XCTAssertTrue(StageTrust.wearable.supportsStageFigures)
         XCTAssertFalse(StageTrust.inferred.supportsStageFigures)
+        XCTAssertFalse(StageTrust.unrecorded.supportsStageFigures)
         XCTAssertFalse(StageTrust.unstaged.supportsStageFigures)
     }
 
     func testTheLadderIsOrdered() {
-        XCTAssertLessThan(StageTrust.unstaged, .inferred)
+        XCTAssertLessThan(StageTrust.unstaged, .unrecorded)
+        XCTAssertLessThan(StageTrust.unrecorded, .inferred)
         XCTAssertLessThan(StageTrust.inferred, .wearable)
         XCTAssertLessThan(StageTrust.wearable, .watch)
     }
@@ -106,7 +125,7 @@ final class StageTrustTests: XCTestCase {
     func testAnOlderNightStillGrades() {
         let night = Fixture.night(daysAgo: 1)
         XCTAssertNil(night.stageSourcePriority)
-        XCTAssertEqual(night.stageTrust, .inferred)
+        XCTAssertEqual(night.stageTrust, .unrecorded)
     }
 
     // MARK: - Surviving the store
@@ -150,7 +169,7 @@ final class StageTrustTests: XCTestCase {
         let record = SleepNightRecord(
             features: Fixture.night(daysAgo: 1, stageSourcePriority: nil)
         )
-        XCTAssertEqual(record.features().stageTrust, .inferred)
+        XCTAssertEqual(record.features().stageTrust, .unrecorded)
 
         record.update(from: Fixture.night(daysAgo: 1, stageSourcePriority: .appleWatch), absoluteWristTempC: nil)
         XCTAssertEqual(record.features().stageTrust, .watch)
@@ -161,7 +180,7 @@ final class StageTrustTests: XCTestCase {
     /// The provenance lines describe the source, never the accuracy. Every
     /// level here is a consumer classifier, and none of them is a laboratory.
     func testProvenanceNeverClaimsAccuracy() {
-        for trust in [StageTrust.unstaged, .inferred, .wearable, .watch] {
+        for trust in [StageTrust.unstaged, .unrecorded, .inferred, .wearable, .watch] {
             let line = trust.provenance
             XCTAssertFalse(line.isEmpty, "\(trust)")
             for banned in ["accurate", "clinical", "validated", "precise", "proven"] {

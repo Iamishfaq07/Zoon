@@ -22,7 +22,7 @@ import Foundation
 ///
 /// **What this is not.** None of these levels means clinically accurate.
 /// Every one of them is a consumer device inferring stages from movement and
-/// heart rate, which is not what a sleep laboratory measures, and `.high`
+/// heart rate, which is not what a sleep laboratory measures, and `.watch`
 /// means "as good as this category gets" rather than "correct". Nothing here
 /// should be rendered as a validation claim.
 enum StageTrust: Int, Comparable, Sendable, Codable, Hashable {
@@ -31,18 +31,33 @@ enum StageTrust: Int, Comparable, Sendable, Codable, Hashable {
     /// either -- there is simply nothing to grade.
     case unstaged = 0
 
+    /// Stages exist and nothing recorded what wrote them -- a night stored
+    /// before the source was carried, until its first refresh fills it in.
+    ///
+    /// Separate from `.inferred` because the two are different facts and the
+    /// wording has to differ. Telling somebody their stages were "inferred
+    /// from a schedule" when the app simply does not know is a claim about
+    /// their data that nothing supports, and it would be wrong for every
+    /// Apple Watch night recorded before the column existed.
+    ///
+    /// Ranked below `.inferred` rather than above it. Not a claim that an
+    /// unknown source is worse than a typed-in bedtime -- it might be a Watch
+    /// -- but the conservative order, because the alternative is ranking an
+    /// unknown above something that can actually be checked.
+    case unrecorded = 1
+
     /// A phone schedule or a manual entry. These sources do not observe
     /// sleep; where stages appear at all they were inferred from a bedtime,
     /// not measured from a body.
-    case inferred = 1
+    case inferred = 2
 
     /// A recognised third-party wearable. A real sensor on a real wrist,
     /// with a classifier this app cannot see and cannot check.
-    case wearable = 2
+    case wearable = 3
 
     /// Apple Watch, Apple's own write. The staging this app is built around,
     /// and still a consumer classifier rather than a laboratory.
-    case watch = 3
+    case watch = 4
 
     static func < (lhs: StageTrust, rhs: StageTrust) -> Bool {
         lhs.rawValue < rhs.rawValue
@@ -64,17 +79,20 @@ enum StageTrust: Int, Comparable, Sendable, Codable, Hashable {
         case .phoneOrManual: return .inferred
         // A night from before the priority was carried. It has stages, so
         // something wrote them, but nothing here knows what -- and guessing
-        // upward would be the failure this type exists to prevent. The
-        // honest floor is the level that promises least.
-        case nil: return .inferred
+        // upward would be the failure this type exists to prevent.
+        case nil: return .unrecorded
         }
     }
 
-    /// Whether stage figures should be presented as measurements at all.
+    /// Whether there is positive evidence a sensor measured these stages.
     ///
-    /// False for `.inferred`, where "Deep 1h 12m" is a number derived from a
-    /// bedtime and printing it in the same type as a measured one is the
-    /// "estimated is not measured" failure.
+    /// **This decides whether to caveat, never whether to draw.** Hiding
+    /// stage figures below this line would, for every night stored before the
+    /// source column existed, remove data the person has been looking at for
+    /// months and read as data loss. "Estimated is not measured" asks for the
+    /// estimate to be labelled, not deleted, and "never fabricate data to
+    /// avoid empty UI" does not have a converse that says delete real data to
+    /// avoid an unqualified one.
     var supportsStageFigures: Bool { self >= .wearable }
 
     /// A short phrase for the provenance line under a stage figure. Present
@@ -82,6 +100,7 @@ enum StageTrust: Int, Comparable, Sendable, Codable, Hashable {
     var provenance: String {
         switch self {
         case .unstaged: "No stage data for this night"
+        case .unrecorded: "Source of these stages was not recorded"
         case .inferred: "Stages inferred from a schedule, not measured"
         case .wearable: "Stages from your wearable's own classifier"
         case .watch: "Stages from Apple Watch"
