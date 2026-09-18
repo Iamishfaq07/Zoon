@@ -78,8 +78,14 @@ final class LearnedSleepNeedRangeTests: XCTestCase {
         let steady = compute(spreadDurations(centre: 470, spread: 8))
         let erratic = compute(spreadDurations(centre: 470, spread: 70))
 
-        let steadyWidth = try XCTUnwrap(steady.typicalHighMinutes) - try XCTUnwrap(steady.typicalLowMinutes)
-        let erraticWidth = try XCTUnwrap(erratic.typicalHighMinutes) - try XCTUnwrap(erratic.typicalLowMinutes)
+        // Each unwrap bound separately: Swift will not accept `try` to the
+        // right of a binary operator.
+        let steadyHigh = try XCTUnwrap(steady.typicalHighMinutes)
+        let steadyLow = try XCTUnwrap(steady.typicalLowMinutes)
+        let erraticHigh = try XCTUnwrap(erratic.typicalHighMinutes)
+        let erraticLow = try XCTUnwrap(erratic.typicalLowMinutes)
+        let steadyWidth = steadyHigh - steadyLow
+        let erraticWidth = erraticHigh - erraticLow
 
         XCTAssertGreaterThan(erraticWidth, steadyWidth)
     }
