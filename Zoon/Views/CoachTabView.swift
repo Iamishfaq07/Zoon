@@ -240,7 +240,7 @@ struct CoachTabView: View {
                     Text(choice.displayName).tag(choice)
                 }
             }
-            .pickerStyle(.segmented)
+            .adaptiveSegmentedStyle()
 
             Text(preferences.preferredEngine.detail)
                 .font(Theme.text(12))

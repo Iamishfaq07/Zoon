@@ -246,7 +246,7 @@ struct TrendsView: View {
         Picker("Window", selection: $window) {
             ForEach(Window.allCases) { Text($0.rawValue).tag($0) }
         }
-        .pickerStyle(.segmented)
+        .adaptiveSegmentedStyle()
     }
 
     /// Destinations that have no section of their own to be

@@ -543,6 +543,7 @@
 		6FA4F5D814372916F43390DB /* SeededGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD50E712746E68436F3A59B /* SeededGenerator.swift */; };
 		70228E7E5C695A83CB011B17 /* SpotlightIndexerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DFB342C78C5CB4CA3AB5943 /* SpotlightIndexerTests.swift */; };
 		70C27F39E9CB248EDAEFDC1E /* LightCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 114E81F4B55221C012C41429 /* LightCoach.swift */; };
+		71312FE952154333C8A51C32 /* AdaptiveSegmentedStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = E99DFF3086A48E64388D85FA /* AdaptiveSegmentedStyle.swift */; };
 		717A9071B7B50FB8877857C2 /* ScheduleReconciliation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B5C71C11E9B070FA4E43A3 /* ScheduleReconciliation.swift */; };
 		721676253FD977B68535DCB8 /* MovementContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A240BFE3763939A33E61F11A /* MovementContext.swift */; };
 		728E1AA5461D144B2450A89E /* GuidedExperimentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D161E199A78597F89A52D9 /* GuidedExperimentTests.swift */; };
@@ -1845,6 +1846,7 @@
 		E8E1B32C7CB5F3B681C022F0 /* SleepRegularityIndexTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepRegularityIndexTests.swift"; sourceTree = "<group>"; };
 		E9179FF0EF49CA880FE57629 /* SwiftDataProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwiftDataProbeTests.swift"; sourceTree = "<group>"; };
 		E98A436D538AAC795E4E7A7E /* SleepStoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStoryView.swift"; sourceTree = "<group>"; };
+		E99DFF3086A48E64388D85FA /* AdaptiveSegmentedStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AdaptiveSegmentedStyle.swift"; sourceTree = "<group>"; };
 		EA6626DD8F329DC2CDC07427 /* CaffeineCutoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CaffeineCutoff.swift"; sourceTree = "<group>"; };
 		EA7710078DC7380114F1BA65 /* ExperimentPlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExperimentPlannerTests.swift"; sourceTree = "<group>"; };
 		EB28A2C016F35BBA85E47C76 /* ScoreInvariantTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScoreInvariantTests.swift"; sourceTree = "<group>"; };
@@ -1956,6 +1958,7 @@
 		037D43276F716FE803145F5F /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				E99DFF3086A48E64388D85FA,
 				9AB1A44EA7F16571E47EAF82,
 				F2A5FCBE2C70C5E0F7681DCF,
 				5581466923E8583DEC7B7C77,
@@ -3169,6 +3172,7 @@
 				0D89A4EAA851E7C304E32665,
 				CE0253756CA59F5F3974A284,
 				C1A1A299E033E992DD7306FE,
+				71312FE952154333C8A51C32,
 				5E455A02B3EBA1F672C978B0,
 				BF085A49F51581E10C5377B2,
 				DB2B9136DD37B3227CC1295D,

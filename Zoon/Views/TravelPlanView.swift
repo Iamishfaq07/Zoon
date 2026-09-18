@@ -122,7 +122,7 @@ struct TravelPlanView: View {
                         Text("Simple").tag(false)
                         Text("Detailed").tag(true)
                     }
-                    .pickerStyle(.segmented)
+                    .adaptiveSegmentedStyle()
                     .frame(width: 170)
                 }
 

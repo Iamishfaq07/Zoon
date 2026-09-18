@@ -12,7 +12,7 @@ struct SleepFingerprintView: View {
                     .font(Theme.text(14)).foregroundStyle(Theme.inkSecondary)
                 Picker("Period", selection: $days) {
                     Text("7 nights").tag(7); Text("30 nights").tag(30); Text("90 nights").tag(90)
-                }.pickerStyle(.segmented)
+                }.adaptiveSegmentedStyle()
                 if let fingerprint = SleepFingerprint.make(from: coordinator.recentNights, days: days) {
                     FingerprintRings(fingerprint: fingerprint)
                         .entrance(0)
