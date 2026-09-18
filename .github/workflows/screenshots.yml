@@ -630,6 +630,8 @@ jobs:
           mkdir -p watch-screenshots
 
           FAILED=0
+          # The page sweep runs on the first case size only -- see below.
+          FIRST_CASE=1
           while IFS=$'\t' read -r UDID NAME; do
             # A slug that survives a rename: "Apple Watch Series 10 (42mm)"
             # becomes "series-10-42mm", so the committed filename tracks the
@@ -649,12 +651,33 @@ jobs:
             # `-zoonDemo YES` is the same flag the phone capture uses. Without
             # it the watch draws its waiting state and the picture proves
             # nothing.
-            xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp -zoonDemo YES || true
+            # `-zoonWatchPage lastNight` pins the deck. Without it the page
+            # photographed is whichever one the hour selected, so a render
+            # would change meaning depending on when CI ran.
+            xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp \
+              -zoonDemo YES -zoonWatchPage lastNight || true
             # No launch animation to wait out, but the first frame after
             # launch is not necessarily the settled one.
             sleep 8
             xcrun simctl io "$UDID" screenshot "watch-screenshots/$SLUG.png" \
               || { echo "::warning::screenshot failed on $NAME"; FAILED=1; }
+
+            # The rest of the deck, on this one case only. Every page on
+            # every size is a matrix that costs far more than it proves: a
+            # page fails by size or it fails by content, and the sweep above
+            # already covers the first. This covers the second.
+            if [ "$FIRST_CASE" = "1" ]; then
+              for PAGE in today tonight more log nap scoreLight; do
+                xcrun simctl terminate "$UDID" com.zoon.sleep.watchkitapp 2>/dev/null || true
+                xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp \
+                  -zoonDemo YES -zoonWatchPage "$PAGE" || true
+                sleep 6
+                LOWER=$(echo "$PAGE" | tr '[:upper:]' '[:lower:]')
+                xcrun simctl io "$UDID" screenshot "watch-screenshots/page-$LOWER.png" \
+                  || echo "::warning::page $PAGE did not render"
+              done
+              FIRST_CASE=0
+            fi
             # Shut each one down before the next: several booted watch
             # simulators at once is how a runner runs out of memory halfway
             # through a set.
