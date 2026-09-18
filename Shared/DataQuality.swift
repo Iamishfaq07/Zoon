@@ -155,3 +155,111 @@ struct DataQuality {
         return DataQuality(windowDays: windowDays, coverage: coverage)
     }
 }
+
+// MARK: - When it stopped, not only how much there is
+
+extension DataQuality {
+
+    /// The timeline half of data quality: when a metric was last seen, rather
+    /// than what fraction of the window it covered.
+    ///
+    /// `Coverage` above answers "how much HRV is there" and answers it well.
+    /// It cannot answer the question somebody actually has when a number goes
+    /// quiet, which is *when did this stop*. Sixty-two percent coverage reads
+    /// the same whether the readings are scattered through the month or
+    /// stopped dead eleven nights ago, and those are completely different
+    /// situations: one is a watch charged irregularly, the other is a sensor,
+    /// a permission or a pairing that broke on a particular day.
+    ///
+    /// Read-only and diagnostic, exactly as `Coverage` is. Nothing here feeds
+    /// back into a score.
+    struct Lapse: Identifiable, Sendable {
+        let metric: Metric
+        var id: Metric.ID { metric.id }
+
+        /// The most recent stored night that carried a reading, or `nil` when
+        /// no night in the history ever did.
+        let lastSeen: Date?
+
+        /// Stored nights after `lastSeen`, every one of which lacked the
+        /// metric by construction. Zero means the most recent night has it.
+        let nightsSince: Int
+
+        /// Nights examined. A lapse of two out of two is not the same claim
+        /// as a lapse of two out of ninety, and the wording below leans on
+        /// knowing which.
+        let nightsConsidered: Int
+
+        enum Status: Sendable, Equatable {
+            /// Arriving: the most recent stored night carried a reading.
+            case current
+            /// Was arriving, then stopped, for this many stored nights.
+            case lapsed(nights: Int)
+            /// No night on record has ever carried one.
+            ///
+            /// Deliberately distinct from `lapsed`. A metric that never
+            /// appeared is usually a device that does not measure it or a
+            /// permission never granted -- not something that broke -- and
+            /// telling somebody their SpO2 "stopped" when their watch never
+            /// reported it is a false claim about their hardware.
+            case neverSeen
+        }
+
+        var status: Status {
+            guard lastSeen != nil else { return .neverSeen }
+            return nightsSince == 0 ? .current : .lapsed(nights: nightsSince)
+        }
+
+        /// A line for the diagnostic screen. States what is known and stops.
+        var summary: String {
+            switch status {
+            case .current:
+                "Arriving"
+            case .lapsed(let nights):
+                nights == 1
+                    ? "Not in the most recent night"
+                    : "Not in the last \(nights) nights"
+            case .neverSeen:
+                nightsConsidered == 0
+                    ? "No nights recorded yet"
+                    : "Not seen on this device"
+            }
+        }
+    }
+
+    /// One `Lapse` per metric, over the same history `compute` reads.
+    ///
+    /// `.sleep` is a special case by construction and not a bug: a night's
+    /// presence in the array *is* its sleep measurement, so that row can only
+    /// ever read `current` or, on an empty history, `neverSeen`. It is kept
+    /// rather than dropped so this list lines up row-for-row with `coverage`.
+    ///
+    /// - Parameter nights: full stored history, any order. Sorted here rather
+    ///   than trusted, the same as `compute` does.
+    static func lapses(nights: [SleepNightFeatures]) -> [Lapse] {
+        let ordered = nights.sorted { $0.date < $1.date }
+        return Metric.allCases.map { metric in
+            // Walk back from the most recent night. The first night carrying
+            // the metric ends the walk, and everything stepped over is the
+            // lapse -- which is why this counts stored nights rather than
+            // calendar days: a night nobody recorded is a gap in sleep
+            // coverage, and reporting it as a gap in HRV would blame the
+            // wrong sensor.
+            var nightsSince = 0
+            var lastSeen: Date?
+            for night in ordered.reversed() {
+                if metric.isPresent(in: night) {
+                    lastSeen = night.date
+                    break
+                }
+                nightsSince += 1
+            }
+            return Lapse(
+                metric: metric,
+                lastSeen: lastSeen,
+                nightsSince: lastSeen == nil ? 0 : nightsSince,
+                nightsConsidered: ordered.count
+            )
+        }
+    }
+}
