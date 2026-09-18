@@ -155,7 +155,7 @@ final class DaytimeOpeningTests: XCTestCase {
             for current in [StressScore.Band.calm, .elevated, .high, nil] {
                 let full = DaytimeOpening.sentence(band: band, currentBand: current, name: "Ishfaq")
                 let compact = DaytimeOpening.sentence(
-                    band: band, currentBand: current, name: "Ishfaq", compact: true
+                    band: band, currentBand: current, name: "Ishfaq", length: .compact
                 )
                 XCTAssertLessThan(compact.count, full.count, "\(band) / \(String(describing: current))")
             }
@@ -166,7 +166,7 @@ final class DaytimeOpeningTests: XCTestCase {
     /// screen is back to narrating a morning score in the afternoon — which
     /// is the whole thing this type exists to stop.
     func testTheCompactFormStillCarriesBothHalves() {
-        let compact = DaytimeOpening.sentence(band: .moderate, currentBand: .high, compact: true)
+        let compact = DaytimeOpening.sentence(band: .moderate, currentBand: .high, length: .compact)
         XCTAssertTrue(compact.contains("Morning Recovery was moderate"), compact)
         XCTAssertTrue(compact.lowercased().contains("now"), compact)
         XCTAssertTrue(compact.lowercased().contains("well above"), compact)
@@ -175,8 +175,8 @@ final class DaytimeOpeningTests: XCTestCase {
     /// Two different afternoons must still read differently, compact or not.
     func testTheCompactFormStillDistinguishesAfternoons() {
         XCTAssertNotEqual(
-            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, compact: true),
-            DaytimeOpening.sentence(band: .moderate, currentBand: .high, compact: true)
+            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, length: .compact),
+            DaytimeOpening.sentence(band: .moderate, currentBand: .high, length: .compact)
         )
     }
 
@@ -184,23 +184,97 @@ final class DaytimeOpeningTests: XCTestCase {
     /// the reader came for.
     func testTheCompactFormDropsTheName() {
         let compact = DaytimeOpening.sentence(
-            band: .moderate, currentBand: .calm, name: "Ishfaq", compact: true
+            band: .moderate, currentBand: .calm, name: "Ishfaq", length: .compact
         )
         XCTAssertFalse(compact.contains("Ishfaq"), compact)
     }
 
     func testTheCompactFormStillWithholdsAScoreItDoesNotHave() {
-        let compact = DaytimeOpening.sentence(band: nil, currentBand: .calm, compact: true)
+        let compact = DaytimeOpening.sentence(band: nil, currentBand: .calm, length: .compact)
         XCTAssertFalse(compact.contains("Morning Recovery was"), compact)
     }
 
     /// Missing is still not calm in the short form either.
     func testTheCompactFormStillSaysWhenThereAreNoReadings() {
-        let compact = DaytimeOpening.sentence(band: .moderate, currentBand: nil, compact: true)
+        let compact = DaytimeOpening.sentence(band: .moderate, currentBand: nil, length: .compact)
         XCTAssertTrue(compact.contains("not enough quiet readings"), compact)
         XCTAssertNotEqual(
             compact,
-            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, compact: true)
+            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, length: .compact)
+        )
+    }
+
+    // MARK: - The minimal form, which the AX5 capture asked for
+
+    /// `.compact` renders well at AX3 and fails at AX5 -- five lines, about
+    /// half the display, with a clipped HRV row as the only driver above the
+    /// fold. This tier is what the capture bought.
+    func testTheMinimalFormIsShorterThanTheCompactOne() {
+        for band in [RecoveryScore.Band.low, .moderate, .high] {
+            for current in [StressScore.Band.calm, .elevated, .high] {
+                let compact = DaytimeOpening.sentence(
+                    band: band, currentBand: current, length: .compact
+                )
+                let minimal = DaytimeOpening.sentence(
+                    band: band, currentBand: current, length: .minimal
+                )
+                XCTAssertLessThan(
+                    minimal.count, compact.count, "\(band) / \(current)"
+                )
+            }
+        }
+    }
+
+    /// The half that goes is the half the ring is already stating a line
+    /// below -- and the half that stays is the one the ring cannot carry,
+    /// because the ring is Morning Recovery and Morning Recovery is not how
+    /// today is going.
+    func testTheMinimalFormDropsWhatTheRingAlreadySays() {
+        let minimal = DaytimeOpening.sentence(band: .moderate, currentBand: .high, length: .minimal)
+        XCTAssertFalse(minimal.contains("Morning Recovery"), minimal)
+        XCTAssertTrue(minimal.lowercased().contains("now"), minimal)
+        XCTAssertTrue(minimal.lowercased().contains("well above"), minimal)
+    }
+
+    /// Dropping a clause must not flatten two different afternoons into one
+    /// line. If it did, the tier would have traded the defect back.
+    func testTheMinimalFormStillDistinguishesAfternoons() {
+        let lines = [StressScore.Band.calm, .elevated, .high, nil].map {
+            DaytimeOpening.sentence(band: .moderate, currentBand: $0, length: .minimal)
+        }
+        XCTAssertEqual(Set(lines).count, lines.count, "\(lines)")
+    }
+
+    /// Two different mornings legitimately produce the same minimal line --
+    /// that is the point, not a bug. The ring is what distinguishes them, and
+    /// this asserts the tier is actually doing the dropping it claims to.
+    func testTheMinimalFormLeavesTheMorningToTheRing() {
+        XCTAssertEqual(
+            DaytimeOpening.sentence(band: .low, currentBand: .calm, length: .minimal),
+            DaytimeOpening.sentence(band: .high, currentBand: .calm, length: .minimal)
+        )
+    }
+
+    /// With no band there is no ring reading to be redundant with, so the
+    /// withheld-score explanation survives at every tier. Dropping it would
+    /// leave an empty ring and nothing saying why.
+    func testTheMinimalFormStillExplainsAWithheldScore() {
+        let minimal = DaytimeOpening.sentence(band: nil, currentBand: .calm, length: .minimal)
+        XCTAssertTrue(minimal.contains("Recovery needs more data"), minimal)
+        XCTAssertTrue(minimal.lowercased().contains("around usual"), minimal)
+        XCTAssertFalse(minimal.contains("Morning Recovery was"), minimal)
+    }
+
+    /// Missing is still not zero at the shortest tier. The wording is
+    /// shorter than the compact form's -- naming the reason costs three lines
+    /// at AX5 -- but it still says the load was not measured rather than
+    /// implying it was fine.
+    func testTheMinimalFormStillSaysWhenThereAreNoReadings() {
+        let minimal = DaytimeOpening.sentence(band: .moderate, currentBand: nil, length: .minimal)
+        XCTAssertTrue(minimal.contains("not measured yet"), minimal)
+        XCTAssertNotEqual(
+            minimal,
+            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, length: .minimal)
         )
     }
 

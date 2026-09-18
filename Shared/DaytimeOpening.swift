@@ -88,6 +88,19 @@ enum DaytimeOpening {
             case .unknown: "Load now: not enough quiet readings yet"
             }
         }
+
+        /// The shortest honest form, for the two largest text sizes.
+        ///
+        /// Only `.unknown` differs from `compactClause`: naming the reason
+        /// costs three lines at AX5, and "not measured yet" is the same fact
+        /// with the explanation deferred to the confidence disclosure, which
+        /// is exactly where somebody who wants it will look.
+        var minimalClause: String {
+            switch self {
+            case .unknown: "Load now: not measured yet"
+            default: compactClause
+            }
+        }
     }
 
     /// How the overnight reading is stated: past tense, about the morning,
@@ -113,19 +126,58 @@ enum DaytimeOpening {
     ///   - currentBand: `StressScore.band` for today, when there is one.
     ///   - name: the person's own name, when they have set one. Empty is a
     ///     real answer and nothing here nags for it.
-    /// - Parameter compact: the accessibility-text form. Shorter, and it
-    ///   drops the name — at the largest sizes a greeting costs a whole line
-    ///   before the reader reaches anything they came for. The two clauses
-    ///   both survive; only the connective tissue goes.
+    /// - Parameter length: how much room the opening has.
+    ///
+    ///   Three tiers rather than two, because the AX5 capture showed the
+    ///   two-tier version failing. `.compact` renders well at AX3 — three
+    ///   lines, ring and all four drivers on screen — and runs to five lines
+    ///   at AX5, roughly half the display, with only a clipped HRV row
+    ///   surviving above the fold. One boolean for five accessibility sizes
+    ///   was too coarse.
+    ///
+    ///   What `.minimal` drops is chosen by what the screen already says.
+    ///   The ring sits directly beneath this line, labelled with the very
+    ///   band the morning clause names — "Moderate" under the score, "was
+    ///   moderate" above it. That repetition is mild at AX3 and costs five
+    ///   lines at AX5. So the morning clause goes and the current reading
+    ///   stays, because the current reading is the one fact on this screen
+    ///   that the ring cannot carry: the ring is Morning Recovery, and
+    ///   Morning Recovery is not how today is going.
+    ///
+    ///   The withheld-score case keeps both halves at every tier. With no
+    ///   band there is no ring reading to be redundant with, and dropping
+    ///   the first clause would leave the reader looking at an empty ring
+    ///   with nothing saying why.
+    enum Length: Sendable, Hashable {
+        /// Full prose, with the name when there is one.
+        case full
+        /// Connective tissue and the greeting removed; both clauses survive.
+        case compact
+        /// The current reading alone, when the ring is already stating the
+        /// morning band a line below.
+        case minimal
+    }
+
     static func sentence(
         band: RecoveryScore.Band?,
         currentBand: StressScore.Band?,
         name: String = "",
-        compact: Bool = false
+        length: Length = .full
     ) -> String {
         let current = CurrentState(band: currentBand)
 
-        if compact {
+        if length == .minimal {
+            guard band != nil else {
+                return current == .unknown
+                    ? "Recovery needs more data"
+                    : "Recovery needs more data. \(current.minimalClause)"
+            }
+            // The band is deliberately unused here: the ring one line below
+            // is stating it, which is the whole reason this tier exists.
+            return current.minimalClause
+        }
+
+        if length == .compact {
             guard let band else {
                 return current == .unknown
                     ? "Recovery needs more data"

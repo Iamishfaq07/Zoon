@@ -393,8 +393,8 @@ struct TodayView: View {
         let isAccessibility = dynamicTypeSize.isAccessibilitySize
         return VStack(spacing: isAccessibility ? 20 : 16) {
             // Says what the number means before showing it. At accessibility
-            // sizes the same two facts arrive in a shorter form -- see
-            // `DaytimeOpening.sentence(compact:)`.
+            // sizes the same facts arrive in shorter forms -- see
+            // `openingLength` and `DaytimeOpening.Length`.
             Text(openingLine(context))
                 .font(Theme.label(isAccessibility ? 17 : 19, weight: .semibold))
                 .multilineTextAlignment(isAccessibility ? .leading : .center)
@@ -461,6 +461,18 @@ struct TodayView: View {
     /// knows nothing about. `DaytimeOpening` carries the reasoning and the
     /// composition; the current half comes from `todayStress`, which is
     /// measured from quiet daytime readings and does move.
+    /// Three tiers, set by the AX5 capture rather than by reasoning about it.
+    ///
+    /// `.compact` renders well at AX3 -- a three-line opening, the ring and
+    /// all four drivers on one screen. At AX5 the same string runs to five
+    /// lines and takes roughly half the display, leaving a clipped HRV row as
+    /// the only driver above the fold. `.minimal` drops the half the ring is
+    /// already stating a line below.
+    private var openingLength: DaytimeOpening.Length {
+        if dynamicTypeSize >= .accessibility4 { return .minimal }
+        return dynamicTypeSize.isAccessibilitySize ? .compact : .full
+    }
+
     private func openingLine(_ context: DayContext) -> String {
         DaytimeOpening.sentence(
             // Withheld means withheld: a band is only passed when the score
@@ -469,7 +481,7 @@ struct TodayView: View {
             band: context.recovery.presentation.isShowable ? context.recovery.band : nil,
             currentBand: coordinator.todayStress?.band,
             name: preferences.displayName,
-            compact: dynamicTypeSize.isAccessibilitySize
+            length: openingLength
         )
     }
 
