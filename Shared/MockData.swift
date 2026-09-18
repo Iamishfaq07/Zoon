@@ -316,7 +316,16 @@ enum MockData {
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercise,
             sourceName: "Mock Data",
-            isMock: true
+            isMock: true,
+            // The demo night represents the device this app is built around,
+            // so the provenance line under its stage bar reads the way a
+            // Watch wearer's does rather than "source not recorded" -- which
+            // is what an unset priority means and would be the wrong thing to
+            // show in every screenshot of a feature about provenance. The
+            // "Sample" badge on the screen already says this is demo data.
+            // The unstaged fixture below is deliberately left alone: it has
+            // no stages, so it grades `.unstaged` whatever wrote it.
+            stageSourcePriority: .appleWatch
         )
     }
 }
