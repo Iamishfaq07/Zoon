@@ -144,6 +144,66 @@ final class DaytimeOpeningTests: XCTestCase {
         XCTAssertEqual(sentence(.moderate, .calm, name: "   "), sentence(.moderate, .calm))
     }
 
+    // MARK: - The accessibility form
+
+    /// The full sentence is materially longer than the one it replaced, and
+    /// at 19pt semibold scaled to the largest accessibility size that is a
+    /// wall of text before the reader reaches the number. The compact form
+    /// exists because the fix made the layout problem worse.
+    func testTheCompactFormIsShorterThanTheFullOne() {
+        for band in [RecoveryScore.Band.low, .moderate, .high] {
+            for current in [StressScore.Band.calm, .elevated, .high, nil] {
+                let full = DaytimeOpening.sentence(band: band, currentBand: current, name: "Ishfaq")
+                let compact = DaytimeOpening.sentence(
+                    band: band, currentBand: current, name: "Ishfaq", compact: true
+                )
+                XCTAssertLessThan(compact.count, full.count, "\(band) / \(String(describing: current))")
+            }
+        }
+    }
+
+    /// What goes is the connective tissue. Both facts have to survive, or the
+    /// screen is back to narrating a morning score in the afternoon — which
+    /// is the whole thing this type exists to stop.
+    func testTheCompactFormStillCarriesBothHalves() {
+        let compact = DaytimeOpening.sentence(band: .moderate, currentBand: .high, compact: true)
+        XCTAssertTrue(compact.contains("Morning Recovery was moderate"), compact)
+        XCTAssertTrue(compact.lowercased().contains("now"), compact)
+        XCTAssertTrue(compact.lowercased().contains("well above"), compact)
+    }
+
+    /// Two different afternoons must still read differently, compact or not.
+    func testTheCompactFormStillDistinguishesAfternoons() {
+        XCTAssertNotEqual(
+            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, compact: true),
+            DaytimeOpening.sentence(band: .moderate, currentBand: .high, compact: true)
+        )
+    }
+
+    /// A greeting costs a whole line at the largest sizes, before anything
+    /// the reader came for.
+    func testTheCompactFormDropsTheName() {
+        let compact = DaytimeOpening.sentence(
+            band: .moderate, currentBand: .calm, name: "Ishfaq", compact: true
+        )
+        XCTAssertFalse(compact.contains("Ishfaq"), compact)
+    }
+
+    func testTheCompactFormStillWithholdsAScoreItDoesNotHave() {
+        let compact = DaytimeOpening.sentence(band: nil, currentBand: .calm, compact: true)
+        XCTAssertFalse(compact.contains("Morning Recovery was"), compact)
+    }
+
+    /// Missing is still not calm in the short form either.
+    func testTheCompactFormStillSaysWhenThereAreNoReadings() {
+        let compact = DaytimeOpening.sentence(band: .moderate, currentBand: nil, compact: true)
+        XCTAssertTrue(compact.contains("not enough quiet readings"), compact)
+        XCTAssertNotEqual(
+            compact,
+            DaytimeOpening.sentence(band: .moderate, currentBand: .calm, compact: true)
+        )
+    }
+
     // MARK: - The band copy it replaced
 
     /// `RecoveryScore.Band.guidance` is what the rest of the app reads. It

@@ -72,6 +72,22 @@ enum DaytimeOpening {
             case .unknown: "there are not enough quiet daytime readings yet to say how today is going"
             }
         }
+
+        /// The same fact with the scaffolding removed, for accessibility text
+        /// sizes.
+        ///
+        /// Both halves have to survive — dropping the current reading would
+        /// put the screen back to narrating a morning score at three in the
+        /// afternoon, which is the defect this type exists for. What goes is
+        /// the connective tissue, not the content.
+        var compactClause: String {
+            switch self {
+            case .aroundUsual: "Load now: around usual"
+            case .raised: "Load now: a little high"
+            case .wellAbove: "Load now: well above usual"
+            case .unknown: "Load now: not enough quiet readings yet"
+            }
+        }
     }
 
     /// How the overnight reading is stated: past tense, about the morning,
@@ -97,12 +113,26 @@ enum DaytimeOpening {
     ///   - currentBand: `StressScore.band` for today, when there is one.
     ///   - name: the person's own name, when they have set one. Empty is a
     ///     real answer and nothing here nags for it.
+    /// - Parameter compact: the accessibility-text form. Shorter, and it
+    ///   drops the name — at the largest sizes a greeting costs a whole line
+    ///   before the reader reaches anything they came for. The two clauses
+    ///   both survive; only the connective tissue goes.
     static func sentence(
         band: RecoveryScore.Band?,
         currentBand: StressScore.Band?,
-        name: String = ""
+        name: String = "",
+        compact: Bool = false
     ) -> String {
         let current = CurrentState(band: currentBand)
+
+        if compact {
+            guard let band else {
+                return current == .unknown
+                    ? "Recovery needs more data"
+                    : "Recovery needs more data. \(current.compactClause)"
+            }
+            return "\(morningClause(band: band)). \(current.compactClause)"
+        }
 
         guard let band else {
             // The score is withheld. The current reading can still be stated

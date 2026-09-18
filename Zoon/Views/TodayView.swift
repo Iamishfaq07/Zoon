@@ -27,6 +27,9 @@ struct TodayView: View {
     @State private var checkInDetails: [CheckInDimension: Int] = [:]
     /// Shared between the orbit and its legend so either can drive selection.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The hero and the qualifying lines compose differently at accessibility
+    /// text sizes -- see `daytimeHero`.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var selectedComponentID: String?
     @State private var showsExplanation = false
@@ -370,14 +373,32 @@ struct TodayView: View {
 
     // MARK: - Hero helpers
 
+    /// The hero, composed for the text size it is being read at.
+    ///
+    /// At ordinary sizes this is the full arrangement: a sentence, the ring
+    /// with the radar inside it, the drivers, one action. At accessibility
+    /// sizes that same stack is eleven competing layers on a screen where
+    /// every one of them has grown, and the audit is right that it stops
+    /// being a hierarchy.
+    ///
+    /// So the large-text composition drops what is *duplicated* rather than
+    /// what is informative. The radar goes: it shows the shape of four
+    /// signals whose actual readings are spelled out at full size in the
+    /// drivers immediately below, which is where somebody using large text is
+    /// reading them anyway. The ring shrinks but stays, because the score is
+    /// the one thing the screen exists to say. Nothing here is solved with
+    /// `minimumScaleFactor`; the type scales properly and the composition
+    /// changes around it.
     private func daytimeHero(_ context: DayContext) -> some View {
-        VStack(spacing: 16) {
-            // Addresses the reader, and says what the number means before
-            // showing it. "67%, Moderate" is a measurement; "your body needs
-            // moderate output today" is the thing they opened the app for.
+        let isAccessibility = dynamicTypeSize.isAccessibilitySize
+        return VStack(spacing: isAccessibility ? 20 : 16) {
+            // Says what the number means before showing it. At accessibility
+            // sizes the same two facts arrive in a shorter form -- see
+            // `DaytimeOpening.sentence(compact:)`.
             Text(openingLine(context))
-                .font(Theme.label(19, weight: .semibold))
-                .multilineTextAlignment(.center)
+                .font(Theme.label(isAccessibility ? 17 : 19, weight: .semibold))
+                .multilineTextAlignment(isAccessibility ? .leading : .center)
+                .frame(maxWidth: .infinity, alignment: isAccessibility ? .leading : .center)
                 .fixedSize(horizontal: false, vertical: true)
 
             // The ring says how much. The radar inside says in what shape --
@@ -385,29 +406,48 @@ struct TodayView: View {
             // three strong signals and one that collapsed.
             RecoveryRing(
                 recovery: context.recovery,
-                size: 236,
-                lineWidth: 16,
+                size: isAccessibility ? 180 : 236,
+                lineWidth: isAccessibility ? 13 : 16,
                 selectedSignalID: $selectedSignalID
             ) {
-                // 190 inside a 236 ring, so a full-value vertex lands at
-                // radius 95 -- inside the stroke's inner edge at 110. The
-                // web crosses the centre type by design and is drawn pale
-                // enough to sit under it; see RecoveryRadar.
-                RecoveryRadar(
-                    components: context.recovery.components,
-                    size: 190,
-                    selectedID: $selectedSignalID
-                )
+                if !isAccessibility {
+                    // 190 inside a 236 ring, so a full-value vertex lands at
+                    // radius 95 -- inside the stroke's inner edge at 110.
+                    // See RecoveryRadar for the marker geometry.
+                    RecoveryRadar(
+                        components: context.recovery.components,
+                        size: 190,
+                        selectedID: $selectedSignalID
+                    )
+                }
             }
 
             ScoreDrivers(components: context.recovery.components)
 
             TodayActionPlan(recovery: context.recovery, forecast: energyForecast(context))
 
-            Text(context.recovery.confidence.label)
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.inkSecondary)
-            RightNowLine(load: coordinator.todayStress)
+            // Two short lines that both qualify the score. At accessibility
+            // sizes they are two more full-width paragraphs between the
+            // reader and the rest of the screen, so they move behind a
+            // disclosure -- present, and not in the way.
+            if isAccessibility {
+                DisclosureGroup("How confident is this?") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(context.recovery.confidence.label)
+                            .font(Theme.text(13))
+                            .foregroundStyle(Theme.inkSecondary)
+                        RightNowLine(load: coordinator.todayStress)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 6)
+                }
+                .font(Theme.label(15, weight: .semibold))
+            } else {
+                Text(context.recovery.confidence.label)
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.inkSecondary)
+                RightNowLine(load: coordinator.todayStress)
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -428,7 +468,8 @@ struct TodayView: View {
             // is declining to print.
             band: context.recovery.presentation.isShowable ? context.recovery.band : nil,
             currentBand: coordinator.todayStress?.band,
-            name: preferences.displayName
+            name: preferences.displayName,
+            compact: dynamicTypeSize.isAccessibilitySize
         )
     }
 
