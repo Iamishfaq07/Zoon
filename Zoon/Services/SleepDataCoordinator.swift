@@ -1644,6 +1644,10 @@ final class SleepDataCoordinator {
             hrvBaseline: baseline.hrv7DayAvg,
             sampledMinutes: samplingIntervals.reduce(0) { $0 + $1.duration } / 60,
             baselineNightCount: baseline.sampleCount,
+            // Wake to now. The quiet windows are carved out of exactly this,
+            // so the two are the same denominator and the ratio means what
+            // it says.
+            elapsedWakingMinutes: interval.duration / 60,
             wakingHRBaseline: waking.heartRate?.bin(for: now, calendar: calendar)?.median,
             wakingHRVBaseline: waking.hrv?.bin(for: now, calendar: calendar)?.median
         )

@@ -846,6 +846,7 @@
 		B21990A02A2E49979811876A /* SleepStreakEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B0A0EC5506FF9F69067618 /* SleepStreakEngine.swift */; };
 		B254374CF25ABE4958CD3B83 /* SleepIntelligenceScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6868DEFF98DF1C38239CDC19 /* SleepIntelligenceScore.swift */; };
 		B2582269AD6E9C2E3EA9632A /* ZoonWatchWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 139E753E421138D60AC160E7 /* ZoonWatchWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B262AA6A9F865238AE1BA12D /* StressCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC5E4661251F99EB6C971EF /* StressCoverageTests.swift */; };
 		B279C694B155187C534FB73C /* DiagnosticLanguageGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F381FE30E3EFE052D944E960 /* DiagnosticLanguageGuardTests.swift */; };
 		B2A386232ABB3C3567E9B35C /* CustomBehavior.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23D069BA4208005D98198E7B /* CustomBehavior.swift */; };
 		B2E9A113E04B830EAFA64A7A /* SleepDayKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB0716483B53D50F81083840 /* SleepDayKey.swift */; };
@@ -1308,6 +1309,7 @@
 		08A3630C62C77D88D24D1330 /* PersonalSetupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersonalSetupTests.swift"; sourceTree = "<group>"; };
 		0965A618AF99EA660DDA2E88 /* WorkoutDeduplicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkoutDeduplicator.swift"; sourceTree = "<group>"; };
 		0A3D7832F1D8903A3FCD06ED /* SurfaceRelevance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SurfaceRelevance.swift"; sourceTree = "<group>"; };
+		0AC5E4661251F99EB6C971EF /* StressCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StressCoverageTests.swift"; sourceTree = "<group>"; };
 		0ACECF2891CE7CA2C7990B49 /* BodyClockAgenda.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyClockAgenda.swift"; sourceTree = "<group>"; };
 		0B9BAEF201AAF3A4CD99D4CB /* thunder.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "thunder.mp3"; sourceTree = "<group>"; };
 		0C1475128CFF4FF6E175FB15 /* TodayActionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TodayActionPlan.swift"; sourceTree = "<group>"; };
@@ -2382,6 +2384,7 @@
 				9F6E6954AE9E93E1873800C5,
 				472B3E86E4947B9B9304E8FB,
 				DBFE397B06F8EF6A78D72D0F,
+				0AC5E4661251F99EB6C971EF,
 				C575B7DDF40369D37AF5D867,
 				61661813660F3E756B11F9F1,
 				E9179FF0EF49CA880FE57629,
@@ -3773,6 +3776,7 @@
 				B95CF23D3F31346556325772,
 				2C4EA0F9A1788FC38CC1D9E6,
 				811094A1106EB5DA9B6DE1B7,
+				B262AA6A9F865238AE1BA12D,
 				C0D8E300BC03BFE1E1DF5999,
 				B0DA146C3A6FC4B5D8C27F3A,
 				CC3B65D6870BBB792D2E4622,
