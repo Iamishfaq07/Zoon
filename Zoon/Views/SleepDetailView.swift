@@ -365,7 +365,9 @@ struct SleepDetailView: View {
     }
 }
 
-/// Whoop-style sleep need: a stacked bar of what you needed vs what you got.
+/// The night's planning target as a stacked bar: what the model suggested
+/// aiming for, and what was slept against it. See `SleepNeed` — the target is
+/// a plan built from a learned baseline, not a measured requirement.
 struct SleepNeedCard: View {
     let need: SleepNeed
 

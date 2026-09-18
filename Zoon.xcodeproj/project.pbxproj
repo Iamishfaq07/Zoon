@@ -158,6 +158,7 @@
 		1B30C9EB74444B683575104B /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
 		1B55E80E622593F8BE7D830A /* SurfaceRelevance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3D7832F1D8903A3FCD06ED /* SurfaceRelevance.swift */; };
 		1B87F668B25C13F568C590A7 /* ZoonCoverageMatrix.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445F8A134A58B330BC70BD4E /* ZoonCoverageMatrix.swift */; };
+		1BF91E1CE33903573BDDD1B3 /* LearnedSleepNeedRangeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71314645912B187E933597F6 /* LearnedSleepNeedRangeTests.swift */; };
 		1C3753F429664F2B65BD6BE2 /* DataEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = C458C7D6817D45BFD7B0E390 /* DataEnvironment.swift */; };
 		1C50291F9F827EA4C28B8B9E /* TrendEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1083224E0CD6417FD16C4075 /* TrendEngine.swift */; };
 		1C89F9C170E42AC63EC4BE9F /* SleepOpportunityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22AAA45EE6CE53218BD064F0 /* SleepOpportunityCard.swift */; };
@@ -1563,6 +1564,7 @@
 		70213A3993E8CDEFAA74236B /* SensitivityCurveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensitivityCurveTests.swift"; sourceTree = "<group>"; };
 		706F052B52B73EA14F1B1061 /* CopyCorrectnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CopyCorrectnessTests.swift"; sourceTree = "<group>"; };
 		710B9A0DBC682D2A2A6A1F4E /* SoundscapeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SoundscapeEngine.swift"; sourceTree = "<group>"; };
+		71314645912B187E933597F6 /* LearnedSleepNeedRangeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LearnedSleepNeedRangeTests.swift"; sourceTree = "<group>"; };
 		71CFAA8DB9952A70BAF09F74 /* ZoonTomorrow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonTomorrow.swift"; sourceTree = "<group>"; };
 		723A44DC4BCED946497E0850 /* RecoveryModeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryModeCard.swift"; sourceTree = "<group>"; };
 		728522C938EB304A352B98B0 /* RecoveryScoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecoveryScoreTests.swift"; sourceTree = "<group>"; };
@@ -2277,6 +2279,7 @@
 				330761C5EA614104E6172BEB,
 				5916908C5ABDE5191F03FFF2,
 				752C7D764C48DF46664CFA7F,
+				71314645912B187E933597F6,
 				0E46E316C65A5379A85FC2C3,
 				2F5DD7E52B2623F0A7D68849,
 				AE68880AF8EF2985237B4B35,
@@ -3667,6 +3670,7 @@
 				1E5C49D5B488C563A10EAB0C,
 				CBBF746DD5E11C79D4C9ADCB,
 				965FF743CE5080F050623B97,
+				1BF91E1CE33903573BDDD1B3,
 				934405094CF2483A4F0844B8,
 				8BC21D127DE84C05356C6EF6,
 				B31A08598735C138FCF0C29C,
