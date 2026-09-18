@@ -72,6 +72,24 @@ enum ZoonTomorrow {
         let caveat: String
         let confidence: MetricConfidence
         let sentence: String
+
+        /// The lead clause of `sentence`, alone.
+        ///
+        /// The AX5 capture of this screen is one undifferentiated wall of
+        /// 34-point bold: the shortfall, the window and the wake margin run
+        /// together and fill the display, pushing the timeline strip -- which
+        /// carries those same times in a scannable row -- far below the fold.
+        ///
+        /// Two of the three clauses are what the strip already shows. This
+        /// one is not: whether the plan reaches the need is the honest fact
+        /// this sentence exists to state, and nothing else on the screen
+        /// says it. So at accessibility sizes the view reads this and lets
+        /// the strip carry the times, which is the easier place to read them
+        /// anyway.
+        ///
+        /// Derived in `makeSentence` rather than re-split from `sentence`,
+        /// so the short form cannot drift from the long one.
+        let leadClause: String
     }
 
     /// The range the ready buffer may be set to, in minutes.
@@ -254,7 +272,8 @@ enum ZoonTomorrow {
             why: why,
             caveat: "This is a plan from your nights and tomorrow's start time. It is not a medical recommendation and does not predict how you will feel.",
             confidence: confidence,
-            sentence: sentence
+            sentence: sentence.full,
+            leadClause: sentence.lead
         )
     }
 
@@ -389,7 +408,7 @@ enum ZoonTomorrow {
         windowEnd: Date,
         morning: Event?,
         calendar: Calendar
-    ) -> String {
+    ) -> (full: String, lead: String) {
         // What this plan actually delivers, rather than what was aimed at.
         //
         // The sentence used to quote `targetSleep` unconditionally. Once the
@@ -405,17 +424,22 @@ enum ZoonTomorrow {
         let achievable = max(0, wake.timeIntervalSince(bedtime) / 60)
         let window = "Suggested sleep window: \(clock(windowStart, calendar: calendar)) – \(clock(windowEnd, calendar: calendar))."
 
-        var text: String
+        // The lead is the clause the timeline strip cannot show. Everything
+        // after it -- the window, the wake margin -- the strip states in a
+        // row of times, which is why the long form may drop them and the
+        // short form may not drop this.
+        let lead: String
         if targetSleep - achievable > sentenceShortfallTolerance {
-            text = "This window gives about \(SleepNightFeatures.formatMinutes(achievable)), short of the \(SleepNightFeatures.formatMinutes(targetSleep)) you need. \(window)"
+            lead = "This window gives about \(SleepNightFeatures.formatMinutes(achievable)), short of the \(SleepNightFeatures.formatMinutes(targetSleep)) you need."
         } else {
-            text = "Aim for \(SleepNightFeatures.formatMinutes(targetSleep)) tonight. \(window)"
+            lead = "Aim for \(SleepNightFeatures.formatMinutes(targetSleep)) tonight."
         }
 
+        var text = "\(lead) \(window)"
         if let morning {
             text += " Wake leaves \(Int(readyBufferMinutes)) minutes before \(clock(morning.start, calendar: calendar))."
         }
-        return text
+        return (full: text, lead: lead)
     }
 
     private static func clock(_ date: Date, calendar: Calendar) -> String {

@@ -10,14 +10,23 @@ struct ZoonTomorrowView: View {
     /// stored record with expiry semantics is the model, and a second store
     /// keyed by day would be a second thing that can go stale.
     @State private var horizonCommitments: [Date: Date] = [:]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 if let plan {
-                    Text(plan.sentence)
+                    // At accessibility sizes the lead clause alone. The
+                    // full sentence is three facts, and `HorizonStrip`
+                    // directly below states two of them as a row of times --
+                    // at AX5 the paragraph fills the screen and pushes that
+                    // strip past the fold, so the times end up further away
+                    // in the form that is harder to read. The clause that
+                    // stays is the one the strip cannot show.
+                    Text(dynamicTypeSize.isAccessibilitySize ? plan.leadClause : plan.sentence)
                         .font(Theme.text(22, weight: .semibold))
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(plan.sentence)
 
                     HorizonStrip(
                         nodes: plan.nodes,
