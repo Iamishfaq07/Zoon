@@ -94,6 +94,92 @@ jobs:
           } | tee -a "$GITHUB_STEP_SUMMARY"
           exit 0
 
+  watch:
+    name: Build (watchOS Simulator)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The watch app has only ever been built as something the iOS app
+      # embeds. That proves it compiles -- `Verify every source compiled`
+      # lists ZoonWatch explicitly for exactly that reason -- and proves
+      # nothing about whether it builds *for watchOS*, because an embedded
+      # build is driven by the iOS scheme and inherits its destination.
+      #
+      # It also cannot be run. `xcodebuild` needs a scheme naming the watch
+      # target before it can put the app on a watch simulator, so until now
+      # the watch could not be launched, screenshotted or regression-tested
+      # at all -- the whole ZoonWatch surface has never been photographed.
+      # This job is the first half of fixing that: prove the scheme builds
+      # standalone for a real watchOS destination before anything tries to
+      # install from it.
+      - name: Resolve a watch simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available --json > devices.json
+          UDID=$(python3 - <<'PYEOF'
+          import json
+          data = json.load(open("devices.json"))["devices"]
+          best = None
+          for runtime, devices in sorted(data.items()):
+              if "watchOS" not in runtime:
+                  continue
+              for d in devices:
+                  if d.get("isAvailable") and "Watch" in d["name"]:
+                      best = d
+          if best is None:
+              raise SystemExit("No watchOS simulator on this runner.")
+          print(best["udid"])
+          PYEOF
+          )
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Using watch simulator $UDID"
+
+      - name: Build ZoonWatch for the watch simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme ZoonWatch \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            2>&1 | tee watch-build.log | tail -40
+
+      # Same guarantee the iOS job makes, scoped to the watch: a file dropped
+      # from the watch target builds green with the feature missing.
+      - name: Verify every watch source compiled
+        if: ${{ !cancelled() }}
+        run: |
+          [ -s watch-build.log ] || { echo "No build log."; exit 0; }
+          MISSING=""
+          for f in $(find ZoonWatch ZoonWatchWidget -name '*.swift' | sort); do
+            base=$(basename "$f")
+            grep -q -F -- "/$base" watch-build.log || MISSING="$MISSING $base"
+          done
+          COUNT=$(find ZoonWatch ZoonWatchWidget -name '*.swift' | wc -l | tr -d ' ')
+          {
+            echo "### Watch sources"
+            echo ""
+            if [ -n "$MISSING" ]; then
+              echo "Did not reach the compiler:"
+              echo ""
+              for m in $MISSING; do echo "- \`$m\`"; done
+            else
+              echo "All $COUNT watch sources compiled."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: watch-build-log
+          path: watch-build.log
+          if-no-files-found: ignore
+
   build:
     name: Build (iOS Simulator)
     needs: project
