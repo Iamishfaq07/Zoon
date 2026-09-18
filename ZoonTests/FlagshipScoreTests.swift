@@ -23,6 +23,11 @@ final class FlagshipScoreTests: XCTestCase {
                 confidence: .medium
             ),
             goalMinutes: 480,
+            // Stated, because these tests are about the *confidence* gate and
+            // a snapshot that was never told it has a recovery reading now
+            // declines to state one for the other reason entirely -- which
+            // would pass the assertions below for the wrong cause.
+            hasRecovery: true,
             sleepIntelligencePercent: intelligence ?? 0,
             sleepIntelligenceBand: intelligence.map {
                 SleepIntelligenceScore.Band.forPercent($0).label

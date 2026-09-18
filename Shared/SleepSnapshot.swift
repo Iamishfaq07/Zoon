@@ -491,7 +491,22 @@ extension SleepSnapshot {
         insight: SleepInsight,
         goalMinutes: Double,
         recoveryPercent: Int = 0,
-        hasRecovery: Bool = true,
+        /// Defaults to `false`, matching the stored property.
+        ///
+        /// It defaulted to `true` beside a percent defaulting to 0, so any
+        /// caller that named neither produced a snapshot asserting it had a
+        /// recovery reading of zero. The watch's TODAY page drew exactly that
+        /// -- a dial reading "0 RECOVERY" over an empty signals row -- and it
+        /// went unseen because that page had no way of being photographed
+        /// until now.
+        ///
+        /// The live path escaped only by accident: it sets
+        /// `recoveryConfidence` afterwards, and `canStateRecovery` consults
+        /// the confidence before it ever reaches this flag. A caller that set
+        /// neither got the migration branch, which assumes an old snapshot
+        /// and shows the number. Safe by luck is not safe, and the default
+        /// that means "I was not told" should be the one that claims least.
+        hasRecovery: Bool = false,
         bodyBattery: Int? = nil,
         strain: Double? = nil,
         sleepPerformance: Double = 0,

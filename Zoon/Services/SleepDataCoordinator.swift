@@ -1251,6 +1251,11 @@ final class SleepDataCoordinator {
             insight: context.insight,
             goalMinutes: goal,
             recoveryPercent: context.recovery.percent,
+            // Said explicitly rather than inherited from a default. This is
+            // the one question the flag exists to answer, and the answer is
+            // already computed -- `presentation.isShowable` is what every
+            // phone surface gates on.
+            hasRecovery: context.recovery.presentation.isShowable,
             bodyBattery: context.bodyBattery.current,
             strain: context.strain.value,
             sleepPerformance: context.sleepNeed.performancePercent,

@@ -117,7 +117,7 @@ enum MockData {
     )
 
     static var snapshot: SleepSnapshot {
-        SleepSnapshot(
+        var result = SleepSnapshot(
             features: goodNight,
             score: SleepScore.compute(for: goodNight, goalMinutes: 480),
             insight: goodInsight,
@@ -128,6 +128,15 @@ enum MockData {
             // is exactly the state `flagshipScore` exists to detect.
             sleepIntelligenceVersion: SleepIntelligenceScore.currentVersion
         )
+        // Stated, because the flag now defaults to the honest answer and this
+        // snapshot does have a reading to show. Without them the watch's
+        // TODAY page correctly hides its dial -- right behaviour, useless
+        // demo. `recoveryConfidence` is not an initialiser parameter, so it
+        // is assigned the same way the live coordinator assigns it.
+        result.recoveryPercent = 72
+        result.hasRecovery = true
+        result.recoveryConfidence = MetricConfidence.moderate.rawValue
+        return result
     }
 
     /// The habitual night length the autopilot would measure from `history`.
