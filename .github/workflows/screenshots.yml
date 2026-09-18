@@ -734,6 +734,24 @@ jobs:
                 echo "::warning::simctl ui content_size is not supported on this watchOS simulator; large-text watch coverage still unproven."
               fi
 
+              # Two different pages can never be byte-identical, whatever
+              # the clock is doing. That makes this the one image check the
+              # live status bar cannot defeat: comparing a page against the
+              # size sweep misses a fallback whenever the minute rolled over
+              # between them, which is exactly how the Score-light fallback
+              # survived while Nap and Tonight were caught. Comparing the
+              # pages against each other catches that pair.
+              for a in watch-screenshots/page-*.png; do
+                [ -e "$a" ] || continue
+                for b in watch-screenshots/page-*.png; do
+                  [ "$a" \< "$b" ] || continue
+                  if cmp -s "$a" "$b"; then
+                    echo "::warning::$(basename "$a" .png) and $(basename "$b" .png) rendered the same screen; at least one fell back. Dropping both."
+                    rm -f "$a" "$b"
+                  fi
+                done
+              done
+
               FIRST_CASE=0
             fi
             # Shut each one down before the next: several booted watch
