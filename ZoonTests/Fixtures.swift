@@ -89,7 +89,12 @@ enum Fixture {
         /// from the sleep period has an efficiency that is an artefact of
         /// that inference rather than a measurement of anything, which is
         /// the distinction `SleepOpportunity` refuses to attribute across.
-        timeInBedIsEstimated: Bool = false
+        timeInBedIsEstimated: Bool = false,
+        /// Time awake inside the sleep window. Defaults to in-bed minus
+        /// asleep, which is what a night with no separate awake reading looks
+        /// like -- supplied, it decouples WASO from efficiency, which
+        /// anything testing fragmentation against duration needs.
+        awakeMinutes: Double? = nil
     ) -> SleepNightFeatures {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -127,7 +132,7 @@ enum Fixture {
             deepMinutes: staged ? (deepMinutes ?? timeAsleepMinutes * 0.18) : 0,
             remMinutes: staged ? (remMinutes ?? timeAsleepMinutes * 0.22) : 0,
             unspecifiedAsleepMinutes: staged ? 0 : timeAsleepMinutes,
-            awakeMinutes: max(0, timeInBedMinutes - timeAsleepMinutes),
+            awakeMinutes: awakeMinutes ?? max(0, timeInBedMinutes - timeAsleepMinutes),
             wakeCount: wakeCount,
             sleepLatencyMinutes: 12,
             avgHeartRate: minHeartRate.map { $0 + 8 },
