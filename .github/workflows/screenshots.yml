@@ -673,8 +673,25 @@ jobs:
                   -zoonDemo YES -zoonWatchPage "$PAGE" || true
                 sleep 6
                 LOWER=$(echo "$PAGE" | tr '[:upper:]' '[:lower:]')
-                xcrun simctl io "$UDID" screenshot "watch-screenshots/page-$LOWER.png" \
-                  || echo "::warning::page $PAGE did not render"
+                SHOT="watch-screenshots/page-$LOWER.png"
+                xcrun simctl io "$UDID" screenshot "$SHOT" \
+                  || { echo "::warning::page $PAGE did not render"; continue; }
+
+                # A page that is not in the deck cannot be selected, and the
+                # tab view falls back rather than failing. Nap and Tonight are
+                # both conditional on the snapshot carrying the data they
+                # describe, so pinning them on a snapshot without it produced
+                # a byte-identical copy of the page that *was* showing --
+                # committed under a name it did not depict, which is worse
+                # than no render because it reads as evidence.
+                #
+                # The size sweep shot this same case moments ago, so an exact
+                # match against it is the test: identical bytes mean nothing
+                # was selected.
+                if cmp -s "$SHOT" "watch-screenshots/$SLUG.png"; then
+                  echo "::warning::$PAGE is not in the deck for this snapshot; the capture fell back. Not committing a render named for a page it does not show."
+                  rm -f "$SHOT"
+                fi
               done
 
               # Large watch text, on the same case.
@@ -729,6 +746,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p docs/screenshots/watch
+          # Cleared rather than overwritten. The step only ever wrote files,
+          # so a page or a case size that stopped rendering left its last
+          # good picture behind indefinitely -- and a stale render is
+          # indistinguishable from a current one in a diff. The committed set
+          # should be what this run actually photographed, and nothing else.
+          rm -f docs/screenshots/watch/*.jpg
           # Downscaled the same way the phone renders are, so the repository
           # does not grow by a full-resolution PNG per run.
           for png in watch-screenshots/*.png; do
