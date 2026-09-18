@@ -17,6 +17,9 @@ import XCTest
 /// This is the guarantee that does not depend on pixels: for every page, the
 /// demo snapshot chosen for it satisfies the condition `WatchRootView` puts
 /// that page behind.
+/// `@MainActor` because `WatchLink` is: the demo snapshot is chosen on the
+/// main actor, and a synchronous test method is nonisolated by default.
+@MainActor
 final class WatchDemoPageTests: XCTestCase {
 
     private func snapshot(_ page: String) -> SleepSnapshot {
