@@ -346,15 +346,46 @@ jobs:
             | python3 -c "import json,sys; data=json.load(sys.stdin)['devices']; \
               print(next(d['udid'] for runtime in data.values() for d in runtime if d['name'].startswith('iPhone')))")
           echo "Testing on simulator $UDID"
-          xcodebuild test \
-            -project Zoon.xcodeproj \
-            -scheme Zoon \
-            -only-testing:ZoonUITests \
-            -destination "id=$UDID" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            2>&1 | tee uitest.log
+
+          run_uitests() {
+            xcodebuild test \
+              -project Zoon.xcodeproj \
+              -scheme Zoon \
+              -only-testing:ZoonUITests \
+              -destination "id=$UDID" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              2>&1 | tee "$1"
+          }
+
+          # One retry, and only for a launch that never started.
+          #
+          # `testCoreSleepAndCoachFlowsOpen` failed twice on one commit with
+          # "Timed out while launching application via Xcode", and the same
+          # code passed on the next commit untouched. Both UI tests launch the
+          # app in demo mode and the *first* one passed each time, so the app
+          # starts fine; what fails is a second cold launch under the debugger
+          # on a busy runner, seventy seconds in.
+          #
+          # The retry is deliberately narrow. It fires only when the log
+          # carries that launch-timeout signature and no assertion failed --
+          # a real failure, a crash, or a wrong value is not retried, because
+          # a retry that hides those is precisely the silent substitution this
+          # workflow exists to catch. And a run that needed the retry says so
+          # in the summary rather than passing quietly, so a flake that
+          # becomes constant is visible instead of absorbed.
+          if ! run_uitests uitest.log; then
+            if grep -q "Timed out while launching application" uitest.log \
+               && ! grep -q "XCTAssert" uitest.log; then
+              echo "::warning::UI tests failed to launch the app; retrying once. This is a runner condition, not a product failure -- if it recurs every run, it has stopped being one."
+              echo "retried=1" >> "$GITHUB_OUTPUT"
+              mv uitest.log uitest-first-attempt.log
+              run_uitests uitest.log
+            else
+              exit 1
+            fi
+          fi
 
       - name: Summarise UI tests
         if: always() && steps.build.outcome == 'success'
@@ -362,6 +393,11 @@ jobs:
           {
             echo "### ZoonUITests"
             echo ""
+            if [ "${{ steps.uitest.outputs.retried }}" = "1" ]; then
+              echo "The first attempt failed to launch the app and was retried."
+              echo "See \`uitest-first-attempt.log\` in the artifact."
+              echo ""
+            fi
             if [ "${{ steps.uitest.outcome }}" = "success" ]; then
               PASSED=$(grep -c "Test Case.*passed" uitest.log || true)
               echo "${PASSED} test(s) passed."
@@ -495,5 +531,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: build.log
+          # The UI-test logs ride along here rather than with `test.log`,
+          # which is uploaded before the UI tests have run. The first-attempt
+          # log only exists when a launch timed out and was retried, and it is
+          # the thing to read when deciding whether that retry is still
+          # covering a runner condition or has started covering a defect.
+          path: |
+            build.log
+            uitest.log
+            uitest-first-attempt.log
           retention-days: 14
+          if-no-files-found: warn
