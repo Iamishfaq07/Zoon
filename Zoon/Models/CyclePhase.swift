@@ -9,6 +9,30 @@ import HealthKit
 ///
 /// Entirely opt-in — see `HealthKitManager.requestCycleTrackingAuthorization`.
 /// Nothing here is read, computed, or shown unless the user turns it on.
+///
+/// **Why there is no menopause or perimenopause context.** §21 asks for it
+/// only if a public API exists. None does. The `sdk-probe` CI job searched
+/// the installed iPhoneOS 26.5 and WatchOS 26.5 HealthKit headers,
+/// `.swiftinterface` and `.apinotes` for anything matching menopause,
+/// perimenopause or climacteric and found nothing — not in the public surface
+/// and not even in the linker stub, which is where the workout-zone classes
+/// at least show up. The whole cycle vocabulary it did find is:
+///
+/// ```text
+/// HKCategoryTypeIdentifierInfrequentMenstrualCycles
+/// HKCategoryTypeIdentifierIrregularMenstrualCycles
+/// HKCategoryTypeIdentifierMenstrualFlow
+/// HKCategoryTypeIdentifierProlongedMenstrualPeriods
+/// HKCategoryValueMenstrualFlow*
+/// HKMetadataKeyMenstrualCycleStart
+/// ```
+///
+/// Zoon reads `menstrualFlow` and nothing else. The three cycle-irregularity
+/// identifiers are deliberately left alone: they are Apple's own flags about
+/// a cycle being unusual, and repeating one back to somebody is a clinical
+/// statement in a sleep app's voice. Inferring a menopausal state from them
+/// would be worse — an unvalidated diagnosis from a signal never meant to
+/// carry one.
 enum CyclePhase: String, Codable, Sendable, CaseIterable {
     case periodDays, earlier, middle, later
 
