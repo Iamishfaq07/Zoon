@@ -180,6 +180,16 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// snapshot on disk still decodes.
     var tonightTargetLabel: String = ""
     var tonightTargetNote: String = ""
+    /// `tonightTargetNote` in the room a watch has -- see
+    /// `SleepAutopilot.Plan.shortSentence`.
+    ///
+    /// Shipped alongside rather than replacing it: the full sentence is what
+    /// Siri speaks, what the watch's accessibility label reads, and what the
+    /// phone widget shows, and all three have room for it. Only the watch's
+    /// drawn line does not. Empty on a payload from a phone that predates
+    /// this, which the watch reads as "fall back to the long one" rather
+    /// than as "say nothing".
+    var tonightTargetNoteShort: String = ""
 
     /// The tightest `UncertaintyForecast` range, phrased for a small screen:
     /// where recent nights actually landed.
@@ -465,6 +475,7 @@ extension SleepSnapshot {
         // reads as "no plan yet" rather than failing.
         tonightTargetLabel = try container.decodeIfPresent(String.self, forKey: .tonightTargetLabel) ?? ""
         tonightTargetNote = try container.decodeIfPresent(String.self, forKey: .tonightTargetNote) ?? ""
+        tonightTargetNoteShort = try container.decodeIfPresent(String.self, forKey: .tonightTargetNoteShort) ?? ""
         tomorrowRangeLabel = try container.decodeIfPresent(String.self, forKey: .tomorrowRangeLabel) ?? ""
         isTonightTargetHolding = try container.decodeIfPresent(Bool.self, forKey: .isTonightTargetHolding) ?? false
 

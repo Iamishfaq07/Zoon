@@ -1296,6 +1296,7 @@ final class SleepDataCoordinator {
         ) {
             snapshot.tonightTargetLabel = plan.targetRangeLabel
             snapshot.tonightTargetNote = plan.sentence
+            snapshot.tonightTargetNoteShort = plan.shortSentence
             snapshot.isTonightTargetHolding = plan.isHolding
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: recentNights).first {

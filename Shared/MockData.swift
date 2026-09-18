@@ -193,6 +193,7 @@ enum MockData {
         ) {
             result.tonightTargetLabel = plan.targetRangeLabel
             result.tonightTargetNote = plan.sentence
+            result.tonightTargetNoteShort = plan.shortSentence
             result.isTonightTargetHolding = plan.isHolding
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: history).first {

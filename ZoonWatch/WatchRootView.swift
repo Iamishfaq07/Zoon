@@ -369,7 +369,15 @@ private struct TonightPage: View {
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
-                Text(snapshot.tonightTargetNote)
+                // The short form when the phone sent one, the long one
+                // otherwise -- an older phone paired to a newer watch sends
+                // nothing here, and a blank line would be worse than a
+                // truncated sentence. The accessibility label below keeps the
+                // full text either way, so nothing is lost to a screen
+                // reader by drawing less.
+                Text(snapshot.tonightTargetNoteShort.isEmpty
+                     ? snapshot.tonightTargetNote
+                     : snapshot.tonightTargetNoteShort)
                     .font(Theme.text(10))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
