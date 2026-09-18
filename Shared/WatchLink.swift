@@ -95,6 +95,23 @@ final class WatchLink: NSObject {
     }
 
     func activate() {
+        // Screenshot capture and demos: `-zoonDemo YES`.
+        //
+        // The watch holds no HealthKit code and no store by design -- it
+        // reads a snapshot the phone sends. On a simulator with no paired
+        // phone that snapshot never arrives, so the only thing that could
+        // ever be photographed was the waiting state. That is the whole
+        // reason this surface has no renders: not that capturing it is hard,
+        // but that there was nothing on screen to capture.
+        //
+        // The sample snapshot is badged wherever it appears, the same as on
+        // the phone, so a demo capture cannot be mistaken for a measured one.
+        if DataEnvironment.isDemoLaunchArgument {
+            snapshot = MockData.snapshotWithBadges
+            isActivated = true
+            return
+        }
+
         #if canImport(WatchConnectivity)
         guard WCSession.isSupported() else {
             logger.notice("WCSession unsupported on this device")

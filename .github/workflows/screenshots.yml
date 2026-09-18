@@ -549,3 +549,86 @@ jobs:
           path: screenshots/
           retention-days: 30
           if-no-files-found: warn
+
+  watch:
+    name: Watch screenshots
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # The watch had never been photographed -- not photographed badly, not
+      # at all. Two things were missing and both are now in place: a scheme
+      # naming the watch target, so `xcodebuild` can build for a watchOS
+      # destination, and a demo path in `WatchLink`, so a simulator with no
+      # paired phone has a snapshot to draw instead of its waiting state.
+      #
+      # One size to begin with. The audit asks for seven case sizes and that
+      # is the right end state, but a capture that has never run once should
+      # prove it can take a single picture before it is asked to take seven.
+      - name: Boot a watch simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available --json > devices.json
+          LINE=$(python3 - <<'PYEOF'
+          import json
+          data = json.load(open("devices.json"))["devices"]
+          best = None
+          for runtime, devices in sorted(data.items()):
+              if "watchOS" not in runtime:
+                  continue
+              for d in devices:
+                  if d.get("isAvailable") and "Watch" in d["name"]:
+                      best = d
+          if best is None:
+              raise SystemExit("No watchOS simulator on this runner.")
+          print(best["udid"] + " " + best["name"])
+          PYEOF
+          )
+          UDID="${LINE%% *}"
+          NAME="${LINE#* }"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Booting $NAME ($UDID)"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Build ZoonWatch
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme ZoonWatch \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -20
+
+      - name: Install, launch and capture
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          APP=$(find build/Build/Products -maxdepth 3 -name "ZoonWatch.app" | head -1)
+          [ -n "$APP" ] || { echo "No ZoonWatch.app was produced."; exit 1; }
+          echo "Installing $APP"
+          xcrun simctl install "$UDID" "$APP"
+
+          mkdir -p watch-screenshots
+          # `-zoonDemo YES` is the same flag the phone capture uses. Without it
+          # the watch draws its waiting state and the picture proves nothing.
+          xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp -zoonDemo YES
+          # No launch animation to wait out, but the first frame after launch
+          # is not necessarily the settled one.
+          sleep 8
+          xcrun simctl io "$UDID" screenshot watch-screenshots/watch-home.png
+          ls -la watch-screenshots
+
+      - name: Upload watch screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-screenshots
+          path: watch-screenshots/
+          retention-days: 30
+          if-no-files-found: warn

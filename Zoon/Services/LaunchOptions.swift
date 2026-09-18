@@ -27,7 +27,7 @@ enum LaunchOptions {
     /// Mock nights are badged **Sample data** wherever they appear, so a demo
     /// screenshot can never be mistaken for a measured one.
     static var isDemo: Bool {
-        UserDefaults.standard.bool(forKey: "zoonDemo")
+        DataEnvironment.isDemoLaunchArgument
     }
 
     /// Which tab to open on, or which sheet to open over the default tab.
