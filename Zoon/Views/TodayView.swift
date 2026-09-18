@@ -412,30 +412,24 @@ struct TodayView: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// "Ishfaq, your body needs moderate output today." — or the same
-    /// sentence without the name, when none has been set. The name is a
-    /// local preference and empty is a real answer; nothing here nags for it
-    /// or invents one.
+    /// The opening line, composed so each half says when it is talking about.
+    ///
+    /// This used to read "your body needs moderate output today" at any hour,
+    /// derived entirely from the overnight band — a score `RecoveryScore`
+    /// documents as not moving during the day. At ten past two that is a
+    /// morning reading spoken in the present tense about an afternoon it
+    /// knows nothing about. `DaytimeOpening` carries the reasoning and the
+    /// composition; the current half comes from `todayStress`, which is
+    /// measured from quiet daytime readings and does move.
     private func openingLine(_ context: DayContext) -> String {
-        // The band is a reading of the same score the ring may be declining
-        // to state. Saying "your body needs moderate output today" off a
-        // score built from sleep duration alone is the same claim in prose.
-        guard context.recovery.presentation.isShowable else {
-            let name = preferences.displayName
-            let line = "here is last night. Recovery needs more physiological data before it can call today."
-            return name.isEmpty
-                ? line.prefix(1).uppercased() + line.dropFirst()
-                : "\(name), \(line)"
-        }
-        let body = switch context.recovery.band {
-        case .high: "your body can take load today."
-        case .moderate: "your body needs moderate output today."
-        case .low: "your body is asking for a light day."
-        }
-        let name = preferences.displayName
-        return name.isEmpty
-            ? body.prefix(1).uppercased() + body.dropFirst()
-            : "\(name), \(body)"
+        DaytimeOpening.sentence(
+            // Withheld means withheld: a band is only passed when the score
+            // is showable, so the sentence cannot state a reading the ring
+            // is declining to print.
+            band: context.recovery.presentation.isShowable ? context.recovery.band : nil,
+            currentBand: coordinator.todayStress?.band,
+            name: preferences.displayName
+        )
     }
 
     /// One construction, shared by the plan card and the energy section, so
