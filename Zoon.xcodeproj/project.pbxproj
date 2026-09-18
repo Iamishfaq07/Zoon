@@ -16,6 +16,7 @@
 		01242138DDC5E42FEC8354EC /* fire.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 854198DBD17EC0FC3B27D0C9 /* fire.mp3 */; };
 		0144E93FF2E5BE6FCEDEACFF /* SleepVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24D0E274A10CDD544D1B02C /* SleepVocabulary.swift */; };
 		0151C381D627B15F23BDC2B7 /* WhatIfTonightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B768CD8C990E50572A02A54E /* WhatIfTonightCard.swift */; };
+		01713D42B7CF798F46E45967 /* ClockText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27817D7CA73C9154ED6FCCCB /* ClockText.swift */; };
 		01933AFC7F3E026D7BF0F43E /* NapCoachTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C78F8DC837A9459797ADB0B /* NapCoachTests.swift */; };
 		01AD88718D5C8DAA8833F1FA /* EnergyDrivers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C78C81EC152B94DA0EC92A7 /* EnergyDrivers.swift */; };
 		01BF80DA7FEED1F542E212EA /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35D25F2515856E1F2C18D447 /* WatchRootView.swift */; };
@@ -402,6 +403,7 @@
 		4E4F2E23C21B2B9EF1376A11 /* MorningInThree.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC1633667837266E354EB2A /* MorningInThree.swift */; };
 		4E7EB3F8D27E76CE7A4117CB /* CycleContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B737B1F7FDB18E09C5DA47F /* CycleContextTests.swift */; };
 		4EF58D8227C0F1706874FD57 /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
+		4EF94F9B772AB716E62E3238 /* ClockText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27817D7CA73C9154ED6FCCCB /* ClockText.swift */; };
 		4F02093C10C2B543DA384526 /* SleepReplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE0980BAD4F97A00BC192866 /* SleepReplay.swift */; };
 		4F2E87506FDADC731060A171 /* DataEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 275F0131A98765781C43B872 /* DataEnvironmentTests.swift */; };
 		502CD28647285A4397F61325 /* AudioSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3A56B5A89CF6121E0FF4E9 /* AudioSessionCoordinator.swift */; };
@@ -432,6 +434,7 @@
 		5576B51153477F740C14D9BC /* AdaptiveJournal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278FC31FA8DF17C3CB00F096 /* AdaptiveJournal.swift */; };
 		559FB43055B1776B1C924B21 /* BadgeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18237AF80A96726E915E09D /* BadgeWidget.swift */; };
 		55CC0A8D97AC4B6EE9180B7E /* RollingBaseline.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE7FB093E433D30982864FBB /* RollingBaseline.swift */; };
+		5647EE235C32EFDDD909289C /* ClockText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27817D7CA73C9154ED6FCCCB /* ClockText.swift */; };
 		56541B308507C47C97DA7463 /* RecoveryDayPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F469633104E821F966418EE /* RecoveryDayPlan.swift */; };
 		568B20415CA2A8AE84494F2E /* SpotlightIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B09B31C7251DB5C2AD3FFB /* SpotlightIndexer.swift */; };
 		56B082348918AEFB14D30692 /* SourceCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE4A990528A240EACB4B9AB /* SourceCoverage.swift */; };
@@ -925,6 +928,7 @@
 		C1996F2547CD476775D58F63 /* NaturalJournalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06902ACD41EC18AE77E3413F /* NaturalJournalTests.swift */; };
 		C1A1A299E033E992DD7306FE /* CoachTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12596A7336DD73648024FF0C /* CoachTabView.swift */; };
 		C1F173421CCF2617E80B07AA /* NightDetectiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF8A3FDEA744A3C1FD02525 /* NightDetectiveTests.swift */; };
+		C25B974F81F84138F073DF4B /* ClockText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27817D7CA73C9154ED6FCCCB /* ClockText.swift */; };
 		C26B3C161587FA852F76AF3C /* ShiftRosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0FFD4EE16184D614C2B9342 /* ShiftRosterView.swift */; };
 		C286634AE25F50A8CDC04E6F /* ZoonWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFEE55A02984C083C52C8EFC /* ZoonWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C2BBDB18FB532658E1FFC823 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
@@ -965,6 +969,7 @@
 		CB12C080BD0DB18EFADE63E4 /* EvidenceHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A3E015E3D97D277509CFAF8 /* EvidenceHistoryView.swift */; };
 		CB596B85702EBCC52D273243 /* ClinicianReportGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DEF6DFC0E15EBCAB541C39 /* ClinicianReportGenerator.swift */; };
 		CB885B593532FC11B3595942 /* BodyClockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6FD7CE0766096CAE5D60F2 /* BodyClockView.swift */; };
+		CB8AB6553DEEBC9A880CC0A1 /* ClockText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27817D7CA73C9154ED6FCCCB /* ClockText.swift */; };
 		CB987DA692F18518F101DA11 /* UncertaintyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3804031F499B6717417985F3 /* UncertaintyForecast.swift */; };
 		CBA371E186C0280AE3F39FC1 /* street.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2B29305656C5FD1D21F084DA /* street.mp3 */; };
 		CBBF746DD5E11C79D4C9ADCB /* JournalCorrelatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5916908C5ABDE5191F03FFF2 /* JournalCorrelatorTests.swift */; };
@@ -1054,6 +1059,7 @@
 		DD3E19CEF586A462AD026253 /* ContextForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64CF3AFB3F90453076AA3237 /* ContextForecastTests.swift */; };
 		DDAD93731E30FA94B44B769F /* CaffeineCutoffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521868F4960E566A4B24993B /* CaffeineCutoffTests.swift */; };
 		DDB31A760C94229400268E9E /* SoundscapeSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CE60545E37A1FA38FA95079 /* SoundscapeSound.swift */; };
+		DE23454B90FCE4811A595472 /* ClockTextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43ECDC12A5A45FB363525AB3 /* ClockTextTests.swift */; };
 		DE3BB832F03B5F2B62276EEE /* AlertnessCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = F29E176051F301525B2FD457 /* AlertnessCheck.swift */; };
 		DE877ECB17E3E70CC0E5174C /* SnoreSignalAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF6BCFC8B0ACCBC5470DF3C4 /* SnoreSignalAnalyzerTests.swift */; };
 		DEB765085C487BBC96E3C657 /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
@@ -1384,6 +1390,7 @@
 		2635A3D35E4CFF48DE1D28C1 /* BehaviorDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorDetail.swift"; sourceTree = "<group>"; };
 		2737914DCB7E7960D6E8862E /* ScheduleStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScheduleStateStore.swift"; sourceTree = "<group>"; };
 		275F0131A98765781C43B872 /* DataEnvironmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DataEnvironmentTests.swift"; sourceTree = "<group>"; };
+		27817D7CA73C9154ED6FCCCB /* ClockText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClockText.swift"; sourceTree = "<group>"; };
 		278FC31FA8DF17C3CB00F096 /* AdaptiveJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AdaptiveJournal.swift"; sourceTree = "<group>"; };
 		28870987D3845664A8200DAA /* evening.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "evening.mp3"; sourceTree = "<group>"; };
 		28D33E57B11E26A089C4D79C /* ModelHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelHealthView.swift"; sourceTree = "<group>"; };
@@ -1444,6 +1451,7 @@
 		427D7648D38B1148AC3FFCDB /* HypnogramV4.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HypnogramV4.swift"; sourceTree = "<group>"; };
 		4289B24A9E74399A939DC4CE /* blizzard.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "blizzard.mp3"; sourceTree = "<group>"; };
 		428FBEDA15967526E0AD1710 /* NightKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightKey.swift"; sourceTree = "<group>"; };
+		43ECDC12A5A45FB363525AB3 /* ClockTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClockTextTests.swift"; sourceTree = "<group>"; };
 		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		44354442EF56D3F66F5A44C9 /* ContextForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContextForecast.swift"; sourceTree = "<group>"; };
 		445F8A134A58B330BC70BD4E /* ZoonCoverageMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonCoverageMatrix.swift"; sourceTree = "<group>"; };
@@ -2248,6 +2256,7 @@
 				6E407BFB2B97A928A2461870,
 				179EE108EDAE5A8AF12BC267,
 				370C5BDEA4F3E5D7B868D1EE,
+				43ECDC12A5A45FB363525AB3,
 				9F2A40EEF1B872BD18832EB5,
 				FFBF5D7530B48025E6C386CD,
 				E7CAE69D8521F6EE716F7F7D,
@@ -2480,6 +2489,7 @@
 				B9F5980DEE795F2BE0D5EFDB,
 				80C6DE1836BDCAD99246CBE2,
 				655883419539381EF69F3AB9,
+				27817D7CA73C9154ED6FCCCB,
 				5915B0A5070019691B3F923F,
 				D79C50895CF2915CDBF60299,
 				F60BBFAB53A49DC06328276E,
@@ -2965,6 +2975,7 @@
 				BE3479A93D226FA43D33D632,
 				1CFB29B458BD4653843BAC02,
 				685CC4CE718E33A2E941DB24,
+				4EF94F9B772AB716E62E3238,
 				78D6E367D281972E91F24432,
 				5336158BE6F998705122D1DC,
 				A736FAF868932C1CD8AEAADF,
@@ -3338,6 +3349,7 @@
 				7F1FD774C77398446079DB05,
 				750943B37F3CC82E47294B51,
 				2E0D04C1183BAFDA428773BC,
+				5647EE235C32EFDDD909289C,
 				DC0B80D10DE43A38F68922F2,
 				88446AFDCC703D68B000182B,
 				8BC9F3563D63078498A73C7B,
@@ -3493,6 +3505,7 @@
 				75AF780A28E3042F55F25EF0,
 				3B0C292367CF066DFBF3933F,
 				32B4001CBFDDE5161B6AE98B,
+				01713D42B7CF798F46E45967,
 				FF9AB807CA884059594565A8,
 				2F63D4FB21B04EFFA9D9BE09,
 				62B395821C6E23990CD0B783,
@@ -3646,6 +3659,7 @@
 				3CB1A3CE7CD0DB21BFBBCE0D,
 				B6CA3744AAC39758319902D1,
 				BC7D575AE1B56B8D2D59CB09,
+				DE23454B90FCE4811A595472,
 				81B875D5CE707A69C1006234,
 				5314F45E4500BE469037BD99,
 				CE43890CC17CA33E3C46211B,
@@ -3833,6 +3847,7 @@
 				A27702A883BC3F86A7DBF3BD,
 				A2D6A2C787C7A33E923D1055,
 				2D4A5B53CFA97343C47383B0,
+				CB8AB6553DEEBC9A880CC0A1,
 				4CC933E95842F8D8649D725C,
 				F65E22808E61488801622EE1,
 				213A353DA13601D9688D13DB,
@@ -4028,6 +4043,7 @@
 				29B9A25F14BD9AED4F1C7A6E,
 				4412C1937781F2DFFA6DC286,
 				F4514382464DF6813EBB3310,
+				C25B974F81F84138F073DF4B,
 				EB864BB699B30B8F52A04832,
 				D617C14768E82283100A5023,
 				7C5124798E7CB248FBA0DC5B,
