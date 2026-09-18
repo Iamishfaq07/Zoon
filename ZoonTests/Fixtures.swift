@@ -94,7 +94,12 @@ enum Fixture {
         /// asleep, which is what a night with no separate awake reading looks
         /// like -- supplied, it decouples WASO from efficiency, which
         /// anything testing fragmentation against duration needs.
-        awakeMinutes: Double? = nil
+        awakeMinutes: Double? = nil,
+        /// What the builder classified the sleep source as. `nil` by default,
+        /// which is what every night stored before the priority was carried
+        /// looks like -- and which `StageTrust` deliberately grades at the
+        /// floor rather than guessing upward.
+        stageSourcePriority: SourcePriority? = nil
     ) -> SleepNightFeatures {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -154,7 +159,8 @@ enum Fixture {
             isMock: true,
             timeZoneIdentifier: timeZoneIdentifier,
             measurementSources: measurementSources,
-            wristTempMeasured: wristTempMeasured ?? (wristTempDeltaC != nil)
+            wristTempMeasured: wristTempMeasured ?? (wristTempDeltaC != nil),
+            stageSourcePriority: stageSourcePriority
         )
     }
 

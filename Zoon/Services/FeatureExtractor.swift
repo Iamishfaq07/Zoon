@@ -244,7 +244,11 @@ struct FeatureExtractor {
             // The raw reading arrived, whether or not a baseline existed to
             // turn it into a delta -- see `wristTempMeasured`'s doc comment.
             wristTempMeasured: wristTemp != nil,
-            sleepApneaEventCount: apneaSummary?.eventCount
+            sleepApneaEventCount: apneaSummary?.eventCount,
+            // Classified by the builder while the sample's hardware string
+            // was still in scope; it cannot be worked out from anything this
+            // record holds. See `StageTrust`.
+            stageSourcePriority: session.stageSourcePriority
         )
 
         return Result(

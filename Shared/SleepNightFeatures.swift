@@ -190,6 +190,18 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// this existed, which means *unknown*, never *nobody*.
     var measurementSources: NightMeasurementSources = .empty
 
+    /// What the sleep source was, as `SleepSessionBuilder` classified it from
+    /// the sample's hardware string.
+    ///
+    /// Carried rather than re-derived: `sourceBundleIdentifier` above cannot
+    /// answer this question on its own, because an Apple Watch and an iPhone
+    /// both write under `com.apple.health` and only `productType`
+    /// distinguishes them. Deriving it here from what this type holds would
+    /// grade every Watch night as phone-or-manual. `nil` for a night
+    /// recorded before this existed, which means *unknown*, never *poor* --
+    /// see `StageTrust.grade`.
+    var stageSourcePriority: SourcePriority?
+
     /// Whether a raw sleeping wrist-temperature reading arrived this night.
     ///
     /// Not the same question as `wristTempDeltaC != nil`. The delta is this
@@ -277,7 +289,8 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         timeZoneIdentifier: String = TimeZone.current.identifier,
         measurementSources: NightMeasurementSources = .empty,
         wristTempMeasured: Bool = false,
-        sleepApneaEventCount: Int? = nil
+        sleepApneaEventCount: Int? = nil,
+        stageSourcePriority: SourcePriority? = nil
     ) {
         self.date = date
         self.bedtime = bedtime
@@ -316,6 +329,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         self.stageSegments = stageSegments
         self.timeZoneIdentifier = timeZoneIdentifier
         self.measurementSources = measurementSources
+        self.stageSourcePriority = stageSourcePriority
         self.wristTempMeasured = wristTempMeasured
         self.sleepApneaEventCount = sleepApneaEventCount
     }
@@ -408,6 +422,13 @@ extension SleepNightFeatures {
     /// hides the stage chart instead of drawing four empty bars.
     var hasStageBreakdown: Bool {
         (coreMinutes + deepMinutes + remMinutes) > 0
+    }
+
+    /// How much the stage breakdown is worth believing, as opposed to whether
+    /// one exists. `hasStageBreakdown` answers presence; this answers
+    /// provenance, and the two are not the same question.
+    var stageTrust: StageTrust {
+        StageTrust.grade(priority: stageSourcePriority, hasStages: hasStageBreakdown)
     }
 
     var deepPercentOfAsleep: Double? {
