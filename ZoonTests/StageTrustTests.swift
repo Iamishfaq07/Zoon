@@ -109,6 +109,53 @@ final class StageTrustTests: XCTestCase {
         XCTAssertEqual(night.stageTrust, .inferred)
     }
 
+    // MARK: - Surviving the store
+
+    /// The assertion that makes the rest of this file mean anything.
+    ///
+    /// The priority is derived from the HealthKit sample's hardware string,
+    /// which exists only at extraction. `SleepNightRecord` is what the app
+    /// actually reads nights back from, so without a column for it every
+    /// night on every screen would return `nil` and grade at the floor --
+    /// a trust layer that compiles, passes its unit tests, and is a no-op in
+    /// the app.
+    func testThePrioritySurvivesTheRoundTrip() {
+        let night = Fixture.night(daysAgo: 1, stageSourcePriority: .appleWatch)
+        let record = SleepNightRecord(features: night)
+
+        XCTAssertEqual(record.stageSourcePriority, .appleWatch, "not written")
+        XCTAssertEqual(
+            record.features().stageSourcePriority, .appleWatch,
+            "written but not read back"
+        )
+        XCTAssertEqual(record.features().stageTrust, .watch)
+    }
+
+    /// A re-sync that cannot work out the source must not erase one already
+    /// recorded -- the same rule the hypnogram follows, for the same reason.
+    /// `nil` means this extraction did not know, not that the night changed
+    /// hands.
+    func testALossyResyncDoesNotEraseAKnownSource() {
+        let record = SleepNightRecord(
+            features: Fixture.night(daysAgo: 1, stageSourcePriority: .appleWatch)
+        )
+        record.update(from: Fixture.night(daysAgo: 1, stageSourcePriority: nil), absoluteWristTempC: nil)
+        XCTAssertEqual(record.stageSourcePriority, .appleWatch, "a blank re-sync erased it")
+    }
+
+    /// And a re-sync that does know overwrites, so a night written before the
+    /// column existed is corrected the first time it is refreshed rather than
+    /// staying at the floor forever.
+    func testAResyncThatKnowsFillsInAnOlderNight() {
+        let record = SleepNightRecord(
+            features: Fixture.night(daysAgo: 1, stageSourcePriority: nil)
+        )
+        XCTAssertEqual(record.features().stageTrust, .inferred)
+
+        record.update(from: Fixture.night(daysAgo: 1, stageSourcePriority: .appleWatch), absoluteWristTempC: nil)
+        XCTAssertEqual(record.features().stageTrust, .watch)
+    }
+
     // MARK: - Wording
 
     /// The provenance lines describe the source, never the accuracy. Every
