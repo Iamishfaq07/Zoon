@@ -130,6 +130,40 @@ struct StressScore: Codable, Hashable, Sendable {
             : "Marked Experimental because part of this compares waking readings against your overnight baseline, and even a genuinely calm waking hour doesn't sit on the scale sleep does. Once there are enough quiet readings from this time of day, it compares like with like instead."
     }
 
+    /// Written out rather than synthesised, so `elapsedWakingMinutes` can
+    /// carry a default.
+    ///
+    /// Swift's memberwise initializer gives an optional `let` no default at
+    /// all, so adding one stored property broke all seven existing
+    /// construction sites — previews, mock data and the detail view — none of
+    /// which has any business knowing how long the day has been. An explicit
+    /// init keeps the property immutable and leaves those callers alone.
+    init(
+        percent: Int,
+        band: Band,
+        sampledMinutes: Double,
+        elapsedWakingMinutes: Double? = nil,
+        avgHeartRate: Double?,
+        avgHRV: Double?,
+        hrBaseline: Double?,
+        hrvBaseline: Double?,
+        isEstimate: Bool,
+        hrBasis: BaselineBasis? = nil,
+        hrvBasis: BaselineBasis? = nil
+    ) {
+        self.percent = percent
+        self.band = band
+        self.sampledMinutes = sampledMinutes
+        self.elapsedWakingMinutes = elapsedWakingMinutes
+        self.avgHeartRate = avgHeartRate
+        self.avgHRV = avgHRV
+        self.hrBaseline = hrBaseline
+        self.hrvBaseline = hrvBaseline
+        self.isEstimate = isEstimate
+        self.hrBasis = hrBasis
+        self.hrvBasis = hrvBasis
+    }
+
     // MARK: - How much of the day this rests on
 
     /// The fraction of the elapsed waking day that was quiet enough to sample.
