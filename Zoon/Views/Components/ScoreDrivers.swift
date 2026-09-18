@@ -97,30 +97,71 @@ struct ScoreDrivers: View {
     /// stop being a layout and become four truncations — and the reading is
     /// the whole point of this strip. Full width per signal costs three rows
     /// of height on a screen that is already scrolling.
+    ///
+    /// One size further on, the same squeeze returns in miniature. The AX5
+    /// capture shows the label and the value sharing a line while the
+    /// qualifier, pinned to the right column beneath the value, wraps --
+    /// "Near / baseline" over two lines. Three lines per signal, one of them
+    /// a broken phrase.
+    ///
+    /// So at the top two sizes the qualifier stops being a right column and
+    /// takes the full width under the pair. The label and the value keep
+    /// their line, because that pairing is what somebody scans; the reading
+    /// gets the room it needs to stay one phrase. Three lines become two,
+    /// and nothing wraps.
     private func row(for component: RecoveryScore.Component) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: Self.symbol(for: component.label))
-                .font(Theme.text(15, weight: .semibold))
-                .foregroundStyle(Self.tint(for: component.label))
-                .frame(width: 26, alignment: .leading)
+        Group {
+            if dynamicTypeSize >= .accessibility4 {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        driverIcon(for: component)
+                        driverLabel(for: component)
+                        Spacer(minLength: 8)
+                        driverValue(for: component)
+                    }
+                    driverQualifier(for: component)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    driverIcon(for: component)
+                    driverLabel(for: component)
 
-            Text(Self.shortLabel(for: component.label))
-                .font(Theme.label(11, weight: .semibold))
+                    Spacer(minLength: 8)
 
-            Spacer(minLength: 8)
-
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(component.isAvailable ? component.detail : "—")
-                    .font(Theme.label(12, weight: .bold))
-                    .monospacedDigit()
-
-                Text(Self.qualifier(for: component))
-                    .font(Theme.text(11))
-                    .foregroundStyle(Self.qualifierColor(for: component))
+                    VStack(alignment: .trailing, spacing: 2) {
+                        driverValue(for: component)
+                        driverQualifier(for: component)
+                    }
+                    .multilineTextAlignment(.trailing)
+                }
             }
-            .multilineTextAlignment(.trailing)
         }
         .modifier(Self.Describe(component: component))
+    }
+
+    private func driverIcon(for component: RecoveryScore.Component) -> some View {
+        Image(systemName: Self.symbol(for: component.label))
+            .font(Theme.text(15, weight: .semibold))
+            .foregroundStyle(Self.tint(for: component.label))
+            .frame(width: 26, alignment: .leading)
+    }
+
+    private func driverLabel(for component: RecoveryScore.Component) -> some View {
+        Text(Self.shortLabel(for: component.label))
+            .font(Theme.label(11, weight: .semibold))
+    }
+
+    private func driverValue(for component: RecoveryScore.Component) -> some View {
+        Text(component.isAvailable ? component.detail : "—")
+            .font(Theme.label(12, weight: .bold))
+            .monospacedDigit()
+    }
+
+    private func driverQualifier(for component: RecoveryScore.Component) -> some View {
+        Text(Self.qualifier(for: component))
+            .font(Theme.text(11))
+            .foregroundStyle(Self.qualifierColor(for: component))
     }
 
     /// The same spoken description either way round, so the layout switch
