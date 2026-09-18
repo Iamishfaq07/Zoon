@@ -676,6 +676,39 @@ jobs:
                 xcrun simctl io "$UDID" screenshot "watch-screenshots/page-$LOWER.png" \
                   || echo "::warning::page $PAGE did not render"
               done
+
+              # Large watch text, on the same case.
+              #
+              # The watch scales its body and label text the way the phone
+              # does -- `Theme.text`/`Theme.label` resolve to text styles, so
+              # Dynamic Type reaches them for free. What it has none of is a
+              # `dynamicTypeSize` anywhere in `WatchRootView`, so nothing
+              # *recomposes* at large sizes: scaling text sits beside numerals
+              # that are deliberately fixed, on a screen the size of a stamp.
+              # Every large-text defect found on the phone today was a
+              # composition failure rather than a scaling one, so this is the
+              # render that says whether the watch has the same problem.
+              #
+              # Whether `simctl ui content_size` is honoured on a watchOS
+              # simulator is genuinely unknown -- it is an iOS-shaped command
+              # and the watch has its own text-size setting. So it is probed
+              # rather than assumed: if it is rejected, the run says so and
+              # the capture is skipped instead of committing a normal-size
+              # render under a large-text name, which would be worse than no
+              # render because it would look like evidence.
+              if xcrun simctl ui "$UDID" content_size accessibility-extra-extra-extra-large 2>&1; then
+                echo "content_size accepted on watchOS; capturing large text."
+                xcrun simctl terminate "$UDID" com.zoon.sleep.watchkitapp 2>/dev/null || true
+                xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp \
+                  -zoonDemo YES -zoonWatchPage lastNight || true
+                sleep 8
+                xcrun simctl io "$UDID" screenshot "watch-screenshots/largetext-lastnight.png" \
+                  || echo "::warning::large-text render failed"
+                xcrun simctl ui "$UDID" content_size medium 2>/dev/null || true
+              else
+                echo "::warning::simctl ui content_size is not supported on this watchOS simulator; large-text watch coverage still unproven."
+              fi
+
               FIRST_CASE=0
             fi
             # Shut each one down before the next: several booted watch
