@@ -95,6 +95,22 @@ enum StageTrust: Int, Comparable, Sendable, Codable, Hashable {
     /// avoid an unqualified one.
     var supportsStageFigures: Bool { self >= .wearable }
 
+    /// How this night's stages came to be, for a derivation line that used
+    /// to assert a watch classified every one of them.
+    ///
+    /// Says what did the classifying and says Zoon did not, which was the
+    /// true half of the sentence this replaces. Never claims accuracy: a
+    /// watch classifier is still a classifier.
+    var classification: String {
+        switch self {
+        case .unstaged: "No stages to classify"
+        case .unrecorded: "Classified by the source, which was not recorded"
+        case .inferred: "Inferred from a schedule, not classified from a body"
+        case .wearable: "Classified by your wearable, not by Zoon"
+        case .watch: "Classified on Apple Watch, not by Zoon"
+        }
+    }
+
     /// A short phrase for the provenance line under a stage figure. Present
     /// tense, about the source, and never about accuracy.
     var provenance: String {

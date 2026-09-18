@@ -175,6 +175,49 @@ final class StageTrustTests: XCTestCase {
         XCTAssertEqual(record.features().stageTrust, .watch)
     }
 
+    // MARK: - The claim on the provenance screen
+
+    /// "Where the numbers come from" said "Classified on the watch, not by
+    /// Zoon" of every staged night. The second half was always true; the
+    /// first was false for anything a watch did not classify, which is a
+    /// false statement about provenance on the screen built to state it.
+    func testOnlyAWatchNightClaimsAWatchClassifiedIt() {
+        XCTAssertTrue(StageTrust.watch.classification.contains("Apple Watch"))
+        for trust in [StageTrust.unrecorded, .inferred, .wearable] {
+            XCTAssertFalse(
+                trust.classification.contains("Apple Watch"),
+                "\(trust) claims a watch: \(trust.classification)"
+            )
+        }
+    }
+
+    /// The half that was true stays: whatever classified the night, Zoon did
+    /// not, and the reader is told so wherever there is something to tell.
+    func testTheClassificationNeverCreditsZoon() {
+        for trust in [StageTrust.unrecorded, .inferred, .wearable, .watch] {
+            XCTAssertFalse(
+                trust.classification.lowercased().contains("by zoon,"),
+                trust.classification
+            )
+            XCTAssertFalse(trust.classification.isEmpty, "\(trust)")
+        }
+        for trust in [StageTrust.wearable, .watch] {
+            XCTAssertTrue(
+                trust.classification.contains("not by Zoon"),
+                trust.classification
+            )
+        }
+    }
+
+    /// An inferred night must not describe itself as classified from a body,
+    /// because nothing observed one.
+    func testAnInferredNightSaysItWasNotMeasured() {
+        XCTAssertTrue(
+            StageTrust.inferred.classification.lowercased().contains("schedule"),
+            StageTrust.inferred.classification
+        )
+    }
+
     // MARK: - Wording
 
     /// The provenance lines describe the source, never the accuracy. Every
