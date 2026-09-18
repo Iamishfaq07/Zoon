@@ -7,9 +7,12 @@ import SwiftUI
 /// "HRV 81 ms, optimal" is the sentence people want, and every part of it was
 /// already computed and thrown away.
 ///
-/// The qualifier comes from the same `normalized` value the ring plots, so
-/// the word and the arc can never disagree. An unmeasured signal says so
-/// rather than scoring.
+/// The line under each reading states that signal in its own terms — HRV
+/// and resting heart rate against this person's own baseline, respiration
+/// against its usual range, sleep against the target it was measured on.
+/// `RecoveryDriverSemantics` owns that wording and documents why one shared
+/// scale across all four was wrong. An unmeasured signal says so rather than
+/// scoring.
 struct ScoreDrivers: View {
 
     let components: [RecoveryScore.Component]
@@ -59,7 +62,7 @@ struct ScoreDrivers: View {
 
                 reading(for: component)
 
-                Text("(\(Self.qualifier(for: component)))")
+                Text(Self.qualifier(for: component))
                     .font(Theme.text(11))
                     .foregroundStyle(Self.qualifierColor(for: component))
                     .lineLimit(1)
@@ -127,32 +130,40 @@ struct ScoreDrivers: View {
         func body(content: Content) -> some View {
             content
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(
-                    component.isAvailable
-                        ? "\(component.label), \(component.detail), \(ScoreDrivers.qualifier(for: component))"
-                        : "\(component.label), not measured"
-                )
+                // Units spelled out and the relationship stated: "HRV, 50
+                // milliseconds, below your baseline" rather than "HRV, 50 em
+                // ess, low". For HRV especially there is no population answer
+                // to what "low" means.
+                .accessibilityLabel(RecoveryDriverSemantics.accessibilityLabel(for: component))
         }
     }
 
-    /// One scale for all four, from the value the ring already plots, so the
-    /// word under a signal and the length of its axis are the same fact.
+    /// Each signal in its own terms — see `RecoveryDriverSemantics` for why
+    /// one scale across all four was wrong.
+    ///
+    /// Briefly: the four `normalized` values answer different questions, so a
+    /// person whose HRV and resting heart rate were exactly normal for them
+    /// read "Fair" on both while their equally normal respiration read
+    /// "Optimal". The words were describing arithmetic conventions rather
+    /// than the body.
     private static func qualifier(for component: RecoveryScore.Component) -> String {
-        guard component.isAvailable else { return "Not measured" }
-        return switch component.normalized {
-        case ..<0.35: "Low"
-        case ..<0.55: "Fair"
-        case ..<0.78: "Good"
-        default: "Optimal"
-        }
+        RecoveryDriverSemantics.reading(for: component).phrase
     }
 
+    /// Colour only where a reader might act on it.
+    ///
+    /// Previously every signal got a verdict hue — four rows of red, amber or
+    /// green under a hero ring that is itself a three-stop gradient, so the
+    /// screen ran five colour languages at once and none of them led.
+    /// "Near baseline" and "above your baseline" are ordinary ink now; only a
+    /// reading that sits away from baseline in the direction that matters
+    /// takes a colour, and it takes one colour rather than a green/red pair.
     private static func qualifierColor(for component: RecoveryScore.Component) -> Color {
-        guard component.isAvailable else { return Theme.inkTertiary }
-        return switch component.normalized {
-        case ..<0.35: Theme.Family.deviation
-        case ..<0.55: Theme.Family.attention
-        default: Theme.Family.recovery
+        let reading = RecoveryDriverSemantics.reading(for: component)
+        return switch reading.standing {
+        case .unmeasured: Theme.inkTertiary
+        case .notable: Theme.Family.attention
+        case .typical, .favourable: Theme.inkSecondary
         }
     }
 
