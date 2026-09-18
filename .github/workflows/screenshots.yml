@@ -553,6 +553,12 @@ jobs:
   watch:
     name: Watch screenshots
     runs-on: macos-latest
+    # After the phone capture rather than beside it. Both jobs commit their
+    # renders to the same branch, and two pushes racing on one ref is a
+    # conflict nobody needs; `always()` so a phone failure does not silence
+    # the watch, which is the surface with no coverage to lose.
+    needs: capture
+    if: ${{ always() }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -623,6 +629,48 @@ jobs:
           sleep 8
           xcrun simctl io "$UDID" screenshot watch-screenshots/watch-home.png
           ls -la watch-screenshots
+
+      # Committed, not merely uploaded. An artifact cannot be looked at
+      # without downloading it, and a render nobody looks at is the same as
+      # no render -- which is how a whole platform went unexamined. The phone
+      # captures land in `docs/screenshots` for exactly this reason.
+      - name: Commit the watch render
+        run: |
+          set -euo pipefail
+          mkdir -p docs/screenshots/watch
+          # Downscaled the same way the phone renders are, so the repository
+          # does not grow by a full-resolution PNG per run.
+          sips -Z 400 -s format jpeg -s formatOptions 70 \
+            watch-screenshots/watch-home.png \
+            --out docs/screenshots/watch/home.jpg >/dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/watch
+          if git diff --cached --quiet; then
+            echo "Watch render unchanged."
+            exit 0
+          fi
+          git commit -m "Update watch screenshots [skip ci]"
+          pushed=0
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              pushed=1
+              break
+            fi
+            echo "Push rejected (attempt $attempt); rebuilding onto the branch tip."
+            git fetch --depth=1 origin "${GITHUB_REF_NAME}" || break
+            git reset --mixed "origin/${GITHUB_REF_NAME}" || break
+            git add docs/screenshots/watch
+            if git diff --cached --quiet; then
+              echo "Watch render already current on the branch tip."
+              pushed=1
+              break
+            fi
+            git commit -m "Update watch screenshots [skip ci]"
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::warning::Watch render captured but could not be committed; see the artifact."
+          fi
 
       - name: Upload watch screenshots
         if: always()
