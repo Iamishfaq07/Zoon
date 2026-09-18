@@ -96,8 +96,10 @@ final class WatchLink: NSObject {
 
     /// The demo snapshot that makes the requested page exist.
     ///
-    /// Two of the watch's pages are conditional on data rather than always
-    /// present: Tonight needs a plan, and Nap needs one running. A tab view
+    /// Three of the watch's pages are conditional on data rather than always
+    /// present: Tonight needs a plan, Nap needs one running, and Score-light
+    /// needs the mode set -- and that last one replaces Last Night and Today
+    /// rather than joining them, so the deck changes shape. A tab view
     /// cannot select a tag that is not in the deck and falls back silently,
     /// so pinning either against the ordinary demo snapshot photographed the
     /// page that happened to be showing -- which the capture then filed under
@@ -114,6 +116,14 @@ final class WatchLink: NSObject {
         switch page?.lowercased() {
         case "tonight":
             return MockData.tonightSnapshot
+        case "scorelight":
+            // Score-light is not merely an extra page: when it is on, Last
+            // Night and Today are replaced rather than joined, so the deck
+            // has a different shape entirely. Pinning it against a snapshot
+            // without the mode photographed Last Night under its name.
+            var light = MockData.snapshotWithBadges
+            light.scoreLightMode = true
+            return light
         case "nap":
             var napping = MockData.snapshotWithBadges
             // Started twenty minutes ago, twenty-five still to run: a nap

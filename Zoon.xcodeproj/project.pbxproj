@@ -1075,6 +1075,7 @@
 		DFEE0ECFDD7A8B3F02BA73AF /* GlobalPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DB8CF64188C5B14F8A35B76 /* GlobalPresentation.swift */; };
 		E015D8461AE876030C892CD5 /* SleepSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E37034BC992888E8D1BA676B /* SleepSnapshot.swift */; };
 		E0448A244BE49C61E87B2FE9 /* PersonalSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73634D1D1625805E420C39B /* PersonalSetup.swift */; };
+		E07D0E26B7739BC1381FA9CE /* WatchDemoPageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D718F56D752E46DBD66C686 /* WatchDemoPageTests.swift */; };
 		E0ACEEDAE17E0F739B4356CA /* AlertnessCheckView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2A55FACF1FD55C73969B71 /* AlertnessCheckView.swift */; };
 		E0ADC1EF02734DB61EBD094C /* SleepStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010D79DAE1D4D7B54F7147DA /* SleepStage.swift */; };
 		E0B28784F950D7AD7F90D11D /* RestorativeWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8713A1E2D16B52644E7647 /* RestorativeWindow.swift */; };
@@ -1407,6 +1408,7 @@
 		2CD50E712746E68436F3A59B /* SeededGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SeededGenerator.swift"; sourceTree = "<group>"; };
 		2CEEC938F70D39622049AB5E /* LightCoachCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachCard.swift"; sourceTree = "<group>"; };
 		2D4A8155271E6F375B5123C3 /* NightDetective.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightDetective.swift"; sourceTree = "<group>"; };
+		2D718F56D752E46DBD66C686 /* WatchDemoPageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchDemoPageTests.swift"; sourceTree = "<group>"; };
 		2D73DBEA8BBD67C287B016A2 /* ZoonFlowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonFlowLayoutTests.swift"; sourceTree = "<group>"; };
 		2D8F6B0DA34DAFB54A499597 /* ZoonWhatIfLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWhatIfLab.swift"; sourceTree = "<group>"; };
 		2E03AFA4718620CC22B5D2C0 /* forest.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "forest.mp3"; sourceTree = "<group>"; };
@@ -2421,6 +2423,7 @@
 				BC8A4858CAB89927182D8A26,
 				84F00AE51EE430FC83A3DDCB,
 				78FDE32DF2B9B5353B33D73A,
+				2D718F56D752E46DBD66C686,
 				A28411CA28AE8B7A657EB846,
 				872BECC77F2A5D37C6E336D9,
 				B27657219BF72B613FB2A27B,
@@ -3826,6 +3829,7 @@
 				0755C3EE56FE954D03243AB3,
 				832182A7BA8480AF7A8C6534,
 				44377FA92F2AC6802D9C471E,
+				E07D0E26B7739BC1381FA9CE,
 				3D890CCFDBE3C4E9B0415A73,
 				517D4980BD87C53C26E83190,
 				1E49F29568A8E4D380F2A925,

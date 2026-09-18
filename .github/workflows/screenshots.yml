@@ -685,9 +685,17 @@ jobs:
                 # committed under a name it did not depict, which is worse
                 # than no render because it reads as evidence.
                 #
-                # The size sweep shot this same case moments ago, so an exact
-                # match against it is the test: identical bytes mean nothing
-                # was selected.
+                # A weak check, kept because it costs nothing and does catch
+                # the obvious case. It is not the guarantee: the watch status
+                # bar carries a live clock, so two captures of the same page
+                # differ the moment the minute rolls over between them, and an
+                # exact comparison then sees two different pictures of one
+                # screen. That is how the Score-light fallback got published
+                # while the Nap and Tonight ones were caught.
+                #
+                # `WatchDemoPageTests` is the real guard: it asserts, without
+                # pixels, that the demo snapshot chosen for each page
+                # satisfies the condition the deck puts that page behind.
                 if cmp -s "$SHOT" "watch-screenshots/$SLUG.png"; then
                   echo "::warning::$PAGE is not in the deck for this snapshot; the capture fell back. Not committing a render named for a page it does not show."
                   rm -f "$SHOT"
