@@ -18,8 +18,10 @@ import SwiftUI
 struct WhatIfTonightCard: View {
 
     let plan: ZoonTomorrow.Plan
-    let needMinutes: Double
-    let shortfallMinutes: Double
+    /// Baseline need, the outstanding shortfall and tonight's own modifiers.
+    /// Composed here rather than upstream so the repayment is applied once —
+    /// see `SleepPlanningInputs`.
+    let planning: SleepPlanningInputs
     var napMinutesToday: Double = 0
 
     @State private var bedtime: Date?
@@ -34,8 +36,9 @@ struct WhatIfTonightCard: View {
         WhatIfTonight(
             bedtime: bedtime ?? plan.bedtime,
             wake: wake ?? plan.wake,
-            needMinutes: needMinutes,
-            shortfallMinutes: shortfallMinutes,
+            needMinutes: planning.tonightNeedMinutes,
+            shortfallMinutes: planning.currentShortfallMinutes,
+            baseNeedMinutes: planning.tonightNeedBeforeRepaymentMinutes,
             reference: WhatIfTonight.Reference(bedtime: plan.bedtime, wake: plan.wake)
         )
     }

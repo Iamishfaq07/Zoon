@@ -89,6 +89,23 @@ struct ShiftRoster: Codable, Hashable, Sendable {
 
     var isEmpty: Bool { shifts.isEmpty }
 
+    /// The next `days` **local calendar days**, starting now.
+    ///
+    /// Not `days * 86,400` seconds. A local day is twenty-three or twenty-five
+    /// hours across a clock change, so a fixed multiple of seconds runs an
+    /// hour short or an hour long — and for a planner reading a roster, an
+    /// hour at the far end of the window is the difference between seeing
+    /// next Sunday's 22:00 night shift and not knowing it is there. The
+    /// horizon is a promise about days, so it is built out of days.
+    ///
+    /// The seconds form survives only as a fallback for a `Calendar` that
+    /// cannot add a day at all, which is not a thing any real calendar does.
+    static func horizon(days: Int, from start: Date = .now, calendar: Calendar = .current) -> DateInterval {
+        let end = calendar.date(byAdding: .day, value: days, to: start)
+            ?? start.addingTimeInterval(Double(days) * 86_400)
+        return DateInterval(start: start, end: max(start, end))
+    }
+
     /// Every occurrence whose **start** falls inside `interval`, ascending.
     ///
     /// Keyed on the start rather than on any overlap: a night shift that began

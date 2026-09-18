@@ -75,7 +75,7 @@ final class NewSurfaceLanguageTests: XCTestCase {
             let plan = try XCTUnwrap(SleepRunway.build(
                 now: date(14, 21),
                 nights: nights,
-                sleepNeedMinutes: 465,
+                planning: SleepPlanningInputs(baselineNeedMinutes: 465),
                 commitments: commitments,
                 calendar: calendar
             ))
@@ -95,6 +95,7 @@ final class NewSurfaceLanguageTests: XCTestCase {
                 wake: date(15, 7),
                 needMinutes: 465,
                 shortfallMinutes: 90,
+                baseNeedMinutes: 465,
                 reference: reference
             )
             check(model.sentence(calendar: calendar))

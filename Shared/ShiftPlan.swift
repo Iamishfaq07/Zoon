@@ -113,6 +113,13 @@ enum ShiftPlan {
         let kind: Kind
         let shift: ShiftRoster.Occurrence
         let windows: [Window]
+        /// Light guidance for this shift, when the shift displaces sleep.
+        ///
+        /// §20 names light timing in the flow and it was the one step of that
+        /// flow this plan did not carry. Everything else was here -- pre-shift
+        /// sleep, nap, post-shift sleep, caffeine cutoff, wake target -- so
+        /// this is the gap being closed rather than a new system.
+        let light: LightGuidance?
         /// The last time caffeine would clear before the sleep window it
         /// would otherwise sit inside. Absent when that moment has passed.
         let caffeineCutoff: Date?
@@ -137,6 +144,70 @@ enum ShiftPlan {
         var isShort: Bool { shortfallMinutes >= SleepRunway.warningGapMinutes }
     }
 
+    /// When to seek light and when to keep it dim, for a shift that displaces
+    /// sleep.
+    ///
+    /// **Derived from the shift's own clock and nothing else.** Two windows,
+    /// both of them arithmetic: light early in the shift is light while awake,
+    /// and dim light on the way home is dim light in the hours before this
+    /// person's sleep. No model of anybody's phase runs here, no estimate of
+    /// how far their clock has shifted, and no claim that following it will
+    /// move it. `BodyClock` owns phase and is not consulted, because a phase
+    /// estimate for a rotating shift worker built from a handful of displaced
+    /// nights would be the kind of confident wrong number this codebase keeps
+    /// finding.
+    ///
+    /// The wording says what is associated with what, in the same register
+    /// `LightCoach` uses. It does not say the person will adapt, will feel
+    /// better, or is safe to do anything.
+    struct LightGuidance: Hashable, Sendable {
+        /// Bright light helps while awake — the first stretch of the shift.
+        let seekFrom: Date
+        let seekUntil: Date
+        /// Dim light before sleep — the commute home and after it.
+        let dimFrom: Date
+        let dimUntil: Date
+
+        var sentence: String {
+            "Bright light early in the shift is associated with feeling more alert through it. Keeping light low on the way home is associated with falling asleep more easily afterwards."
+        }
+    }
+
+    /// How long the seek-light window runs from the start of a shift.
+    ///
+    /// Two hours. Long enough to be a window somebody can act inside, short
+    /// enough that it does not run into the hours before their sleep.
+    static let seekLightMinutes = 120.0
+
+    /// How long before the post-shift sleep window the dim-light window opens.
+    ///
+    /// Two hours, matching `seekLightMinutes` for symmetry and because it is
+    /// the commute plus a little -- the stretch somebody is actually outdoors
+    /// or under bright indoor light on the way home.
+    static let dimLightMinutes = 120.0
+
+    /// Light windows for a shift that displaces sleep.
+    ///
+    /// `nil` for an ordinary shift: somebody working inside their waking day
+    /// gets the same morning-light advice as everybody else, and `LightCoach`
+    /// already gives it. Repeating it here in different words would be two
+    /// answers to one question.
+    static func lightGuidance(
+        shift: ShiftRoster.Occurrence,
+        postShiftSleep: Window?,
+        kind: Kind
+    ) -> LightGuidance? {
+        guard kind == .displacesSleep, let sleep = postShiftSleep else { return nil }
+        let seekUntil = min(shift.start.addingTimeInterval(seekLightMinutes * 60), shift.end)
+        guard seekUntil > shift.start else { return nil }
+        let dimFrom = max(shift.end, sleep.start.addingTimeInterval(-dimLightMinutes * 60))
+        guard sleep.start > dimFrom else { return nil }
+        return LightGuidance(
+            seekFrom: shift.start, seekUntil: seekUntil,
+            dimFrom: dimFrom, dimUntil: sleep.start
+        )
+    }
+
     /// Words this feature must never reach for, on top of the medical ones
     /// `DiagnosticLanguageGuard` already refuses. Every one of them turns
     /// schedule support into a claim about whether somebody is fit to work,
@@ -155,6 +226,8 @@ enum ShiftPlan {
     ///     it there is no way to tell a shift that displaces sleep from one
     ///     that does not, and guessing from the clock would be wrong for
     ///     exactly the people this feature exists for.
+    ///   - planning: baseline need. Only `futureNightNeedMinutes` is read —
+    ///     see the note in `make`.
     ///   - nextShift: the occurrence after this one, when the roster holds
     ///     one. It caps the sleep window after this shift, which is the only
     ///     thing that can produce a shortfall — a single shift leaves an
@@ -164,7 +237,7 @@ enum ShiftPlan {
     static func make(
         shift: ShiftRoster.Occurrence,
         nextShift: ShiftRoster.Occurrence? = nil,
-        sleepNeedMinutes: Double,
+        planning: SleepPlanningInputs,
         habit: SleepRunway.Habit,
         commuteMinutes: Double = defaultCommuteMinutes,
         readyBufferMinutes: Double = ZoonTomorrow.readyBufferMinutes,
@@ -172,6 +245,12 @@ enum ShiftPlan {
         calendar: Calendar = .current
     ) -> Plan? {
 
+        // The baseline, not tonight's target. A rostered shift may be days
+        // out, and carrying today's strain bonus or this afternoon's nap
+        // credit into it would plan Thursday's night around Monday. The
+        // shortfall is likewise the horizon's problem, not one shift's --
+        // `SleepRunway` walks that ledger.
+        let sleepNeedMinutes = planning.futureNightNeedMinutes
         guard sleepNeedMinutes > 0 else { return nil }
         guard let habitualBedtime = habit.overallBedtime, let habitualWake = habit.overallWake
         else { return nil }
@@ -287,6 +366,11 @@ enum ShiftPlan {
             kind: kind,
             shift: shift,
             windows: windows.sorted { $0.start < $1.start },
+            light: lightGuidance(
+                shift: shift,
+                postShiftSleep: windows.first { $0.role == .postShiftSleep },
+                kind: kind
+            ),
             caffeineCutoff: kind == .ordinary ? nil : caffeineCutoff,
             wakeTarget: wakeTarget,
             shortfallMinutes: shortfall,

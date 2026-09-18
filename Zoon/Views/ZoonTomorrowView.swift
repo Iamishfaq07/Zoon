@@ -64,9 +64,7 @@ struct ZoonTomorrowView: View {
                 if let plan {
                     WhatIfTonightCard(
                         plan: plan,
-                        needMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes
-                            ?? preferences.sleepGoalMinutes,
-                        shortfallMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
+                        planning: planning,
                         napMinutesToday: naps.minutes(on: .now)
                     )
                 }
@@ -123,11 +121,30 @@ struct ZoonTomorrowView: View {
     /// The week ahead. Tomorrow answers one night; this answers where the
     /// schedule stops leaving room, while there is still time to move
     /// something.
+    /// One planning value for every planner on this screen.
+    ///
+    /// Built from the *baseline* need and the outstanding shortfall, never
+    /// from `totalNeedMinutes` — that figure already contains a repayment, and
+    /// handing it to a planner that computes its own is the double count
+    /// `SleepPlanningInputs` was added to end.
+    private var planning: SleepPlanningInputs {
+        guard let context = coordinator.state.context else {
+            return SleepPlanningInputs(baselineNeedMinutes: preferences.sleepGoalMinutes)
+        }
+        // A shortfall Zoon has not measured is not a shortfall of zero — but
+        // it is not one it may ask anybody to repay either, and a planner has
+        // to be handed a number. Nothing outstanding means nothing repaid, so
+        // the plan falls back to the plain baseline rather than inventing a
+        // debt or refusing to plan the week.
+        return context.sleepNeed.planningInputs(
+            outstandingShortfallMinutes: context.night.sleepDebtMinutes ?? 0
+        )
+    }
+
     private var runway: SleepRunway.Plan? {
         SleepRunway.build(
             nights: coordinator.recentNights,
-            sleepNeedMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes ?? preferences.sleepGoalMinutes,
-            sleepDebtMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
+            planning: planning,
             commitments: horizonCommitments,
             manual: preferences.manualCommitment,
             obligationWeekdays: preferences.obligationWeekdays,
@@ -139,15 +156,17 @@ struct ZoonTomorrowView: View {
     /// what caps the sleep window behind the first, and is the only thing
     /// that can produce a shortfall.
     private var shiftPlan: ShiftPlan.Plan? {
+        // Calendar days, not 86,400-second multiples -- see
+        // `ShiftRoster.horizon`, which is where that reasoning and its DST
+        // tests live.
         let upcoming = preferences.shiftRoster.occurrences(
-            in: DateInterval(start: .now, duration: Double(SleepRunway.horizonDays) * 86_400)
+            in: ShiftRoster.horizon(days: SleepRunway.horizonDays)
         )
         guard let next = upcoming.first else { return nil }
         return ShiftPlan.make(
             shift: next,
             nextShift: upcoming.dropFirst().first,
-            sleepNeedMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes
-                ?? preferences.sleepGoalMinutes,
+            planning: planning,
             habit: SleepRunway.Habit(nights: coordinator.recentNights, calendar: .current),
             commuteMinutes: preferences.shiftCommuteMinutes,
             readyBufferMinutes: preferences.morningReadyBufferMinutes
@@ -158,8 +177,7 @@ struct ZoonTomorrowView: View {
         ZoonTomorrow.plan(
             event: commitment.event,
             nights: coordinator.recentNights,
-            sleepNeedMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes ?? preferences.sleepGoalMinutes,
-            sleepDebtMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
+            planning: planning,
             napMinutesToday: naps.minutes(on: .now),
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )

@@ -44,12 +44,59 @@ final class BehaviorObservationRecord {
 
     var observedAt: Date
 
+    // MARK: - Structured detail (§9)
+    //
+    // Four optional columns rather than one encoded blob, so a future query
+    // can filter on a time or a dose without decoding every row -- and so the
+    // migration is the free one. SwiftData adds a new *optional* property to
+    // an existing store without a mapping model or a version plan; every row
+    // written before this build simply reads back with `nil` in all four,
+    // which is the truth about those rows. A non-optional column, or a
+    // renamed one, would have needed a `VersionedSchema` and a migration
+    // stage, and would have had to invent a value for history that has none.
+    //
+    // Absent is not zero here, and the accessors below never substitute one.
+
+    /// How many, when the person said. See `BehaviorDetail.quantity`.
+    var quantity: Double?
+
+    /// What `quantity` counts, in the person's own word.
+    var unit: String?
+
+    /// When it happened -- the last occurrence, where there were several.
+    var eventTime: Date?
+
+    /// How hard, 0-1, where the behaviour has a natural intensity.
+    var intensity: Double?
+
+    /// The structured detail as one value, or `nil` when the row carries
+    /// none -- which is every row written before this build, and every row
+    /// since where the person confirmed only a yes or a no.
+    var detail: BehaviorDetail? {
+        get {
+            let detail = BehaviorDetail(
+                quantity: quantity, unit: unit, eventTime: eventTime, intensity: intensity
+            )
+            return detail.isEmpty ? nil : detail
+        }
+        set {
+            quantity = newValue?.quantity
+            unit = newValue?.unit
+            eventTime = newValue?.eventTime
+            intensity = newValue?.intensity
+            observedAt = .now
+        }
+    }
+
     init(
         nightKey: String,
         behaviorIdentifier: String,
         state: BehaviorObservationState,
         source: BehaviorObservationSource,
-        observedAt: Date = .now
+        observedAt: Date = .now,
+        /// Never inferred. A caller passes this only when the person
+        /// confirmed it -- see `BehaviorDetail`.
+        detail: BehaviorDetail? = nil
     ) {
         self.id = Self.identity(nightKey: nightKey, behaviorIdentifier: behaviorIdentifier)
         self.nightKey = nightKey
@@ -57,6 +104,10 @@ final class BehaviorObservationRecord {
         self.stateRaw = state.rawValue
         self.sourceRaw = source.rawValue
         self.observedAt = observedAt
+        self.quantity = detail?.quantity
+        self.unit = detail?.unit
+        self.eventTime = detail?.eventTime
+        self.intensity = detail?.intensity
     }
 
     static func identity(nightKey: String, behaviorIdentifier: String) -> String {

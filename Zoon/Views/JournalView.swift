@@ -19,6 +19,13 @@ struct JournalView: View {
     @State private var naturalText: String = ""
     @State private var naturalProposals: [NaturalJournalParser.Proposal] = []
     @State private var naturalStates: [BehaviorID: BehaviorObservationState] = [:]
+    /// What the parser proposed for quantity/time/intensity, as the person
+    /// has since edited it. Separate from `naturalStates` because the two
+    /// answer different questions -- whether, and how much -- and a behaviour
+    /// can be confirmed with no detail at all, which is the common case.
+    @State private var naturalDetails: [BehaviorID: BehaviorDetail] = [:]
+    /// The proposal whose detail sheet is open.
+    @State private var editingDetailFor: NaturalJournalParser.Proposal?
     @State private var customStore = CustomBehaviorStore.shared
     @State private var recorder = VoiceJournalRecorder()
     /// Text already in the field when dictation started, kept so a running
@@ -304,18 +311,50 @@ struct JournalView: View {
 
                 FlowLayout(spacing: 8) {
                     ForEach(naturalProposals) { proposal in
+                        let state = naturalStates[proposal.behavior] ?? proposal.state
                         Button {
-                            naturalStates[proposal.behavior] = nextNaturalState(from: naturalStates[proposal.behavior] ?? proposal.state)
+                            naturalStates[proposal.behavior] = nextNaturalState(from: state)
                         } label: {
-                            let state = naturalStates[proposal.behavior] ?? proposal.state
-                            Label("\(proposal.label) · \(naturalStateLabel(state))", systemImage: naturalStateSymbol(state))
-                                .font(Theme.label(12, weight: .medium))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(state == .unknown ? Theme.neutral(0.06) : Theme.Metric.sleep.opacity(0.22), in: Capsule())
+                            Label(
+                                "\(proposal.label) · \(naturalStateLabel(state))",
+                                systemImage: naturalStateSymbol(state)
+                            )
+                            .font(Theme.label(12, weight: .medium))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(state == .unknown ? Theme.neutral(0.06) : Theme.Metric.sleep.opacity(0.22), in: Capsule())
                         }
                         .buttonStyle(.plain)
                         .accessibilityHint("Tap to cycle yes, no, and unknown")
+
+                        // The detail chip is separate from the yes/no chip on
+                        // purpose. They are different questions, and merging
+                        // them would mean cycling an answer wiped a quantity
+                        // somebody had just corrected. Only offered for a yes:
+                        // a behaviour that did not happen has no quantity and
+                        // no time, which is the same rule the store enforces.
+                        if state == .yes {
+                            Button {
+                                editingDetailFor = proposal
+                            } label: {
+                                Label(
+                                    naturalDetails[proposal.behavior]?.summary() ?? "Add detail",
+                                    systemImage: naturalDetails[proposal.behavior] == nil
+                                        ? "plus.circle" : "slider.horizontal.3"
+                                )
+                                .font(Theme.label(12, weight: .medium))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(Theme.neutral(0.06), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(
+                                naturalDetails[proposal.behavior].map {
+                                    "\(proposal.label) detail: \($0.summary() ?? "none")"
+                                } ?? "Add detail for \(proposal.label)"
+                            )
+                            .accessibilityHint("How many, when, and how hard")
+                        }
                     }
                 }
 
@@ -323,6 +362,7 @@ struct JournalView: View {
                     Button("Start over") {
                         naturalProposals = []
                         naturalStates = [:]
+                        naturalDetails = [:]
                     }
                     .buttonStyle(.bordered)
                     Spacer()
@@ -338,6 +378,17 @@ struct JournalView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
+        .sheet(item: $editingDetailFor) { proposal in
+            BehaviorDetailEditor(
+                label: proposal.label,
+                nightDay: targetNightDate,
+                takesIntensity: proposal.tag?.takesIntensity ?? false,
+                detail: Binding(
+                    get: { naturalDetails[proposal.behavior] },
+                    set: { naturalDetails[proposal.behavior] = $0 }
+                )
+            )
+        }
         .onDisappear { recorder.stop() }
     }
 
@@ -432,18 +483,32 @@ struct JournalView: View {
             naturalProposals.map { ($0.behavior, $0.state) },
             uniquingKeysWith: { first, _ in first }
         )
+        // Seeded from what the parser read, and editable before it is saved.
+        // Anchored here rather than at confirm time because the night being
+        // logged is known now, and a clock time has to be placed on a day in
+        // that night's own zone exactly once.
+        naturalDetails = Dictionary(
+            naturalProposals.compactMap { proposal in
+                proposal.detail(onNightDay: targetNightDate).map { (proposal.behavior, $0) }
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
         Haptics.tap()
     }
 
     private func confirmNaturalJournal() {
         for (behavior, state) in naturalStates where state != .unknown {
-            coordinator.setBehavior(state, for: behavior, on: targetNightDate, nightKey: selectedNightKey)
+            coordinator.setBehavior(
+                state, for: behavior, on: targetNightDate, nightKey: selectedNightKey,
+                detail: naturalDetails[behavior]
+            )
         }
         answers = coordinator.behaviorAnswers(on: targetNightDate, nightKey: selectedNightKey)
         findings = JournalCorrelator().topFindingPerTag(from: coordinator.journalObservations(), catalog: coordinator.behaviorCatalog)
         naturalText = ""
         naturalProposals = []
         naturalStates = [:]
+        naturalDetails = [:]
         Haptics.success()
     }
 

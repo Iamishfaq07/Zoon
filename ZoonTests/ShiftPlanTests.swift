@@ -65,10 +65,26 @@ final class ShiftPlanTests: XCTestCase {
         ShiftPlan.make(
             shift: occurrence,
             nextShift: next,
-            sleepNeedMinutes: need,
+            planning: SleepPlanningInputs(baselineNeedMinutes: need),
             habit: habit(bedHour: bedHour, wakeHour: wakeHour),
             now: now,
             calendar: calendar
+        )
+    }
+
+    /// A night shift with somewhere to sleep afterwards.
+    ///
+    /// `now` is the evening of the shift, not the morning before it, and that
+    /// matters: from 09:00 the planner can fit the entire need into a
+    /// pre-shift window, so `remaining` is zero and no post-shift sleep window
+    /// is built at all. The light guidance hangs off that window, so a fixture
+    /// anchored at 09:00 produces no guidance for reasons that have nothing to
+    /// do with light.
+    private func nightShift() -> ShiftPlan.Plan? {
+        plan(
+            shift(from: 22, hours: 8),
+            next: shift(from: 22, hours: 8, dayOffset: 1),
+            now: at(20)
         )
     }
 
@@ -224,7 +240,7 @@ final class ShiftPlanTests: XCTestCase {
         XCTAssertNil(
             ShiftPlan.make(
                 shift: shift(from: 22, hours: 8),
-                sleepNeedMinutes: 480,
+                planning: SleepPlanningInputs(baselineNeedMinutes: 480),
                 habit: SleepRunway.Habit(nights: [], calendar: calendar),
                 now: at(9),
                 calendar: calendar
@@ -291,5 +307,53 @@ final class ShiftPlanTests: XCTestCase {
         XCTAssertEqual(plan.shortfallMinutes, 30, accuracy: 0.001)
         XCTAssertTrue(plan.isShort)
         XCTAssertTrue(plan.sentence.contains("short of"), plan.sentence)
+    }
+
+    // MARK: - Light timing (§20)
+
+    /// The one step of §20's flow the plan did not carry. Everything else was
+    /// already here, which is why this is a gap being closed rather than a
+    /// second planning system.
+    func testANightShiftPlanCarriesBothLightWindows() throws {
+        let plan = try XCTUnwrap(nightShift())
+        let light = try XCTUnwrap(plan.light)
+        XCTAssertEqual(light.seekFrom, plan.shift.start, "seeking light starts with the shift")
+        XCTAssertLessThanOrEqual(light.seekUntil, plan.shift.end)
+        XCTAssertGreaterThan(light.dimUntil, light.dimFrom)
+    }
+
+    /// Dim light runs up to the moment sleep is meant to start, never past it.
+    func testTheDimWindowEndsWhenSleepBegins() throws {
+        let plan = try XCTUnwrap(nightShift())
+        let light = try XCTUnwrap(plan.light)
+        let sleep = try XCTUnwrap(plan.windows.first { $0.role == .postShiftSleep })
+        XCTAssertEqual(light.dimUntil, sleep.start)
+        XCTAssertGreaterThanOrEqual(light.dimFrom, plan.shift.end)
+    }
+
+    /// Somebody working inside their waking day gets the ordinary
+    /// morning-light advice from `LightCoach`. Repeating it here in different
+    /// words would be two answers to one question.
+    func testAnOrdinaryShiftHasNoLightGuidanceOfItsOwn() throws {
+        let plan = try XCTUnwrap(plan(shift(from: 9, hours: 8), now: at(7)))
+        XCTAssertEqual(plan.kind, .ordinary)
+        XCTAssertNil(plan.light)
+    }
+
+    /// The copy says what is associated with what. It does not say the person
+    /// will adapt, will feel better, or is fit to do anything -- the same bar
+    /// the rest of this feature is held to.
+    func testTheLightSentenceMakesNoClaimAboutAdaptationOrFitness() throws {
+        let plan = try XCTUnwrap(nightShift())
+        let sentence = try XCTUnwrap(plan.light?.sentence)
+        for banned in ShiftPlan.bannedPositioning {
+            XCTAssertFalse(sentence.lowercased().contains(banned), "\(banned) in: \(sentence)")
+        }
+        XCTAssertFalse(DiagnosticLanguageGuard.containsBannedLanguage(sentence), sentence)
+        XCTAssertFalse(DiagnosticLanguageGuard.overclaimsCausation(sentence), sentence)
+        for banned in ["will adapt", "resets your", "shifts your body clock", "you will feel"] {
+            XCTAssertFalse(sentence.lowercased().contains(banned), "\(banned) in: \(sentence)")
+        }
+        XCTAssertTrue(sentence.contains("associated"), sentence)
     }
 }

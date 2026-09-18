@@ -46,7 +46,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: event,
             nights: history,
-            sleepNeedMinutes: 480,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 480),
             calendar: calendar
         ))
 
@@ -79,7 +79,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: event,
             nights: nights(),
-            sleepNeedMinutes: 480,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 480),
             calendar: calendar
         ))
 
@@ -100,8 +100,10 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: event,
             nights: nights(),
-            sleepNeedMinutes: 480,
-            sleepDebtMinutes: 40,
+            planning: SleepPlanningInputs(
+                baselineNeedMinutes: 480,
+                currentShortfallMinutes: 40
+            ),
             calendar: calendar
         ))
 
@@ -120,7 +122,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: event,
             nights: nights(),
-            sleepNeedMinutes: 480,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 480),
             calendar: calendar
         ))
         XCTAssertNil(plan.event)
@@ -134,7 +136,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: event,
             nights: nights(),
-            sleepNeedMinutes: 480,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 480),
             calendar: calendar
         ))
         XCTAssertNil(plan.event)
@@ -146,8 +148,10 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: nil,
             nights: nights(),
-            sleepNeedMinutes: 480,
-            sleepDebtMinutes: 240,
+            planning: SleepPlanningInputs(
+                baselineNeedMinutes: 480,
+                currentShortfallMinutes: 240
+            ),
             calendar: calendar
         ))
         XCTAssertLessThanOrEqual(plan.targetSleepMinutes, 480 + SleepAutopilot.maximumDebtRepayment + 0.01)
@@ -159,7 +163,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: ZoonTomorrow.Event(start: date(2026, 9, 15, 8, 30), isAllDay: false, source: .manual),
             nights: nights(),
-            sleepNeedMinutes: 480,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 480),
             calendar: calendar
         ))
         if let caffeine = plan.caffeineCutoff {
@@ -176,7 +180,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: ZoonTomorrow.Event(start: date(2026, 9, 15, 9, 0), isAllDay: false, source: .manual),
             nights: nights(count: 3),
-            sleepNeedMinutes: 450,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 450),
             calendar: calendar
         ))
         XCTAssertEqual(plan.confidence, .low)
@@ -190,7 +194,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: nil,
             nights: nights(),
-            sleepNeedMinutes: 0,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 0),
             calendar: calendar
         ))
     }
@@ -219,8 +223,10 @@ final class ZoonTomorrowTests: XCTestCase {
             now: now,
             event: event,
             nights: history,
-            sleepNeedMinutes: 580,
-            sleepDebtMinutes: 600,
+            planning: SleepPlanningInputs(
+                baselineNeedMinutes: 580,
+                currentShortfallMinutes: 600
+            ),
             calendar: calendar
         ))
 
@@ -249,7 +255,7 @@ final class ZoonTomorrowTests: XCTestCase {
             now: date(2026, 9, 14, 18, 0),
             event: nil,
             nights: nights(),
-            sleepNeedMinutes: 420,
+            planning: SleepPlanningInputs(baselineNeedMinutes: 420),
             calendar: calendar
         ))
 

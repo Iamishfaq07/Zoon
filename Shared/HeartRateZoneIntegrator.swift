@@ -7,13 +7,32 @@ import Foundation
 /// those beats are sorted into rest on a guessed maximum. Coverage answers
 /// "did we watch?"; this answers "do we know what we were watching for?".
 /// **Why there is no `appleWorkoutZones` case.** The obvious fifth source
-/// would be Apple's own workout zones. As of Xcode 26.6 / iPhoneOS 26.5 there
-/// is no public API for them: `HKWorkoutZone`, `HKWorkoutZonesSample` and
-/// `HKWorkoutZonesType` exist in `HealthKit.tbd` -- the linker stub listing
-/// every class in the shipped binary -- alongside plainly private ones like
-/// `_HKDaemonPreferences` and `_HKEntitlements`, and are declared in no public
-/// header, no `.swiftinterface` and no `.apinotes`, on iOS or watchOS. That
-/// was checked against the installed SDK rather than recalled.
+/// would be Apple's own workout zones. There is still no public API for them:
+/// `HKWorkoutZone`, `HKWorkoutZonesSample` and `HKWorkoutZonesType` exist in
+/// `HealthKit.tbd` -- the linker stub listing every class in the shipped
+/// binary -- alongside plainly private ones like `_HKDaemonPreferences` and
+/// `_HKEntitlements`, and are declared in no public header, no
+/// `.swiftinterface` and no `.apinotes`, on iOS or watchOS.
+///
+/// Re-verified by the `sdk-probe` CI job rather than recalled. Its output on
+/// iPhoneOS 26.5 and WatchOS 26.5, the SDKs the runner actually has:
+///
+/// ```text
+/// -- symbols named *Zone* in public headers, .swiftinterface and .apinotes --
+/// HKMetadataKeyTimeZone
+/// -- for contrast, the same search over the linker stub --
+/// _HKWorkoutZonesTypeIdentifierCyclingPower
+/// _HKWorkoutZonesTypeIdentifierHeartRate
+/// HKWorkoutZone
+/// HKWorkoutZonesSample
+/// HKWorkoutZonesType
+/// ```
+///
+/// The only public symbol matching "Zone" is a timezone metadata key. The
+/// zone classes are in the binary and reachable from nothing a third-party
+/// app may compile against. (The brief asked for this to be checked against
+/// an Xcode 27 SDK; the installed toolchain is Xcode 26.6, so that is what
+/// was checked and what this states.)
 ///
 /// Reading them would mean declaring private interfaces by hand. A case that
 /// can never be produced is worse than no case, so this documents the gap

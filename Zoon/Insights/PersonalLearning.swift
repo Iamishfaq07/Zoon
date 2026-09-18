@@ -59,13 +59,23 @@ enum PersonalLearning {
         let episodes = disruptionEpisodes(from: disruptionDates, calendar: calendar)
         guard ordered.count >= 12, episodes.count >= 2 else { return [] }
         func median(_ values: [Double]) -> Double? { Statistics.median(values) }
+
+        // Clock minutes on the circle, in the night's own timezone, with the
+        // centre and the distances both taken circularly.
+        //
+        // What was here before cut the day at noon and added 24 hours to
+        // anything below it. That works for somebody who always goes to bed
+        // between 21:00 and 02:00 and for nobody else: a day sleeper's 11:50
+        // and 12:10 came out 23 hours and 40 minutes apart, and a rotating
+        // shift worker crossed the cut every time the roster turned over, so
+        // the median of their baseline landed in the middle of their waking
+        // day and no recovery night ever matched it. `Statistics` has no cut
+        // at all -- see `circularMedian` -- which is why the consolidation is
+        // onto it rather than onto a better-placed cut.
         func bedtimeMinute(_ night: SleepNightFeatures) -> Double {
-            let zone = TimeZone(identifier: night.timeZoneIdentifier) ?? calendar.timeZone
-            var local = calendar; local.timeZone = zone
-            let c = local.dateComponents([.hour, .minute], from: night.bedtime)
-            var value = Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
-            if value < 12 * 60 { value += 24 * 60 }
-            return value
+            var local = calendar
+            local.timeZone = night.timeZone
+            return Statistics.clockMinutes(night.bedtime, calendar: local)
         }
 
         var timing: [Int] = [], debt: [Int] = [], hrv: [Int] = []
@@ -83,8 +93,10 @@ enum PersonalLearning {
             let future = Array(ordered.dropFirst(index + 1).prefix(7))
             guard future.count >= 2 else { continue }
 
-            if let center = median(baseline.map(bedtimeMinute)),
-               let recovered = firstStableIndex(future.map { abs(bedtimeMinute($0) - center) <= 35 }) {
+            if let center = Statistics.circularMedian(baseline.map(bedtimeMinute)),
+               let recovered = firstStableIndex(
+                   future.map { Statistics.circularDistance(bedtimeMinute($0), center) <= 35 }
+               ) {
                 timing.append(recovered)
             }
             if let center = median(baseline.compactMap(\.sleepDebtMinutes)),
@@ -162,12 +174,30 @@ enum PersonalLearning {
         if items.isEmpty, nights.count >= 8 {
             let recent = Array(nights.sorted(by: { $0.date < $1.date }).suffix(3))
             let earlier = Array(nights.sorted(by: { $0.date < $1.date }).dropLast(3).suffix(7))
+            // Each night is read in the zone it was recorded in, and both the
+            // centres and the comparison are circular. Reading history in the
+            // device's current zone meant a flight home re-dated every earlier
+            // bedtime and announced a timing shift nobody had made.
             let minute: (SleepNightFeatures) -> Double = { night in
-                let c = Calendar.current.dateComponents([.hour, .minute], from: night.bedtime)
-                var m = Double((c.hour ?? 0) * 60 + (c.minute ?? 0)); if m < 720 { m += 1440 }; return m
+                var local = Calendar.current
+                local.timeZone = night.timeZone
+                return Statistics.clockMinutes(night.bedtime, calendar: local)
             }
-            if let a = Statistics.median(recent.map(minute)), let b = Statistics.median(earlier.map(minute)), abs(a - b) >= 60 {
-                items.append(.init(kind: .timing, title: "Your timing shifted", detail: "Recent bedtimes moved about \(Int(abs(a - b).rounded())) minutes from your prior week.", action: "See body clock"))
+            if let a = Statistics.circularMedian(recent.map(minute)),
+               let b = Statistics.circularMedian(earlier.map(minute)) {
+                // Signed, so the copy can say which way it went. An ordinary
+                // subtraction reports a 23-hour-20-minute move whenever the
+                // pair straddles midnight, which is most weeks.
+                let shift = Statistics.circularDifference(a, b)
+                if abs(shift) >= 60 {
+                    let direction = shift > 0 ? "later" : "earlier"
+                    items.append(.init(
+                        kind: .timing,
+                        title: "Your timing shifted",
+                        detail: "Recent bedtimes moved about \(Int(abs(shift).rounded())) minutes \(direction) than your prior week.",
+                        action: "See body clock"
+                    ))
+                }
             }
         }
         return Array(items.prefix(2))

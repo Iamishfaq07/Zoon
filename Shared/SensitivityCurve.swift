@@ -351,18 +351,120 @@ enum SensitivityCurve {
         ]
     )
 
-    /// The hour a nap started, on a 24-hour clock. Naps do not cross the
-    /// 18:00 seam the circular helpers exist for, so a plain hour is safe
-    /// here — and a nap after 18:00 is not a nap.
+    /// The hour a nap started, on a 24-hour clock.
+    ///
+    /// **The evening band is the point of this table.** These bands used to
+    /// stop at 18:00, on the reasoning that "a nap after 18:00 is not a nap".
+    /// That is a claim about the clock standing in for a claim about the
+    /// episode, and it fails in both directions. A twenty-minute doze at 19:30
+    /// is a nap by any reading, and it is the nap most likely to matter to
+    /// that night's sleep onset — which is the one thing this curve measures.
+    /// Meanwhile a night-shift worker's main sleep can begin at 08:00 and
+    /// would sail straight through "before noon" if the hour were what decided
+    /// eligibility.
+    ///
+    /// It is not. Eligibility is the episode architecture's: `classify`
+    /// labels an episode `.nap` or `.secondarySleep` from its duration and
+    /// the person's schedule, `preferredMainSleep` picks the main block by
+    /// length rather than by hour, and only episodes already typed `.nap`
+    /// reach this curve. These bands only say *when*, and so the last one is
+    /// open: a nap Zoon has classified never falls out of its own curve for
+    /// happening at an inconvenient hour.
+    ///
+    /// Naps do not cross the 18:00 seam the circular helpers exist for — a
+    /// nap band boundary is a boundary, not a discontinuity — so a plain hour
+    /// is still what these take.
     static let napTiming = Dose(
         behaviour: "Nap timing",
         unit: "h",
         bands: [
-            Band(label: "Before noon", lower: 0, upper: 12),
-            Band(label: "Noon–3 PM", lower: 12, upper: 15),
-            Band(label: "After 3 PM", lower: 15, upper: 18)
+            Band(label: "Morning", lower: 0, upper: 12),
+            Band(label: "Early afternoon", lower: 12, upper: 15),
+            Band(label: "Late afternoon", lower: 15, upper: 18),
+            Band(label: "Evening", lower: 18, upper: nil)
         ]
     )
+
+    /// §18. The hour the last caffeine of the day was drunk.
+    ///
+    /// **This became buildable when §9 landed, and only for the nights it
+    /// covers.** Zoon used to record how much late caffeine there was and not
+    /// when any of it happened -- that gap is why `unavailable` named this for
+    /// so long. An observation now carries a confirmed clock time, so the
+    /// bands below have something to sort on.
+    ///
+    /// They will be thin for a long while, and that is the honest state
+    /// rather than a defect: only nights where somebody said a time and
+    /// confirmed it appear here, and the `tooFew` verdict says so per band
+    /// instead of averaging a handful of nights into a finding. The brief's
+    /// own example is exactly this shape -- one band ruled out, one uncertain,
+    /// one associated.
+    static let caffeineTiming = Dose(
+        behaviour: "Caffeine timing",
+        unit: "h",
+        bands: [
+            Band(label: "Before 1 PM", lower: 0, upper: 13),
+            Band(label: "1–4 PM", lower: 13, upper: 16),
+            Band(label: "After 4 PM", lower: 16, upper: nil)
+        ]
+    )
+
+    /// How many caffeinated drinks, as the person counted them.
+    ///
+    /// Their own unit, deliberately. Zoon does not convert a cup into
+    /// milligrams: a "coffee" is a double espresso to one person and a mug of
+    /// instant to another, and a conversion factor would put a fabricated
+    /// precision on the one number here that somebody actually stated.
+    ///
+    /// No zero band. A night with no recorded count is a night with an
+    /// unknown count -- see `BehaviorDetail` -- and is absent rather than
+    /// sorted into "none", which would be a control arm built out of missing
+    /// data.
+    static let caffeineDose = Dose(
+        behaviour: "Caffeine, how much",
+        unit: "drinks",
+        bands: [
+            Band(label: "One", lower: 1, upper: 2),
+            Band(label: "Two", lower: 2, upper: 3),
+            Band(label: "Three or more", lower: 3, upper: nil)
+        ]
+    )
+
+    /// How hard the session was, as the person described it.
+    ///
+    /// The other gap §9 closed. `workoutTiming` has always known how long
+    /// before bed the last workout ended and never how hard it was, so an
+    /// easy evening spin and a race sat in the same band. The scale is the
+    /// three words `BehaviorDetail.intensityLabel` maps back to, because
+    /// three words is the resolution somebody actually supplied.
+    ///
+    /// Not derived from heart rate or Load. Those are separate measurements
+    /// with their own provenance, and mixing a measured strain into a curve
+    /// labelled "what you said" would make neither readable.
+    static let workoutLoad = Dose(
+        behaviour: "Workout load",
+        unit: "",
+        bands: [
+            Band(label: "Easy", lower: 0, upper: 0.34),
+            Band(label: "Moderate", lower: 0.34, upper: 0.67),
+            Band(label: "Hard", lower: 0.67, upper: nil)
+        ]
+    )
+
+    /// Every dose Zoon ships, in one place.
+    ///
+    /// A list rather than seven separate statics referenced ad hoc, so a
+    /// dimension added later is held to the same guards as the rest without
+    /// anybody remembering to add it to a test. `napTiming` shipped with a
+    /// closed top band and silently dropped every evening nap precisely
+    /// because the check that would have caught it enumerated the doses by
+    /// hand and that one was on the list -- the guard was there, the coverage
+    /// was the thing that slipped.
+    static let shipped: [Dose] = [
+        lateCaffeine, caffeineTiming, caffeineDose,
+        workoutTiming, workoutLoad,
+        napDuration, napTiming
+    ]
 
     /// A dimension the brief asks for that cannot be built from what is
     /// stored. A named type rather than a tuple because the view iterates
@@ -374,18 +476,15 @@ enum SensitivityCurve {
     }
 
     /// Named so the gap is visible in the app rather than only in a document.
+    /// Two of the three gaps named here closed when observations started
+    /// carrying a time and an intensity. They are curves now -- thin ones,
+    /// which the `tooFew` verdict reports honestly -- and listing them as
+    /// impossible would be as wrong as the silence they were added to
+    /// replace. What remains is genuinely not derivable from what is stored.
     static let unavailable: [Gap] = [
         Gap(
-            behaviour: "Caffeine timing",
-            reason: "Zoon records how much late caffeine there was, not the clock time of each drink."
-        ),
-        Gap(
             behaviour: "Light timing",
-            reason: "Daylight is stored as a total for the day, so Zoon cannot tell morning light from evening light."
-        ),
-        Gap(
-            behaviour: "Workout load",
-            reason: "Workout intensity is not carried on a night, only how long before bed the last one ended."
+            reason: "Daylight is stored as a total for the day, so Zoon cannot tell morning light from evening light. A logged daylight observation records that you went out, not for how long."
         )
     ]
 }

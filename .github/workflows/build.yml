@@ -43,6 +43,57 @@ jobs:
       - name: Enforce release trust gates
         run: python3 Tools/release-audit.py
 
+  # A job of its own, not a step inside the build.
+  #
+  # The build job's log runs to well over a hundred thousand characters and
+  # the probe's output sits at the very top of it, which makes it unreadable
+  # through an API that serves the tail. Here the whole log is the probe.
+  sdk-probe:
+    name: Probe installed SDK
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe HealthKit workout-zone API
+        run: |
+          set +e
+          {
+            for SDKNAME in iphoneos watchos; do
+              SDK=$(xcrun --sdk "$SDKNAME" --show-sdk-path 2>/dev/null)
+              echo "### HealthKit zone API in ${SDK:-<$SDKNAME sdk not installed>}"
+              echo ""
+              echo '```'
+              HK="$SDK/System/Library/Frameworks/HealthKit.framework"
+              if [ -n "$SDK" ] && [ -d "$HK" ]; then
+                echo "-- symbols named *Zone* in public headers, .swiftinterface and .apinotes --"
+                grep -rhoE "\b(HK[A-Za-z]*Zone[A-Za-z]*)\b" \
+                  "$HK/Headers" "$HK/Modules" "$HK/HealthKit.apinotes" 2>/dev/null \
+                  | sort -u
+                echo "-- declarations mentioning Zone --"
+                grep -rhE "Zone" "$HK/Headers" "$HK/Modules" 2>/dev/null \
+                  | grep -E "@interface|@property|^- \(|^\+ \(|typedef|func |var |public " \
+                  | sort -u | head -40
+                echo "-- §21: cycle and menopause identifiers --"
+                grep -rhoE "\b(HK[A-Za-z]*(Menopaus|Perimenopaus|Climacteric|Cycle|Menstrual)[A-Za-z]*)\b" \
+                  "$HK/Headers" "$HK/Modules" "$HK/HealthKit.apinotes" 2>/dev/null \
+                  | sort -u
+                echo "-- category identifiers mentioning those concepts --"
+                grep -rhiE "menopaus|perimenopaus|climacteric" "$HK/Headers" "$HK/Modules" 2>/dev/null \
+                  | sort -u | head -20
+                echo "-- for contrast, the same search over the linker stub --"
+                for TBD in "$HK/HealthKit.tbd" "$SDK/System/Library/Frameworks/HealthKit.framework/HealthKit.tbd"; do
+                  [ -f "$TBD" ] && grep -ohE "_?HK[A-Za-z]*Zone[A-Za-z]*" "$TBD" | sort -u | head -20
+                done
+              else
+                echo "No HealthKit framework at $HK"
+              fi
+              echo '```'
+              echo ""
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 0
+
   build:
     name: Build (iOS Simulator)
     needs: project
@@ -62,6 +113,11 @@ jobs:
           echo "Available SDKs:"
           xcodebuild -showsdks | grep -i ios || true
 
+      # §12 asks what workout-zone API the *installed* SDK actually has,
+      # rather than what a comment written against an older one believed.
+      # Reading the headers is the only way to answer that from here: this
+      # repository is developed without a Mac, so the runner's SDK is the
+      # only copy of it anybody can look at.
       - name: Build app and widget
         id: build
         run: |

@@ -54,6 +54,91 @@ final class BehaviorObservationStoreTests: XCTestCase {
 
     private let night = "2024-06-01@UTC"
 
+    // MARK: - Structured detail (§9)
+
+    func testADetailSurvivesBeingWrittenAndReadBack() throws {
+        let store = try makeStore()
+        let when = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        store.set(
+            .yes, for: .caffeine, nightKey: night,
+            detail: BehaviorDetail(quantity: 2, unit: "coffees", eventTime: when)
+        )
+        let record = try XCTUnwrap(
+            store.record(nightKey: night, behaviorIdentifier: BehaviorTag.caffeine.rawValue)
+        )
+        let detail = try XCTUnwrap(record.detail)
+        XCTAssertEqual(detail.quantity, 2)
+        XCTAssertEqual(detail.unit, "coffees")
+        XCTAssertEqual(detail.eventTime, when)
+    }
+
+    /// The backward-compatible half. A row written the way every row before
+    /// this build was written reads back with no detail -- not with a zero
+    /// quantity, which would put it in the control band of every dose curve.
+    func testARowWrittenWithoutDetailHasNoneRatherThanZero() throws {
+        let store = try makeStore()
+        store.set(.yes, for: .caffeine, nightKey: night)
+        let record = try XCTUnwrap(
+            store.record(nightKey: night, behaviorIdentifier: BehaviorTag.caffeine.rawValue)
+        )
+        XCTAssertNil(record.detail)
+        XCTAssertNil(record.quantity)
+        XCTAssertEqual(record.state, .yes, "the answer itself is unaffected")
+    }
+
+    /// Editing an answer must not leave last week's quantity attached to it.
+    /// A row that was a mixture of two answers could not be read by anything.
+    func testRewritingAnAnswerWithoutDetailClearsTheOldOne() throws {
+        let store = try makeStore()
+        store.set(.yes, for: .caffeine, nightKey: night, detail: BehaviorDetail(quantity: 3))
+        store.set(.yes, for: .caffeine, nightKey: night)
+        let record = try XCTUnwrap(
+            store.record(nightKey: night, behaviorIdentifier: BehaviorTag.caffeine.rawValue)
+        )
+        XCTAssertNil(record.detail)
+    }
+
+    /// A behaviour that did not happen has no quantity and no time. Storing
+    /// them would be detail about an event nobody had.
+    func testANoNeverCarriesDetailEvenWhenOneIsPassed() throws {
+        let store = try makeStore()
+        store.set(
+            .no, for: .caffeine, nightKey: night,
+            detail: BehaviorDetail(quantity: 2, unit: "coffees")
+        )
+        let record = try XCTUnwrap(
+            store.record(nightKey: night, behaviorIdentifier: BehaviorTag.caffeine.rawValue)
+        )
+        XCTAssertEqual(record.state, .no)
+        XCTAssertNil(record.detail)
+    }
+
+    /// The read side the curves take: only confirmed yes rows that actually
+    /// carry a detail. A night logged as "coffee" with no number is an unknown
+    /// number of coffees and is absent here rather than counted as none.
+    func testTheCurveFacingReadReturnsOnlyQuantifiedYesNights() throws {
+        let store = try makeStore()
+        store.set(.yes, for: .caffeine, nightKey: "2024-06-01@UTC", detail: BehaviorDetail(quantity: 2))
+        store.set(.yes, for: .caffeine, nightKey: "2024-06-02@UTC")
+        store.set(.no, for: .caffeine, nightKey: "2024-06-03@UTC", detail: BehaviorDetail(quantity: 1))
+        store.set(.yes, for: .alcohol, nightKey: "2024-06-04@UTC", detail: BehaviorDetail(quantity: 1))
+
+        let details = store.details(for: BehaviorTag.caffeine.behaviorID)
+        XCTAssertEqual(details.count, 1)
+        XCTAssertEqual(details.first?.nightKey, "2024-06-01@UTC")
+        XCTAssertEqual(details.first?.detail.quantity, 2)
+    }
+
+    /// Clearing an answer deletes the row, so its detail goes with it rather
+    /// than surviving as an orphan attached to nothing.
+    func testClearingAnAnswerTakesItsDetailWithIt() throws {
+        let store = try makeStore()
+        store.set(.yes, for: .caffeine, nightKey: night, detail: BehaviorDetail(quantity: 2))
+        store.set(.unknown, for: .caffeine, nightKey: night)
+        XCTAssertNil(store.record(nightKey: night, behaviorIdentifier: BehaviorTag.caffeine.rawValue))
+        XCTAssertTrue(store.details(for: BehaviorTag.caffeine.behaviorID).isEmpty)
+    }
+
     // MARK: - Reading and writing
 
     func testAnUnwrittenBehaviourIsUnknown() throws {

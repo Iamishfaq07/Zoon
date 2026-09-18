@@ -1172,8 +1172,7 @@ the simulator's empty store. No real EventKit store, so A1's fix is verified by
 unit tests over its resolver and **not** by a Calendar permission prompt or a
 real event on a real device. No microphone, so on-device dictation has never
 transcribed anything. No AlarmKit. No App Intents or Siri invocation. No
-widget or complication rendered on a home screen. No background delivery. No
-signed archive, no TestFlight build from this branch.
+widget or complication rendered on a home screen. No background delivery.
 
 ### Known gaps in coverage
 
@@ -1184,8 +1183,30 @@ signed archive, no TestFlight build from this branch.
   the nap matcher are all tested at the engine level and have never been seen
   on screen.
 
-### Not production ready
+### Archived and uploaded — which is not the same as verified
 
-This branch has not been archived, signed, submitted, or run on a device. The
-statement "production ready" is not supported by the evidence in this document
-and is not made.
+This work **has** now been archived, signed and uploaded to TestFlight: build
+105, from `main` at `84a6648`, TestFlight run #105. Two earlier statements in
+this section said no signed archive existed; they were true when written and
+are corrected here rather than left standing.
+
+What that changes is narrow, and worth being exact about. An upload means
+Xcode archived the four targets against a real distribution certificate and
+App Store Connect accepted the binary. It does **not** mean anything in this
+document has been exercised on hardware. Every limitation above still holds:
+no device, no Apple Watch, no real HealthKit or EventKit store, no microphone,
+no AlarmKit, no widget on a home screen.
+
+The first attempt (run #104) failed at Archive in seventeen seconds — the
+Apple team was at its certificate limit, so no signing certificate could be
+minted and no provisioning profile could match. That is an account state, not
+a defect in this code, and it was cleared by revoking a certificate in the
+Apple Developer portal.
+
+### Still not production ready
+
+A build reaching TestFlight is a build somebody can now install. It is not
+evidence that the sleep models in it are right, and nothing in this document
+has been checked against a real night's data from a real sensor. The statement
+"production ready" remains unsupported by the evidence here and is still not
+made.
