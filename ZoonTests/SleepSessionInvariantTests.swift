@@ -209,4 +209,131 @@ final class SleepSessionInvariantTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(efficiency, 0)
         }
     }
+
+    // MARK: - The cases a real week produces
+
+    /// A sample carrying the timezone HealthKit recorded it in, which is the
+    /// only way to tell a travelled night from an ordinary one.
+    private func zonedSample(
+        _ stage: HKCategoryValueSleepAnalysis,
+        _ start: Date,
+        _ end: Date,
+        zone: String
+    ) -> HKCategorySample {
+        HKCategorySample(
+            type: HKCategoryType(.sleepAnalysis),
+            value: stage.rawValue,
+            start: start,
+            end: max(start, end),
+            metadata: [HKMetadataKeyTimeZone: zone]
+        )
+    }
+
+    /// A red-eye: slept over the Pacific, woke somewhere nine hours from
+    /// where the night began.
+    ///
+    /// The instants are unambiguous and the invariants follow from that, so
+    /// the interesting assertion is the other one -- that the night is filed
+    /// under the zone HealthKit recorded, not under wherever the phone
+    /// happens to be when the session is next assembled. The runner is UTC
+    /// and the flight left Tokyo, and those two disagree about which day
+    /// this night belongs to, which is what makes the assertion mean
+    /// something rather than pass by coincidence.
+    func testRedEyeAcrossTimeZones() {
+        var tokyo = Calendar(identifier: .gregorian)
+        tokyo.timeZone = TimeZone(identifier: "Asia/Tokyo")!
+        func tokyoTime(_ day: Int, _ hour: Int) -> Date {
+            tokyo.date(from: DateComponents(year: 2026, month: 1, day: day, hour: hour))!
+        }
+
+        let samples = [
+            zonedSample(.asleepCore, tokyoTime(5, 23), tokyoTime(6, 2), zone: "Asia/Tokyo"),
+            zonedSample(.asleepREM, tokyoTime(6, 2), tokyoTime(6, 4), zone: "Asia/Tokyo"),
+            zonedSample(.asleepCore, tokyoTime(6, 4), tokyoTime(6, 6), zone: "Asia/Tokyo"),
+        ]
+        assertAllSound(samples, "red-eye")
+
+        guard let session = builder.buildSessions(from: samples).first else {
+            return XCTFail("the flight produced no session")
+        }
+
+        XCTAssertEqual(
+            session.timeZoneIdentifier, "Asia/Tokyo",
+            "the recorded zone travels with the episode"
+        )
+        XCTAssertEqual(
+            session.nightKey,
+            NightKey.make(wakeInstant: session.end, in: TimeZone(identifier: "Asia/Tokyo")!),
+            "a travelled night is filed under where it was slept"
+        )
+        // The key carries its own zone identifier, so comparing whole keys
+        // would differ no matter what. The date is the part that matters:
+        // 06:00 in Tokyo is still the fifth in UTC, so getting this wrong
+        // files the night under the wrong day rather than merely the wrong
+        // label.
+        XCTAssertTrue(
+            session.nightKey.hasPrefix("2026-01-06"),
+            "filed under \(session.nightKey), not the Tokyo morning it was"
+        )
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        XCTAssertEqual(
+            utc.dateComponents([.day], from: session.end).day, 5,
+            "the runner's zone must actually disagree, or this test proves nothing"
+        )
+    }
+
+    /// The watch came off at 02:00 and went back on at 05:00 -- three hours
+    /// with no samples of any kind.
+    ///
+    /// That is not three hours of sleep and not three hours of lying awake;
+    /// it is three hours nobody measured. The invariant worth stating is
+    /// that the builder never counts it: the gap exceeds the session
+    /// threshold, so the night splits, and the two halves together account
+    /// for five hours rather than eight. Filling the hole would be the
+    /// "missing is not zero" failure in its most literal form.
+    func testWatchRemovedMidNightIsNotCountedAsSleep() {
+        let samples = [
+            sample(.asleepCore, at(5, 23), at(6, 2)),
+            sample(.asleepCore, at(6, 5), at(6, 7)),
+        ]
+        assertAllSound(samples, "watch removed mid-night")
+
+        let sessions = builder.buildSessions(from: samples)
+        XCTAssertEqual(sessions.count, 2, "an unmeasured gap does not join two halves")
+
+        let measured = sessions.reduce(0.0) { $0 + $1.timeInBed }
+        XCTAssertEqual(measured / 3600, 5, accuracy: 0.01, "the uncovered hours were counted")
+
+        let asleep = sessions.reduce(0.0) { $0 + $1.totalAsleepMinutes }
+        XCTAssertEqual(asleep, 300, accuracy: 0.01, "asleep time grew to cover the gap")
+    }
+
+    /// Awake for fifty minutes at three in the morning, watch on throughout.
+    ///
+    /// Shorter than the gap threshold, so this stays one night -- the
+    /// opposite of the case above, and for the right reason: here the
+    /// wakefulness was measured. It has to come out of asleep time without
+    /// coming out of the session, which is the arithmetic that puts an
+    /// efficiency over 100% on screen when it goes wrong.
+    func testLongMiddleOfNightAwakePeriod() {
+        let samples = [
+            sample(.asleepCore, at(5, 23), at(6, 3)),
+            sample(.awake, at(6, 3), at(6, 3, 50)),
+            sample(.asleepCore, at(6, 3, 50), at(6, 7)),
+        ]
+        assertAllSound(samples, "long middle-of-night awake")
+
+        let sessions = builder.buildSessions(from: samples)
+        XCTAssertEqual(sessions.count, 1, "measured wakefulness does not split the night")
+        guard let session = sessions.first else { return }
+
+        XCTAssertEqual(session.timeInBed / 3600, 8, accuracy: 0.01, "the night is still eight hours")
+        XCTAssertEqual(
+            session.totalAsleepMinutes, 430, accuracy: 0.01,
+            "the fifty awake minutes are still being counted as sleep"
+        )
+        let awake = session.awakeIntervals.reduce(0.0) { $0 + $1.duration } / 60
+        XCTAssertEqual(awake, 50, accuracy: 0.01, "the awake period was not carried through")
+    }
 }
