@@ -160,15 +160,29 @@ final class ScheduleFrictionTests: XCTestCase {
     }
 
     /// Times never break across a line, the same guarantee the watch needed.
-    func testTheConstraintTimeCannotBreakAcrossALine() {
+    func testTheConstraintTimeCannotBreakAcrossALine() throws {
         let reading = ScheduleFriction.read(
             day: day(wakeSource: .calendar),
             firstCommitment: at(7, 30),
             calendar: calendar
         )
-        XCTAssertTrue(
-            reading.explanation?.contains("\u{00A0}") == true,
-            "the clock time was not made unbreakable: \(reading.explanation ?? "")"
+        // Asserted as "no ASCII space in the time", not "contains U+00A0".
+        //
+        // The first version demanded the non-breaking space `ClockText`
+        // inserts, and failed -- because iOS's short-time formatter already
+        // emits U+202F, a *narrow* no-break space, between the time and the
+        // meridiem. There was no ordinary space to replace, so nothing was
+        // replaced, and the string was unbreakable all along.
+        //
+        // The property that matters is that the time cannot break, not which
+        // of the two characters achieves it. Testing for the implementation's
+        // preferred character would fail on a platform that got there another
+        // way, which is what happened here.
+        let explanation = try XCTUnwrap(reading.explanation)
+        let time = try XCTUnwrap(explanation.components(separatedBy: "at ").last)
+        XCTAssertFalse(
+            time.contains(" "),
+            "the time can break: \(time.unicodeScalars.map { "U+\(String($0.value, radix: 16))" })"
         )
     }
 }

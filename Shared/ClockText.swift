@@ -28,6 +28,15 @@ enum ClockText {
     }
 
     /// The same guarantee for a time that has already been formatted.
+    ///
+    /// A no-op on most Apple platforms now, and correctly so: the short-time
+    /// formatter emits U+202F, a narrow no-break space, before the meridiem,
+    /// so there is no ordinary space to replace and the time could never have
+    /// broken there. This still matters for the locales and formats that do
+    /// use one, and for a string assembled by hand rather than by the
+    /// formatter. A test that demanded U+00A0 specifically failed on exactly
+    /// this -- the property to hold is that the time cannot break, not which
+    /// character achieves it.
     static func atomic(_ formatted: String) -> String {
         formatted.replacingOccurrences(of: " ", with: "\u{00A0}")
     }
