@@ -50,7 +50,7 @@ struct CauseFinderView: View {
                 Picker("", selection: $tab) {
                     ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
                 }
-                .pickerStyle(.segmented)
+                .adaptiveSegmentedStyle()
 
                 content(observations)
                 RelatedReading(placement: .behaviours, title: "On habits and sleep")
@@ -453,7 +453,7 @@ private struct ExperimentPickerSheet: View {
                             Text(direction.label).tag(direction)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .adaptiveSegmentedStyle()
                 } footer: {
                     Text("What counts as a compliant night depends on this -- a night you had a drink is a broken trial for cutting back, but a successful one for doing more of something. Some behaviours can only be tested one way: Zoon will help you cut back on alcohol, nicotine, cannabis, late caffeine and sleep aids, but will not ask you to have more of them.")
                 }

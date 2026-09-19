@@ -414,7 +414,8 @@ struct SleepSessionBuilder {
             segments: segments,
             sourceName: provenance.sourceName,
             sourceBundleIdentifier: provenance.sourceBundleIdentifier,
-            timeZoneIdentifier: provenance.timeZoneIdentifier
+            timeZoneIdentifier: provenance.timeZoneIdentifier,
+            stageSourcePriority: provenance.stageSourcePriority
         )
     }
 
@@ -466,7 +467,15 @@ struct SleepSessionBuilder {
                 guard let identifier = sample.metadata?[HKMetadataKeyTimeZone] as? String,
                       TimeZone(identifier: identifier) != nil else { return nil }
                 return identifier
-            }.first ?? TimeZone.current.identifier
+            }.first ?? TimeZone.current.identifier,
+            // The one place the hardware string is still in scope.
+            stageSourcePriority: samples.first.map { sample in
+                SourcePriority.classify(
+                    hardwareVersion: sample.sourceRevision.productType,
+                    bundleIdentifier: sample.sourceRevision.source.bundleIdentifier,
+                    sourceName: sample.sourceRevision.source.name
+                )
+            }
         )
     }
 
@@ -572,6 +581,17 @@ struct SleepSession {
     /// episode: `Calendar.current` may be somewhere else when a traveler next
     /// refreshes the same historical night.
     let timeZoneIdentifier: String
+
+    /// What the winning sleep source was, classified here and carried rather
+    /// than re-derived later.
+    ///
+    /// `SourcePriority.classify` needs `sourceRevision.productType` to tell
+    /// an Apple Watch from an iPhone -- both write under `com.apple.health`,
+    /// and without the hardware string every Watch night classifies as
+    /// phone-or-manual. That string exists on the sample and nowhere
+    /// downstream, so anything grading stage quality later has to be handed
+    /// the answer from here. See `StageTrust`.
+    let stageSourcePriority: SourcePriority?
 
     var wakeDate: Date {
         var calendar = Calendar(identifier: .gregorian)

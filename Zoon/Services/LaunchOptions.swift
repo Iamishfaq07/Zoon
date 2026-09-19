@@ -27,7 +27,7 @@ enum LaunchOptions {
     /// Mock nights are badged **Sample data** wherever they appear, so a demo
     /// screenshot can never be mistaken for a measured one.
     static var isDemo: Bool {
-        UserDefaults.standard.bool(forKey: "zoonDemo")
+        DataEnvironment.isDemoLaunchArgument
     }
 
     /// Which tab to open on, or which sheet to open over the default tab.
@@ -42,6 +42,27 @@ enum LaunchOptions {
     /// that has broken most often.
     static var initialTab: String? {
         UserDefaults.standard.string(forKey: "zoonTab")
+    }
+
+    /// A section to scroll into view once the screen has opened, or `nil`.
+    ///
+    /// `-zoonTab` opens a screen; a capture then photographs one viewport of
+    /// it and everything below the fold goes unseen. That is not a small gap:
+    /// the sleep-stage provenance row on "Where the numbers come from" is
+    /// below it, and so is the stage bar on Sleep Detail, so two of the
+    /// app's most careful statements about what it does and does not know
+    /// have never appeared in a render.
+    ///
+    /// The comment beside the deep-screen list in the capture workflow puts
+    /// it better than I can: a layout is exactly the kind of thing that
+    /// compiles, passes tests, and still overlaps its own labels; only a
+    /// render shows it. That argument does not stop at the fold.
+    ///
+    /// This is the same move `-zoonWatchPage` makes on the watch, where four
+    /// of seven pages had no route to a camera and two of the seven turned
+    /// out to be wrong.
+    static var scrollTarget: String? {
+        UserDefaults.standard.string(forKey: "zoonScrollTo")
     }
 
     /// Demo launches skip onboarding — it's a one-time gate, and a screenshot

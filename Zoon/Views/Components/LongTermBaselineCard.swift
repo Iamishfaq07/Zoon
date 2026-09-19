@@ -27,7 +27,7 @@ struct LongTermBaselineCard: View {
                     Text(option.label).tag(option)
                 }
             }
-            .pickerStyle(.segmented)
+            .adaptiveSegmentedStyle()
             .onChange(of: window) { _, _ in Haptics.select() }
 
             ForEach(signals, id: \.name) { signal in

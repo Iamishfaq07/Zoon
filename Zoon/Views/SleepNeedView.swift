@@ -53,26 +53,76 @@ struct SleepNeedView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// Two figures, because they answer two questions.
+    ///
+    /// The baseline is where this person's unconstrained nights sit — it
+    /// barely moves, and it is the closest thing here to an observation.
+    /// Tonight's target is that baseline plus today's adjustments, and it is
+    /// a planning suggestion. Showing only the composed total, as this did,
+    /// let a figure carrying a debt repayment and a strain bonus read as a
+    /// measured requirement. See `SleepNeed`.
     private func hero(_ need: SleepNeed) -> some View {
-        VStack(spacing: 6) {
-            Text("Tonight's estimated need")
-                .font(Theme.label(13))
-                .foregroundStyle(Theme.inkSecondary)
-            Text(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))
-                .font(Theme.numeral(46))
-                .monospacedDigit()
-            StatusPill(text: learned?.confidence.label ?? "Low confidence", tint: Theme.Metric.sleep)
-            if let learned, let learnedMinutes = learned.learnedMinutes {
-                Text("Based on \(learned.qualifyingNightCount) qualifying nights -- your own baseline is estimated at \(SleepNightFeatures.formatMinutes(learnedMinutes)), blended with your goal below.")
-                    .font(Theme.text(10))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
+        VStack(spacing: 14) {
+            VStack(spacing: 4) {
+                Text("Your baseline")
+                    .font(Theme.label(12))
+                    .foregroundStyle(Theme.inkSecondary)
+                // A range where the nights support one, a single figure where
+                // they do not — never a fabricated ±20 minutes.
+                Text(baselineReading)
+                    .font(Theme.numeral(30))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.inkSecondary)
             }
+
+            VStack(spacing: 4) {
+                Text("Tonight's suggested target")
+                    .font(Theme.label(13))
+                    .foregroundStyle(Theme.inkSecondary)
+                Text(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))
+                    .font(Theme.numeral(46))
+                    .monospacedDigit()
+            }
+
+            StatusPill(text: learned?.confidence.label ?? "Low confidence", tint: Theme.Metric.sleep)
+
+            Text(provenanceLine)
+                .font(Theme.text(10))
+                .foregroundStyle(Theme.inkTertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .glassCard()
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The baseline as a band when the qualifying nights support one, and as
+    /// a single figure when they do not.
+    private var baselineReading: String {
+        guard let learned else { return "—" }
+        if learned.showsRange,
+           let low = learned.typicalLowMinutes,
+           let high = learned.typicalHighMinutes,
+           high - low >= 5 {
+            return "\(SleepNightFeatures.formatMinutes(low))–\(SleepNightFeatures.formatMinutes(high))"
+        }
+        return SleepNightFeatures.formatMinutes(learned.learnedMinutes ?? learned.minutes)
+    }
+
+    /// Where the baseline came from, said plainly, including when it is still
+    /// mostly the goal the person set.
+    private var provenanceLine: String {
+        guard let learned else {
+            return "Your baseline is learned from nights you have actually slept."
+        }
+        guard learned.learnedMinutes != nil else {
+            return "Still your stated goal. Zoon needs \(LearnedSleepNeed.minimumQualifyingNights) qualifying nights before it starts learning a baseline of your own, and has \(learned.qualifyingNightCount)."
+        }
+        let basis = "Learned from \(learned.qualifyingNightCount) qualifying nights"
+        return learned.showsRange
+            ? "\(basis) — the range is where the middle of those nights sat, not a margin of error. Tonight's target adds today's adjustments below."
+            : "\(basis), still blended with your stated goal. Tonight's target adds today's adjustments below."
     }
 
     private func breakdownCard(_ need: SleepNeed) -> some View {

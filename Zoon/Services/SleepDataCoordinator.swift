@@ -1251,6 +1251,11 @@ final class SleepDataCoordinator {
             insight: context.insight,
             goalMinutes: goal,
             recoveryPercent: context.recovery.percent,
+            // Said explicitly rather than inherited from a default. This is
+            // the one question the flag exists to answer, and the answer is
+            // already computed -- `presentation.isShowable` is what every
+            // phone surface gates on.
+            hasRecovery: context.recovery.presentation.isShowable,
             bodyBattery: context.bodyBattery.current,
             strain: context.strain.value,
             sleepPerformance: context.sleepNeed.performancePercent,
@@ -1291,6 +1296,7 @@ final class SleepDataCoordinator {
         ) {
             snapshot.tonightTargetLabel = plan.targetRangeLabel
             snapshot.tonightTargetNote = plan.sentence
+            snapshot.tonightTargetNoteShort = plan.shortSentence
             snapshot.isTonightTargetHolding = plan.isHolding
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: recentNights).first {
@@ -1644,6 +1650,10 @@ final class SleepDataCoordinator {
             hrvBaseline: baseline.hrv7DayAvg,
             sampledMinutes: samplingIntervals.reduce(0) { $0 + $1.duration } / 60,
             baselineNightCount: baseline.sampleCount,
+            // Wake to now. The quiet windows are carved out of exactly this,
+            // so the two are the same denominator and the ratio means what
+            // it says.
+            elapsedWakingMinutes: interval.duration / 60,
             wakingHRBaseline: waking.heartRate?.bin(for: now, calendar: calendar)?.median,
             wakingHRVBaseline: waking.hrv?.bin(for: now, calendar: calendar)?.median
         )

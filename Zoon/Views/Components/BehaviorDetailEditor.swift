@@ -79,7 +79,7 @@ struct BehaviorDetailEditor: View {
                                 Text("Moderate").tag(0.5)
                                 Text("Hard").tag(0.85)
                             }
-                            .pickerStyle(.segmented)
+                            .adaptiveSegmentedStyle()
                         }
                     } footer: {
                         Text("Your own reading of the session, kept separate from anything measured.")

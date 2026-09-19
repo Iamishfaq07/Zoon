@@ -1,17 +1,36 @@
 import Foundation
 
-/// How much sleep you actually needed last night, and how much of it you got.
+/// A planning target for a night's sleep, and how much of it was slept.
 ///
-/// Modelled on Whoop's sleep need: a personal baseline plus the three things
-/// that legitimately raise the requirement on a given night. A fixed 8-hour
-/// target treats every night the same, which is wrong in the direction that
-/// matters most — the night after a hard session or a short night is exactly
-/// when you need more, and a static goal tells you nothing.
+/// **This is a plan, not a measurement.** The header on this file used to say
+/// "how much sleep you actually needed last night", and that is a claim Zoon
+/// cannot make. Nothing here measures a physiological requirement. It takes a
+/// learned baseline and adjusts it for three things that reasonably raise how
+/// much sleep is worth aiming for on a given night, using coefficients that
+/// are defensible heuristics rather than findings:
 ///
 /// ```
-/// need = baseline + sleepDebt×payback + strainBonus − napCredit
-/// performance = timeAsleep / need × 100
+/// target = baseline + shortfall×payback + strainBonus − napCredit
+/// performance = timeAsleep / target × 100
 /// ```
+///
+/// A fixed eight-hour goal treats every night the same, which is wrong in the
+/// direction that matters most — the night after a hard session or a short one
+/// is exactly when aiming higher is worth doing. But "the model suggests
+/// aiming for 8h35" and "your body needed 8h35" are different statements, and
+/// only the first is supported.
+///
+/// **Two figures, not one.** `baselineMinutes` is the learned estimate of
+/// where this person's unconstrained nights sit — see `LearnedSleepNeed`,
+/// which carries its own spread. `totalNeedMinutes` is tonight's planning
+/// target, which is that baseline plus today's adjustments. The separation
+/// matters because they answer different questions and only one of them moves
+/// day to day; `SleepPlanningInputs` exists so the planners cannot confuse
+/// them.
+///
+/// The shape of the model is a common one in the category. The coefficients
+/// here are Zoon's own and are stated in the open, in `SleepNeed.compute`,
+/// rather than reproduced from anybody's published product.
 struct SleepNeed: Codable, Hashable, Sendable {
 
     /// The user's habitual requirement, minutes.
@@ -38,7 +57,7 @@ struct SleepNeed: Codable, Hashable, Sendable {
         )
     }
 
-    /// 0–100+, capped at 100 for display. Whoop calls this Sleep Performance.
+    /// How much of the target was slept, 0–100, capped for display.
     var performancePercent: Double {
         guard totalNeedMinutes > 0 else { return 0 }
         return min(100, achievedMinutes / totalNeedMinutes * 100)

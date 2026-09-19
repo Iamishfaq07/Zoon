@@ -67,7 +67,7 @@ struct InsightsHero: View {
         Picker("Window", selection: $window) {
             ForEach(SleepHealth.Window.allCases) { Text($0.label).tag($0) }
         }
-        .pickerStyle(.segmented)
+        .adaptiveSegmentedStyle()
     }
 
     /// V8: the hero sits on the page -- hero numeral, meaning word, trend --

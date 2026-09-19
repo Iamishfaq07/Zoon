@@ -93,6 +93,24 @@ final class SleepNightRecord {
     /// *zero* -- see `SleepApneaEventSummary`.
     var sleepApneaEventCount: Int?
 
+    /// What `SleepSessionBuilder` classified the sleep source as, stored as
+    /// its raw value -- same pattern as
+    /// `breathingDisturbancesClassificationRaw` above -- with
+    /// `stageSourcePriority` below as the typed accessor.
+    ///
+    /// This column is what makes `StageTrust` mean anything. The priority is
+    /// derived from the HealthKit sample's hardware string, which exists only
+    /// at extraction; without somewhere to keep it, every night read back
+    /// from the store would return `nil` and grade at the floor, and the
+    /// whole trust layer would be a no-op that still compiled. Optional so
+    /// SwiftData adds the column without a migration, and `nil` on an older
+    /// row reads as *unrecorded*, never as *poor*.
+    var stageSourcePriorityRaw: Int?
+    var stageSourcePriority: SourcePriority? {
+        get { stageSourcePriorityRaw.flatMap(SourcePriority.init(rawValue:)) }
+        set { stageSourcePriorityRaw = newValue?.rawValue }
+    }
+
     var lastWorkoutHoursBeforeBed: Double?
     var exerciseMinutesPreviousDay: Double?
     /// See `SleepNightFeatures.alcoholicBeverages`/`.lateCaffeineMg`.
@@ -187,6 +205,7 @@ final class SleepNightRecord {
         self.lateCaffeineMg = features.lateCaffeineMg
         self.sourceName = features.sourceName
         self.sourceBundleIdentifier = features.sourceBundleIdentifier
+        self.stageSourcePriorityRaw = features.stageSourcePriority?.rawValue
         self.measurementSourcesData = features.measurementSources.encoded
         self.stageSegmentsData = features.stageSegments.encoded
         self.insightSummary = insight?.summary
@@ -274,6 +293,13 @@ final class SleepNightRecord {
         lateCaffeineMg = features.lateCaffeineMg
         sourceName = features.sourceName
         sourceBundleIdentifier = features.sourceBundleIdentifier
+        // Same rule as the hypnogram below: a re-sync that could not work out
+        // the source must not erase a priority already recorded. `nil` here
+        // means this extraction did not know, not that the night changed
+        // hands.
+        if let priority = features.stageSourcePriority {
+            stageSourcePriorityRaw = priority.rawValue
+        }
         // Only overwrite when the fresh extraction actually has a timeline —
         // a re-sync that lost staging shouldn't erase a good hypnogram.
         if !features.stageSegments.isEmpty {
@@ -354,7 +380,8 @@ extension SleepNightRecord {
             // subtracts does not exist yet, and reading availability off it
             // would report a working temperature sensor as absent.
             wristTempMeasured: wristTempAbsoluteC != nil,
-            sleepApneaEventCount: sleepApneaEventCount
+            sleepApneaEventCount: sleepApneaEventCount,
+            stageSourcePriority: stageSourcePriority
         )
     }
 

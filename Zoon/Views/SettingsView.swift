@@ -116,7 +116,7 @@ struct SettingsView: View {
                     Text(option.displayName).tag(option)
                 }
             }
-            .pickerStyle(.segmented)
+            .adaptiveSegmentedStyle()
             Button("Replay the first night") {
                 preferences.hasCompletedOnboarding = false
             }

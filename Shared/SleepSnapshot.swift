@@ -180,6 +180,16 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// snapshot on disk still decodes.
     var tonightTargetLabel: String = ""
     var tonightTargetNote: String = ""
+    /// `tonightTargetNote` in the room a watch has -- see
+    /// `SleepAutopilot.Plan.shortSentence`.
+    ///
+    /// Shipped alongside rather than replacing it: the full sentence is what
+    /// Siri speaks, what the watch's accessibility label reads, and what the
+    /// phone widget shows, and all three have room for it. Only the watch's
+    /// drawn line does not. Empty on a payload from a phone that predates
+    /// this, which the watch reads as "fall back to the long one" rather
+    /// than as "say nothing".
+    var tonightTargetNoteShort: String = ""
 
     /// The tightest `UncertaintyForecast` range, phrased for a small screen:
     /// where recent nights actually landed.
@@ -465,6 +475,7 @@ extension SleepSnapshot {
         // reads as "no plan yet" rather than failing.
         tonightTargetLabel = try container.decodeIfPresent(String.self, forKey: .tonightTargetLabel) ?? ""
         tonightTargetNote = try container.decodeIfPresent(String.self, forKey: .tonightTargetNote) ?? ""
+        tonightTargetNoteShort = try container.decodeIfPresent(String.self, forKey: .tonightTargetNoteShort) ?? ""
         tomorrowRangeLabel = try container.decodeIfPresent(String.self, forKey: .tomorrowRangeLabel) ?? ""
         isTonightTargetHolding = try container.decodeIfPresent(Bool.self, forKey: .isTonightTargetHolding) ?? false
 
@@ -491,7 +502,22 @@ extension SleepSnapshot {
         insight: SleepInsight,
         goalMinutes: Double,
         recoveryPercent: Int = 0,
-        hasRecovery: Bool = true,
+        /// Defaults to `false`, matching the stored property.
+        ///
+        /// It defaulted to `true` beside a percent defaulting to 0, so any
+        /// caller that named neither produced a snapshot asserting it had a
+        /// recovery reading of zero. The watch's TODAY page drew exactly that
+        /// -- a dial reading "0 RECOVERY" over an empty signals row -- and it
+        /// went unseen because that page had no way of being photographed
+        /// until now.
+        ///
+        /// The live path escaped only by accident: it sets
+        /// `recoveryConfidence` afterwards, and `canStateRecovery` consults
+        /// the confidence before it ever reaches this flag. A caller that set
+        /// neither got the migration branch, which assumes an old snapshot
+        /// and shows the number. Safe by luck is not safe, and the default
+        /// that means "I was not told" should be the one that claims least.
+        hasRecovery: Bool = false,
         bodyBattery: Int? = nil,
         strain: Double? = nil,
         sleepPerformance: Double = 0,

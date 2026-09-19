@@ -299,7 +299,7 @@ struct ZoonWhatIfLab: View {
                 Text(directionTitle(.more)).tag(ZoonTwin.Direction.more)
                 Text(directionTitle(.less)).tag(ZoonTwin.Direction.less)
             }
-            .pickerStyle(.segmented)
+            .adaptiveSegmentedStyle()
             .onChange(of: direction) { _, _ in Haptics.select() }
         }
     }

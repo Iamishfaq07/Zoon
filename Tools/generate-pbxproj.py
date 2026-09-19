@@ -1138,12 +1138,103 @@ SCHEME = f"""<?xml version="1.0" encoding="UTF-8"?>
 </Scheme>
 """
 
+# The watch app builds today only because the iOS scheme embeds it, which is
+# why `Verify every source compiled` finds its sources in the log. That is
+# enough to prove it compiles and not enough to run it: `xcodebuild` needs a
+# scheme naming the watch target before it can build one for a watchOS
+# simulator, and without that the watch cannot be launched, screenshotted or
+# regression-tested at all. Generated here for the same reason as the one
+# above -- it references the target by ID, so a hand-maintained copy goes
+# stale the moment the project is regenerated.
+WATCH_SCHEME = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "2600"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{WATCH_TARGET}"
+               BuildableName = "{WATCH}.app"
+               BlueprintName = "{WATCH}"
+               ReferencedContainer = "container:Zoon.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{WATCH_TARGET}"
+            BuildableName = "{WATCH}.app"
+            BlueprintName = "{WATCH}"
+            ReferencedContainer = "container:Zoon.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "{WATCH_TARGET}"
+            BuildableName = "{WATCH}.app"
+            BlueprintName = "{WATCH}"
+            ReferencedContainer = "container:Zoon.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
+"""
+
 scheme_dir = os.path.join(ROOT, "Zoon.xcodeproj", "xcshareddata", "xcschemes")
 os.makedirs(scheme_dir, exist_ok=True)
 scheme_path = os.path.join(scheme_dir, "Zoon.xcscheme")
 with open(scheme_path, "w") as fh:
     fh.write(SCHEME)
 print(f"wrote {scheme_path}")
+
+watch_scheme_path = os.path.join(scheme_dir, f"{WATCH}.xcscheme")
+with open(watch_scheme_path, "w") as fh:
+    fh.write(WATCH_SCHEME)
+print(f"wrote {watch_scheme_path}")
 print(f"  shared sources : {len(SHARED)} (in all four targets)")
 print(f"  app sources    : {len(APP_SRC)}")
 print(f"  widget sources : {len(EXT_SRC)}")

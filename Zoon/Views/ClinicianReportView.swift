@@ -59,7 +59,7 @@ struct ClinicianReportView: View {
             Picker("Range", selection: $rangeDays) {
                 ForEach(rangeOptions, id: \.self) { Text("\($0) days").tag($0) }
             }
-            .pickerStyle(.segmented)
+            .adaptiveSegmentedStyle()
         }
         .glassCard()
     }

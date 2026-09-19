@@ -17,7 +17,11 @@ import Foundation
 ///
 /// A higher priority is a *tie-break*, never a veto. A Watch sample that
 /// spans 20 hours still loses to a 7-hour Garmin night on quality.
-enum SourcePriority: Int, Comparable, Sendable {
+///
+/// `Codable` because `SleepNightFeatures` carries one and is persisted. The
+/// raw values are the wire format for stored nights, so they are fixed: a
+/// renumbering would silently regrade every night already on disk.
+enum SourcePriority: Int, Codable, Comparable, Sendable {
     case appleWatch = 1
     case thirdPartyWearable = 2
     case phoneOrManual = 3

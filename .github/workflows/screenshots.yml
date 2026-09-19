@@ -205,6 +205,15 @@ jobs:
                 output="today-day-light"
                 appearance_args=(-zoonMoment day -zoon.pref.appearance light)
                 ;;
+              provenance)
+                # The same screen, scrolled to the per-value provenance rows.
+                # Everything below the first viewport has never been
+                # photographed, and the sleep-stage row -- which now states
+                # what actually classified the night rather than asserting a
+                # watch did -- lives there.
+                output="sensorTruth-provenance"
+                appearance_args=(-zoonScrollTo tonight)
+                ;;
               accessibilityMedium)
                 output="${tab}-accessibilityMedium"
                 ;;
@@ -329,6 +338,9 @@ jobs:
                      report settings badges evidence patterns sensorTruth tomorrow; do
             shoot "$tab" || FAILED=1
           done
+          # Below the fold on the provenance screen. See the `provenance`
+          # case above.
+          shoot sensorTruth provenance || FAILED=1
           # The app is dark-first, but Light is a real preference. Keep
           # representative screens in the visual regression set so neutral
           # strokes and secondary text cannot silently disappear on pale
@@ -547,5 +559,281 @@ jobs:
         with:
           name: screenshots
           path: screenshots/
+          retention-days: 30
+          if-no-files-found: warn
+
+  watch:
+    name: Watch screenshots
+    runs-on: macos-latest
+    # After the phone capture rather than beside it. Both jobs commit their
+    # renders to the same branch, and two pushes racing on one ref is a
+    # conflict nobody needs; `always()` so a phone failure does not silence
+    # the watch, which is the surface with no coverage to lose.
+    needs: capture
+    if: ${{ always() }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # The watch had never been photographed -- not photographed badly, not
+      # at all. Two things were missing and both are now in place: a scheme
+      # naming the watch target, so `xcodebuild` can build for a watchOS
+      # destination, and a demo path in `WatchLink`, so a simulator with no
+      # paired phone has a snapshot to draw instead of its waiting state.
+      #
+      # One size to begin with. The audit asks for seven case sizes and that
+      # is the right end state, but a capture that has never run once should
+      # prove it can take a single picture before it is asked to take seven.
+      # Every case size the runner offers, not one.
+      #
+      # A watch layout fails by case size in a way a phone layout does not:
+      # the same view has to hold on a 40mm square and a 49mm Ultra, and the
+      # numbers this app puts on screen are the things that stop fitting
+      # first. One render proves the capture works; the set is what makes it
+      # a regression check. Discovered rather than hard-coded, because runner
+      # images add and drop device models between releases and a pinned list
+      # would quietly photograph fewer and fewer sizes without ever failing.
+      - name: List the watch simulators this runner has
+        id: sims
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available --json > devices.json
+          python3 - <<'PYEOF' > sims.txt
+          import json
+          data = json.load(open("devices.json"))["devices"]
+          seen = {}
+          for runtime, devices in sorted(data.items()):
+              if "watchOS" not in runtime:
+                  continue
+              for d in devices:
+                  if d.get("isAvailable") and "Watch" in d["name"]:
+                      # One entry per model name: a runner carrying the same
+                      # watch on two runtimes would otherwise photograph it
+                      # twice and prove nothing the second time.
+                      seen[d["name"]] = d["udid"]
+          if not seen:
+              raise SystemExit("No watchOS simulator on this runner.")
+          for name, udid in sorted(seen.items()):
+              print(udid + "\t" + name)
+          PYEOF
+          echo "Found $(wc -l < sims.txt | tr -d ' ') watch case sizes:"
+          cut -f2 sims.txt
+          # The build needs one destination; any of them resolves the same
+          # watchOS SDK, so the first is as good as any.
+          echo "build_udid=$(head -1 sims.txt | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Build ZoonWatch
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme ZoonWatch \
+            -configuration Debug \
+            -destination "id=${{ steps.sims.outputs.build_udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -20
+
+      - name: Capture every case size
+        run: |
+          set -euo pipefail
+          APP=$(find build/Build/Products -maxdepth 3 -name "ZoonWatch.app" | head -1)
+          [ -n "$APP" ] || { echo "No ZoonWatch.app was produced."; exit 1; }
+          mkdir -p watch-screenshots
+
+          FAILED=0
+          # The page sweep runs on the first case size only -- see below.
+          FIRST_CASE=1
+          while IFS=$'\t' read -r UDID NAME; do
+            # A slug that survives a rename: "Apple Watch Series 10 (42mm)"
+            # becomes "series-10-42mm", so the committed filename tracks the
+            # case rather than the marketing string.
+            SLUG=$(echo "$NAME" \
+              | sed -e 's/Apple Watch //' -e 's/[()]//g' \
+              | tr '[:upper:] ' '[:lower:]-')
+            echo "--- $NAME ($SLUG)"
+            # One bad simulator must not lose the whole set: the point of
+            # capturing every size is comparing them, and a run that fails at
+            # the third of seven has photographed nothing useful.
+            if ! xcrun simctl boot "$UDID" 2>/dev/null; then
+              echo "::warning::Could not boot $NAME"; FAILED=1; continue
+            fi
+            xcrun simctl bootstatus "$UDID" -b || true
+            xcrun simctl install "$UDID" "$APP" || { echo "::warning::install failed on $NAME"; FAILED=1; continue; }
+            # `-zoonDemo YES` is the same flag the phone capture uses. Without
+            # it the watch draws its waiting state and the picture proves
+            # nothing.
+            # `-zoonWatchPage lastNight` pins the deck. Without it the page
+            # photographed is whichever one the hour selected, so a render
+            # would change meaning depending on when CI ran.
+            xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp \
+              -zoonDemo YES -zoonWatchPage lastNight || true
+            # No launch animation to wait out, but the first frame after
+            # launch is not necessarily the settled one.
+            sleep 8
+            xcrun simctl io "$UDID" screenshot "watch-screenshots/$SLUG.png" \
+              || { echo "::warning::screenshot failed on $NAME"; FAILED=1; }
+
+            # The rest of the deck, on this one case only. Every page on
+            # every size is a matrix that costs far more than it proves: a
+            # page fails by size or it fails by content, and the sweep above
+            # already covers the first. This covers the second.
+            if [ "$FIRST_CASE" = "1" ]; then
+              for PAGE in today tonight more log nap scoreLight; do
+                xcrun simctl terminate "$UDID" com.zoon.sleep.watchkitapp 2>/dev/null || true
+                xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp \
+                  -zoonDemo YES -zoonWatchPage "$PAGE" || true
+                sleep 6
+                LOWER=$(echo "$PAGE" | tr '[:upper:]' '[:lower:]')
+                SHOT="watch-screenshots/page-$LOWER.png"
+                xcrun simctl io "$UDID" screenshot "$SHOT" \
+                  || { echo "::warning::page $PAGE did not render"; continue; }
+
+                # A page that is not in the deck cannot be selected, and the
+                # tab view falls back rather than failing. Nap and Tonight are
+                # both conditional on the snapshot carrying the data they
+                # describe, so pinning them on a snapshot without it produced
+                # a byte-identical copy of the page that *was* showing --
+                # committed under a name it did not depict, which is worse
+                # than no render because it reads as evidence.
+                #
+                # A weak check, kept because it costs nothing and does catch
+                # the obvious case. It is not the guarantee: the watch status
+                # bar carries a live clock, so two captures of the same page
+                # differ the moment the minute rolls over between them, and an
+                # exact comparison then sees two different pictures of one
+                # screen. That is how the Score-light fallback got published
+                # while the Nap and Tonight ones were caught.
+                #
+                # `WatchDemoPageTests` is the real guard: it asserts, without
+                # pixels, that the demo snapshot chosen for each page
+                # satisfies the condition the deck puts that page behind.
+                if cmp -s "$SHOT" "watch-screenshots/$SLUG.png"; then
+                  echo "::warning::$PAGE is not in the deck for this snapshot; the capture fell back. Not committing a render named for a page it does not show."
+                  rm -f "$SHOT"
+                fi
+              done
+
+              # Large watch text, on the same case.
+              #
+              # The watch scales its body and label text the way the phone
+              # does -- `Theme.text`/`Theme.label` resolve to text styles, so
+              # Dynamic Type reaches them for free. What it has none of is a
+              # `dynamicTypeSize` anywhere in `WatchRootView`, so nothing
+              # *recomposes* at large sizes: scaling text sits beside numerals
+              # that are deliberately fixed, on a screen the size of a stamp.
+              # Every large-text defect found on the phone today was a
+              # composition failure rather than a scaling one, so this is the
+              # render that says whether the watch has the same problem.
+              #
+              # Whether `simctl ui content_size` is honoured on a watchOS
+              # simulator is genuinely unknown -- it is an iOS-shaped command
+              # and the watch has its own text-size setting. So it is probed
+              # rather than assumed: if it is rejected, the run says so and
+              # the capture is skipped instead of committing a normal-size
+              # render under a large-text name, which would be worse than no
+              # render because it would look like evidence.
+              if xcrun simctl ui "$UDID" content_size accessibility-extra-extra-extra-large 2>&1; then
+                echo "content_size accepted on watchOS; capturing large text."
+                xcrun simctl terminate "$UDID" com.zoon.sleep.watchkitapp 2>/dev/null || true
+                xcrun simctl launch "$UDID" com.zoon.sleep.watchkitapp \
+                  -zoonDemo YES -zoonWatchPage lastNight || true
+                sleep 8
+                xcrun simctl io "$UDID" screenshot "watch-screenshots/largetext-lastnight.png" \
+                  || echo "::warning::large-text render failed"
+                xcrun simctl ui "$UDID" content_size medium 2>/dev/null || true
+              else
+                echo "::warning::simctl ui content_size is not supported on this watchOS simulator; large-text watch coverage still unproven."
+              fi
+
+              # Two different pages can never be byte-identical, whatever
+              # the clock is doing. That makes this the one image check the
+              # live status bar cannot defeat: comparing a page against the
+              # size sweep misses a fallback whenever the minute rolled over
+              # between them, which is exactly how the Score-light fallback
+              # survived while Nap and Tonight were caught. Comparing the
+              # pages against each other catches that pair.
+              for a in watch-screenshots/page-*.png; do
+                [ -e "$a" ] || continue
+                for b in watch-screenshots/page-*.png; do
+                  [ "$a" \< "$b" ] || continue
+                  if cmp -s "$a" "$b"; then
+                    echo "::warning::$(basename "$a" .png) and $(basename "$b" .png) rendered the same screen; at least one fell back. Dropping both."
+                    rm -f "$a" "$b"
+                  fi
+                done
+              done
+
+              FIRST_CASE=0
+            fi
+            # Shut each one down before the next: several booted watch
+            # simulators at once is how a runner runs out of memory halfway
+            # through a set.
+            xcrun simctl shutdown "$UDID" || true
+          done < sims.txt
+
+          ls -la watch-screenshots
+          [ -n "$(ls -A watch-screenshots)" ] || { echo "No watch renders at all."; exit 1; }
+          [ "$FAILED" = "0" ] || echo "::warning::Some case sizes did not render; see warnings above."
+
+      # Committed, not merely uploaded. An artifact cannot be looked at
+      # without downloading it, and a render nobody looks at is the same as
+      # no render -- which is how a whole platform went unexamined. The phone
+      # captures land in `docs/screenshots` for exactly this reason.
+      - name: Commit the watch render
+        run: |
+          set -euo pipefail
+          mkdir -p docs/screenshots/watch
+          # Cleared rather than overwritten. The step only ever wrote files,
+          # so a page or a case size that stopped rendering left its last
+          # good picture behind indefinitely -- and a stale render is
+          # indistinguishable from a current one in a diff. The committed set
+          # should be what this run actually photographed, and nothing else.
+          rm -f docs/screenshots/watch/*.jpg
+          # Downscaled the same way the phone renders are, so the repository
+          # does not grow by a full-resolution PNG per run.
+          for png in watch-screenshots/*.png; do
+            base=$(basename "$png" .png)
+            sips -Z 400 -s format jpeg -s formatOptions 70 \
+              "$png" --out "docs/screenshots/watch/$base.jpg" >/dev/null
+          done
+          # The single-size render this job used to produce, now superseded by
+          # the per-case-size set.
+          rm -f docs/screenshots/watch/home.jpg
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/watch
+          if git diff --cached --quiet; then
+            echo "Watch render unchanged."
+            exit 0
+          fi
+          git commit -m "Update watch screenshots [skip ci]"
+          pushed=0
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              pushed=1
+              break
+            fi
+            echo "Push rejected (attempt $attempt); rebuilding onto the branch tip."
+            git fetch --depth=1 origin "${GITHUB_REF_NAME}" || break
+            git reset --mixed "origin/${GITHUB_REF_NAME}" || break
+            git add docs/screenshots/watch
+            if git diff --cached --quiet; then
+              echo "Watch render already current on the branch tip."
+              pushed=1
+              break
+            fi
+            git commit -m "Update watch screenshots [skip ci]"
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "::warning::Watch render captured but could not be committed; see the artifact."
+          fi
+
+      - name: Upload watch screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-screenshots
+          path: watch-screenshots/
           retention-days: 30
           if-no-files-found: warn

@@ -124,7 +124,17 @@ struct TonightsData: Sendable {
                 sourceNames: writers(.sleepStages),
                 derivation: [
                     "\(night.stageSegments.count) stage segments from the source",
-                    "Classified on the watch, not by Zoon"
+                    // Was "Classified on the watch, not by Zoon", said of
+                    // every night regardless of what wrote it. The second
+                    // half stayed true and the first half did not: a phone
+                    // schedule and a hand-typed bedtime both reach this row,
+                    // and neither was classified on a watch. A false claim
+                    // about provenance, on the screen whose whole job is
+                    // provenance -- and this screen already tells the reader
+                    // that a REM minute-count is a model's guess, so it was
+                    // half-right about the general case while wrong about
+                    // the particular one.
+                    night.stageTrust.classification
                 ],
                 note: nil,
                 coverage: availability(.sleepStages)

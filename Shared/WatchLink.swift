@@ -94,7 +94,70 @@ final class WatchLink: NSObject {
         super.init()
     }
 
+    /// The demo snapshot that makes the requested page exist.
+    ///
+    /// Three of the watch's pages are conditional on data rather than always
+    /// present: Tonight needs a plan, Nap needs one running, and Score-light
+    /// needs the mode set -- and that last one replaces Last Night and Today
+    /// rather than joining them, so the deck changes shape. A tab view
+    /// cannot select a tag that is not in the deck and falls back silently,
+    /// so pinning either against the ordinary demo snapshot photographed the
+    /// page that happened to be showing -- which the capture then filed under
+    /// the name it had asked for.
+    ///
+    /// The capture now refuses to commit a render it cannot distinguish from
+    /// the fallback, which stops the wrong picture being published but leaves
+    /// those two pages unphotographed. This is the other half: give the page
+    /// the data it needs to exist, so there is something real to photograph.
+    ///
+    /// Only reachable under `-zoonDemo`, and every one of these snapshots is
+    /// badged sample data exactly as the default one is.
+    static func demoSnapshot(forPage page: String?) -> SleepSnapshot {
+        switch page?.lowercased() {
+        case "tonight":
+            return MockData.tonightSnapshot
+        case "scorelight":
+            // Score-light is not merely an extra page: when it is on, Last
+            // Night and Today are replaced rather than joined, so the deck
+            // has a different shape entirely. Pinning it against a snapshot
+            // without the mode photographed Last Night under its name.
+            var light = MockData.snapshotWithBadges
+            light.scoreLightMode = true
+            return light
+        case "nap":
+            var napping = MockData.snapshotWithBadges
+            // Started twenty minutes ago, twenty-five still to run: a nap
+            // mid-flight rather than one about to end, because the page is a
+            // timer and a timer showing four seconds proves nothing about
+            // how it reads.
+            napping.napStartedAt = Date().addingTimeInterval(-20 * 60)
+            napping.napTargetEnd = Date().addingTimeInterval(25 * 60)
+            return napping
+        default:
+            return MockData.snapshotWithBadges
+        }
+    }
+
     func activate() {
+        // Screenshot capture and demos: `-zoonDemo YES`.
+        //
+        // The watch holds no HealthKit code and no store by design -- it
+        // reads a snapshot the phone sends. On a simulator with no paired
+        // phone that snapshot never arrives, so the only thing that could
+        // ever be photographed was the waiting state. That is the whole
+        // reason this surface has no renders: not that capturing it is hard,
+        // but that there was nothing on screen to capture.
+        //
+        // The sample snapshot is badged wherever it appears, the same as on
+        // the phone, so a demo capture cannot be mistaken for a measured one.
+        if DataEnvironment.isDemoLaunchArgument {
+            snapshot = Self.demoSnapshot(
+                forPage: UserDefaults.standard.string(forKey: "zoonWatchPage")
+            )
+            isActivated = true
+            return
+        }
+
         #if canImport(WatchConnectivity)
         guard WCSession.isSupported() else {
             logger.notice("WCSession unsupported on this device")

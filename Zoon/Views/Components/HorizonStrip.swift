@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Horizon metaphor for Tomorrow / Tonight: a sequence of nodes, one sleep band.
 struct HorizonStrip: View {
+
     let nodes: [ZoonTomorrow.Node]
     let sleepWindowStart: Date
     let sleepWindowEnd: Date
@@ -131,19 +132,45 @@ struct HorizonStrip: View {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(nodes) { node in
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Circle()
-                                .fill(tint(for: node.kind))
-                                .frame(width: 8, height: 8)
-                            Text(node.title)
-                                .font(Theme.label(10, weight: .semibold))
-                                .foregroundStyle(Theme.inkTertiary)
-                            Spacer(minLength: 8)
-                            Text(node.date.formatted(date: .omitted, time: .shortened))
-                                .font(Theme.label(11, weight: .semibold))
-                                .monospacedDigit()
+                        // Above AX3 the label and the time stop sharing a
+                        // line. "Wind-down" wraps to two lines at those
+                        // sizes, which squeezes the time column until an
+                        // eight-character clock time no longer fits it --
+                        // and the AX5 capture shows exactly what that
+                        // produces: "10:22 P" on one line and "M" on the
+                        // next. Given the whole width the time cannot be
+                        // squeezed at all.
+                        if dynamicTypeSize >= .accessibility4 {
+                            VStack(alignment: .leading, spacing: 1) {
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Circle()
+                                        .fill(tint(for: node.kind))
+                                        .frame(width: 8, height: 8)
+                                    Text(node.title)
+                                        .font(Theme.label(10, weight: .semibold))
+                                        .foregroundStyle(Theme.inkTertiary)
+                                }
+                                Text(ClockText.atomic(node.date))
+                                    .font(Theme.label(11, weight: .semibold))
+                                    .monospacedDigit()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Circle()
+                                    .fill(tint(for: node.kind))
+                                    .frame(width: 8, height: 8)
+                                Text(node.title)
+                                    .font(Theme.label(10, weight: .semibold))
+                                    .foregroundStyle(Theme.inkTertiary)
+                                Spacer(minLength: 8)
+                                Text(ClockText.atomic(node.date))
+                                    .font(Theme.label(11, weight: .semibold))
+                                    .monospacedDigit()
+                            }
+                            .fixedSize(horizontal: false, vertical: true)
                         }
-                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -155,7 +182,7 @@ struct HorizonStrip: View {
                             Text(node.title)
                                 .font(Theme.label(10, weight: .semibold))
                                 .foregroundStyle(Theme.inkTertiary)
-                            Text(node.date.formatted(date: .omitted, time: .shortened))
+                            Text(ClockText.atomic(node.date))
                                 .font(Theme.label(11, weight: .semibold))
                                 .monospacedDigit()
                         }

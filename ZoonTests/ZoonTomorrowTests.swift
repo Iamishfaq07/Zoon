@@ -71,6 +71,61 @@ final class ZoonTomorrowTests: XCTestCase {
         }
     }
 
+    /// The short form the AX5 capture asked for, and the invariant that keeps
+    /// it honest.
+    ///
+    /// At the largest sizes the view shows `leadClause` instead of the full
+    /// sentence, because `HorizonStrip` below already states the window and
+    /// the wake margin as a row of times, and the full paragraph at 34-point
+    /// bold pushes that strip off the screen. Composing the long form *from*
+    /// the short one is what stops the two disagreeing, and this asserts that
+    /// composition rather than trusting it.
+    func testTheLeadClauseOpensTheSentenceItWasTakenFrom() throws {
+        let now = date(2026, 9, 14, 18, 0)
+        let history = (0..<14).map { index in
+            Fixture.night(
+                daysAgo: 14 - index,
+                timeAsleepMinutes: 420,
+                timeInBedMinutes: 420,
+                bedtimeHour: 23,
+                bedtimeMinuteOffset: 30
+            )
+        }
+
+        // Both branches of the sentence: a plan that reaches the need, and a
+        // plan an early event puts out of reach.
+        let cases: [ZoonTomorrow.Event?] = [
+            nil,
+            ZoonTomorrow.Event(start: date(2026, 9, 15, 5, 0), isAllDay: false, source: .manual),
+        ]
+
+        for event in cases {
+            let plan = try XCTUnwrap(ZoonTomorrow.plan(
+                now: now,
+                event: event,
+                nights: history,
+                planning: SleepPlanningInputs(baselineNeedMinutes: 480),
+                calendar: calendar
+            ))
+
+            XCTAssertFalse(plan.leadClause.isEmpty, "empty lead for \(String(describing: event))")
+            XCTAssertTrue(
+                plan.sentence.hasPrefix(plan.leadClause),
+                "lead drifted from the sentence:\n  lead: \(plan.leadClause)\n  full: \(plan.sentence)"
+            )
+            XCTAssertLessThan(
+                plan.leadClause.count, plan.sentence.count,
+                "the short form is not shorter: \(plan.leadClause)"
+            )
+            // The clause that survives is the one the strip cannot show, so
+            // it must not be the one that quotes the window times.
+            XCTAssertFalse(
+                plan.leadClause.contains("Suggested sleep window"),
+                "the lead kept the clause the timeline already carries: \(plan.leadClause)"
+            )
+        }
+    }
+
     /// A late-evening open must not hand back a wind-down that already passed.
     func testLateEveningPlanIsNotEntirelyInThePast() throws {
         let now = date(2026, 9, 14, 23, 50)

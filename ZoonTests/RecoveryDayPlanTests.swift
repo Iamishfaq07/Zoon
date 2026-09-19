@@ -38,53 +38,117 @@ final class RecoveryDayPlanTests: XCTestCase {
 
     // MARK: - The gate
 
-    func testAnOrdinaryNightGetsNoRescuePlan() {
-        XCTAssertNil(
-            RecoveryDayPlan.qualifyingReason(
-                asleepMinutes: 450, needMinutes: 480, wakeCount: 2, efficiencyPercent: 94
-            )
+    /// A night, with everything the gate reads.
+    private func night(
+        asleep: Double = 450,
+        inBed: Double = 480,
+        wakeCount: Int = 2,
+        awake: Double = 20,
+        inBedIsEstimated: Bool = false,
+        daysAgo: Int = 0
+    ) -> SleepNightFeatures {
+        Fixture.night(
+            daysAgo: daysAgo,
+            timeAsleepMinutes: asleep,
+            timeInBedMinutes: inBed,
+            wakeCount: wakeCount,
+            timeInBedIsEstimated: inBedIsEstimated,
+            awakeMinutes: awake
         )
+    }
+
+    /// Ordinary recent nights, for the personal comparison.
+    private func history(awake: Double = 20, count: Int = 14) -> [SleepNightFeatures] {
+        (1...count).map { night(awake: awake + Double($0 % 3), daysAgo: $0) }
+    }
+
+    private func reason(
+        _ subject: SleepNightFeatures,
+        need: Double = 480,
+        history: [SleepNightFeatures] = []
+    ) -> String? {
+        RecoveryDayPlan.qualifyingReason(night: subject, needMinutes: need, history: history)
+    }
+
+    func testAnOrdinaryNightGetsNoRescuePlan() {
+        XCTAssertNil(reason(night(), history: history()))
     }
 
     func testAShortNightQualifiesAndTheReasonSaysBySoMuch() throws {
-        let reason = try XCTUnwrap(
-            RecoveryDayPlan.qualifyingReason(
-                asleepMinutes: 330, needMinutes: 480, wakeCount: 2, efficiencyPercent: 94
-            )
-        )
-        XCTAssertTrue(reason.contains("150"), reason)
+        let short = try XCTUnwrap(reason(night(asleep: 330), history: history()))
+        XCTAssertTrue(short.contains("150"), short)
+        XCTAssertTrue(short.contains("aiming for"), short)
     }
 
-    /// The other way a night goes wrong. Seven hours in six pieces is not
-    /// seven hours, and a gate keyed only on duration would have nothing to
-    /// say to somebody who slept the whole night badly.
-    func testALongButBrokenNightQualifiesOnItsAwakenings() throws {
-        let reason = try XCTUnwrap(
-            RecoveryDayPlan.qualifyingReason(
-                asleepMinutes: 470, needMinutes: 480, wakeCount: 8, efficiencyPercent: 88
-            )
-        )
-        XCTAssertTrue(reason.contains("awakenings"), reason)
-        XCTAssertTrue(reason.contains("continuity"), reason)
-    }
+    // MARK: - Wake count is no longer enough on its own
 
-    func testAnEfficientlySpentNightThatWasMostlyAwakeQualifies() throws {
-        let reason = try XCTUnwrap(
-            RecoveryDayPlan.qualifyingReason(
-                asleepMinutes: 460, needMinutes: 480, wakeCount: 3, efficiencyPercent: 62
-            )
-        )
-        XCTAssertTrue(reason.contains("62%"), reason)
-    }
-
-    /// Missing is not short. A night Zoon did not measure is not a night to
-    /// put a rescue plan in front of somebody for.
-    func testAnUnmeasuredNightDoesNotQualify() {
+    /// The audit's point, and it is right: consumer wake detection is not
+    /// precise enough to hang a whole rescue day on a count. Six brief
+    /// awakenings with an ordinary amount of time actually awake is a normal
+    /// night that a wearable noticed a lot of.
+    func testManyBriefAwakeningsAloneDoNotTriggerARecoveryDay() {
         XCTAssertNil(
-            RecoveryDayPlan.qualifyingReason(
-                asleepMinutes: nil, needMinutes: 480, wakeCount: nil, efficiencyPercent: nil
+            reason(night(asleep: 450, wakeCount: 8, awake: 18), history: history(awake: 20))
+        )
+    }
+
+    /// Corroborated by time genuinely awake for this person, it does.
+    func testManyAwakeningsWithElevatedTimeAwakeDoTrigger() throws {
+        let broken = try XCTUnwrap(
+            reason(night(asleep: 450, wakeCount: 8, awake: 75), history: history(awake: 20))
+        )
+        XCTAssertTrue(broken.contains("awakenings"), broken)
+        XCTAssertTrue(broken.contains("more than your usual"), broken)
+    }
+
+    /// Personal, not absolute. Somebody who habitually spends fifty minutes
+    /// awake has not had a bad night when they spend fifty-five.
+    func testAHabituallyRestlessSleeperIsComparedWithThemselves() {
+        XCTAssertNil(
+            reason(night(asleep: 450, wakeCount: 8, awake: 55), history: history(awake: 50))
+        )
+    }
+
+    /// And the same absolute number is a bad night for somebody who is
+    /// usually settled.
+    func testTheSameTimeAwakeTriggersForSomebodyUsuallySettled() {
+        XCTAssertNotNil(
+            reason(night(asleep: 450, wakeCount: 8, awake: 55), history: history(awake: 8))
+        )
+    }
+
+    /// With no baseline to compare against, an absolute floor applies —
+    /// never in preference to a baseline that exists.
+    func testWithNoHistoryAnAbsoluteFloorApplies() {
+        XCTAssertNil(reason(night(asleep: 450, wakeCount: 8, awake: 30)))
+        XCTAssertNotNil(reason(night(asleep: 450, wakeCount: 8, awake: 75)))
+    }
+
+    // MARK: - Efficiency needs a measured window
+
+    func testALowEfficiencyNightOnAMeasuredWindowQualifies() throws {
+        let reason = try XCTUnwrap(
+            reason(night(asleep: 460, inBed: 700, wakeCount: 3), history: history())
+        )
+        XCTAssertTrue(reason.contains("%"), reason)
+    }
+
+    /// Apple Watch alone never writes an in-bed sample, so the window is
+    /// inferred from the sleep period and efficiency is an artefact of that
+    /// inference. Firing on it would put this feature in front of exactly the
+    /// users whose data is thinnest.
+    func testALowEfficiencyNightOnAnInferredWindowDoesNotQualify() {
+        XCTAssertNil(
+            reason(
+                night(asleep: 460, inBed: 700, wakeCount: 3, inBedIsEstimated: true),
+                history: history()
             )
         )
+    }
+
+    /// Missing is not short.
+    func testAnUnmeasuredNightDoesNotQualify() {
+        XCTAssertNil(reason(night(asleep: 0, inBed: 0, wakeCount: 0, awake: 0)))
     }
 
     // MARK: - Composition, and only composition

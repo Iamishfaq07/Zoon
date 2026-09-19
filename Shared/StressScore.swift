@@ -53,6 +53,13 @@ struct StressScore: Codable, Hashable, Sendable {
     /// Minutes of the day this average is drawn from — small early, larger
     /// by evening. Shown so the number reads as "so far today", not final.
     let sampledMinutes: Double
+
+    /// How much of the waking day had elapsed when this was computed.
+    ///
+    /// `nil` for a score computed without it — an older stored record, or a
+    /// caller that does not know. Absent means no coverage judgement is
+    /// offered, rather than a guessed one.
+    let elapsedWakingMinutes: Double?
     let avgHeartRate: Double?
     let avgHRV: Double?
     /// The rolling overnight baselines today's readings were compared
@@ -123,6 +130,107 @@ struct StressScore: Codable, Hashable, Sendable {
             : "Marked Experimental because part of this compares waking readings against your overnight baseline, and even a genuinely calm waking hour doesn't sit on the scale sleep does. Once there are enough quiet readings from this time of day, it compares like with like instead."
     }
 
+    /// Written out rather than synthesised, so `elapsedWakingMinutes` can
+    /// carry a default.
+    ///
+    /// Swift's memberwise initializer gives an optional `let` no default at
+    /// all, so adding one stored property broke all seven existing
+    /// construction sites — previews, mock data and the detail view — none of
+    /// which has any business knowing how long the day has been. An explicit
+    /// init keeps the property immutable and leaves those callers alone.
+    init(
+        percent: Int,
+        band: Band,
+        sampledMinutes: Double,
+        elapsedWakingMinutes: Double? = nil,
+        avgHeartRate: Double?,
+        avgHRV: Double?,
+        hrBaseline: Double?,
+        hrvBaseline: Double?,
+        isEstimate: Bool,
+        hrBasis: BaselineBasis? = nil,
+        hrvBasis: BaselineBasis? = nil
+    ) {
+        self.percent = percent
+        self.band = band
+        self.sampledMinutes = sampledMinutes
+        self.elapsedWakingMinutes = elapsedWakingMinutes
+        self.avgHeartRate = avgHeartRate
+        self.avgHRV = avgHRV
+        self.hrBaseline = hrBaseline
+        self.hrvBaseline = hrvBaseline
+        self.isEstimate = isEstimate
+        self.hrBasis = hrBasis
+        self.hrvBasis = hrvBasis
+    }
+
+    // MARK: - How much of the day this rests on
+
+    /// The fraction of the elapsed waking day that was quiet enough to sample.
+    ///
+    /// **What this is and is not.** `sampledMinutes` is the duration of the
+    /// windows left after workouts, the buffer following them, and
+    /// high-movement hours are removed. So this measures sampling
+    /// *opportunity*: how much of the day was in a state where a resting
+    /// reading meant anything.
+    ///
+    /// It is deliberately not called sample density, because it is not that.
+    /// Observed density — how many readings a watch actually took in those
+    /// windows — would distinguish denser hardware from sparser hardware
+    /// without naming either, which is what the audit asks for. It needs a
+    /// sample-count query, and `HealthKitManager` has only averages and sums
+    /// today. That is a real limitation and it is written down here rather
+    /// than papered over by labelling this something it is not.
+    ///
+    /// What it does deliver is the half that matters most for trust: a score
+    /// resting on forty minutes of a twelve-hour day should not read with the
+    /// same confidence as one resting on seven hours, and until now they did.
+    var quietCoverage: Double? {
+        guard let elapsedWakingMinutes, elapsedWakingMinutes > 0 else { return nil }
+        return min(1, max(0, sampledMinutes / elapsedWakingMinutes))
+    }
+
+    /// Confidence in the day's coverage, from the coverage itself.
+    ///
+    /// **Two conditions, not one.** A fraction alone is wrong first thing in
+    /// the morning: an hour after waking, an entirely quiet hour is 100%
+    /// coverage of a very short day, and reporting that as high confidence
+    /// would be an artefact of the clock. So each band needs a share of the
+    /// day *and* an absolute amount of quiet time behind it.
+    ///
+    /// This is the same shape as the awakening gate in `RecoveryDayPlan`: the
+    /// ratio asks whether the day was mostly quiet, the minutes ask whether
+    /// there is enough of it to mean anything.
+    ///
+    /// No device model is consulted anywhere here, by design. Newer hardware
+    /// benefits when it genuinely produces more usable quiet time; older
+    /// hardware is never marked down for being older.
+    var coverageConfidence: MetricConfidence? {
+        guard let quietCoverage else { return nil }
+        if quietCoverage >= 0.50, sampledMinutes >= 180 { return .high }
+        if quietCoverage >= 0.30, sampledMinutes >= 90 { return .moderate }
+        if sampledMinutes >= 30 { return .low }
+        return .insufficient
+    }
+
+    /// Coverage said plainly, for a surface that wants to disclose it.
+    var coverageNote: String? {
+        guard let quietCoverage, let coverageConfidence else { return nil }
+        let percent = Int((quietCoverage * 100).rounded())
+        let hours = sampledMinutes / 60
+        let amount = hours >= 1
+            ? String(format: "%.1f hours", hours)
+            : "\(Int(sampledMinutes.rounded())) minutes"
+        switch coverageConfidence {
+        case .high, .moderate:
+            return "Based on \(amount) of quiet time, about \(percent)% of your day so far."
+        case .low:
+            return "Based on \(amount) of quiet time — most of your day so far was too active to read from."
+        case .insufficient:
+            return "Barely any quiet time yet today, so this rests on very little."
+        }
+    }
+
     /// True when every component used was compared against waking readings
     /// from this hour of the day, so the scale mismatch does not apply.
     var isScaleMatched: Bool {
@@ -157,6 +265,10 @@ struct StressScore: Codable, Hashable, Sendable {
         hrvBaseline: Double?,
         sampledMinutes: Double,
         baselineNightCount: Int,
+        /// Minutes of the waking day elapsed so far. Optional because a
+        /// caller that does not know must not have one invented for it —
+        /// see `quietCoverage`.
+        elapsedWakingMinutes: Double? = nil,
         wakingHRBaseline: Double? = nil,
         wakingHRVBaseline: Double? = nil
     ) -> StressScore? {
@@ -225,6 +337,7 @@ struct StressScore: Codable, Hashable, Sendable {
             percent: value,
             band: band,
             sampledMinutes: sampledMinutes,
+            elapsedWakingMinutes: elapsedWakingMinutes,
             avgHeartRate: avgHeartRate,
             avgHRV: avgHRV,
             hrBaseline: hrComparison,

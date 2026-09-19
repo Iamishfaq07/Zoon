@@ -231,6 +231,25 @@ struct SleepDetailView: View {
                 SectionHeader(title: "Stage Breakdown", systemImage: "square.stack.3d.up")
                 StageProportionBar(features: context.night)
                 StageLegend(features: context.night)
+
+                // What wrote these stages, under the figures they qualify.
+                //
+                // `hasStageBreakdown` above answers whether stages exist; it
+                // cannot answer whether they were measured. An Apple Watch
+                // classifier, a third-party tracker and a bedtime typed into
+                // a phone all satisfy it, and until now all three drew the
+                // same bar in the same type with nothing distinguishing them.
+                //
+                // The line labels rather than hides. Withholding the bar
+                // below `supportsStageFigures` would blank a chart people
+                // have been reading for months on every night stored before
+                // the source was recorded, which reads as data loss; the
+                // honest move is to say what the figures rest on and leave
+                // them visible.
+                Text(context.night.stageTrust.provenance)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
@@ -365,7 +384,9 @@ struct SleepDetailView: View {
     }
 }
 
-/// Whoop-style sleep need: a stacked bar of what you needed vs what you got.
+/// The night's planning target as a stacked bar: what the model suggested
+/// aiming for, and what was slept against it. See `SleepNeed` — the target is
+/// a plan built from a learned baseline, not a measured requirement.
 struct SleepNeedCard: View {
     let need: SleepNeed
 

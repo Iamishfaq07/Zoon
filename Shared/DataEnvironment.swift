@@ -54,6 +54,17 @@ import Foundation
 /// this type honestly testable.
 enum DataEnvironment: Equatable {
 
+    /// Launched with `-zoonDemo YES`.
+    ///
+    /// Defined here rather than in the iOS-only `LaunchOptions` because the
+    /// watch needs the same answer and had no way to ask. Two copies of a
+    /// bare string key is exactly the drift that leaves one platform quietly
+    /// not in demo mode, which is how the watch came to be the one surface
+    /// screenshots could not reach.
+    static var isDemoLaunchArgument: Bool {
+        UserDefaults.standard.bool(forKey: "zoonDemo")
+    }
+
     /// Read the wearer's real Health data.
     case live
 

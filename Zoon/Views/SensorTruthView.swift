@@ -13,6 +13,12 @@ import SwiftUI
 /// blood oxygen is not a medical measurement.
 struct SensorTruthView: View {
 
+    /// The section `-zoonScrollTo` names to bring the per-value provenance
+    /// rows -- including sleep stages, and what actually classified them --
+    /// above the fold for a capture.
+    static let tonightAnchor = "tonight"
+
+
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
 
@@ -44,6 +50,7 @@ struct SensorTruthView: View {
     @State private var reliability: [CalibrationLedger.Result] = []
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 Text("A wrist temperature is a thing a sensor recorded. A REM minute-count is a model's guess. Both look the same on a card, so here is which is which.")
@@ -59,7 +66,7 @@ struct SensorTruthView: View {
                 }
 
                 if let tonight, !tonight.populated.isEmpty {
-                    tonightSection(tonight).entrance(2)
+                    tonightSection(tonight).entrance(2).id(Self.tonightAnchor)
                 }
 
                 if !reliability.isEmpty {
@@ -72,6 +79,25 @@ struct SensorTruthView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
+        }
+        .onAppear {
+            guard LaunchOptions.scrollTarget == Self.tonightAnchor else { return }
+            // A beat for the lazy stack to build the section before asking
+            // to scroll to it: `scrollTo` cannot reach an id that has not
+            // been created yet, and a silent no-op here would photograph the
+            // top of the screen under a name promising the bottom -- the
+            // fallback-render mistake in a different costume.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // No animation: a capture fires on a timer and a scroll still
+                // easing when the shutter opens is a blurred half-scrolled
+                // screen rather than the section asked for.
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(Self.tonightAnchor, anchor: .top)
+                }
+            }
+        }
         }
         .task(id: coordinator.recentNights.count) {
             // Off the main actor: `SleepNightFeatures` is `Sendable` and the

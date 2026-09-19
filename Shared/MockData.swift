@@ -117,7 +117,7 @@ enum MockData {
     )
 
     static var snapshot: SleepSnapshot {
-        SleepSnapshot(
+        var result = SleepSnapshot(
             features: goodNight,
             score: SleepScore.compute(for: goodNight, goalMinutes: 480),
             insight: goodInsight,
@@ -128,6 +128,15 @@ enum MockData {
             // is exactly the state `flagshipScore` exists to detect.
             sleepIntelligenceVersion: SleepIntelligenceScore.currentVersion
         )
+        // Stated, because the flag now defaults to the honest answer and this
+        // snapshot does have a reading to show. Without them the watch's
+        // TODAY page correctly hides its dial -- right behaviour, useless
+        // demo. `recoveryConfidence` is not an initialiser parameter, so it
+        // is assigned the same way the live coordinator assigns it.
+        result.recoveryPercent = 72
+        result.hasRecovery = true
+        result.recoveryConfidence = MetricConfidence.moderate.rawValue
+        return result
     }
 
     /// The habitual night length the autopilot would measure from `history`.
@@ -184,6 +193,7 @@ enum MockData {
         ) {
             result.tonightTargetLabel = plan.targetRangeLabel
             result.tonightTargetNote = plan.sentence
+            result.tonightTargetNoteShort = plan.shortSentence
             result.isTonightTargetHolding = plan.isHolding
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: history).first {
@@ -316,7 +326,16 @@ enum MockData {
             lastWorkoutHoursBeforeBed: workoutHours,
             exerciseMinutesPreviousDay: exercise,
             sourceName: "Mock Data",
-            isMock: true
+            isMock: true,
+            // The demo night represents the device this app is built around,
+            // so the provenance line under its stage bar reads the way a
+            // Watch wearer's does rather than "source not recorded" -- which
+            // is what an unset priority means and would be the wrong thing to
+            // show in every screenshot of a feature about provenance. The
+            // "Sample" badge on the screen already says this is demo data.
+            // The unstaged fixture below is deliberately left alone: it has
+            // no stages, so it grades `.unstaged` whatever wrote it.
+            stageSourcePriority: .appleWatch
         )
     }
 }

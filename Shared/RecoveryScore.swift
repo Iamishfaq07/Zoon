@@ -299,16 +299,30 @@ extension RecoveryScore {
             }
         }
 
-        /// The one-line prescription. This is the whole point of the number —
-        /// a percentage with no instruction attached is trivia.
+        /// What the overnight signals did, stated as what they are.
+        ///
+        /// These used to be training prescriptions — "Primed. Your body looks
+        /// ready for a harder session today" — derived from four overnight
+        /// numbers off a consumer wearable. That reaches well past what they
+        /// establish. HRV, resting heart rate, respiration and sleep duration
+        /// measured through a night say something real about how the night
+        /// went relative to this person's own baseline; they do not establish
+        /// what kind of session a body can take eight hours later, and the
+        /// word "primed" claims exactly that.
+        ///
+        /// So: what was observed, against whose baseline, in the past tense
+        /// it was observed in. Advice that depends on *now* is composed from
+        /// the morning reading and the current one together — see
+        /// `DaytimeOpening.guidance`, which withholds it unless both point
+        /// the same way.
         var guidance: String {
             switch self {
             case .low:
-                "Your body is still working. Keep today easy — walking, mobility, or full rest."
+                "Several overnight signals were below your usual pattern."
             case .moderate:
-                "Ready for moderate work. Train, but leave something in the tank."
+                "Your overnight signals were mixed relative to your baseline."
             case .high:
-                "Primed. Your body looks ready for a harder session today, if that's part of your plan."
+                "Your overnight signals were favourable relative to your baseline."
             }
         }
 

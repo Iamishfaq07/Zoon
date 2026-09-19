@@ -45,7 +45,7 @@ struct SleepHealthView: View {
         Picker("", selection: $window) {
             ForEach(SleepHealth.Window.allCases) { Text($0.label).tag($0) }
         }
-        .pickerStyle(.segmented)
+        .adaptiveSegmentedStyle()
     }
 
     private var hero: some View {

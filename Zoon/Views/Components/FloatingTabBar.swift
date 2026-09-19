@@ -22,6 +22,9 @@ struct FloatingTabBar<Tab: Hashable>: View {
     @Binding var selection: Tab
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The bar drops its titles and grows its marks at accessibility sizes --
+    /// see `button(_:)`.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Namespace private var indicator
 
     var body: some View {
@@ -59,6 +62,7 @@ struct FloatingTabBar<Tab: Hashable>: View {
 
     private func button(_ item: Item) -> some View {
         let isSelected = selection == item.tab
+        let isAccessibility = dynamicTypeSize.isAccessibilitySize
 
         return Button {
             guard !isSelected else { return }
@@ -67,17 +71,34 @@ struct FloatingTabBar<Tab: Hashable>: View {
                 selection = item.tab
             }
         } label: {
-            VStack(spacing: 4) {
+            // At accessibility sizes the label goes and the mark grows.
+            //
+            // It used to cap both at `.large`, which meant the one control
+            // strip on every screen never responded to the setting at all --
+            // the labels stayed at 10pt for somebody who had asked for the
+            // largest text on the system. Letting them scale instead is not
+            // the answer either: four titles at those sizes is a wall of text
+            // where a navigation bar should be, and it would push content off
+            // the screen it is meant to sit under.
+            //
+            // So the title is dropped and the symbol takes the room, which is
+            // the trade a tab bar can actually make: the target and the mark
+            // both get bigger, which is what low vision needs from it, and
+            // the title is still announced -- `accessibilityLabel` below
+            // carries it, so VoiceOver is unaffected either way.
+            VStack(spacing: isAccessibility ? 0 : 4) {
                 Image(systemName: item.symbol)
-                    .font(Theme.text(16, weight: .semibold))
-                    .dynamicTypeSize(...DynamicTypeSize.large)
-                Text(item.title)
-                    .font(Theme.label(10, weight: .semibold))
-                    .dynamicTypeSize(...DynamicTypeSize.large)
+                    .font(Theme.text(isAccessibility ? 22 : 16, weight: .semibold))
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                if !isAccessibility {
+                    Text(item.title)
+                        .font(Theme.label(10, weight: .semibold))
+                        .dynamicTypeSize(...DynamicTypeSize.large)
+                }
             }
             .foregroundStyle(isSelected ? Theme.Family.sleep : Theme.inkTertiary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
+            .padding(.vertical, isAccessibility ? 11 : 7)
             .background {
                 if isSelected {
                     Capsule()

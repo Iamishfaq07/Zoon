@@ -18,6 +18,32 @@ struct WatchRootView: View {
     /// the clock cannot be found twice in the same place.
     private enum Page: Hashable {
         case nap, scoreLight, lastNight, today, tonight, more, log
+
+        /// Pin the opening page from the launch arguments, for capture.
+        ///
+        /// `chooseOpeningPage` below picks by the hour, which is right on a
+        /// wrist and wrong in front of a camera: the page photographed then
+        /// depends on what time CI happened to run, so a render either proves
+        /// nothing or silently changes meaning between runs. The phone
+        /// capture solved the same problem for the Today hero with
+        /// `-zoonMoment`; this is that, for the watch deck.
+        ///
+        /// It is also what makes the other pages reachable at all. A capture
+        /// cannot swipe, so without this only whichever page the clock
+        /// selected could ever be seen -- four of the seven had no way of
+        /// being photographed.
+        init?(launchArgument: String?) {
+            switch launchArgument?.lowercased() {
+            case "nap": self = .nap
+            case "scorelight": self = .scoreLight
+            case "lastnight": self = .lastNight
+            case "today": self = .today
+            case "tonight": self = .tonight
+            case "more": self = .more
+            case "log": self = .log
+            default: return nil
+            }
+        }
     }
 
     var body: some View {
@@ -115,6 +141,15 @@ struct WatchRootView: View {
     private func chooseOpeningPage() {
         guard !hasChosenOpeningPage, let snapshot = link.snapshot else { return }
         hasChosenOpeningPage = true
+
+        // A pinned page wins over every rule below, including the nap and
+        // score-light overrides: the point of pinning is that the capture
+        // gets the page it asked for rather than the page today's data
+        // argues for.
+        if let pinned = Page(launchArgument: UserDefaults.standard.string(forKey: "zoonWatchPage")) {
+            page = pinned
+            return
+        }
 
         if snapshot.isNapRunning() {
             page = .nap
@@ -334,7 +369,15 @@ private struct TonightPage: View {
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
-                Text(snapshot.tonightTargetNote)
+                // The short form when the phone sent one, the long one
+                // otherwise -- an older phone paired to a newer watch sends
+                // nothing here, and a blank line would be worse than a
+                // truncated sentence. The accessibility label below keeps the
+                // full text either way, so nothing is lost to a screen
+                // reader by drawing less.
+                Text(snapshot.tonightTargetNoteShort.isEmpty
+                     ? snapshot.tonightTargetNote
+                     : snapshot.tonightTargetNoteShort)
                     .font(Theme.text(10))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

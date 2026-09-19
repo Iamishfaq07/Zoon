@@ -54,6 +54,52 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     let qualifyingNightCount: Int
     let confidence: Confidence
 
+    // MARK: - How wide the estimate is
+
+    /// Where this person's qualifying nights actually sat, as a band around
+    /// the estimate.
+    ///
+    /// **Why a band at all.** `learnedMinutes` is the 60th percentile of the
+    /// qualifying nights — a single number to the minute, derived from a
+    /// distribution that is nothing like a single number. Printed on its own
+    /// it reads as a measurement of how much sleep this body requires. It is
+    /// not that; it is where the middle of their unconstrained nights landed.
+    ///
+    /// **Why this band and not a confidence interval.** A confidence interval
+    /// would be a statement about sampling error in estimating a quantity
+    /// that is not well defined to begin with — "the" amount of sleep a person
+    /// needs is not a fixed constant with a true value being sampled. What
+    /// *is* well defined, and is what somebody actually wants to know, is the
+    /// spread of their own good nights. So this is the 50th to 70th
+    /// percentile of the qualifying nights: observed, not modelled, and it
+    /// widens on its own for a person whose nights vary.
+    ///
+    /// Deliberately not a fixed ±20 minutes. The brief's instruction is not
+    /// to fabricate ranges mechanically, and a constant width would be
+    /// exactly that — it would tell a metronomic sleeper and an erratic one
+    /// the same thing.
+    ///
+    /// `nil` below `minimumQualifyingNights`, where there is no distribution
+    /// worth describing.
+    let typicalLowMinutes: Double?
+    let typicalHighMinutes: Double?
+
+    /// Robust dispersion of the qualifying nights, for callers that want the
+    /// width itself rather than the band.
+    let spreadMinutes: Double?
+
+    /// Whether the estimate has earned the right to be shown as a range.
+    ///
+    /// A range implies the distribution behind it is real. Below moderate
+    /// confidence the figure is mostly still the person's stated goal, and
+    /// drawing a band around a goal would dress a preference up as an
+    /// observation.
+    var showsRange: Bool {
+        confidence >= .moderate
+            && typicalLowMinutes != nil
+            && typicalHighMinutes != nil
+    }
+
     /// Nights needed before a learned estimate starts blending in at all.
     static let minimumQualifyingNights = 30
     /// Nights at which the blend is fully the learned estimate.
@@ -67,7 +113,8 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
               let learned = Statistics.percentile(qualifying.map(\.timeAsleepMinutes), 60) else {
             return LearnedSleepNeed(
                 minutes: goalMinutes, learnedMinutes: nil,
-                qualifyingNightCount: count, confidence: .insufficient
+                qualifyingNightCount: count, confidence: .insufficient,
+                typicalLowMinutes: nil, typicalHighMinutes: nil, spreadMinutes: nil
             )
         }
 
@@ -79,11 +126,18 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
         let weight = min(1.0, Double(count - minimumQualifyingNights) / Double(fullConfidenceNights - minimumQualifyingNights))
         let blended = goalMinutes * (1 - weight) + learned * weight
 
+        // The band is the qualifying nights' own 50th-to-70th percentile:
+        // observed spread, not a modelled interval. See `typicalLowMinutes`.
+        let durations = qualifying.map(\.timeAsleepMinutes)
+
         return LearnedSleepNeed(
             minutes: blended,
             learnedMinutes: learned,
             qualifyingNightCount: count,
-            confidence: count >= fullConfidenceNights ? .high : .moderate
+            confidence: count >= fullConfidenceNights ? .high : .moderate,
+            typicalLowMinutes: Statistics.percentile(durations, 50),
+            typicalHighMinutes: Statistics.percentile(durations, 70),
+            spreadMinutes: Statistics.medianAbsoluteDeviation(durations)
         )
     }
 
