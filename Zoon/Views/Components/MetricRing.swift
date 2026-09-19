@@ -218,15 +218,26 @@ struct RecoveryRing<Inner: View>: View {
                     .lineLimit(1)
             }
 
-            if component.isAvailable {
-                Text("\(Int((component.effectiveWeight * 100).rounded()))% of the score")
-                    .font(Theme.text(11))
-                    .foregroundStyle(Theme.inkSecondary)
-            } else {
-                Text("Carries no weight today")
-                    .font(Theme.text(11))
-                    .foregroundStyle(Theme.inkTertiary)
-            }
+            // How this signal sits against this person's own baseline. The
+            // number above says what it read; this says whether that is
+            // normal *for them*, which is the whole reason the driver is
+            // worth tapping. Taken from `RecoveryDriverSemantics` rather than
+            // phrased again here -- the drivers strip below states the same
+            // comparison, and two wordings of one fact is how a screen starts
+            // contradicting itself.
+            Text(RecoveryDriverSemantics.reading(for: component).phrase)
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+
+            // Was `Int((effectiveWeight * 100).rounded())` inline, which
+            // traps on a non-finite Double rather than printing anything.
+            // `ScoreAnatomy` guards that and owns the wording for both this
+            // surface and VoiceOver.
+            Text(ScoreAnatomy.compactContribution(for: component))
+                .font(Theme.text(11))
+                .foregroundStyle(component.isAvailable ? Theme.inkSecondary : Theme.inkTertiary)
 
             Text("Tap to go back")
                 .font(Theme.evidence)
