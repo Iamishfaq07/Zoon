@@ -211,6 +211,15 @@ struct DayContextBuilder {
             habitualMidpointHours: bodyClock?.isEstimate == false ? bodyClock?.midpoint : nil
         ))
 
+        let tonight = TonightPlanner.build(
+            nights: fullHistory,
+            sleepNeed: sleepNeed,
+            outstandingShortfallMinutes: night.sleepDebtMinutes ?? 0,
+            lastWake: night.wakeTime,
+            obligationWake: bodyClock?.window(for: .now)?.end,
+            obligationSource: .bodyClock
+        )
+
         return DayContext(
             night: night,
             insight: inputs.insight(sleepIntelligence.band),
@@ -235,7 +244,8 @@ struct DayContextBuilder {
             bodyClock: bodyClock,
             hourlyHeartRate: inputs.hourlyHeartRate,
             cognitiveEnergy: cognitiveEnergy,
-            academicSleepRegularity: academicSRI
+            academicSleepRegularity: academicSRI,
+            tonight: tonight
         )
     }
 

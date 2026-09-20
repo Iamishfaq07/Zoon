@@ -84,7 +84,7 @@ struct MorningInThree: Sendable, Hashable {
             // refuses to print.
             today = Line(
                 label: "TODAY",
-                headline: "Still learning your sleep need",
+                headline: "Still learning your sleep baseline",
                 detail: "A few more nights and Zoon can tell you how far ahead or behind you are."
             )
         } else if debtMinutes >= debtWorthMentioningMinutes {
@@ -98,12 +98,12 @@ struct MorningInThree: Sendable, Hashable {
                 // recovery day. Zoon knows the shortfall; it does not know
                 // which end of the night is available, so it says what to
                 // protect and leaves how to Autopilot, which does know.
-                detail: "That's against your own estimated sleep need. Protecting enough sleep opportunity tonight is what closes it."
+                detail: "That's against your own sleep target. Protecting enough sleep opportunity tonight is what closes it."
             )
         } else {
             today = Line(
                 label: "TODAY",
-                headline: "You're on top of your sleep need",
+                headline: "You're on top of your sleep target",
                 detail: "Nothing to make up. Holding the same bedtime is what keeps it that way."
             )
         }

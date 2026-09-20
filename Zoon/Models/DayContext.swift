@@ -38,6 +38,10 @@ struct DayContext: Equatable {
     /// and a clinician export can quote the academic figure without
     /// recomputing it from a different window.
     let academicSleepRegularity: SleepRegularityIndex
+    /// The one tonight. Built with the outstanding shortfall, not the
+    /// composed need, so Today, reminders, Nap Coach and Energy cannot
+    /// disagree about bedtime.
+    let tonight: TonightPlan
 
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
@@ -67,33 +71,18 @@ struct DayContext: Equatable {
             bodyClock: bodyClock,
             hourlyHeartRate: hourlyHeartRate,
             cognitiveEnergy: cognitiveEnergy,
-            academicSleepRegularity: academicSleepRegularity
+            academicSleepRegularity: academicSleepRegularity,
+            tonight: tonight
         )
     }
 
-    /// Tonight's target bedtime: your usual wake time, minus tonight's need.
-    ///
-    /// Lives here rather than in the view that draws it because two things now
-    /// depend on it — the countdown card and the scheduled reminder — and a
-    /// notification that fires at a different time from the one on screen is
-    /// worse than no notification.
-    ///
-    /// Derived from the user's own wake pattern rather than an alarm they have
-    /// to configure: the data is already here, and a setting you must fill in
-    /// before the feature works is a setting most people never fill in.
+    /// Tonight's target bedtime. Delegates to `tonight` so this cannot
+    /// silently become a second calculation. The old body was
+    /// `wake-tomorrow − totalNeedMinutes`, which repaid the shortfall on a
+    /// different rule from Autopilot and produced a different clock time
+    /// on the same screen.
     func targetBedtime(now: Date = .now, calendar: Calendar = .current) -> Date? {
-        let wake = calendar.dateComponents([.hour, .minute], from: night.wakeTime)
-
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
-              let wakeTomorrow = calendar.date(
-                  bySettingHour: wake.hour ?? 7,
-                  minute: wake.minute ?? 0,
-                  second: 0,
-                  of: tomorrow
-              )
-        else { return nil }
-
-        return wakeTomorrow.addingTimeInterval(-sleepNeed.totalNeedMinutes * 60)
+        tonight.bedtime(now: now, calendar: calendar)
     }
 
     /// The morning headline — what a user reads in two seconds.

@@ -565,10 +565,6 @@ struct LastNightPage: View {
         }
     }
 
-    private var debtTint: Color {
-        snapshot.sleepDebtMinutes <= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
-    }
-
     /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
     /// makes on `snapshot.isShiftWorkModeEnabled` -- the watch app is its own
     /// process with no `UserPreferences` access, which is exactly why that
@@ -597,18 +593,18 @@ struct LastNightPage: View {
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 10) {
-                WatchMiniStat(
-                    value: SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes),
-                    label: "asleep",
-                    tint: Theme.Metric.sleep
-                )
-                WatchMiniStat(
-                    value: snapshot.balanceLabel,
-                    label: "shortfall",
-                    tint: debtTint
-                )
+            if snapshot.hasRecovery {
+                Text("Recovery \(snapshot.recoveryPercent)")
+                    .font(Theme.label(11, weight: .semibold))
+                    .foregroundStyle(Theme.Metric.recoveryHigh)
+                    .accessibilityLabel("Morning Recovery, \(snapshot.recoveryPercent) out of 100")
             }
+
+            Text(morning.today.headline)
+                .font(Theme.label(12, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
 
             WatchFreshnessNote(snapshot: snapshot)
 
@@ -619,6 +615,20 @@ struct LastNightPage: View {
             }
         }
         .padding(.horizontal, 6)
+    }
+
+    /// Sleep, Recovery, one action — the morning hierarchy the Watch can
+    /// actually hold. Built from the same sentences the phone uses so the
+    /// two cannot disagree about whether a shortfall is worth mentioning.
+    private var morning: MorningInThree {
+        MorningInThree.build(
+            timeAsleepMinutes: snapshot.timeAsleepMinutes,
+            flagshipScore: snapshot.flagshipScore,
+            flagshipBand: snapshot.flagshipBand,
+            bodySignalsHeadline: nil,
+            debtMinutes: snapshot.sleepDebtMinutes,
+            hasEnoughHistoryForNeed: snapshot.sleepIntelligenceVersion > 0
+        )
     }
 }
 

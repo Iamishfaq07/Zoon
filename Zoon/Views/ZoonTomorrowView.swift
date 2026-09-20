@@ -145,9 +145,7 @@ struct ZoonTomorrowView: View {
         // to be handed a number. Nothing outstanding means nothing repaid, so
         // the plan falls back to the plain baseline rather than inventing a
         // debt or refusing to plan the week.
-        return context.sleepNeed.planningInputs(
-            outstandingShortfallMinutes: context.night.sleepDebtMinutes ?? 0
-        )
+        return context.tonight.planning
     }
 
     private var runway: SleepRunway.Plan? {

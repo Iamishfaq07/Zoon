@@ -146,8 +146,7 @@ struct TodayView: View {
                 if !steps.isEmpty {
                     TonightPlanCardView(
                         steps: steps,
-                        targetMinutes: autopilotPlan(context)?.targetSleepMinutes
-                            ?? context.sleepNeed.totalNeedMinutes,
+                        targetMinutes: context.tonight.suggestedSleepTargetMinutes,
                         bedIn: plannedBedtime(context).map { $0.timeIntervalSinceNow }
                     )
                     .entrance(1)
@@ -245,6 +244,9 @@ struct TodayView: View {
                 onTurnOffRecoveryMode: { preferences.setRecoveryModeEnabledToday(false) }
                 )
                 .entrance(4)
+
+                OneThingCard(selection: oneThing(for: context))
+                    .entrance(4)
             }
 
             if moment == .day {
@@ -367,8 +369,19 @@ struct TodayView: View {
     /// put an after-midnight bedtime in the past and make every nap look
     /// safe.
     private func plannedBedtime(_ context: DayContext) -> Date? {
-        guard let minutes = autopilotPlan(context)?.targetBedtimeMinutes else { return nil }
-        return PlannedBedtimeResolver.nextOccurrence(ofMinutesFromMidnight: minutes, after: .now)
+        context.tonight.bedtime()
+    }
+
+    private func oneThing(for context: DayContext) -> OneThing.Selection? {
+        let bed = context.tonight.bedtime()
+        let candidates = OneThingCandidates.gather(
+            tonight: context.tonight,
+            nap: napRecommendation(context),
+            recovery: context.recovery,
+            now: .now,
+            caffeineCutoff: bed.flatMap { CaffeineCutoff.time(bedtime: $0) }
+        )
+        return OneThing.choose(from: candidates)
     }
 
     // MARK: - Hero helpers
@@ -496,12 +509,7 @@ struct TodayView: View {
         let plan = ZoonTomorrow.plan(
             event: event,
             nights: coordinator.recentNights,
-            // Baseline plus the outstanding shortfall, not the composed total:
-            // that already carries a repayment, and the planner applies its
-            // own. See `SleepPlanningInputs`.
-            planning: context.sleepNeed.planningInputs(
-                outstandingShortfallMinutes: context.night.sleepDebtMinutes ?? 0
-            ),
+            planning: context.tonight.planning,
             napMinutesToday: napMinutesToday,
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )
@@ -563,14 +571,15 @@ struct TodayView: View {
     /// half-hour `TonightSection` already talks about, given a place on the
     /// line rather than only a sentence.
     private func tonightSteps(_ context: DayContext) -> [TonightPlanCardView.Step] {
-        guard let plan = autopilotPlan(context), let bed = plannedBedtime(context) else { return [] }
-        let windDown = bed.addingTimeInterval(-30 * 60)
-        let wake = bed.addingTimeInterval(plan.targetSleepMinutes * 60)
+        guard let bed = plannedBedtime(context) else { return [] }
+        let plan = autopilotPlan(context)
+        let windDown = context.tonight.windDownStart() ?? bed.addingTimeInterval(-context.tonight.windDownLeadMinutes * 60)
+        let wake = context.tonight.wakeTime() ?? bed.addingTimeInterval(context.tonight.suggestedSleepTargetMinutes * 60)
 
         var bedNote: String?
-        if plan.debtRepaymentMinutes >= 1 {
+        if let plan, plan.debtRepaymentMinutes >= 1 {
             bedNote = "\(Int(plan.debtRepaymentMinutes.rounded())) minutes earlier than your habit, to start clearing the shortfall."
-        } else if plan.isHolding {
+        } else if plan?.isHolding == true {
             bedNote = "Where you already are — this target is holding, not correcting."
         }
 
@@ -677,15 +686,7 @@ struct TodayView: View {
     }
 
     private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
-        let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
-        return SleepAutopilot.plan(
-            nights: coordinator.recentNights,
-            sleepNeedMinutes: context.learnedSleepNeed.minutes,
-            obligationWakeMinutes: obligationWake.map {
-                Statistics.circularMinutesFromMidnight($0)
-            },
-            sleepDebtMinutes: context.sleepNeed.debtMinutes
-        )
+        context.tonight.autopilot
     }
 
     // MARK: - Footer
