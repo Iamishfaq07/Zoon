@@ -876,7 +876,7 @@ final class SleepDataCoordinator {
         }
 
         let baseline = store.baseline(for: record.date, goalMinutes: goal, manualNaps: naps.naps)
-        let night = record.features(
+        let rawNight = record.features(
             baseline: baseline,
             secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(
                 forNightKey: record.nightKey ?? "", wakeDate: record.date,
@@ -884,6 +884,9 @@ final class SleepDataCoordinator {
                 manualNaps: naps.naps
             )
         )
+        let repairs = PersonalSetupStore.shared.value.repairs
+        let night = LocalSleepCorrection.apply(rawNight, repairs: repairs)
+
         // Foundation Models inference is async and the engine protocol is not,
         // so generation is primed here and read back synchronously below.
         if let modelEngine = engine as? FoundationModelInsightEngine {
@@ -895,8 +898,12 @@ final class SleepDataCoordinator {
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
-        let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
-            .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) }
+        let history = LocalSleepCorrection.apply(
+            store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
+                .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) },
+            repairs: repairs
+        )
+
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
         let maxHR = maximum.bpm
