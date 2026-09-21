@@ -255,8 +255,8 @@ struct CoachTabView: View {
             // nothing happened" and "I can't have this yet" -- and Rules is a
             // real answer on every device, not a consolation.
             Label(
-                "Apple Intelligence needs iOS 26 or later on an iPhone 15 Pro, "
-                    + "iPhone 16, or newer. Rules answers on any device.",
+                CoachChat.unavailabilityReason
+                    ?? "Apple Intelligence uses the on-device system model when it is available. Rules answers on every device.",
                 systemImage: "info.circle"
             )
             .font(Theme.text(11))

@@ -79,6 +79,15 @@ final class CoachToolCatalogTests: XCTestCase {
         }
     }
 
+    func testNaturalLanguageReadsThatUsedToFallThrough() {
+        XCTAssertEqual(CoachToolCatalog.interpret("What happened last night?")?.kind, .getSleepScore)
+        XCTAssertEqual(CoachToolCatalog.interpret("How much did I sleep?")?.kind, .getSleepScore)
+        XCTAssertEqual(CoachToolCatalog.interpret("How am I doing today?")?.kind, .getRecovery)
+        XCTAssertEqual(CoachToolCatalog.interpret("How much energy do I have?")?.kind, .getEnergy)
+        XCTAssertEqual(CoachToolCatalog.interpret("What should I do tonight?")?.kind, .getTonight)
+        XCTAssertEqual(CoachToolCatalog.interpret("Why do I feel tired?")?.kind, .getRecovery)
+    }
+
     /// "nap" inside another word is not a nap request, and a question about a
     /// past nap is not a request to start one.
     func testNapWordAloneDoesNotStartANap() {
@@ -130,9 +139,6 @@ final class CoachToolCatalogTests: XCTestCase {
             "Prepare me for my 9 AM meeting tomorrow", "Set my alarm"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
-        // Over `allCases`, not a list beside this one: a tool nobody can ask
-        // for is a tool that does not exist, and a hand-written list would
-        // simply not mention it.
         for kind in CoachToolCatalog.Kind.allCases {
             XCTAssertTrue(reached.contains(kind), "\(kind.rawValue) is unreachable")
         }
@@ -144,19 +150,7 @@ final class CoachToolCatalogTests: XCTestCase {
         XCTAssertEqual(a, b)
     }
 
-    // MARK: - The confirmation contract
-
-    /// The safety invariant the whole catalogue exists for: nothing that
-    /// changes state may run without being agreed to first.
-    ///
-    /// Written as a property of the kind rather than of one utterance,
-    /// because the failure this guards against is a *new* tool being added
-    /// to the enum and quietly defaulting to the read-only branch.
     func testEveryWritingToolRequiresConfirmation() {
-        // Iterating every case rather than a list of the writes, which is what
-        // this test's own reason for existing requires: a new tool that
-        // changes state has to be caught here, and it cannot be if the test
-        // has to be told about it first.
         for kind in CoachToolCatalog.Kind.allCases where kind.changesState {
             XCTAssertTrue(kind.requiresConfirmation, "\(kind.rawValue) would run unasked")
         }
@@ -171,8 +165,6 @@ final class CoachToolCatalogTests: XCTestCase {
         }
     }
 
-    /// Movement is a read. It reports what a person already did today and
-    /// changes nothing, and §27 is explicit that none of it reaches a score.
     func testMovementIsAReadingTool() {
         XCTAssertFalse(CoachToolCatalog.Kind.getMovement.changesState)
         XCTAssertFalse(CoachToolCatalog.Kind.getMovement.requiresConfirmation)
@@ -189,8 +181,6 @@ final class CoachToolCatalogTests: XCTestCase {
         }
     }
 
-    /// A proposal a person is asked to agree to has to say what it will do.
-    /// A bare "Confirm?" is not consent to anything in particular.
     func testEveryWriteProposesAPromptThatNamesTheAction() throws {
         let utterances = [
             "Log coffee at 5.",
@@ -206,10 +196,6 @@ final class CoachToolCatalogTests: XCTestCase {
         }
     }
 
-    /// The hour that decides `.caffeine` from `.caffeineLate`, which the
-    /// runner reads. It has to match what `BehaviorTag.caffeineLate` calls
-    /// itself, or the Coach logs one behaviour and the Journal labels it as
-    /// another.
     func testLateCaffeineHourMatchesTheBehaviourItSelects() {
         XCTAssertEqual(CoachToolCatalog.lateCaffeineHour, 16)
         XCTAssertTrue(BehaviorTag.caffeineLate.label.contains("4pm"))

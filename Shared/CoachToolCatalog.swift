@@ -76,16 +76,20 @@ enum CoachToolCatalog {
         // "tomorrow" was matched ahead of every read branch, so "what does my
         // recovery look like tomorrow" opened the Tomorrow planner and
         // `.getTomorrow` was declared but returned by nothing.
-        if matches(q, ["sleep score", "sleep intelligence", "how did i sleep"]) {
+        if matches(q, [
+            "sleep score", "sleep intelligence", "how did i sleep",
+            "how much did i sleep", "how long did i sleep", "how long was i asleep",
+            "what happened last night", "how was last night", "last night's sleep"
+        ]) {
             return Call(kind: .getSleepScore, proposedMinutes: nil, confirmationPrompt: nil)
         }
-        if matches(q, ["recovery"]) {
+        if matches(q, ["recovery", "how am i doing", "how recovered", "feel tired", "feeling tired", "why do i feel tired"]) {
             return Call(kind: .getRecovery, proposedMinutes: nil, confirmationPrompt: nil)
         }
         if matches(q, ["shortfall", "sleep debt", "behind on sleep"]) {
             return Call(kind: .getShortfall, proposedMinutes: nil, confirmationPrompt: nil)
         }
-        if matches(q, ["energy now", "body battery", "how alert"]) {
+        if matches(q, ["energy now", "body battery", "how alert", "how much energy", "energy do i have", "enough energy"]) {
             return Call(kind: .getEnergy, proposedMinutes: nil, confirmationPrompt: nil)
         }
         // Movement is asked about in the app's own words ("moved", "steps")
@@ -95,7 +99,10 @@ enum CoachToolCatalog {
         if matches(q, ["steps", "how much have i moved", "moved today", "movement today", "active today"]) {
             return Call(kind: .getMovement, proposedMinutes: nil, confirmationPrompt: nil)
         }
-        if matches(q, ["sleep window", "tonight's plan", "when should i sleep", "bedtime"]) {
+        if matches(q, [
+            "sleep window", "tonight's plan", "tonights plan", "when should i sleep",
+            "bedtime", "what should i do tonight", "what should i focus"
+        ]) {
             return Call(kind: .getTonight, proposedMinutes: nil, confirmationPrompt: nil)
         }
         // Phrased as a question about the plan, never a bare "tomorrow":

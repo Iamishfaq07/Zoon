@@ -72,14 +72,18 @@ final class CoachEvidenceTests: XCTestCase {
 
     func testAQuestionOutsideTheDataSaysSoRatherThanAnsweringAnotherOne() {
         let evidence = CoachEvidence(night: Fixture.night(), history: [])
-        for question in ["what is the capital of France", "tell me a joke", "who are you"] {
+        for question in ["what is the capital of France", "tell me a joke"] {
             let reply = evidence.reply(to: question)
             XCTAssertTrue(
-                reply.text.lowercased().contains("can only answer"),
+                reply.text.lowercased().contains("i can help"),
                 "\(question) did not say what it can answer: \(reply.text)"
             )
             XCTAssertNil(reply.evidence)
         }
+        let identity = evidence.reply(to: "who are you")
+        XCTAssertTrue(identity.text.lowercased().contains("last night"))
+        XCTAssertNil(identity.evidence)
+        XCTAssertFalse(identity.text.lowercased().contains("asleep"))
     }
 
     /// The greeting check must not swallow a real question that happens to
