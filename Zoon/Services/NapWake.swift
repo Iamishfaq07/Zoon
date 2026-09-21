@@ -32,9 +32,12 @@ final class NapWake: NapWakeScheduling {
     private let alarm: WakeAlarm
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "NapWake")
 
-    init(center: UNUserNotificationCenter = .current(), alarm: WakeAlarm = WakeAlarm()) {
-        self.center = center
-        self.alarm = alarm
+    init(center: UNUserNotificationCenter? = nil, alarm: WakeAlarm? = nil) {
+        // Default arguments are evaluated in a nonisolated context, and
+        // `WakeAlarm.init` is `@MainActor`. Construct inside this isolated
+        // initializer instead of as a default value.
+        self.center = center ?? .current()
+        self.alarm = alarm ?? WakeAlarm()
     }
 
     @discardableResult
