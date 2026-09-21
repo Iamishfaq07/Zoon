@@ -19,6 +19,7 @@ final class AudioSessionCoordinator {
         var stop: () -> Void
         var resume: (() -> Void)?
         var reset: (() -> Void)?
+        var routeLost: (() -> Void)?
     }
 
     private init() {
@@ -49,7 +50,8 @@ final class AudioSessionCoordinator {
         recording: Bool = false,
         onInterrupt: @escaping () -> Void,
         onResume: (() -> Void)? = nil,
-        onReset: (() -> Void)? = nil
+        onReset: (() -> Void)? = nil,
+        onRouteLost: (() -> Void)? = nil
     ) throws {
         let others = owners.filter { $0.key != id }
         guard !others.values.contains(where: { $0.recording }) && (!recording || others.isEmpty) else {
@@ -64,7 +66,7 @@ final class AudioSessionCoordinator {
                 mode: recording ? .measurement : .default, options: recording ? [] : [.mixWithOthers])
             try session.setActive(true)
         }
-        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume, reset: onReset)
+        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume, reset: onReset, routeLost: onRouteLost)
     }
 
     func release(_ id: UUID) {
@@ -99,7 +101,7 @@ final class AudioSessionCoordinator {
     private func routeLost() {
         let playback = owners.values.filter { !$0.recording }
         for owner in playback {
-            (owner.reset ?? owner.stop)()
+            (owner.routeLost ?? owner.reset ?? owner.stop)()
         }
     }
 }

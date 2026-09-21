@@ -105,7 +105,7 @@ final class CoachChat {
     /// nothing to report, which is a real answer -- Recovery before a night
     /// has been scored, a Tomorrow plan that does not exist yet -- and is
     /// said plainly rather than handed to the model to phrase around.
-    var runTool: (@MainActor (CoachToolCatalog.Call) -> String?)?
+    var runTool: (@MainActor (CoachToolCatalog.Call) async -> String?)?
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "CoachChat")
 
@@ -197,10 +197,10 @@ final class CoachChat {
     ///
     /// Idempotent by construction: the pending action is cleared before the
     /// tool runs, so a double tap cannot log two coffees.
-    func confirmPendingAction() {
+    func confirmPendingAction() async {
         guard let action = pendingAction else { return }
         pendingAction = nil
-        let result = runTool?(action.call)
+        let result = await runTool?(action.call)
         messages.append(Message(
             role: .assistant,
             text: result ?? "I could not do that."
@@ -303,11 +303,34 @@ final class CoachChat {
         appleIntelligenceBecameReady = true
     }
 
+    /// Starts a *new* Apple Intelligence transcript. Does not attach a model
+    /// to the current Rules conversation.
+    func startEnhancedConversation() {
+        guard appleIntelligenceBecameReady || preferredEngine == .appleIntelligence else { return }
+        appleIntelligenceBecameReady = false
+        conversationEngine = .appleIntelligence
+        messages = []
+        pendingAction = nil
+        #if canImport(FoundationModels)
+        session = nil
+        ensureSession()
+        #endif
+        messages.append(Message(
+            role: .assistant,
+            text: "New conversation on Apple Intelligence. Ask about last night, Recovery, Energy, or tonight's plan."
+        ))
+    }
+
+    func dismissUpgradePrompt() {
+        appleIntelligenceBecameReady = false
+    }
+
     func send(_ text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isResponding else { return }
 
         messages.append(Message(role: .user, text: trimmed))
+        trimTranscriptIfNeeded()
 
         switch CoachIntentRouter.classify(trimmed) {
         case .greeting:
@@ -342,7 +365,7 @@ final class CoachChat {
                 messages.append(Message(role: .assistant, text: action.prompt))
                 return
             }
-            if let answer = runTool?(call) {
+            if let answer = await runTool?(call) {
                 messages.append(Message(
                     role: .assistant,
                     text: answer,
@@ -416,12 +439,21 @@ final class CoachChat {
         #endif
     }
 
+    /// Drops older turns when the transcript would crowd current facts out
+    /// of a small on-device context window. Keeps the latest 16 messages.
+    private func trimTranscriptIfNeeded() {
+        let cap = 16
+        guard messages.count > cap else { return }
+        messages = Array(messages.suffix(cap))
+    }
+
     private func evidenceID(for kind: CoachToolCatalog.Kind) -> String? {
         switch kind {
-        case .getSleepScore: evidence?.catalog["sleep"]
+        case .getSleepScore, .getLastNightSummary, .getSleepDuration: evidence?.catalog["sleep"]
         case .getShortfall: evidence?.catalog["debt"] ?? evidence?.catalog["sleep"]
         case .getTonight, .getTomorrow: evidence?.catalog["timing"]
-        case .getRecovery, .getEnergy, .getMovement, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+        case .getRecovery, .getEnergy, .getMovement, .getFatigueContext, .getTrainingContext,
+             .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
             nil
         }
     }

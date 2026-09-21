@@ -136,7 +136,9 @@ final class CoachToolCatalogTests: XCTestCase {
             "How did I sleep last night?", "What's my recovery", "Am I behind on sleep",
             "What's my energy now", "When should I sleep", "What's my tomorrow plan",
             "How much have I moved", "Log coffee at 5.", "Start a 25 minute nap",
-            "Prepare me for my 9 AM meeting tomorrow", "Set my alarm"
+            "Prepare me for my 9 AM meeting tomorrow", "Set my alarm",
+            "How much did I sleep?", "What happened last night?",
+            "Why am I tired?", "Should I train today?"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
         for kind in CoachToolCatalog.Kind.allCases {

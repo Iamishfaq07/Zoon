@@ -153,6 +153,13 @@ final class NapStore {
         }
     }
 
+    /// Awaits the nap wake scheduler so Coach can report success or failure.
+    func armWake() async -> Bool {
+        guard let active = activeNap else { return false }
+        guard let wake else { return false }
+        return await wake.schedule(at: active.targetEnd, targetMinutes: active.targetMinutes)
+    }
+
     func cancel() {
         activeNap = nil
         persistActive()

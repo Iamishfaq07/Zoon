@@ -9,6 +9,10 @@ import SwiftUI
 /// Moving them here keeps every tool one tap away while letting "Last Night"
 /// lead the screen instead.
 struct SleepToolsStrip: View {
+    @Environment(SoundscapeEngine.self) private var soundscape
+    @Environment(NapStore.self) private var naps
+    @Environment(SnoreSessionController.self) private var snore
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -16,48 +20,48 @@ struct SleepToolsStrip: View {
                 .font(Theme.label(12, weight: .bold))
                 .foregroundStyle(Theme.inkTertiary)
 
+            if hasLiveSession {
+                liveStatus
+            }
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     NavigationLink {
                         SoundscapeView()
                     } label: {
-                        tile("Sleep Sounds", symbol: "waveform", tint: Theme.Metric.battery)
+                        tile("Sleep Sounds", symbol: "waveform", tint: Theme.Metric.battery, status: soundStatus)
                     }
                     .buttonStyle(PressableStyle())
 
                     NavigationLink {
                         NapView()
                     } label: {
-                        tile("Nap", symbol: "powersleep", tint: Theme.Metric.strain)
+                        tile("Nap", symbol: "powersleep", tint: Theme.Metric.strain, status: napStatus)
                     }
                     .buttonStyle(PressableStyle())
 
                     NavigationLink {
-                        BreathingView()
+                        TonightRoutineView()
                     } label: {
-                        tile("Wind Down", symbol: "wind", tint: Theme.Metric.recoveryHigh)
+                        tile("Wind Down", symbol: "wind", tint: Theme.Metric.recoveryHigh, status: windDownStatus)
                     }
                     .buttonStyle(PressableStyle())
 
                     NavigationLink {
                         SnoreCheckView()
                     } label: {
-                        tile("Snore Check", symbol: "waveform.and.mic", tint: Theme.Metric.hrv)
+                        tile("Snore Check", symbol: "waveform.and.mic", tint: Theme.Metric.hrv, status: snoreStatus)
                     }
                     .buttonStyle(PressableStyle())
 
                     NavigationLink {
                         BreathingHealthView()
                     } label: {
-                        // First real call site for the custom `ZoonIcon`
-                        // family (task: Custom icon family) -- Breathing's
-                        // wave mark reads better at this scale than the
-                        // generic "lungs.fill" system glyph shared with the
-                        // Health app.
                         customTile(
                             "Breathing",
                             icon: ZoonIcon.Breathing(tint: Theme.Metric.sleep),
-                            tint: Theme.Metric.sleep
+                            tint: Theme.Metric.sleep,
+                            status: nil
                         )
                     }
                     .buttonStyle(PressableStyle())
@@ -66,17 +70,67 @@ struct SleepToolsStrip: View {
         }
     }
 
-    private func tile(_ title: String, symbol: String, tint: Color) -> some View {
+    private var hasLiveSession: Bool {
+        soundscape.isPlaying || naps.activeNap != nil || TonightRoutineController.shared.active || snore.isRunning
+    }
+
+    private var liveStatus: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let sound = soundscape.playing {
+                Text("\(sound.label) · \(soundscape.timerCaption ?? "Timer Off")")
+            }
+            if TonightRoutineController.shared.active, let caption = TonightRoutineController.shared.remainingCaption {
+                Text("Wind Down · \(caption)")
+            }
+            if let nap = naps.activeNap {
+                Text("Nap · Alarm armed · \(nap.targetMinutes) min")
+            }
+            if snore.isRunning {
+                Text("Snore Check · \(snoreStatus ?? "Listening")")
+            }
+        }
+        .font(Theme.label(12, weight: .medium))
+        .foregroundStyle(Theme.inkSecondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var soundStatus: String? {
+        guard let sound = soundscape.playing else { return nil }
+        return soundscape.isPlaying ? "Playing" : sound.label
+    }
+
+    private var napStatus: String? {
+        guard naps.activeNap != nil else { return nil }
+        return "Armed"
+    }
+
+    private var windDownStatus: String? {
+        TonightRoutineController.shared.active ? "On" : nil
+    }
+
+    private var snoreStatus: String? {
+        switch snore.state {
+        case .listening, .background: "Listening"
+        case .interrupted: "Interrupted"
+        case .resuming, .preparing: "Resuming"
+        default: nil
+        }
+    }
+
+    private func tile(_ title: String, symbol: String, tint: Color, status: String?) -> some View {
         customTile(
             title,
             icon: Image(systemName: symbol)
                 .font(Theme.text(20))
-                .foregroundStyle(tint),
-            tint: tint
+                .foregroundStyle(tint)
+                .breathing(status != nil, tint: tint),
+            tint: tint,
+            status: status
         )
     }
 
-    private func customTile(_ title: String, icon: some View, tint: Color) -> some View {
+    private func customTile(_ title: String, icon: some View, tint: Color, status: String?) -> some View {
         VStack(spacing: 8) {
             icon
                 .frame(width: 44, height: 44)
@@ -85,12 +139,18 @@ struct SleepToolsStrip: View {
             Text(title)
                 .font(Theme.label(11, weight: .semibold))
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(width: 76)
+                .lineLimit(typeSize.isAccessibilitySize ? 3 : 2)
+                .frame(width: typeSize.isAccessibilitySize ? 96 : 76)
+            if let status {
+                Text(status)
+                    .font(Theme.label(10, weight: .medium))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 6)
         .glassCard(padding: 0)
+        .accessibilityLabel(status.map { "\(title). \($0)" } ?? title)
     }
 }
 

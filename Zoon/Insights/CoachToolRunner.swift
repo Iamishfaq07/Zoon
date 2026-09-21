@@ -1,16 +1,6 @@
 import Foundation
 
 /// Executes a `CoachToolCatalog.Call` against the real engines.
-///
-/// The catalogue has always known which utterances map to which tools and
-/// which of those need confirming. Nothing consulted it: `CoachChat` went
-/// straight to the language model, so the catalogue decided nothing and no
-/// utterance ever reached a tool. This is the half that was missing.
-///
-/// Every figure here is read from a computed context or a store. The model is
-/// never asked for one and never shown one to reword — "what is my recovery"
-/// is answered by `RecoveryScore`, not by prose about it. That is the whole
-/// reason tools run before the model rather than after.
 @MainActor
 struct CoachToolRunner {
 
@@ -18,30 +8,27 @@ struct CoachToolRunner {
     let preferences: UserPreferences
     let naps: NapStore
 
-    /// - Returns: what to say, or `nil` when the tool has nothing to report.
-    ///   `nil` is a real answer — Recovery before a night has been scored, a
-    ///   Tomorrow plan that needs a sleep need first — and the caller says so
-    ///   plainly rather than falling through to the model, which is the one
-    ///   path by which a figure could be invented.
-    func run(_ call: CoachToolCatalog.Call) -> String? {
+    func run(_ call: CoachToolCatalog.Call) async -> String? {
         switch call.kind {
         case .getSleepScore: sleepScore()
+        case .getLastNightSummary: lastNightSummary()
+        case .getSleepDuration: sleepDuration()
         case .getRecovery: recovery()
         case .getShortfall: shortfall()
         case .getEnergy: energy()
         case .getMovement: movement()
         case .getTonight: tonight()
         case .getTomorrow: tomorrow()
+        case .getFatigueContext: fatigueContext()
+        case .getTrainingContext: trainingContext()
         case .logCaffeine: logCaffeine(minutes: call.proposedMinutes)
-        case .startNap: startNap(minutes: call.proposedMinutes)
+        case .startNap: await startNap(minutes: call.proposedMinutes)
         case .prepareTomorrow: prepareTomorrow(minutes: call.proposedMinutes)
-        case .setAlarm: setAlarm()
+        case .setAlarm: await setAlarm()
         }
     }
 
     private var context: DayContext? { coordinator.state.context }
-
-    // MARK: - Reads
 
     private func sleepScore() -> String? {
         guard let context else { return nil }
@@ -49,23 +36,24 @@ struct CoachToolRunner {
         return "Last night's Sleep Intelligence was \(score.percent) — \(score.band.label.lowercased()). \(score.confidence.label)."
     }
 
+    private func lastNightSummary() -> String? {
+        guard let context else { return nil }
+        let night = context.night
+        let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
+        return "Last night you were asleep \(asleep), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s"). That's the recorded night — not a diagnosis."
+    }
+
+    private func sleepDuration() -> String? {
+        guard let context else { return nil }
+        return "You were asleep \(SleepNightFeatures.formatMinutes(context.night.timeAsleepMinutes)) last night."
+    }
+
     private func recovery() -> String? {
         guard let context else { return nil }
         let recovery = context.recovery
-        // The band, not a relabelling as readiness. Morning Recovery is a
-        // measurement of the night that has happened; it is not a live
-        // daytime state and this sentence must not imply it is.
         return "This morning's Recovery was \(recovery.percent) out of 100, \(recovery.band.label.lowercased()). \(recovery.confidence.label). It describes the night you had, not how you are right now."
     }
 
-    /// §27's second consumer. Movement had exactly one surface -- a card on
-    /// Today -- against the seven places the brief names it should reach.
-    ///
-    /// Reads the snapshot and adds nothing: the sentence, the other measures
-    /// where they exist, and no inference about what the movement *means* for
-    /// sleep. The brief's line about steps never entering a score applies
-    /// here most of all, because a chat answer is exactly where a number would
-    /// quietly become a verdict.
     private func movement() -> String? {
         guard let snapshot = coordinator.todayMovement else { return nil }
         var parts = [snapshot.sentence]
@@ -100,6 +88,21 @@ struct CoachToolRunner {
         return plan.sentence
     }
 
+    private func fatigueContext() -> String? {
+        guard let context else { return nil }
+        let night = context.night
+        let debt = night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) } ?? "unknown"
+        return "Zoon can't know exactly why you feel tired. Signals that may be relevant: last night you were asleep \(SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)); Morning Recovery \(context.recovery.percent); Energy now \(context.bodyBattery.current); Load \(String(format: "%.1f", context.strain.value)); shortfall \(debt). Use how you feel as the last check — this is not a diagnosis."
+    }
+
+    private func trainingContext() -> String? {
+        guard let context else { return nil }
+        let recovery = context.recovery
+        let energy = context.bodyBattery
+        let load = context.strain.value
+        return "Morning Recovery was \(recovery.percent) (\(recovery.band.label.lowercased())), Energy is \(energy.current), and today's Load is \(String(format: "%.1f", load)). If you're deciding between hard and easy training, consider those together with how you feel. This is not medical exercise clearance."
+    }
+
     private func tomorrowPlan() -> ZoonTomorrow.Plan? {
         ZoonTomorrow.plan(
             event: preferences.commitment().event,
@@ -110,29 +113,33 @@ struct CoachToolRunner {
         )
     }
 
-    // MARK: - Writes
-
-    /// Logged against today, which is the day whose behaviours affect the
-    /// night that follows — the same rule the Journal screen applies (see
-    /// `JournalEntry.date`).
-    ///
-    /// Late caffeine is a different behaviour from caffeine, not a stronger
-    /// version of it, so the hour decides which one is recorded rather than
-    /// both being written.
     private func logCaffeine(minutes: Int?) -> String? {
         let isLate = minutes.map { $0 >= CoachToolCatalog.lateCaffeineHour * 60 } ?? false
         let tag: BehaviorTag = isLate ? .caffeineLate : .caffeine
         let day = Date.now
         let night = Calendar.current.date(byAdding: .day, value: 1, to: day) ?? day
-        coordinator.setBehavior(.yes, for: tag, on: night, nightKey: nil)
+        var detail: BehaviorDetail?
+        if let minutes {
+            var comps = Calendar.current.dateComponents([.year, .month, .day], from: day)
+            comps.hour = minutes / 60
+            comps.minute = minutes % 60
+            if let eventTime = Calendar.current.date(from: comps) {
+                detail = BehaviorDetail(eventTime: eventTime)
+            }
+        }
+        coordinator.setBehavior(.yes, for: tag.behaviorID, on: night, nightKey: nil, detail: detail)
         let when = minutes.map { " at about \(CoachToolCatalog.clock(minutes: $0))" } ?? ""
         return "Logged \(tag.label.lowercased())\(when). You can change it in the Journal."
     }
 
-    private func startNap(minutes: Int?) -> String? {
+    private func startNap(minutes: Int?) async -> String? {
         let target = minutes ?? 25
         naps.start(targetMinutes: target)
-        return "Started a \(target)-minute nap."
+        let armed = await naps.armWake()
+        if armed {
+            return "Started a \(target)-minute nap. Wake is armed."
+        }
+        return "Started a \(target)-minute nap. A wake could not be scheduled — Focus may silence a notification. Check Settings."
     }
 
     private func prepareTomorrow(minutes: Int?) -> String? {
@@ -148,23 +155,17 @@ struct CoachToolRunner {
         return "Set tomorrow's start time to \(CoachToolCatalog.clock(minutes: minutes)). \(plan.sentence)"
     }
 
-    /// Turns the wake alarm on rather than scheduling one directly.
-    ///
-    /// `wakeAlarmEnabled` defaults off on purpose — see its doc comment: an
-    /// app that starts making noise because someone updated it is the wrong
-    /// outcome. Flipping it from a confirmed sentence is the person asking
-    /// for exactly that, and the reply says what will now happen rather than
-    /// leaving them to find out at the time.
-    private func setAlarm() -> String? {
-        if let tonight = context?.tonight, let wake = tonight.wakeTime() {
-            preferences.wakeAlarmEnabled = true
-            return "Wake alarm on, for \(clock(wake)). You can turn it off in Settings."
-        }
-        guard let plan = tomorrowPlan() else {
+    private func setAlarm() async -> String? {
+        guard let wake = context?.tonight.wakeTime() ?? tomorrowPlan()?.wake else {
             return "There is no wake time to set an alarm from yet."
         }
         preferences.wakeAlarmEnabled = true
-        return "Wake alarm on, for \(clock(plan.wake)). You can turn it off in Settings."
+        let alarm = WakeAlarm()
+        let scheduled = await alarm.schedule(at: wake)
+        if scheduled {
+            return "Wake alarm scheduled for \(clock(wake))."
+        }
+        return "Could not schedule a real alarm for \(clock(wake)). \(alarm.unavailabilityReason ?? "Check alarm permission in Settings.")"
     }
 
     private func clock(_ date: Date) -> String {

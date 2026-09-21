@@ -87,6 +87,9 @@ struct CoachEvidence: Sendable {
         if matches(q, ["train", "workout", "strain", "exercise"]) && !q.contains("energy") {
             return trainReply()
         }
+        if matches(q, ["tired", "fatigue", "exhausted", "why am i so sleepy"]) {
+            return fatigueReply()
+        }
         if matches(q, ["tonight", "bedtime", "prepare", "wind down", "what should i do"]) {
             return tonightReply()
         }
@@ -185,21 +188,32 @@ struct CoachEvidence: Sendable {
         )
     }
 
+    private func fatigueReply() -> Reply {
+        let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
+        let debt = night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) }
+        var text = "Zoon can't know exactly why you feel tired, but a few signals may be relevant. Last night you were asleep \(asleep)."
+        if let debt {
+            text += " Recent shortfall is \(debt)."
+        }
+        text += " Pair that with Morning Recovery, Energy, and current Load — this is not a diagnosis."
+        return Reply(text: text, evidence: catalog["sleep"], action: nil)
+    }
+
     private func trainReply() -> Reply {
         let debt = night.sleepDebtMinutes ?? 0
         var lines: [String] = []
         if let hours = night.lastWorkoutHoursBeforeBed, hours < 3 {
-            lines.append("Yesterday's session ended about \(Int(hours.rounded()))h before bed, which often sits alongside a shorter night.")
+            lines.append("Yesterday's session ended about \(Int(hours.rounded()))h before bed. That is a timing observation, not proof that the workout shortened the night.")
         }
         if debt >= 45 {
-            lines.append("You're carrying \(SleepNightFeatures.formatMinutes(debt)) of sleep debt, so a lighter day fits last night better than a hard session.")
+            lines.append("Your recent shortfall is elevated (\(SleepNightFeatures.formatMinutes(debt))). Consider it together with how you feel, Morning Recovery, Energy, and current Load.")
             return Reply(
                 text: lines.joined(separator: " "),
                 evidence: catalog["debt"] ?? catalog["sleep"],
-                action: "Keep today's effort easy and protect tonight's bedtime."
+                action: "Open Recovery, Energy, and Load before deciding how hard to go."
             )
         }
-        lines.append("Last night doesn't argue against training. Use how you feel this morning as the last check.")
+        lines.append("Last night's numbers alone are not a training plan. Use how you feel this morning together with Morning Recovery, Energy, and Load.")
         return Reply(
             text: lines.joined(separator: " "),
             evidence: catalog["sleep"],
@@ -208,16 +222,14 @@ struct CoachEvidence: Sendable {
     }
 
     private func tonightReply() -> Reply {
-        let bed = night.bedtime.formatted(date: .omitted, time: .shortened)
-        let wake = night.wakeTime.formatted(date: .omitted, time: .shortened)
         let debt = night.sleepDebtMinutes ?? 0
         let extra = debt >= 45
-            ? " A slightly earlier wind-down would help chip away at the current shortfall."
-            : " Repeating a similar window is the simplest plan."
+            ? " There is an outstanding shortfall of \(SleepNightFeatures.formatMinutes(debt)); Tonight will show how much of that is repaid in this plan."
+            : " Tonight's window is computed independently of last night's clocks."
         return Reply(
-            text: "Last night you were in bed around \(bed) and up at \(wake).\(extra)",
+            text: "Use the Tonight plan for bedtime, wind-down, and wake. Last night is a record, not tonight's prescription.\(extra)",
             evidence: catalog["timing"],
-            action: debt >= 45 ? "Open Tonight and pull bedtime a little earlier." : "Open Tonight to lock the same window."
+            action: "Open Tonight to see the current window."
         )
     }
 

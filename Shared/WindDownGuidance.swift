@@ -69,11 +69,19 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
         }
     }
 
-    enum Stage: String, Sendable, Equatable {
+    enum Stage: String, Sendable, Equatable, Codable {
         case arrive
         case guided
         case quiet
         case close
+    }
+
+    /// Position inside 4-7-8 guidance, reconstructed from wall-clock elapsed
+    /// rather than a Timer tick count.
+    struct GuidedPosition: Equatable, Sendable {
+        var cyclesCompleted: Int
+        var phaseName: String
+        var remaining: TimeInterval
     }
 
     /// 4-7-8 plus a 2-second rest: the whole technique, not an invention.
@@ -99,6 +107,9 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
 
     var routineSeconds: TimeInterval { Double(routineDurationMinutes) * 60 }
 
+    var usesHaptics: Bool { voiceMode.usesHaptics }
+    var usesVoice: Bool { voiceMode.usesVoice }
+
     var guidedCycles: Int {
         let budget = Double(guidedBreathingMinutes) * 60
         return max(1, Int((budget / Self.cycleSeconds).rounded()))
@@ -110,6 +121,47 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
         if elapsed < guidedEnd { return .guided }
         if elapsed < max(0, routineSeconds - Self.closeSeconds) { return .quiet }
         return .close
+    }
+
+    /// Maps wall-clock elapsed onto the current 4-7-8 phase so Resume does
+    /// not restart from Arrive / cycle 1.
+    func guidedPosition(elapsed: TimeInterval) -> GuidedPosition {
+        if elapsed < Self.arriveSeconds {
+            return GuidedPosition(
+                cyclesCompleted: 0,
+                phaseName: "arrive",
+                remaining: Self.arriveSeconds - elapsed
+            )
+        }
+        let intoGuidance = elapsed - Self.arriveSeconds
+        let totalGuided = Double(guidedBreathingMinutes) * 60
+        if intoGuidance >= totalGuided {
+            return GuidedPosition(cyclesCompleted: guidedCycles, phaseName: "quiet", remaining: 0)
+        }
+        let cycleIndex = min(guidedCycles - 1, Int(intoGuidance / Self.cycleSeconds))
+        let intoCycle = intoGuidance - Double(cycleIndex) * Self.cycleSeconds
+        if intoCycle < Self.inhaleSeconds {
+            return GuidedPosition(cyclesCompleted: cycleIndex, phaseName: "inhale", remaining: Self.inhaleSeconds - intoCycle)
+        }
+        if intoCycle < Self.inhaleSeconds + Self.holdSeconds {
+            return GuidedPosition(
+                cyclesCompleted: cycleIndex,
+                phaseName: "hold",
+                remaining: Self.inhaleSeconds + Self.holdSeconds - intoCycle
+            )
+        }
+        if intoCycle < Self.inhaleSeconds + Self.holdSeconds + Self.exhaleSeconds {
+            return GuidedPosition(
+                cyclesCompleted: cycleIndex,
+                phaseName: "exhale",
+                remaining: Self.inhaleSeconds + Self.holdSeconds + Self.exhaleSeconds - intoCycle
+            )
+        }
+        return GuidedPosition(
+            cyclesCompleted: cycleIndex,
+            phaseName: "rest",
+            remaining: max(0.2, Self.cycleSeconds - intoCycle)
+        )
     }
 
     static let arriveLine = "Get comfortable. Let your shoulders drop and allow your breathing to settle."

@@ -10,10 +10,15 @@ struct SnoreCheckView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var permissionDenied = false
     @State private var conflictMessage: String?
+    @State private var showingDetails = false
 
     var body: some View {
         VStack(spacing: 20) {
             explainer
+
+            if let recovered = session.recoveredCheckpoint {
+                recoveredCard(recovered)
+            }
 
             if session.isRunning {
                 runningCard
@@ -22,7 +27,7 @@ struct SnoreCheckView: View {
             }
 
             if !session.isRunning && !session.storedEvents.isEmpty {
-                eventsCard
+                timelineCard
             }
 
             Spacer(minLength: 0)
@@ -48,9 +53,21 @@ struct SnoreCheckView: View {
                 set: { if !$0 { conflictMessage = nil } }
             )
         ) {
-            Button("OK") { conflictMessage = nil }
+            Button("Stop audio and start Snore Check") {
+                Task {
+                    conflictMessage = nil
+                    if let message = await session.stopAudioAndStart(soundscape: soundscape),
+                       message.lowercased().contains("microphone") {
+                        permissionDenied = true
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) { conflictMessage = nil }
         } message: {
             Text(conflictMessage ?? "")
+        }
+        .sheet(isPresented: $showingDetails) {
+            sessionDetails
         }
     }
 
@@ -74,6 +91,17 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    private func recoveredCard(_ checkpoint: SnoreCheckpoint) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(checkpoint.unexpectedEndMessage())
+                .font(Theme.text(13))
+            Button("Dismiss") { session.dismissRecoveredCheckpoint() }
+                .font(Theme.label(13, weight: .semibold))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
     private var runningCard: some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
@@ -87,9 +115,11 @@ struct SnoreCheckView: View {
             Text(formattedDuration(session.monitoredSeconds))
                 .font(Theme.numeral(34))
                 .monospacedDigit()
-            Text("\(Int(session.snoreSeconds / 60)) min flagged so far · \(session.confidence.label) confidence")
+            Text("\(Int(session.snoreSeconds / 60)) min flagged so far · Monitoring quality \(session.confidence.label.lowercased())")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
+            Button("Session details") { showingDetails = true }
+                .font(.caption)
             if let last = session.lastBufferAt {
                 Text(session.isAudioArriving ? "Microphone active" : "Last buffer \(Int(Date.now.timeIntervalSince(last)))s ago")
                     .font(.caption2)
@@ -99,7 +129,7 @@ struct SnoreCheckView: View {
         .frame(maxWidth: .infinity)
         .glassCard()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Snore Check \(statusTitle). \(formattedDuration(session.monitoredSeconds)) monitored.")
+        .accessibilityLabel("Snore Check \(statusTitle). \(formattedDuration(session.monitoredSeconds)) monitored. \(session.confidence.accessibilityName).")
     }
 
     private var statusTitle: String {
@@ -126,7 +156,7 @@ struct SnoreCheckView: View {
             }
             .font(Theme.label(13))
 
-            Text("\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged.")
+            Text("\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged. Monitoring quality is an estimate of coverage, not a diagnosis.")
                 .font(.caption2)
                 .foregroundStyle(Theme.inkTertiary)
         }
@@ -137,10 +167,15 @@ struct SnoreCheckView: View {
         SoundEvent.clusters(from: session.storedEvents)
     }
 
-    private var eventsCard: some View {
+    private var timelineCard: some View {
         let episodes = clusters
         return VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Events", systemImage: "list.bullet.clipboard")
+            SectionHeader(title: "Session timeline", systemImage: "list.bullet.clipboard")
+            if episodes.isEmpty {
+                Text("No clustered events from the last session.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkTertiary)
+            }
             ForEach(episodes) { episode in
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: episode.symbol)
@@ -170,6 +205,21 @@ struct SnoreCheckView: View {
             }
         }
         .glassCard()
+    }
+
+    private var sessionDetails: some View {
+        NavigationStack {
+            List {
+                LabeledContent("Microphone", value: session.isAudioArriving ? "Active" : "Quiet")
+                LabeledContent("Sound analysis", value: session.classifierAvailable ? "Active" : "Unavailable")
+                LabeledContent("Last audio", value: session.lastBufferAt.map { "\(Int(Date.now.timeIntervalSince($0)))s ago" } ?? "—")
+                LabeledContent("Interruptions", value: "\(session.interruptionGaps)")
+                LabeledContent("Monitoring quality", value: session.confidence.label)
+            }
+            .navigationTitle("Session details")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { showingDetails = false } } }
+        }
+        .presentationDetents([.medium])
     }
 
     private func timing(_ episode: SoundEvent.Cluster) -> String {

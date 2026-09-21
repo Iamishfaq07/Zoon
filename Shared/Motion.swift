@@ -96,7 +96,7 @@ enum Motion {
 
     /// How long the splash holds before handing over. Short on purpose: a
     /// branded first frame is worth a beat, and nothing more.
-    static let splashHold: Double = 1.05
+    static let splashHold: Double = 0.4
 
     /// A screen swapping one whole state for another — loading → loaded,
     /// empty → content. Without this the swap is a hard cut, which on the
