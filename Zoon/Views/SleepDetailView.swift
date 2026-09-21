@@ -83,7 +83,7 @@ struct SleepDetailView: View {
             // line.
             ZoonFlowLayout(spacing: 8, lineSpacing: 8) {
                 StatusPill(
-                    text: "\(Int(context.sleepNeed.performancePercent))% of need",
+                    text: "\(Int(context.sleepNeed.performancePercent))% of target",
                     tint: Theme.Metric.sleep
                 )
                 StatusPill(

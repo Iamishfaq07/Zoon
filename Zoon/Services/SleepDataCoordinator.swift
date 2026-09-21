@@ -876,7 +876,7 @@ final class SleepDataCoordinator {
         }
 
         let baseline = store.baseline(for: record.date, goalMinutes: goal, manualNaps: naps.naps)
-        let night = record.features(
+        let rawNight = record.features(
             baseline: baseline,
             secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(
                 forNightKey: record.nightKey ?? "", wakeDate: record.date,
@@ -884,6 +884,9 @@ final class SleepDataCoordinator {
                 manualNaps: naps.naps
             )
         )
+        let repairs = PersonalSetupStore.shared.value.repairs
+        let night = LocalSleepCorrection.apply(rawNight, repairs: repairs)
+
         // Foundation Models inference is async and the engine protocol is not,
         // so generation is primed here and read back synchronously below.
         if let modelEngine = engine as? FoundationModelInsightEngine {
@@ -895,8 +898,12 @@ final class SleepDataCoordinator {
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
-        let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
-            .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) }
+        let history = LocalSleepCorrection.apply(
+            store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
+                .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) },
+            repairs: repairs
+        )
+
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
         let maxHR = maximum.bpm
@@ -1285,15 +1292,7 @@ final class SleepDataCoordinator {
         // widget nor the watch has a HealthKit pipeline to rebuild it from.
         // The clock formatting happens here too -- see the snapshot fields'
         // own documentation for why it is not left to each extension.
-        let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
-        if let plan = SleepAutopilot.plan(
-            nights: recentNights,
-            sleepNeedMinutes: context.learnedSleepNeed.minutes,
-            obligationWakeMinutes: obligationWake.map {
-                Statistics.circularMinutesFromMidnight($0)
-            },
-            sleepDebtMinutes: context.sleepNeed.debtMinutes
-        ) {
+        if let plan = context.tonight.autopilot {
             snapshot.tonightTargetLabel = plan.targetRangeLabel
             snapshot.tonightTargetNote = plan.sentence
             snapshot.tonightTargetNoteShort = plan.shortSentence
@@ -2640,7 +2639,7 @@ final class SleepDataCoordinator {
             currentRegularityIndex: context?.regularity.index.rounded(to: 0),
             currentRegularityBand: context?.regularity.hasEnoughData == true ? context?.regularity.band.label : nil,
             learnedSleepNeedMinutes: context?.learnedSleepNeed.minutes.rounded(to: 0),
-            sleepDebtMinutes: context?.sleepNeed.debtMinutes.rounded(to: 0),
+            sleepDebtMinutes: context?.night.sleepDebtMinutes?.rounded(to: 0),
             activeExperimentTag: preferences.activeExperimentTag?.label,
             causeFinderFindings: findings.map {
                 CoachContextDigest.CorrelatorFinding(
@@ -2688,13 +2687,7 @@ final class SleepDataCoordinator {
                 associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
             )?.tag.label,
-            tonightTarget: context.flatMap {
-                SleepAutopilot.plan(
-                    nights: recentNights,
-                    sleepNeedMinutes: $0.learnedSleepNeed.minutes,
-                    sleepDebtMinutes: $0.sleepNeed.debtMinutes
-                )?.sentence
-            }
+            tonightTarget: context?.tonight.autopilot?.sentence
         )
 
         let encoder = JSONEncoder()

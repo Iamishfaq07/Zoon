@@ -171,7 +171,7 @@ struct SleepSummaryStrip: View {
                     Text(context.night.formattedTimeAsleep)
                         .font(Theme.numeral(34))
                         .monospacedDigit()
-                    Text("\(Int(context.sleepNeed.performancePercent))% of need")
+                    Text("\(Int(context.sleepNeed.performancePercent))% of target")
                         .font(Theme.label(13))
                         .foregroundStyle(Theme.inkSecondary)
                 }

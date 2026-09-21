@@ -71,10 +71,10 @@ struct SleepNeed: Codable, Hashable, Sendable {
     /// Breakdown rows for the stacked "need" bar in the UI.
     var contributions: [Contribution] {
         var rows = [
-            Contribution(label: "Baseline need", minutes: baselineMinutes, kind: .baseline)
+            Contribution(label: "Personal baseline", minutes: baselineMinutes, kind: .baseline)
         ]
         if debtMinutes >= 1 {
-            rows.append(Contribution(label: "Sleep debt", minutes: debtMinutes, kind: .debt))
+            rows.append(Contribution(label: "Shortfall repayment", minutes: debtMinutes, kind: .debt))
         }
         if strainMinutes >= 1 {
             rows.append(Contribution(label: "Yesterday's strain", minutes: strainMinutes, kind: .strain))
@@ -150,13 +150,15 @@ extension SleepNeed {
         }
     }
 
-    /// Plain-language summary for the sleep card.
+    /// Plain-language summary for the sleep card. A planning target, not a
+    /// measured physiological requirement — "you needed" is a claim the
+    /// model cannot make.
     var summary: String {
         let need = SleepNightFeatures.formatMinutes(totalNeedMinutes)
         let got = SleepNightFeatures.formatMinutes(achievedMinutes)
         if shortfallMinutes < 10 {
-            return "You needed \(need) and got \(got)."
+            return "Last night's target was \(need). You slept \(got)."
         }
-        return "You needed \(need) and got \(got) — \(SleepNightFeatures.formatMinutes(shortfallMinutes)) short."
+        return "Last night's target was \(need). You slept \(got) — \(SleepNightFeatures.formatMinutes(shortfallMinutes)) short."
     }
 }

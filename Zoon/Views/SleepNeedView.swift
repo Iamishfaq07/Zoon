@@ -39,7 +39,7 @@ struct SleepNeedView: View {
                 } else {
                     GatheringNights(
                         title: "No night yet",
-                        message: "Your sleep need is learned from nights you have actually slept.",
+                        message: "Your sleep baseline is learned from unconstrained nights you have actually slept.",
                         nights: 0,
                         needed: 1
                     )

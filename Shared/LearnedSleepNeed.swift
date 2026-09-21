@@ -110,7 +110,7 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
         let count = qualifying.count
 
         guard count >= minimumQualifyingNights,
-              let learned = Statistics.percentile(qualifying.map(\.timeAsleepMinutes), 60) else {
+              let learned = Statistics.percentile(weightedDurations(qualifying, goalMinutes: goalMinutes), 60) else {
             return LearnedSleepNeed(
                 minutes: goalMinutes, learnedMinutes: nil,
                 qualifyingNightCount: count, confidence: .insufficient,
@@ -123,18 +123,32 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
         // qualifying night is barely more trustworthy than the 29th, and a
         // step-change in someone's displayed sleep need for no reason they
         // can see would read as the number being unstable, not personalized.
-        let weight = min(1.0, Double(count - minimumQualifyingNights) / Double(fullConfidenceNights - minimumQualifyingNights))
+        var weight = min(1.0, Double(count - minimumQualifyingNights) / Double(fullConfidenceNights - minimumQualifyingNights))
+        let unconstrainedCount = qualifying.filter { isUnconstrained($0, goalMinutes: goalMinutes) }.count
+        if unconstrainedCount < minimumUnconstrainedNights {
+            // Hold closer to the stated goal when most qualifying nights
+            // still look constrained. The brief's chronic-restriction case
+            // is exactly this: plenty of efficient short nights, almost no
+            // free-day opportunity.
+            weight *= 0.5
+        }
         let blended = goalMinutes * (1 - weight) + learned * weight
 
         // The band is the qualifying nights' own 50th-to-70th percentile:
         // observed spread, not a modelled interval. See `typicalLowMinutes`.
         let durations = qualifying.map(\.timeAsleepMinutes)
+        let confidence: Confidence
+        if count >= fullConfidenceNights && unconstrainedCount >= minimumUnconstrainedNights {
+            confidence = .high
+        } else {
+            confidence = .moderate
+        }
 
         return LearnedSleepNeed(
             minutes: blended,
             learnedMinutes: learned,
             qualifyingNightCount: count,
-            confidence: count >= fullConfidenceNights ? .high : .moderate,
+            confidence: confidence,
             typicalLowMinutes: Statistics.percentile(durations, 50),
             typicalHighMinutes: Statistics.percentile(durations, 70),
             spreadMinutes: Statistics.medianAbsoluteDeviation(durations)
@@ -171,6 +185,57 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
             && night.timeAsleepMinutes <= 720
             && !isRestrictionShaped(night, goalMinutes: goalMinutes)
             && !isRepayingDebt(night)
+            && !(night.timeInBedIsEstimated && isEstimatedRestriction(night, goalMinutes: goalMinutes))
+    }
+
+    /// When time in bed is estimated, `isRestrictionShaped` is silent — Apple
+    /// Watch never writes `inBed`, so efficiency is inflated and cannot be
+    /// used as a ceiling. The remaining signal is whether the night looks
+    /// like chosen length or like a short, constrained one. A disciplined
+    /// chronic short sleeper with estimated TIB used to teach the baseline
+    /// down through that hole.
+    static func isEstimatedRestriction(
+        _ night: SleepNightFeatures,
+        goalMinutes: Double
+    ) -> Bool {
+        guard night.timeInBedIsEstimated else { return false }
+        if night.timeAsleepMinutes >= goalMinutes * 0.95 { return false }
+        return !isUnconstrained(night, goalMinutes: goalMinutes)
+    }
+
+    /// A night that looks like the sleeper chose the length, not the alarm.
+    ///
+    /// Not a hard AND of every possible condition — that would empty the
+    /// sample for shift workers, parents, and anyone with a calendar. Free
+    /// days and low existing shortfall, plus duration that is not itself a
+    /// short night, are enough to up-weight a night as evidence of need.
+    static func isUnconstrained(
+        _ night: SleepNightFeatures,
+        goalMinutes: Double,
+        calendar: Calendar = .current
+    ) -> Bool {
+        let weekday = calendar.component(.weekday, from: night.date)
+        let freeDay = weekday == 1 || weekday == 7
+        let lowShortfall = (night.sleepDebtMinutes ?? 0) < 90
+        let adequateOpportunity = night.timeAsleepMinutes >= min(goalMinutes * 0.9, goalMinutes - 40)
+        return (freeDay || lowShortfall) && adequateOpportunity
+    }
+
+    /// Unconstrained nights count twice in the percentile so a mix of free
+    /// days and constrained weekdays is not pulled down by the weekdays.
+    private static func weightedDurations(
+        _ nights: [SleepNightFeatures],
+        goalMinutes: Double
+    ) -> [Double] {
+        var durations: [Double] = []
+        durations.reserveCapacity(nights.count * 2)
+        for night in nights {
+            durations.append(night.timeAsleepMinutes)
+            if isUnconstrained(night, goalMinutes: goalMinutes) {
+                durations.append(night.timeAsleepMinutes)
+            }
+        }
+        return durations
     }
 
     /// Efficiency above which a *short* night stops being evidence of need.
@@ -188,6 +253,11 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     /// shortfall: a real backlog (roughly 15 minutes a night sustained, or
     /// one genuinely short night still fading), not background noise.
     static let repaymentDebtMinutes = 240.0
+
+    /// Free-day / low-shortfall nights needed before a learned estimate can
+    /// be called high-confidence. Constrained nights still qualify (they are
+    /// real sleep), but they are a weaker claim about *need*.
+    static let minimumUnconstrainedNights = 15
 
     /// A night that ended because the opportunity ran out, not because the
     /// sleeper was done.

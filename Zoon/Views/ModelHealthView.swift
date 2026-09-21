@@ -17,6 +17,8 @@ struct ModelHealthView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var assessments: [ModelHealth.Assessment] = []
+    @State private var reliability: [CalibrationLedger.Result] = []
+
 
     var body: some View {
         ScrollView {
@@ -31,7 +33,9 @@ struct ModelHealthView: View {
                 } else {
                     header
                     ladder
+                    reliabilityBlock
                     method
+
                 }
             }
             .padding()
@@ -45,11 +49,10 @@ struct ModelHealthView: View {
             // runs it, and once per change in the night count rather than on
             // every redraw.
             let nights = coordinator.recentNights
-            let verdict = await Task.detached {
-                CalibrationLedger.backtestAll(nights: nights)
-                    .first { $0.verdict.isDecisive }?
-                    .verdict
-            }.value
+            let results = await Task.detached { CalibrationLedger.backtestAll(nights: nights) }.value
+            reliability = results
+            let verdict = results.first { $0.verdict.isDecisive }?.verdict
+
             // The best-supported matched comparison across the levers, or
             // nil when none is supported. `estimate` refuses far more often
             // than it succeeds by design, and a refusal here is the honest
@@ -162,9 +165,50 @@ struct ModelHealthView: View {
         .accessibilityHidden(true)
     }
 
+    private var reliabilityBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: CalibrationLedger.title, systemImage: "target")
+            Text(CalibrationLedger.subtitle)
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if reliability.isEmpty {
+                Text("Not enough scored nights to check the ranges yet.")
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.inkSecondary)
+            } else {
+                ForEach(reliability) { result in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(result.metric.label.capitalizedFirst)
+                                .font(Theme.text(13))
+                            Spacer()
+                            Text(result.verdict.label)
+                                .font(Theme.text(12, weight: .semibold))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        Text(result.verdict.meaning)
+                            .font(Theme.evidence)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            NavigationLink {
+                SensorTruthView()
+            } label: {
+                Text("How each number is made")
+                    .font(Theme.text(13, weight: .semibold))
+                    .foregroundStyle(Theme.Family.sleep)
+            }
+        }
+        .glassCard()
+    }
+
     // MARK: - Method
 
     private var method: some View {
+
         VStack(alignment: .leading, spacing: 8) {
             Label("How this is worked out", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
