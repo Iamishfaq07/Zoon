@@ -1,9 +1,11 @@
 import SwiftUI
+import AVFoundation
 
 struct TonightRoutineView: View {
     @Environment(SoundscapeEngine.self) private var audio
     @State private var store = PersonalSetupStore.shared
     @State private var controller = TonightRoutineController.shared
+    @State private var showingVoiceStudio = false
 
     var body: some View {
         Form {
@@ -19,9 +21,6 @@ struct TonightRoutineView: View {
                 NavigationLink("Travel and shift schedules") { SavedSleepPlansView() }
             }
 
-            // Screens and bedroom temperature are exactly what a wind-down
-            // routine is made of, so the reading on both sits here rather
-            // than in a library three taps away.
             Section {
                 RelatedReading(placement: .tonightRoutine, title: "Setting up for tonight")
             }
@@ -34,10 +33,15 @@ struct TonightRoutineView: View {
                     step: 1
                 )
                 Toggle("Start with breathing", isOn: $store.value.routine.breathing)
-                Picker("Voice", selection: $store.value.routine.voiceMode) {
+                Picker("Cues", selection: $store.value.routine.voiceMode) {
                     ForEach(WindDownGuidanceConfiguration.VoiceMode.allCases) { mode in
                         Text(mode.label).tag(mode)
                     }
+                }
+                Button {
+                    showingVoiceStudio = true
+                } label: {
+                    LabeledContent("Spoken voice", value: selectedVoiceLabel)
                 }
                 Toggle("Phase haptics", isOn: $store.value.routine.haptics)
                 Picker("Sound scene", selection: $store.value.routine.sceneID) {
@@ -61,8 +65,9 @@ struct TonightRoutineView: View {
                     if controller.active {
                         Button("Pause routine") { controller.pause() }
                     } else {
-                        Button("Resume routine") { controller.start(audio: audio) }
+                        Button("Resume routine") { controller.resume(audio: audio) }
                     }
+                    Button("Restart guidance") { controller.start(audio: audio) }
                     Button("End routine", role: .destructive) { controller.stop() }
                 } else {
                     Button("Begin tonight's routine") { controller.start(audio: audio) }
@@ -73,6 +78,19 @@ struct TonightRoutineView: View {
         .navigationTitle("Tonight")
         .scrollContentBackground(.hidden).nightBackground()
         .onAppear { controller.reconcile() }
+        .sheet(isPresented: $showingVoiceStudio) {
+            WindDownVoiceStudio(selection: $store.value.routine.voiceIdentifier)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(controller.active ? "Wind Down. \(stageCopy)" : "Wind Down")
+    }
+
+    private var selectedVoiceLabel: String {
+        guard let id = store.value.routine.voiceIdentifier,
+              let voice = AVSpeechSynthesisVoice(identifier: id) else {
+            return "Automatic"
+        }
+        return "\(voice.name) · \(BreathingCoach.qualityLabel(voice))"
     }
 
     private var stageCopy: String {
@@ -82,6 +100,62 @@ struct TonightRoutineView: View {
         case .quiet: "Quiet continuation — sound only."
         case .close: "Settling into sleep."
         }
+    }
+}
+
+struct WindDownVoiceStudio: View {
+    @Binding var selection: String?
+    @Environment(\.dismiss) private var dismiss
+    @State private var preview = BreathingCoach()
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    selection = nil
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Automatic")
+                            Text("Best installed voice for this language.")
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        Spacer()
+                        if selection == nil { Image(systemName: "checkmark") }
+                    }
+                }
+                ForEach(BreathingCoach.installedVoices(), id: \.identifier) { voice in
+                    Button {
+                        selection = voice.identifier
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(voice.name)
+                                Text("\(voice.language) · \(BreathingCoach.qualityLabel(voice))")
+                                    .font(.caption)
+                                    .foregroundStyle(Theme.inkSecondary)
+                            }
+                            Spacer()
+                            if selection == voice.identifier { Image(systemName: "checkmark") }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Voice")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Preview") {
+                        preview.voiceIdentifier = selection
+                        preview.voiceEnabled = true
+                        preview.previewVoice()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .onDisappear { preview.stop() }
     }
 }
 

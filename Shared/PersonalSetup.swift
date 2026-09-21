@@ -62,10 +62,12 @@ struct PersonalSetup: Codable, Equatable, Sendable {
         var sceneID: UUID?
         var guidedBreathingMinutes = 5
         var voiceMode: WindDownGuidanceConfiguration.VoiceMode = .natural
+        /// Installed AVSpeech voice identifier. Nil is Automatic.
+        var voiceIdentifier: String?
 
         enum CodingKeys: String, CodingKey {
             case minutes, breathing, voice, haptics, sceneID
-            case guidedBreathingMinutes, voiceMode
+            case guidedBreathingMinutes, voiceMode, voiceIdentifier
         }
 
         init(
@@ -75,7 +77,8 @@ struct PersonalSetup: Codable, Equatable, Sendable {
             haptics: Bool = false,
             sceneID: UUID? = nil,
             guidedBreathingMinutes: Int = 5,
-            voiceMode: WindDownGuidanceConfiguration.VoiceMode = .natural
+            voiceMode: WindDownGuidanceConfiguration.VoiceMode = .natural,
+            voiceIdentifier: String? = nil
         ) {
             self.minutes = minutes
             self.breathing = breathing
@@ -84,6 +87,7 @@ struct PersonalSetup: Codable, Equatable, Sendable {
             self.sceneID = sceneID
             self.guidedBreathingMinutes = guidedBreathingMinutes
             self.voiceMode = voiceMode
+            self.voiceIdentifier = voiceIdentifier
         }
 
         init(from decoder: Decoder) throws {
@@ -101,6 +105,7 @@ struct PersonalSetup: Codable, Equatable, Sendable {
             } else {
                 voiceMode = .natural
             }
+            voiceIdentifier = try c.decodeIfPresent(String.self, forKey: .voiceIdentifier)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -112,6 +117,7 @@ struct PersonalSetup: Codable, Equatable, Sendable {
             try c.encodeIfPresent(sceneID, forKey: .sceneID)
             try c.encode(guidedBreathingMinutes, forKey: .guidedBreathingMinutes)
             try c.encode(voiceMode, forKey: .voiceMode)
+            try c.encodeIfPresent(voiceIdentifier, forKey: .voiceIdentifier)
         }
     }
     struct RoutineSession: Codable, Equatable, Sendable {

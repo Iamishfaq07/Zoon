@@ -54,11 +54,23 @@ struct CoachChatView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
             if chat.appleIntelligenceBecameReady {
-                Text("Apple Intelligence is ready. Start a new enhanced conversation?")
-                    .font(.caption)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Apple Intelligence is ready. Start a new enhanced conversation?")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                    HStack(spacing: 8) {
+                        Button("Start enhanced conversation") {
+                            chat.startEnhancedConversation()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button("Keep current conversation") {
+                            chat.dismissUpgradePrompt()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
             } else if chat.unavailabilityReason != nil {
                 Text("Local answers · sleep, timing, HRV and heart rate")
                     .font(.caption).foregroundStyle(Theme.inkSecondary).padding(8)
@@ -82,7 +94,7 @@ struct CoachChatView: View {
             let runner = CoachToolRunner(
                 coordinator: coordinator, preferences: preferences, naps: naps
             )
-            chat.runTool = { runner.run($0) }
+            chat.runTool = { await runner.run($0) }
             chat.start(
                 nightSummary: night.summaryForLLM,
                 contextDigest: coordinator.coachContextDigest(),
@@ -311,7 +323,7 @@ struct CoachChatView: View {
 
         Button("Confirm") {
             Haptics.success()
-            chat.confirmPendingAction()
+            Task { await chat.confirmPendingAction() }
         }
         .buttonStyle(.borderedProminent)
         .frame(maxWidth: .infinity)

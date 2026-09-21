@@ -24,12 +24,30 @@ enum CoachIntentRouter: Sendable {
         if isFarewell(words) { return .farewell }
         if isThanks(words) { return .thanks }
         if isCapabilities(words, q) { return .capabilities }
+
+        // "Hi, what's my Recovery?" is a health question with a greeting
+        // prefix, not a greeting. Strip once, then route what remains.
+        let stripped = strippingLeadingGreeting(q)
+        if stripped != q {
+            if stripped.isEmpty { return .greeting }
+            return classify(stripped)
+        }
+
         if isGreeting(words) { return .greeting }
 
         if let call = CoachToolCatalog.interpret(trimmed) {
             return .tool(call)
         }
         return .unknown
+    }
+
+    /// Removes a leading hi/hey/hello so trailing intent can still run.
+    static func strippingLeadingGreeting(_ q: String) -> String {
+        let prefixes = ["hi,", "hi ", "hey,", "hey ", "hello,", "hello ", "yo ", "howdy "]
+        for prefix in prefixes where q.hasPrefix(prefix) {
+            return q.dropFirst(prefix.count).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return q
     }
 
     static func greetingReply() -> String {

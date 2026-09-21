@@ -1,7 +1,7 @@
 import Foundation
 
 /// One SoundAnalysis window that claimed snoring.
-struct SnoreClassificationWindow: Equatable, Sendable {
+struct SnoreClassificationWindow: Equatable, Sendable, Codable {
     /// Session-relative start, from the classifier `timeRange`, not `Date.now`.
     let start: TimeInterval
     let duration: TimeInterval
@@ -16,11 +16,13 @@ enum SnoreMonitoringConfidence: String, Sendable, Equatable {
 
     var label: String {
         switch self {
-        case .high: "High"
+        case .high: "Strong"
         case .moderate: "Moderate"
         case .limited: "Limited"
         }
     }
+
+    var accessibilityName: String { "Monitoring quality \(label.lowercased())" }
 }
 
 /// Turns overlapping classifier windows into snore seconds.

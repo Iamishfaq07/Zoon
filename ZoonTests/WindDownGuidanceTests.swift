@@ -37,4 +37,18 @@ final class WindDownGuidanceTests: XCTestCase {
         XCTAssertTrue(config.usesHaptics)
         XCTAssertFalse(config.usesVoice)
     }
+
+    func testGuidedPositionResumesHoldNotArrive() {
+        let config = WindDownGuidanceConfiguration(routineDurationMinutes: 30, guidedBreathingMinutes: 5)
+        let arrive = config.guidedPosition(elapsed: 10)
+        XCTAssertEqual(arrive.phaseName, "arrive")
+        let intoFirstCycle = WindDownGuidanceConfiguration.arriveSeconds + 5
+        let hold = config.guidedPosition(elapsed: intoFirstCycle)
+        XCTAssertEqual(hold.phaseName, "hold")
+        XCTAssertEqual(hold.cyclesCompleted, 0)
+        XCTAssertGreaterThan(hold.remaining, 0)
+        let later = config.guidedPosition(elapsed: WindDownGuidanceConfiguration.arriveSeconds + WindDownGuidanceConfiguration.cycleSeconds + 1)
+        XCTAssertEqual(later.cyclesCompleted, 1)
+        XCTAssertEqual(later.phaseName, "inhale")
+    }
 }

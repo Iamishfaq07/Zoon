@@ -210,6 +210,7 @@ final class SoundscapeEngine {
     private let audioOwner = UUID()
     private(set) var deadline: Date?
     private(set) var interruptionMessage: String?
+    private(set) var canResumeOnSpeaker = false
     /// Set when a recorded bed is selected but the mp3 is not in the bundle.
     /// Shown on Sleep Sounds so a miss is visible instead of fake noise.
     private(set) var loadError: String?
@@ -271,6 +272,7 @@ final class SoundscapeEngine {
         retiringFilePlayer?.stop()
         retiringFilePlayer = oldFile
         interruptionMessage = nil
+        canResumeOnSpeaker = false
         loadError = nil
 
         do {
@@ -283,6 +285,8 @@ final class SoundscapeEngine {
                 self?.resumeAfterInterruption()
             } onReset: { [weak self] in
                 self?.stopAfterMediaServicesReset()
+            } onRouteLost: { [weak self] in
+                self?.pauseForRouteLoss()
             }
 
             if sound.fileName != nil {
@@ -440,6 +444,7 @@ final class SoundscapeEngine {
         harmonicPresence = 1
         pausedSound = nil
         wasInterrupted = false
+        canResumeOnSpeaker = false
         clearNowPlaying()
         AudioSessionCoordinator.shared.release(audioOwner)
     }
@@ -480,6 +485,21 @@ final class SoundscapeEngine {
         }
         guard let pausedSound else { return }
         play(pausedSound, toggle: false)
+    }
+
+    private func pauseForRouteLoss() {
+        pauseForInterruption()
+        canResumeOnSpeaker = true
+        interruptionMessage = "Headphones disconnected. Playback was paused to avoid switching to the speaker."
+    }
+
+    func resumeOnSpeaker() {
+        canResumeOnSpeaker = false
+        interruptionMessage = nil
+        wasInterrupted = false
+        if let sound = pausedSound ?? playing {
+            play(sound, toggle: false)
+        }
     }
 
     /// An interruption can stop an `AVAudioEngine` underneath its paused

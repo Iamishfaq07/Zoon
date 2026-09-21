@@ -12,7 +12,15 @@ struct SoundscapeView: View {
         ScrollView {
             CascadeStack(spacing: Theme.stackSpacing) {
                 if let message = engine.loadError ?? engine.interruptionMessage {
-                    Text(message).font(.callout).accessibilityIdentifier("audioInterruption")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(message).font(.callout).accessibilityIdentifier("audioInterruption")
+                        if engine.canResumeOnSpeaker {
+                            Button("Resume on iPhone") {
+                                engine.resumeOnSpeaker()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
                 }
                 nowPlaying
                 NavigationLink("Mix and save scenes") { AudioStudioView() }
@@ -245,11 +253,17 @@ struct AudioWaveform: View {
     let isActive: Bool
 
     @State private var phase: Double = 0
+    @State private var visible = true
+    @Environment(\.scenePhase) private var scenePhase
 
     private let barCount = 28
 
+    private var shouldAnimate: Bool {
+        isActive && visible && !reduceMotion && scenePhase == .active && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 20, paused: !isActive || reduceMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 20, paused: !shouldAnimate)) { timeline in
             Canvas { context, size in
                 let time = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
                 let barWidth = size.width / CGFloat(barCount) * 0.55
@@ -280,6 +294,8 @@ struct AudioWaveform: View {
                 }
             }
         }
+        .onAppear { visible = true }
+        .onDisappear { visible = false }
         .accessibilityHidden(true)
     }
 }

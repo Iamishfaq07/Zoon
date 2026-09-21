@@ -28,6 +28,22 @@ final class PersonalSetupTests: XCTestCase {
         XCTAssertEqual(copy.session?.remaining(at: now.addingTimeInterval(5000)), 420)
     }
 
+    func testRoutineVoiceIdentifierSurvivesRoundTrip() throws {
+        var setup = PersonalSetup()
+        setup.routine.voiceIdentifier = "com.apple.voice.premium.en-US.Zoe"
+        let copy = try JSONDecoder().decode(PersonalSetup.self, from: JSONEncoder().encode(setup))
+        XCTAssertEqual(copy.routine.voiceIdentifier, "com.apple.voice.premium.en-US.Zoe")
+        let legacy = try JSONDecoder().decode(PersonalSetup.self, from: JSONEncoder().encode(PersonalSetup()))
+        XCTAssertNil(legacy.routine.voiceIdentifier)
+    }
+
+    func testLiveSessionRemainingUsesWallClockWhenNotPaused() {
+        let now = Date(timeIntervalSince1970: 1_780_000_000)
+        var setup = PersonalSetup()
+        setup.session = .init(startedAt: now, deadline: now.addingTimeInterval(600), pausedSeconds: nil)
+        XCTAssertEqual(setup.session?.remaining(at: now.addingTimeInterval(120)), 480, accuracy: 0.5)
+    }
+
     func testEncryptedArchiveRejectsWrongPasswordAndTampering() throws {
         let original = Data("private sleep archive".utf8)
         let passphrase = "a long moon phrase 🌙"

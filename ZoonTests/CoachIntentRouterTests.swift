@@ -9,6 +9,13 @@ final class CoachIntentRouterTests: XCTestCase {
         }
     }
 
+    func testAGreetingPrefixDoesNotSwallowAHealthQuestion() {
+        XCTAssertEqual(kind("Hi, what's my Recovery?"), .getRecovery)
+        XCTAssertEqual(kind("Hey energy"), .getEnergy)
+        XCTAssertEqual(kind("Hello sleep score"), .getSleepScore)
+        XCTAssertEqual(CoachIntentRouter.classify("Hi"), .greeting)
+    }
+
     func testThanksAndByeStayConversational() {
         XCTAssertEqual(CoachIntentRouter.classify("thanks"), .thanks)
         XCTAssertEqual(CoachIntentRouter.classify("thank you"), .thanks)
@@ -28,14 +35,15 @@ final class CoachIntentRouterTests: XCTestCase {
     }
 
     func testNaturalLanguageSleepQuestionsHitTools() {
-        XCTAssertEqual(kind("What happened last night?"), .getSleepScore)
-        XCTAssertEqual(kind("How much did I sleep?"), .getSleepScore)
+        XCTAssertEqual(kind("What happened last night?"), .getLastNightSummary)
+        XCTAssertEqual(kind("How much did I sleep?"), .getSleepDuration)
         XCTAssertEqual(kind("How am I doing today?"), .getRecovery)
         XCTAssertEqual(kind("What's my Recovery?"), .getRecovery)
         XCTAssertEqual(kind("How much energy do I have?"), .getEnergy)
         XCTAssertEqual(kind("What should I do tonight?"), .getTonight)
         XCTAssertEqual(kind("When should I sleep?"), .getTonight)
-        XCTAssertEqual(kind("Why do I feel tired?"), .getRecovery)
+        XCTAssertEqual(kind("Why do I feel tired?"), .getFatigueContext)
+        XCTAssertEqual(kind("Should I train today?"), .getTrainingContext)
     }
 
     func testUnknownDoesNotBecomeASleepSummary() {

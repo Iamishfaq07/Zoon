@@ -15,12 +15,16 @@ enum CoachToolCatalog {
     /// would need updating.
     enum Kind: String, Hashable, Sendable, CaseIterable {
         case getSleepScore
+        case getLastNightSummary
+        case getSleepDuration
         case getRecovery
         case getShortfall
         case getEnergy
         case getMovement
         case getTonight
         case getTomorrow
+        case getFatigueContext
+        case getTrainingContext
         case logCaffeine
         case startNap
         case prepareTomorrow
@@ -36,8 +40,8 @@ enum CoachToolCatalog {
             switch self {
             case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
                 true
-            case .getSleepScore, .getRecovery, .getShortfall, .getEnergy,
-                 .getMovement, .getTonight, .getTomorrow:
+            case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getShortfall, .getEnergy,
+                 .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext:
                 false
             }
         }
@@ -47,12 +51,16 @@ enum CoachToolCatalog {
         var summary: String {
             switch self {
             case .getSleepScore: "Read last night's Sleep Intelligence."
+            case .getLastNightSummary: "Read a short last-night summary."
+            case .getSleepDuration: "Read last night's sleep duration."
             case .getRecovery: "Read morning Recovery."
             case .getShortfall: "Read sleep shortfall."
             case .getEnergy: "Read Energy now."
             case .getMovement: "Read today's movement against your usual day."
             case .getTonight: "Read tonight's sleep window."
             case .getTomorrow: "Read the Tomorrow plan, if one exists."
+            case .getFatigueContext: "Read current signals that may relate to feeling tired."
+            case .getTrainingContext: "Read Recovery, Energy and Load together."
             case .logCaffeine: "Log caffeine after you confirm."
             case .startNap: "Start a nap after you confirm."
             case .prepareTomorrow: "Open Tomorrow after you confirm the time."
@@ -77,19 +85,32 @@ enum CoachToolCatalog {
         // recovery look like tomorrow" opened the Tomorrow planner and
         // `.getTomorrow` was declared but returned by nothing.
         if matches(q, [
-            "sleep score", "sleep intelligence", "how did i sleep",
             "how much did i sleep", "how long did i sleep", "how long was i asleep",
-            "what happened last night", "how was last night", "last night's sleep"
+            "sleep duration", "time asleep"
+        ]) {
+            return Call(kind: .getSleepDuration, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        if matches(q, [
+            "sleep score", "sleep intelligence", "how did i sleep"
         ]) {
             return Call(kind: .getSleepScore, proposedMinutes: nil, confirmationPrompt: nil)
         }
-        if matches(q, ["recovery", "how am i doing", "how recovered", "feel tired", "feeling tired", "why do i feel tired"]) {
+        if matches(q, ["last night summary", "summarise last night", "summarize last night", "what happened last night", "how was last night"]) {
+            return Call(kind: .getLastNightSummary, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        if matches(q, ["why am i tired", "why do i feel tired", "feeling tired", "feel tired"]) {
+            return Call(kind: .getFatigueContext, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        if matches(q, ["should i train", "train today", "should i work out", "workout today", "ready to train"]) {
+            return Call(kind: .getTrainingContext, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        if matches(q, ["recovery", "how am i doing", "how recovered"]) {
             return Call(kind: .getRecovery, proposedMinutes: nil, confirmationPrompt: nil)
         }
         if matches(q, ["shortfall", "sleep debt", "behind on sleep"]) {
             return Call(kind: .getShortfall, proposedMinutes: nil, confirmationPrompt: nil)
         }
-        if matches(q, ["energy now", "body battery", "how alert", "how much energy", "energy do i have", "enough energy"]) {
+        if matches(q, ["energy now", "body battery", "how alert", "how much energy", "energy do i have", "enough energy", "energy"]) {
             return Call(kind: .getEnergy, proposedMinutes: nil, confirmationPrompt: nil)
         }
         // Movement is asked about in the app's own words ("moved", "steps")
