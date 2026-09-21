@@ -86,6 +86,15 @@ final class AudioSessionCoordinator {
     private func reset() {
         let callbacks = owners.values.map { $0.reset ?? $0.stop }
         for callback in callbacks { callback() }
+        guard !owners.isEmpty else { return }
+        let recording = owners.values.contains(where: \.recording)
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(
+            recording ? .record : .playback,
+            mode: recording ? .measurement : .default,
+            options: recording ? [] : [.mixWithOthers]
+        )
+        try? session.setActive(true)
     }
 
     private func resumeInterrupted(shouldResume: Bool) {

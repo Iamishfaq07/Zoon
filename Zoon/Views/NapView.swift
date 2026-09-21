@@ -181,6 +181,12 @@ struct NapView: View {
             // on static content trains people to ignore pulses.
             .breathing(true, tint: Theme.Metric.sleep)
 
+            Text(nap.wakeKind?.shortLabel ?? "Arming wake…")
+                .font(Theme.label(12, weight: .medium))
+                .foregroundStyle(nap.wakeKind == .notification || nap.wakeKind == .unavailable ? Theme.Metric.recoveryMid : Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
             HStack(spacing: 12) {
                 Button {
                     naps.cancel()
@@ -308,8 +314,10 @@ struct NapView: View {
 
     private var startButton: some View {
         Button {
-            naps.start(targetMinutes: selectedMinutes)
-            coordinator.republishGlanceSurfaces()
+            Task {
+                _ = await naps.startAndArm(targetMinutes: selectedMinutes)
+                coordinator.republishGlanceSurfaces()
+            }
             Haptics.tap()
         } label: {
             Label("Start nap", systemImage: "play.fill")

@@ -23,7 +23,10 @@ final class SnoreDetector {
     private(set) var classifierSupportsSnoring = false
     private(set) var classifierWindows: [SnoreClassificationWindow] = []
     private(set) var interruptionGaps = 0
+    private(set) var monitoringGaps: [SnoreMonitoringGap] = []
     private(set) var sessionID = UUID()
+    private(set) var fusedIntervals: [SnoreEvidenceFusion.Interval] = []
+    private(set) var frozenQuality: SnoreMonitoringConfidence?
 
     private var engine = AVAudioEngine()
     private let soundClassifier = SoundEventClassifier()
@@ -39,6 +42,8 @@ final class SnoreDetector {
     private var heuristicIntervals: [(start: TimeInterval, end: TimeInterval)] = []
     private var heuristicOpenStart: TimeInterval?
     private var lastCheckpointAt: Date?
+    private var openGapStartedAt: Date?
+    private var sessionTimeZoneIdentifier: String = TimeZone.current.identifier
     var onPaused: (() -> Void)?
     var onResumed: (() -> Void)?
     private let burstThresholdRMS: Float = 0.02
@@ -51,13 +56,20 @@ final class SnoreDetector {
     }
 
     var sessionConfidence: SnoreMonitoringConfidence {
+        if let frozenQuality { return frozenQuality }
+        return liveQuality
+    }
+
+    var liveQuality: SnoreMonitoringConfidence {
         SnoreEpisodeAggregator.confidence(
             classifierAvailable: classifierAvailable,
             classifierSupportsSnoring: classifierSupportsSnoring,
             monitoredSeconds: monitoredSeconds,
             lastBufferAge: lastBufferAt.map { Date.now.timeIntervalSince($0) },
             heuristicSeconds: heuristicSnoreSeconds,
-            classifierSeconds: classifierSnoreSeconds
+            classifierSeconds: classifierSnoreSeconds,
+            sessionEnded: !isRunning && monitoredSeconds > 0,
+            interruptionDuration: monitoringGaps.reduce(0) { $0 + $1.duration }
         )
     }
 
@@ -102,6 +114,11 @@ final class SnoreDetector {
             sessionID = UUID()
             interruptionGaps = 0
             lastCheckpointAt = nil
+            monitoringGaps = []
+            openGapStartedAt = nil
+            fusedIntervals = []
+            frozenQuality = nil
+            sessionTimeZoneIdentifier = TimeZone.current.identifier
             SnoreCheckpoint.clear()
         }
 
@@ -120,6 +137,7 @@ final class SnoreDetector {
         soundClassifier.stop()
         isRunning = false
         interruptionGaps += 1
+        openGapStartedAt = .now
         persistCheckpoint(unexpectedEnd: true)
         onPaused?()
         logger.info("Snore detection paused without finalizing")
@@ -127,6 +145,7 @@ final class SnoreDetector {
 
     func resumeListening() throws {
         try AVAudioSession.sharedInstance().setActive(true)
+        closeOpenGap()
         beginEpoch()
         try installTapAndStartEngine()
         isRunning = true
@@ -141,6 +160,7 @@ final class SnoreDetector {
         soundClassifier.stop()
         engine = AVAudioEngine()
         try AVAudioSession.sharedInstance().setActive(true)
+        closeOpenGap()
         beginEpoch()
         try installTapAndStartEngine()
         isRunning = true
@@ -159,13 +179,14 @@ final class SnoreDetector {
         logger.info("Snore detection stopped")
 
         refreshFusion()
+        frozenQuality = liveQuality
 
         persistCheckpoint(unexpectedEnd: false)
         SnoreCheckpoint.clear()
 
         guard monitoredSeconds > 0 else { return nil }
         let wakeInstant = Date()
-        let zone = TimeZone.current
+        let zone = TimeZone(identifier: sessionTimeZoneIdentifier) ?? .current
         var calendar = Calendar.current
         calendar.timeZone = zone
         return SnoreStore.NightSummary(
@@ -173,7 +194,11 @@ final class SnoreDetector {
             monitoredMinutes: monitoredSeconds / 60,
             snoreMinutes: snoreSeconds / 60,
             nightKey: NightKey.make(wakeInstant: wakeInstant, in: zone),
-            timezoneIdentifier: zone.identifier
+            timezoneIdentifier: zone.identifier,
+            isPartial: false,
+            endedUnexpectedly: false,
+            monitoringQuality: frozenQuality?.rawValue,
+            interruptionDurationMinutes: monitoringGaps.reduce(0) { $0 + $1.duration } / 60
         )
     }
 
@@ -187,13 +212,21 @@ final class SnoreDetector {
         classifierSnoreSeconds = checkpoint.classifierSeconds
         classifierWindows = checkpoint.windows
         interruptionGaps = checkpoint.interruptionGaps
+        monitoringGaps = checkpoint.gaps
         classifierAvailable = checkpoint.classifierAvailable
+        frozenQuality = checkpoint.monitoringQuality
+        sessionTimeZoneIdentifier = checkpoint.timezoneIdentifier ?? TimeZone.current.identifier
         isRunning = false
     }
 
     private func beginEpoch() {
-        let wall = sessionStartedAt?.addingTimeInterval(monitoredSeconds) ?? .now
-        epoch = SoundAnalysisEpoch(sessionElapsedAtStart: monitoredSeconds, wallClockStart: wall)
+        epoch = SoundAnalysisEpoch.beginningNow(sessionElapsed: monitoredSeconds, now: .now)
+    }
+
+    private func closeOpenGap() {
+        guard let started = openGapStartedAt else { return }
+        monitoringGaps.append(SnoreMonitoringGap(startedAt: started, endedAt: .now))
+        openGapStartedAt = nil
     }
 
     private func installTapAndStartEngine() throws {
@@ -312,8 +345,12 @@ final class SnoreDetector {
                 classifier: SnoreEpisodeAggregator.mergedIntervals(from: classifierWindows),
                 heuristic: heuristic
             )
+            fusedIntervals = fused
             snoreSeconds = SnoreEvidenceFusion.snoreSeconds(from: fused)
         } else {
+            fusedIntervals = heuristic.map {
+                SnoreEvidenceFusion.Interval(start: $0.start, end: $0.end, source: .heuristic, confidence: 0.4)
+            }
             snoreSeconds = heuristicSnoreSeconds
         }
     }
@@ -340,8 +377,14 @@ final class SnoreDetector {
     private func persistCheckpoint(unexpectedEnd: Bool) {
         guard let started = sessionStartedAt, monitoredSeconds > 0 else { return }
         let compressed = SnoreEpisodeAggregator.mergedIntervals(from: classifierWindows).map {
-            SnoreClassificationWindow(start: $0.start, duration: $0.end - $0.start, confidence: 1, identifier: "snoring")
+            SnoreClassificationWindow(start: $0.start, duration: $0.end - $0.start, confidence: $0.confidence, identifier: "snoring")
         }
+        var gaps = monitoringGaps
+        if let open = openGapStartedAt {
+            gaps.append(SnoreMonitoringGap(startedAt: open, endedAt: nil))
+        }
+        let zone = TimeZone(identifier: sessionTimeZoneIdentifier) ?? .current
+        let wakeGuess = sessionStartedAt ?? .now
         let checkpoint = SnoreCheckpoint(
             sessionID: sessionID,
             startedAt: started,
@@ -351,9 +394,13 @@ final class SnoreDetector {
             heuristicSeconds: heuristicSnoreSeconds,
             classifierSeconds: classifierSnoreSeconds,
             interruptionGaps: interruptionGaps,
+            gaps: gaps,
             classifierAvailable: classifierAvailable,
             windows: compressed,
-            unexpectedEnd: unexpectedEnd
+            unexpectedEnd: unexpectedEnd,
+            timezoneIdentifier: zone.identifier,
+            nightKey: NightKey.make(wakeInstant: wakeGuess, in: zone),
+            monitoringQuality: unexpectedEnd ? liveQuality : frozenQuality ?? liveQuality
         )
         checkpoint.save()
         lastCheckpointAt = checkpoint.lastCheckpoint

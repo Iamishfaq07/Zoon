@@ -229,15 +229,25 @@ final class CoachChat {
         nightSummary: String,
         contextDigest: String? = nil,
         chartContext: String? = nil,
-        engine: UserPreferences.EngineChoice = .ruleBased
+        engine: UserPreferences.EngineChoice = .ruleBased,
+        contextMode: CoachContextMode = .today
     ) {
         messages = []
         pendingAction = nil
         appleIntelligenceBecameReady = false
         preferredEngine = engine
         conversationEngine = Self.frozenEngine(preferred: engine)
+        let framed: String
+        switch contextMode {
+        case .selectedNight:
+            framed = "This conversation is about one recorded night.\n" + nightSummary
+        case .trend:
+            framed = "This conversation is about a selected trend period.\n" + nightSummary
+        case .today:
+            framed = "This conversation is about today, recent trends, and tonight — not one frozen night.\n" + nightSummary
+        }
         pendingContext = Context(
-            nightSummary: nightSummary,
+            nightSummary: framed,
             contextDigest: contextDigest,
             chartContext: chartContext
         )
@@ -442,9 +452,19 @@ final class CoachChat {
     /// Drops older turns when the transcript would crowd current facts out
     /// of a small on-device context window. Keeps the latest 16 messages.
     private func trimTranscriptIfNeeded() {
-        let cap = 16
-        guard messages.count > cap else { return }
-        messages = Array(messages.suffix(cap))
+        // Prefer current facts and the latest user turn over old chit-chat.
+        // Character budget is a stand-in for token APIs that are not
+        // available in every SDK this file compiles against.
+        let maxChars = 8_000
+        var kept: [Message] = []
+        var used = 0
+        for message in messages.reversed() {
+            let cost = message.text.count
+            if used + cost > maxChars, kept.count >= 4 { break }
+            kept.append(message)
+            used += cost
+        }
+        messages = kept.reversed()
     }
 
     private func evidenceID(for kind: CoachToolCatalog.Kind) -> String? {
@@ -453,6 +473,8 @@ final class CoachChat {
         case .getShortfall: evidence?.catalog["debt"] ?? evidence?.catalog["sleep"]
         case .getTonight, .getTomorrow: evidence?.catalog["timing"]
         case .getRecovery, .getEnergy, .getMovement, .getFatigueContext, .getTrainingContext,
+             .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
+             .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
              .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
             nil
         }

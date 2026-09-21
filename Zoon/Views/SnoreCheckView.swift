@@ -26,6 +26,10 @@ struct SnoreCheckView: View {
                 lastNightCard(last)
             }
 
+            if !session.monitoringGaps.isEmpty || !session.fusedIntervals.isEmpty {
+                coverageCard
+            }
+
             if !session.isRunning && !session.storedEvents.isEmpty {
                 timelineCard
             }
@@ -47,13 +51,13 @@ struct SnoreCheckView: View {
             Text("Turn on microphone access for Zoon in iOS Settings to use Snore Check.")
         }
         .alert(
-            "Stop sleep audio first",
+            "Snore Check needs a quiet microphone",
             isPresented: Binding(
                 get: { conflictMessage != nil },
                 set: { if !$0 { conflictMessage = nil } }
             )
         ) {
-            Button("Stop audio and start Snore Check") {
+            Button("Stop & Start") {
                 Task {
                     conflictMessage = nil
                     if let message = await session.stopAudioAndStart(soundscape: soundscape),
@@ -92,11 +96,24 @@ struct SnoreCheckView: View {
     }
 
     private func recoveredCard(_ checkpoint: SnoreCheckpoint) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(checkpoint.unexpectedEndMessage())
                 .font(Theme.text(13))
-            Button("Dismiss") { session.dismissRecoveredCheckpoint() }
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Save it as a partial session, or discard it. Dismissing used to throw the night away.")
+                .font(.caption)
+                .foregroundStyle(Theme.inkTertiary)
+            HStack(spacing: 12) {
+                Button("Save partial session") {
+                    session.saveRecoveredCheckpoint()
+                    Haptics.success()
+                }
                 .font(Theme.label(13, weight: .semibold))
+                Button("Discard", role: .destructive) {
+                    session.dismissRecoveredCheckpoint()
+                }
+                .font(Theme.label(13, weight: .semibold))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
@@ -156,15 +173,83 @@ struct SnoreCheckView: View {
             }
             .font(Theme.label(13))
 
-            Text("\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged. Monitoring quality is an estimate of coverage, not a diagnosis.")
+            Text(partialLine(summary))
                 .font(.caption2)
                 .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
     }
 
+    private func partialLine(_ summary: SnoreStore.NightSummary) -> String {
+        var parts = ["\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged."]
+        if summary.isPartial == true { parts.append("Partial session.") }
+        if let quality = summary.monitoringQuality {
+            parts.append("Monitoring quality \(quality).")
+        } else {
+            parts.append("Monitoring quality is an estimate of coverage, not a diagnosis.")
+        }
+        return parts.joined(separator: " ")
+    }
+
     private var clusters: [SoundEvent.Cluster] {
         SoundEvent.clusters(from: session.storedEvents)
+    }
+
+    private var coverageCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Coverage", systemImage: "timeline.selection")
+            coverageBar
+            if session.monitoringGaps.isEmpty {
+                Text("No interruption gaps this session.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkTertiary)
+            } else {
+                ForEach(session.monitoringGaps) { gap in
+                    HStack {
+                        Text("Gap")
+                            .font(Theme.text(13))
+                        Spacer()
+                        Text(gapCaption(gap))
+                            .font(Theme.text(12))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .monospacedDigit()
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .glassCard()
+    }
+
+    private var coverageBar: some View {
+        GeometryReader { geo in
+            let width = max(geo.size.width, 1)
+            let start = session.lastSummary.map { $0.date } ?? session.monitoringGaps.first?.startedAt
+            let end = session.monitoringGaps.last?.endedAt ?? Date()
+            let span = max(end.timeIntervalSince(start ?? end), 1)
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.Metric.sleep.opacity(0.22))
+                ForEach(session.monitoringGaps) { gap in
+                    let origin = start ?? gap.startedAt
+                    let x = CGFloat(gap.startedAt.timeIntervalSince(origin) / span) * width
+                    let w = CGFloat(max(gap.duration, 30) / span) * width
+                    Capsule()
+                        .fill(Theme.inkTertiary.opacity(0.55))
+                        .frame(width: max(w, 4), height: 10)
+                        .offset(x: x)
+                }
+            }
+        }
+        .frame(height: 10)
+        .accessibilityLabel("Monitored span with interruption gaps")
+    }
+
+    private func gapCaption(_ gap: SnoreMonitoringGap) -> String {
+        let start = gap.startedAt.formatted(.dateTime.hour().minute())
+        if let ended = gap.endedAt {
+            return "\(start) – \(ended.formatted(.dateTime.hour().minute()))"
+        }
+        return "\(start) – now"
     }
 
     private var timelineCard: some View {
@@ -214,6 +299,13 @@ struct SnoreCheckView: View {
                 LabeledContent("Sound analysis", value: session.classifierAvailable ? "Active" : "Unavailable")
                 LabeledContent("Last audio", value: session.lastBufferAt.map { "\(Int(Date.now.timeIntervalSince($0)))s ago" } ?? "—")
                 LabeledContent("Interruptions", value: "\(session.interruptionGaps)")
+                if session.monitoringGaps.isEmpty {
+                    LabeledContent("Gaps", value: "None")
+                } else {
+                    ForEach(session.monitoringGaps) { gap in
+                        LabeledContent("Gap", value: gapCaption(gap))
+                    }
+                }
                 LabeledContent("Monitoring quality", value: session.confidence.label)
             }
             .navigationTitle("Session details")

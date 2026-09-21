@@ -9,7 +9,7 @@ struct SnoreClassificationWindow: Equatable, Sendable, Codable {
     let identifier: String
 }
 
-enum SnoreMonitoringConfidence: String, Sendable, Equatable {
+enum SnoreMonitoringConfidence: String, Sendable, Equatable, Codable {
     case high
     case moderate
     case limited
@@ -48,16 +48,17 @@ enum SnoreEpisodeAggregator: Sendable {
     static func mergedIntervals(
         from windows: [SnoreClassificationWindow],
         threshold: Double = confidenceFloor
-    ) -> [(start: TimeInterval, end: TimeInterval)] {
+    ) -> [(start: TimeInterval, end: TimeInterval, confidence: Double)] {
         let eligible = windows
             .filter { snoringIdentifiers.contains($0.identifier.lowercased()) && $0.confidence >= threshold }
-            .map { (start: $0.start, end: $0.start + max(0, $0.duration)) }
+            .map { (start: $0.start, end: $0.start + max(0, $0.duration), confidence: $0.confidence) }
             .sorted { $0.start < $1.start }
         guard var current = eligible.first else { return [] }
-        var out: [(start: TimeInterval, end: TimeInterval)] = []
+        var out: [(start: TimeInterval, end: TimeInterval, confidence: Double)] = []
         for next in eligible.dropFirst() {
             if next.start <= current.end + mergeSlack {
                 current.end = max(current.end, next.end)
+                current.confidence = max(current.confidence, next.confidence)
             } else {
                 out.append(current)
                 current = next
@@ -73,15 +74,20 @@ enum SnoreEpisodeAggregator: Sendable {
         monitoredSeconds: Double,
         lastBufferAge: TimeInterval?,
         heuristicSeconds: Double,
-        classifierSeconds: Double
+        classifierSeconds: Double,
+        sessionEnded: Bool = false,
+        interruptionDuration: TimeInterval = 0
     ) -> SnoreMonitoringConfidence {
-        let buffersFlowing = (lastBufferAge ?? .infinity) < 2
+        // After stop, lastBufferAge grows forever. Do not let a strong
+        // completed night read as Limited because the mic is now quiet.
+        let buffersFlowing = sessionEnded || (lastBufferAge ?? .infinity) < 2
         let longEnough = monitoredSeconds >= 30 * 60
         let bothAgree = classifierSeconds >= 1 && heuristicSeconds >= 1
-        if classifierAvailable, classifierSupportsSnoring, buffersFlowing, longEnough, bothAgree {
+        let coverageOK = interruptionDuration < monitoredSeconds * 0.25
+        if classifierAvailable, classifierSupportsSnoring, buffersFlowing, longEnough, bothAgree, coverageOK {
             return .high
         }
-        if buffersFlowing, monitoredSeconds >= 10 * 60, classifierAvailable || heuristicSeconds >= 1 {
+        if (buffersFlowing || sessionEnded), monitoredSeconds >= 10 * 60, classifierAvailable || heuristicSeconds >= 1 {
             return .moderate
         }
         return .limited

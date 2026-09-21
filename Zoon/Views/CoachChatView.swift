@@ -16,6 +16,8 @@ struct CoachChatView: View {
     /// session, so the first reply is about the point that was tapped rather
     /// than about the night in general.
     var chartQuestion: ChartQuestion? = nil
+    /// Coach Tab uses today/trends. Sleep Detail uses the opened night.
+    var contextMode: CoachContextMode = .today
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
@@ -99,7 +101,8 @@ struct CoachChatView: View {
                 nightSummary: night.summaryForLLM,
                 contextDigest: coordinator.coachContextDigest(),
                 chartContext: chartQuestion?.context,
-                engine: preferences.preferredEngine
+                engine: preferences.preferredEngine,
+                contextMode: chartQuestion == nil ? contextMode : .trend
             )
             // The chart's own question wins over a tapped suggestion: this
             // screen was opened *by* that point, and asking anything else
@@ -263,7 +266,7 @@ struct CoachChatView: View {
                     expandedEvidenceIDs.insert(messageID)
                 }
             } label: {
-                Label(text, systemImage: "number")
+                Label("Why Zoon said this", systemImage: "list.bullet.rectangle")
                     .font(Theme.text(11, weight: .medium))
                     .foregroundStyle(Theme.inkSecondary)
                     .padding(.horizontal, 8)
@@ -271,10 +274,15 @@ struct CoachChatView: View {
                     .background(Theme.neutral(0.06), in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Shows what this evidence means")
+            .accessibilityHint("Shows the recorded numbers this answer used")
 
             if isExpanded {
-                Text("The number above is the specific figure this answer is based on -- not a general statement.")
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .padding(.horizontal, 8)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Only facts Zoon already computed. Not a diagnosis.")
                     .font(.caption2)
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, 8)

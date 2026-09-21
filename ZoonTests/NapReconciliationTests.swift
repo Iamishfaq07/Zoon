@@ -249,10 +249,10 @@ final class NapReconciliationTests: XCTestCase {
         var onSchedule: (() -> Void)?
 
         @discardableResult
-        func schedule(at date: Date, targetMinutes: Int) async -> Bool {
+        func schedule(at date: Date, targetMinutes: Int) async -> NapWakeKind {
             scheduled.append((date, targetMinutes))
             onSchedule?()
-            return true
+            return .alarmKit
         }
 
         func cancel() { cancelCount += 1 }
@@ -270,6 +270,16 @@ final class NapReconciliationTests: XCTestCase {
         XCTAssertEqual(spy.scheduled.count, 1)
         XCTAssertEqual(spy.scheduled.first?.minutes, 20)
         XCTAssertEqual(spy.scheduled.first?.date, start.addingTimeInterval(20 * 60))
+    }
+
+    func testStartAndArmSchedulesTheWakeOnce() async {
+        let spy = WakeSpy()
+        let store = NapStore(defaults: defaults, wake: spy)
+        let result = await store.startAndArm(targetMinutes: 20, now: start)
+        XCTAssertEqual(spy.scheduled.count, 1)
+        XCTAssertEqual(result.wake, .alarmKit)
+        XCTAssertEqual(store.activeNap?.wakeKind, .alarmKit)
+        XCTAssertEqual(result.targetMinutes, 20)
     }
 
     func testCancellingANapDisarmsTheWake() {

@@ -55,11 +55,38 @@ final class SnoreSessionController {
     var storedEvents: [SoundEvent] { eventStore.recentEvents }
     var permissionDenied: Bool { !detector.isAvailable }
     var interruptionGaps: Int { detector.interruptionGaps }
-    var fusedIntervals: [SnoreClassificationWindow] { detector.classifierWindows }
+    var monitoringGaps: [SnoreMonitoringGap] { detector.monitoringGaps }
+    var fusedIntervals: [SnoreEvidenceFusion.Interval] { detector.fusedIntervals }
 
     func dismissRecoveredCheckpoint() {
         recoveredCheckpoint = nil
         SnoreCheckpoint.clear()
+    }
+
+    /// Converts a recovered checkpoint into a durable partial night summary.
+    func saveRecoveredCheckpoint() {
+        guard let checkpoint = recoveredCheckpoint else { return }
+        store.record(summary(from: checkpoint))
+        recoveredCheckpoint = nil
+        SnoreCheckpoint.clear()
+    }
+
+    private func summary(from checkpoint: SnoreCheckpoint) -> SnoreStore.NightSummary {
+        let zone = checkpoint.timezoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? TimeZone.current
+        var calendar = Calendar.current
+        calendar.timeZone = zone
+        let wake = checkpoint.lastCheckpoint
+        return SnoreStore.NightSummary(
+            date: calendar.startOfDay(for: wake),
+            monitoredMinutes: checkpoint.monitoredSeconds / 60,
+            snoreMinutes: checkpoint.snoreSeconds / 60,
+            nightKey: checkpoint.nightKey ?? NightKey.make(wakeInstant: wake, in: zone),
+            timezoneIdentifier: zone.identifier,
+            isPartial: true,
+            endedUnexpectedly: true,
+            monitoringQuality: checkpoint.monitoringQuality?.rawValue,
+            interruptionDurationMinutes: checkpoint.interruptionDuration / 60
+        )
     }
 
     func handleScenePhase(_ phase: ScenePhase) {
@@ -79,7 +106,7 @@ final class SnoreSessionController {
     func start(soundscapePlaying: Bool, routineActive: Bool) async -> String? {
         conflictMessage = nil
         if soundscapePlaying || routineActive {
-            let message = "Stop Zoon's sleep audio before starting Snore Check so its own sound isn't classified as room audio."
+            let message = "Snore Check needs the microphone without Zoon audio playing. Stop Rain and Wind Down, then start Snore Check?"
             conflictMessage = message
             state = .failed(message)
             return message
@@ -89,6 +116,9 @@ final class SnoreSessionController {
             return "Microphone access needed"
         }
         state = .preparing
+        if recoveredCheckpoint != nil {
+            saveRecoveredCheckpoint()
+        }
         guard await detector.requestPermission() else {
             state = .failed("Microphone access needed")
             return "Microphone access needed"

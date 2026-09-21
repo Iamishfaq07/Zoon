@@ -5,7 +5,11 @@ final class WindDownGuidanceTests: XCTestCase {
     func testFiveMinutesOfGuidanceIsMoreThanFourCycles() {
         let config = WindDownGuidanceConfiguration(routineDurationMinutes: 30, guidedBreathingMinutes: 5)
         XCTAssertGreaterThan(config.guidedCycles, 4)
-        XCTAssertEqual(config.guidedCycles, Int((5 * 60 / WindDownGuidanceConfiguration.cycleSeconds).rounded()))
+        XCTAssertEqual(config.guidedCycles, Int(5 * 60 / WindDownGuidanceConfiguration.cycleSeconds))
+        XCTAssertLessThanOrEqual(
+            Double(config.guidedCycles) * WindDownGuidanceConfiguration.cycleSeconds,
+            5 * 60
+        )
     }
 
     func testTenMinuteGuidanceScalesCycles() {
@@ -50,5 +54,22 @@ final class WindDownGuidanceTests: XCTestCase {
         let later = config.guidedPosition(elapsed: WindDownGuidanceConfiguration.arriveSeconds + WindDownGuidanceConfiguration.cycleSeconds + 1)
         XCTAssertEqual(later.cyclesCompleted, 1)
         XCTAssertEqual(later.phaseName, "inhale")
+    }
+
+    func testFiveMinuteRoutineCannotTakeFiveMinutesOfGuidance() {
+        let config = WindDownGuidanceConfiguration(routineDurationMinutes: 5, guidedBreathingMinutes: 5)
+        XCTAssertLessThan(config.guidedBreathingMinutes, 5)
+        let span = WindDownGuidanceConfiguration.arriveSeconds
+            + config.actualGuidedSeconds
+            + WindDownGuidanceConfiguration.closeSeconds
+        XCTAssertLessThanOrEqual(span, config.routineSeconds)
+    }
+
+    func testTwoMinuteGuidanceDoesNotOverflowItsWindow() {
+        let config = WindDownGuidanceConfiguration(routineDurationMinutes: 30, guidedBreathingMinutes: 2)
+        XCTAssertLessThanOrEqual(
+            Double(config.guidedCycles) * WindDownGuidanceConfiguration.cycleSeconds,
+            2 * 60
+        )
     }
 }
