@@ -674,11 +674,11 @@ final class SoundscapeEngine {
 
     private func armWatchdog() {
         watchdogTask?.cancel()
-        watchdogTask = Task { [weak self] in
+        watchdogTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(8))
                 if Task.isCancelled { return }
-                await self?.checkPlaybackHealth()
+                self?.checkPlaybackHealth()
             }
         }
     }
