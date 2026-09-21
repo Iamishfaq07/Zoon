@@ -41,7 +41,7 @@ struct SoundscapeView: View {
     private var nowPlaying: some View {
         if let sound = engine.playing {
             VStack(spacing: 14) {
-                AudioWaveform(isActive: true)
+                AudioWaveform(isActive: engine.isGraphAudible)
                     .frame(height: 56)
                     // Decoration for audio that is already playing and whose
                     // name is announced on the next line.
@@ -50,11 +50,12 @@ struct SoundscapeView: View {
                 Text(sound.label)
                     .font(Theme.numeral(26))
 
-                if engine.timerMinutes != nil {
-                    Text(engine.formattedRemaining)
+                if let caption = engine.timerCaption {
+                    Text(caption)
                         .font(Theme.label(15, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(Theme.Metric.battery)
+                        .accessibilityLabel(caption)
                 }
 
                 volumeSlider

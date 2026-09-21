@@ -4,18 +4,17 @@ import AVFoundation
 /// Narrates a wind-down breathing exercise entirely on-device.
 ///
 /// `AVSpeechSynthesizer` rather than bundled audio files or a downloaded
-/// voice model — no licensing, no download, and no departure from the app's
-/// standing rule that nothing is fetched over a network. The trade-off is
-/// honest: a system voice reads as more mechanical than a professionally
-/// recorded meditation. That's the cost of staying inside "ships with no
-/// content and needs nothing added."
+/// voice model — no licensing, no download. Voice quality is the best
+/// *installed* system voice (premium, then enhanced, then default).
 @MainActor
 @Observable
-final class BreathingCoach: NSObject {
+final class BreathingCoach: NSObject, AVSpeechSynthesizerDelegate {
 
     enum Phase: Equatable {
         case idle
+        case arrive
         case inhale, hold, exhale, rest
+        case quiet
         case finished
     }
 
@@ -23,18 +22,15 @@ final class BreathingCoach: NSObject {
     /// 0...1 within the current phase, for the pacer animation.
     private(set) var phaseProgress: Double = 0
     private(set) var cyclesCompleted = 0
-
-    /// 4-7-8 breathing: inhale 4s, hold 7s, exhale 8s. A well-established
-    /// pattern for calming rather than an invented one — the timings are the
-    /// entire technique, so getting them right matters more than usual.
-    private let inhaleSeconds: Double = 4
-    private let holdSeconds: Double = 7
-    private let exhaleSeconds: Double = 8
-    private let restSeconds: Double = 2
+    private(set) var selectedVoiceName: String?
 
     var totalCycles = 4
     var voiceEnabled = true
     var hapticsEnabled = false
+    var voiceMode: WindDownGuidanceConfiguration.VoiceMode = .natural
+    var includeArrive = false
+    var closingPhrase: String? = WindDownGuidanceConfiguration.closeLine
+    var voiceIdentifier: String?
     private let audioOwner = UUID()
 
     private let synthesizer = AVSpeechSynthesizer()
@@ -42,25 +38,46 @@ final class BreathingCoach: NSObject {
     private var phaseStart: Date?
     private var phaseDuration: Double = 0
 
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
     /// Starts (or restarts) the exercise.
     func start(cycles: Int = 4) {
         stop()
-        totalCycles = cycles
+        totalCycles = max(1, cycles)
         cyclesCompleted = 0
+        voiceEnabled = voiceMode.usesVoice
+        hapticsEnabled = voiceMode.usesHaptics || hapticsEnabled
         if voiceEnabled {
-            do { try AudioSessionCoordinator.shared.acquire(audioOwner) { [weak self] in self?.stop() } }
+            do { try AudioSessionCoordinator.shared.acquire(audioOwner) { [weak self] in self?.pauseForInterruption() } }
             catch { voiceEnabled = false }
         }
-        runCycle()
+        if includeArrive {
+            enter(.arrive, duration: WindDownGuidanceConfiguration.arriveSeconds, say: WindDownGuidanceConfiguration.arriveLine)
+        } else {
+            runCycle()
+        }
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
-        synthesizer.stopSpeaking(at: .immediate)
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .word)
+        }
         AudioSessionCoordinator.shared.release(audioOwner)
         phase = .idle
         phaseProgress = 0
+    }
+
+    private func pauseForInterruption() {
+        timer?.invalidate()
+        timer = nil
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .word)
+        }
     }
 
     // MARK: - Cycle
@@ -68,10 +85,13 @@ final class BreathingCoach: NSObject {
     private func runCycle() {
         guard cyclesCompleted < totalCycles else {
             phase = .finished
-            speak("Well done. Rest here as long as you like.")
+            if let closingPhrase, !closingPhrase.isEmpty {
+                speak(closingPhrase)
+            }
             return
         }
-        enter(.inhale, duration: inhaleSeconds, say: "Breathe in")
+        let line = voiceMode.cue(phase: "inhale", cycleIndex: cyclesCompleted)
+        enter(.inhale, duration: WindDownGuidanceConfiguration.inhaleSeconds, say: line)
     }
 
     private func enter(_ next: Phase, duration: Double, say line: String) {
@@ -83,8 +103,6 @@ final class BreathingCoach: NSObject {
         speak(line)
 
         timer?.invalidate()
-        // 20Hz tick is smooth enough for a slow-moving pacer and cheap enough
-        // to run for the several minutes a session lasts.
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
@@ -93,31 +111,66 @@ final class BreathingCoach: NSObject {
     private func tick() {
         guard let start = phaseStart else { return }
         let elapsed = Date.now.timeIntervalSince(start)
-        phaseProgress = min(1, elapsed / phaseDuration)
+        phaseProgress = min(1, elapsed / max(0.01, phaseDuration))
         guard elapsed >= phaseDuration else { return }
 
         switch phase {
-        case .inhale: enter(.hold, duration: holdSeconds, say: "Hold")
-        case .hold: enter(.exhale, duration: exhaleSeconds, say: "Breathe out")
+        case .arrive:
+            runCycle()
+        case .inhale:
+            enter(.hold, duration: WindDownGuidanceConfiguration.holdSeconds, say: voiceMode.cue(phase: "hold", cycleIndex: cyclesCompleted))
+        case .hold:
+            enter(.exhale, duration: WindDownGuidanceConfiguration.exhaleSeconds, say: voiceMode.cue(phase: "exhale", cycleIndex: cyclesCompleted))
         case .exhale:
-            enter(.rest, duration: restSeconds, say: "")
+            enter(.rest, duration: WindDownGuidanceConfiguration.restSeconds, say: "")
         case .rest:
             cyclesCompleted += 1
             runCycle()
-        case .idle, .finished:
+        case .idle, .quiet, .finished:
             timer?.invalidate()
         }
     }
 
     private func speak(_ line: String) {
-        synthesizer.stopSpeaking(at: .immediate)
         guard voiceEnabled, !line.isEmpty else { return }
+        if synthesizer.isSpeaking { return }
         let utterance = AVSpeechUtterance(string: line)
-        // Slower and a touch lower than the default — the point is to sound
-        // like the pace being asked for, not to sound urgent.
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.voice = resolvedVoice()
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
         utterance.pitchMultiplier = 0.92
-        utterance.postUtteranceDelay = 0.1
+        utterance.preUtteranceDelay = 0.15
+        utterance.postUtteranceDelay = 0.2
         synthesizer.speak(utterance)
     }
+
+    func previewVoice() {
+        speak("Get comfortable. Let your shoulders drop.")
+    }
+
+    func resolvedVoice() -> AVSpeechSynthesisVoice? {
+        let voices = AVSpeechSynthesisVoice.speechVoices()
+        if let voiceIdentifier, let match = voices.first(where: { $0.identifier == voiceIdentifier }) {
+            selectedVoiceName = match.name
+            return match
+        }
+        let locale = Locale.current.identifier
+        let ranked = voices
+            .filter { $0.language.hasPrefix(String(locale.prefix(2))) }
+            .sorted { lhs, rhs in
+                qualityRank(lhs) > qualityRank(rhs)
+            }
+        let chosen = ranked.first ?? AVSpeechSynthesisVoice(language: locale)
+        selectedVoiceName = chosen?.name
+        return chosen
+    }
+
+    private func qualityRank(_ voice: AVSpeechSynthesisVoice) -> Int {
+        switch voice.quality {
+        case .premium: 3
+        case .enhanced: 2
+        default: 1
+        }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {}
 }

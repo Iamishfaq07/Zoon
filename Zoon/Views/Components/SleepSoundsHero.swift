@@ -24,7 +24,7 @@ struct SleepSoundsHero: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(current.label)
                         .font(Theme.label(16, weight: .semibold))
-                    Text(engine.isPlaying ? "Playing" : subtitle)
+                    Text(engine.timerCaption ?? (engine.isPlaying ? "Playing" : subtitle))
                         .font(Theme.text(13))
                         .foregroundStyle(Theme.inkSecondary)
                 }

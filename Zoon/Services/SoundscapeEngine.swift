@@ -1,6 +1,9 @@
 import Foundation
 import AVFoundation
 import os
+#if canImport(MediaPlayer)
+import MediaPlayer
+#endif
 
 /// Sleep sounds: generated noise plus bundled recorded loops.
 ///
@@ -185,7 +188,19 @@ final class SoundscapeEngine {
     private(set) var timerMinutes: Int?
     private(set) var remainingSeconds: Int = 0
 
-    var isPlaying: Bool { playing != nil }
+    var isPlaying: Bool { playing != nil && !wasInterrupted }
+
+    /// True when the graph is actually producing audio.
+    var isGraphAudible: Bool {
+        if let filePlayer, filePlayer.isPlaying { return true }
+        if let engine, let player, engine.isRunning, player.isPlaying { return true }
+        return false
+    }
+
+    var timerCaption: String? {
+        guard timerMinutes != nil, remainingSeconds > 0 else { return nil }
+        return SoundscapeTimerPolicy.stopsInCopy(seconds: remainingSeconds)
+    }
 
     // MARK: - Audio graph
 
@@ -213,6 +228,10 @@ final class SoundscapeEngine {
     private var harmonicPresence: Float = 1
     private var pausedSound: Sound?
     private var wasInterrupted = false
+    private var watchdogTask: Task<Void, Never>?
+    private var watchdogRecoveredGeneration: UUID?
+    private var lastSuccessfulPlayback: Date = .distantPast
+    private var remoteCommandsInstalled = false
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Soundscape")
 
     private let sampleRate: Double = 44_100
@@ -224,6 +243,20 @@ final class SoundscapeEngine {
 
     func play(_ sound: Sound, toggle: Bool = true) {
         if playing == sound && toggle { stop(); return }
+
+        let inherited = SoundscapeTimerPolicy.deadlineAfterSwitchingSound(currentDeadline: deadline)
+        if inherited == nil {
+            timerTask?.cancel()
+            timerTask = nil
+            deadline = nil
+            timerMinutes = nil
+            remainingSeconds = 0
+            fadeMultiplier = 1
+        } else {
+            deadline = inherited
+            remainingSeconds = SoundscapeTimerPolicy.remainingSeconds(deadline: inherited)
+        }
+
         for layer in scenePlayers { layer.stop() }
         scenePlayers = []
         sceneLevels = []
@@ -258,14 +291,23 @@ final class SoundscapeEngine {
                     recorded.numberOfLoops = -1
                     recorded.volume = 0
                     recorded.prepareToPlay()
-                    recorded.play()
+                    guard recorded.play() else {
+                        loadError = "Couldn't start \(sound.label)."
+                        AudioSessionCoordinator.shared.release(audioOwner)
+                        return
+                    }
                     oldPlayer?.stop()
                     oldEngine?.stop()
                     self.engine = nil
                     self.player = nil
                     self.filePlayer = recorded
                     self.playing = sound
+                    lastSuccessfulPlayback = .now
+                    watchdogRecoveredGeneration = nil
                     logger.info("Playing recorded bed \(sound.rawValue, privacy: .public) from \(url.lastPathComponent, privacy: .public)")
+                    armWatchdog()
+                    publishNowPlaying()
+                    resumeInheritedTimerIfNeeded()
                     crossfadeTask = Task { [weak self] in
                         for step in 1...20 {
                             do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
@@ -288,6 +330,7 @@ final class SoundscapeEngine {
                 self.player = nil
                 self.filePlayer = nil
                 self.playing = nil
+                AudioSessionCoordinator.shared.release(audioOwner)
                 return
             }
 
@@ -298,7 +341,10 @@ final class SoundscapeEngine {
             guard let format = AVAudioFormat(
                 standardFormatWithSampleRate: sampleRate,
                 channels: 2
-            ) else { return }
+            ) else {
+                AudioSessionCoordinator.shared.release(audioOwner)
+                return
+            }
 
             engine.connect(player, to: engine.mainMixerNode, format: format)
             try engine.start()
@@ -309,12 +355,17 @@ final class SoundscapeEngine {
             self.engine = engine
             self.player = player
             self.playing = sound
+            lastSuccessfulPlayback = .now
+            watchdogRecoveredGeneration = nil
             oldFile?.stop()
             self.retiringFilePlayer = nil
 
             // Prime with a few buffers, then keep the queue topped up as each
             // one finishes. Scheduling one at a time would gap on a slow frame.
             for _ in 0..<3 { scheduleBuffer(sound, format: format) }
+            armWatchdog()
+            publishNowPlaying()
+            resumeInheritedTimerIfNeeded()
             if let oldEngine, let oldPlayer { retiringPlayers = [(oldEngine, oldPlayer)] }
             crossfadeTask = Task { [weak self] in
                 for step in 1...20 {
@@ -371,6 +422,8 @@ final class SoundscapeEngine {
         deadline = nil
         timerTask?.cancel()
         timerTask = nil
+        watchdogTask?.cancel()
+        watchdogTask = nil
         player?.stop()
         engine?.stop()
         player = nil
@@ -387,6 +440,7 @@ final class SoundscapeEngine {
         harmonicPresence = 1
         pausedSound = nil
         wasInterrupted = false
+        clearNowPlaying()
         AudioSessionCoordinator.shared.release(audioOwner)
     }
 
@@ -397,6 +451,7 @@ final class SoundscapeEngine {
         pausedSound = playing
         wasInterrupted = true
         interruptionMessage = "Playback paused. It will resume when the interruption ends, or tap a sound to start again."
+        publishNowPlaying()
         player?.pause()
         filePlayer?.pause()
         for layer in scenePlayers {
@@ -412,10 +467,15 @@ final class SoundscapeEngine {
         if playing != nil, player != nil || filePlayer != nil, restartEnginesIfNeeded() {
             player?.play()
             filePlayer?.play()
+            if let sound = playing, let format = player?.outputFormat(forBus: 0), filePlayer == nil {
+                scheduleBuffer(sound, format: format)
+            }
             for layer in scenePlayers {
                 layer.player?.play()
                 layer.filePlayer?.play()
             }
+            lastSuccessfulPlayback = .now
+            publishNowPlaying()
             return
         }
         guard let pausedSound else { return }
@@ -481,6 +541,9 @@ final class SoundscapeEngine {
 
         guard let minutes else {
             remainingSeconds = 0
+            fadeMultiplier = 1
+            applyOutputVolume()
+            publishNowPlaying()
             return
         }
 
@@ -515,9 +578,105 @@ final class SoundscapeEngine {
     }
 
     var formattedRemaining: String {
-        let minutes = remainingSeconds / 60
-        let seconds = remainingSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        SoundscapeTimerPolicy.formattedRemaining(seconds: remainingSeconds)
+    }
+
+    private func resumeInheritedTimerIfNeeded() {
+        guard deadline != nil, timerTask == nil else { return }
+        timerTask = Task { [weak self] in
+            while true {
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+                guard let self, self.remainingSeconds > 0 else { break }
+                self.tick()
+            }
+            self?.stop()
+        }
+    }
+
+    private func armWatchdog() {
+        watchdogTask?.cancel()
+        watchdogTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(8))
+                if Task.isCancelled { return }
+                await self?.checkPlaybackHealth()
+            }
+        }
+    }
+
+    private func checkPlaybackHealth() {
+        guard playing != nil, !wasInterrupted else { return }
+        if timerMinutes != nil, remainingSeconds <= 0 { return }
+        if isGraphAudible {
+            lastSuccessfulPlayback = .now
+            return
+        }
+        if watchdogRecoveredGeneration == playbackGeneration {
+            interruptionMessage = "Audio was interrupted by the system. Tap to resume."
+            watchdogTask?.cancel()
+            watchdogTask = nil
+            playing = nil
+            clearNowPlaying()
+            return
+        }
+        watchdogRecoveredGeneration = playbackGeneration
+        if filePlayer != nil {
+            filePlayer?.play()
+        } else if restartEnginesIfNeeded(), let player {
+            player.play()
+        } else {
+            interruptionMessage = "Audio was interrupted by the system. Tap to resume."
+            watchdogTask?.cancel()
+            watchdogTask = nil
+            playing = nil
+            clearNowPlaying()
+        }
+    }
+
+    private func publishNowPlaying() {
+        #if canImport(MediaPlayer)
+        installRemoteCommandsIfNeeded()
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: playing?.label ?? "Sleep Sounds",
+            MPMediaItemPropertyArtist: "Zoon"
+        ]
+        info[MPNowPlayingInfoPropertyPlaybackRate] = (playing != nil && !wasInterrupted) ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        #endif
+    }
+
+    private func clearNowPlaying() {
+        #if canImport(MediaPlayer)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        #endif
+    }
+
+    private func installRemoteCommandsIfNeeded() {
+        #if canImport(MediaPlayer)
+        guard !remoteCommandsInstalled else { return }
+        remoteCommandsInstalled = true
+        let center = MPRemoteCommandCenter.shared()
+        center.playCommand.isEnabled = true
+        center.pauseCommand.isEnabled = true
+        center.stopCommand.isEnabled = true
+        center.playCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            if let sound = self.playing ?? self.pausedSound {
+                self.play(sound, toggle: false)
+                return .success
+            }
+            return .noActionableNowPlayingItem
+        }
+        center.pauseCommand.addTarget { [weak self] _ in
+            self?.stop()
+            return .success
+        }
+        center.stopCommand.addTarget { [weak self] _ in
+            self?.stop()
+            return .success
+        }
+        #endif
     }
 
     private func applyOutputVolume() {

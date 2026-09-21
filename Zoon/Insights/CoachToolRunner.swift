@@ -90,8 +90,9 @@ struct CoachToolRunner {
     }
 
     private func tonight() -> String? {
-        guard let plan = tomorrowPlan() else { return nil }
-        return "Tonight's sleep window is \(clock(plan.sleepWindowStart))–\(clock(plan.sleepWindowEnd)), for a wake at \(clock(plan.wake))."
+        guard let plan = context?.tonight else { return nil }
+        guard let bed = plan.bedtime(), let wake = plan.wakeTime() else { return nil }
+        return "Tonight's plan is to be in bed around \(clock(bed)) for a wake at \(clock(wake)), targeting \(SleepNightFeatures.formatMinutes(plan.suggestedSleepTargetMinutes))."
     }
 
     private func tomorrow() -> String? {
@@ -155,6 +156,10 @@ struct CoachToolRunner {
     /// for exactly that, and the reply says what will now happen rather than
     /// leaving them to find out at the time.
     private func setAlarm() -> String? {
+        if let tonight = context?.tonight, let wake = tonight.wakeTime() {
+            preferences.wakeAlarmEnabled = true
+            return "Wake alarm on, for \(clock(wake)). You can turn it off in Settings."
+        }
         guard let plan = tomorrowPlan() else {
             return "There is no wake time to set an alarm from yet."
         }

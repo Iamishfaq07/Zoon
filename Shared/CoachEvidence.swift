@@ -55,9 +55,22 @@ struct CoachEvidence: Sendable {
     /// Local, deterministic reply. Always available — Apple Intelligence is
     /// optional colour on top, not the only way to answer "Am I behind?".
     func reply(to question: String) -> Reply {
-        let q = question.lowercased()
+        switch CoachIntentRouter.classify(question) {
+        case .greeting:
+            return Reply(text: CoachIntentRouter.greetingReply(), evidence: nil, action: nil)
+        case .capabilities:
+            return Reply(text: CoachIntentRouter.capabilitiesReply(), evidence: nil, action: nil)
+        case .thanks:
+            return Reply(text: CoachIntentRouter.thanksReply(), evidence: nil, action: nil)
+        case .farewell:
+            return Reply(text: CoachIntentRouter.farewellReply(), evidence: nil, action: nil)
+        case .cancel:
+            return Reply(text: CoachIntentRouter.cancelReply(), evidence: nil, action: nil)
+        case .tool, .unknown:
+            break
+        }
 
-        if isGreeting(q) { return greetingReply() }
+        let q = question.lowercased()
 
         if matches(q, ["behind", "debt", "catch up", "enough sleep", "short on sleep", "sleep enough"]) {
             return debtReply()
@@ -71,63 +84,28 @@ struct CoachEvidence: Sendable {
         if matches(q, ["wake", "woke", "awake", "interrupt", "fragment"]) {
             return wakeReply()
         }
-        if matches(q, ["train", "workout", "strain", "exercise", "ready"]) {
+        if matches(q, ["train", "workout", "strain", "exercise"]) && !q.contains("energy") {
             return trainReply()
         }
         if matches(q, ["tonight", "bedtime", "prepare", "wind down", "what should i do"]) {
             return tonightReply()
         }
-        if matches(q, ["deep", "rem", "stage", "solid", "how did i sleep", "last night"]) {
+        if matches(q, ["deep", "rem", "stage", "solid", "how did i sleep", "last night", "how much did i sleep"]) {
             return sleepReply()
         }
 
-        // Anything still mentioning the night is close enough to answer with
-        // it. Past that, say so.
-        if matches(q, ["sleep", "night", "slept", "rest"]) {
+        if matches(q, ["sleep", "slept"]) {
             return sleepReply()
         }
         return unknownReply()
     }
 
-    /// Small talk, answered as small talk.
-    ///
-    /// Checked before the intents so "hi" cannot be swallowed by a substring
-    /// match, and kept to whole words so "which" does not read as "hi".
-    private func isGreeting(_ q: String) -> Bool {
-        let words = Set(
-            q.components(separatedBy: CharacterSet.alphanumerics.inverted)
-                .filter { !$0.isEmpty }
-        )
-        guard words.count <= 4 else { return false }
-        return !words.isDisjoint(with: [
-            "hi", "hey", "hello", "yo", "sup", "hiya", "howdy",
-            "thanks", "thank", "ok", "okay", "cool", "nice", "bye"
-        ])
-    }
-
-    private func greetingReply() -> Reply {
-        Reply(
-            text: "Hello. Ask me about last night and I'll answer from your own numbers — "
-                + "how you slept, your timing, HRV, resting heart rate, how often you woke, "
-                + "whether to train today, or what to do tonight.",
-            evidence: nil,
-            action: nil
-        )
-    }
+    /// Small talk is handled by `CoachIntentRouter` before this type runs.
 
     /// What a question outside the data gets.
-    ///
-    /// This used to be `sleepReply()`. Every unmatched question -- including
-    /// "hi" -- returned the identical sleep summary, which is exactly how it
-    /// reads on a device where the model is unavailable and every answer
-    /// comes from here: the coach appears to give one canned response no
-    /// matter what it is asked. Saying what it can answer is both honest and
-    /// more useful than answering a question nobody asked.
     private func unknownReply() -> Reply {
         Reply(
-            text: "I can only answer from the nights Zoon has recorded. Try asking about how "
-                + "you slept, your bedtime and wake timing, HRV, resting heart rate, how often "
-                + "you woke, whether to train today, or what to do tonight.",
+            text: CoachIntentRouter.unknownReply(),
             evidence: nil,
             action: nil
         )
@@ -169,9 +147,9 @@ struct CoachEvidence: Sendable {
             let delta = (hrv - baseline) / baseline
             let direction = delta < -0.08 ? "quieter than" : delta > 0.08 ? "higher than" : "close to"
             return Reply(
-                text: "Overnight HRV was \(Int(hrv.rounded())) ms, \(direction) your recent \(Int(baseline.rounded())) ms average. That's a recovery signal, not a diagnosis.",
+                text: "Overnight HRV was \(Int(hrv.rounded())) ms, \(direction) your recent \(Int(baseline.rounded())) ms average. That's a recovery signal, not a diagnosis. Consider it alongside Morning Recovery, Energy, and how you feel — one quieter night is not an exercise prescription.",
                 evidence: catalog["hrv"],
-                action: delta < -0.08 ? "A lighter day fits a quieter overnight signal better than a hard session." : nil
+                action: nil
             )
         }
         return Reply(

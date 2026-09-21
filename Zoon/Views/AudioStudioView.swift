@@ -38,13 +38,16 @@ struct AudioStudioView: View {
                 Text("Loading a scene is silent. Tap Play mix to listen.").font(.caption).foregroundStyle(Theme.inkSecondary)
             }
             Section("Sleep timer") {
+                Button("Timer off") { engine.setTimer(minutes: nil) }
                 ForEach([15, 30, 60, 90], id: \.self) { minutes in
                     Button("Stop in \(minutes) minutes") { engine.setTimer(minutes: minutes) }
                 }
-                if engine.timerMinutes != nil { Text("Remaining: \(engine.formattedRemaining)").monospacedDigit() }
+                if let caption = engine.timerCaption {
+                    Text(caption).monospacedDigit()
+                }
             }
             Section {
-                Text("Brown, pink and white are generated so they never seam. Rain, wind, fire and the rest are the recorded loops bundled in the app. Levels mix at reduced gain. Switching scenes keeps the timer's original end time.")
+                Text("Brown, pink and white are generated so they never seam. Rain, wind, fire and the rest are the recorded loops bundled in the app. Levels mix at reduced gain. An active timer is inherited when you switch sounds, and the remaining time stays visible. Off means Off.")
                     .font(.caption).foregroundStyle(Theme.inkSecondary)
             }
         }

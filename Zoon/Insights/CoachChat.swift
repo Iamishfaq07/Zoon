@@ -81,6 +81,15 @@ final class CoachChat {
         }
     }
 
+    /// Frozen for this transcript. Rules stays Rules even if Apple
+    /// Intelligence finishes downloading mid-chat.
+    private(set) var conversationEngine: UserPreferences.EngineChoice = .ruleBased
+    private(set) var preferredEngine: UserPreferences.EngineChoice = .ruleBased
+    /// True when the user asked for Apple Intelligence, this chat started on
+    /// Rules because the model was not ready, and the model has since become
+    /// available. The UI offers a new conversation; this one does not switch.
+    private(set) var appleIntelligenceBecameReady = false
+
     var evidence: CoachEvidence?
     private(set) var messages: [Message] = []
     private(set) var isResponding = false
@@ -120,7 +129,7 @@ final class CoachChat {
         @Guide(description: "Two short sentences explaining the supplied data. Do not state any quantities, numbers, dates, durations or percentages; the app renders those from its evidence catalog.")
         var answer: String
 
-        @Guide(description: "Return exactly one evidence ID from the supplied catalog: sleep, timing, hrv, or heart. Never write a value or invent an ID. Empty if no evidence applies.")
+        @Guide(description: "Return exactly one evidence ID from the supplied catalog (sleep, timing, hrv, heart, debt). Never write a value or invent an ID. Empty if no evidence applies.")
         var groundedIn: String
 
         @Guide(description: "One concrete next step the user could take, only if the answer actually supports one -- e.g. 'Consider an earlier bedtime tonight.' Empty string if the answer doesn't call for an action (most factual questions don't).")
@@ -210,14 +219,23 @@ final class CoachChat {
     /// enough history for one, `SleepDataCoordinator.coachContextDigest()`'s
     /// standing-pattern summary -- as context the model already has, so the
     /// first question doesn't have to restate them.
+    /// - Parameter engine: the user's picker. Frozen for this transcript.
     /// - Parameter chartContext: `ChartQuestion.context` when the
     ///   conversation was opened from a point on a chart. Typed facts, never
     ///   an image of the chart: everything a model would have to guess from
     ///   a picture -- what the axis means, where the baseline sits, how many
     ///   nights it rests on -- is already computed and is handed over.
-    func start(nightSummary: String, contextDigest: String? = nil, chartContext: String? = nil) {
+    func start(
+        nightSummary: String,
+        contextDigest: String? = nil,
+        chartContext: String? = nil,
+        engine: UserPreferences.EngineChoice = .ruleBased
+    ) {
         messages = []
         pendingAction = nil
+        appleIntelligenceBecameReady = false
+        preferredEngine = engine
+        conversationEngine = Self.frozenEngine(preferred: engine)
         pendingContext = Context(
             nightSummary: nightSummary,
             contextDigest: contextDigest,
@@ -225,8 +243,22 @@ final class CoachChat {
         )
         #if canImport(FoundationModels)
         session = nil
-        ensureSession()
+        if conversationEngine == .appleIntelligence {
+            ensureSession()
+        }
         #endif
+    }
+
+    /// Rules never opens a model. Apple Intelligence opens one only if it is
+    /// available at conversation start. A later download does not attach a
+    /// session to this transcript.
+    static func frozenEngine(preferred: UserPreferences.EngineChoice) -> UserPreferences.EngineChoice {
+        switch preferred {
+        case .ruleBased, .localLLM:
+            return .ruleBased
+        case .appleIntelligence:
+            return unavailabilityReason == nil ? .appleIntelligence : .ruleBased
+        }
     }
 
     /// What a session needs to be built, kept so one can be built later.
@@ -243,18 +275,12 @@ final class CoachChat {
 
     private var pendingContext: Context?
 
-    /// Opens a model session if one is wanted, possible, and not already open.
-    ///
-    /// Called from `start()` and again before every `send()`. The session used
-    /// to be created once, in `start()`, and only if the model happened to be
-    /// available at that instant. When it wasn't -- the common case, because
-    /// `.modelNotReady` is what a device reports while the download finishes
-    /// -- `session` stayed nil for the life of the screen. The view polled and
-    /// the "still downloading" banner would clear, but nothing ever built the
-    /// session, so every answer kept coming from the local keyword replies.
-    /// The model became available and the app carried on not using it.
+    /// Opens a model session if this conversation froze on Apple Intelligence
+    /// and one is not already open. Never called for Rules. Never called to
+    /// upgrade a Rules transcript after the model finishes downloading.
     func ensureSession() {
         #if canImport(FoundationModels)
+        guard conversationEngine == .appleIntelligence else { return }
         guard session == nil, isAvailable, #available(iOS 26.0, *),
               let context = pendingContext else { return }
         session = LanguageModelSession(
@@ -268,23 +294,48 @@ final class CoachChat {
         #endif
     }
 
+    /// Poll from the view. If this chat is Rules because the model was not
+    /// ready, surface a prompt to start a *new* conversation — do not switch.
+    func noteAvailabilityChange() {
+        guard preferredEngine == .appleIntelligence,
+              conversationEngine == .ruleBased,
+              Self.unavailabilityReason == nil else { return }
+        appleIntelligenceBecameReady = true
+    }
+
     func send(_ text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isResponding else { return }
 
         messages.append(Message(role: .user, text: trimmed))
 
-        // A new utterance supersedes an unanswered proposal. Leaving it
-        // standing would let someone ask an unrelated question and then tap
-        // a Confirm still attached to the sentence before it.
-        pendingAction = nil
-
-        // Tools before the model, always. A tool answer is computed by an
-        // engine; a model answer is prose about numbers it was given. For
-        // "what is my recovery" those are not equally good, they are
-        // different in kind, and the deterministic one is the one that can be
-        // wrong in ways the person can check.
-        if let call = CoachToolCatalog.interpret(trimmed) {
+        switch CoachIntentRouter.classify(trimmed) {
+        case .greeting:
+            pendingAction = nil
+            messages.append(Message(role: .assistant, text: CoachIntentRouter.greetingReply()))
+            return
+        case .capabilities:
+            pendingAction = nil
+            messages.append(Message(role: .assistant, text: CoachIntentRouter.capabilitiesReply()))
+            return
+        case .thanks:
+            pendingAction = nil
+            messages.append(Message(role: .assistant, text: CoachIntentRouter.thanksReply()))
+            return
+        case .farewell:
+            pendingAction = nil
+            messages.append(Message(role: .assistant, text: CoachIntentRouter.farewellReply()))
+            return
+        case .cancel:
+            if pendingAction != nil {
+                cancelPendingAction()
+            } else {
+                pendingAction = nil
+                messages.append(Message(role: .assistant, text: CoachIntentRouter.cancelReply()))
+            }
+            return
+        case .tool(let call):
+            pendingAction = nil
             if call.kind.requiresConfirmation {
                 let action = PendingAction(call: call)
                 pendingAction = action
@@ -292,63 +343,60 @@ final class CoachChat {
                 return
             }
             if let answer = runTool?(call) {
-                messages.append(Message(role: .assistant, text: answer, groundedIn: call.kind.summary))
+                messages.append(Message(
+                    role: .assistant,
+                    text: answer,
+                    groundedIn: evidenceID(for: call.kind)
+                ))
                 return
             }
-            // A read tool with nothing to read. Falling through to the model
-            // here would be the one path by which it could invent the figure.
             messages.append(Message(
                 role: .assistant,
                 text: "I do not have that yet. \(call.kind.summary)"
             ))
             return
+        case .unknown:
+            pendingAction = nil
         }
 
         isResponding = true
         defer { isResponding = false }
 
         #if canImport(FoundationModels)
-        // The model may have become available since this screen opened.
-        ensureSession()
+        guard conversationEngine == .appleIntelligence else {
+            appendLocalAnswer(trimmed)
+            return
+        }
 
         guard isAvailable, #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
             appendLocalAnswer(trimmed)
             return
         }
 
-        // Structured generation rather than raw streamed text: the redesign
-        // spec calls for the coach's answers to have real shape on screen,
-        // not a wall of prose in a bubble. `ChatAnswer` separates the direct
-        // answer from the number it's grounded in and the concrete action it
-        // supports, the same `@Generable`/`respond(to:generating:)` pattern
-        // `FoundationModelInsightEngine` already uses for the nightly
-        // insight -- this trades the previous token-by-token "thinking out
-        // loud" streaming for an answer CoachChatView can render as an
-        // editorial block with a distinct citation and action, rather than
-        // one undifferentiated paragraph. Confidence is the third of the
-        // redesign spec's four structured elements; `Message.confidence`
-        // computes it structurally instead of asking the model to
-        // self-report it.
         do {
+            let catalogKeys = evidence?.catalog.keys.sorted().joined(separator: ", ") ?? "sleep, timing, hrv, heart, debt"
             let response = try await session.respond(
-                to: trimmed + "\nEvidence catalog (only these IDs may be cited):\n" + (evidence?.promptCatalog ?? "None"),
+                to: trimmed + "\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n" + (evidence?.promptCatalog ?? "None"),
                 generating: ChatAnswer.self,
-                options: GenerationOptions(temperature: 0.4)
+                options: GenerationOptions(temperature: 0)
             )
             let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
             let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
             let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Same backstop FoundationModelInsightEngine applies to the
-            // nightly insight: the instructions forbid diagnostic language,
-            // but that's a request the model may not honour on every turn,
-            // and a chat has many more turns than one fixed-shape generation
-            // to get it wrong on. A failed check here can't fall back to a
-            // rules engine the way the nightly insight can -- there's no
-            // rule-based conversation to hand off to -- so it shows a plain
-            // refusal instead of the raw response.
             guard !answer.isEmpty, CoachEvidence.allowsGeneratedProse(answer + " " + bestAction), !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
                 logger.notice("Chat response was empty or failed the diagnostic-language check; using the local reply")
+                appendLocalAnswer(trimmed)
+                return
+            }
+
+            let cited: String?
+            if grounding.isEmpty || grounding.lowercased() == "null" {
+                cited = nil
+            } else if let value = evidence?.catalog[grounding] {
+                cited = value
+            } else {
+                logger.notice("Chat cited unknown evidence ID \(grounding, privacy: .public); using the local reply")
                 appendLocalAnswer(trimmed)
                 return
             }
@@ -356,7 +404,7 @@ final class CoachChat {
             messages.append(Message(
                 role: .assistant,
                 text: answer,
-                groundedIn: evidence?.catalog[grounding],
+                groundedIn: cited,
                 bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction
             ))
         } catch {
@@ -366,6 +414,16 @@ final class CoachChat {
         #else
         appendLocalAnswer(trimmed)
         #endif
+    }
+
+    private func evidenceID(for kind: CoachToolCatalog.Kind) -> String? {
+        switch kind {
+        case .getSleepScore: evidence?.catalog["sleep"]
+        case .getShortfall: evidence?.catalog["debt"] ?? evidence?.catalog["sleep"]
+        case .getTonight, .getTomorrow: evidence?.catalog["timing"]
+        case .getRecovery, .getEnergy, .getMovement, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+            nil
+        }
     }
 
     /// Same behavioural contract as `FoundationModelInsightEngine.instructions`
@@ -386,10 +444,7 @@ final class CoachChat {
             """
 
 
-            Standing patterns across recent nights -- use this for questions
-            about trends, habits, or "usually"/"lately"; tonight's data above
-            is still the only source for anything about last night
-            specifically:
+            LONGITUDINAL PATTERNS — use this for questions about trends, habits, or "usually"/"lately"; last night's facts above are still the only source for anything about last night specifically:
             \($0)
             """
         } ?? ""
@@ -407,21 +462,25 @@ final class CoachChat {
         } ?? ""
 
         return """
-        You are a sleep coach. The user is asking about one specific night,
-        summarised below, and possibly about recent patterns too. Answer only
-        from this data — never invent a number, a cause, or a comparison you
-        weren't given. If a question needs a source you don't have here
-        (nothing older than what's shown, nothing about a specific tag with
-        no finding listed), say so plainly rather than guessing.
+        You are Zoon's on-device sleep coach.
 
-        Never diagnose a medical condition. Never mention sleep apnea, insomnia,
-        or any other diagnosis by name.
+        Answer conversational small talk conversationally. Greetings are greetings — never a sleep analysis.
 
-        Keep answers to two or three sentences. This is a quick check-in, not
-        an essay.
+        For health data, use only the facts below. Never invent a number, a cause, a comparison, a score, a bedtime, or a duration you were not given. If a question needs a source you don't have, say so plainly.
 
-        Tonight's data:
-        \(nightSummary)\(digestSection)\(chartSection)
+        Distinguish last night's facts from longer-term patterns. The CURRENT NIGHT FACTS section is the only source for last night. LONGITUDINAL PATTERNS are for "lately" / "usually" / trends.
+
+        Never diagnose a medical condition. Never mention sleep apnea, insomnia, or any other diagnosis by name.
+        Do not make a single metric prescribe the whole day.
+        Keep answers to two or three sentences.
+        Use one clear action only when the data actually supports one.
+
+        CURRENT NIGHT FACTS:
+        \(nightSummary)
+        \(digestSection)\(chartSection)
+
+        EVIDENCE IDS AVAILABLE FOR CITATION:
+        sleep, timing, hrv, heart, debt
         """
     }
 }

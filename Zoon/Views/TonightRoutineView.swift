@@ -27,14 +27,29 @@ struct TonightRoutineView: View {
             }
             Section("Routine") {
                 Stepper("\(store.value.routine.minutes) minutes", value: $store.value.routine.minutes, in: 5...120, step: 5)
+                Stepper(
+                    "\(store.value.routine.guidedBreathingMinutes) min guided breathing",
+                    value: $store.value.routine.guidedBreathingMinutes,
+                    in: 2...min(15, store.value.routine.minutes),
+                    step: 1
+                )
                 Toggle("Start with breathing", isOn: $store.value.routine.breathing)
-                Toggle("Voice guidance", isOn: $store.value.routine.voice)
+                Picker("Voice", selection: $store.value.routine.voiceMode) {
+                    ForEach(WindDownGuidanceConfiguration.VoiceMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
                 Toggle("Phase haptics", isOn: $store.value.routine.haptics)
                 Picker("Sound scene", selection: $store.value.routine.sceneID) {
                     Text("Soft rain").tag(UUID?.none)
                     ForEach(store.value.scenes) { Text($0.name).tag(Optional($0.id)) }
                 }
                 NavigationLink("Create a sound scene") { AudioStudioView() }
+                if controller.active {
+                    Text(stageCopy)
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
             }.disabled(controller.active)
             Section {
                 if let session = store.value.session {
@@ -58,6 +73,15 @@ struct TonightRoutineView: View {
         .navigationTitle("Tonight")
         .scrollContentBackground(.hidden).nightBackground()
         .onAppear { controller.reconcile() }
+    }
+
+    private var stageCopy: String {
+        switch controller.stage {
+        case .arrive: "Arrive — get comfortable."
+        case .guided: "Guided breathing."
+        case .quiet: "Quiet continuation — sound only."
+        case .close: "Settling into sleep."
+        }
     }
 }
 

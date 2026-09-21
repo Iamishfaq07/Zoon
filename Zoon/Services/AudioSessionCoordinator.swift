@@ -37,7 +37,7 @@ final class AudioSessionCoordinator {
         observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
             guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
-            Task { @MainActor in self?.interrupt() }
+            Task { @MainActor in self?.routeLost() }
         })
         observers.append(center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.reset() }
@@ -53,8 +53,10 @@ final class AudioSessionCoordinator {
     ) throws {
         let others = owners.filter { $0.key != id }
         guard !others.values.contains(where: { $0.recording }) && (!recording || others.isEmpty) else {
-            throw NSError(domain: "ZoonAudio", code: 1, userInfo: [NSLocalizedDescriptionKey:
-                "Stop the active sound or recording before starting this session."])
+            let message = recording
+                ? "Stop Zoon's sleep audio before starting Snore Check so its own sound isn't classified as room audio."
+                : "Stop the active recording before starting playback."
+            throw NSError(domain: "ZoonAudio", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
         }
         let session = AVAudioSession.sharedInstance()
         if owners.isEmpty {
@@ -86,7 +88,18 @@ final class AudioSessionCoordinator {
 
     private func resumeInterrupted(shouldResume: Bool) {
         guard shouldResume else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
         let callbacks = owners.values.compactMap(\.resume)
         for resume in callbacks { resume() }
+    }
+
+    /// Headphones unplugged: playback owners must not dump to speakers.
+    /// Recording owners keep the built-in mic — overnight Snore Check should
+    /// not end because a Bluetooth headset disconnected.
+    private func routeLost() {
+        let playback = owners.values.filter { !$0.recording }
+        for owner in playback {
+            (owner.reset ?? owner.stop)()
+        }
     }
 }

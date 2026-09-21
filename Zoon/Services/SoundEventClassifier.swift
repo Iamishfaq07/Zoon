@@ -13,8 +13,8 @@ import os
 /// `SnoreDetector` feeds it the identical buffers its own heuristic already
 /// processes, so there is no second permission prompt and no second stream
 /// of raw audio anywhere -- only this class's derived (identifier,
-/// confidence) pairs, handed back through `onEvent`, survive past the
-/// buffer they were measured in.
+/// confidence, time range) triples, handed back through `onEvent`, survive
+/// past the buffer they were measured in.
 final class SoundEventClassifier: NSObject, SNResultsObserving, @unchecked Sendable {
 
     /// Below this, a classification is more likely background noise than a
@@ -23,33 +23,32 @@ final class SoundEventClassifier: NSObject, SNResultsObserving, @unchecked Senda
     private static let confidenceFloor: Double = 0.5
 
     /// Categories worth surfacing on a sleeping person's own record of their
-    /// own night. Deliberately narrow, and deliberately excludes "speech":
-    /// the full taxonomy recognizes hundreds of everyday sounds (traffic,
-    /// typing, music) that are just noise in a bedroom context, but speech
-    /// specifically is excluded on privacy grounds, not just relevance --
-    /// logging "talking detected at 2:14 AM" captures a partner or
-    /// roommate's voice and presence without their consent, which is exactly
-    /// what this feature's own privacy design (see `SnoreDetector`) commits
-    /// to never doing, even in the derived, audio-free form an event is
-    /// stored in.
+    /// own night. Deliberately narrow, and deliberately excludes "speech".
     private static let trackedIdentifiers: Set<String> = [
         "snoring", "cough", "coughing", "baby_cry_infant_cry", "baby_crying"
     ]
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "SoundEventClassifier")
     private var analyzer: SNAudioStreamAnalyzer?
-    private var onEvent: (@Sendable (String, Double) -> Void)?
+    private var onEvent: (@Sendable (String, Double, TimeInterval, TimeInterval) -> Void)?
 
     /// `false` once construction fails to build the request -- guards
     /// against a future OS ever retiring `.version1` rather than force-trying
     /// into a crash.
     private(set) var isAvailable = true
+    private(set) var knownClassifications: Set<String> = []
+    var supportsSnoring: Bool { knownClassifications.contains("snoring") }
 
-    func start(format: AVAudioFormat, onEvent: @escaping @Sendable (String, Double) -> Void) {
+    func start(format: AVAudioFormat, onEvent: @escaping @Sendable (String, Double, TimeInterval, TimeInterval) -> Void) {
         self.onEvent = onEvent
+        knownClassifications = []
         let newAnalyzer = SNAudioStreamAnalyzer(format: format)
         do {
             let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
+            knownClassifications = Set(request.knownClassifications.map { "\($0)" })
+            if !knownClassifications.contains("snoring") {
+                logger.error("version1 taxonomy has no snoring class; heuristic is the fallback")
+            }
             try newAnalyzer.add(request, withObserver: self)
             analyzer = newAnalyzer
             isAvailable = true
@@ -77,10 +76,12 @@ final class SoundEventClassifier: NSObject, SNResultsObserving, @unchecked Senda
 
     func request(_ request: SNRequest, didProduce result: SNResult) {
         guard let result = result as? SNClassificationResult else { return }
+        let start = result.timeRange.start.seconds
+        let duration = result.timeRange.duration.seconds
         for classification in result.classifications {
             guard Self.trackedIdentifiers.contains(classification.identifier),
                   classification.confidence >= Self.confidenceFloor else { continue }
-            onEvent?(classification.identifier, classification.confidence)
+            onEvent?(classification.identifier, classification.confidence, start, duration)
         }
     }
 
