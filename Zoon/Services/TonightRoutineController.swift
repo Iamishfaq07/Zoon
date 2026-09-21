@@ -155,7 +155,13 @@ final class TonightRoutineController {
                 guard let self, let session = store.value.session else { return }
                 if session.remaining(at: .now) <= 0 { self.finish(); return }
                 if let start = self.startedAt {
-                    self.stage = self.guidance.stage(elapsed: Date.now.timeIntervalSince(start))
+                    let next = self.guidance.stage(elapsed: Date.now.timeIntervalSince(start))
+                    if next != self.stage {
+                        self.stage = next
+                        if next == .quiet || next == .close {
+                            self.breathing.stop()
+                        }
+                    }
                 }
                 if let message = audio?.interruptionMessage, audio?.playing == nil {
                     self.runState = .failed(message)

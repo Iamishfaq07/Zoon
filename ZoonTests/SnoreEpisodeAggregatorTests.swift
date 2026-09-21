@@ -49,4 +49,17 @@ final class SnoreEpisodeAggregatorTests: XCTestCase {
         )
         XCTAssertEqual(band, .high)
     }
+
+    func testCompletedSessionDoesNotBecomeLimitedBecauseTheMicWentQuiet() {
+        let band = SnoreEpisodeAggregator.confidence(
+            classifierAvailable: true,
+            classifierSupportsSnoring: true,
+            monitoredSeconds: 40 * 60,
+            lastBufferAge: 8_000,
+            heuristicSeconds: 12,
+            classifierSeconds: 15,
+            sessionEnded: true
+        )
+        XCTAssertNotEqual(band, .limited)
+    }
 }

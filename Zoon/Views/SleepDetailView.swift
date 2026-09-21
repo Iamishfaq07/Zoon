@@ -58,7 +58,7 @@ struct SleepDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
-                    CoachChatView(night: context.night)
+                    CoachChatView(night: context.night, contextMode: .selectedNight)
                 } label: {
                     Image(systemName: "bubble.left.and.bubble.right")
                 }
@@ -98,7 +98,8 @@ struct SleepDetailView: View {
             NavigationLink {
                 CoachChatView(
                     night: context.night,
-                    initialPrompt: "What stands out about this night, what may have mattered, and how certain are you?"
+                    initialPrompt: "What stands out about this night, what may have mattered, and how certain are you?",
+                    contextMode: .selectedNight
                 )
             } label: {
                 Label("Ask about this night", systemImage: "bubble.left.and.text.bubble.right")
@@ -168,7 +169,8 @@ struct SleepDetailView: View {
                 NavigationLink {
                     CoachChatView(
                         night: context.night,
-                        initialPrompt: "Explain the awakenings and marked events in this night. Separate measurements from possible explanations."
+                        initialPrompt: "Explain the awakenings and marked events in this night. Separate measurements from possible explanations.",
+                        contextMode: .selectedNight
                     )
                 } label: {
                     Label("Ask about these events", systemImage: "bubble.left.and.text.bubble.right")

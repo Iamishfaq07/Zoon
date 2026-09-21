@@ -294,8 +294,10 @@ struct RootView: View {
     private func consumeDeepLink() {
         guard let destination = DeepLink.consume() else { return }
         if destination == .nap, let minutes = DeepLink.consumeNapMinutes() {
-            naps.start(targetMinutes: minutes)
-            coordinator.republishGlanceSurfaces()
+            Task { @MainActor in
+                _ = await naps.startAndArm(targetMinutes: minutes)
+                coordinator.republishGlanceSurfaces()
+            }
         }
         push(destination)
     }

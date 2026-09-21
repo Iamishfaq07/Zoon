@@ -11,8 +11,9 @@ enum SnoreEvidenceFusion: Sendable {
         var start: TimeInterval
         var end: TimeInterval
         var source: Source
+        var confidence: Double
 
-        enum Source: String, Sendable {
+        enum Source: String, Sendable, Codable {
             case classifier
             case heuristic
             case both
@@ -22,31 +23,42 @@ enum SnoreEvidenceFusion: Sendable {
     }
 
     static func fuse(
-        classifier: [(start: TimeInterval, end: TimeInterval)],
+        classifier: [(start: TimeInterval, end: TimeInterval, confidence: Double)],
         heuristic: [(start: TimeInterval, end: TimeInterval)]
     ) -> [Interval] {
         let classified = classifier.filter { $0.end > $0.start }
         let heuristicOnly = heuristic.filter { $0.end > $0.start }
 
         var tagged: [Interval] = classified.map {
-            Interval(start: $0.start, end: $0.end, source: .classifier)
+            Interval(start: $0.start, end: $0.end, source: .classifier, confidence: clamp($0.confidence))
         }
         for h in heuristicOnly {
-            var remaining: [(start: TimeInterval, end: TimeInterval)] = [h]
+            var remaining: [(start: TimeInterval, end: TimeInterval)] = [(h.start, h.end)]
             for c in classified {
-                remaining = remaining.flatMap { slice($0, subtracting: c) }
+                remaining = remaining.flatMap { slice($0, subtracting: (c.start, c.end)) }
             }
             tagged.append(contentsOf: remaining.map {
-                Interval(start: $0.start, end: $0.end, source: .heuristic)
+                Interval(start: $0.start, end: $0.end, source: .heuristic, confidence: 0.4)
             })
         }
-        // Overlap of both: mark classifier intervals that also overlap a heuristic.
         for i in tagged.indices where tagged[i].source == .classifier {
             if heuristicOnly.contains(where: { overlaps(tagged[i], $0) }) {
                 tagged[i].source = .both
+                tagged[i].confidence = min(1, tagged[i].confidence + 0.05)
             }
         }
         return tagged.sorted { $0.start < $1.start }
+    }
+
+    /// Convenience for tests and older call sites that only have ranges.
+    static func fuse(
+        classifier: [(start: TimeInterval, end: TimeInterval)],
+        heuristic: [(start: TimeInterval, end: TimeInterval)]
+    ) -> [Interval] {
+        fuse(
+            classifier: classifier.map { ($0.start, $0.end, 0.8) },
+            heuristic: heuristic
+        )
     }
 
     static func snoreSeconds(from intervals: [Interval]) -> Double {
@@ -67,6 +79,10 @@ enum SnoreEvidenceFusion: Sendable {
         }
         out.append(current)
         return out
+    }
+
+    private static func clamp(_ value: Double) -> Double {
+        min(1, max(0, value))
     }
 
     private static func overlaps(_ a: Interval, _ b: (start: TimeInterval, end: TimeInterval)) -> Bool {

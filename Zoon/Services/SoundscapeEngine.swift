@@ -188,7 +188,7 @@ final class SoundscapeEngine {
     private(set) var timerMinutes: Int?
     private(set) var remainingSeconds: Int = 0
 
-    var isPlaying: Bool { playing != nil && !wasInterrupted }
+    var isPlaying: Bool { playing != nil && !wasInterrupted && !pausedByUser }
 
     /// True when the graph is actually producing audio.
     var isGraphAudible: Bool {
@@ -228,7 +228,9 @@ final class SoundscapeEngine {
     /// 1 = unfiltered; lower values strip high harmonics as sleep deepens.
     private var harmonicPresence: Float = 1
     private var pausedSound: Sound?
+    private var currentScene: PersonalSetup.Scene?
     private var wasInterrupted = false
+    private var pausedByUser = false
     private var watchdogTask: Task<Void, Never>?
     private var watchdogRecoveredGeneration: UUID?
     private var lastSuccessfulPlayback: Date = .distantPast
@@ -242,8 +244,10 @@ final class SoundscapeEngine {
 
     // MARK: - Control
 
-    func play(_ sound: Sound, toggle: Bool = true) {
+    func play(_ sound: Sound, toggle: Bool = true, preservingScene: Bool = false) {
         if playing == sound && toggle { stop(); return }
+        if !preservingScene { currentScene = nil }
+        pausedByUser = false
 
         let inherited = SoundscapeTimerPolicy.deadlineAfterSwitchingSound(currentDeadline: deadline)
         if inherited == nil {
@@ -392,7 +396,8 @@ final class SoundscapeEngine {
     func playScene(_ scene: PersonalSetup.Scene) {
         guard let first = scene.layers.first,
               let sound = Sound(rawValue: first.sound), (1...3).contains(scene.layers.count) else { return }
-        play(sound, toggle: false)
+        currentScene = scene
+        play(sound, toggle: false, preservingScene: true)
         guard isPlaying else { return }
         sceneLevels = scene.layers
         volume = Float(first.level) / 3
@@ -444,6 +449,8 @@ final class SoundscapeEngine {
         harmonicPresence = 1
         pausedSound = nil
         wasInterrupted = false
+        pausedByUser = false
+        currentScene = nil
         canResumeOnSpeaker = false
         clearNowPlaying()
         AudioSessionCoordinator.shared.release(audioOwner)
@@ -471,20 +478,29 @@ final class SoundscapeEngine {
         interruptionMessage = nil
         if playing != nil, player != nil || filePlayer != nil, restartEnginesIfNeeded() {
             player?.play()
-            filePlayer?.play()
+            let fileOK = filePlayer.map { $0.play() } ?? true
             if let sound = playing, let format = player?.outputFormat(forBus: 0), filePlayer == nil {
                 scheduleBuffer(sound, format: format)
             }
             for layer in scenePlayers {
                 layer.player?.play()
-                layer.filePlayer?.play()
+                _ = layer.filePlayer?.play()
             }
-            lastSuccessfulPlayback = .now
-            publishNowPlaying()
-            return
+            if fileOK {
+                lastSuccessfulPlayback = .now
+                publishNowPlaying()
+                return
+            }
         }
-        guard let pausedSound else { return }
-        play(pausedSound, toggle: false)
+        restoreSelection()
+    }
+
+    private func restoreSelection() {
+        if let scene = currentScene {
+            playScene(scene)
+        } else if let sound = pausedSound ?? playing {
+            play(sound, toggle: false)
+        }
     }
 
     private func pauseForRouteLoss() {
@@ -497,9 +513,44 @@ final class SoundscapeEngine {
         canResumeOnSpeaker = false
         interruptionMessage = nil
         wasInterrupted = false
-        if let sound = pausedSound ?? playing {
-            play(sound, toggle: false)
+        pausedByUser = false
+        restoreSelection()
+    }
+
+    func pauseForUser() {
+        guard playing != nil || pausedSound != nil else { return }
+        pausedSound = playing ?? pausedSound
+        pausedByUser = true
+        wasInterrupted = false
+        interruptionMessage = nil
+        player?.pause()
+        filePlayer?.pause()
+        for layer in scenePlayers {
+            layer.player?.pause()
+            layer.filePlayer?.pause()
         }
+        publishNowPlaying()
+    }
+
+    func resumeFromPause() {
+        guard pausedByUser else {
+            resumeAfterInterruption()
+            return
+        }
+        pausedByUser = false
+        wasInterrupted = false
+        if playing != nil, player != nil || filePlayer != nil, restartEnginesIfNeeded() {
+            player?.play()
+            _ = filePlayer?.play()
+            for layer in scenePlayers {
+                layer.player?.play()
+                _ = layer.filePlayer?.play()
+            }
+            lastSuccessfulPlayback = .now
+            publishNowPlaying()
+            return
+        }
+        restoreSelection()
     }
 
     /// An interruption can stop an `AVAudioEngine` underneath its paused
@@ -524,9 +575,16 @@ final class SoundscapeEngine {
     /// nothing to pause or resume. Tear down fully rather than sit in a
     /// "will resume" state that can never fire.
     private func stopAfterMediaServicesReset() {
-        guard playing != nil || pausedSound != nil else { return }
+        guard playing != nil || pausedSound != nil || currentScene != nil else { return }
+        let scene = currentScene
+        let sound = playing ?? pausedSound
+        let savedDeadline = deadline
         stop()
+        currentScene = scene
+        pausedSound = sound
+        deadline = savedDeadline
         interruptionMessage = "Audio was reset by the system. Tap a sound to start again."
+        canResumeOnSpeaker = true
     }
 
     /// Sleep-onset cue: as overnight HR falls below resting, turn the
@@ -626,32 +684,41 @@ final class SoundscapeEngine {
     }
 
     private func checkPlaybackHealth() {
-        guard playing != nil, !wasInterrupted else { return }
+        guard playing != nil, !wasInterrupted, !pausedByUser else { return }
         if timerMinutes != nil, remainingSeconds <= 0 { return }
         if isGraphAudible {
             lastSuccessfulPlayback = .now
             return
         }
         if watchdogRecoveredGeneration == playbackGeneration {
-            interruptionMessage = "Audio was interrupted by the system. Tap to resume."
-            watchdogTask?.cancel()
-            watchdogTask = nil
-            playing = nil
-            clearNowPlaying()
+            markPlaybackFailed()
             return
         }
         watchdogRecoveredGeneration = playbackGeneration
-        if filePlayer != nil {
-            filePlayer?.play()
-        } else if restartEnginesIfNeeded(), let player {
-            player.play()
-        } else {
-            interruptionMessage = "Audio was interrupted by the system. Tap to resume."
-            watchdogTask?.cancel()
-            watchdogTask = nil
-            playing = nil
-            clearNowPlaying()
+        if let filePlayer {
+            guard filePlayer.play(), filePlayer.isPlaying else {
+                markPlaybackFailed()
+                return
+            }
+            lastSuccessfulPlayback = .now
+            return
         }
+        if restartEnginesIfNeeded(), let player {
+            player.play()
+            if isGraphAudible {
+                lastSuccessfulPlayback = .now
+                return
+            }
+        }
+        markPlaybackFailed()
+    }
+
+    private func markPlaybackFailed() {
+        interruptionMessage = "Audio was interrupted by the system. Tap to resume."
+        watchdogTask?.cancel()
+        watchdogTask = nil
+        playing = nil
+        clearNowPlaying()
     }
 
     private func publishNowPlaying() {
@@ -661,7 +728,7 @@ final class SoundscapeEngine {
             MPMediaItemPropertyTitle: playing?.label ?? "Sleep Sounds",
             MPMediaItemPropertyArtist: "Zoon"
         ]
-        info[MPNowPlayingInfoPropertyPlaybackRate] = (playing != nil && !wasInterrupted) ? 1.0 : 0.0
+        info[MPNowPlayingInfoPropertyPlaybackRate] = (playing != nil && !wasInterrupted && !pausedByUser) ? 1.0 : 0.0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         #endif
     }
@@ -682,6 +749,14 @@ final class SoundscapeEngine {
         center.stopCommand.isEnabled = true
         center.playCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
+            if self.pausedByUser {
+                self.resumeFromPause()
+                return .success
+            }
+            if self.currentScene != nil {
+                self.restoreSelection()
+                return .success
+            }
             if let sound = self.playing ?? self.pausedSound {
                 self.play(sound, toggle: false)
                 return .success
@@ -689,7 +764,7 @@ final class SoundscapeEngine {
             return .noActionableNowPlayingItem
         }
         center.pauseCommand.addTarget { [weak self] _ in
-            self?.stop()
+            self?.pauseForUser()
             return .success
         }
         center.stopCommand.addTarget { [weak self] _ in

@@ -93,6 +93,14 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
 
     static let arriveSeconds: TimeInterval = 45
     static let closeSeconds: TimeInterval = 20
+    static let minimumQuietSeconds: TimeInterval = 30
+
+    static var reservedSeconds: TimeInterval { arriveSeconds + closeSeconds + minimumQuietSeconds }
+
+    static func maxGuidedMinutes(routineMinutes: Int) -> Int {
+        let available = Double(min(120, max(5, routineMinutes))) * 60 - reservedSeconds
+        return max(2, min(15, Int(available / 60)))
+    }
 
     init(
         routineDurationMinutes: Int = 30,
@@ -100,8 +108,8 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
         voiceMode: VoiceMode = .natural
     ) {
         self.routineDurationMinutes = min(120, max(5, routineDurationMinutes))
-        let guidedCap = min(self.routineDurationMinutes, max(2, guidedBreathingMinutes))
-        self.guidedBreathingMinutes = guidedCap
+        let cap = Self.maxGuidedMinutes(routineMinutes: self.routineDurationMinutes)
+        self.guidedBreathingMinutes = min(cap, max(2, guidedBreathingMinutes))
         self.voiceMode = voiceMode
     }
 
@@ -111,15 +119,25 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
     var usesVoice: Bool { voiceMode.usesVoice }
 
     var guidedCycles: Int {
-        let budget = Double(guidedBreathingMinutes) * 60
-        return max(1, Int((budget / Self.cycleSeconds).rounded()))
+        let budget = actualGuidedBudget
+        return max(1, Int(budget / Self.cycleSeconds))
+    }
+
+    /// Whole cycles that actually fit the guided window. Display this, not
+    /// a rounded-up count that overruns the stage.
+    var actualGuidedBudget: TimeInterval {
+        Double(guidedBreathingMinutes) * 60
+    }
+
+    var actualGuidedSeconds: TimeInterval {
+        Double(guidedCycles) * Self.cycleSeconds
     }
 
     func stage(elapsed: TimeInterval) -> Stage {
         if elapsed < Self.arriveSeconds { return .arrive }
-        let guidedEnd = Self.arriveSeconds + Double(guidedBreathingMinutes) * 60
+        let guidedEnd = Self.arriveSeconds + actualGuidedSeconds
         if elapsed < guidedEnd { return .guided }
-        if elapsed < max(0, routineSeconds - Self.closeSeconds) { return .quiet }
+        if elapsed < max(guidedEnd, routineSeconds - Self.closeSeconds) { return .quiet }
         return .close
     }
 
@@ -134,7 +152,7 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
             )
         }
         let intoGuidance = elapsed - Self.arriveSeconds
-        let totalGuided = Double(guidedBreathingMinutes) * 60
+        let totalGuided = actualGuidedSeconds
         if intoGuidance >= totalGuided {
             return GuidedPosition(cyclesCompleted: guidedCycles, phaseName: "quiet", remaining: 0)
         }

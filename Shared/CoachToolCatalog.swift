@@ -25,6 +25,14 @@ enum CoachToolCatalog {
         case getTomorrow
         case getFatigueContext
         case getTrainingContext
+        case getTrendSummary
+        case getMonthlyChange
+        case getBehaviorEvidence
+        case getLearningStatus
+        case getWeeklyPlan
+        case getCurrentPriority
+        case getPhysiologicalLoad
+        case getDailyLoad
         case logCaffeine
         case startNap
         case prepareTomorrow
@@ -41,7 +49,9 @@ enum CoachToolCatalog {
             case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
                 true
             case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getShortfall, .getEnergy,
-                 .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext:
+                 .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext,
+                 .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
+                 .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad:
                 false
             }
         }
@@ -61,6 +71,14 @@ enum CoachToolCatalog {
             case .getTomorrow: "Read the Tomorrow plan, if one exists."
             case .getFatigueContext: "Read current signals that may relate to feeling tired."
             case .getTrainingContext: "Read Recovery, Energy and Load together."
+            case .getTrendSummary: "Read recent sleep trend."
+            case .getMonthlyChange: "Read what changed this month."
+            case .getBehaviorEvidence: "Read logged-behaviour associations, with sample size and limits."
+            case .getLearningStatus: "Read what Zoon has observed from recent nights."
+            case .getWeeklyPlan: "Read this week's sleep catch-up plan."
+            case .getCurrentPriority: "Read the one action worth focusing on now."
+            case .getPhysiologicalLoad: "Read physiological load so far today."
+            case .getDailyLoad: "Read today's Load."
             case .logCaffeine: "Log caffeine after you confirm."
             case .startNap: "Start a nap after you confirm."
             case .prepareTomorrow: "Open Tomorrow after you confirm the time."
@@ -72,7 +90,20 @@ enum CoachToolCatalog {
     struct Call: Equatable, Sendable {
         let kind: Kind
         let proposedMinutes: Int?
+        let proposedServings: Int?
         let confirmationPrompt: String?
+
+        init(
+            kind: Kind,
+            proposedMinutes: Int? = nil,
+            proposedServings: Int? = nil,
+            confirmationPrompt: String? = nil
+        ) {
+            self.kind = kind
+            self.proposedMinutes = proposedMinutes
+            self.proposedServings = proposedServings
+            self.confirmationPrompt = confirmationPrompt
+        }
     }
 
     static func interpret(_ utterance: String) -> Call? {
@@ -95,7 +126,11 @@ enum CoachToolCatalog {
         ]) {
             return Call(kind: .getSleepScore, proposedMinutes: nil, confirmationPrompt: nil)
         }
-        if matches(q, ["last night summary", "summarise last night", "summarize last night", "what happened last night", "how was last night"]) {
+        if matches(q, [
+            "last night summary", "summarise last night", "summarize last night",
+            "what happened last night", "how was last night",
+            "what stands out about this night", "explain the awakenings"
+        ]) {
             return Call(kind: .getLastNightSummary, proposedMinutes: nil, confirmationPrompt: nil)
         }
         if matches(q, ["why am i tired", "why do i feel tired", "feeling tired", "feel tired"]) {
@@ -103,6 +138,52 @@ enum CoachToolCatalog {
         }
         if matches(q, ["should i train", "train today", "should i work out", "workout today", "ready to train"]) {
             return Call(kind: .getTrainingContext, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        if matches(q, ["what should i focus", "what should i focus on", "what should i work on"]) {
+            return Call(kind: .getCurrentPriority)
+        }
+        if matches(q, ["physiological load", "autonomic load", "stress load"]) {
+            return Call(kind: .getPhysiologicalLoad)
+        }
+        if matches(q, ["what's my load", "whats my load", "today's load", "todays load", "daily load"])
+            || (wholeWord("load", in: q) && (q.contains("what") || q.contains("how"))) {
+            return Call(kind: .getDailyLoad)
+        }
+        if matches(q, [
+            "what changed this month", "what changed", "monthly change", "this month"
+        ]) {
+            return Call(kind: .getMonthlyChange)
+        }
+        if matches(q, [
+            "recent trend", "sleep trend", "trend summary", "how has my sleep been trending",
+            "what's my trend", "whats my trend"
+        ]) {
+            return Call(kind: .getTrendSummary)
+        }
+        if matches(q, [
+            "zoon learning", "what’s zoon learning", "what's zoon learning",
+            "learning about my sleep", "what has zoon learned"
+        ]) {
+            return Call(kind: .getLearningStatus)
+        }
+        if matches(q, [
+            "actually affecting", "habits might be affecting", "hurt my sleep",
+            "cool room", "still lengthen", "still shorten", "affecting me",
+            "late caffeine", "is caffeine"
+        ]) {
+            return Call(kind: .getBehaviorEvidence)
+        }
+        if matches(q, [
+            "catch up on sleep", "catch up this week", "weekly plan",
+            "this week"
+        ]) {
+            return Call(kind: .getWeeklyPlan)
+        }
+        if matches(q, ["why was my hrv", "hrv low", "hrv higher", "why did i wake"]) {
+            return Call(kind: .getLastNightSummary)
+        }
+        if matches(q, ["prepare for tomorrow"]) {
+            return Call(kind: .getTomorrow)
         }
         if matches(q, ["recovery", "how am i doing", "how recovered"]) {
             return Call(kind: .getRecovery, proposedMinutes: nil, confirmationPrompt: nil)
@@ -122,7 +203,7 @@ enum CoachToolCatalog {
         }
         if matches(q, [
             "sleep window", "tonight's plan", "tonights plan", "when should i sleep",
-            "bedtime", "what should i do tonight", "what should i focus"
+            "bedtime", "what should i do tonight"
         ]) {
             return Call(kind: .getTonight, proposedMinutes: nil, confirmationPrompt: nil)
         }
@@ -134,11 +215,19 @@ enum CoachToolCatalog {
         }
 
         // Writes. Each one confirms before it does anything.
-        if matches(q, ["log coffee", "log caffeine", "had coffee", "coffee at"]) {
+        if matches(q, ["log coffee", "log caffeine", "had coffee", "had coffees", "coffee at", "coffees at"]) {
             let minutes = parseTimeOfDayMinutes(q, bareHour: .afternoon)
-            let label = minutes.map { "Log caffeine at approximately \(clock(minutes: $0))?" }
-                ?? "Log caffeine for today?"
-            return Call(kind: .logCaffeine, proposedMinutes: minutes, confirmationPrompt: label)
+            let servings = parseServings(q)
+            var label = "Log caffeine"
+            if let servings { label += " (\(servings) serving\(servings == 1 ? "" : "s"))" }
+            if let minutes { label += " at approximately \(clock(minutes: minutes))" }
+            label += "?"
+            return Call(
+                kind: .logCaffeine,
+                proposedMinutes: minutes,
+                proposedServings: servings,
+                confirmationPrompt: label
+            )
         }
         if isNapRequest(q) {
             let minutes = parseNapMinutes(q) ?? 25
@@ -248,6 +337,23 @@ enum CoachToolCatalog {
               let r = Range(match.range(at: 1), in: q),
               let minutes = Int(q[r]) else { return nil }
         return min(90, max(10, minutes))
+    }
+
+    /// "two coffees" / "2 coffees". Never fabricates milligrams.
+    static func parseServings(_ q: String) -> Int? {
+        let words: [String: Int] = [
+            "two": 2, "three": 3, "four": 4, "five": 5,
+            "a couple": 2, "couple": 2
+        ]
+        for (word, value) in words where q.contains(word) {
+            return value
+        }
+        let pattern = #"\b(\d{1,2})\s*(coffee|coffees|cups|cup|servings|serving)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: q, range: NSRange(q.startIndex..., in: q)),
+              let r = Range(match.range(at: 1), in: q),
+              let n = Int(q[r]), n > 0, n < 20 else { return nil }
+        return n
     }
 
     /// The hour past which caffeine is the `.caffeineLate` behaviour rather

@@ -22,6 +22,8 @@ struct SleepToolsStrip: View {
 
             if hasLiveSession {
                 liveStatus
+            } else if !reliabilityLines.isEmpty {
+                reliabilityCard
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -83,10 +85,42 @@ struct SleepToolsStrip: View {
                 Text("Wind Down · \(caption)")
             }
             if let nap = naps.activeNap {
-                Text("Nap · Alarm armed · \(nap.targetMinutes) min")
+                Text("Nap · \(nap.wakeKind?.shortLabel ?? "Arming") · \(nap.targetMinutes) min")
             }
             if snore.isRunning {
                 Text("Snore Check · \(snoreStatus ?? "Listening")")
+            }
+        }
+        .font(Theme.label(12, weight: .medium))
+        .foregroundStyle(Theme.inkSecondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var reliabilityLines: [SleepToolReliability.Line] {
+        let summary = snore.lastSummary
+        let snoreRecent = summary.map { Calendar.current.isDateInToday($0.date) || Calendar.current.isDateInYesterday($0.date) } ?? false
+        let lastNap = naps.naps.last
+        let napRecent = lastNap.map { Calendar.current.isDateInToday($0.start) || Calendar.current.isDateInYesterday($0.start) } ?? false
+        return SleepToolReliability.lines(
+            snoreMonitoredMinutes: snoreRecent ? summary.map { Int($0.monitoredMinutes.rounded()) } : nil,
+            snoreGapMinutes: snoreRecent ? summary?.interruptionDurationMinutes.map { Int($0.rounded()) } : nil,
+            snoreInterruptions: snoreRecent && (summary?.interruptionDurationMinutes ?? 0) > 0 ? 1 : nil,
+            snorePartial: summary?.isPartial == true,
+            napMinutes: napRecent ? lastNap.map { Int($0.minutes.rounded()) } : nil,
+            napWake: napRecent ? (naps.lastArmed?.wake ?? naps.activeNap?.wakeKind) : nil,
+            soundsMinutes: nil,
+            soundsUninterrupted: nil
+        )
+    }
+
+    private var reliabilityCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Last session")
+                .font(Theme.label(11, weight: .bold))
+                .foregroundStyle(Theme.inkTertiary)
+            ForEach(reliabilityLines, id: \.title) { line in
+                Text("\(line.title) · \(line.detail)")
             }
         }
         .font(Theme.label(12, weight: .medium))
@@ -101,8 +135,13 @@ struct SleepToolsStrip: View {
     }
 
     private var napStatus: String? {
-        guard naps.activeNap != nil else { return nil }
-        return "Armed"
+        guard let nap = naps.activeNap else { return nil }
+        switch nap.wakeKind {
+        case .alarmKit: return "AlarmKit"
+        case .notification: return "Notification"
+        case .unavailable: return "No wake"
+        case nil: return "Arming"
+        }
     }
 
     private var windDownStatus: String? {

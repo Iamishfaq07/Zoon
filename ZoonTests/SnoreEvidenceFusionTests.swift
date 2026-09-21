@@ -30,4 +30,15 @@ final class SnoreEvidenceFusionTests: XCTestCase {
         )
         XCTAssertEqual(SnoreEvidenceFusion.snoreSeconds(from: fused), 20, accuracy: 0.01)
     }
+
+    func testHeuristicOnlyIntervalsCarryLowerConfidenceThanClassifier() {
+        let fused = SnoreEvidenceFusion.fuse(
+            classifier: [(start: 0, end: 10, confidence: 0.94)],
+            heuristic: [(start: 40, end: 50)]
+        )
+        let classified = fused.first { $0.source == .classifier }
+        let heuristic = fused.first { $0.source == .heuristic }
+        XCTAssertEqual(classified?.confidence ?? 0, 0.94, accuracy: 0.001)
+        XCTAssertLessThan(heuristic?.confidence ?? 1, classified?.confidence ?? 0)
+    }
 }

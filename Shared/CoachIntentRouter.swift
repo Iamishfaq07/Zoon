@@ -55,7 +55,7 @@ enum CoachIntentRouter: Sendable {
     }
 
     static func capabilitiesReply() -> String {
-        "I can help with last night, Recovery, Energy, tonight's plan, recent trends, and logged behaviors. I use Zoon's own numbers — I don't invent them, and I don't diagnose."
+        "I can help with last night, Recovery, Energy, Load, tonight's plan, recent trends, logged behaviours, and the one thing worth focusing on. I use Zoon's own numbers — I don't invent them, and I don't diagnose."
     }
 
     static func thanksReply() -> String {
@@ -71,7 +71,7 @@ enum CoachIntentRouter: Sendable {
     }
 
     static func unknownReply() -> String {
-        "I can help with last night, Recovery, Energy, tonight's plan, recent trends, and logged behaviors."
+        "I can help with last night, Recovery, Energy, Load, tonight's plan, recent trends, and logged behaviours."
     }
 
     // MARK: - Lexical

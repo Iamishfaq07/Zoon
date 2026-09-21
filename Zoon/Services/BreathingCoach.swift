@@ -168,8 +168,13 @@ final class BreathingCoach: NSObject, AVSpeechSynthesizerDelegate {
 
     private func resetAfterMediaServicesReset() {
         synthesizer.delegate = self
-        if runtimeState == .interrupted || runtimeState == .running {
+        acquireAudioIfNeeded()
+        switch runtimeState {
+        case .running, .resuming, .interrupted:
+            runtimeState = .interrupted
             resumeAfterInterruption()
+        default:
+            break
         }
     }
 

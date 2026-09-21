@@ -8,10 +8,10 @@ import os
 /// Every method is `@MainActor` to match `NapStore`, which owns the calls.
 @MainActor
 protocol NapWakeScheduling: AnyObject {
-    /// - Returns: whether the request was accepted, so a refusal can be
-    ///   recorded rather than reported as armed.
+    /// - Returns: how the wake was armed, so AlarmKit and a Focus-silenced
+    ///   notification are never reported as the same thing.
     @discardableResult
-    func schedule(at date: Date, targetMinutes: Int) async -> Bool
+    func schedule(at date: Date, targetMinutes: Int) async -> NapWakeKind
     func cancel()
 }
 
@@ -38,21 +38,27 @@ final class NapWake: NapWakeScheduling {
     }
 
     @discardableResult
-    func schedule(at date: Date, targetMinutes: Int) async -> Bool {
+    func schedule(at date: Date, targetMinutes: Int) async -> NapWakeKind {
         cancel()
 
         let seconds = date.timeIntervalSinceNow
         guard seconds > 0 else {
             logger.notice("Nap target is already past; nothing scheduled")
-            return false
+            return .unavailable
         }
 
-        if await alarm.schedule(at: date, slot: .nap) {
-            logger.info("Nap AlarmKit slot armed")
-            return true
+        if alarm.isAvailable {
+            let authorized = await alarm.requestAuthorization()
+            if authorized, await alarm.schedule(at: date, slot: .nap) {
+                logger.info("Nap AlarmKit slot armed")
+                return .alarmKit
+            }
         }
 
-        return await scheduleNotification(seconds: seconds, targetMinutes: targetMinutes)
+        if await scheduleNotification(seconds: seconds, targetMinutes: targetMinutes) {
+            return .notification
+        }
+        return .unavailable
     }
 
     func cancel() {
@@ -63,8 +69,16 @@ final class NapWake: NapWakeScheduling {
 
     private func scheduleNotification(seconds: TimeInterval, targetMinutes: Int) async -> Bool {
         let settings = await center.notificationSettings()
-        let permitted = settings.authorizationStatus == .authorized
+        var permitted = settings.authorizationStatus == .authorized
             || settings.authorizationStatus == .provisional
+        if !permitted {
+            do {
+                permitted = try await center.requestAuthorization(options: [.alert, .sound])
+            } catch {
+                logger.notice("Notification authorization failed: \(error.localizedDescription, privacy: .public)")
+                return false
+            }
+        }
         guard permitted else {
             logger.notice("Not authorized; no nap wake scheduled")
             return false

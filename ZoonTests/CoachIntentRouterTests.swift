@@ -44,6 +44,10 @@ final class CoachIntentRouterTests: XCTestCase {
         XCTAssertEqual(kind("When should I sleep?"), .getTonight)
         XCTAssertEqual(kind("Why do I feel tired?"), .getFatigueContext)
         XCTAssertEqual(kind("Should I train today?"), .getTrainingContext)
+        XCTAssertEqual(kind("What should I focus on?"), .getCurrentPriority)
+        XCTAssertEqual(kind("What changed this month?"), .getMonthlyChange)
+        XCTAssertEqual(kind("What's my sleep trend?"), .getTrendSummary)
+        XCTAssertEqual(kind("What's my Load?"), .getDailyLoad)
     }
 
     func testUnknownDoesNotBecomeASleepSummary() {

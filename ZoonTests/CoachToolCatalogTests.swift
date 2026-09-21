@@ -80,12 +80,12 @@ final class CoachToolCatalogTests: XCTestCase {
     }
 
     func testNaturalLanguageReadsThatUsedToFallThrough() {
-        XCTAssertEqual(CoachToolCatalog.interpret("What happened last night?")?.kind, .getSleepScore)
-        XCTAssertEqual(CoachToolCatalog.interpret("How much did I sleep?")?.kind, .getSleepScore)
+        XCTAssertEqual(CoachToolCatalog.interpret("What happened last night?")?.kind, .getLastNightSummary)
+        XCTAssertEqual(CoachToolCatalog.interpret("How much did I sleep?")?.kind, .getSleepDuration)
         XCTAssertEqual(CoachToolCatalog.interpret("How am I doing today?")?.kind, .getRecovery)
         XCTAssertEqual(CoachToolCatalog.interpret("How much energy do I have?")?.kind, .getEnergy)
         XCTAssertEqual(CoachToolCatalog.interpret("What should I do tonight?")?.kind, .getTonight)
-        XCTAssertEqual(CoachToolCatalog.interpret("Why do I feel tired?")?.kind, .getRecovery)
+        XCTAssertEqual(CoachToolCatalog.interpret("Why do I feel tired?")?.kind, .getFatigueContext)
     }
 
     /// "nap" inside another word is not a nap request, and a question about a
@@ -138,7 +138,11 @@ final class CoachToolCatalogTests: XCTestCase {
             "How much have I moved", "Log coffee at 5.", "Start a 25 minute nap",
             "Prepare me for my 9 AM meeting tomorrow", "Set my alarm",
             "How much did I sleep?", "What happened last night?",
-            "Why am I tired?", "Should I train today?"
+            "Why am I tired?", "Should I train today?",
+            "What changed this month?", "What's Zoon learning about my sleep so far?",
+            "Is late caffeine actually affecting me?", "How should I catch up on sleep this week?",
+            "What should I focus on?", "What's my Load?", "Is my physiological load high?",
+            "What's my sleep trend?"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
         for kind in CoachToolCatalog.Kind.allCases {

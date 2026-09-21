@@ -26,10 +26,16 @@ struct TonightRoutineView: View {
             }
             Section("Routine") {
                 Stepper("\(store.value.routine.minutes) minutes", value: $store.value.routine.minutes, in: 5...120, step: 5)
+                    .onChange(of: store.value.routine.minutes) { _, minutes in
+                        let cap = WindDownGuidanceConfiguration.maxGuidedMinutes(routineMinutes: minutes)
+                        if store.value.routine.guidedBreathingMinutes > cap {
+                            store.value.routine.guidedBreathingMinutes = cap
+                        }
+                    }
                 Stepper(
                     "\(store.value.routine.guidedBreathingMinutes) min guided breathing",
                     value: $store.value.routine.guidedBreathingMinutes,
-                    in: 2...min(15, store.value.routine.minutes),
+                    in: 2...WindDownGuidanceConfiguration.maxGuidedMinutes(routineMinutes: store.value.routine.minutes),
                     step: 1
                 )
                 Toggle("Start with breathing", isOn: $store.value.routine.breathing)
