@@ -124,7 +124,7 @@ extension Array where Element == StageSegment {
                 merged[merged.count - 1] = StageSegment(
                     stage: last.stage,
                     start: last.start,
-                    end: max(last.end, segment.end)
+                    end: Swift.max(last.end, segment.end)
                 )
             } else {
                 merged.append(segment)
