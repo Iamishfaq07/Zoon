@@ -93,6 +93,19 @@ struct SleepDetailView: View {
                 if context.night.isMock {
                     StatusPill(text: "Sample", systemImage: "wand.and.stars", tint: Theme.inkSecondary)
                 }
+                if context.night.timingProvenance == .locallyCorrected {
+                    StatusPill(
+                        text: SleepTimingProvenance.locallyCorrected.label,
+                        systemImage: "slider.horizontal.3",
+                        tint: Theme.Family.sleep
+                    )
+                } else if context.night.timingProvenance == .estimated || context.night.timeInBedIsEstimated {
+                    StatusPill(
+                        text: SleepTimingProvenance.estimated.label,
+                        systemImage: "questionmark.circle",
+                        tint: Theme.inkSecondary
+                    )
+                }
             }
 
             NavigationLink {

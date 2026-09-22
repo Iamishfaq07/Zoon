@@ -142,6 +142,9 @@ struct TodayView: View {
                 tonightCircleHero(context)
                     .entrance(0)
 
+                AdaptiveBriefCard(brief: adaptiveBrief(context, phase: moment))
+                    .entrance(0)
+
                 let steps = tonightSteps(context)
                 if !steps.isEmpty {
                     TonightPlanCardView(
@@ -176,6 +179,8 @@ struct TodayView: View {
                 .entrance(4)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
+                AdaptiveBriefCard(brief: adaptiveBrief(context, phase: .day))
+                    .entrance(1)
             } else {
                 TodayNightHero(context: context, greeting: greeting, scoreLight: scoreLight)
                     .entrance(0)
@@ -350,6 +355,20 @@ struct TodayView: View {
     /// about today, so it reads today's naps.
     private var napMinutesToday: Double {
         coordinator.napMinutesToday()
+    }
+
+    private func adaptiveBrief(
+        _ context: DayContext,
+        phase: ZoonAmbientBackground.Band
+    ) -> AdaptiveZoonBrief.Result {
+        AdaptiveZoonBrief.make(
+            phase: phase,
+            night: context.night,
+            recoveryPercent: context.recovery.percent,
+            energy: context.bodyBattery.current,
+            load: context.strain.value,
+            tonightBedtime: plannedBedtime(context)
+        )
     }
 
     private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {

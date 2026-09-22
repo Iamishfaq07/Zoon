@@ -22,6 +22,8 @@ final class AudioSessionCoordinator {
         var routeLost: (() -> Void)?
     }
 
+    private(set) var lastMediaServicesResetSucceeded = true
+
     private init() {
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
@@ -80,21 +82,33 @@ final class AudioSessionCoordinator {
     }
 
     /// Media services restarted underneath us: every engine and node the
-    /// owners held is gone, so there is nothing to resume to. Owners that
-    /// distinguish this from a pause get their reset handler; the rest are
-    /// interrupted as before.
+    /// owners held is gone, so there is nothing to resume to.
+    ///
+    /// Restore category/mode and reactivate *before* asking owners to
+    /// rebuild. Owners that reconstruct Soundscape / BreathingCoach / Snore
+    /// against a dead session would start engines that cannot run. If this
+    /// restore fails, owners are not told the session is healthy.
     private func reset() {
-        let callbacks = owners.values.map { $0.reset ?? $0.stop }
-        for callback in callbacks { callback() }
         guard !owners.isEmpty else { return }
         let recording = owners.values.contains(where: \.recording)
         let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(
-            recording ? .record : .playback,
-            mode: recording ? .measurement : .default,
-            options: recording ? [] : [.mixWithOthers]
-        )
-        try? session.setActive(true)
+        do {
+            try session.setCategory(
+                recording ? .record : .playback,
+                mode: recording ? .measurement : .default,
+                options: recording ? [] : [.mixWithOthers]
+            )
+            try session.setActive(true)
+            lastMediaServicesResetSucceeded = true
+        } catch {
+            lastMediaServicesResetSucceeded = false
+            return
+        }
+        guard AudioSessionResetOrder.shouldNotifyOwners(sessionRestored: lastMediaServicesResetSucceeded) else {
+            return
+        }
+        let callbacks = owners.values.map { $0.reset ?? $0.stop }
+        for callback in callbacks { callback() }
     }
 
     private func resumeInterrupted(shouldResume: Bool) {

@@ -381,7 +381,8 @@ extension SleepNightRecord {
             // would report a working temperature sensor as absent.
             wristTempMeasured: wristTempAbsoluteC != nil,
             sleepApneaEventCount: sleepApneaEventCount,
-            stageSourcePriority: stageSourcePriority
+            stageSourcePriority: stageSourcePriority,
+            timingProvenance: timeInBedIsEstimated ? .estimated : .measured
         )
     }
 

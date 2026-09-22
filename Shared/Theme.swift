@@ -801,7 +801,7 @@ struct ZoonAmbientBackground: View {
     @State private var band = Band.current()
     @Environment(\.colorScheme) private var colorScheme
 
-    enum Band: String, Equatable {
+    enum Band: String, Equatable, Sendable {
         case morning, day, evening, night
 
         static func current(now: Date = .now, calendar: Calendar = .current) -> Band {

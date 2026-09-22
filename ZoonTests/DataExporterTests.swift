@@ -240,6 +240,7 @@ final class DataExporterTests: XCTestCase {
         XCTAssertEqual(night.secondaryAsleepMinutes, 0, accuracy: 0.001)
         XCTAssertTrue(night.stageSegments.isEmpty)
         XCTAssertEqual(night.timeZoneIdentifier, TimeZone.current.identifier)
+        XCTAssertEqual(night.timingProvenance, .measured)
     }
 
     // MARK: - Behaviour answers
