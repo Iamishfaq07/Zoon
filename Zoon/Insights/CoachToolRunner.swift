@@ -48,7 +48,7 @@ struct CoachToolRunner {
         guard let context else { return nil }
         let night = context.night
         let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        return "Last night you were asleep \(asleep), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s"). That's the recorded night — not a diagnosis."
+        return "Last night you were asleep \(asleep), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s"). That's the recorded night — not a medical claim."
     }
 
     private func sleepDuration() -> String? {
@@ -107,7 +107,7 @@ struct CoachToolRunner {
         if let stress = coordinator.todayStress {
             parts.append("Physiological load is \(stress.percent) (\(stress.band.label.lowercased())).")
         }
-        parts.append("Use how you feel as the last check — this is not a diagnosis.")
+        parts.append("Use how you feel as the last check — this is not a medical claim.")
         return parts.joined(separator: " ")
     }
 
@@ -184,7 +184,7 @@ struct CoachToolRunner {
         }
         let items = PersonalLearning.resilience(nights: nights, disruptionDates: [])
         if let first = items.first {
-            return "From \(nights.count) nights: \(first.sentence) This is an observation about your recent range, not a diagnosis."
+            return "From \(nights.count) nights: \(first.sentence) This is an observation about your recent range, not a medical claim."
         }
         return "Zoon has \(nights.count) nights of history. Nothing has crossed the bar for a personal pattern yet — that is a real answer, not a missing one."
     }

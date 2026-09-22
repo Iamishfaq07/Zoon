@@ -34,6 +34,7 @@ struct ModelHealthView: View {
                     header
                     ladder
                     reliabilityBlock
+                    lateWorkoutBlock
                     method
 
                 }
@@ -203,6 +204,27 @@ struct ModelHealthView: View {
             }
         }
         .glassCard()
+    }
+
+    @ViewBuilder
+    private var lateWorkoutBlock: some View {
+        if let finding = LateWorkoutTimingCurve.learn(nights: coordinator.recentNights) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionHeader(title: "Late workout timing", systemImage: "figure.run")
+                Text(finding.sentence)
+                    .font(Theme.text(13))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(finding.lateCount) late · \(finding.earlierCount) earlier · \(finding.confidence)")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.inkSecondary)
+                Text(finding.limitation)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .glassCard()
+            .accessibilityElement(children: .combine)
+        }
     }
 
     // MARK: - Method

@@ -44,6 +44,10 @@ final class SnoreDetector {
     private var lastCheckpointAt: Date?
     private var openGapStartedAt: Date?
     private var sessionTimeZoneIdentifier: String = TimeZone.current.identifier
+    /// An interruption gap stays open until the first valid buffer after a
+    /// successful engine start. Closing it at `setActive` would mark the
+    /// session as monitored through a failed resume.
+    private var pendingGapClose = false
     var onPaused: (() -> Void)?
     var onResumed: (() -> Void)?
     private let burstThresholdRMS: Float = 0.02
@@ -119,11 +123,12 @@ final class SnoreDetector {
             fusedIntervals = []
             frozenQuality = nil
             sessionTimeZoneIdentifier = TimeZone.current.identifier
+            pendingGapClose = false
             SnoreCheckpoint.clear()
         }
 
+        try installTapAndStartEngine(releaseOwnerOnFailure: true)
         beginEpoch()
-        try installTapAndStartEngine()
         isRunning = true
         persistCheckpoint(unexpectedEnd: true)
         logger.info("Snore detection started")
@@ -138,6 +143,7 @@ final class SnoreDetector {
         isRunning = false
         interruptionGaps += 1
         openGapStartedAt = .now
+        pendingGapClose = false
         persistCheckpoint(unexpectedEnd: true)
         onPaused?()
         logger.info("Snore detection paused without finalizing")
@@ -145,9 +151,9 @@ final class SnoreDetector {
 
     func resumeListening() throws {
         try AVAudioSession.sharedInstance().setActive(true)
-        closeOpenGap()
+        try installTapAndStartEngine(releaseOwnerOnFailure: false)
         beginEpoch()
-        try installTapAndStartEngine()
+        pendingGapClose = openGapStartedAt != nil
         isRunning = true
         persistCheckpoint(unexpectedEnd: true)
         onResumed?()
@@ -158,11 +164,12 @@ final class SnoreDetector {
         removeTapIfNeeded()
         engine.stop()
         soundClassifier.stop()
+        isRunning = false
         engine = AVAudioEngine()
         try AVAudioSession.sharedInstance().setActive(true)
-        closeOpenGap()
+        try installTapAndStartEngine(releaseOwnerOnFailure: false)
         beginEpoch()
-        try installTapAndStartEngine()
+        pendingGapClose = openGapStartedAt != nil
         isRunning = true
         persistCheckpoint(unexpectedEnd: true)
         logger.info("Snore detection rebuilt after media-services reset")
@@ -229,7 +236,7 @@ final class SnoreDetector {
         openGapStartedAt = nil
     }
 
-    private func installTapAndStartEngine() throws {
+    private func installTapAndStartEngine(releaseOwnerOnFailure: Bool = true) throws {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         soundClassifier.start(format: format) { [weak self] identifier, confidence, start, duration in
@@ -263,7 +270,9 @@ final class SnoreDetector {
         } catch {
             removeTapIfNeeded()
             soundClassifier.stop()
-            AudioSessionCoordinator.shared.release(audioOwner)
+            if releaseOwnerOnFailure {
+                AudioSessionCoordinator.shared.release(audioOwner)
+            }
             throw error
         }
     }
@@ -297,6 +306,11 @@ final class SnoreDetector {
     }
 
     private func process(energy: SnoreSignalAnalyzer.Energy, elapsed: Double) {
+        if pendingGapClose,
+           SnoreResumePolicy.shouldCloseGap(engineStarted: isRunning, receivedBuffer: true) {
+            closeOpenGap()
+            pendingGapClose = false
+        }
         monitoredSeconds += elapsed
         tickAccumulator += elapsed
         lastBufferAt = .now

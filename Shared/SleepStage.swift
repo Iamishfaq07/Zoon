@@ -70,6 +70,14 @@ struct StageSegment: Codable, Hashable, Sendable, Identifiable {
     var id: Date { start }
     var duration: TimeInterval { end.timeIntervalSince(start) }
     var minutes: Double { duration / 60 }
+
+    /// Overlap with `[windowStart, windowEnd)`. Empty overlap is `nil`.
+    func intersecting(start windowStart: Date, end windowEnd: Date) -> StageSegment? {
+        let clippedStart = max(start, windowStart)
+        let clippedEnd = min(end, windowEnd)
+        guard clippedEnd > clippedStart else { return nil }
+        return StageSegment(stage: stage, start: clippedStart, end: clippedEnd)
+    }
 }
 
 extension Array where Element == StageSegment {
@@ -101,5 +109,27 @@ extension Array where Element == StageSegment {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
         return (try? decoder.decode([StageSegment].self, from: data)) ?? []
+    }
+
+    /// Adjacent runs of the same stage become one segment. Clipping a
+    /// window can leave a split that was never two awakenings.
+    func mergingAdjacent() -> [StageSegment] {
+        let ordered = sorted { $0.start < $1.start }
+        guard !ordered.isEmpty else { return [] }
+        var merged: [StageSegment] = []
+        for segment in ordered {
+            if let last = merged.last,
+               last.stage == segment.stage,
+               last.end >= segment.start {
+                merged[merged.count - 1] = StageSegment(
+                    stage: last.stage,
+                    start: last.start,
+                    end: Swift.max(last.end, segment.end)
+                )
+            } else {
+                merged.append(segment)
+            }
+        }
+        return merged
     }
 }

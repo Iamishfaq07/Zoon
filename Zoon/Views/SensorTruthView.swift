@@ -61,6 +61,20 @@ struct SensorTruthView: View {
                     .glassCard()
                     .entrance(0)
 
+                if coordinator.recentNights.contains(where: { $0.timingProvenance == .locallyCorrected }) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(SleepTimingProvenance.locallyCorrected.label)
+                            .font(Theme.label(13, weight: .semibold))
+                        Text(SleepTimingProvenance.locallyCorrected.explanation)
+                            .font(Theme.text(13))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .glassCard()
+                    .entrance(0)
+                }
+
                 if let coverage {
                     watchSection(coverage).entrance(1)
                 }
