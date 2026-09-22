@@ -64,7 +64,7 @@ final class TonightPlanTests: XCTestCase {
 
     // MARK: - One repayment
 
-    func testOutstandingShortfallIsRepaidOnceNotAsASliceOfASlice() {
+    func testOutstandingShortfallIsRepaidOnceNotAsASliceOfASlice() throws {
         let outstanding = 180.0
         let tonight = plan(outstandingShortfall: outstanding)
         let expected = min(
@@ -73,7 +73,7 @@ final class TonightPlanTests: XCTestCase {
         )
         XCTAssertEqual(tonight.planning.tonightRepaymentMinutes, expected, accuracy: 0.001)
         XCTAssertEqual(
-            tonight.autopilot?.debtRepaymentMinutes,
+            try XCTUnwrap(tonight.autopilot).debtRepaymentMinutes,
             expected,
             accuracy: 0.001
         )
@@ -182,7 +182,7 @@ final class TonightPlanTests: XCTestCase {
 
     /// Too little history: Autopilot is silent, fallback subtracts the
     /// planning target, not the composed SleepNeed total.
-    func testFallbackWithoutAHabitUsesThePlanningTargetNotTheComposedTotal() {
+    func testFallbackWithoutAHabitUsesThePlanningTargetNotTheComposedTotal() throws {
         let outstanding: Double = 180
         let sleepNeed = need(outstandingShortfall: outstanding)
         let lastWake = Date(timeIntervalSinceReferenceDate: 800_000_000)
@@ -209,9 +209,11 @@ final class TonightPlanTests: XCTestCase {
                 of: $0
             )
         }.map { $0.addingTimeInterval(-sleepNeed.totalNeedMinutes * 60) }
+        let bedTime = try XCTUnwrap(bed)
+        let naiveTime = try XCTUnwrap(naiveComposed)
         XCTAssertNotEqual(
-            bed?.timeIntervalSince1970,
-            naiveComposed?.timeIntervalSince1970,
+            bedTime.timeIntervalSince1970,
+            naiveTime.timeIntervalSince1970,
             accuracy: 30,
             "fallback must not still be wake-minus-composed-need"
         )

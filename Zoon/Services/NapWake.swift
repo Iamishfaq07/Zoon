@@ -2,19 +2,6 @@ import Foundation
 import UserNotifications
 import os
 
-/// Schedules and cancels the thing that actually wakes someone from a nap.
-///
-/// A protocol so `NapStore` can be tested without the notification centre.
-/// Every method is `@MainActor` to match `NapStore`, which owns the calls.
-@MainActor
-protocol NapWakeScheduling: AnyObject {
-    /// - Returns: how the wake was armed, so AlarmKit and a Focus-silenced
-    ///   notification are never reported as the same thing.
-    @discardableResult
-    func schedule(at date: Date, targetMinutes: Int) async -> NapWakeKind
-    func cancel()
-}
-
 /// Wakes someone from a nap.
 ///
 /// Prefers AlarmKit through `WakeAlarm.Slot.nap`, which is a distinct

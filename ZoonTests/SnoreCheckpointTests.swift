@@ -29,7 +29,7 @@ final class SnoreCheckpointTests: XCTestCase {
         XCTAssertNil(SnoreCheckpoint.load(defaults: defaults))
     }
 
-    func testCheckpointKeepsGapIntervalsAndTimezone() {
+    func testCheckpointKeepsGapIntervalsAndTimezone() throws {
         let defaults = UserDefaults(suiteName: "zoon.snore.checkpoint.gaps")!
         defaults.removePersistentDomain(forName: "zoon.snore.checkpoint.gaps")
         let start = Date(timeIntervalSince1970: 1_000)
@@ -53,7 +53,7 @@ final class SnoreCheckpointTests: XCTestCase {
         checkpoint.save(defaults: defaults)
         let loaded = SnoreCheckpoint.load(defaults: defaults)
         XCTAssertEqual(loaded?.gaps.count, 1)
-        XCTAssertEqual(loaded?.gaps.first?.duration, 1_200, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(loaded?.gaps.first).duration, 1_200, accuracy: 0.01)
         XCTAssertEqual(loaded?.timezoneIdentifier, "Asia/Kolkata")
         XCTAssertEqual(loaded?.nightKey, "2026-09-21@Asia/Kolkata")
         XCTAssertEqual(loaded?.monitoringQuality, .moderate)
