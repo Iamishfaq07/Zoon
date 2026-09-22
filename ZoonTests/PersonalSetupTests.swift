@@ -37,11 +37,15 @@ final class PersonalSetupTests: XCTestCase {
         XCTAssertNil(legacy.routine.voiceIdentifier)
     }
 
-    func testLiveSessionRemainingUsesWallClockWhenNotPaused() {
+    func testLiveSessionRemainingUsesWallClockWhenNotPaused() throws {
         let now = Date(timeIntervalSince1970: 1_780_000_000)
         var setup = PersonalSetup()
         setup.session = .init(startedAt: now, deadline: now.addingTimeInterval(600), pausedSeconds: nil)
-        XCTAssertEqual(setup.session?.remaining(at: now.addingTimeInterval(120)), 480, accuracy: 0.5)
+        XCTAssertEqual(
+            try XCTUnwrap(setup.session).remaining(at: now.addingTimeInterval(120)),
+            480,
+            accuracy: 0.5
+        )
     }
 
     func testEncryptedArchiveRejectsWrongPasswordAndTampering() throws {

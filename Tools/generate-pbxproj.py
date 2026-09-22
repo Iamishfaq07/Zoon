@@ -212,15 +212,11 @@ TESTS_EXTRA_APP_FILES = [
     # snapshots and restores, needed to compile the Archive type below.
     "Zoon/Models/UserPreferences.swift",
     # Foundation (+ ActivityKit, guarded by #if canImport) -- NapStore.Nap
-    # is one of Archive's stored record types.
+    # is one of Archive's stored record types. NapWakeScheduling lives in
+    # Shared/NapWakeKind.swift so this compiles without NapWake.swift, and
+    # therefore without WakeAlarm / AlarmKit. Do not add NapWake.swift
+    # here: tests must not construct a live notification centre.
     "Zoon/Services/NapStore.swift",
-    # Foundation/UserNotifications/os only -- the NapWakeScheduling
-    # protocol NapStore now holds. Required, not optional: NapStore
-    # references the type, so the test target cannot compile without
-    # it. NapStore defaults the dependency to nil precisely so no test
-    # constructs a live NapWake (and therefore a live
-    # UNUserNotificationCenter) inside this unhosted bundle.
-    "Zoon/Services/NapWake.swift",
     # Foundation only -- SnoreStore.NightSummary is one of Archive's stored
     # record types.
     "Zoon/Services/SnoreStore.swift",

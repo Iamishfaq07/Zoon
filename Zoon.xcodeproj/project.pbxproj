@@ -1124,7 +1124,6 @@
 		D82BBBFA0333215822EA5D08 /* SleepSessionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73D7172E74524A180449FDD9 /* SleepSessionBuilder.swift */; };
 		D8710C91AB0232CEF690ECF0 /* SleepInertiaProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FD1AE1637DEB344955A512C /* SleepInertiaProfile.swift */; };
 		D88528C12C60284AE7B78D2B /* ScoreAnatomy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E24EE740EE9DFB0DEDBEE0A /* ScoreAnatomy.swift */; };
-		D8B1B1F560F5CEE5D1130FE9 /* NapWake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1A84A69DF140554FD8BBC3 /* NapWake.swift */; };
 		D8D8819C21CFE5E7DEDC2D62 /* ReviewRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DDA4FDA0CAE8B6ECF6BF699 /* ReviewRegressionTests.swift */; };
 		D9088D2FD1CB4770CA15DCE0 /* SnapshotFreshness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD0ECB430F8370B1B7BC0A8 /* SnapshotFreshness.swift */; };
 		D92C20AD9E19D6322BE37D32 /* FirstNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0270263CE62B9C1BB2D468 /* FirstNightCard.swift */; };
@@ -4311,7 +4310,6 @@
 				9ADACCFE5462163F205B3BA1,
 				B585B10F3F6E1577B46B1220,
 				C72A9732AA66A32239D16817,
-				D8B1B1F560F5CEE5D1130FE9,
 				25C24B9B1E242C7A6AE22070,
 				D993EF29ECD2D4B5886F9012,
 				75C138FAD0641153A091A476,

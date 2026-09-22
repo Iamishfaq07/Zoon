@@ -9,7 +9,8 @@ final class ScoreAnatomyTests: XCTestCase {
         normalized: Double = 0.4,
         weight: Double = 0.35,
         effectiveWeight: Double = 0.45,
-        isAvailable: Bool = true
+        isAvailable: Bool = true,
+        deviationPercent: Double? = nil
     ) -> RecoveryScore.Component {
         RecoveryScore.Component(
             label: label,
@@ -17,7 +18,8 @@ final class ScoreAnatomyTests: XCTestCase {
             normalized: normalized,
             weight: weight,
             effectiveWeight: effectiveWeight,
-            isAvailable: isAvailable
+            isAvailable: isAvailable,
+            deviationPercent: deviationPercent
         )
     }
 

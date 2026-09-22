@@ -39,3 +39,17 @@ struct NapStartResult: Equatable, Sendable {
     let targetMinutes: Int
     let wake: NapWakeKind
 }
+
+/// Schedules and cancels the thing that actually wakes someone from a nap.
+///
+/// Lives in Shared so `NapStore` can compile in `ZoonTests` without pulling
+/// `NapWake` (and therefore `WakeAlarm` / AlarmKit) into the unhosted test
+/// bundle. Production passes `NapWake()`; tests pass a spy or leave it nil.
+@MainActor
+protocol NapWakeScheduling: AnyObject {
+    /// - Returns: how the wake was armed, so AlarmKit and a Focus-silenced
+    ///   notification are never reported as the same thing.
+    @discardableResult
+    func schedule(at date: Date, targetMinutes: Int) async -> NapWakeKind
+    func cancel()
+}
