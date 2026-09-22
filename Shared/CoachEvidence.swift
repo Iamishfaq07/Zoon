@@ -66,7 +66,20 @@ struct CoachEvidence: Sendable {
             return Reply(text: CoachIntentRouter.farewellReply(), evidence: nil, action: nil)
         case .cancel:
             return Reply(text: CoachIntentRouter.cancelReply(), evidence: nil, action: nil)
-        case .tool, .unknown:
+        case .tool(let call):
+            // The catalog is the source of truth for *which* question this is.
+            // Falling through to the coarser keyword list below is how
+            // "When should I sleep?" used to be answered with last night's
+            // duration — it contains "sleep", and that branch ran first.
+            switch call.kind {
+            case .getTonight, .getTomorrow:
+                return tonightReply()
+            case .getFatigueContext:
+                return fatigueReply()
+            default:
+                break
+            }
+        case .unknown:
             break
         }
 
@@ -90,7 +103,7 @@ struct CoachEvidence: Sendable {
         if matches(q, ["tired", "fatigue", "exhausted", "why am i so sleepy"]) {
             return fatigueReply()
         }
-        if matches(q, ["tonight", "bedtime", "prepare", "wind down", "what should i do"]) {
+        if matches(q, ["tonight", "bedtime", "prepare", "wind down", "what should i do", "when should i sleep"]) {
             return tonightReply()
         }
         if matches(q, ["deep", "rem", "stage", "solid", "how did i sleep", "last night", "how much did i sleep"]) {
@@ -195,7 +208,7 @@ struct CoachEvidence: Sendable {
         if let debt {
             text += " Recent shortfall is \(debt)."
         }
-        text += " Pair that with Morning Recovery, Energy, and current Load — this is not a diagnosis."
+        text += " Pair that with Morning Recovery, Energy, and current Load — this is not a medical claim."
         return Reply(text: text, evidence: catalog["sleep"], action: nil)
     }
 

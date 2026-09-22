@@ -50,15 +50,15 @@ final class CoachEvidenceTests: XCTestCase {
     func testTonightDoesNotPrescribeLastNightsClocks() {
         let night = Fixture.night(sleepDebtMinutes: 80)
         let reply = CoachEvidence(night: night, history: []).reply(to: "When should I sleep?")
-        XCTAssertTrue(reply.text.lowercased().contains("tonight"))
-        XCTAssertFalse(reply.text.lowercased().contains("last night you were in bed"))
+        XCTAssertTrue(reply.text.lowercased().contains("tonight"), reply.text)
+        XCTAssertFalse(reply.text.lowercased().contains("last night you were in bed"), reply.text)
     }
 
     func testFatigueDoesNotDiagnose() {
         let night = Fixture.night(timeAsleepMinutes: 390, sleepDebtMinutes: 90)
         let reply = CoachEvidence(night: night, history: []).reply(to: "Why am I tired?")
-        XCTAssertTrue(reply.text.lowercased().contains("can't know") || reply.text.lowercased().contains("cannot know") || reply.text.lowercased().contains("signals"))
-        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text))
+        XCTAssertTrue(reply.text.lowercased().contains("can't know") || reply.text.lowercased().contains("cannot know") || reply.text.lowercased().contains("signals"), reply.text)
+        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
     }
 
     func testWakeCountIsGrounded() {
