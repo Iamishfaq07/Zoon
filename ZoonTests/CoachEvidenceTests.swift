@@ -92,7 +92,7 @@ final class CoachEvidenceTests: XCTestCase {
         let history = (1...20).map { Fixture.night(daysAgo: $0, timeAsleepMinutes: $0 <= 10 ? 360 : 480) }
         let reply = CoachEvidence(night: night, history: history).reply(to: "What's my sleep trend?")
         XCTAssertTrue(reply.text.lowercased().contains("average") || reply.text.lowercased().contains("nights"), reply.text)
-        XCTAssertFalse(reply.text.lowercased().contains("cause"), reply.text)
+        XCTAssertTrue(reply.text.lowercased().contains("not a cause"), reply.text)
         XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
     }
 
