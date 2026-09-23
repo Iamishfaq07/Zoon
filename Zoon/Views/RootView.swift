@@ -109,67 +109,11 @@ struct RootView: View {
             await coordinator.start()
             await refreshReminders()
         }
-        // Reminders first, then the glance surfaces: the widgets and the
-        // Watch read tonight's times and the alarm status from the
-        // snapshot, which otherwise kept the old plan until the next Health
-        // refresh -- an edited night disagreed with the wrist.
-        .onChange(of: setup.value.plans) { _, _ in
-            Task {
-                await refreshReminders()
-                coordinator.republishGlanceSurfaces()
-            }
-        }
-        .onChange(of: setup.value.skippedReminderNights) { _, _ in
-            Task {
-                await refreshReminders()
-                coordinator.republishGlanceSurfaces()
-            }
-        }
+        // Everything that must re-queue reminders and refresh the widgets
+        // and Watch when it changes. Its own modifier: inline, this chain
+        // was too long for the type checker.
+        .modifier(ScheduleSyncTriggers(setup: setup, refreshReminders: { await refreshReminders() }))
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
-        // Every reminder is a dated request built in the zone it was queued
-        // in. Foregrounding re-reconciles, which covers a zone change while
-        // the phone was locked; these cover one while Zoon is open, which
-        // otherwise left the old zone's times queued until the next launch.
-        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
-            Task {
-                await refreshReminders()
-                coordinator.republishGlanceSurfaces()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
-            Task {
-                await refreshReminders()
-                coordinator.republishGlanceSurfaces()
-            }
-        }
-        // A nap recorded, closed or removed -- here, from the Watch, or by
-        // the auto-close on activation -- changes tonight's need and so the
-        // bedtime. Rebuild first, then re-queue against the rebuilt plan;
-        // before, the reminders kept the pre-nap bedtime until the next
-        // foreground.
-        .onChange(of: naps.naps.count) { _, _ in
-            Task {
-                await coordinator.napRecorded()
-                await refreshReminders()
-            }
-        }
-        .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
-        // These two also republish: the Watch's wake line says whether an
-        // alarm or a wake-window notification is set, and it read the old
-        // state until the next Health refresh.
-        .onChange(of: preferences.smartWakeEnabled) { _, _ in
-            Task {
-                await refreshReminders()
-                coordinator.republishGlanceSurfaces()
-            }
-        }
-        .onChange(of: preferences.wakeAlarmEnabled) { _, _ in
-            Task {
-                await refreshReminders()
-                coordinator.republishGlanceSurfaces()
-            }
-        }
         .onAppear {
             // A launch argument is consumed once, on appear. It is not routed
             // through DeepLink's shared storage, which is for cross-process
@@ -596,4 +540,91 @@ struct SleepTabView: View {
 
 #Preview("Root") {
     RootView().zoonPreviewEnvironment()
+}
+
+/// The changes after which the reminders are re-reconciled and the glance
+/// surfaces (widgets, Watch) republished. Kept together so a new trigger is
+/// added in one place, and out of `RootView.body`, whose modifier chain
+/// became too long for the type checker.
+private struct ScheduleSyncTriggers: ViewModifier {
+    let setup: PersonalSetupStore
+    let refreshReminders: () async -> Void
+
+    @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
+    @Environment(NapStore.self) private var naps
+
+    func body(content: Content) -> some View {
+        activityTriggers(planTriggers(content))
+    }
+
+    /// Plan edits, skipped nights, and the clock or zone moving.
+    private func planTriggers(_ content: Content) -> some View {
+        content
+            // Reminders first, then the glance surfaces: the widgets and the
+            // Watch read tonight's times and the alarm status from the
+            // snapshot, which otherwise kept the old plan until the next Health
+            // refresh -- an edited night disagreed with the wrist.
+            .onChange(of: setup.value.plans) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            .onChange(of: setup.value.skippedReminderNights) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            // Every reminder is a dated request built in the zone it was queued
+            // in. Foregrounding re-reconciles, which covers a zone change while
+            // the phone was locked; these cover one while Zoon is open, which
+            // otherwise left the old zone's times queued until the next launch.
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+    }
+
+    /// Naps and the reminder switches in Settings.
+    private func activityTriggers(_ content: some View) -> some View {
+        content
+            // A nap recorded, closed or removed -- here, from the Watch, or by
+            // the auto-close on activation -- changes tonight's need and so the
+            // bedtime. Rebuild first, then re-queue against the rebuilt plan;
+            // before, the reminders kept the pre-nap bedtime until the next
+            // foreground.
+            .onChange(of: naps.naps.count) { _, _ in
+                Task {
+                    await coordinator.napRecorded()
+                    await refreshReminders()
+                }
+            }
+            .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
+            .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
+            // These two also republish: the Watch's wake line says whether an
+            // alarm or a wake-window notification is set, and it read the old
+            // state until the next Health refresh.
+            .onChange(of: preferences.smartWakeEnabled) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            .onChange(of: preferences.wakeAlarmEnabled) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+    }
 }
