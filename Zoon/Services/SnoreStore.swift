@@ -108,8 +108,23 @@ final class SnoreStore {
         // An instance that missed the notification still cannot write back
         // what was erased: it reloads from the (now empty) store first.
         if loadedGeneration != DataErasure.generation { reloadAfterErasure() }
+        // A second session on the same night adds to the first. It used to
+        // replace it: stop listening at 03:00 after an interruption, start
+        // again, and the first four hours vanished from the night's total.
+        // Every summary comes from a distinct capture -- `SnoreDetector`
+        // produces one per stop -- so there is no double-recording to guard
+        // against by overwriting.
+        let earlier = nights.filter { Self.isSameNight($0, summary) }
         nights.removeAll { Self.isSameNight($0, summary) }
-        nights.append(summary)
+        nights.append(earlier.reduce(summary) { merged, previous in
+            NightSummary(
+                date: max(merged.date, previous.date),
+                monitoredMinutes: merged.monitoredMinutes + previous.monitoredMinutes,
+                snoreMinutes: merged.snoreMinutes + previous.snoreMinutes,
+                nightKey: merged.nightKey ?? previous.nightKey,
+                timezoneIdentifier: merged.timezoneIdentifier ?? previous.timezoneIdentifier
+            )
+        })
         persist()
     }
 
