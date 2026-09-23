@@ -167,7 +167,7 @@ struct RootView: View {
     /// 1. A slot stayed armed when the toggle stayed on but the target went
     ///    away. `guard enabled, let target else { if !enabled { cancel() } }`
     ///    cancels on the toggle and does nothing on the missing target — and
-    ///    `BedtimeReminder` uses `repeats: true` calendar triggers, so that
+    ///    `BedtimeReminder` then used `repeats: true` calendar triggers, so that
     ///    was not one stale notification but one every day, indefinitely, at
     ///    a time Zoon no longer believed in.
     /// 2. The bedtime guard `return`ed, so switching bedtime reminders off
@@ -180,7 +180,15 @@ struct RootView: View {
         await reminders.refreshAuthorization()
         let notificationsPermitted = reminders.authorization == .authorized
             || reminders.authorization == .provisional
-        let context = coordinator.state.context
+        // Every slot reads one horizon of resolved episodes. The bedtime
+        // used to come from a manual plan or `targetBedtime()`, the wake
+        // from a manual plan or `BodyClock.window(for: .now)` -- which after
+        // midnight is tomorrow's, so re-arming at 02:00 moved this morning's
+        // alarm a day later.
+        let now = Date.now
+        let horizon = coordinator.tonightHorizon(nights: ReminderSchedule.horizonNights, now: now)
+        let upcomingBeds = horizon.map(\.bed).filter { $0 > now }
+        let upcomingWakes = horizon.map(\.wake).filter { $0 > now }
 
         // `focusSilencesBedtimeNudges` is checked here as well as in the
         // filter itself: without it, opening the app during a Focus would
@@ -192,28 +200,29 @@ struct RootView: View {
             .bedtime,
             wanted: bedtimeWanted,
             permitted: notificationsPermitted,
-            target: bedtimeWanted ? (setup.value.nextWindow()?.start ?? context?.targetBedtime()) : nil,
-            schedule: { await reminders.schedule(bedtime: $0) },
-            cancel: { reminders.cancel() }
+            target: bedtimeWanted ? upcomingBeds.first : nil,
+            rescheduleAlways: true,
+            schedule: { _ in await reminders.schedule(bedtimes: upcomingBeds, now: now) },
+            cancel: { reminders.cancel(); return true }
         )
 
         // The wake window rides on the same authorization and the same
-        // body-clock data as the bedtime nudge, but is its own toggle —
+        // episode as the bedtime nudge, but is its own toggle —
         // someone might want the bedtime nudge without a second alarm
         // layered on top of the one they already use.
-        let wakeTarget = setup.value.nextWindow()?.end ?? context?.bodyClock?.window(for: .now)?.end
         let wakeWindowWanted = preferences.smartWakeEnabled
         await reconcile(
             .wakeWindow,
             wanted: wakeWindowWanted,
             permitted: notificationsPermitted,
-            target: wakeWindowWanted ? wakeTarget : nil,
-            schedule: {
+            target: wakeWindowWanted ? upcomingWakes.first : nil,
+            rescheduleAlways: true,
+            schedule: { _ in
                 await reminders.scheduleWakeWindow(
-                    wakeTime: $0, leadMinutes: Self.wakeWindowLeadMinutes
+                    wakeTimes: upcomingWakes, leadMinutes: Self.wakeWindowLeadMinutes, now: now
                 )
             },
-            cancel: { reminders.cancelWakeWindow() }
+            cancel: { reminders.cancelWakeWindow(); return true }
         )
 
         // The notification and the alarm are two halves of one idea, not
@@ -222,12 +231,17 @@ struct RootView: View {
         // rings at the *end* of it as the backstop that actually wakes anyone
         // still asleep. Scheduling the alarm at the window's start instead
         // would just be an alarm 20 minutes early.
+        //
+        // The alarm is one dated alarm for the next wake. It is re-armed on
+        // every activation; an app left closed past that wake has no alarm
+        // for the morning after, and Settings shows the date it is set for
+        // rather than implying it repeats.
         let alarmWanted = preferences.smartWakeEnabled && preferences.wakeAlarmEnabled
         await reconcile(
             .wakeAlarm,
             wanted: alarmWanted,
             permitted: wakeAlarm.isAvailable,
-            target: alarmWanted ? wakeTarget : nil,
+            target: alarmWanted ? upcomingWakes.first : nil,
             schedule: { await wakeAlarm.schedule(at: $0) },
             cancel: { wakeAlarm.cancel() }
         )
@@ -237,28 +251,39 @@ struct RootView: View {
             .morningBrief,
             wanted: morningBriefWanted,
             permitted: notificationsPermitted,
-            target: morningBriefWanted ? wakeTarget : nil,
-            schedule: {
+            target: morningBriefWanted ? upcomingWakes.first : nil,
+            rescheduleAlways: true,
+            schedule: { _ in
                 await reminders.scheduleMorningBrief(
-                    wakeTime: $0,
-                    actionableTip: coordinator.state.context?.insight.actionableTip ?? ""
+                    wakeTimes: upcomingWakes,
+                    actionableTip: coordinator.state.context?.insight.actionableTip ?? "",
+                    now: now
                 )
             },
-            cancel: { reminders.cancelMorningBrief() }
+            cancel: { reminders.cancelMorningBrief(); return true }
         )
     }
 
     /// One slot: decide, act, record.
     ///
-    /// - Parameter schedule: returns whether the OS accepted the request, so a
-    ///   refusal records `.failed` rather than claiming something is armed.
+    /// - Parameters:
+    ///   - rescheduleAlways: re-queue even when the first date is unchanged.
+    ///     Notification slots queue a horizon of nights, and a plan edited
+    ///     for Thursday leaves tonight's date the same -- comparing only the
+    ///     first date would never queue Thursday's change.
+    ///   - schedule: returns whether the OS accepted the request, so a
+    ///     refusal records `.failed` rather than claiming something is armed.
+    ///   - cancel: returns whether the cancellation took. A failed cancel
+    ///     keeps the old date on record and says `.failed`: clearing the
+    ///     record anyway told Settings "off" while an alarm stayed set.
     private func reconcile(
         _ slot: ScheduleStateStore.Slot,
         wanted: Bool,
         permitted: Bool,
         target: Date?,
+        rescheduleAlways: Bool = false,
         schedule: (Date) async -> Bool,
-        cancel: () -> Void
+        cancel: () -> Bool
     ) async {
         // Permission folds into the desired value rather than being checked
         // separately: an unpermitted slot wants nothing scheduled, and
@@ -268,15 +293,22 @@ struct RootView: View {
         let status = ScheduleReconciliation.status(
             wanted: wanted, permitted: permitted, hasTarget: target != nil
         )
+        let previous = schedules.scheduledFor(slot)
 
-        switch ScheduleReconciliation.action(
-            desired: desired, scheduled: schedules.scheduledFor(slot)
-        ) {
+        var action = ScheduleReconciliation.action(desired: desired, scheduled: previous)
+        if rescheduleAlways, action == .noChange, let desired {
+            action = .replace(desired)
+        }
+
+        switch action {
         case .noChange:
-            schedules.record(schedules.scheduledFor(slot), status: status, for: slot)
+            schedules.record(previous, status: status, for: slot)
         case .cancel:
-            cancel()
-            schedules.record(nil, status: status, for: slot)
+            if cancel() {
+                schedules.record(nil, status: status, for: slot)
+            } else {
+                schedules.record(previous, status: .failed, for: slot)
+            }
         case .replace(let date):
             if await schedule(date) {
                 schedules.record(date, status: status, for: slot)

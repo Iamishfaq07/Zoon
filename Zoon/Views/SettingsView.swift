@@ -147,8 +147,11 @@ struct SettingsView: View {
             return unavailabilityReason
         }
         if preferences.wakeAlarmEnabled, let scheduledWakeTime = wakeAlarm.scheduledWakeTime {
-            return "Rings around \(scheduledWakeTime.formatted(.dateTime.hour().minute())), "
-                + "through Silent mode and Sleep Focus."
+            // The day as well as the time: this is one dated alarm, re-armed
+            // when the app opens, not a repeating one. "Rings around 7:00"
+            // read as every morning.
+            return "Set for \(scheduledWakeTime.formatted(.dateTime.weekday(.abbreviated).hour().minute())), "
+                + "through Silent mode and Sleep Focus. Opening Zoon sets the next one."
         }
         return "Sounds at the end of the window, through Silent mode and Sleep Focus."
     }
@@ -165,8 +168,10 @@ struct SettingsView: View {
                             // A switch that stays on while nothing is delivered
                             // is a lie the user finds out about a week later.
                             preferences.bedtimeRemindersEnabled = granted
-                            if granted, let bedtime = coordinator.state.context?.targetBedtime() {
-                                await reminders.schedule(bedtime: bedtime)
+                            if granted {
+                                await reminders.schedule(
+                                    bedtimes: coordinator.tonightHorizon(nights: ReminderSchedule.horizonNights).map(\.bed)
+                                )
                             }
                         } else {
                             preferences.bedtimeRemindersEnabled = false
@@ -183,7 +188,7 @@ struct SettingsView: View {
                 }
             }
 
-            if let bedtime = coordinator.state.context?.targetBedtime() {
+            if let bedtime = coordinator.tonightEpisode()?.bed {
                 LabeledContent(preferences.isShiftWorkModeEnabled ? "Next sleep" : "Tonight") {
                     Text(bedtime, format: .dateTime.hour().minute())
                         .monospacedDigit()
@@ -258,8 +263,11 @@ struct SettingsView: View {
                             if wantsOn {
                                 preferences.wakeAlarmEnabled = await wakeAlarm.requestAuthorization()
                             } else {
-                                preferences.wakeAlarmEnabled = false
-                                wakeAlarm.cancel()
+                                // Off only if the cancel took. A failed cancel
+                                // leaves a real alarm set, and a switch
+                                // showing off above it would be the one
+                                // place the app claims otherwise.
+                                preferences.wakeAlarmEnabled = !wakeAlarm.cancel()
                             }
                         }
                     }

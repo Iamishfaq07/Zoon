@@ -164,7 +164,7 @@ struct TodayView: View {
                 )
                 .entrance(2)
 
-                TonightSection(context: context, autopilot: autopilotPlan(context))
+                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode())
                     .entrance(3)
                 TravelTonightCard()
                     .entrance(3)
@@ -266,7 +266,7 @@ struct TodayView: View {
             }
 
             if moment == .morning || moment == .day {
-                TonightSection(context: context, autopilot: autopilotPlan(context))
+                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode())
                     .entrance(6)
                 NavigationLink {
                     ZoonTomorrowView()
@@ -361,14 +361,12 @@ struct TodayView: View {
     /// Tonight's target bedtime as a `Date`, which is what `NapCoach` needs
     /// to judge "is bedtime too close for this nap to be worth it".
     ///
-    /// The plan stores minutes-from-midnight and wraps past 1440 for a
-    /// bedtime after midnight, so the wrap decides the day: 23:10 is tonight,
-    /// 00:40 is tomorrow. Resolving it against today's midnight alone would
-    /// put an after-midnight bedtime in the past and make every nap look
-    /// safe.
+    /// Tonight's episode, so this is the same bed the Tonight section and
+    /// the reminder show. A bedtime that has passed stays tonight's (overdue)
+    /// rather than rolling to tomorrow, which made every late-evening nap
+    /// look safe against a bed 23 hours away.
     private func plannedBedtime(_ context: DayContext) -> Date? {
-        guard let minutes = autopilotPlan(context)?.targetBedtimeMinutes else { return nil }
-        return PlannedBedtimeResolver.nextOccurrence(ofMinutesFromMidnight: minutes, after: .now)
+        coordinator.tonightEpisode()?.bed
     }
 
     // MARK: - Hero helpers
@@ -563,13 +561,26 @@ struct TodayView: View {
     /// half-hour `TonightSection` already talks about, given a place on the
     /// line rather than only a sentence.
     private func tonightSteps(_ context: DayContext) -> [TonightPlanCardView.Step] {
-        guard let plan = autopilotPlan(context), let bed = plannedBedtime(context) else { return [] }
-        let windDown = bed.addingTimeInterval(-30 * 60)
-        let wake = bed.addingTimeInterval(plan.targetSleepMinutes * 60)
+        // Every time from the one resolved episode. The wake used to be
+        // `bed + targetSleep`, a third wake time beside the alarm's and the
+        // Tonight section's, and on a night the target does not fit it was
+        // later than the wake the alarm would actually ring at.
+        guard let plan = autopilotPlan(context), let episode = coordinator.tonightEpisode() else { return [] }
+        let windDown = episode.windDown
+        let bed = episode.bed
+        let wake = episode.wake
 
         var bedNote: String?
-        if plan.debtRepaymentMinutes >= 1 {
-            bedNote = "\(Int(plan.debtRepaymentMinutes.rounded())) minutes earlier than your habit, to start clearing the shortfall."
+        // The shift, not the repayment: the repayment is how much extra
+        // sleep tonight asks for, the shift is how far bed actually moved
+        // after the nightly cap. Quoting the first as the second claimed a
+        // 30-minute move the cap had held to 20.
+        // And only when the autopilot set tonight's bed: under a plan the
+        // person made, "earlier than your habit" describes a bed nobody chose.
+        if episode.source != .autopilot {
+            bedNote = nil
+        } else if plan.shiftMinutes <= -1, plan.debtRepaymentMinutes >= 1 {
+            bedNote = "\(Int((-plan.shiftMinutes).rounded())) minutes earlier than your habit, to start clearing the shortfall."
         } else if plan.isHolding {
             bedNote = "Where you already are — this target is holding, not correcting."
         }
@@ -628,19 +639,13 @@ struct TodayView: View {
             EnergyHorizon(
                 forecast: energyForecast(context),
                 battery: context.bodyBattery,
-                targetBedtime: context.targetBedtime()
+                targetBedtime: plannedBedtime(context) ?? context.targetBedtime()
             )
         }
     }
 
     // MARK: - Tonight
 
-    /// Tonight's autopilot plan, or `nil` when there is too little history.
-    ///
-    /// Written as a method rather than inline in the body so the optional
-    /// wake time has somewhere to land: `bodyClock?.window(for:)?.end` is a
-    /// non-optional `Date` *inside* the chain, so mapping it there applies
-    /// `map` to `Date` rather than to `Date?`.
     /// The debt figure from a week back, for the reservoir's trend line.
     ///
     /// Returned as `displayed debt − the change over the week`, not as the
@@ -676,16 +681,10 @@ struct TodayView: View {
         return (context.night.sleepDebtMinutes ?? 0) - change
     }
 
+    /// Tonight's autopilot plan, or `nil` when there is too little history.
+    /// Built by the coordinator so this screen and the watch read one plan.
     private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
-        let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
-        return SleepAutopilot.plan(
-            nights: coordinator.recentNights,
-            sleepNeedMinutes: context.learnedSleepNeed.minutes,
-            obligationWakeMinutes: obligationWake.map {
-                Statistics.circularMinutesFromMidnight($0)
-            },
-            sleepDebtMinutes: context.sleepNeed.debtMinutes
-        )
+        coordinator.tonightAutopilotPlan(for: context)
     }
 
     // MARK: - Footer

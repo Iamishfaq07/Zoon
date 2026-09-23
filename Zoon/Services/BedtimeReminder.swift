@@ -15,12 +15,14 @@ import os
 /// here: it keeps the no-network promise intact, and push entitlements are
 /// paid-account-only, so a remote implementation could not ship without one.
 ///
-/// ## Why calendar triggers rather than one-shot dates
+/// ## Dated, not repeating
 ///
-/// A `UNCalendarNotificationTrigger` with `repeats: true` keeps firing without
-/// the app ever running again. A date-based trigger would need rescheduling on
-/// each launch, and an app you forget to open is exactly the app that most
-/// needs the reminder.
+/// These used to be `UNCalendarNotificationTrigger`s with `repeats: true`,
+/// built from only the hour and minute of one night. That turned a
+/// Tuesday-only plan into a daily alert and a one-night override into a
+/// permanent one. Each night is now its own dated request, queued
+/// `ReminderSchedule.horizonNights` ahead so an app nobody opens still
+/// reminds them -- see `ReminderSchedule` for the trade that makes.
 @MainActor
 @Observable
 final class BedtimeReminder {
@@ -31,13 +33,6 @@ final class BedtimeReminder {
 
     private let center: UNUserNotificationCenter
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Reminders")
-
-    private enum ID {
-        static let windDown = "zoon.reminder.winddown"
-        static let bedtime = "zoon.reminder.bedtime"
-        static let wakeWindow = "zoon.reminder.wakewindow"
-        static let morningBrief = "zoon.reminder.morningbrief"
-    }
 
     /// How long before target bedtime the wind-down nudge fires.
     ///
@@ -87,138 +82,148 @@ final class BedtimeReminder {
 
     /// Schedules (or reschedules) both reminders for a nightly bedtime.
     ///
-    /// Idempotent: identifiers are fixed, so re-scheduling replaces rather than
-    /// accumulates. Getting this wrong is how apps end up firing six copies of
-    /// the same notification.
-    /// - Returns: whether both requests were accepted. Reported rather than
-    ///   swallowed so `ScheduleStateStore` can record `.failed` instead of
-    ///   claiming something is armed when the OS refused it.
+    /// Queues wind-down and bedtime for each bedtime given, replacing
+    /// whatever was queued before.
+    ///
+    /// Idempotent: identifiers are slots, and every slot is cleared first,
+    /// so rescheduling replaces rather than accumulates.
+    /// - Returns: whether every request was accepted, and at least one was
+    ///   made. Reported rather than swallowed so `ScheduleStateStore` can
+    ///   record `.failed` instead of claiming something is armed when the OS
+    ///   refused it -- or when every date had already passed.
     @discardableResult
-    func schedule(bedtime: Date) async -> Bool {
+    func schedule(bedtimes: [Date], now: Date = .now) async -> Bool {
         cancel()
-
-        guard authorization == .authorized || authorization == .provisional else {
+        guard isAuthorized else {
             logger.notice("Not authorized; nothing scheduled")
             return false
         }
-
-        let calendar = Calendar.current
-        let bedComponents = calendar.dateComponents([.hour, .minute], from: bedtime)
-        let windDown = bedtime.addingTimeInterval(-Double(Self.windDownLeadMinutes) * 60)
-        let windComponents = calendar.dateComponents([.hour, .minute], from: windDown)
-
+        let windDowns = ReminderSchedule.requests(
+            kind: .windDown,
+            fireDates: bedtimes.map { $0.addingTimeInterval(-Double(Self.windDownLeadMinutes) * 60) },
+            now: now
+        )
+        let beds = ReminderSchedule.requests(kind: .bedtime, fireDates: bedtimes, now: now)
         let windDownAdded = await add(
-            id: ID.windDown,
+            windDowns,
             title: "Wind down",
-            body: "Bedtime in \(Self.windDownLeadMinutes) minutes. Dim the lights and put the screens away.",
-            components: windComponents
+            body: "Bedtime in \(Self.windDownLeadMinutes) minutes. Dim the lights and put the screens away."
         )
-
         let bedtimeAdded = await add(
-            id: ID.bedtime,
+            beds,
             title: "Bedtime",
-            body: "Going to sleep now hits your full sleep need for tomorrow.",
-            components: bedComponents
+            body: "Going to sleep now hits your full sleep need for tomorrow."
         )
-
-        logger.info("Scheduled wind-down and bedtime reminders")
-        return windDownAdded && bedtimeAdded
+        logger.info("Scheduled \(beds.count) bedtime reminder(s)")
+        return !beds.isEmpty && windDownAdded && bedtimeAdded
     }
 
-    /// Notifies within a window before your usual wake time, derived from
-    /// `BodyClock`.
+    /// One night only. Prefer `schedule(bedtimes:)` with the horizon.
+    @discardableResult
+    func schedule(bedtime: Date) async -> Bool {
+        await schedule(bedtimes: [bedtime])
+    }
+
+    /// Notifies within a window before each wake time given.
     ///
     /// Deliberately not a "smart alarm" in the sense competitors use the
     /// term — those wake you at the lightest point in your sleep cycle,
     /// detected by watching motion in real time all night. Zoon has no live
     /// overnight sensing loop, and building one changes what kind of app
     /// this is. What this does instead: fire early, within `leadMinutes` of
-    /// the wake time your own history already points to, so there's a
-    /// chance of catching a lighter stretch without claiming to have
-    /// detected one.
+    /// the planned wake, so there's a chance of catching a lighter stretch
+    /// without claiming to have detected one.
+    ///
+    /// A notification, not an alarm: it follows the ringer switch and Focus,
+    /// and is never described as something that will sound through them.
     @discardableResult
-    func scheduleWakeWindow(wakeTime: Date, leadMinutes: Int) async -> Bool {
-        center.removePendingNotificationRequests(withIdentifiers: [ID.wakeWindow])
-
-        guard authorization == .authorized || authorization == .provisional else { return false }
-
-        let calendar = Calendar.current
-        let early = wakeTime.addingTimeInterval(-Double(leadMinutes) * 60)
-        let components = calendar.dateComponents([.hour, .minute], from: early)
-
-        return await add(
-            id: ID.wakeWindow,
-            title: "Wake window",
-            body: "Somewhere in the next \(leadMinutes) minutes is close to your usual wake time.",
-            components: components
+    func scheduleWakeWindow(wakeTimes: [Date], leadMinutes: Int, now: Date = .now) async -> Bool {
+        cancelWakeWindow()
+        guard isAuthorized else { return false }
+        let requests = ReminderSchedule.requests(
+            kind: .wakeWindow,
+            fireDates: wakeTimes.map { $0.addingTimeInterval(-Double(leadMinutes) * 60) },
+            now: now
         )
+        let added = await add(
+            requests,
+            title: "Wake window",
+            body: "Somewhere in the next \(leadMinutes) minutes is close to your planned wake time."
+        )
+        return !requests.isEmpty && added
     }
 
     /// A lock-screen-safe nudge pointing at Today's morning brief.
     ///
-    /// Fires `leadMinutes` after the usual wake time so it arrives once
-    /// someone is actually up, not while they are still asleep. The body
-    /// is run through `MorningBriefCopy` so a duration or score cannot
-    /// leak onto a lock screen anyone in the room can read.
+    /// Fires `leadMinutes` after each wake so it arrives once someone is
+    /// actually up, not while they are still asleep. The body is run through
+    /// `MorningBriefCopy` so a duration or score cannot leak onto a lock
+    /// screen anyone in the room can read.
     @discardableResult
     func scheduleMorningBrief(
-        wakeTime: Date,
+        wakeTimes: [Date],
         leadMinutes: Int = 30, // same value as morningBriefLeadMinutes; default args cannot mention Self
-        actionableTip: String = ""
+        actionableTip: String = "",
+        now: Date = .now
     ) async -> Bool {
-        center.removePendingNotificationRequests(withIdentifiers: [ID.morningBrief])
-
-        guard authorization == .authorized || authorization == .provisional else { return false }
-
-        let calendar = Calendar.current
-        let fire = wakeTime.addingTimeInterval(Double(leadMinutes) * 60)
-        let components = calendar.dateComponents([.hour, .minute], from: fire)
-
-        return await add(
-            id: ID.morningBrief,
-            title: MorningBriefCopy.title,
-            body: MorningBriefCopy.body(actionableTip: actionableTip),
-            components: components
+        cancelMorningBrief()
+        guard isAuthorized else { return false }
+        let requests = ReminderSchedule.requests(
+            kind: .morningBrief,
+            fireDates: wakeTimes.map { $0.addingTimeInterval(Double(leadMinutes) * 60) },
+            now: now
         )
+        let added = await add(
+            requests,
+            title: MorningBriefCopy.title,
+            body: MorningBriefCopy.body(actionableTip: actionableTip)
+        )
+        return !requests.isEmpty && added
     }
 
     func cancelWakeWindow() {
-        center.removePendingNotificationRequests(withIdentifiers: [ID.wakeWindow])
+        center.removePendingNotificationRequests(withIdentifiers: ReminderSchedule.Kind.wakeWindow.allIdentifiers)
     }
 
     func cancelMorningBrief() {
-        center.removePendingNotificationRequests(withIdentifiers: [ID.morningBrief])
+        center.removePendingNotificationRequests(withIdentifiers: ReminderSchedule.Kind.morningBrief.allIdentifiers)
     }
 
     func cancel() {
-        center.removePendingNotificationRequests(withIdentifiers: [ID.windDown, ID.bedtime])
+        center.removePendingNotificationRequests(
+            withIdentifiers: ReminderSchedule.Kind.windDown.allIdentifiers
+                + ReminderSchedule.Kind.bedtime.allIdentifiers
+        )
     }
 
-    private func add(
-        id: String,
-        title: String,
-        body: String,
-        components: DateComponents
-    ) async -> Bool {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        content.sound = .default
-        // No health numbers in the payload. Notification text appears on a
-        // locked screen, where anyone in the room can read it — "you slept
-        // 4h12m" is not something to broadcast to a bedroom.
-        content.interruptionLevel = .active
+    private var isAuthorized: Bool {
+        authorization == .authorized || authorization == .provisional
+    }
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-        let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+    /// Adds every request; true only if all were accepted.
+    private func add(_ requests: [ReminderSchedule.Request], title: String, body: String) async -> Bool {
+        var allAdded = true
+        for request in requests {
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            // No health numbers in the payload. Notification text appears on a
+            // locked screen, where anyone in the room can read it — "you slept
+            // 4h12m" is not something to broadcast to a bedroom.
+            content.interruptionLevel = .active
 
-        do {
-            try await center.add(request)
-            return true
-        } catch {
-            logger.error("Could not schedule \(id, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            return false
+            let trigger = UNCalendarNotificationTrigger(dateMatching: request.components, repeats: false)
+            do {
+                try await center.add(
+                    UNNotificationRequest(identifier: request.identifier, content: content, trigger: trigger)
+                )
+            } catch {
+                allAdded = false
+                logger.error("Could not schedule \(request.identifier, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
+        return allAdded
     }
 
     /// Human-readable state for Settings.

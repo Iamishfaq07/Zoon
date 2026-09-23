@@ -81,19 +81,24 @@ struct DayContext: Equatable {
     /// Derived from the user's own wake pattern rather than an alarm they have
     /// to configure: the data is already here, and a setting you must fill in
     /// before the feature works is a setting most people never fill in.
+    ///
+    /// Resolved through `ResolvedSleepEpisode.window`, so a bedtime that has
+    /// passed stays tonight's until the wake it was planning for. This used
+    /// to anchor on "tomorrow" relative to now, which after midnight is the
+    /// morning after next: at 00:30 the countdown read nearly a day.
+    ///
+    /// Prefer `SleepDataCoordinator.tonightEpisode()` where it is reachable:
+    /// that also knows the person's own plans and the autopilot. This is the
+    /// fallback it uses when neither applies.
     func targetBedtime(now: Date = .now, calendar: Calendar = .current) -> Date? {
         let wake = calendar.dateComponents([.hour, .minute], from: night.wakeTime)
-
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
-              let wakeTomorrow = calendar.date(
-                  bySettingHour: wake.hour ?? 7,
-                  minute: wake.minute ?? 0,
-                  second: 0,
-                  of: tomorrow
-              )
-        else { return nil }
-
-        return wakeTomorrow.addingTimeInterval(-sleepNeed.totalNeedMinutes * 60)
+        let wakeMinute = Double((wake.hour ?? 7) * 60 + (wake.minute ?? 0))
+        return ResolvedSleepEpisode.window(
+            bedMinute: wakeMinute - sleepNeed.totalNeedMinutes,
+            wakeMinute: wakeMinute,
+            containingOrAfter: now,
+            calendar: calendar
+        )?.start
     }
 
     /// The morning headline — what a user reads in two seconds.

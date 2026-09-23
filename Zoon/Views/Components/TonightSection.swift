@@ -8,19 +8,25 @@ import SwiftUI
 /// the detail on the Bed node -- so the plan and the adjustment to it read
 /// as one thing, which they are.
 ///
-/// Every time comes from where it always did: the target bedtime from
-/// `DayContext.targetBedtime()` (the same value the reminder is scheduled
-/// against), wind-down from `BedtimeReminder.windDownLeadMinutes`, the
-/// caffeine cutoff from `CaffeineCutoff.time(bedtime:)`, wake from
-/// `BodyClock.window(for:)`, and the shift from `SleepAutopilot.plan`.
+/// Bed, wind-down and wake all come from one `ResolvedSleepEpisode` -- the
+/// same one the reminder, the alarm and the nap coach use. The Bed node used
+/// to read `DayContext.targetBedtime()` while the sentence under it read the
+/// autopilot, and the wake read `BodyClock.window(for: now)`, which after
+/// midnight is tomorrow's. The caffeine cutoff still comes from
+/// `CaffeineCutoff.time(bedtime:)` and the shift from `SleepAutopilot.plan`.
 struct TonightSection: View {
     let context: DayContext
     let autopilot: SleepAutopilot.Plan?
+    /// Tonight, resolved. `nil` falls back to the context's own bedtime and
+    /// body-clock wake, for previews and a first launch with no history.
+    var episode: ResolvedSleepEpisode?
     var now: Date = .now
 
     @Environment(UserPreferences.self) private var preferences
 
-    private var bedtime: Date? { context.targetBedtime(now: now) }
+    private var bedtime: Date? { episode?.bed ?? context.targetBedtime(now: now) }
+
+    private var wake: Date? { episode?.wake ?? context.bodyClock?.window(for: now)?.end }
 
     private var nodes: [ZoonTimeline.Node] {
         guard let bedtime else { return [] }
@@ -36,7 +42,8 @@ struct TonightSection: View {
 
         result.append(.init(
             id: "windDown",
-            time: bedtime.addingTimeInterval(-Double(BedtimeReminder.windDownLeadMinutes) * 60),
+            time: episode?.windDown
+                ?? bedtime.addingTimeInterval(-Double(BedtimeReminder.windDownLeadMinutes) * 60),
             title: "Wind down",
             symbol: "moon.haze.fill", tint: Theme.Family.circadian
         ))
@@ -56,7 +63,7 @@ struct TonightSection: View {
             ))
         }
 
-        if let wake = context.bodyClock?.window(for: now)?.end {
+        if let wake {
             result.append(.init(id: "wake", time: wake, title: "Wake", symbol: "sunrise.fill", tint: Theme.Metric.battery))
         }
         return result
@@ -64,6 +71,13 @@ struct TonightSection: View {
 
     /// The autopilot's sentence, or the plain need when there is no plan yet.
     private var bedDetail: String? {
+        if let episode, episode.source == .manualPlan {
+            let name = episode.planName.map { "Your plan \u{201C}\($0)\u{201D}" } ?? "Your plan"
+            guard !episode.isFeasible else { return name }
+            // Shown, not hidden: the wake is a commitment and cannot move to
+            // make the target fit.
+            return "\(name) leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short of tonight's need"
+        }
         if let autopilot {
             return autopilot.isHolding
                 ? "Your usual time works tonight"

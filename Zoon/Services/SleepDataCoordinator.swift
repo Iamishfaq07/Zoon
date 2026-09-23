@@ -187,6 +187,66 @@ final class SleepDataCoordinator {
 
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
+    // MARK: - Tonight
+
+    /// The habitual wake clock, on `SleepAutopilot`'s signed scale.
+    ///
+    /// The body clock's when it exists, last night's wake otherwise. Only the
+    /// clock time is used, so which day `window(for:)` lands on does not
+    /// matter here -- which is the one place that is true.
+    private func usualWakeMinute(_ context: DayContext, now: Date) -> Double {
+        let wake = context.bodyClock?.window(for: now)?.end ?? context.night.wakeTime
+        return Statistics.circularMinutesFromMidnight(wake)
+    }
+
+    /// Tonight's autopilot plan. One place, so the Today hero, the nap coach,
+    /// the watch snapshot and the episode all read the same plan instead of
+    /// each rebuilding it with slightly different inputs.
+    ///
+    /// - Parameter context: the context to plan from, when the caller holds
+    ///   one that has not been published to `state` yet.
+    func tonightAutopilotPlan(
+        for context: DayContext? = nil,
+        now: Date = .now
+    ) -> SleepAutopilot.Plan? {
+        guard let context = context ?? state.context else { return nil }
+        return SleepAutopilot.plan(
+            nights: recentNights,
+            sleepNeedMinutes: context.learnedSleepNeed.minutes,
+            obligationWakeMinutes: usualWakeMinute(context, now: now),
+            sleepDebtMinutes: context.sleepNeed.debtMinutes
+        )
+    }
+
+    /// Tonight's episode: the one bed, wind-down and wake every surface uses.
+    ///
+    /// The person's own plan wins when it covers tonight; otherwise the
+    /// autopilot's bedtime against their usual wake; otherwise their usual
+    /// wake minus tonight's need. See `ResolvedSleepEpisode` for why this is
+    /// resolved once rather than per screen.
+    func tonightEpisode(now: Date = .now, calendar: Calendar = .current) -> ResolvedSleepEpisode? {
+        tonightHorizon(nights: 1, now: now, calendar: calendar).first
+    }
+
+    /// Tonight and the nights after it, for scheduling ahead.
+    func tonightHorizon(
+        nights: Int,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> [ResolvedSleepEpisode] {
+        let context = state.context
+        return ResolvedSleepEpisode.horizon(
+            nights: nights,
+            plans: PersonalSetupStore.shared.value.plans,
+            autopilot: tonightAutopilotPlan(now: now),
+            usualWakeMinute: context.map { usualWakeMinute($0, now: now) },
+            needMinutes: context?.sleepNeed.totalNeedMinutes ?? preferences.sleepGoalMinutes,
+            windDownLeadMinutes: BedtimeReminder.windDownLeadMinutes,
+            now: now,
+            calendar: calendar
+        )
+    }
+
     func nightsForRepair() -> [SleepNightFeatures] { store.historicalFeatures(goalMinutes: preferences.sleepGoalMinutes, manualNaps: naps.naps) }
     private func applyLocalRepairs() {
         store.excludedNightKeys = Set(PersonalSetupStore.shared.value.repairs.filter(\.excluded).map(\.nightKey))
@@ -1285,15 +1345,7 @@ final class SleepDataCoordinator {
         // widget nor the watch has a HealthKit pipeline to rebuild it from.
         // The clock formatting happens here too -- see the snapshot fields'
         // own documentation for why it is not left to each extension.
-        let obligationWake: Date? = context.bodyClock?.window(for: .now)?.end
-        if let plan = SleepAutopilot.plan(
-            nights: recentNights,
-            sleepNeedMinutes: context.learnedSleepNeed.minutes,
-            obligationWakeMinutes: obligationWake.map {
-                Statistics.circularMinutesFromMidnight($0)
-            },
-            sleepDebtMinutes: context.sleepNeed.debtMinutes
-        ) {
+        if let plan = tonightAutopilotPlan(for: context) {
             snapshot.tonightTargetLabel = plan.targetRangeLabel
             snapshot.tonightTargetNote = plan.sentence
             snapshot.tonightTargetNoteShort = plan.shortSentence
@@ -1917,9 +1969,9 @@ final class SleepDataCoordinator {
 
         if preferences.bedtimeRemindersEnabled {
             await reminders.refreshAuthorization()
-            if let bedtime = state.context?.targetBedtime() {
-                await reminders.schedule(bedtime: bedtime)
-            }
+            await reminders.schedule(
+                bedtimes: tonightHorizon(nights: ReminderSchedule.horizonNights).map(\.bed)
+            )
         }
 
         // Every count, every chance to read "1 naps". Restoring a backup with
