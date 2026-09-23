@@ -57,7 +57,7 @@ struct SleepStory: Sendable {
         tagLabels: [String] = [],
         napIntervals: [DateInterval] = [],
         soundEvents: [SoundEvent] = [],
-        minimumAwakeMinutes: Double = 3
+        minimumAwakeMinutes: Double = AwakeningPolicy.minimumDuration / 60
     ) -> SleepStory {
         var events: [Event] = []
         // Populated below, read again by the sound-event pass -- real
@@ -111,9 +111,10 @@ struct SleepStory: Sendable {
         // reported separately, below, as "Woke for the day" rather than as
         // just another mid-night awakening.
         if let onset = asleepSegments.first?.start, let lastAsleepEnd = asleepSegments.last?.end {
-            midNightAwakenings = sorted.filter {
-                $0.stage == .awake && $0.start > onset && $0.end < lastAsleepEnd
-                    && $0.minutes >= minimumAwakeMinutes
+            // The shared rule, so the story and the chart name the same
+            // awakenings. A caller can still ask for a longer minimum.
+            midNightAwakenings = AwakeningPolicy.episodes(in: sorted).filter {
+                $0.start > onset && $0.end <= lastAsleepEnd && $0.minutes >= minimumAwakeMinutes
             }
             for awakening in midNightAwakenings {
                 events.append(Event(

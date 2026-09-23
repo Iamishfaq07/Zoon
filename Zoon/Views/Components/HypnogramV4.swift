@@ -100,12 +100,10 @@ struct HypnogramV4: View {
         }
     }
 
-    /// Awakenings after sleep onset, long enough to matter -- the same rule
-    /// `SleepStory` applies, so the list here matches the story below it.
+    /// Awakenings, by the one rule the stored count, the story and this
+    /// chart share. See `AwakeningPolicy`.
     private var awakenings: [StageSegment] {
-        let sorted = night.stageSegments.sorted { $0.start < $1.start }
-        guard let onset = sorted.first(where: { SleepStage.asleepStages.contains($0.stage) })?.start else { return [] }
-        return sorted.filter { ($0.stage == .awake || $0.stage == .inBed) && $0.start > onset && $0.minutes >= 3 }
+        AwakeningPolicy.episodes(in: night.stageSegments)
     }
 
     var body: some View {

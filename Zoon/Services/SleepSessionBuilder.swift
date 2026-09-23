@@ -659,7 +659,7 @@ struct SleepSession {
     /// actigraphy. The raw intervals stay untouched in `awakeIntervals` and
     /// the raw samples in `segments`, so the hypnogram still draws every
     /// blip -- this only governs the count that gets scored.
-    static let meaningfulAwakeningThreshold: TimeInterval = 120
+    static let meaningfulAwakeningThreshold: TimeInterval = AwakeningPolicy.minimumDuration
 
     /// Meaningful awakenings after sleep onset.
     ///
