@@ -15,6 +15,7 @@ struct SleepRunwayCard: View {
 
     let plan: SleepRunway.Plan
     @State private var selected: Date?
+    @State private var setup = PersonalSetupStore.shared
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Every bar is measured against the same ceiling so the days are
@@ -137,6 +138,29 @@ struct SleepRunwayCard: View {
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            // Why, not only that: the thing that pins this night, named by
+            // what it is and how movable it is. See `ScheduleFriction`.
+            if let why = ScheduleFriction.read(day: day).explanation {
+                Text("Main constraint: \(why)")
+                    .font(Theme.text(12, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Skipping a night stops its reminders and alarm without
+            // deleting any plan, and says so.
+            Toggle(isOn: Binding(
+                get: { !setup.value.isSkipped(wake: day.wake) },
+                set: { setup.value.setSkipped(!$0, wake: day.wake) }
+            )) {
+                Text("Reminders for this night")
+                    .font(Theme.text(12))
+            }
+            .tint(Theme.Metric.sleep)
+            if setup.value.isSkipped(wake: day.wake) {
+                Text("Skipped: no bedtime reminder, wake window or alarm will be set for this night.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)

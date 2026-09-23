@@ -103,6 +103,7 @@ struct RootView: View {
             await refreshReminders()
         }
         .onChange(of: setup.value.plans) { _, _ in Task { await refreshReminders() } }
+        .onChange(of: setup.value.skippedReminderNights) { _, _ in Task { await refreshReminders() } }
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
         .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
@@ -186,7 +187,11 @@ struct RootView: View {
         // midnight is tomorrow's, so re-arming at 02:00 moved this morning's
         // alarm a day later.
         let now = Date.now
+        // A night the person switched reminders off for is dropped from the
+        // horizon here, so no slot -- bedtime, wake window, brief or alarm --
+        // is queued for it. The plan itself still shows the night.
         let horizon = coordinator.tonightHorizon(nights: ReminderSchedule.horizonNights, now: now)
+            .filter { !setup.value.isSkipped(wake: $0.wake) }
         let upcomingBeds = horizon.map(\.bed).filter { $0 > now }
         let upcomingWakes = horizon.map(\.wake).filter { $0 > now }
 

@@ -62,7 +62,7 @@ listed · **open**: not started · **device gate**: needs real hardware.
 | Feature | Status | Notes |
 |---|---|---|
 | One reliable sleep episode and status | partial | Episode, dated reminders and honest alarm state exist and drive Today, Settings and reminders. Missing: a compact status chip (last sync, source, scheduling state) and one tap from any time to the plan editor. |
-| Editable seven‑day plan | partial | `SleepRunway` + `ScheduleFriction` show the week and why a night is short. Set/skip/lock per day isn't built. |
+| Editable seven‑day plan | partial | The runway's day detail now names the main constraint (`ScheduleFriction`) and has a per‑night "Reminders for this night" switch. A skipped night is dropped from the reminder and alarm horizon (`PersonalSetup.skippedReminderNights`, `SkippedNightTests`), the plan still shows it, and past skips are forgotten. Setting or locking a custom time per day isn't built. |
 | Honest interactive night story | partial | Z08–Z10 make the stage, awakening and HR layers honest and spoken. Zoom isn't built. |
 | Personal evidence card | partial | Usable N is now stored (Z12); UI disclosure pending. |
 | Fast morning check | open | — |

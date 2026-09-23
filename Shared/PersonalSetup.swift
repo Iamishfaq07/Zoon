@@ -8,6 +8,10 @@ struct PersonalSetup: Codable, Equatable, Sendable {
     var session: RoutineSession?
     var repairs: [Repair] = []
     var trip: SavedTrip?
+    /// Nights the person switched reminders off for, keyed by the morning
+    /// the night ends on (`PersonalSetup.nightKey(forWake:)`). Optional so a
+    /// setup saved before this existed still decodes.
+    var skippedReminderNights: [String]?
 
     struct SavedTrip: Codable, Equatable, Sendable {
         var destination: String
@@ -74,6 +78,28 @@ struct PersonalSetup: Codable, Equatable, Sendable {
         var reason: String
         /// Excludes this night from comparative history, preserving the original.
         var excluded = true
+    }
+
+    /// "2026-09-24" for the night ending on the morning of the 24th, in the
+    /// calendar given. The morning, because that is how the runway names a
+    /// night and how the person thinks of "Thursday's early start".
+    static func nightKey(forWake wake: Date, calendar: Calendar = .current) -> String {
+        let c = calendar.dateComponents([.year, .month, .day], from: wake)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    }
+
+    func isSkipped(wake: Date, calendar: Calendar = .current) -> Bool {
+        (skippedReminderNights ?? []).contains(Self.nightKey(forWake: wake, calendar: calendar))
+    }
+
+    /// Switches reminders for one night on or off, and forgets skips for
+    /// mornings already past so the list cannot grow without bound.
+    mutating func setSkipped(_ skipped: Bool, wake: Date, now: Date = .now, calendar: Calendar = .current) {
+        let key = Self.nightKey(forWake: wake, calendar: calendar)
+        let today = Self.nightKey(forWake: now, calendar: calendar)
+        var keys = Set(skippedReminderNights ?? []).filter { $0 >= today }
+        if skipped { keys.insert(key) } else { keys.remove(key) }
+        skippedReminderNights = keys.isEmpty ? nil : keys.sorted()
     }
 
     func nextWindow(after date: Date = .now) -> DateInterval? {
