@@ -56,10 +56,18 @@ enum NeedModelEvaluation {
     /// Overall first, then each stratum, largest first.
     static func evaluate(_ nights: [Night]) -> [Summary] {
         let overall = summarize(nights, stratum: "All nights")
-        let strata = Dictionary(grouping: nights, by: \.stratum)
-            .map { summarize($0.value, stratum: $0.key) }
-            .sorted { $0.nights == $1.nights ? $0.stratum < $1.stratum : $0.nights > $1.nights }
+        let grouped: [String: [Night]] = Dictionary(grouping: nights, by: { $0.stratum })
+        var strata: [Summary] = []
+        for (stratum, members) in grouped {
+            strata.append(summarize(members, stratum: stratum))
+        }
+        strata.sort(by: largestFirst)
         return [overall] + strata
+    }
+
+    private static func largestFirst(_ a: Summary, _ b: Summary) -> Bool {
+        if a.nights != b.nights { return a.nights > b.nights }
+        return a.stratum < b.stratum
     }
 
     static func summarize(_ nights: [Night], stratum: String) -> Summary {
