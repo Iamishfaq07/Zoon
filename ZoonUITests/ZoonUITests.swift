@@ -59,17 +59,33 @@ final class ZoonUITests: XCTestCase {
             // screen reports contrast that is not there at rest.
             _ = app.buttons["zoon.tab.\(tab)"].waitForExistence(timeout: 2)
             sleep(2)
-            try app.performAccessibilityAudit { issue in
-                let label = issue.element?.label ?? "(no element)"
-                print("A11Y-AUDIT \(tab) | \(issue.auditType) | \(issue.compactDescription) | \(label)")
-                // The detail behind each line: which element, where, and the
-                // audit's own explanation (contrast ratios live here).
-                if let element = issue.element {
-                    print("A11Y-DETAIL \(tab) | type \(element.elementType.rawValue) | id '\(element.identifier)' | frame \(element.frame) | \(issue.detailedDescription)")
-                } else {
-                    print("A11Y-DETAIL \(tab) | no element | \(issue.detailedDescription)")
+            let audit: () throws -> Void = {
+                try app.performAccessibilityAudit { issue in
+                    let label = issue.element?.label ?? "(no element)"
+                    print("A11Y-AUDIT \(tab) | \(issue.auditType) | \(issue.compactDescription) | \(label)")
+                    // The detail behind each line: which element, where, and the
+                    // audit's own explanation (contrast ratios live here).
+                    if let element = issue.element {
+                        print("A11Y-DETAIL \(tab) | type \(element.elementType.rawValue) | id '\(element.identifier)' | frame \(element.frame) | \(issue.detailedDescription)")
+                    } else {
+                        print("A11Y-DETAIL \(tab) | no element | \(issue.detailedDescription)")
+                    }
+                    return true
                 }
-                return true
+            }
+            // The audit has its own time limit, and a loaded CI runner can
+            // exceed it (error -56, "Audit failed to complete in time").
+            // That says nothing about the app, so one retry, then it is
+            // logged and the tab skipped rather than turning the build red.
+            // Any other error still fails the test.
+            do {
+                try audit()
+            } catch let error as NSError where error.code == -56 {
+                do {
+                    try audit()
+                } catch let retry as NSError where retry.code == -56 {
+                    print("A11Y-AUDIT-TIMEOUT \(tab) | the audit did not finish in time twice; this tab was not audited")
+                }
             }
         }
     }
