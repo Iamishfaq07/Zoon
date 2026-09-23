@@ -54,17 +54,24 @@ struct RootView: View {
     var body: some View {
         @Bindable var bindablePresentation = presentation
 
+        // Each tab keeps a system `tabItem` even though the bar is hidden:
+        // the hidden buttons stay in the accessibility tree, and without a
+        // label they are four unnamed buttons to VoiceOver and the audit.
         TabView(selection: $selection) {
             TodayView()
+                .tabItem { Label("Today", systemImage: "moon.fill") }
                 .tag(Tab.today)
 
             SleepTabView(path: $sleepPath)
+                .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(Tab.sleep)
 
             TrendsView()
+                .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }
                 .tag(Tab.trends)
 
             CoachTabView()
+                .tabItem { Label("Coach", systemImage: "sparkles") }
                 .tag(Tab.coach)
         }
         // The system bar is hidden and replaced by a floating capsule. The
