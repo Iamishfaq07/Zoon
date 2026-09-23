@@ -66,6 +66,34 @@ final class SnoreDetector {
     private var tickAccumulator: TimeInterval = 0
     private let tickInterval: TimeInterval = 1.0
 
+    private var erasureObserver: NSObjectProtocol?
+
+    init(center: NotificationCenter = .default) {
+        // Delete Everything stops the microphone and throws the session
+        // away rather than finalizing it. A summary produced after the erase
+        // would be data Zoon kept from before it.
+        erasureObserver = center.addObserver(
+            forName: DataErasure.didErase, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.discard() }
+        }
+    }
+
+    /// Stops capture without producing a summary.
+    func discard() {
+        guard isRunning else { return }
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        soundClassifier.stop()
+        AudioSessionCoordinator.shared.release(audioOwner)
+        isRunning = false
+        monitoredSeconds = 0
+        snoreSeconds = 0
+        recentEvents.removeAll()
+        burstTimestamps.removeAll()
+        logger.info("Snore detection discarded")
+    }
+
     var isAvailable: Bool {
         AVAudioApplication.shared.recordPermission != .denied
     }

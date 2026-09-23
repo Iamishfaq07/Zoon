@@ -17,11 +17,20 @@ final class SoundEventStore {
     /// and the cap exists only to bound a session that ran unexpectedly long.
     private let maxStored = 200
 
-    init(defaults: UserDefaults = .standard) {
+    private var erasureObserver: NSObjectProtocol?
+
+    init(defaults: UserDefaults = .standard, center: NotificationCenter = .default) {
         self.defaults = defaults
         if let data = defaults.data(forKey: Self.key),
            let decoded = try? JSONDecoder().decode([SoundEvent].self, from: data) {
             recentEvents = decoded
+        }
+        // `record` replaces rather than merges, so an old instance cannot
+        // resurrect erased events by writing; it can still *show* them.
+        erasureObserver = center.addObserver(
+            forName: DataErasure.didErase, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.recentEvents = [] }
         }
     }
 

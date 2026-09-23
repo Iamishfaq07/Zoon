@@ -74,15 +74,40 @@ final class SnoreStore {
     /// the rest of the app builds baselines from.
     private let maxStored = 30
 
-    init(defaults: UserDefaults = .standard) {
+    /// The erase generation `nights` was loaded under. See `DataErasure`.
+    private var loadedGeneration: Int
+    private var erasureObserver: NSObjectProtocol?
+
+    init(defaults: UserDefaults = .standard, center: NotificationCenter = .default) {
         self.defaults = defaults
+        self.loadedGeneration = DataErasure.generation
+        load()
+        erasureObserver = center.addObserver(
+            forName: DataErasure.didErase, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reloadAfterErasure() }
+        }
+    }
+
+    private func load() {
+        nights = []
         if let data = defaults.data(forKey: Self.key),
            let decoded = try? JSONDecoder().decode([NightSummary].self, from: data) {
             nights = decoded
         }
     }
 
+    /// Drops whatever this instance still held in memory. Persisting it
+    /// later would bring erased summaries back.
+    private func reloadAfterErasure() {
+        loadedGeneration = DataErasure.generation
+        load()
+    }
+
     func record(_ summary: NightSummary) {
+        // An instance that missed the notification still cannot write back
+        // what was erased: it reloads from the (now empty) store first.
+        if loadedGeneration != DataErasure.generation { reloadAfterErasure() }
         nights.removeAll { Self.isSameNight($0, summary) }
         nights.append(summary)
         persist()

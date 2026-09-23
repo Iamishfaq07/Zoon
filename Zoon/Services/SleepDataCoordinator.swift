@@ -2074,6 +2074,10 @@ final class SleepDataCoordinator {
         todayLifestyleInsights = nil
         lastRefresh = nil
         WidgetCenter.shared.reloadAllTimelines()
+        // Last, once the persisted data is gone: live holders -- a snore
+        // session still listening, a screen's store with erased summaries in
+        // memory -- stop or reload rather than writing them back.
+        DataErasure.announce()
 
         return alarmDeleted
             && nightsDeleted
