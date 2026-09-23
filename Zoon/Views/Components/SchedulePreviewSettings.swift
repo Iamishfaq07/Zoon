@@ -6,7 +6,10 @@ extension SchedulePreview.Settings {
     /// silences bedtime nudges counts as bedtime reminders off, as it does
     /// there.
     @MainActor
-    static func current(_ preferences: UserPreferences, store: ScheduleStateStore = ScheduleStateStore()) -> Self {
+    static func current(_ preferences: UserPreferences, store: ScheduleStateStore? = nil) -> Self {
+        // Made here, not as a default argument: a default is evaluated
+        // outside the main actor, and the store's initializer is on it.
+        let store = store ?? ScheduleStateStore()
         func blocked(_ slot: ScheduleStateStore.Slot) -> Bool { store.entry(slot).status == .needsPermission }
         return Self(
             bedtimeReminders: preferences.bedtimeRemindersEnabled && !preferences.focusSilencesBedtimeNudges,
