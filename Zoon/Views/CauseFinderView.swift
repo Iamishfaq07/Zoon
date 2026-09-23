@@ -562,6 +562,17 @@ private struct PastExperimentRow: View {
                         .font(Theme.text(12))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    // Logged is not measured. The medians above rest on the
+                    // nights where the metric actually arrived, and when
+                    // that is fewer than the nights logged the reader is
+                    // told, not left to assume every night counted.
+                    if let baselineUsable = outcome.baselineUsableCount,
+                       let trialUsable = outcome.trialUsableCount {
+                        Text("Measured on \(baselineUsable) of \(outcome.baselineNightCount) baseline nights and \(trialUsable) of \(outcome.trialCompliantNightCount ?? outcome.trialNightCount) trial nights.")
+                            .font(Theme.text(11))
+                            .foregroundStyle(Theme.inkTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     if let adherenceRate = outcome.adherenceRate, let compliant = outcome.trialCompliantNightCount, let direction = outcome.direction {
                         // "The rest" used to be one bucket. It is two, and
                         // they mean different things: a night that broke the
