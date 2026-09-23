@@ -76,6 +76,9 @@ UITESTS_SRC = swift_files("ZoonUITests")
 # whether SwiftData itself can run at all in this unhosted test bundle before
 # trying a real store again. See SwiftDataProbeTests.swift's own doc comment.
 TESTS_EXTRA_APP_FILES = [
+    # Foundation only -- the prompt-keyed insight cache and the numeric
+    # grounding check the model's output has to pass (Z18).
+    "Zoon/Insights/InsightCache.swift",
     # Pure, explainable history summaries exercised by SleepFingerprintTests.
     "Zoon/Insights/SleepFingerprint.swift",
     "Zoon/Insights/SleepEras.swift",

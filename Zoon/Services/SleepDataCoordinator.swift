@@ -440,41 +440,29 @@ final class SleepDataCoordinator {
     /// of why a given device's HealthKit call never completes. 20 seconds is
     /// well past how long even both system sheets, answered promptly, should
     /// ever take.
+    ///
+    /// The deadline is `Deadline.race`, not a task group: a group waits for
+    /// every child, so a HealthKit call that never completed kept the
+    /// "timed-out" request waiting anyway. A second call while one is still
+    /// outstanding returns at once rather than stacking a second prompt.
     func requestHealthAccess() async {
-        guard DataEnvironment.current.isLive else { return }
+        guard DataEnvironment.current.isLive, !isRequestingHealthAccess else { return }
+        isRequestingHealthAccess = true
+        defer { isRequestingHealthAccess = false }
         do {
-            try await Self.withTimeout(seconds: 20) { [healthKit] in
+            try await Deadline.race(seconds: 20) { [healthKit] in
                 try await healthKit.requestAuthorization()
             }
-        } catch is TimeoutError {
+        } catch is Deadline.Expired {
             logger.error("Authorization request timed out after 20s; proceeding without waiting further")
         } catch {
             logger.error("Authorization request failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private struct TimeoutError: Error {}
-
-    /// Races `operation` against a deadline. If the deadline wins, `operation`
-    /// is left to finish on its own (its `Task` is cancelled, but a
-    /// completion-handler-backed call like HealthKit's can't actually be
-    /// interrupted mid-flight) and this throws `TimeoutError` so the caller
-    /// can stop waiting rather than hang indefinitely.
-    private static func withTimeout<T: Sendable>(
-        seconds: UInt64,
-        operation: @escaping @Sendable () async throws -> T
-    ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
-                throw TimeoutError()
-            }
-            defer { group.cancelAll() }
-            guard let result = try await group.next() else { throw TimeoutError() }
-            return result
-        }
-    }
+    /// True while a permission request is outstanding, so two callers
+    /// cannot put two sheets up.
+    private var isRequestingHealthAccess = false
 
     /// Starts the pipeline: observers plus an initial refresh. Does **not**
     /// request HealthKit authorization — that is `requestHealthAccess()`'s
