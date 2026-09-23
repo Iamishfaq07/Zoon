@@ -312,6 +312,12 @@ final class GuidedExperimentTests: XCTestCase {
         XCTAssertEqual(outcome.trialCompliantNightCount, 28)
         XCTAssertEqual(outcome.trialKnownNightCount, 28)
         XCTAssertEqual(outcome.baselineNightCount, 14, "the with arm's followed nights")
+        XCTAssertEqual(outcome.baselineNightDates?.count, outcome.baselineUsableCount)
+        XCTAssertEqual(outcome.trialNightDates?.count, outcome.trialUsableCount)
+        XCTAssertEqual(
+            Set(outcome.baselineNightDates ?? []),
+            Set(schedule.filter { $0.arm == .with }.map { calendar.startOfDay(for: $0.date) })
+        )
         XCTAssertEqual(outcome.startDate, schedule.first?.date)
         XCTAssertEqual(outcome.direction, .avoid)
     }
@@ -391,6 +397,9 @@ final class GuidedExperimentTests: XCTestCase {
         XCTAssertEqual(outcome.baselineNightCount, 14, "logged")
         XCTAssertEqual(outcome.baselineUsableCount, 1, "usable")
         XCTAssertEqual(outcome.trialUsableCount, 14)
+        // The notebook's "which nights counted" is exactly the measured ones.
+        XCTAssertEqual(outcome.baselineNightDates, [dateOffset(-14, from: startDate)])
+        XCTAssertEqual(outcome.trialNightDates?.count, 14)
         XCTAssertNil(outcome.uncertaintyLower)
         XCTAssertEqual(EvidenceLedger.experimentStatus(for: outcome), .inconclusive)
     }

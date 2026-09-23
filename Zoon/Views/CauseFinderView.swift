@@ -589,6 +589,23 @@ private struct PastExperimentRow: View {
                             .foregroundStyle(Theme.inkTertiary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if let baselineDates = outcome.baselineNightDates,
+                       let trialDates = outcome.trialNightDates {
+                        // What counted, not only how many: the nights the
+                        // two medians above were computed from.
+                        DisclosureGroup("Which nights counted") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Before: \(CauseFinderView.nightList(baselineDates))")
+                                Text("During: \(CauseFinderView.nightList(trialDates))")
+                            }
+                            .font(Theme.text(11))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .font(Theme.text(12, weight: .medium))
+                        .tint(Theme.ink)
+                    }
                     if let adherenceRate = outcome.adherenceRate, let compliant = outcome.trialCompliantNightCount, let direction = outcome.direction {
                         // "The rest" used to be one bucket. It is two, and
                         // they mean different things: a night that broke the
@@ -619,4 +636,14 @@ private struct PastExperimentRow: View {
 #Preview("Cause Finder") {
     NavigationStack { CauseFinderView() }
         .zoonPreviewEnvironment()
+}
+
+extension CauseFinderView {
+    /// "Mon 14 Sep, Tue 15 Sep, …", or "none" for an empty side.
+    static func nightList(_ dates: [Date]) -> String {
+        guard !dates.isEmpty else { return "none" }
+        return dates.sorted()
+            .map { $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) }
+            .joined(separator: ", ")
+    }
 }
