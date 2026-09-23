@@ -91,10 +91,14 @@ struct HypnogramView: View {
     private var rowLabels: some View {
         VStack(spacing: 0) {
             ForEach(rows, id: \.self) { stage in
+                // Two lines allowed: the accessibility audit found "Light
+                // sleep" clipped in one. Each row is a quarter of the chart
+                // tall, so a second line fits where extra width would not.
                 Text(stage.displayName)
                     .font(Theme.label(9, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+                    .minimumScaleFactor(0.8)
                     .foregroundStyle(Theme.Stage.color(for: stage))
                     .frame(height: height / CGFloat(rows.count), alignment: .center)
                     .frame(maxWidth: .infinity, alignment: .trailing)

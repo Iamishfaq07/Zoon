@@ -210,6 +210,8 @@ struct HypnogramV4: View {
                         .font(Theme.text(12, weight: .semibold))
                         .foregroundStyle(Theme.Family.sleep)
                 }
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
                 .accessibilityHint("Shows half of the night across the full width.")
             }
         }
@@ -386,6 +388,10 @@ struct HypnogramV4: View {
                 )
             }
             .buttonStyle(.plain)
+            // 44 points: the audit measured the pill alone as too small a
+            // target. The row grows; the pill stays the size it was.
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
             .accessibilityLabel(reduceMotion ? "Step through the night" : "Replay the night")
             .accessibilityHint("Moves the cursor through the moments of this night")
         }
@@ -486,6 +492,8 @@ struct HypnogramV4: View {
                         ZoonMetricPill(text: overlay.label, systemImage: overlay.symbol, tint: overlay.tint, isSelected: overlays.contains(overlay))
                     }
                     .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                     .disabled(!available)
                     .opacity(available ? 1 : 0.4)
                     .accessibilityLabel("\(overlay.label) overlay")

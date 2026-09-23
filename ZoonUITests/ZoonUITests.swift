@@ -62,6 +62,13 @@ final class ZoonUITests: XCTestCase {
             try app.performAccessibilityAudit { issue in
                 let label = issue.element?.label ?? "(no element)"
                 print("A11Y-AUDIT \(tab) | \(issue.auditType) | \(issue.compactDescription) | \(label)")
+                // The detail behind each line: which element, where, and the
+                // audit's own explanation (contrast ratios live here).
+                if let element = issue.element {
+                    print("A11Y-DETAIL \(tab) | type \(element.elementType.rawValue) | id '\(element.identifier)' | frame \(element.frame) | \(issue.detailedDescription)")
+                } else {
+                    print("A11Y-DETAIL \(tab) | no element | \(issue.detailedDescription)")
+                }
                 return true
             }
         }
