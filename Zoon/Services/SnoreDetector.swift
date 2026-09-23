@@ -90,19 +90,50 @@ final class SnoreDetector {
         }
     }
 
-    /// Stops capture without producing a summary.
+    /// Stops capture without producing a summary, and forgets the session.
+    ///
+    /// For erasure: the running or paused session must not be summarised
+    /// or checkpointed back into the stores that were just cleared. Resets
+    /// through `resetSession`, the same block `start` uses, so a field added
+    /// to the session is cleared here too.
     func discard() {
-        guard isRunning else { return }
-        engine.inputNode.removeTap(onBus: 0)
+        guard isRunning || monitoredSeconds > 0 || openGapStartedAt != nil else { return }
+        removeTapIfNeeded()
         engine.stop()
         soundClassifier.stop()
         AudioSessionCoordinator.shared.release(audioOwner)
         isRunning = false
+        resetSession()
+        logger.info("Snore detection discarded")
+    }
+
+    /// Everything one listening session accumulates, back to empty, and the
+    /// crash checkpoint cleared.
+    private func resetSession() {
         monitoredSeconds = 0
         snoreSeconds = 0
+        heuristicSnoreSeconds = 0
+        classifierSnoreSeconds = 0
+        cadence = SnoreCadenceTracker()
+        lastBurst = nil
+        isInsideBurst = false
+        tickAccumulator = 0
         recentEvents.removeAll()
-        burstTimestamps.removeAll()
-        logger.info("Snore detection discarded")
+        classifierWindows.removeAll()
+        heuristicIntervals.removeAll()
+        heuristicOpenStart = nil
+        lastBufferAt = nil
+        sessionStartedAt = .now
+        sessionID = UUID()
+        interruptionGaps = 0
+        lastCheckpointAt = nil
+        monitoringGaps = []
+        openGapStartedAt = nil
+        fusedIntervals = []
+        frozenQuality = nil
+        sessionTimeZoneIdentifier = TimeZone.current.identifier
+        pendingGapClose = false
+        SnoreCheckpoint.clear()
     }
 
     var isAvailable: Bool {
@@ -129,30 +160,7 @@ final class SnoreDetector {
         )
 
         if resetAccumulators {
-            monitoredSeconds = 0
-            snoreSeconds = 0
-            heuristicSnoreSeconds = 0
-            classifierSnoreSeconds = 0
-            cadence = SnoreCadenceTracker()
-            lastBurst = nil
-            isInsideBurst = false
-            tickAccumulator = 0
-            recentEvents.removeAll()
-            classifierWindows.removeAll()
-            heuristicIntervals.removeAll()
-            heuristicOpenStart = nil
-            lastBufferAt = nil
-            sessionStartedAt = .now
-            sessionID = UUID()
-            interruptionGaps = 0
-            lastCheckpointAt = nil
-            monitoringGaps = []
-            openGapStartedAt = nil
-            fusedIntervals = []
-            frozenQuality = nil
-            sessionTimeZoneIdentifier = TimeZone.current.identifier
-            pendingGapClose = false
-            SnoreCheckpoint.clear()
+            resetSession()
         }
 
         try installTapAndStartEngine(releaseOwnerOnFailure: true)
