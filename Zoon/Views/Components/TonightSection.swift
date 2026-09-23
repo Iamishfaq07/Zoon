@@ -93,6 +93,7 @@ struct TonightSection: View {
                     countdown(to: bedtime)
                 }
                 ZoonTimeline(nodes: nodes, now: now)
+                scheduleStatus
                 if let autopilot {
                     Text(autopilot.caveat)
                         .font(Theme.text(11))
@@ -101,6 +102,40 @@ struct TonightSection: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// What is actually set for tonight, and whether each item is a
+    /// notification or an alarm -- read from what the last reconciliation
+    /// recorded, not from the toggles. A plan whose reminder failed to
+    /// schedule, or whose alarm needs permission, says so here, beside the
+    /// times it was meant to act on.
+    @ViewBuilder
+    private var scheduleStatus: some View {
+        let store = ScheduleStateStore()
+        let slots: [(ScheduleStateStore.Slot, ScheduleReconciliation.Delivery)] = [
+            (.bedtime, .notification),
+            (.wakeWindow, .notification),
+            (.wakeAlarm, .alarm)
+        ]
+        let lines: [String] = slots.compactMap { slot, delivery in
+            let entry = store.entry(slot)
+            return ScheduleReconciliation.statusLine(
+                label: slot.label, delivery: delivery, status: entry.status,
+                scheduledFor: entry.scheduledFor, now: now,
+                timeText: { $0.formatted(date: .omitted, time: .shortened) }
+            )
+        }
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(lines, id: \.self) { line in
+                    Text(line)
+                }
+            }
+            .font(Theme.text(11))
+            .foregroundStyle(Theme.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
         }
     }
 

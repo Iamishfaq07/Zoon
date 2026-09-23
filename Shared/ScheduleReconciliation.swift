@@ -139,3 +139,53 @@ enum ScheduleStatus: String, Codable, Sendable, CaseIterable {
         self == .needsPermission
     }
 }
+
+extension ScheduleReconciliation {
+
+    /// What a scheduled item *is*, so the reader knows whether it can wake
+    /// them. A notification follows the ringer switch and Focus; an AlarmKit
+    /// alarm rings through them. Saying "wake alarm" of a notification is the
+    /// promise the whole AlarmKit path exists to stop making.
+    enum Delivery: String, Sendable {
+        case notification
+        case alarm
+
+        var label: String {
+            switch self {
+            case .notification: "notification"
+            case .alarm: "alarm"
+            }
+        }
+    }
+
+    /// One line of scheduling state for the Tonight section.
+    ///
+    /// `nil` when the slot is off: an off switch is not news on a plan. A
+    /// recorded time that has already passed is not shown as scheduled --
+    /// that entry described a night that is over, and "Scheduled" beside it
+    /// would be exactly the stale claim the status store exists to avoid.
+    static func statusLine(
+        label: String,
+        delivery: Delivery,
+        status: ScheduleStatus,
+        scheduledFor: Date?,
+        now: Date,
+        timeText: (Date) -> String
+    ) -> String? {
+        switch status {
+        case .notScheduled:
+            return nil
+        case .scheduled:
+            guard let scheduledFor, scheduledFor > now else {
+                return "\(label): not set for tonight yet"
+            }
+            return "\(label) (\(delivery.label)): \(timeText(scheduledFor))"
+        case .needsPermission:
+            return "\(label): needs permission"
+        case .unavailable:
+            return "\(label): no time to set it for"
+        case .failed:
+            return "\(label): could not be set"
+        }
+    }
+}
