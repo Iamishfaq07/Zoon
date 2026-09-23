@@ -322,4 +322,27 @@ final class SleepAutopilotTests: XCTestCase {
             label
         )
     }
+
+    // MARK: - Feasibility (Z19)
+
+    /// Midnight habit, an 8-hour target and a mandatory 06:00 wake. The cap
+    /// holds bed to 23:40, so eight hours no longer fit. The plan's wake is
+    /// the commitment, never the aspirational 07:40, and the shortfall is
+    /// said out loud.
+    func testAHardWakeIsNeverOvershot() throws {
+        let plan = try plan(bedtimeMinutes: 0, needMinutes: 480, obligationWakeMinutes: 360)
+        XCTAssertEqual(plan.targetBedtimeMinutes, -20, accuracy: 0.001)
+        XCTAssertEqual(plan.targetWakeMinutes, 360, accuracy: 0.001, "the wake is the obligation")
+        XCTAssertEqual(plan.attainableSleepMinutes, 380, accuracy: 0.001)
+        XCTAssertEqual(plan.shortfallMinutes, 100, accuracy: 0.001)
+        XCTAssertTrue(plan.sentence.contains("1h 40m"), plan.sentence)
+        XCTAssertTrue(plan.targetRangeLabel.hasSuffix(SleepAutopilot.clockLabel(360)), plan.targetRangeLabel)
+    }
+
+    /// Without an obligation nothing caps the wake, and nothing is short.
+    func testNoObligationMeansNoShortfall() throws {
+        let plan = try plan(bedtimeMinutes: 0, needMinutes: 480, obligationWakeMinutes: nil)
+        XCTAssertEqual(plan.shortfallMinutes, 0)
+        XCTAssertEqual(plan.targetWakeMinutes, plan.targetBedtimeMinutes + plan.targetSleepMinutes, accuracy: 0.001)
+    }
 }

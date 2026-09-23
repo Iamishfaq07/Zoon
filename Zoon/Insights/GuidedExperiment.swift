@@ -209,7 +209,9 @@ enum GuidedExperiment {
             direction: direction,
             trialCompliantNightCount: trialCompliantNightCount,
             uncertaintyLower: interval?.lower,
-            uncertaintyUpper: interval?.upper
+            uncertaintyUpper: interval?.upper,
+            baselineUsableCount: baselineValues.count,
+            trialUsableCount: trialValues.count
         )
     }
 
@@ -308,7 +310,9 @@ enum GuidedExperiment {
             direction: direction,
             trialCompliantNightCount: adherence.adherent,
             uncertaintyLower: interval?.lower,
-            uncertaintyUpper: interval?.upper
+            uncertaintyUpper: interval?.upper,
+            baselineUsableCount: baselineValues.count,
+            trialUsableCount: trialValues.count
         )
     }
 

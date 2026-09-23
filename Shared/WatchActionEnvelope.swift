@@ -33,8 +33,24 @@ struct WatchActionEnvelope: Codable, Sendable {
     /// 11th. In the watch's own timezone at the time, not the phone's now.
     /// Only meaningful for `.behaviorTag` and `.behaviorAnswer`; a morning
     /// feeling or a midnight awakening is about the night already slept.
-    var behaviorNightDate: Date {
-        calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+    ///
+    /// **After midnight is the night in progress.** A tag pressed at 01:00 on
+    /// Tuesday is about the night that ends on Tuesday morning, not the one
+    /// ending Wednesday: the person has not slept yet. Adding a day to every
+    /// event put it on Wednesday. Events before `morningBoundaryMinute`
+    /// therefore stay on their own day. The boundary is deliberately early
+    /// -- 04:00 -- because a log at 05:30 is more often somebody already up
+    /// than somebody not yet asleep; a phone that knows the person's own
+    /// wake can pass a better one.
+    var behaviorNightDate: Date { behaviorNightDate(morningBoundaryMinute: Self.defaultMorningBoundaryMinute) }
+
+    static let defaultMorningBoundaryMinute = 4 * 60
+
+    func behaviorNightDate(morningBoundaryMinute: Int) -> Date {
+        let components = calendar.dateComponents([.hour, .minute], from: targetDate)
+        let minute = (components.hour ?? 12) * 60 + (components.minute ?? 0)
+        if minute < morningBoundaryMinute { return targetDate }
+        return calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
     }
 }
 

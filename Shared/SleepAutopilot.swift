@@ -70,8 +70,29 @@ enum SleepAutopilot {
         /// is simply where they already are.
         let isHolding: Bool
         let confidence: MetricConfidence
+        /// The wake the plan was built against, when one was given. On the
+        /// same signed scale as `targetBedtimeMinutes`.
+        var obligationWakeMinutes: Double? = nil
 
-        var targetWakeMinutes: Double { targetBedtimeMinutes + targetSleepMinutes }
+        /// The wake the plan actually ends at.
+        ///
+        /// Never later than the obligation. This used to be bed plus target
+        /// sleep regardless: with the nightly shift capped at twenty minutes,
+        /// a target that no longer fit before a 06:00 commitment produced a
+        /// wake after it -- an aspirational time that an alarm or a range
+        /// label could then present as the plan.
+        var targetWakeMinutes: Double {
+            let aspirational = targetBedtimeMinutes + targetSleepMinutes
+            guard let obligationWakeMinutes else { return aspirational }
+            return min(aspirational, obligationWakeMinutes)
+        }
+
+        /// Sleep opportunity the plan can actually offer tonight.
+        var attainableSleepMinutes: Double { max(0, targetWakeMinutes - targetBedtimeMinutes) }
+
+        /// How far short of the target that leaves tonight. Zero when the
+        /// target fits.
+        var shortfallMinutes: Double { max(0, targetSleepMinutes - attainableSleepMinutes) }
 
         /// "10:45 PM - 6:30 AM". Lives here rather than at each call site so
         /// the widget, the watch and the phone cannot drift into three
@@ -82,8 +103,19 @@ enum SleepAutopilot {
         }
 
         var sentence: String {
+            // Stated, not hidden. "No change worth making" on a night the
+            // wake cannot move and the target does not fit was a false
+            // all-clear.
+            // Beyond the deadband only: a holding plan is by definition up to
+            // that far from the ideal, and calling that out every night is
+            // the noise the deadband exists to suppress.
+            let short = shortfallMinutes > SleepAutopilot.deadband
+                ? " Tonight's window leaves \(SleepNightFeatures.formatMinutes(shortfallMinutes)) of that for another night."
+                : ""
             guard !isHolding else {
-                return "Tonight looks like your usual night. No change worth making."
+                return short.isEmpty
+                    ? "Tonight looks like your usual night. No change worth making."
+                    : "Tonight is close to your usual night." + short
             }
             let direction = shiftMinutes < 0 ? "earlier" : "later"
             let magnitude = SleepNightFeatures.formatMinutes(abs(shiftMinutes))
@@ -92,7 +124,7 @@ enum SleepAutopilot {
                 text += ", which includes "
                     + "\(SleepNightFeatures.formatMinutes(debtRepaymentMinutes)) toward what you're owed"
             }
-            return text + "."
+            return text + "." + short
         }
 
         /// The same plan in the room a watch actually has.
@@ -191,7 +223,8 @@ enum SleepAutopilot {
             shiftMinutes: shift,
             debtRepaymentMinutes: repayment,
             isHolding: isHolding,
-            confidence: confidence(nights: bedtimes.count)
+            confidence: confidence(nights: bedtimes.count),
+            obligationWakeMinutes: obligationWakeMinutes
         )
     }
 
