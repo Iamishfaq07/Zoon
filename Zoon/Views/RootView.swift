@@ -109,8 +109,22 @@ struct RootView: View {
             await coordinator.start()
             await refreshReminders()
         }
-        .onChange(of: setup.value.plans) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: setup.value.skippedReminderNights) { _, _ in Task { await refreshReminders() } }
+        // Reminders first, then the glance surfaces: the widgets and the
+        // Watch read tonight's times and the alarm status from the
+        // snapshot, which otherwise kept the old plan until the next Health
+        // refresh -- an edited night disagreed with the wrist.
+        .onChange(of: setup.value.plans) { _, _ in
+            Task {
+                await refreshReminders()
+                coordinator.republishGlanceSurfaces()
+            }
+        }
+        .onChange(of: setup.value.skippedReminderNights) { _, _ in
+            Task {
+                await refreshReminders()
+                coordinator.republishGlanceSurfaces()
+            }
+        }
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
         .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
