@@ -87,7 +87,7 @@ enum ModelHealth {
         var label: String {
             switch self {
             case .dataCoverage: "What Zoon can see"
-            case .sleepNeed: "Your sleep need"
+            case .sleepNeed: "Your sleep baseline"
             case .recoveryBaseline: "Your recovery baseline"
             case .bodySignals: "Your body-signal ranges"
             case .behaviourEvidence: "What your habits do"
@@ -102,7 +102,7 @@ enum ModelHealth {
         var question: String {
             switch self {
             case .dataCoverage: "How much of each night actually reaches Zoon?"
-            case .sleepNeed: "How much sleep do you personally need?"
+            case .sleepNeed: "Where do your unconstrained nights sit?"
             case .recoveryBaseline: "What is a normal recovery night for you?"
             case .bodySignals: "What is a normal reading for you?"
             case .behaviourEvidence: "Which of your habits show up in your nights?"

@@ -27,19 +27,31 @@ final class SnoreStore {
         /// The timezone the recording happened in. `nil` on pre-migration
         /// rows, for the same reason as `nightKey`.
         let timezoneIdentifier: String?
+        let isPartial: Bool?
+        let endedUnexpectedly: Bool?
+        let monitoringQuality: String?
+        let interruptionDurationMinutes: Double?
 
         init(
             date: Date,
             monitoredMinutes: Double,
             snoreMinutes: Double,
             nightKey: String? = nil,
-            timezoneIdentifier: String? = nil
+            timezoneIdentifier: String? = nil,
+            isPartial: Bool? = nil,
+            endedUnexpectedly: Bool? = nil,
+            monitoringQuality: String? = nil,
+            interruptionDurationMinutes: Double? = nil
         ) {
             self.date = date
             self.monitoredMinutes = monitoredMinutes
             self.snoreMinutes = snoreMinutes
             self.nightKey = nightKey
             self.timezoneIdentifier = timezoneIdentifier
+            self.isPartial = isPartial
+            self.endedUnexpectedly = endedUnexpectedly
+            self.monitoringQuality = monitoringQuality
+            self.interruptionDurationMinutes = interruptionDurationMinutes
         }
 
         /// Prefers the night key so a row keeps one identity even if the

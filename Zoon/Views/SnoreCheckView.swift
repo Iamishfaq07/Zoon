@@ -5,23 +5,33 @@ import SwiftUI
 /// Pushed from the Sleep tab, so it supplies no `NavigationStack` of its own.
 struct SnoreCheckView: View {
 
-    @State private var detector = SnoreDetector()
-    @State private var store = SnoreStore()
-    @State private var eventStore = SoundEventStore()
+    @Environment(SnoreSessionController.self) private var session
+    @Environment(SoundscapeEngine.self) private var soundscape
+    @Environment(\.scenePhase) private var scenePhase
     @State private var permissionDenied = false
+    @State private var conflictMessage: String?
+    @State private var showingDetails = false
 
     var body: some View {
         VStack(spacing: 20) {
             explainer
 
-            if detector.isRunning {
+            if let recovered = session.recoveredCheckpoint {
+                recoveredCard(recovered)
+            }
+
+            if session.isRunning {
                 runningCard
-            } else if let last = store.mostRecent {
+            } else if let last = session.lastSummary {
                 lastNightCard(last)
             }
 
-            if !detector.isRunning && !eventStore.recentEvents.isEmpty {
-                eventsCard
+            if !session.monitoringGaps.isEmpty || !session.fusedIntervals.isEmpty {
+                coverageCard
+            }
+
+            if !session.isRunning && !session.storedEvents.isEmpty {
+                timelineCard
             }
 
             Spacer(minLength: 0)
@@ -32,19 +42,51 @@ struct SnoreCheckView: View {
         .nightBackground()
         .navigationTitle("Snore Check")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: scenePhase) { _, phase in
+            session.handleScenePhase(phase)
+        }
+        .alert("Microphone access needed", isPresented: $permissionDenied) {
+            Button("OK") {}
+        } message: {
+            Text("Turn on microphone access for Zoon in iOS Settings to use Snore Check.")
+        }
+        .alert(
+            "Snore Check needs a quiet microphone",
+            isPresented: Binding(
+                get: { conflictMessage != nil },
+                set: { if !$0 { conflictMessage = nil } }
+            )
+        ) {
+            Button("Stop & Start") {
+                Task {
+                    conflictMessage = nil
+                    if let message = await session.stopAudioAndStart(soundscape: soundscape),
+                       message.lowercased().contains("microphone") {
+                        permissionDenied = true
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) { conflictMessage = nil }
+        } message: {
+            Text(conflictMessage ?? "")
+        }
+        .sheet(isPresented: $showingDetails) {
+            sessionDetails
+        }
     }
 
     private var explainer: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: "How this works", systemImage: "waveform.and.mic")
             Text("""
-                While running, Zoon listens for the repeating low-frequency pattern \
-                snoring produces. It's a heuristic, not a trained model — treat the \
-                result as a rough estimate, not a measurement.
+                While running, Zoon listens on-device. Apple's sound classifier is \
+                the primary snoring evidence when the system supports it; a cadence \
+                heuristic fills in when it does not. Treat the result as an estimate, \
+                not a measurement.
 
                 Audio is processed in short bursts and never saved. Zoon keeps a minutes-\
-                snoring count and up to 200 timestamped sound-event labels on this device \
-                — nothing else survives the session, and nothing at all leaves the phone.
+                snoring count and timestamped labels on this device — nothing else \
+                survives the session, and nothing at all leaves the phone.
                 """)
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
@@ -53,23 +95,70 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    private func recoveredCard(_ checkpoint: SnoreCheckpoint) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(checkpoint.unexpectedEndMessage())
+                .font(Theme.text(13))
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Save it as a partial session, or discard it. Dismissing used to throw the night away.")
+                .font(.caption)
+                .foregroundStyle(Theme.inkTertiary)
+            HStack(spacing: 12) {
+                Button("Save partial session") {
+                    session.saveRecoveredCheckpoint()
+                    Haptics.success()
+                }
+                .font(Theme.label(13, weight: .semibold))
+                Button("Discard", role: .destructive) {
+                    session.dismissRecoveredCheckpoint()
+                }
+                .font(Theme.label(13, weight: .semibold))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
     private var runningCard: some View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
-                Circle().fill(Theme.Metric.recoveryLow).frame(width: 8, height: 8)
-                    .breathing(true, tint: Theme.Metric.recoveryLow)
-                Text("Listening")
+                Circle()
+                    .fill(session.isAudioArriving ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
+                    .frame(width: 8, height: 8)
+                    .breathing(session.isAudioArriving, tint: session.isAudioArriving ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryLow)
+                Text(statusTitle)
                     .font(Theme.label(14, weight: .semibold))
             }
-            Text(formattedDuration(detector.monitoredSeconds))
+            Text(formattedDuration(session.monitoredSeconds))
                 .font(Theme.numeral(34))
                 .monospacedDigit()
-            Text("\(Int(detector.snoreSeconds / 60)) min flagged so far")
+            Text("\(Int(session.snoreSeconds / 60)) min flagged so far · Monitoring quality \(session.confidence.label.lowercased())")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
+            Button("Session details") { showingDetails = true }
+                .font(.caption)
+            if let last = session.lastBufferAt {
+                Text(session.isAudioArriving ? "Microphone active" : "Last buffer \(Int(Date.now.timeIntervalSince(last)))s ago")
+                    .font(.caption2)
+                    .foregroundStyle(Theme.inkTertiary)
+            }
         }
         .frame(maxWidth: .infinity)
         .glassCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Snore Check \(statusTitle). \(formattedDuration(session.monitoredSeconds)) monitored. \(session.confidence.accessibilityName).")
+    }
+
+    private var statusTitle: String {
+        switch session.state {
+        case .preparing: "Preparing microphone…"
+        case .listening: session.isAudioArriving ? "Listening" : "No audio arriving"
+        case .background: session.isAudioArriving ? "Background monitoring" : "Listening interrupted"
+        case .interrupted: "Listening interrupted"
+        case .resuming: "Trying to resume…"
+        case .failed(let message): message
+        case .stopped, .idle: "Stopped"
+        }
     }
 
     private func lastNightCard(_ summary: SnoreStore.NightSummary) -> some View {
@@ -84,35 +173,94 @@ struct SnoreCheckView: View {
             }
             .font(Theme.label(13))
 
-            Text("\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged.")
+            Text(partialLine(summary))
                 .font(.caption2)
                 .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
     }
 
-    /// Episodes, not classified moments.
-    ///
-    /// A timestamped list rather than a count is still the right idea -- "3am
-    /// a cough, 4:20am snoring" is something to actually look at, where a
-    /// second aggregate number beside the existing snore percentage would
-    /// only compete with it. What was wrong was the grain.
-    ///
-    /// `SoundAnalysis` classifies a buffer at a time, so twenty minutes of
-    /// snoring arrived here as several hundred rows a second or two apart.
-    /// That is not just long, it is misleading: three hundred rows read as
-    /// three hundred things that happened, when they are one thing sampled
-    /// three hundred times, and the number belongs to the classifier's buffer
-    /// size rather than to the night. `SoundEvent.clusters(from:)` is where
-    /// the grouping and its thresholds live.
-    private var clusters: [SoundEvent.Cluster] {
-        SoundEvent.clusters(from: eventStore.recentEvents)
+    private func partialLine(_ summary: SnoreStore.NightSummary) -> String {
+        var parts = ["\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged."]
+        if summary.isPartial == true { parts.append("Partial session.") }
+        if let quality = summary.monitoringQuality {
+            parts.append("Monitoring quality \(quality).")
+        } else {
+            parts.append("Monitoring quality is an estimate of coverage, not a diagnosis.")
+        }
+        return parts.joined(separator: " ")
     }
 
-    private var eventsCard: some View {
+    private var clusters: [SoundEvent.Cluster] {
+        SoundEvent.clusters(from: session.storedEvents)
+    }
+
+    private var coverageCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Coverage", systemImage: "timeline.selection")
+            coverageBar
+            if session.monitoringGaps.isEmpty {
+                Text("No interruption gaps this session.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkTertiary)
+            } else {
+                ForEach(session.monitoringGaps) { gap in
+                    HStack {
+                        Text("Gap")
+                            .font(Theme.text(13))
+                        Spacer()
+                        Text(gapCaption(gap))
+                            .font(Theme.text(12))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .monospacedDigit()
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+        .glassCard()
+    }
+
+    private var coverageBar: some View {
+        GeometryReader { geo in
+            let width = max(geo.size.width, 1)
+            let start = session.lastSummary.map { $0.date } ?? session.monitoringGaps.first?.startedAt
+            let end = session.monitoringGaps.last?.endedAt ?? Date()
+            let span = max(end.timeIntervalSince(start ?? end), 1)
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.Metric.sleep.opacity(0.22))
+                ForEach(session.monitoringGaps) { gap in
+                    let origin = start ?? gap.startedAt
+                    let x = CGFloat(gap.startedAt.timeIntervalSince(origin) / span) * width
+                    let w = CGFloat(max(gap.duration, 30) / span) * width
+                    Capsule()
+                        .fill(Theme.inkTertiary.opacity(0.55))
+                        .frame(width: max(w, 4), height: 10)
+                        .offset(x: x)
+                }
+            }
+        }
+        .frame(height: 10)
+        .accessibilityLabel("Monitored span with interruption gaps")
+    }
+
+    private func gapCaption(_ gap: SnoreMonitoringGap) -> String {
+        let start = gap.startedAt.formatted(.dateTime.hour().minute())
+        if let ended = gap.endedAt {
+            return "\(start) – \(ended.formatted(.dateTime.hour().minute()))"
+        }
+        return "\(start) – now"
+    }
+
+    private var timelineCard: some View {
         let episodes = clusters
         return VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Events", systemImage: "list.bullet.clipboard")
+            SectionHeader(title: "Session timeline", systemImage: "list.bullet.clipboard")
+            if episodes.isEmpty {
+                Text("No clustered events from the last session.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkTertiary)
+            }
             ForEach(episodes) { episode in
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Image(systemName: episode.symbol)
@@ -122,10 +270,6 @@ struct SnoreCheckView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(episode.label)
                             .font(Theme.text(13))
-                        // Only for an episode with real extent. A single
-                        // moment rendering as "01:42 - 01:42, 0 min" is worse
-                        // than rendering as "01:42", which is what the row
-                        // already says on the right.
                         if !episode.isMomentary {
                             Text("\(Int(episode.minutes.rounded())) min")
                                 .font(Theme.text(11))
@@ -148,6 +292,28 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    private var sessionDetails: some View {
+        NavigationStack {
+            List {
+                LabeledContent("Microphone", value: session.isAudioArriving ? "Active" : "Quiet")
+                LabeledContent("Sound analysis", value: session.classifierAvailable ? "Active" : "Unavailable")
+                LabeledContent("Last audio", value: session.lastBufferAt.map { "\(Int(Date.now.timeIntervalSince($0)))s ago" } ?? "—")
+                LabeledContent("Interruptions", value: "\(session.interruptionGaps)")
+                if session.monitoringGaps.isEmpty {
+                    LabeledContent("Gaps", value: "None")
+                } else {
+                    ForEach(session.monitoringGaps) { gap in
+                        LabeledContent("Gap", value: gapCaption(gap))
+                    }
+                }
+                LabeledContent("Monitoring quality", value: session.confidence.label)
+            }
+            .navigationTitle("Session details")
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { showingDetails = false } } }
+        }
+        .presentationDetents([.medium])
+    }
+
     private func timing(_ episode: SoundEvent.Cluster) -> String {
         let start = episode.start.formatted(.dateTime.hour().minute())
         guard !episode.isMomentary else { return start }
@@ -159,12 +325,12 @@ struct SnoreCheckView: View {
             Haptics.tap()
             Task { await toggle() }
         } label: {
-            Text(detector.isRunning ? "Stop" : "Start listening")
+            Text(session.isRunning ? "Stop" : "Start listening")
                 .font(Theme.label(16, weight: .bold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 15)
                 .background(
-                    detector.isRunning
+                    session.isRunning
                     ? AnyShapeStyle(Theme.neutral(0.12))
                     : AnyShapeStyle(LinearGradient(
                         colors: [Theme.Metric.sleep, Theme.Metric.battery],
@@ -172,37 +338,24 @@ struct SnoreCheckView: View {
                       )),
                     in: RoundedRectangle(cornerRadius: 15, style: .continuous)
                 )
-                .foregroundStyle(detector.isRunning ? Color.primary : Color.black)
-        }
-        .alert("Microphone access needed", isPresented: $permissionDenied) {
-            Button("OK") {}
-        } message: {
-            Text("Turn on microphone access for Zoon in iOS Settings to use Snore Check.")
+                .foregroundStyle(session.isRunning ? Color.primary : Color.black)
         }
     }
 
     private func toggle() async {
-        if detector.isRunning {
-            let recognizedEvents = detector.recentEvents
-            if let summary = detector.stop() {
-                store.record(summary)
-                eventStore.record(recognizedEvents)
+        if session.isRunning {
+            session.stop()
+            return
+        }
+        if let message = await session.start(
+            soundscapePlaying: soundscape.isPlaying || soundscape.playing != nil,
+            routineActive: TonightRoutineController.shared.active
+        ) {
+            if message.lowercased().contains("microphone") {
+                permissionDenied = true
+            } else {
+                conflictMessage = message
             }
-            return
-        }
-
-        guard detector.isAvailable else {
-            permissionDenied = true
-            return
-        }
-        guard await detector.requestPermission() else {
-            permissionDenied = true
-            return
-        }
-        do {
-            try detector.start()
-        } catch {
-            permissionDenied = true
         }
     }
 
@@ -214,4 +367,5 @@ struct SnoreCheckView: View {
 
 #Preview("Snore Check") {
     NavigationStack { SnoreCheckView() }
+        .zoonPreviewEnvironment()
 }

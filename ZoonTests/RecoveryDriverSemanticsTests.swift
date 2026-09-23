@@ -35,11 +35,11 @@ final class RecoveryDriverSemanticsTests: XCTestCase {
 
     /// The brief's own example, and the assertion the old code failed.
     ///
-    /// 82% of need is roughly eighty-six minutes short of an eight-hour
+    /// 82% of target is roughly eighty-six minutes short of an eight-hour
     /// target. The old scale called that "Optimal" because 0.82 cleared its
     /// 0.78 cutoff; it is "Below target", which is what the number says.
     func testEightyTwoPercentOfSleepNeedIsNotOptimal() {
-        let sleep = component("Sleep", normalized: 0.82, detail: "82% of need")
+        let sleep = component("Sleep", normalized: 0.82, detail: "82% of target")
         XCTAssertNotEqual(phrase(sleep), "Optimal")
         XCTAssertEqual(phrase(sleep), "Below target")
         XCTAssertTrue(RecoveryDriverSemantics.reading(for: sleep).standing.deservesEmphasis)
@@ -47,7 +47,7 @@ final class RecoveryDriverSemanticsTests: XCTestCase {
 
     /// And the band between: short of target, but not by enough to lead with.
     func testANightJustUnderTargetReadsAsNear() {
-        XCTAssertEqual(phrase(component("Sleep", normalized: 0.90, detail: "90% of need")), "Near target")
+        XCTAssertEqual(phrase(component("Sleep", normalized: 0.90, detail: "90% of target")), "Near target")
     }
 
     /// No driver, at any value, says "Optimal". A single overnight reading
@@ -158,16 +158,16 @@ final class RecoveryDriverSemanticsTests: XCTestCase {
     // MARK: - Sleep
 
     func testSleepAtTargetSaysTargetMet() {
-        XCTAssertEqual(phrase(component("Sleep", normalized: 1.0, detail: "100% of need")), "Target met")
+        XCTAssertEqual(phrase(component("Sleep", normalized: 1.0, detail: "100% of target")), "Target met")
     }
 
     /// A planning estimate does not deserve to be missed by four minutes.
     func testSleepJustShortOfTargetStillCountsAsMet() {
-        XCTAssertEqual(phrase(component("Sleep", normalized: 0.97, detail: "97% of need")), "Target met")
+        XCTAssertEqual(phrase(component("Sleep", normalized: 0.97, detail: "97% of target")), "Target met")
     }
 
     func testAClearlyShortNightSaysBelowTarget() {
-        let short = component("Sleep", normalized: 0.6, detail: "60% of need")
+        let short = component("Sleep", normalized: 0.6, detail: "60% of target")
         XCTAssertEqual(phrase(short), "Below target")
         XCTAssertTrue(RecoveryDriverSemantics.reading(for: short).standing.deservesEmphasis)
     }
@@ -195,7 +195,7 @@ final class RecoveryDriverSemanticsTests: XCTestCase {
         let ordinary = [
             component("HRV", normalized: 0.5, deviationPercent: 0),
             component("Resting HR", normalized: 0.5, deviationPercent: 0),
-            component("Sleep", normalized: 0.98, detail: "98% of need"),
+            component("Sleep", normalized: 0.98, detail: "98% of target"),
             component("Respiratory", normalized: 1.0, deviationPercent: 0)
         ]
         XCTAssertTrue(
@@ -221,10 +221,10 @@ final class RecoveryDriverSemanticsTests: XCTestCase {
         XCTAssertEqual(RecoveryDriverSemantics.spokenReading("50 ms"), "50 milliseconds")
     }
 
-    /// "82% of need" has no unit abbreviation to expand and must come back
+    /// "82% of target" has no unit abbreviation to expand and must come back
     /// untouched rather than mangled.
     func testAReadingWithNoUnitAbbreviationIsUnchanged() {
-        XCTAssertEqual(RecoveryDriverSemantics.spokenReading("82% of need"), "82% of need")
+        XCTAssertEqual(RecoveryDriverSemantics.spokenReading("82% of target"), "82% of target")
     }
 
     func testAnUnmeasuredSignalIsSpokenAsNotMeasured() {

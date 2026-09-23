@@ -238,13 +238,28 @@ struct DayContextBuilder {
             habitualMidpointHours: bodyClock?.isEstimate == false ? bodyClock?.midpoint : nil
         ))
 
+        // One tonight: the as-of-now planning above (latest night's
+        // shortfall, today's naps and strain), and the same habitual wake
+        // `SleepDataCoordinator.usualWakeMinute` uses -- the body clock's,
+        // else last night's -- so the episode, reminders and this plan
+        // agree.
+        let habitualWake = bodyClock?.window(for: .now)?.end
+        let tonight = TonightPlanner.build(
+            nights: fullHistory,
+            sleepNeed: sleepNeed,
+            outstandingShortfallMinutes: tonightPlanning.currentShortfallMinutes,
+            lastWake: night.wakeTime,
+            obligationWake: habitualWake ?? night.wakeTime,
+            obligationSource: habitualWake == nil ? .none : .bodyClock,
+            planning: tonightPlanning
+        )
+
         return DayContext(
             night: night,
             insight: inputs.insight(sleepIntelligence.band),
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedNeed,
-            tonightPlanning: tonightPlanning,
             shortfallNowMinutes: shortfallThroughLatest,
             sleepScore: SleepScore.compute(
                 for: night,
@@ -268,7 +283,8 @@ struct DayContextBuilder {
                 to: DateInterval(start: min(night.bedtime, night.wakeTime), end: max(night.bedtime, night.wakeTime))
             ),
             cognitiveEnergy: cognitiveEnergy,
-            academicSleepRegularity: academicSRI
+            academicSleepRegularity: academicSRI,
+            tonight: tonight
         )
     }
 

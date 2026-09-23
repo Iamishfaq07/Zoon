@@ -22,7 +22,7 @@ import Foundation
 /// | HRV         | `0.5 + deviation / 0.5`  | **0.50** |
 /// | Resting HR  | `0.5 - deviation / 0.24` | **0.50** |
 /// | Respiratory | `1 - abs(delta) / 1.5`   | **1.00** |
-/// | Sleep       | `performance / 100`      | 0.82 at 82% of need |
+/// | Sleep       | `performance / 100`      | 0.82 at 82% of target |
 ///
 /// So somebody whose HRV and resting heart rate were exactly normal for them
 /// read "Fair" on both, while their respiration read "Optimal" for being
@@ -167,7 +167,7 @@ enum RecoveryDriverSemantics {
             : Reading(standing: .notable, phrase: "Above your baseline", spokenPhrase: "above your baseline")
     }
 
-    /// The reading beside this already says "82% of need", so the line under
+    /// The reading beside this already says "82% of target", so the line under
     /// it only has to say which side of the target that is — not grade it.
     /// 82% of a target is not "Optimal" under any reading of the word.
     private static func sleepReading(_ component: RecoveryScore.Component) -> Reading {

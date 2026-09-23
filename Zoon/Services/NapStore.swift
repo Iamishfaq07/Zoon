@@ -41,6 +41,10 @@ final class NapStore {
         /// decodes -- `targetEnd` falls back for those.
         var targetEndAt: Date?
 
+        /// How the wake was actually armed. Optional so a nap persisted by
+        /// a build predating this field still decodes.
+        var wakeKind: NapWakeKind?
+
         var targetEnd: Date {
             targetEndAt ?? start.addingTimeInterval(Double(targetMinutes) * 60)
         }
@@ -118,6 +122,8 @@ final class NapStore {
     /// A nap awaiting the user's answer about when it actually ended. See
     /// `PendingNap`.
     private(set) var pendingNap: PendingNap?
+    /// Last wake that was actually armed. Used by the reliability card.
+    private(set) var lastArmed: NapStartResult?
 
     /// - Parameter wake: pass `NapWake()` in the app. Left nil in previews
     ///   and tests -- see the property's doc comment.
@@ -132,25 +138,63 @@ final class NapStore {
     /// - Parameter now: injectable so a test can drive the clock. Production
     ///   callers use the default.
     func start(targetMinutes: Int, now: Date = .now) {
+        applyStart(targetMinutes: targetMinutes, now: now)
+        if let wake, let active = activeNap {
+            Task {
+                let kind = await wake.schedule(at: active.targetEnd, targetMinutes: active.targetMinutes)
+                self.recordWakeKind(kind, started: now)
+            }
+        }
+    }
+
+    /// Canonical start. UI and Coach share this so the wake is scheduled
+    /// once, with AlarmKit authorization requested in this flow.
+    @discardableResult
+    func startAndArm(targetMinutes: Int, now: Date = .now) async -> NapStartResult {
+        applyStart(targetMinutes: targetMinutes, now: now)
+        guard let wake, let active = activeNap else {
+            lastArmed = NapStartResult(targetMinutes: targetMinutes, wake: .unavailable)
+            return lastArmed!
+        }
+        let kind = await wake.schedule(at: active.targetEnd, targetMinutes: active.targetMinutes)
+        recordWakeKind(kind, started: now)
+        lastArmed = NapStartResult(targetMinutes: targetMinutes, wake: kind)
+        return lastArmed!
+    }
+
+    private func applyStart(targetMinutes: Int, now: Date) {
         let targetEnd = now.addingTimeInterval(Double(targetMinutes) * 60)
         activeNap = ActiveNap(
             start: now,
             targetMinutes: targetMinutes,
-            targetEndAt: targetEnd
+            targetEndAt: targetEnd,
+            wakeKind: nil
         )
         persistActive()
         startLiveActivity()
-        // Fire-and-forget for the same reason the Live Activity is: a nap
-        // whose notification fails to register is still a working nap timer,
-        // and blocking the tap on a notification-centre round trip would make
-        // starting a nap feel broken. `NapWake` logs its own failures.
-        //
-        // The notification is what ends the nap for the user. `reconcile`
-        // ends it for the *store*, whenever the app next runs. The two are
-        // independent on purpose: neither one failing loses the nap.
-        if let wake {
-            Task { await wake.schedule(at: targetEnd, targetMinutes: targetMinutes) }
+    }
+
+    private func recordWakeKind(_ kind: NapWakeKind, started: Date) {
+        guard var active = activeNap, active.start == started else { return }
+        active.wakeKind = kind
+        activeNap = active
+        persistActive()
+        lastArmed = NapStartResult(targetMinutes: active.targetMinutes, wake: kind)
+    }
+
+    /// Kept for older call sites. Prefer `startAndArm` so the wake is not
+    /// scheduled twice.
+    @available(*, deprecated, message: "Use startAndArm so the wake is scheduled once.")
+    func armWake() async -> Bool {
+        guard let active = activeNap else { return false }
+        guard let wake else { return false }
+        let kind = await wake.schedule(at: active.targetEnd, targetMinutes: active.targetMinutes)
+        if var current = activeNap {
+            current.wakeKind = kind
+            activeNap = current
+            persistActive()
         }
+        return kind != .unavailable
     }
 
     func cancel() {

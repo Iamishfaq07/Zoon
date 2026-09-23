@@ -16,6 +16,8 @@ struct CoachChatView: View {
     /// session, so the first reply is about the point that was tapped rather
     /// than about the night in general.
     var chartQuestion: ChartQuestion? = nil
+    /// Coach Tab uses today/trends. Sleep Detail uses the opened night.
+    var contextMode: CoachContextMode = .today
 
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
@@ -45,7 +47,33 @@ struct CoachChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if chat.unavailabilityReason != nil {
+            HStack {
+                Text(chat.conversationEngine == .appleIntelligence ? "Apple Intelligence" : "Rules")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            if chat.appleIntelligenceBecameReady {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Apple Intelligence is ready. Start a new enhanced conversation?")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                    HStack(spacing: 8) {
+                        Button("Start enhanced conversation") {
+                            chat.startEnhancedConversation()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button("Keep current conversation") {
+                            chat.dismissUpgradePrompt()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+            } else if chat.unavailabilityReason != nil {
                 Text("Local answers · sleep, timing, HRV and heart rate")
                     .font(.caption).foregroundStyle(Theme.inkSecondary).padding(8)
             }
@@ -68,11 +96,13 @@ struct CoachChatView: View {
             let runner = CoachToolRunner(
                 coordinator: coordinator, preferences: preferences, naps: naps
             )
-            chat.runTool = { runner.run($0) }
+            chat.runTool = { await runner.run($0) }
             chat.start(
                 nightSummary: night.summaryForLLM,
-                contextDigest: frozen.promptCatalog,
-                chartContext: chartQuestion?.context
+                contextDigest: coordinator.coachContextDigest(),
+                chartContext: chartQuestion?.context,
+                engine: preferences.preferredEngine,
+                contextMode: chartQuestion == nil ? contextMode : .trend
             )
             // The chart's own question wins over a tapped suggestion: this
             // screen was opened *by* that point, and asking anything else
@@ -92,12 +122,10 @@ struct CoachChatView: View {
         // re-arming once the state resolves to something else or to
         // available.
         .task(id: availabilityPollTick) {
-            // Build the session the moment the model can carry one. The poll
-            // used to only bump a tick so the view redrew and the banner went
-            // away -- nothing opened a session, so the coach silently kept
-            // answering from its local keyword replies even after the model
-            // was ready.
-            chat.ensureSession()
+            chat.noteAvailabilityChange()
+            if chat.conversationEngine == .appleIntelligence {
+                chat.ensureSession()
+            }
             guard chat.unavailabilityReason != nil, chat.isTransientlyUnavailable else { return }
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }
@@ -238,7 +266,7 @@ struct CoachChatView: View {
                     expandedEvidenceIDs.insert(messageID)
                 }
             } label: {
-                Label(text, systemImage: "number")
+                Label("Why Zoon said this", systemImage: "list.bullet.rectangle")
                     .font(Theme.text(11, weight: .medium))
                     .foregroundStyle(Theme.inkSecondary)
                     .padding(.horizontal, 8)
@@ -246,10 +274,15 @@ struct CoachChatView: View {
                     .background(Theme.neutral(0.06), in: Capsule())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Shows what this evidence means")
+            .accessibilityHint("Shows the recorded numbers this answer used")
 
             if isExpanded {
-                Text("The number above is the specific figure this answer is based on -- not a general statement.")
+                Text(text)
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .padding(.horizontal, 8)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Only facts Zoon already computed. Not a diagnosis.")
                     .font(.caption2)
                     .foregroundStyle(Theme.inkTertiary)
                     .padding(.horizontal, 8)
@@ -298,7 +331,7 @@ struct CoachChatView: View {
 
         Button("Confirm") {
             Haptics.success()
-            chat.confirmPendingAction()
+            Task { await chat.confirmPendingAction() }
         }
         .buttonStyle(.borderedProminent)
         .frame(maxWidth: .infinity)

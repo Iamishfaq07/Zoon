@@ -142,12 +142,14 @@ struct TodayView: View {
                 tonightCircleHero(context)
                     .entrance(0)
 
+                AdaptiveBriefCard(brief: adaptiveBrief(context, phase: moment))
+                    .entrance(0)
+
                 let steps = tonightSteps(context)
                 if !steps.isEmpty {
                     TonightPlanCardView(
                         steps: steps,
-                        targetMinutes: autopilotPlan(context)?.targetSleepMinutes
-                            ?? context.sleepNeed.totalNeedMinutes,
+                        targetMinutes: context.tonight.suggestedSleepTargetMinutes,
                         bedIn: plannedBedtime(context).map { $0.timeIntervalSinceNow }
                     )
                     .entrance(1)
@@ -177,6 +179,8 @@ struct TodayView: View {
                 .entrance(4)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
+                AdaptiveBriefCard(brief: adaptiveBrief(context, phase: .day))
+                    .entrance(1)
             } else {
                 TodayNightHero(context: context, greeting: greeting, scoreLight: scoreLight)
                     .entrance(0)
@@ -245,6 +249,9 @@ struct TodayView: View {
                 onTurnOffRecoveryMode: { preferences.setRecoveryModeEnabledToday(false) }
                 )
                 .entrance(4)
+
+                OneThingCard(selection: oneThing(for: context))
+                    .entrance(4)
             }
 
             if moment == .day {
@@ -363,6 +370,20 @@ struct TodayView: View {
         coordinator.napMinutesToday()
     }
 
+    private func adaptiveBrief(
+        _ context: DayContext,
+        phase: ZoonAmbientBackground.Band
+    ) -> AdaptiveZoonBrief.Result {
+        AdaptiveZoonBrief.make(
+            phase: phase,
+            night: context.night,
+            recoveryPercent: context.recovery.percent,
+            energy: context.bodyBattery.current,
+            load: context.strain.value,
+            tonightBedtime: plannedBedtime(context)
+        )
+    }
+
     private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {
         NapCoach.recommend(
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
@@ -380,6 +401,20 @@ struct TodayView: View {
     /// look safe against a bed 23 hours away.
     private func plannedBedtime(_ context: DayContext) -> Date? {
         coordinator.tonightEpisode()?.bed
+    }
+
+    private func oneThing(for context: DayContext) -> OneThing.Selection? {
+        // The bedtime Today shows -- the resolved episode, which honours a
+        // plan the person set -- not the plan's own, which does not.
+        let bed = plannedBedtime(context)
+        let candidates = OneThingCandidates.gather(
+            tonight: context.tonight,
+            nap: napRecommendation(context),
+            recovery: context.recovery,
+            now: .now,
+            caffeineCutoff: bed.flatMap { CaffeineCutoff.time(bedtime: $0) }
+        )
+        return OneThing.choose(from: candidates)
     }
 
     // MARK: - Hero helpers

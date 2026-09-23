@@ -19,7 +19,10 @@ final class AudioSessionCoordinator {
         var stop: () -> Void
         var resume: (() -> Void)?
         var reset: (() -> Void)?
+        var routeLost: (() -> Void)?
     }
+
+    private(set) var lastMediaServicesResetSucceeded = true
 
     private init() {
         let center = NotificationCenter.default
@@ -37,7 +40,7 @@ final class AudioSessionCoordinator {
         observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt
             guard raw == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
-            Task { @MainActor in self?.interrupt() }
+            Task { @MainActor in self?.routeLost() }
         })
         observers.append(center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.reset() }
@@ -49,12 +52,15 @@ final class AudioSessionCoordinator {
         recording: Bool = false,
         onInterrupt: @escaping () -> Void,
         onResume: (() -> Void)? = nil,
-        onReset: (() -> Void)? = nil
+        onReset: (() -> Void)? = nil,
+        onRouteLost: (() -> Void)? = nil
     ) throws {
         let others = owners.filter { $0.key != id }
         guard !others.values.contains(where: { $0.recording }) && (!recording || others.isEmpty) else {
-            throw NSError(domain: "ZoonAudio", code: 1, userInfo: [NSLocalizedDescriptionKey:
-                "Stop the active sound or recording before starting this session."])
+            let message = recording
+                ? "Stop Zoon's sleep audio before starting Snore Check so its own sound isn't classified as room audio."
+                : "Stop the active recording before starting playback."
+            throw NSError(domain: "ZoonAudio", code: 1, userInfo: [NSLocalizedDescriptionKey: message])
         }
         let session = AVAudioSession.sharedInstance()
         if owners.isEmpty {
@@ -62,7 +68,7 @@ final class AudioSessionCoordinator {
                 mode: recording ? .measurement : .default, options: recording ? [] : [.mixWithOthers])
             try session.setActive(true)
         }
-        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume, reset: onReset)
+        owners[id] = Owner(recording: recording, stop: onInterrupt, resume: onResume, reset: onReset, routeLost: onRouteLost)
     }
 
     func release(_ id: UUID) {
@@ -76,17 +82,49 @@ final class AudioSessionCoordinator {
     }
 
     /// Media services restarted underneath us: every engine and node the
-    /// owners held is gone, so there is nothing to resume to. Owners that
-    /// distinguish this from a pause get their reset handler; the rest are
-    /// interrupted as before.
+    /// owners held is gone, so there is nothing to resume to.
+    ///
+    /// Restore category/mode and reactivate *before* asking owners to
+    /// rebuild. Owners that reconstruct Soundscape / BreathingCoach / Snore
+    /// against a dead session would start engines that cannot run. If this
+    /// restore fails, owners are not told the session is healthy.
     private func reset() {
+        guard !owners.isEmpty else { return }
+        let recording = owners.values.contains(where: \.recording)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                recording ? .record : .playback,
+                mode: recording ? .measurement : .default,
+                options: recording ? [] : [.mixWithOthers]
+            )
+            try session.setActive(true)
+            lastMediaServicesResetSucceeded = true
+        } catch {
+            lastMediaServicesResetSucceeded = false
+            return
+        }
+        guard AudioSessionResetOrder.shouldNotifyOwners(sessionRestored: lastMediaServicesResetSucceeded) else {
+            return
+        }
         let callbacks = owners.values.map { $0.reset ?? $0.stop }
         for callback in callbacks { callback() }
     }
 
     private func resumeInterrupted(shouldResume: Bool) {
         guard shouldResume else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
         let callbacks = owners.values.compactMap(\.resume)
         for resume in callbacks { resume() }
+    }
+
+    /// Headphones unplugged: playback owners must not dump to speakers.
+    /// Recording owners keep the built-in mic — overnight Snore Check should
+    /// not end because a Bluetooth headset disconnected.
+    private func routeLost() {
+        let playback = owners.values.filter { !$0.recording }
+        for owner in playback {
+            (owner.routeLost ?? owner.reset ?? owner.stop)()
+        }
     }
 }

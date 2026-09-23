@@ -54,6 +54,7 @@ extension View {
             .environment(PreviewSupport.preferences)
             .environment(PreviewSupport.naps)
             .environment(SoundscapeEngine())
+            .environment(SnoreSessionController.shared)
             .environment(PreviewSupport.reminders)
             .environment(GlobalPresentation())
             .modelContainer(PreviewSupport.container)

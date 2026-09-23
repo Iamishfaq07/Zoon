@@ -64,6 +64,65 @@ struct PersonalSetup: Codable, Equatable, Sendable {
         var voice = true
         var haptics = false
         var sceneID: UUID?
+        var guidedBreathingMinutes = 5
+        var voiceMode: WindDownGuidanceConfiguration.VoiceMode = .natural
+        /// Installed AVSpeech voice identifier. Nil is Automatic.
+        var voiceIdentifier: String?
+
+        enum CodingKeys: String, CodingKey {
+            case minutes, breathing, voice, haptics, sceneID
+            case guidedBreathingMinutes, voiceMode, voiceIdentifier
+        }
+
+        init(
+            minutes: Int = 30,
+            breathing: Bool = true,
+            voice: Bool = true,
+            haptics: Bool = false,
+            sceneID: UUID? = nil,
+            guidedBreathingMinutes: Int = 5,
+            voiceMode: WindDownGuidanceConfiguration.VoiceMode = .natural,
+            voiceIdentifier: String? = nil
+        ) {
+            self.minutes = minutes
+            self.breathing = breathing
+            self.voice = voice
+            self.haptics = haptics
+            self.sceneID = sceneID
+            self.guidedBreathingMinutes = guidedBreathingMinutes
+            self.voiceMode = voiceMode
+            self.voiceIdentifier = voiceIdentifier
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            minutes = try c.decodeIfPresent(Int.self, forKey: .minutes) ?? 30
+            breathing = try c.decodeIfPresent(Bool.self, forKey: .breathing) ?? true
+            voice = try c.decodeIfPresent(Bool.self, forKey: .voice) ?? true
+            haptics = try c.decodeIfPresent(Bool.self, forKey: .haptics) ?? false
+            sceneID = try c.decodeIfPresent(UUID.self, forKey: .sceneID)
+            guidedBreathingMinutes = try c.decodeIfPresent(Int.self, forKey: .guidedBreathingMinutes) ?? 5
+            if let mode = try c.decodeIfPresent(WindDownGuidanceConfiguration.VoiceMode.self, forKey: .voiceMode) {
+                voiceMode = mode
+            } else if !voice {
+                voiceMode = haptics ? .hapticsOnly : .silent
+            } else {
+                voiceMode = .natural
+            }
+            voiceIdentifier = try c.decodeIfPresent(String.self, forKey: .voiceIdentifier)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(minutes, forKey: .minutes)
+            try c.encode(breathing, forKey: .breathing)
+            try c.encode(voice, forKey: .voice)
+            try c.encode(haptics, forKey: .haptics)
+            try c.encodeIfPresent(sceneID, forKey: .sceneID)
+            try c.encode(guidedBreathingMinutes, forKey: .guidedBreathingMinutes)
+            try c.encode(voiceMode, forKey: .voiceMode)
+            try c.encodeIfPresent(voiceIdentifier, forKey: .voiceIdentifier)
+        }
     }
     struct RoutineSession: Codable, Equatable, Sendable {
         var startedAt: Date
@@ -78,6 +137,59 @@ struct PersonalSetup: Codable, Equatable, Sendable {
         var reason: String
         /// Excludes this night from comparative history, preserving the original.
         var excluded = true
+        /// Minutes to move bedtime. Negative is earlier. Zero means no edit.
+        var bedtimeShiftMinutes: Double = 0
+        /// Minutes to move wake. Negative is earlier.
+        var wakeShiftMinutes: Double = 0
+
+        var hasBoundaryEdit: Bool {
+            abs(bedtimeShiftMinutes) >= 1 || abs(wakeShiftMinutes) >= 1
+        }
+
+        init(
+            id: UUID = UUID(),
+            nightKey: String,
+            recordedAt: Date = .now,
+            reason: String,
+            excluded: Bool = true,
+            bedtimeShiftMinutes: Double = 0,
+            wakeShiftMinutes: Double = 0
+        ) {
+            self.id = id
+            self.nightKey = nightKey
+            self.recordedAt = recordedAt
+            self.reason = reason
+            self.excluded = excluded
+            self.bedtimeShiftMinutes = bedtimeShiftMinutes
+            self.wakeShiftMinutes = wakeShiftMinutes
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case id, nightKey, recordedAt, reason, excluded
+            case bedtimeShiftMinutes, wakeShiftMinutes
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+            nightKey = try c.decode(String.self, forKey: .nightKey)
+            recordedAt = try c.decodeIfPresent(Date.self, forKey: .recordedAt) ?? .now
+            reason = try c.decode(String.self, forKey: .reason)
+            excluded = try c.decodeIfPresent(Bool.self, forKey: .excluded) ?? true
+            bedtimeShiftMinutes = try c.decodeIfPresent(Double.self, forKey: .bedtimeShiftMinutes) ?? 0
+            wakeShiftMinutes = try c.decodeIfPresent(Double.self, forKey: .wakeShiftMinutes) ?? 0
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            try c.encode(nightKey, forKey: .nightKey)
+            try c.encode(recordedAt, forKey: .recordedAt)
+            try c.encode(reason, forKey: .reason)
+            try c.encode(excluded, forKey: .excluded)
+            try c.encode(bedtimeShiftMinutes, forKey: .bedtimeShiftMinutes)
+            try c.encode(wakeShiftMinutes, forKey: .wakeShiftMinutes)
+        }
     }
 
     /// "2026-09-24" for the night ending on the morning of the 24th, in the

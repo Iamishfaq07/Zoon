@@ -1,0 +1,240 @@
+{
+  "build": "Zoon-main 16 / feature/zoon16-local-sleep-repair",
+  "commit": "pending-pr",
+  "generated": "2026-09-22T20:05:00Z",
+  "note": "Existing regression assets captured on previous builds. Not regenerated in this Linux sandbox (no xcodebuild / Simulator). Do not treat these as proof of the current UI.",
+  "device": "unspecified \u2014 see filenames",
+  "os": "unspecified",
+  "theme": "mixed",
+  "dynamicType": "mixed",
+  "screens": [
+    {
+      "file": "badges.jpg",
+      "screen": "badges"
+    },
+    {
+      "file": "bodyClock.jpg",
+      "screen": "bodyClock"
+    },
+    {
+      "file": "breathing.jpg",
+      "screen": "breathing"
+    },
+    {
+      "file": "coach-largeText.jpg",
+      "screen": "coach-largeText"
+    },
+    {
+      "file": "coach-light.jpg",
+      "screen": "coach-light"
+    },
+    {
+      "file": "coach.jpg",
+      "screen": "coach"
+    },
+    {
+      "file": "evidence-largeText.jpg",
+      "screen": "evidence-largeText"
+    },
+    {
+      "file": "evidence.jpg",
+      "screen": "evidence"
+    },
+    {
+      "file": "journal-largeText.jpg",
+      "screen": "journal-largeText"
+    },
+    {
+      "file": "journal-light.jpg",
+      "screen": "journal-light"
+    },
+    {
+      "file": "journal.jpg",
+      "screen": "journal"
+    },
+    {
+      "file": "liveHealthKit.jpg",
+      "screen": "liveHealthKit"
+    },
+    {
+      "file": "more.jpg",
+      "screen": "more"
+    },
+    {
+      "file": "nap.jpg",
+      "screen": "nap"
+    },
+    {
+      "file": "nightHistory-light.jpg",
+      "screen": "nightHistory-light"
+    },
+    {
+      "file": "nightHistory.jpg",
+      "screen": "nightHistory"
+    },
+    {
+      "file": "onboarding.jpg",
+      "screen": "onboarding"
+    },
+    {
+      "file": "patterns-largeText.jpg",
+      "screen": "patterns-largeText"
+    },
+    {
+      "file": "patterns.jpg",
+      "screen": "patterns"
+    },
+    {
+      "file": "report.jpg",
+      "screen": "report"
+    },
+    {
+      "file": "sensorTruth-provenance.jpg",
+      "screen": "sensorTruth-provenance"
+    },
+    {
+      "file": "sensorTruth.jpg",
+      "screen": "sensorTruth"
+    },
+    {
+      "file": "settings-largeText.jpg",
+      "screen": "settings-largeText"
+    },
+    {
+      "file": "settings-light.jpg",
+      "screen": "settings-light"
+    },
+    {
+      "file": "settings.jpg",
+      "screen": "settings"
+    },
+    {
+      "file": "sleep-light.jpg",
+      "screen": "sleep-light"
+    },
+    {
+      "file": "sleep.jpg",
+      "screen": "sleep"
+    },
+    {
+      "file": "sleepDetail-largeText.jpg",
+      "screen": "sleepDetail-largeText"
+    },
+    {
+      "file": "sleepDetail.jpg",
+      "screen": "sleepDetail"
+    },
+    {
+      "file": "snoreCheck.jpg",
+      "screen": "snoreCheck"
+    },
+    {
+      "file": "soundscapes.jpg",
+      "screen": "soundscapes"
+    },
+    {
+      "file": "splash.jpg",
+      "screen": "splash"
+    },
+    {
+      "file": "today-accessibilityMedium.jpg",
+      "screen": "today-accessibilityMedium"
+    },
+    {
+      "file": "today-day-light.jpg",
+      "screen": "today-day-light"
+    },
+    {
+      "file": "today-day.jpg",
+      "screen": "today-day"
+    },
+    {
+      "file": "today-largeText.jpg",
+      "screen": "today-largeText"
+    },
+    {
+      "file": "today-light.jpg",
+      "screen": "today-light"
+    },
+    {
+      "file": "today-morning.jpg",
+      "screen": "today-morning"
+    },
+    {
+      "file": "today-night.jpg",
+      "screen": "today-night"
+    },
+    {
+      "file": "today.jpg",
+      "screen": "today"
+    },
+    {
+      "file": "tomorrow-largeText.jpg",
+      "screen": "tomorrow-largeText"
+    },
+    {
+      "file": "tomorrow.jpg",
+      "screen": "tomorrow"
+    },
+    {
+      "file": "trends-accessibilityMedium.jpg",
+      "screen": "trends-accessibilityMedium"
+    },
+    {
+      "file": "trends-largeText.jpg",
+      "screen": "trends-largeText"
+    },
+    {
+      "file": "trends-light.jpg",
+      "screen": "trends-light"
+    },
+    {
+      "file": "trends.jpg",
+      "screen": "trends"
+    },
+    {
+      "file": "watch/page-log.jpg",
+      "screen": "page-log"
+    },
+    {
+      "file": "watch/page-more.jpg",
+      "screen": "page-more"
+    },
+    {
+      "file": "watch/page-nap.jpg",
+      "screen": "page-nap"
+    },
+    {
+      "file": "watch/page-scorelight.jpg",
+      "screen": "page-scorelight"
+    },
+    {
+      "file": "watch/page-today.jpg",
+      "screen": "page-today"
+    },
+    {
+      "file": "watch/page-tonight.jpg",
+      "screen": "page-tonight"
+    },
+    {
+      "file": "watch/se-3-40mm.jpg",
+      "screen": "se-3-40mm"
+    },
+    {
+      "file": "watch/se-3-44mm.jpg",
+      "screen": "se-3-44mm"
+    },
+    {
+      "file": "watch/series-11-42mm.jpg",
+      "screen": "series-11-42mm"
+    },
+    {
+      "file": "watch/series-11-46mm.jpg",
+      "screen": "series-11-46mm"
+    },
+    {
+      "file": "watch/ultra-3-49mm.jpg",
+      "screen": "ultra-3-49mm"
+    }
+  ]
+}

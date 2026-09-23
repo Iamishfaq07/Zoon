@@ -10,13 +10,12 @@ import HealthKit
 /// Entirely opt-in — see `HealthKitManager.requestCycleTrackingAuthorization`.
 /// Nothing here is read, computed, or shown unless the user turns it on.
 ///
-/// **Why there is no menopause or perimenopause context.** §21 asks for it
-/// only if a public API exists. None does. The `sdk-probe` CI job searched
-/// the installed iPhoneOS 26.5 and WatchOS 26.5 HealthKit headers,
-/// `.swiftinterface` and `.apinotes` for anything matching menopause,
-/// perimenopause or climacteric and found nothing — not in the public surface
-/// and not even in the linker stub, which is where the workout-zone classes
-/// at least show up. The whole cycle vocabulary it did find is:
+/// **Why there is no menopause or perimenopause context.** The public
+/// HealthKit surface still has none. Zoon16 asked again; this sandbox has
+/// no Xcode 27 SDK to compile a new identifier against, and the last
+/// `sdk-probe` on iPhoneOS 26.5 / WatchOS 26.5 found nothing matching
+/// menopause, perimenopause or climacteric — not in public headers,
+/// `.swiftinterface` or `.apinotes`. The whole cycle vocabulary it did find is:
 ///
 /// ```text
 /// HKCategoryTypeIdentifierInfrequentMenstrualCycles

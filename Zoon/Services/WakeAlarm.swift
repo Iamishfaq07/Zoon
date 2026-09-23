@@ -45,9 +45,15 @@ import AppIntents
 @Observable
 final class WakeAlarm {
 
+    enum Slot: Sendable {
+        case morning
+        case nap
+    }
+
     /// Stable across schedulings so a re-schedule replaces the previous alarm
     /// rather than stacking a second one on the same morning.
     private static let alarmID = UUID(uuidString: "5F3B9A61-0C4E-4E7A-9E2D-1A7C6B8D4E20") ?? UUID()
+    private static let napAlarmID = UUID(uuidString: "A19E4C02-7B11-4F3A-9D44-6C8E21B0F5D7") ?? UUID()
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "WakeAlarm")
 
@@ -125,45 +131,37 @@ final class WakeAlarm {
     ///   silently swallow a failure, because the failure mode is somebody
     ///   oversleeping.
     @discardableResult
-    func schedule(at wakeTime: Date) async -> Bool {
+    func schedule(at wakeTime: Date, slot: Slot = .morning) async -> Bool {
         #if canImport(AlarmKit)
         guard #available(iOS 26.0, *) else { return false }
 
         do {
             let schedule = Alarm.Schedule.fixed(wakeTime)
-
-            // AlarmButton is a value describing a button's label, not an
-            // enum with pre-built cases -- "stop" is a role every alarm's
-            // presentation constructs by hand.
             let stopButton = AlarmButton(
                 text: "Stop",
                 textColor: .white,
                 systemImageName: "stop.fill"
             )
+            let title: LocalizedStringResource = slot == .nap ? "Nap over" : "Wake window"
             let alert = AlarmPresentation.Alert(
-                title: "Wake window",
+                title: title,
                 stopButton: stopButton
             )
-
             let attributes = AlarmAttributes<EmptyAlarmMetadata>(
                 presentation: AlarmPresentation(alert: alert),
                 tintColor: .indigo
             )
-
-            // Nested under AlarmManager, not a top-level type -- this is what
-            // "cannot find 'AlarmConfiguration' in scope" meant on the first
-            // compile.
             let configuration = AlarmManager.AlarmConfiguration<EmptyAlarmMetadata>(
                 schedule: schedule,
                 attributes: attributes
             )
-
-            _ = try await AlarmManager.shared.schedule(id: Self.alarmID, configuration: configuration)
-            logger.info("Wake alarm scheduled for \(wakeTime.formatted(.dateTime.hour().minute()))")
-            scheduledWakeTime = wakeTime
+            let id = slot == .nap ? Self.napAlarmID : Self.alarmID
+            _ = try await AlarmManager.shared.schedule(id: id, configuration: configuration)
+            logger.info("\(slot == .nap ? "Nap" : "Wake") alarm scheduled for \(wakeTime.formatted(.dateTime.hour().minute()))")
+            if slot == .morning { scheduledWakeTime = wakeTime }
             return true
         } catch {
-            logger.error("Could not schedule wake alarm: \(error.localizedDescription, privacy: .public)")
+            logger.error("Could not schedule alarm: \(error.localizedDescription, privacy: .public)")
             return false
         }
         #else
@@ -172,28 +170,36 @@ final class WakeAlarm {
     }
 
     @discardableResult
-    func cancel() -> Bool {
+    func cancel(slot: Slot = .morning) -> Bool {
         #if canImport(AlarmKit)
-        guard #available(iOS 26.0, *) else { scheduledWakeTime = nil; return true }
+        guard #available(iOS 26.0, *) else {
+            if slot == .morning { scheduledWakeTime = nil }
+            return true
+        }
         do {
-            // An absent alarm is already cancelled; do not treat that as an error.
-            if try AlarmManager.shared.alarms.contains(where: { $0.id == Self.alarmID }) {
-                try AlarmManager.shared.cancel(id: Self.alarmID)
+            let id = slot == .nap ? Self.napAlarmID : Self.alarmID
+            if try AlarmManager.shared.alarms.contains(where: { $0.id == id }) {
+                try AlarmManager.shared.cancel(id: id)
             }
         } catch {
-            logger.error("Could not cancel wake alarm: \(error.localizedDescription, privacy: .public)")
+            logger.error("Could not cancel alarm: \(error.localizedDescription, privacy: .public)")
             return false
         }
         #endif
-        scheduledWakeTime = nil
+        if slot == .morning { scheduledWakeTime = nil }
         return true
+    }
+
+    @discardableResult
+    func cancel() -> Bool {
+        cancel(slot: .morning)
     }
 }
 
 #if canImport(AlarmKit)
-/// AlarmKit's attributes type is generic over per-alarm metadata. Zoon has
-/// exactly one alarm and needs to carry nothing alongside it, so this is the
-/// empty conformance that satisfies the generic.
+/// AlarmKit's attributes type is generic over per-alarm metadata. Zoon carries
+/// nothing alongside either the morning or nap slot, so this is the empty
+/// conformance that satisfies the generic.
 @available(iOS 26.0, *)
 struct EmptyAlarmMetadata: AlarmMetadata {
     init() {}

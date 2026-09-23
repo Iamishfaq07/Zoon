@@ -252,12 +252,11 @@ final class SleepDataCoordinator {
         // debt carried into *last* night -- and took 25% of that again, so
         // tonight asked for about 8% of a figure that did not include the
         // night just slept.
-        return SleepAutopilot.plan(
-            nights: recentNights,
-            sleepNeedMinutes: context.tonightPlanning.tonightNeedBeforeRepaymentMinutes,
-            obligationWakeMinutes: usualWakeMinute(context, now: now),
-            sleepDebtMinutes: context.tonightPlanning.currentShortfallMinutes
-        )
+        //
+        // Now built once, in `DayContextBuilder`, as `context.tonight`: the
+        // same inputs and the same habitual wake as `usualWakeMinute`. This
+        // returns that plan rather than a second one.
+        return context.tonight.autopilot
     }
 
     /// Tonight's episode: the one bed, wind-down and wake every surface uses.
@@ -974,7 +973,7 @@ final class SleepDataCoordinator {
         }
 
         let baseline = store.baseline(for: record.date, goalMinutes: goal, manualNaps: naps.naps)
-        let night = record.features(
+        let rawNight = record.features(
             baseline: baseline,
             secondaryAsleepMinutes: store.secondaryEpisodeAsleepMinutes(
                 forNightKey: record.nightKey ?? "", wakeDate: record.date,
@@ -982,6 +981,9 @@ final class SleepDataCoordinator {
                 manualNaps: naps.naps
             )
         )
+        let repairs = PersonalSetupStore.shared.value.repairs
+        let night = LocalSleepCorrection.apply(rawNight, repairs: repairs)
+
         // Foundation Models inference is async and the engine protocol is not,
         // so generation is primed here and read back synchronously below.
         if let modelEngine = engine as? FoundationModelInsightEngine {
@@ -993,8 +995,12 @@ final class SleepDataCoordinator {
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
-        let history = store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
-            .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) }
+        let history = LocalSleepCorrection.apply(
+            store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
+                .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) },
+            repairs: repairs
+        )
+
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
         let maxHR = maximum.bpm
@@ -1417,7 +1423,7 @@ final class SleepDataCoordinator {
         // widget nor the watch has a HealthKit pipeline to rebuild it from.
         // The clock formatting happens here too -- see the snapshot fields'
         // own documentation for why it is not left to each extension.
-        if let plan = tonightAutopilotPlan(for: context) {
+        if let plan = context.tonight.autopilot {
             snapshot.tonightTargetLabel = plan.targetRangeLabel
             snapshot.tonightTargetNote = plan.sentence
             snapshot.tonightTargetNoteShort = plan.shortSentence
@@ -2905,10 +2911,7 @@ final class SleepDataCoordinator {
                 associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
             )?.tag.label,
-            // The same plan Today and the watch show. This one was built
-            // without the habitual wake, so the coach could quote a different
-            // bedtime shift from the one on screen.
-            tonightTarget: tonightAutopilotPlan(for: context)?.sentence
+            tonightTarget: context?.tonight.autopilot?.sentence
         )
 
         let encoder = JSONEncoder()

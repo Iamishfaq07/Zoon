@@ -19,7 +19,9 @@ struct DataQualityView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                 ZoonCoverageMatrix(nights: coordinator.recentNights)
+                lapseSection
                 VStack(alignment: .leading, spacing: 10) {
+
                     ZoonSectionHeader("Last \(quality.windowDays) days")
                     VStack(spacing: 0) {
                         ForEach(Array(quality.coverage.enumerated()), id: \.element.id) { index, coverage in
@@ -51,7 +53,39 @@ struct DataQualityView: View {
         }
     }
 
+    private var lapses: [DataQuality.Lapse] {
+        DataQuality.lapses(nights: coordinator.recentNights)
+    }
+
+    private var lapseSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZoonSectionHeader("When it stopped")
+            Text("Coverage is how much arrived. This is when a signal last showed up — the difference between a watch charged irregularly and a sensor that went quiet on a particular night.")
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                ForEach(Array(lapses.enumerated()), id: \.element.id) { index, lapse in
+                    if index > 0 { Rectangle().fill(Theme.cardStroke).frame(height: 1) }
+                    HStack {
+                        Text(lapse.metric.label)
+                            .font(Theme.label(13, weight: .medium))
+                        Spacer()
+                        Text(lapse.summary)
+                            .font(Theme.text(12))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .padding(.vertical, 10)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(lapse.metric.label), \(lapse.summary)")
+                }
+            }
+        }
+    }
+
     private func row(_ coverage: DataQuality.Coverage) -> some View {
+
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Image(systemName: coverage.metric.symbol)

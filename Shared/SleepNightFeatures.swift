@@ -202,6 +202,12 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
     /// see `StageTrust.grade`.
     var stageSourcePriority: SourcePriority?
 
+    /// How the session bounds were obtained. A Repair overlay is neither a
+    /// sensor measurement nor an automatic estimate — see
+    /// `SleepTimingProvenance`. Defaults to measured so nights stored
+    /// before this existed do not claim a correction nobody applied.
+    var timingProvenance: SleepTimingProvenance = .measured
+
     /// Whether a raw sleeping wrist-temperature reading arrived this night.
     ///
     /// Not the same question as `wristTempDeltaC != nil`. The delta is this
@@ -290,7 +296,8 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         measurementSources: NightMeasurementSources = .empty,
         wristTempMeasured: Bool = false,
         sleepApneaEventCount: Int? = nil,
-        stageSourcePriority: SourcePriority? = nil
+        stageSourcePriority: SourcePriority? = nil,
+        timingProvenance: SleepTimingProvenance = .measured
     ) {
         self.date = date
         self.bedtime = bedtime
@@ -332,6 +339,7 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         self.stageSourcePriority = stageSourcePriority
         self.wristTempMeasured = wristTempMeasured
         self.sleepApneaEventCount = sleepApneaEventCount
+        self.timingProvenance = timingProvenance
     }
 
     // MARK: - Decoding
@@ -397,6 +405,8 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
         ) ?? .empty
         wristTempMeasured = try c.decodeIfPresent(Bool.self, forKey: .wristTempMeasured) ?? false
         sleepApneaEventCount = try c.decodeIfPresent(Int.self, forKey: .sleepApneaEventCount)
+        timingProvenance = try c.decodeIfPresent(SleepTimingProvenance.self, forKey: .timingProvenance)
+            ?? .measured
     }
 }
 
@@ -522,7 +532,8 @@ extension SleepNightFeatures {
             wristTempDeltaC: wristTempDeltaC?.rounded(to: 2),
             sleepDebtMin14day: sleepDebtMinutes?.rounded(to: 0),
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed?.rounded(to: 1),
-            exerciseMinPreviousDay: exerciseMinutesPreviousDay?.rounded(to: 0)
+            exerciseMinPreviousDay: exerciseMinutesPreviousDay?.rounded(to: 0),
+            timingProvenance: timingProvenance.rawValue
         )
 
         let encoder = JSONEncoder()
@@ -558,6 +569,7 @@ extension SleepNightFeatures {
         let sleepDebtMin14day: Double?
         let lastWorkoutHoursBeforeBed: Double?
         let exerciseMinPreviousDay: Double?
+        let timingProvenance: String
 
         enum CodingKeys: String, CodingKey {
             case date
@@ -579,6 +591,7 @@ extension SleepNightFeatures {
             case sleepDebtMin14day = "sleep_debt_min_14day"
             case lastWorkoutHoursBeforeBed = "last_workout_hours_before_bed"
             case exerciseMinPreviousDay = "exercise_min_previous_day"
+            case timingProvenance = "timing_provenance"
         }
     }
 }

@@ -248,7 +248,8 @@ struct FeatureExtractor {
             // Classified by the builder while the sample's hardware string
             // was still in scope; it cannot be worked out from anything this
             // record holds. See `StageTrust`.
-            stageSourcePriority: session.stageSourcePriority
+            stageSourcePriority: session.stageSourcePriority,
+            timingProvenance: session.hasExplicitInBedData ? .measured : .estimated
         )
 
         return Result(

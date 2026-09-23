@@ -18,7 +18,11 @@ struct DayContext: Equatable {
     /// assesses last night against the debt carried *into* it and the day
     /// before it. This carries the debt with last night applied, today's
     /// strain and today's naps. See `SleepPlanningInputs.asOfNow`.
-    let tonightPlanning: SleepPlanningInputs
+    ///
+    /// The same value as `tonight.planning` -- `DayContextBuilder` hands it
+    /// to `TonightPlanner` -- kept under this name for the callers that
+    /// only need the figures.
+    var tonightPlanning: SleepPlanningInputs { tonight.planning }
     /// The shortfall **now**: the ledger with last night on it. What every
     /// "current sleep debt" figure shows.
     ///
@@ -55,6 +59,10 @@ struct DayContext: Equatable {
     /// and a clinician export can quote the academic figure without
     /// recomputing it from a different window.
     let academicSleepRegularity: SleepRegularityIndex
+    /// The one tonight. Built with the outstanding shortfall, not the
+    /// composed need, so Today, reminders, Nap Coach and Energy cannot
+    /// disagree about bedtime.
+    let tonight: TonightPlan
 
     /// True when this is synthetic data (Simulator / previews).
     var isMock: Bool { night.isMock }
@@ -72,7 +80,6 @@ struct DayContext: Equatable {
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedSleepNeed,
-            tonightPlanning: tonightPlanning,
             shortfallNowMinutes: shortfallNowMinutes,
             sleepScore: sleepScore,
             sleepIntelligence: sleepIntelligence,
@@ -87,38 +94,18 @@ struct DayContext: Equatable {
             hourlyHeartRate: hourlyHeartRate,
             overnightHeartRate: overnightHeartRate,
             cognitiveEnergy: cognitiveEnergy,
-            academicSleepRegularity: academicSleepRegularity
+            academicSleepRegularity: academicSleepRegularity,
+            tonight: tonight
         )
     }
 
-    /// Tonight's target bedtime: your usual wake time, minus tonight's need.
-    ///
-    /// Lives here rather than in the view that draws it because two things now
-    /// depend on it — the countdown card and the scheduled reminder — and a
-    /// notification that fires at a different time from the one on screen is
-    /// worse than no notification.
-    ///
-    /// Derived from the user's own wake pattern rather than an alarm they have
-    /// to configure: the data is already here, and a setting you must fill in
-    /// before the feature works is a setting most people never fill in.
-    ///
-    /// Resolved through `ResolvedSleepEpisode.window`, so a bedtime that has
-    /// passed stays tonight's until the wake it was planning for. This used
-    /// to anchor on "tomorrow" relative to now, which after midnight is the
-    /// morning after next: at 00:30 the countdown read nearly a day.
-    ///
-    /// Prefer `SleepDataCoordinator.tonightEpisode()` where it is reachable:
-    /// that also knows the person's own plans and the autopilot. This is the
-    /// fallback it uses when neither applies.
+    /// Tonight's target bedtime. Delegates to `tonight` so this cannot
+    /// silently become a second calculation. The old body was
+    /// `wake-tomorrow − totalNeedMinutes`, which repaid the shortfall on a
+    /// different rule from Autopilot and produced a different clock time
+    /// on the same screen.
     func targetBedtime(now: Date = .now, calendar: Calendar = .current) -> Date? {
-        let wake = calendar.dateComponents([.hour, .minute], from: night.wakeTime)
-        let wakeMinute = Double((wake.hour ?? 7) * 60 + (wake.minute ?? 0))
-        return ResolvedSleepEpisode.window(
-            bedMinute: wakeMinute - tonightPlanning.tonightNeedMinutes,
-            wakeMinute: wakeMinute,
-            containingOrAfter: now,
-            calendar: calendar
-        )?.start
+        tonight.bedtime(now: now, calendar: calendar)
     }
 
     /// The morning headline — what a user reads in two seconds.

@@ -72,12 +72,12 @@ final class MorningInThreeTests: XCTestCase {
     func testARealShortfallIsNamedWithItsSize() throws {
         let result = summary(debt: 95)
         XCTAssertTrue(result.today.headline.contains(SleepNightFeatures.formatMinutes(95)), result.today.headline)
-        XCTAssertTrue(try XCTUnwrap(result.today.detail).contains("your own estimated sleep need"))
+        XCTAssertTrue(try XCTUnwrap(result.today.detail).contains("your own sleep target"))
     }
 
     func testASmallShortfallIsNotWorthOpeningTheDayWith() {
         let result = summary(debt: MorningInThree.debtWorthMentioningMinutes - 1)
-        XCTAssertEqual(result.today.headline, "You're on top of your sleep need")
+        XCTAssertEqual(result.today.headline, "You're on top of your sleep target")
     }
 
     func testTheThresholdIsInclusive() {
@@ -102,7 +102,7 @@ final class MorningInThreeTests: XCTestCase {
         let large = summary(debt: 600, needIsLearned: false)
         XCTAssertEqual(none.today, large.today)
 
-        XCTAssertEqual(large.today.headline, "Still learning your sleep need")
+        XCTAssertEqual(large.today.headline, "Still learning your sleep baseline")
         // No quantity is stated, which is what claiming a shortfall requires.
         let detail = try XCTUnwrap(large.today.detail)
         XCTAssertFalse(

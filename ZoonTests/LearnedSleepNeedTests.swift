@@ -179,6 +179,38 @@ extension LearnedSleepNeedTests {
         XCTAssertFalse(LearnedSleepNeed.isRepayingDebt(night))
     }
 
+    /// Apple Watch never writes `inBed`, so the efficiency ceiling is silent.
+    /// A disciplined 6h15 every night with estimated TIB and a real shortfall
+    /// must not become the learned baseline.
+    func testEstimatedTimeInBedShortNightsDoNotTeachTheBaseline() {
+        let nights = (1...60).map { daysAgo -> SleepNightFeatures in
+            var night = Fixture.night(
+                daysAgo: daysAgo,
+                timeAsleepMinutes: 375,
+                timeInBedMinutes: 375,
+                sleepDebtMinutes: 180
+            )
+            night.timeInBedIsEstimated = true
+            return night
+        }
+        let need = LearnedSleepNeed.compute(goalMinutes: 480, history: nights)
+        XCTAssertNil(need.learnedMinutes, "estimated-TIB restriction must not be learned as need")
+        XCTAssertEqual(need.confidence, .insufficient)
+        XCTAssertEqual(need.minutes, 480, accuracy: 0.01)
+    }
+
+    func testEstimatedTimeInBedNearGoalNightsCanStillQualify() {
+        var night = Fixture.night(
+            daysAgo: 1,
+            timeAsleepMinutes: 470,
+            timeInBedMinutes: 470,
+            sleepDebtMinutes: 0
+        )
+        night.timeInBedIsEstimated = true
+        XCTAssertFalse(LearnedSleepNeed.isEstimatedRestriction(night, goalMinutes: 480))
+        XCTAssertTrue(LearnedSleepNeed.isUnconstrained(night, goalMinutes: 480))
+    }
+
     // MARK: - What the model now says
 
     /// The whole point. Forty restricted nights used to produce a confident

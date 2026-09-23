@@ -41,8 +41,77 @@ final class CoachEvidenceTests: XCTestCase {
     func testTrainDefersWhenDebtIsHigh() {
         let night = Fixture.night(sleepDebtMinutes: 80, lastWorkoutHoursBeforeBed: 2)
         let reply = CoachEvidence(night: night, history: []).reply(to: "Should I train today?")
-        XCTAssertTrue(reply.text.lowercased().contains("lighter"))
+        XCTAssertTrue(reply.text.lowercased().contains("shortfall") || reply.text.lowercased().contains("recovery"))
+        XCTAssertFalse(reply.text.lowercased().contains("lighter day fits last night"))
+        XCTAssertFalse(reply.text.lowercased().contains("often sits alongside"))
         XCTAssertNotNil(reply.action)
+    }
+
+    func testTonightDoesNotPrescribeLastNightsClocks() {
+        let night = Fixture.night(sleepDebtMinutes: 80)
+        let reply = CoachEvidence(night: night, history: []).reply(to: "When should I sleep?")
+        XCTAssertTrue(reply.text.lowercased().contains("tonight"), reply.text)
+        XCTAssertFalse(reply.text.lowercased().contains("last night you were in bed"), reply.text)
+    }
+
+    func testFatigueDoesNotDiagnose() {
+        let night = Fixture.night(timeAsleepMinutes: 390, sleepDebtMinutes: 90)
+        let reply = CoachEvidence(night: night, history: []).reply(to: "Why am I tired?")
+        XCTAssertTrue(reply.text.lowercased().contains("can't know") || reply.text.lowercased().contains("cannot know") || reply.text.lowercased().contains("signals"), reply.text)
+        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
+    }
+
+    func testFocusIsNotTonightByDefault() {
+        let night = Fixture.night(sleepDebtMinutes: 80)
+        let reply = CoachEvidence(night: night, history: []).reply(to: "What should I focus on?")
+        XCTAssertTrue(reply.text.lowercased().contains("protect") || reply.text.lowercased().contains("shortfall"), reply.text)
+        XCTAssertFalse(reply.text.lowercased().contains("last night is a record, not tonight's prescription"), reply.text)
+        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
+    }
+
+    func testCatalogLastNightSummaryDoesNotSwallowHRV() {
+        let night = Fixture.night(avgHRV: 42)
+        let reply = CoachEvidence(night: night, history: []).reply(to: "Why was my HRV low last night?")
+        XCTAssertEqual(CoachToolCatalog.interpret("Why was my HRV low last night?")?.kind, .getLastNightSummary)
+        XCTAssertTrue(reply.text.contains("42"), reply.text)
+        XCTAssertTrue(reply.text.lowercased().contains("close to"), reply.text)
+        XCTAssertFalse(reply.text.lowercased().contains("efficiency"), reply.text)
+        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
+    }
+
+    func testCatalogLastNightSummaryDoesNotSwallowWakes() {
+        let night = Fixture.night(timeAsleepMinutes: 400, timeInBedMinutes: 480, wakeCount: 4)
+        let reply = CoachEvidence(night: night, history: []).reply(to: "Why did I wake up so much?")
+        XCTAssertEqual(CoachToolCatalog.interpret("Why did I wake up so much?")?.kind, .getLastNightSummary)
+        XCTAssertTrue(reply.text.contains("4"), reply.text)
+        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
+    }
+
+    func testTrendReplyComparesTwoWindows() {
+        let night = Fixture.night(daysAgo: 0, timeAsleepMinutes: 400)
+        let history = (1...20).map { Fixture.night(daysAgo: $0, timeAsleepMinutes: $0 <= 10 ? 360 : 480) }
+        let reply = CoachEvidence(night: night, history: history).reply(to: "What's my sleep trend?")
+        XCTAssertTrue(reply.text.lowercased().contains("average") || reply.text.lowercased().contains("nights"), reply.text)
+        XCTAssertTrue(reply.text.lowercased().contains("not a cause"), reply.text)
+        XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
+    }
+
+    func testFirstPartySuggestionsHaveALocalReply() {
+        let night = Fixture.night(
+            timeAsleepMinutes: 400,
+            sleepDebtMinutes: 80,
+            avgHRV: 42,
+            wakeCount: 4,
+            lastWorkoutHoursBeforeBed: 1.5
+        )
+        let history = (1...16).map { Fixture.night(daysAgo: $0, timeAsleepMinutes: 430) }
+        let evidence = CoachEvidence(night: night, history: history)
+        let unknown = CoachIntentRouter.unknownReply()
+        for question in CoachSuggestionProvider.allFixtureQuestions {
+            let reply = evidence.reply(to: question)
+            XCTAssertNotEqual(reply.text, unknown, "no local answer for: \(question)")
+            XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), "\(question): \(reply.text)")
+        }
     }
 
     func testWakeCountIsGrounded() {
@@ -72,14 +141,18 @@ final class CoachEvidenceTests: XCTestCase {
 
     func testAQuestionOutsideTheDataSaysSoRatherThanAnsweringAnotherOne() {
         let evidence = CoachEvidence(night: Fixture.night(), history: [])
-        for question in ["what is the capital of France", "tell me a joke", "who are you"] {
+        for question in ["what is the capital of France", "tell me a joke"] {
             let reply = evidence.reply(to: question)
             XCTAssertTrue(
-                reply.text.lowercased().contains("can only answer"),
+                reply.text.lowercased().contains("i can help"),
                 "\(question) did not say what it can answer: \(reply.text)"
             )
             XCTAssertNil(reply.evidence)
         }
+        let identity = evidence.reply(to: "who are you")
+        XCTAssertTrue(identity.text.lowercased().contains("last night"))
+        XCTAssertNil(identity.evidence)
+        XCTAssertFalse(identity.text.lowercased().contains("asleep"))
     }
 
     /// The greeting check must not swallow a real question that happens to

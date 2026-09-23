@@ -38,7 +38,7 @@ struct WeekMoonStrip: View {
     private func accessibilityLabel(for night: SleepNightFeatures, fill: Double) -> String {
         let day = night.date.formatted(.dateTime.weekday(.wide))
         let percent = Int((fill * 100).rounded())
-        return "\(day), \(night.formattedTimeAsleep) asleep, \(percent) percent of need"
+        return "\(day), \(night.formattedTimeAsleep) asleep, \(percent) percent of target"
     }
 }
 

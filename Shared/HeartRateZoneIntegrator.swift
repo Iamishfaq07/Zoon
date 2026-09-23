@@ -36,8 +36,11 @@ import Foundation
 ///
 /// Reading them would mean declaring private interfaces by hand. A case that
 /// can never be produced is worse than no case, so this documents the gap
-/// instead of pretending to fill it. If Apple publishes the API, it belongs
-/// at the top of `isPersonalized` -- measured zones beat every estimate here.
+/// instead of pretending to fill it. Zoon16 asked again against current
+/// Apple platforms; this sandbox still has no Xcode 27 SDK to compile a
+/// public workout-zone API against, so the gap stays documented rather than
+/// faked. If Apple publishes the API, it belongs at the top of
+/// `isPersonalized` -- measured zones beat every estimate here.
 enum HRZoneProvenance: String, Codable, Hashable, Sendable, CaseIterable {
     /// Boundaries the user set themselves.
     case userConfigured

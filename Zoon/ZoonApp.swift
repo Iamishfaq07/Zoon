@@ -16,6 +16,7 @@ struct ZoonApp: App {
     @State private var preferences: UserPreferences
     @State private var naps: NapStore
     @State private var soundscape: SoundscapeEngine
+    @State private var snoreSession: SnoreSessionController
     @State private var reminders: BedtimeReminder
     @State private var presentation = GlobalPresentation()
     /// Starts true on demo/screenshot launches so nothing waits behind it.
@@ -66,6 +67,7 @@ struct ZoonApp: App {
         _preferences = State(initialValue: preferences)
         _naps = State(initialValue: naps)
         _soundscape = State(initialValue: SoundscapeEngine())
+        _snoreSession = State(initialValue: SnoreSessionController.shared)
         _reminders = State(initialValue: reminders)
         // Coordinator reads the store on `start()`. Build it only against a
         // container `open()` actually mounted. Build 65 constructed it against
@@ -135,6 +137,7 @@ struct ZoonApp: App {
             .environment(preferences)
             .environment(naps)
             .environment(soundscape)
+            .environment(snoreSession)
             .environment(reminders)
             .environment(presentation)
             .modelContainer(modelContainer)

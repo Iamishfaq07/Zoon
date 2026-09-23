@@ -35,9 +35,23 @@ struct BreathingView: View {
             Toggle("Phase haptics", isOn: $coach.hapticsEnabled)
                 .padding(.horizontal, 28)
 
+            Picker("Cues", selection: $coach.voiceMode) {
+                ForEach(WindDownGuidanceConfiguration.VoiceMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 28)
+
             Button {
                 Haptics.tap()
-                if isRunning { coach.stop() } else { coach.start() }
+                if isRunning {
+                    coach.stop()
+                } else {
+                    coach.includeArrive = true
+                    coach.closingPhrase = WindDownGuidanceConfiguration.closeLine
+                    coach.start(cycles: WindDownGuidanceConfiguration(guidedBreathingMinutes: 5).guidedCycles)
+                }
             } label: {
                 Text(isRunning ? "Stop" : (coach.phase == .finished ? "Do it again" : "Begin"))
                     .font(Theme.label(16, weight: .bold))
@@ -65,11 +79,13 @@ struct BreathingView: View {
     private var instruction: String {
         switch coach.phase {
         case .idle: "4-7-8 breathing"
+        case .arrive: "Get comfortable"
         case .inhale: "Breathe in"
         case .hold: "Hold"
         case .exhale: "Breathe out"
         case .rest: " "
-        case .finished: "Well done"
+        case .quiet: "Stay with the sound"
+        case .finished: "Rest here"
         }
     }
 
@@ -79,7 +95,7 @@ struct BreathingView: View {
     private var pacer: some View {
         let scale: CGFloat = {
             switch coach.phase {
-            case .idle: 0.7
+            case .idle, .arrive, .quiet: 0.7
             case .inhale: 0.7 + 0.3 * coach.phaseProgress
             case .hold: 1.0
             case .exhale: 1.0 - 0.35 * coach.phaseProgress

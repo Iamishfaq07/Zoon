@@ -49,6 +49,14 @@ struct MoreView: View {
                         SettingsView()
                     }
 
+                    sectionLabel("Trust")
+                    navRow("How well Zoon knows you", "Maturity by domain, not a score", "circle.hexagongrid.fill", Theme.Metric.hrv) {
+                        ModelHealthView()
+                    }
+                    navRow("Data quality", "What actually arrived this month", "waveform.path.ecg", Theme.Metric.recoveryMid) {
+                        DataQualityView()
+                    }
+
                     sectionLabel("Later")
                     navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
                     navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {

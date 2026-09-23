@@ -30,8 +30,10 @@ struct AlertnessCheckView: View {
             CascadeStack(spacing: Theme.stackSpacing) {
                 header
                 testSurface
+                inertiaCard
                 if !store.sessions.isEmpty { history }
             }
+
             .padding()
         }
         .nightBackground()
@@ -53,7 +55,28 @@ struct AlertnessCheckView: View {
         .glassCard()
     }
 
+    @ViewBuilder private var inertiaCard: some View {
+        if let profile = SleepInertiaProfile.learn(sessions: store.sessions) {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionHeader(title: "Your morning ramp", systemImage: "sunrise.fill")
+                Text(profile.sentence)
+                    .font(Theme.text(16, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(profile.caveat)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("From \(profile.sessionCount.pluralized("check")) after the practice runs.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+        }
+    }
+
     @ViewBuilder private var testSurface: some View {
+
         VStack(spacing: 18) {
             switch phase {
             case .intro:

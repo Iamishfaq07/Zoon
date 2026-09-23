@@ -261,7 +261,7 @@ struct RecoveryRing<Inner: View>: View {
     }
 }
 
-/// "15.1 br/min", "62 ms", "70 bpm", "45% of need" — value on one line,
+/// "15.1 br/min", "62 ms", "70 bpm", "45% of target" — value on one line,
 /// unit on the next, so a selected reading does not become a 200-point
 /// string that writes through the radar marker beside it.
 enum MetricReading {

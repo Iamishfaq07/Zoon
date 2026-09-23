@@ -2,8 +2,9 @@ import Foundation
 
 /// How recovered the body was on waking, 0–100%.
 ///
-/// The headline number. It answers one question: *given last night and the
-/// autonomic state you woke in, how hard can you go today?*
+/// The headline number. It answers one question: given last night's sleep
+/// and overnight physiology against your own baseline, how recovered were
+/// you on waking?
 ///
 /// ## Morning Recovery, not current readiness
 ///
@@ -156,7 +157,7 @@ struct RecoveryScore: Codable, Hashable, Sendable {
         let raw: [(label: String, detail: String, normalized: Double, weight: Double, available: Bool, deviation: Double?)] = [
             ("HRV", features.avgHRV.map { "\(Int($0)) ms" } ?? "—", hrvNormalized, hrvWeight, hrvAvailable, hrvDeviation),
             ("Resting HR", features.restingHeartRate.map { "\(Int($0)) bpm" } ?? "—", rhrNormalized, rhrWeight, rhrAvailable, rhrDeviation),
-            ("Sleep", "\(Int(sleepPerformance))% of need", clamp01(sleepPerformance / 100), sleepWeight, true, nil),
+            ("Sleep", "\(Int(sleepPerformance))% of target", clamp01(sleepPerformance / 100), sleepWeight, true, nil),
             ("Respiratory", features.avgRespiratoryRate.map { String(format: "%.1f br/min", $0) } ?? "—", respiratoryNormalized, respiratoryWeight, respiratoryAvailable, respiratoryDeviation)
         ]
 
