@@ -129,7 +129,18 @@ struct TonightSection: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(Theme.Family.sleep)
                     .sheet(isPresented: $isEditing) {
-                        NightPlanEditor(morning: episode.wake, bed: episode.bed, wake: episode.wake) { bed, wake in
+                        NightPlanEditor(
+                            morning: episode.wake, bed: episode.bed, wake: episode.wake,
+                            preview: { bed, wake in
+                                SchedulePreview.lines(
+                                    bed: bed, wake: wake,
+                                    settings: .current(preferences),
+                                    isSkipped: setup.value.isSkipped(wake: wake),
+                                    now: .now,
+                                    timeText: { $0.formatted(date: .omitted, time: .shortened) }
+                                )
+                            }
+                        ) { bed, wake in
                             NightPlanEditor.save(bed: bed, wake: wake, morning: episode.wake, in: &setup.value)
                             isEditing = false
                         }

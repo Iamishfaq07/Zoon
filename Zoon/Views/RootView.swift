@@ -333,7 +333,7 @@ struct RootView: View {
     /// How early the wake-window notification can fire relative to the usual
     /// wake time. Wider than the bedtime lead — a wake window is trying to
     /// straddle a plausible light-sleep stretch, not just give advance notice.
-    private static let wakeWindowLeadMinutes = 20
+    private static let wakeWindowLeadMinutes = SchedulePreview.wakeWindowLeadMinutes
 
     private func consumeDeepLink() {
         guard let destination = DeepLink.consume() else { return }

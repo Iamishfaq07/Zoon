@@ -17,6 +17,7 @@ struct SleepRunwayCard: View {
     @State private var selected: Date?
     @State private var setup = PersonalSetupStore.shared
     @State private var editing: SleepRunway.Day?
+    @Environment(UserPreferences.self) private var preferences
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Every bar is measured against the same ceiling so the days are
@@ -71,7 +72,18 @@ struct SleepRunwayCard: View {
         }
         .glassCard()
         .sheet(item: $editing) { day in
-            NightPlanEditor(night: day) { bed, wake in
+            NightPlanEditor(
+                morning: day.date, bed: day.bedtime, wake: day.wake,
+                preview: { bed, wake in
+                    SchedulePreview.lines(
+                        bed: bed, wake: wake,
+                        settings: .current(preferences),
+                        isSkipped: setup.value.isSkipped(wake: wake),
+                        now: .now,
+                        timeText: { $0.formatted(date: .omitted, time: .shortened) }
+                    )
+                }
+            ) { bed, wake in
                 NightPlanEditor.save(bed: bed, wake: wake, night: day, in: &setup.value)
                 editing = nil
             }
@@ -212,13 +224,23 @@ struct NightPlanEditor: View {
     /// The morning the edited night ends on.
     let morning: Date
     let onSave: (Date, Date) -> Void
+    /// Lines describing what saving would schedule, for resolved bed and
+    /// wake times. `nil` hides the section.
+    var preview: ((Date, Date) -> [String])? = nil
     @State private var bed: Date
     @State private var wake: Date
     @Environment(\.dismiss) private var dismiss
 
-    init(morning: Date, bed: Date, wake: Date, onSave: @escaping (Date, Date) -> Void) {
+    init(
+        morning: Date,
+        bed: Date,
+        wake: Date,
+        preview: ((Date, Date) -> [String])? = nil,
+        onSave: @escaping (Date, Date) -> Void
+    ) {
         self.morning = morning
         self.onSave = onSave
+        self.preview = preview
         _bed = State(initialValue: bed)
         _wake = State(initialValue: wake)
     }
@@ -235,6 +257,16 @@ struct NightPlanEditor: View {
                 Text("For the night ending \(morning.formatted(.dateTime.weekday(.wide).month().day())) only. Reminders and the alarm follow these times.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                if let preview {
+                    let resolved = SchedulePreview.resolve(bedClock: bed, wakeClock: wake, morning: morning)
+                    Section("What saving will schedule") {
+                        ForEach(preview(resolved.bed, resolved.wake), id: \.self) { line in
+                            Text(line)
+                                .font(.footnote)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
             }
             .navigationTitle("This night")
             .navigationBarTitleDisplayMode(.inline)

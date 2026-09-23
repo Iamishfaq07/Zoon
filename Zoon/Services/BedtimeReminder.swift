@@ -39,14 +39,14 @@ final class BedtimeReminder {
     /// Thirty minutes because that is roughly where the evidence on screens,
     /// light and caffeine stops being a nudge and starts being a countdown —
     /// and because a warning that arrives five minutes before is useless.
-    static let windDownLeadMinutes = 30
+    static let windDownLeadMinutes = SchedulePreview.windDownLeadMinutes
 
     /// How long after usual wake the morning-brief nudge fires.
     ///
     /// Half an hour: early enough that the brief is still the first thing
     /// people would have opened the app for, late enough that it is not
     /// another alarm.
-    static let morningBriefLeadMinutes = 30
+    static let morningBriefLeadMinutes = SchedulePreview.morningBriefDelayMinutes
 
     init(center: UNUserNotificationCenter = .current()) {
         self.center = center
@@ -162,7 +162,7 @@ final class BedtimeReminder {
     @discardableResult
     func scheduleMorningBrief(
         wakeTimes: [Date],
-        leadMinutes: Int = 30, // same value as morningBriefLeadMinutes; default args cannot mention Self
+        leadMinutes: Int = SchedulePreview.morningBriefDelayMinutes,
         actionableTip: String = "",
         now: Date = .now
     ) async -> Bool {
