@@ -109,6 +109,47 @@ struct SleepPlanningInputs: Hashable, Sendable {
     }
 }
 
+extension SleepPlanningInputs {
+
+    /// Planning **as of now**: everything through the latest completed night,
+    /// plus what has happened since its wake.
+    ///
+    /// **Why this is separate from `SleepNeed.planningInputs`.** A night's
+    /// `SleepNeed` assesses *that* night. Its shortfall is the one carried
+    /// into it -- the debt from the nights before -- and its modifiers are
+    /// the day before it: yesterday's strain, yesterday's naps. That is right
+    /// for scoring last night and wrong for planning tonight, and tonight was
+    /// being planned from it. After a zero-debt fortnight, a 3-hour night
+    /// added five hours of shortfall that tonight's plan never saw, a nap
+    /// this afternoon changed nothing, and today's exertion was ignored in
+    /// favour of yesterday's.
+    ///
+    /// - Parameters:
+    ///   - baselineNeedMinutes: the learned personal requirement.
+    ///   - shortfallThroughLatestNightMinutes: the outstanding shortfall with
+    ///     the latest night already applied -- the ledger as it stands going
+    ///     into tonight, not into last night.
+    ///   - todayStrain: exertion since the latest wake.
+    ///   - napMinutesToday: naps since then, deduplicated across sources.
+    ///     These are not in the shortfall above -- a nap after the latest
+    ///     wake belongs to tonight's day, which has no stored night yet -- so
+    ///     crediting them here is the only place they count.
+    static func asOfNow(
+        baselineNeedMinutes: Double,
+        shortfallThroughLatestNightMinutes: Double,
+        todayStrain: Double,
+        napMinutesToday: Double
+    ) -> SleepPlanningInputs {
+        SleepPlanningInputs(
+            baselineNeedMinutes: baselineNeedMinutes,
+            currentShortfallMinutes: shortfallThroughLatestNightMinutes.isFinite
+                ? shortfallThroughLatestNightMinutes : 0,
+            tonightStrainAdjustmentMinutes: SleepNeed.strainAdjustment(forStrain: todayStrain),
+            tonightNapCreditMinutes: SleepNeed.napCredit(forNapMinutes: napMinutesToday)
+        )
+    }
+}
+
 extension SleepNeed {
 
     /// The planning view of this night's need.

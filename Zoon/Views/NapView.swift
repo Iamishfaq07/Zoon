@@ -16,11 +16,15 @@ struct NapView: View {
     @State private var now: Date = .now
 
     private var recommendation: NapCoach.Recommendation {
+        // The same inputs Today's nap card uses: the shortfall with last
+        // night on it, tonight's resolved bedtime, and today's naps from both
+        // sources. This screen used to read the debt carried into last night,
+        // a separate bedtime, and only the in-app timer's naps.
         NapCoach.recommend(
             now: now,
-            debtMinutes: coordinator.state.context?.night.sleepDebtMinutes ?? 0,
-            plannedBedtime: coordinator.state.context?.targetBedtime(now: now),
-            napMinutesToday: naps.minutes(on: now)
+            debtMinutes: coordinator.state.context?.tonightPlanning.currentShortfallMinutes ?? 0,
+            plannedBedtime: coordinator.tonightEpisode(now: now)?.bed,
+            napMinutesToday: coordinator.napMinutesToday(now: now)
         )
     }
 

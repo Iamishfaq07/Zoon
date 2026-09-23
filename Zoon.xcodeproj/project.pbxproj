@@ -1199,6 +1199,7 @@
 		F36966CE4D0951197E13CE7D /* ModelHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D498E228ECF8D784E34F65 /* ModelHealth.swift */; };
 		F40EECA04C7C6AED57BA4AFE /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4CCC9CCF7CEDBD7455FEF2 /* DeepLink.swift */; };
 		F412864F592136156853293B /* MorningBriefCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB4B171A15A7BE8F3599BC6 /* MorningBriefCopy.swift */; };
+		F44A17BDC194CA025BB8AA3C /* CurrentPlanningInputsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E484B49D6BA6A843B48AB8A /* CurrentPlanningInputsTests.swift */; };
 		F4514382464DF6813EBB3310 /* CircadianPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 655883419539381EF69F3AB9 /* CircadianPhase.swift */; };
 		F4564ECAF9BD29A9DDF14656 /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		F47D02F39E493E4CF248475E /* SeededGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CD50E712746E68436F3A59B /* SeededGenerator.swift */; };
@@ -1648,6 +1649,7 @@
 		7D58A81F1A71C53F37DD04A0 /* SourcePriorityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SourcePriorityTests.swift"; sourceTree = "<group>"; };
 		7DB8CF64188C5B14F8A35B76 /* GlobalPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GlobalPresentation.swift"; sourceTree = "<group>"; };
 		7DC3621D678FC29FA871D7AA /* WeekMoonStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekMoonStrip.swift"; sourceTree = "<group>"; };
+		7E484B49D6BA6A843B48AB8A /* CurrentPlanningInputsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CurrentPlanningInputsTests.swift"; sourceTree = "<group>"; };
 		7E61895A84A4272E9AB9B0A4 /* EvidenceRevisionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EvidenceRevisionRecord.swift"; sourceTree = "<group>"; };
 		7EA37CFBF7CBDD564A1C950B /* SleepRunwayOptimizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepRunwayOptimizer.swift"; sourceTree = "<group>"; };
 		7EC392B5759BE3200B53F48D /* VitalsStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VitalsStatus.swift"; sourceTree = "<group>"; };
@@ -2310,6 +2312,7 @@
 				9DD2CE6F9C1672F401886F96,
 				64CF3AFB3F90453076AA3237,
 				706F052B52B73EA14F1B1061,
+				7E484B49D6BA6A843B48AB8A,
 				9682A3669B91E1624BC43F47,
 				8B737B1F7FDB18E09C5DA47F,
 				EBD8E590A508113B7C7E45AE,
@@ -3741,6 +3744,7 @@
 				152A3ACED5323D7DA3AC34CE,
 				DD3E19CEF586A462AD026253,
 				18078929F1E541BEC6DDDA87,
+				F44A17BDC194CA025BB8AA3C,
 				96F6A78607BD8FD467BF379A,
 				4E7EB3F8D27E76CE7A4117CB,
 				3C47CC1CD3387EFA735C2E38,

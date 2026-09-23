@@ -103,11 +103,7 @@ struct CoachToolRunner {
         ZoonTomorrow.plan(
             event: preferences.commitment().event,
             nights: coordinator.recentNights,
-            planning: context.map {
-                $0.sleepNeed.planningInputs(
-                    outstandingShortfallMinutes: $0.night.sleepDebtMinutes ?? 0
-                )
-            } ?? SleepPlanningInputs(baselineNeedMinutes: preferences.sleepGoalMinutes),
+            planning: context?.tonightPlanning ?? SleepPlanningInputs(baselineNeedMinutes: preferences.sleepGoalMinutes),
             napMinutesToday: naps.minutes(on: .now),
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )

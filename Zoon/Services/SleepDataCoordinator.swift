@@ -210,11 +210,17 @@ final class SleepDataCoordinator {
         now: Date = .now
     ) -> SleepAutopilot.Plan? {
         guard let context = context ?? state.context else { return nil }
+        // Tonight's need before repayment, and the whole outstanding
+        // shortfall: the autopilot owns the repayment rule. It used to be
+        // handed `sleepNeed.debtMinutes` -- already a 33% repayment of the
+        // debt carried into *last* night -- and took 25% of that again, so
+        // tonight asked for about 8% of a figure that did not include the
+        // night just slept.
         return SleepAutopilot.plan(
             nights: recentNights,
-            sleepNeedMinutes: context.learnedSleepNeed.minutes,
+            sleepNeedMinutes: context.tonightPlanning.tonightNeedBeforeRepaymentMinutes,
             obligationWakeMinutes: usualWakeMinute(context, now: now),
-            sleepDebtMinutes: context.sleepNeed.debtMinutes
+            sleepDebtMinutes: context.tonightPlanning.currentShortfallMinutes
         )
     }
 
@@ -240,7 +246,7 @@ final class SleepDataCoordinator {
             plans: PersonalSetupStore.shared.value.plans,
             autopilot: tonightAutopilotPlan(now: now),
             usualWakeMinute: context.map { usualWakeMinute($0, now: now) },
-            needMinutes: context?.sleepNeed.totalNeedMinutes ?? preferences.sleepGoalMinutes,
+            needMinutes: context?.tonightPlanning.tonightNeedMinutes ?? preferences.sleepGoalMinutes,
             windDownLeadMinutes: BedtimeReminder.windDownLeadMinutes,
             now: now,
             calendar: calendar
@@ -1005,7 +1011,13 @@ final class SleepDataCoordinator {
             age: preferences.age,
             sex: preferences.biologicalSex,
             bodyMassIndex: preferences.bodyMassIndex,
-            obligationWeekdays: preferences.obligationWeekdays
+            obligationWeekdays: preferences.obligationWeekdays,
+            // Tonight is planned from the ledger with last night on it and
+            // from today's naps -- not from what was carried into last night.
+            shortfallThroughLatestNightMinutes: store.currentBaseline(
+                goalMinutes: goal, manualNaps: naps.naps
+            ).sleepDebtMinutes,
+            napMinutesToday: napMinutesToday()
         ))
 
         store.attach(context.insight, to: record)
@@ -2740,13 +2752,10 @@ final class SleepDataCoordinator {
                 associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
             )?.tag.label,
-            tonightTarget: context.flatMap {
-                SleepAutopilot.plan(
-                    nights: recentNights,
-                    sleepNeedMinutes: $0.learnedSleepNeed.minutes,
-                    sleepDebtMinutes: $0.sleepNeed.debtMinutes
-                )?.sentence
-            }
+            // The same plan Today and the watch show. This one was built
+            // without the habitual wake, so the coach could quote a different
+            // bedtime shift from the one on screen.
+            tonightTarget: tonightAutopilotPlan(for: context)?.sentence
         )
 
         let encoder = JSONEncoder()

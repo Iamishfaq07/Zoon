@@ -352,7 +352,7 @@ struct TodayView: View {
 
     private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {
         NapCoach.recommend(
-            debtMinutes: max(0, context.night.sleepDebtMinutes ?? 0),
+            debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: plannedBedtime(context),
             napMinutesToday: napMinutesToday
         )
@@ -497,9 +497,7 @@ struct TodayView: View {
             // Baseline plus the outstanding shortfall, not the composed total:
             // that already carries a repayment, and the planner applies its
             // own. See `SleepPlanningInputs`.
-            planning: context.sleepNeed.planningInputs(
-                outstandingShortfallMinutes: context.night.sleepDebtMinutes ?? 0
-            ),
+            planning: context.tonightPlanning,
             napMinutesToday: napMinutesToday,
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )

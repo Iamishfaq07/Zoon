@@ -14,6 +14,11 @@ struct DayContext: Equatable {
     let recovery: RecoveryScore
     let sleepNeed: SleepNeed
     let learnedSleepNeed: LearnedSleepNeed
+    /// Tonight's planning inputs, **as of now**. Not `sleepNeed`: that
+    /// assesses last night against the debt carried *into* it and the day
+    /// before it. This carries the debt with last night applied, today's
+    /// strain and today's naps. See `SleepPlanningInputs.asOfNow`.
+    let tonightPlanning: SleepPlanningInputs
     let sleepScore: SleepScore
     let sleepIntelligence: SleepIntelligenceScore
     let strain: StrainScore
@@ -55,6 +60,7 @@ struct DayContext: Equatable {
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedSleepNeed,
+            tonightPlanning: tonightPlanning,
             sleepScore: sleepScore,
             sleepIntelligence: sleepIntelligence,
             strain: strain,
@@ -94,7 +100,7 @@ struct DayContext: Equatable {
         let wake = calendar.dateComponents([.hour, .minute], from: night.wakeTime)
         let wakeMinute = Double((wake.hour ?? 7) * 60 + (wake.minute ?? 0))
         return ResolvedSleepEpisode.window(
-            bedMinute: wakeMinute - sleepNeed.totalNeedMinutes,
+            bedMinute: wakeMinute - tonightPlanning.tonightNeedMinutes,
             wakeMinute: wakeMinute,
             containingOrAfter: now,
             calendar: calendar

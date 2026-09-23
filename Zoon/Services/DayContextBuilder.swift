@@ -56,6 +56,7 @@ struct DayContextBuilder {
         let hourlyHeartRate: [(date: Date, bpm: Double)]
         /// Age-derived or measured. Used for heart-rate reserve.
         let maxHeartRate: Double
+        /// Naps on the day before `night`'s wake. Assessment only.
         let napMinutes: Double
         let bedtimeConsistencyMinutes: Double?
         /// For cardiovascular age. Nil disables that card rather than guessing.
@@ -69,6 +70,12 @@ struct DayContextBuilder {
         /// for `SleepRegularity`'s work/free split -- see
         /// `UserPreferences.obligationWeekdays`.
         var obligationWeekdays: Set<Int> = SleepRegularity.defaultObligationWeekdays
+        /// The outstanding shortfall with `night` already applied, for
+        /// planning tonight. `nil` falls back to one decay step of the
+        /// night's own ledger -- see `build`.
+        var shortfallThroughLatestNightMinutes: Double? = nil
+        /// Naps since `night`'s wake, deduplicated. Planning only.
+        var napMinutesToday: Double = 0
     }
 
     func build(_ inputs: Inputs) -> DayContext {
@@ -94,6 +101,22 @@ struct DayContextBuilder {
             yesterdayStrain: inputs.yesterdayStrain.value,
             napMinutes: inputs.napMinutes,
             achievedMinutes: night.timeAsleepMinutes
+        )
+
+        // --- Tonight, as of now --------------------------------------------
+        // Planning is not assessment. The need above scores last night; this
+        // plans tonight, with last night's shortfall on the ledger and
+        // today's strain and naps as the modifiers. Without a figure from
+        // the store, the ledger is advanced by one step of the same model
+        // the store uses: decay what was carried in, add last night's gap.
+        let shortfallThroughLatest = inputs.shortfallThroughLatestNightMinutes
+            ?? (SleepDebtCalculator.decayPerNight * max(0, night.sleepDebtMinutes ?? 0)
+                + max(0, (night.sleepNeedBaselineMinutes ?? learnedNeed.minutes) - night.total24hAsleepMinutes))
+        let tonightPlanning = SleepPlanningInputs.asOfNow(
+            baselineNeedMinutes: learnedNeed.minutes,
+            shortfallThroughLatestNightMinutes: shortfallThroughLatest,
+            todayStrain: inputs.todayStrain.value,
+            napMinutesToday: inputs.napMinutesToday
         )
 
         // --- Recovery -----------------------------------------------------
@@ -217,6 +240,7 @@ struct DayContextBuilder {
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedNeed,
+            tonightPlanning: tonightPlanning,
             sleepScore: SleepScore.compute(
                 for: night,
                 goalMinutes: inputs.goalMinutes,
