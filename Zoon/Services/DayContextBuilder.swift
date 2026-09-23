@@ -151,10 +151,6 @@ struct DayContextBuilder {
                 startLevel: startLevel,
                 wakeTime: night.wakeTime,
                 hourlyHeartRate: inputs.hourlyHeartRate,
-            overnightHeartRate: OvernightSeries.clipped(
-                inputs.overnightHeartRate,
-                to: DateInterval(start: min(night.bedtime, night.wakeTime), end: max(night.bedtime, night.wakeTime))
-            ),
                 restingHeartRate: restingInput.value,
                 maxHeartRate: inputs.maxHeartRate,
                 restingBaselineSource: restingInput.source
@@ -266,6 +262,10 @@ struct DayContextBuilder {
             healthRadar: HealthRadar.detect(nights: fullHistory),
             bodyClock: bodyClock,
             hourlyHeartRate: inputs.hourlyHeartRate,
+            overnightHeartRate: OvernightSeries.clipped(
+                inputs.overnightHeartRate,
+                to: DateInterval(start: min(night.bedtime, night.wakeTime), end: max(night.bedtime, night.wakeTime))
+            ),
             cognitiveEnergy: cognitiveEnergy,
             academicSleepRegularity: academicSRI
         )
