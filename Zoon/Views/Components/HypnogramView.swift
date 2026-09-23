@@ -25,6 +25,7 @@ struct HypnogramView: View {
     /// Optional sound-event markers (snoring, coughing, etc.), drawn as small
     /// dots along the top edge at the moment each was detected.
     var soundEvents: [SoundEvent] = []
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Stage rows, top to bottom. Awake at the top so the trace descends into
     /// deep sleep — the convention people already know how to read.
@@ -81,13 +82,11 @@ struct HypnogramView: View {
 
     /// Stage names down the left edge.
     ///
-    /// `lineLimit(1)` and a scale floor, because the column is a fixed width
-    /// and the type is no longer a fixed size. When the fonts became Dynamic
-    /// Type-aware, `label(9)` started resolving to `.caption2` — larger than
-    /// the 9 points this 34-wide column was measured for — and "Awake" wrapped
-    /// to "Awak / e" in the middle of the chart. Shrinking beats wrapping for
-    /// an axis label, and a wider column would eat chart width at every size
-    /// to fix the widest one.
+    /// The column is a fixed 42 points and the type follows Dynamic Type.
+    /// At standard sizes a two-word name wraps onto two lines; at
+    /// accessibility sizes it may also shrink a little, because there a
+    /// single word like "Awake" would otherwise break mid-word, and a wider
+    /// column would eat chart width at every size to fix the largest.
     private var rowLabels: some View {
         VStack(spacing: 0) {
             ForEach(rows, id: \.self) { stage in
@@ -98,7 +97,12 @@ struct HypnogramView: View {
                     .font(Theme.label(9, weight: .medium))
                     .lineLimit(2)
                     .multilineTextAlignment(.trailing)
-                    .minimumScaleFactor(0.8)
+                    // Shrinking only at accessibility sizes. At standard
+                    // sizes SwiftUI shrank "Light sleep" onto one line
+                    // rather than wrapping it, and the audit reports text
+                    // drawn below its size as clipped, on all four labels.
+                    .fixedSize(horizontal: false, vertical: !dynamicTypeSize.isAccessibilitySize)
+                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.8 : 1)
                     .foregroundStyle(Theme.Stage.textColor(for: stage))
                     .frame(height: height / CGFloat(rows.count), alignment: .center)
                     .frame(maxWidth: .infinity, alignment: .trailing)
