@@ -220,6 +220,21 @@ final class ResolvedSleepEpisodeTests: XCTestCase {
         XCTAssertEqual(episode.shortfallMinutes, 90, accuracy: 0.5)
     }
 
+    /// The watch's label is the episode's own times, in the episode's zone.
+    func testTheRangeLabelIsTheEpisodesTimes() throws {
+        let cal = calendar("Asia/Kolkata")
+        let episode = try XCTUnwrap(ResolvedSleepEpisode.resolve(
+            autopilot: autopilot(bed: -60), usualWakeMinute: 7 * 60, needMinutes: 480,
+            windDownLeadMinutes: 30, now: date(cal, 2026, 9, 22, 12, 0), calendar: cal
+        ))
+        var style = Date.FormatStyle(date: .omitted, time: .shortened)
+        style.timeZone = cal.timeZone
+        XCTAssertEqual(
+            episode.rangeLabel,
+            "\(date(cal, 2026, 9, 22, 23, 0).formatted(style)) - \(date(cal, 2026, 9, 23, 7, 0).formatted(style))"
+        )
+    }
+
     func testNoHistoryAndNoPlanResolvesNothing() {
         let cal = calendar("Europe/London")
         XCTAssertNil(ResolvedSleepEpisode.resolve(

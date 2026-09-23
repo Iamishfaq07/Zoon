@@ -79,6 +79,14 @@ struct ResolvedSleepEpisode: Hashable, Sendable {
 
     var isFeasible: Bool { shortfallMinutes < 1 }
 
+    /// "10:45 PM - 6:30 AM", in the episode's own zone, formatted where the
+    /// dates are known so the watch and widget never fold minutes themselves.
+    var rangeLabel: String {
+        var style = Date.FormatStyle(date: .omitted, time: .shortened)
+        style.timeZone = timeZone
+        return "\(bed.formatted(style)) - \(wake.formatted(style))"
+    }
+
     func phase(at now: Date) -> Phase {
         if now >= wake { return .completed }
         if now >= bed { return .overdue }

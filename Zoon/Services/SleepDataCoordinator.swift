@@ -230,21 +230,26 @@ final class SleepDataCoordinator {
     /// autopilot's bedtime against their usual wake; otherwise their usual
     /// wake minus tonight's need. See `ResolvedSleepEpisode` for why this is
     /// resolved once rather than per screen.
-    func tonightEpisode(now: Date = .now, calendar: Calendar = .current) -> ResolvedSleepEpisode? {
-        tonightHorizon(nights: 1, now: now, calendar: calendar).first
+    func tonightEpisode(
+        for context: DayContext? = nil,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> ResolvedSleepEpisode? {
+        tonightHorizon(nights: 1, for: context, now: now, calendar: calendar).first
     }
 
     /// Tonight and the nights after it, for scheduling ahead.
     func tonightHorizon(
         nights: Int,
+        for explicitContext: DayContext? = nil,
         now: Date = .now,
         calendar: Calendar = .current
     ) -> [ResolvedSleepEpisode] {
-        let context = state.context
+        let context = explicitContext ?? state.context
         return ResolvedSleepEpisode.horizon(
             nights: nights,
             plans: PersonalSetupStore.shared.value.plans,
-            autopilot: tonightAutopilotPlan(now: now),
+            autopilot: tonightAutopilotPlan(for: context, now: now),
             usualWakeMinute: context.map { usualWakeMinute($0, now: now) },
             needMinutes: context?.tonightPlanning.tonightNeedMinutes ?? preferences.sleepGoalMinutes,
             windDownLeadMinutes: BedtimeReminder.windDownLeadMinutes,
@@ -1360,6 +1365,24 @@ final class SleepDataCoordinator {
             snapshot.tonightTargetNote = plan.sentence
             snapshot.tonightTargetNoteShort = plan.shortSentence
             snapshot.isTonightTargetHolding = plan.isHolding
+        }
+        // The times themselves come from the resolved episode, the same one
+        // the phone's Tonight section, reminders and alarm use. The label
+        // used to be the autopilot's range, which knew nothing of a manual
+        // plan and could put a different bed on the wrist from the phone.
+        if let episode = tonightEpisode(for: context) {
+            snapshot.tonightTargetLabel = episode.rangeLabel
+            if episode.source == .manualPlan {
+                let name = episode.planName.map { "Your plan \u{201C}\($0)\u{201D}." } ?? "Your plan."
+                let short = episode.isFeasible
+                    ? ""
+                    : " \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short of tonight's need."
+                snapshot.tonightTargetNote = name + short
+                snapshot.tonightTargetNoteShort = episode.isFeasible
+                    ? "Your plan"
+                    : "\(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short"
+                snapshot.isTonightTargetHolding = false
+            }
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: recentNights).first {
             snapshot.tomorrowRangeLabel = forecast.rangeLabel
