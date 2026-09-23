@@ -150,6 +150,25 @@ struct HypnogramView: View {
                             startPoint: CGPoint(x: frame.minX, y: frame.minY),
                             endPoint: CGPoint(x: frame.minX, y: frame.maxY)
                         ))
+
+                        // Unstaged sleep is also hatched, so it reads as
+                        // "not classified" without relying on its colour --
+                        // it shares the Core row, and a neutral fill alone is
+                        // easy to take for a paler Core block.
+                        if segment.stage == .unspecified {
+                            context.drawLayer { layer in
+                                layer.clip(to: shape)
+                                let hatch = Path { p in
+                                    var x = frame.minX - frame.height
+                                    while x < frame.maxX {
+                                        p.move(to: CGPoint(x: x, y: frame.maxY))
+                                        p.addLine(to: CGPoint(x: x + frame.height, y: frame.minY))
+                                        x += 5
+                                    }
+                                }
+                                layer.stroke(hatch, with: .color(Theme.neutral(0.35)), lineWidth: 1)
+                            }
+                        }
                     }
 
                     // Only the samples inside the night: the scale and the
