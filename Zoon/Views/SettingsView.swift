@@ -47,6 +47,10 @@ struct SettingsView: View {
             dataSection
         }
         .scrollContentBackground(.hidden)
+        // Every writer HealthKit knows, so the source section can offer one
+        // that never won a night -- and can appear at all when only such a
+        // writer makes a second choice.
+        .task { await coordinator.refreshSleepWriters() }
         .nightBackground()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -147,8 +151,11 @@ struct SettingsView: View {
             return unavailabilityReason
         }
         if preferences.wakeAlarmEnabled, let scheduledWakeTime = wakeAlarm.scheduledWakeTime {
-            return "Rings around \(scheduledWakeTime.formatted(.dateTime.hour().minute())), "
-                + "through Silent mode and Sleep Focus."
+            // The day as well as the time: this is one dated alarm, re-armed
+            // when the app opens, not a repeating one. "Rings around 7:00"
+            // read as every morning.
+            return "Set for \(scheduledWakeTime.formatted(.dateTime.weekday(.abbreviated).hour().minute())), "
+                + "through Silent mode and Sleep Focus. Opening Zoon sets the next one."
         }
         return "Sounds at the end of the window, through Silent mode and Sleep Focus."
     }
@@ -165,8 +172,10 @@ struct SettingsView: View {
                             // A switch that stays on while nothing is delivered
                             // is a lie the user finds out about a week later.
                             preferences.bedtimeRemindersEnabled = granted
-                            if granted, let bedtime = coordinator.state.context?.targetBedtime() {
-                                await reminders.schedule(bedtime: bedtime)
+                            if granted {
+                                await reminders.schedule(
+                                    bedtimes: coordinator.tonightHorizon(nights: ReminderSchedule.horizonNights).map(\.bed)
+                                )
                             }
                         } else {
                             preferences.bedtimeRemindersEnabled = false
@@ -183,7 +192,7 @@ struct SettingsView: View {
                 }
             }
 
-            if let bedtime = coordinator.state.context?.targetBedtime() {
+            if let bedtime = coordinator.tonightEpisode()?.bed {
                 LabeledContent(preferences.isShiftWorkModeEnabled ? "Next sleep" : "Tonight") {
                     Text(bedtime, format: .dateTime.hour().minute())
                         .monospacedDigit()
@@ -258,8 +267,11 @@ struct SettingsView: View {
                             if wantsOn {
                                 preferences.wakeAlarmEnabled = await wakeAlarm.requestAuthorization()
                             } else {
-                                preferences.wakeAlarmEnabled = false
-                                wakeAlarm.cancel()
+                                // Off only if the cancel took. A failed cancel
+                                // leaves a real alarm set, and a switch
+                                // showing off above it would be the one
+                                // place the app claims otherwise.
+                                preferences.wakeAlarmEnabled = !wakeAlarm.cancel()
                             }
                         }
                     }
@@ -589,22 +601,12 @@ struct SettingsView: View {
                 Picker("Preferred source", selection: Binding(
                     get: { preferences.preferredSleepSourceName ?? "" },
                     set: { newValue in
-                        preferences.preferredSleepSourceName = newValue.isEmpty ? nil : newValue
-                        // Written alongside the name -- see
-                        // `SleepSessionBuilder.preferredSourceBundleIdentifier`'s
-                        // doc comment for why matching by this instead of
-                        // the name alone is worth doing. `nil` for a source
-                        // whose stored nights all predate the column; the
-                        // name-based fallback still makes the choice work
-                        // until a re-sync backfills it.
-                        preferences.preferredSleepSourceBundleIdentifier =
-                            sources.first { $0.name == newValue }?.bundleIdentifier
-                        // The picked source only takes effect for nights
-                        // processed from here on -- force a full re-sync so
-                        // it also applies to what's already stored, the same
-                        // way restoring a backup does.
-                        AnchorStore.clear()
-                        Task { await coordinator.refresh() }
+                        // One path for both pickers -- see
+                        // `SleepDataCoordinator.selectSleepSource`. It stores
+                        // the bundle identifier alongside the name and forces
+                        // a full re-sync so the choice applies to stored
+                        // history, not only nights processed from here on.
+                        Task { await coordinator.selectSleepSource(named: newValue) }
                     }
                 )) {
                     Text("Automatic").tag("")

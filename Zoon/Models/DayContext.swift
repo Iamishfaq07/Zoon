@@ -14,6 +14,23 @@ struct DayContext: Equatable {
     let recovery: RecoveryScore
     let sleepNeed: SleepNeed
     let learnedSleepNeed: LearnedSleepNeed
+    /// Tonight's planning inputs, **as of now**. Not `sleepNeed`: that
+    /// assesses last night against the debt carried *into* it and the day
+    /// before it. This carries the debt with last night applied, today's
+    /// strain and today's naps. See `SleepPlanningInputs.asOfNow`.
+    ///
+    /// The same value as `tonight.planning` -- `DayContextBuilder` hands it
+    /// to `TonightPlanner` -- kept under this name for the callers that
+    /// only need the figures.
+    var tonightPlanning: SleepPlanningInputs { tonight.planning }
+    /// The shortfall **now**: the ledger with last night on it. What every
+    /// "current sleep debt" figure shows.
+    ///
+    /// Not `night.sleepDebtMinutes`, which is the debt carried *into* last
+    /// night -- the stored baseline for a night excludes that night -- so the
+    /// headline number ignored the night just slept until the next one was
+    /// written. `nil` only when there is no night at all to measure.
+    var shortfallNowMinutes: Double? = nil
     let sleepScore: SleepScore
     let sleepIntelligence: SleepIntelligenceScore
     let strain: StrainScore
@@ -29,6 +46,10 @@ struct DayContext: Equatable {
     /// Carried through so views (e.g. the hypnogram's HR overlay) can reuse
     /// it rather than each running their own HealthKit query.
     let hourlyHeartRate: [(date: Date, bpm: Double)]
+    /// Heart rate across last night, bed to wake, in five-minute bins. What
+    /// the hypnogram's Heart overlay draws. Not `hourlyHeartRate`, which is
+    /// the day since waking and has no points inside the night at all.
+    var overnightHeartRate: [(date: Date, bpm: Double)] = []
     /// Hourly cognitive-energy amplitude from last night's HRV, HR dip,
     /// and REM/Deep mix. Shape still comes from `EnergyForecast`; this is
     /// how high the peak sits and how deep the slump goes.
@@ -59,6 +80,7 @@ struct DayContext: Equatable {
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedSleepNeed,
+            shortfallNowMinutes: shortfallNowMinutes,
             sleepScore: sleepScore,
             sleepIntelligence: sleepIntelligence,
             strain: strain,
@@ -70,6 +92,7 @@ struct DayContext: Equatable {
             healthRadar: healthRadar,
             bodyClock: bodyClock,
             hourlyHeartRate: hourlyHeartRate,
+            overnightHeartRate: overnightHeartRate,
             cognitiveEnergy: cognitiveEnergy,
             academicSleepRegularity: academicSleepRegularity,
             tonight: tonight

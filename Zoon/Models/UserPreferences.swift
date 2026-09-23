@@ -258,6 +258,21 @@ final class UserPreferences {
         }
     }
 
+    /// Picks up the Sleep Focus filter's flag, which `SleepFocusFilter`
+    /// writes through its own instance.
+    ///
+    /// Read once at launch and never again, this instance kept whatever the
+    /// flag was then: a Focus that started while Zoon was in memory was
+    /// missed, so the next foreground re-armed the bedtime nudges the Focus
+    /// had just cancelled; one that ended left them silenced until relaunch.
+    /// Scoped to this key for the same reason as `reloadTomorrowSettings`.
+    func reloadFocusState() {
+        let stored = defaults.bool(forKey: Key.focusSilencesBedtimeNudges)
+        if stored != focusSilencesBedtimeNudges {
+            focusSilencesBedtimeNudges = stored
+        }
+    }
+
     var tomorrowMinute: Int {
         didSet { defaults.set(tomorrowMinute, forKey: Key.tomorrowMinute) }
     }

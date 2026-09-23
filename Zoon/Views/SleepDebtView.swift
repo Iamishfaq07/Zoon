@@ -14,7 +14,7 @@ struct SleepDebtView: View {
 
     /// `nil` when the latest night has no estimate yet; the arc and headline
     /// say so rather than drawing a reassuring-looking zero.
-    private var currentDebtMinutes: Double? { coordinator.state.context?.night.sleepDebtMinutes }
+    private var currentDebtMinutes: Double? { coordinator.state.context?.shortfallNowMinutes }
     private var currentDebt: Double { currentDebtMinutes ?? 0 }
 
     private var band: (label: String, tint: Color) {
@@ -158,7 +158,7 @@ struct SleepDebtView: View {
                 // would call a shrinking debt a decline.
                 .chartSummary(
                     "Estimated sleep shortfall over the last \(nights.count) nights",
-                    "Now \(SleepNightFeatures.formatMinutes(nights.last?.sleepDebtMinutes ?? 0)) short. "
+                    "Now \(SleepNightFeatures.formatMinutes(currentDebt)) short. "
                         + ChartTrend.describe(
                             nights.map { ($0.sleepDebtMinutes ?? 0) / 60 },
                             higherIsBetter: false

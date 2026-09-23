@@ -27,6 +27,8 @@ struct FloatingTabBar<Tab: Hashable>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Namespace private var indicator
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(items) { item in
@@ -36,8 +38,13 @@ struct FloatingTabBar<Tab: Hashable>: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 6)
         .background {
+            // A regular material plus a wash of the page colour, not the old
+            // ultra-thin one: the thin glass let whatever card was scrolling
+            // underneath set the contrast of 10pt labels, and the
+            // accessibility audit failed them wherever that card was bright.
             Capsule()
-                .fill(.ultraThinMaterial)
+                .fill(reduceTransparency ? AnyShapeStyle(Theme.solidSurface) : AnyShapeStyle(.regularMaterial))
+                .background(Capsule().fill(Theme.tabBarWash))
                 .overlay {
                     Capsule().stroke(Theme.neutral(0.12), lineWidth: 1)
                 }
@@ -96,7 +103,7 @@ struct FloatingTabBar<Tab: Hashable>: View {
                         .dynamicTypeSize(...DynamicTypeSize.large)
                 }
             }
-            .foregroundStyle(isSelected ? Theme.Family.sleep : Theme.inkTertiary)
+            .foregroundStyle(isSelected ? Theme.Family.sleep : Theme.inkSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, isAccessibility ? 11 : 7)
             .background {

@@ -99,7 +99,14 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
         goalMinutes: Double,
         band: SleepIntelligenceScore.Band?
     ) -> SleepInsight {
-        if let cached = InsightCache.shared.value(for: features.date) {
+        // Keyed by what the model was asked, not by the date. A correction,
+        // a goal change or a late vital changes the prompt, and the text
+        // generated for the old prompt must not be served for the new one.
+        let key = InsightCache.key(
+            prompt: Self.prompt(features: features, baseline: baseline, goalMinutes: goalMinutes),
+            instructions: Self.instructions
+        )
+        if let cached = InsightCache.shared.value(for: key) {
             return cached
         }
         return fallback.generate(for: features, baseline: baseline, goalMinutes: goalMinutes, band: band)
@@ -114,12 +121,18 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
         baseline: RollingBaseline,
         goalMinutes: Double
     ) async -> Bool {
+        // Whatever happens below, nothing generated for an earlier version of
+        // this night may survive it: a failed attempt falls back to rules
+        // rather than to the last success.
+        InsightCache.shared.invalidate(night: features.date)
+
         #if canImport(FoundationModels)
         guard #available(iOS 26.0, *), isAvailable else { return false }
+        let prompt = Self.prompt(features: features, baseline: baseline, goalMinutes: goalMinutes)
+        let key = InsightCache.key(prompt: prompt, instructions: Self.instructions)
 
         do {
             let session = LanguageModelSession(instructions: Self.instructions)
-            let prompt = Self.prompt(features: features, baseline: baseline, goalMinutes: goalMinutes)
 
             let response = try await session.respond(
                 to: prompt,
@@ -132,7 +145,9 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
                 )
             )
 
-            guard let insight = Self.validate(response.content) else {
+            guard let insight = Self.validate(
+                response.content, prompt: prompt, historyNights: baseline.sampleCount
+            ) else {
                 logger.notice("Model output failed validation; falling back to rules")
                 FoundationModelDiagnostics.shared.record(
                     "The model's answer didn't pass Zoon's safety checks (empty text, or "
@@ -142,7 +157,7 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
             }
 
             FoundationModelDiagnostics.shared.record(nil)
-            InsightCache.shared.store(insight, for: features.date)
+            InsightCache.shared.store(insight, for: key, night: features.date)
             return true
         } catch {
             logger.error("Generation failed: \(error.localizedDescription, privacy: .public)")
@@ -228,7 +243,11 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
     /// still return an empty summary or a diagnosis, and both must reach the
     /// fallback rather than the screen.
     @available(iOS 26.0, *)
-    static func validate(_ generated: GeneratedInsight) -> SleepInsight? {
+    static func validate(
+        _ generated: GeneratedInsight,
+        prompt: String,
+        historyNights: Int
+    ) -> SleepInsight? {
         let summary = generated.summary.trimmingCharacters(in: .whitespacesAndNewlines)
         let tip = generated.actionableTip.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !summary.isEmpty, !tip.isEmpty else { return nil }
@@ -238,6 +257,14 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
         let combined = "\(summary) \(generated.likelyCause) \(tip)"
         guard !DiagnosticLanguageGuard.rejects(combined) else { return nil }
 
+        // Every number the text states has to be one the prompt gave it.
+        // A model asked to summarise measured data can still produce "your
+        // deep sleep was 18% lower", and a number with no source is the
+        // failure this app's provenance rules exist to prevent.
+        guard GeneratedTextGrounding.isGrounded(combined, in: prompt) else { return nil }
+        // And the text is bounded, so it cannot outgrow the card it fills.
+        guard summary.count <= 400, tip.count <= 240, generated.likelyCause.count <= 240 else { return nil }
+
         let cause = generated.likelyCause.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedCause = cause.isEmpty || cause.lowercased() == "null" ? nil : cause
 
@@ -246,56 +273,13 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
             likelyCause: cleanedCause,
             actionableTip: tip,
             // Generated text never claims high confidence. The rules can prove
-            // their claims; a model cannot.
-            confidence: .medium,
+            // their claims; a model cannot. And with under a week of history
+            // there is little for it to be confident about at all.
+            confidence: historyNights >= RecoveryScore.minimumBaselineNights ? .medium : .low,
             source: .appleIntelligence
         )
     }
     #endif
-}
-
-/// Small in-memory cache keyed by night.
-///
-/// Deliberately not persisted: a model-generated insight is cheap to regenerate
-/// and shouldn't outlive the process, and caching generated health text to disk
-/// invites it drifting out of sync with the data it describes.
-///
-/// Lock-guarded rather than actor-isolated, because `SleepInsightEngine.generate`
-/// is synchronous and non-isolated — a `@MainActor` cache could not be read from
-/// it without making the whole protocol async, which the rule engine has no
-/// reason to pay for.
-final class InsightCache: @unchecked Sendable {
-
-    static let shared = InsightCache()
-
-    private var storage: [Date: SleepInsight] = [:]
-    private let lock = NSLock()
-
-    private init() {}
-
-    func value(for date: Date) -> SleepInsight? {
-        lock.lock()
-        defer { lock.unlock() }
-        return storage[date]
-    }
-
-    func store(_ insight: SleepInsight, for date: Date) {
-        lock.lock()
-        defer { lock.unlock() }
-        storage[date] = insight
-        // One night is all that's ever read back; anything older is dead weight.
-        if storage.count > 4 {
-            for key in storage.keys.sorted().prefix(storage.count - 4) {
-                storage.removeValue(forKey: key)
-            }
-        }
-    }
-
-    func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        storage.removeAll()
-    }
 }
 
 /// Why the *last* generation attempt fell back to rules, when it did.

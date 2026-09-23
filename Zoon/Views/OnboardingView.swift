@@ -135,7 +135,7 @@ struct OnboardingView: View {
                     .foregroundStyle(Theme.Metric.sleep)
                     .tracking(3)
                 Text("How long do you want to sleep?")
-                    .font(Theme.numeral(31))
+                    .font(Theme.heading(31))
                     .multilineTextAlignment(.center)
                 Text("Every comparison uses this number, not a crowd average.")
                     .font(Theme.label(14, weight: .medium))

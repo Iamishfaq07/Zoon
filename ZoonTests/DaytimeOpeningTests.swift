@@ -140,6 +140,25 @@ final class DaytimeOpeningTests: XCTestCase {
         XCTAssertTrue(anonymous.hasPrefix("Morning Recovery"), anonymous)
     }
 
+    /// The screen read "Morning Recovery was moderate. your physiological
+    /// load..." -- the second sentence started lowercase.
+    func testEachSentenceStartsWithACapital() {
+        for band in [RecoveryScore.Band.low, .moderate, .high] {
+            for current in [StressScore.Band.calm, .elevated, .high, nil] {
+                for name in ["", "Ishfaq"] {
+                    let line = sentence(band, current, name: name)
+                    for part in line.components(separatedBy: ". ").dropFirst() {
+                        XCTAssertEqual(part.first.map { String($0) }, part.first.map { String($0).uppercased() }, line)
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(
+            sentence(.moderate, .calm, name: "Ishfaq"),
+            "Ishfaq, Morning Recovery was moderate. Your physiological load is around your usual right now."
+        )
+    }
+
     func testAWhitespaceOnlyNameIsTreatedAsNoName() {
         XCTAssertEqual(sentence(.moderate, .calm, name: "   "), sentence(.moderate, .calm))
     }

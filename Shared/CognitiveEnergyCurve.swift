@@ -63,7 +63,8 @@ struct CognitiveEnergyCurve: Hashable, Sendable {
         remMinutes: Double,
         deepMinutes: Double,
         asleepMinutes: Double,
-        sleepDebtMinutes: Double
+        sleepDebtMinutes: Double,
+        coreMinutes: Double? = nil
     ) -> CognitiveEnergyCurve {
         var missing: [String] = []
         let hrvRatio: Double
@@ -84,8 +85,23 @@ struct CognitiveEnergyCurve: Hashable, Sendable {
             if minOvernightHeartRate == nil { missing.append("overnight HR dip") }
         }
 
+        // Gated on how much of the night was actually staged. A duration-only
+        // night has zero REM and zero deep because nothing classified it, not
+        // because there was none -- and the formula below floors at 0.85,
+        // so it used to take 15% off the whole day's curve for a missing
+        // measurement. Below three-quarters coverage the nudge is neutral
+        // and "sleep stages" is listed as missing, which is what it is.
+        let stagedMinutes = remMinutes + deepMinutes + (coreMinutes ?? 0)
+        let hasStageCoverage: Bool = if let coreMinutes {
+            asleepMinutes > 0 && (remMinutes + deepMinutes + coreMinutes) / asleepMinutes >= 0.75
+        } else {
+            // Callers that do not pass Core cannot measure coverage; the
+            // least they can do is not read an unstaged night as a bad one.
+            asleepMinutes > 0 && stagedMinutes > 0
+        }
+
         let stageNudge: Double
-        if asleepMinutes > 0 {
+        if hasStageCoverage {
             let rem = remMinutes / asleepMinutes
             let deep = deepMinutes / asleepMinutes
             // REM feeds daytime cognition; deep feeds restoration. Both are

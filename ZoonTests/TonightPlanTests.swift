@@ -121,13 +121,17 @@ final class TonightPlanTests: XCTestCase {
         let bed = tonight.bedtime(now: now, calendar: calendar)
         XCTAssertNotNil(bed)
 
-        // Autopilot, resolved the same way Today/Watch/reminders resolve it.
+        // Autopilot, resolved the same way Today/Watch/reminders resolve it:
+        // through the episode window, so a bedtime that has passed stays
+        // tonight's until its wake (it used to be the next occurrence after
+        // `now`, which rolled to tomorrow the minute bedtime passed).
         let fromAutopilot = tonight.autopilot.flatMap {
-            PlannedBedtimeResolver.nextOccurrence(
-                ofMinutesFromMidnight: $0.targetBedtimeMinutes,
-                after: now,
+            ResolvedSleepEpisode.window(
+                bedMinute: $0.targetBedtimeMinutes,
+                wakeMinute: $0.targetWakeMinutes,
+                containingOrAfter: now,
                 calendar: calendar
-            )
+            )?.start
         }
         XCTAssertEqual(bed, fromAutopilot)
 

@@ -53,6 +53,19 @@ final class SleepExperimentStore {
         /// older outcomes keep the reading they were given at the time.
         var uncertaintyLower: Double?
         var uncertaintyUpper: Double?
+        /// How many nights on each side had a value for the primary metric.
+        ///
+        /// Logged is not usable. Seven logged nights where the metric arrived
+        /// once is a median of one value, and the status used to read it as
+        /// a result because it only counted nights. `nil` for outcomes
+        /// recorded before these existed.
+        var baselineUsableCount: Int? = nil
+        var trialUsableCount: Int? = nil
+        /// Exactly which nights those usable values came from, so the
+        /// notebook can show what counted rather than only how many. `nil`
+        /// for outcomes recorded before these existed.
+        var baselineNightDates: [Date]? = nil
+        var trialNightDates: [Date]? = nil
 
         /// The trial's nights split three ways, the way the V10 spec asks
         /// for: adherent, non-adherent, unknown.

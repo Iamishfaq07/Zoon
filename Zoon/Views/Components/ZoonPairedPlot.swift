@@ -218,6 +218,27 @@ struct ZoonPairedPlot: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 6) {
+            summaryText
+            // The nights behind the dots: each pair's tagged night. The
+            // comparison night is matched by the correlator and is only
+            // ever shown by its value, so it is not listed here. Outside
+            // the combined element so VoiceOver can open it.
+            if !finding.pairs.isEmpty {
+                DisclosureGroup("Which nights counted") {
+                    Text("Nights with \(finding.label.lowercased()): \(EvidenceNights.list(finding.pairs.map(\.date)))")
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .font(Theme.text(12, weight: .medium))
+                .tint(Theme.ink)
+            }
+        }
+    }
+
+    private var summaryText: some View {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Median paired difference")
                 .font(Theme.kicker)
                 .tracking(1.0)

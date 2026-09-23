@@ -117,4 +117,33 @@ final class WatchQuickActionTests: XCTestCase {
             "pending:2026-05-10"
         )
     }
+
+    /// 01:00 on Tuesday is the night ending Tuesday morning. Adding a day to
+    /// every behaviour put it on Wednesday's night.
+    func testAnAfterMidnightBehaviourStaysOnTheNightInProgress() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "Asia/Kolkata"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let oneAM = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 22, hour: 1)))
+        let event = WatchActionEnvelope(action: .behaviorTag(rawValue: "alcohol"), occurredAt: oneAM, timeZone: zone)
+        XCTAssertEqual(
+            BehaviorObservationRecord.provisionalNightKey(for: event.behaviorNightDate, calendar: event.calendar),
+            "pending:2026-09-22"
+        )
+        // Delivered hours late, from a phone in another zone: the watch's own
+        // zone and time still decide.
+        XCTAssertEqual(event.occurredAt, oneAM)
+        XCTAssertEqual(event.timeZoneIdentifier, "Asia/Kolkata")
+    }
+
+    /// The boundary is a parameter: a night-shift phone can pass its own.
+    func testTheMorningBoundaryCanBeMoved() throws {
+        let zone = try XCTUnwrap(TimeZone(identifier: "Europe/London"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let sixAM = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 9, day: 22, hour: 6)))
+        let event = WatchActionEnvelope(action: .behaviorTag(rawValue: "alcohol"), occurredAt: sixAM, timeZone: zone)
+        XCTAssertEqual(calendar.component(.day, from: event.behaviorNightDate), 23)
+        XCTAssertEqual(calendar.component(.day, from: event.behaviorNightDate(morningBoundaryMinute: 9 * 60)), 22)
+    }
 }

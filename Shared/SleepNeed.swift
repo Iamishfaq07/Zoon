@@ -113,6 +113,20 @@ struct SleepNeed: Codable, Hashable, Sendable {
     /// still appear in history, but should not produce an unsafe bedtime plan.
     private static let maxNapCredit = 120.0
 
+    /// Extra need earned by a day's exertion. One rule, shared by the
+    /// assessment of a past night and the plan for tonight.
+    static func strainAdjustment(forStrain strain: Double) -> Double {
+        guard strain.isFinite else { return 0 }
+        let strainExcess = max(0, strain - 8) / 13
+        return min(maxStrainBonus, strainExcess * maxStrainBonus)
+    }
+
+    /// How much of a day's naps offsets the night's need.
+    static func napCredit(forNapMinutes minutes: Double) -> Double {
+        guard minutes.isFinite else { return 0 }
+        return min(maxNapCredit, max(0, minutes))
+    }
+
     static func compute(
         goalMinutes: Double,
         outstandingDebtMinutes: Double,
@@ -126,14 +140,11 @@ struct SleepNeed: Codable, Hashable, Sendable {
         // Strain bonus ramps in above a moderate day: an ordinary day doesn't
         // change what you need. Strain runs 0–21, so 8 is roughly "a normal
         // active day" and 21 is a race.
-        let strainExcess = max(0, yesterdayStrain - 8) / 13
-        let strain = min(maxStrainBonus, strainExcess * maxStrainBonus)
-
         return SleepNeed(
             baselineMinutes: goalMinutes,
             debtMinutes: debt,
-            strainMinutes: strain,
-            napCreditMinutes: min(maxNapCredit, max(0, napMinutes)),
+            strainMinutes: strainAdjustment(forStrain: yesterdayStrain),
+            napCreditMinutes: napCredit(forNapMinutes: napMinutes),
             achievedMinutes: achievedMinutes
         )
     }

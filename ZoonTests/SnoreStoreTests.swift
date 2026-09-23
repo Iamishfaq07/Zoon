@@ -80,30 +80,35 @@ final class SnoreStoreTests: XCTestCase {
     }
 
     /// A legacy row has no key, so it must keep being matched the way it
-    /// always was — by calendar day. Otherwise re-recording a night that
-    /// already has a keyless row would duplicate it rather than replace it.
-    func testLegacyRowWithoutAKeyIsStillReplacedBySameDayRecording() {
+    /// always was — by calendar day. Otherwise a second recording on a night
+    /// that already has a keyless row would duplicate it rather than join it.
+    func testLegacyRowWithoutAKeyIsStillMatchedBySameDayRecording() {
         let store = SnoreStore(defaults: makeDefaults())
         let morning = localNoon()
 
         store.record(summary(date: morning, snore: 10))
         store.record(summary(date: morning.addingTimeInterval(3 * 3600), snore: 25))
 
-        XCTAssertEqual(store.nights.count, 1, "Same calendar day, neither row keyed — should replace.")
-        XCTAssertEqual(store.nights.first?.snoreMinutes, 25)
+        XCTAssertEqual(store.nights.count, 1, "Same calendar day, neither row keyed — one night.")
+        XCTAssertEqual(store.nights.first?.snoreMinutes, 35)
     }
 
     // MARK: - Night-key matching
 
-    func testSameNightKeyReplacesRatherThanDuplicating() {
+    /// Two sessions on one night -- stopped at 03:00 after an interruption,
+    /// started again -- are one night with both sessions' minutes. The
+    /// second used to replace the first and lose it.
+    func testTwoSessionsOnOneNightAddUp() {
         let store = SnoreStore(defaults: makeDefaults())
         let key = "2026-08-20@Asia/Tokyo"
 
-        store.record(summary(date: instant(2026, 8, 20, 6, 0), snore: 10, nightKey: key, zone: "Asia/Tokyo"))
-        store.record(summary(date: instant(2026, 8, 20, 7, 0), snore: 42, nightKey: key, zone: "Asia/Tokyo"))
+        store.record(summary(date: instant(2026, 8, 20, 6, 0), monitored: 240, snore: 10, nightKey: key, zone: "Asia/Tokyo"))
+        store.record(summary(date: instant(2026, 8, 20, 7, 0), monitored: 200, snore: 42, nightKey: key, zone: "Asia/Tokyo"))
 
         XCTAssertEqual(store.nights.count, 1)
-        XCTAssertEqual(store.nights.first?.snoreMinutes, 42)
+        XCTAssertEqual(store.nights.first?.snoreMinutes, 52)
+        XCTAssertEqual(store.nights.first?.monitoredMinutes, 440)
+        XCTAssertEqual(store.nights.first?.date, instant(2026, 8, 20, 7, 0))
     }
 
     /// The travel case, and the reason this change exists. Two genuinely

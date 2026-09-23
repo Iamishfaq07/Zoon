@@ -191,6 +191,14 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// than as "say nothing".
     var tonightTargetNoteShort: String = ""
 
+    /// What will actually wake the person, as the phone's last reconciliation
+    /// recorded it: "Wake alarm (alarm): 7:00 AM", "Wake alarm: needs
+    /// permission". Empty when nothing is switched on, or on a payload from a
+    /// phone that predates this. Built on the phone by
+    /// `ScheduleReconciliation.statusLine`, so the wrist and the Tonight
+    /// section say the same thing and a stale time is never shown as set.
+    var wakeStatusLine: String = ""
+
     /// The tightest `UncertaintyForecast` range, phrased for a small screen:
     /// where recent nights actually landed.
     ///
@@ -476,6 +484,7 @@ extension SleepSnapshot {
         tonightTargetLabel = try container.decodeIfPresent(String.self, forKey: .tonightTargetLabel) ?? ""
         tonightTargetNote = try container.decodeIfPresent(String.self, forKey: .tonightTargetNote) ?? ""
         tonightTargetNoteShort = try container.decodeIfPresent(String.self, forKey: .tonightTargetNoteShort) ?? ""
+        wakeStatusLine = try container.decodeIfPresent(String.self, forKey: .wakeStatusLine) ?? ""
         tomorrowRangeLabel = try container.decodeIfPresent(String.self, forKey: .tomorrowRangeLabel) ?? ""
         isTonightTargetHolding = try container.decodeIfPresent(Bool.self, forKey: .isTonightTargetHolding) ?? false
 
@@ -524,13 +533,16 @@ extension SleepSnapshot {
         sleepIntelligencePercent: Int = 0,
         sleepIntelligenceBand: String = "",
         sleepIntelligenceVersion: Int = 0,
-        isShiftWorkModeEnabled: Bool = false
+        isShiftWorkModeEnabled: Bool = false,
+        currentShortfallMinutes: Double? = nil
     ) {
         self.date = features.date
         self.score = score.value
         self.scoreBand = score.band.label
         self.timeAsleepMinutes = features.timeAsleepMinutes
-        self.sleepDebtMinutes = features.sleepDebtMinutes ?? 0
+        // The shortfall now, with the night just slept on it, when the
+        // caller has it; the night's carried-in debt otherwise.
+        self.sleepDebtMinutes = currentShortfallMinutes ?? features.sleepDebtMinutes ?? 0
         self.goalMinutes = goalMinutes
         self.insightSummary = insight.summary
         self.generatedAt = .now

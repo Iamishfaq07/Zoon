@@ -15,6 +15,9 @@ struct SleepRunwayCard: View {
 
     let plan: SleepRunway.Plan
     @State private var selected: Date?
+    @State private var setup = PersonalSetupStore.shared
+    @State private var editing: SleepRunway.Day?
+    @Environment(UserPreferences.self) private var preferences
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Every bar is measured against the same ceiling so the days are
@@ -68,6 +71,24 @@ struct SleepRunwayCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
+        .sheet(item: $editing) { day in
+            NightPlanEditor(
+                morning: day.date, bed: day.bedtime, wake: day.wake,
+                preview: { bed, wake in
+                    SchedulePreview.lines(
+                        bed: bed, wake: wake,
+                        settings: .current(preferences),
+                        isSkipped: setup.value.isSkipped(wake: wake),
+                        now: .now,
+                        timeText: { $0.formatted(date: .omitted, time: .shortened) }
+                    )
+                }
+            ) { bed, wake in
+                NightPlanEditor.save(bed: bed, wake: wake, night: day, in: &setup.value)
+                editing = nil
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     /// One morning. The bar is the opportunity; the tick is the need.
@@ -137,6 +158,47 @@ struct SleepRunwayCard: View {
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            // Why, not only that: the thing that pins this night, named by
+            // what it is and how movable it is. See `ScheduleFriction`.
+            if let why = ScheduleFriction.read(day: day).explanation {
+                Text("Main constraint: \(why)")
+                    .font(Theme.text(12, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Skipping a night stops its reminders and alarm without
+            // deleting any plan, and says so.
+            Toggle(isOn: Binding(
+                get: { !setup.value.isSkipped(wake: day.wake) },
+                set: { setup.value.setSkipped(!$0, wake: day.wake) }
+            )) {
+                Text("Reminders for this night")
+                    .font(Theme.text(12))
+            }
+            .tint(Theme.Metric.sleep)
+            // Set this night's own times. Saved as a one-night plan, the same
+            // thing Saved Sleep Plans makes, so tonight's episode, the
+            // reminders and the alarm all follow it -- not a runway-only
+            // override that the rest of the app would not know about.
+            HStack {
+                Button(day.wakeSource == .plan ? "Change this night's times" : "Set this night's times") {
+                    editing = day
+                }
+                .font(Theme.text(12, weight: .semibold))
+                if day.wakeSource == .plan {
+                    Spacer()
+                    Button("Use my usual", role: .destructive) {
+                        NightPlanEditor.clear(night: day, in: &setup.value)
+                    }
+                    .font(Theme.text(12))
+                }
+            }
+            .buttonStyle(.borderless)
+            if setup.value.isSkipped(wake: day.wake) {
+                Text("Skipped: no bedtime reminder, wake window or alarm will be set for this night.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -154,5 +216,87 @@ struct SleepRunwayCard: View {
             return "\(weekday). \(opportunity) of sleep opportunity, enough for your need."
         }
         return "\(weekday). \(opportunity) of sleep opportunity, \(SleepNightFeatures.formatMinutes(day.gapMinutes)) short of your need."
+    }
+}
+
+/// Sets one night's bed and wake as a one-night sleep plan.
+struct NightPlanEditor: View {
+    /// The morning the edited night ends on.
+    let morning: Date
+    let onSave: (Date, Date) -> Void
+    /// Lines describing what saving would schedule, for resolved bed and
+    /// wake times. `nil` hides the section.
+    var preview: ((Date, Date) -> [String])? = nil
+    @State private var bed: Date
+    @State private var wake: Date
+    @Environment(\.dismiss) private var dismiss
+
+    init(
+        morning: Date,
+        bed: Date,
+        wake: Date,
+        preview: ((Date, Date) -> [String])? = nil,
+        onSave: @escaping (Date, Date) -> Void
+    ) {
+        self.morning = morning
+        self.onSave = onSave
+        self.preview = preview
+        _bed = State(initialValue: bed)
+        _wake = State(initialValue: wake)
+    }
+
+    init(night: SleepRunway.Day, onSave: @escaping (Date, Date) -> Void) {
+        self.init(morning: night.date, bed: night.bedtime, wake: night.wake, onSave: onSave)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker("Bed", selection: $bed, displayedComponents: .hourAndMinute)
+                DatePicker("Wake", selection: $wake, displayedComponents: .hourAndMinute)
+                Text("For the night ending \(morning.formatted(.dateTime.weekday(.wide).month().day())) only. Reminders and the alarm follow these times.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                if let preview {
+                    let resolved = SchedulePreview.resolve(bedClock: bed, wakeClock: wake, morning: morning)
+                    Section("What saving will schedule") {
+                        ForEach(preview(resolved.bed, resolved.wake), id: \.self) { line in
+                            Text(line)
+                                .font(.footnote)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("This night")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { onSave(bed, wake) } }
+            }
+        }
+    }
+
+    /// Clock minutes of a picked time, in the current calendar.
+    static func minuteOfDay(_ date: Date, calendar: Calendar = .current) -> Int {
+        let c = calendar.dateComponents([.hour, .minute], from: date)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    static func save(bed: Date, wake: Date, night: SleepRunway.Day, in setup: inout PersonalSetup) {
+        save(bed: bed, wake: wake, morning: night.date, in: &setup)
+    }
+
+    static func save(bed: Date, wake: Date, morning: Date, in setup: inout PersonalSetup) {
+        setup.setNightPlan(
+            bedMinute: minuteOfDay(bed),
+            wakeMinute: minuteOfDay(wake),
+            morning: morning,
+            name: "Just \(morning.formatted(.dateTime.weekday(.wide)))"
+        )
+    }
+
+    static func clear(night: SleepRunway.Day, in setup: inout PersonalSetup) {
+        setup.clearNightPlan(morning: night.date)
     }
 }

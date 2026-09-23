@@ -7,7 +7,7 @@ struct SleepFingerprintView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("Sleep fingerprint").font(Theme.numeral(26))
+                Text("Sleep fingerprint").font(Theme.heading(26))
                 Text("A calm summary of what your sleep usually looks like. It describes patterns; it does not diagnose causes.")
                     .font(Theme.text(14)).foregroundStyle(Theme.inkSecondary)
                 Picker("Period", selection: $days) {

@@ -88,6 +88,33 @@ final class AlertnessCheckStore {
         return AlertnessCheck.evaluate(latest: session, history: sessions)
     }
 
+    /// Restores sessions from a backup. Existing sessions win on a shared
+    /// id, the rule every other importer follows, and a session whose
+    /// numbers are not physically possible is skipped rather than stored.
+    /// - Returns: how many sessions were added.
+    @discardableResult
+    func importSessions(_ imported: [AlertnessCheck.Session]) -> Int {
+        let known = Set(sessions.map(\.id))
+        let fresh = imported.filter { !known.contains($0.id) && Self.isPlausible($0) }
+        guard !fresh.isEmpty else { return 0 }
+        sessions = Array((sessions + fresh).sorted { $0.date > $1.date }.prefix(90))
+        persist()
+        return fresh.filter { added in sessions.contains { $0.id == added.id } }.count
+    }
+
+    /// The bounds an archive has to respect. Shared with `DataExporter`'s
+    /// validation so a rejected file and a skipped row mean the same thing.
+    nonisolated static func isPlausible(_ session: AlertnessCheck.Session) -> Bool {
+        session.medianMilliseconds.isFinite
+            && (50...10_000).contains(session.medianMilliseconds)
+            && (session.iqrMilliseconds.map { $0.isFinite && $0 >= 0 && $0 <= 10_000 } ?? true)
+            && session.lapses >= 0 && session.lapses <= 1_000
+            && session.falseStarts >= 0 && session.falseStarts <= 1_000
+            && (session.trials.map { (0...1_000).contains($0) } ?? true)
+            && (session.minutesSinceWaking.map { $0.isFinite && $0 >= 0 && $0 <= 48 * 60 } ?? true)
+            && (session.subjectiveAlertness.map { (1...5).contains($0) } ?? true)
+    }
+
     func deleteAll() {
         sessions = []
         defaults.removeObject(forKey: key)

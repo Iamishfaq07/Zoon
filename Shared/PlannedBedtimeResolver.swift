@@ -49,4 +49,30 @@ enum PlannedBedtimeResolver {
         guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) else { return nil }
         return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: tomorrow)
     }
+
+    /// Tonight's bedtime, which stays tonight's after it has passed.
+    ///
+    /// `nextOccurrence` answers "when does this clock time next happen", and
+    /// at 23:01 for a 23:00 bedtime the honest answer to that is tomorrow.
+    /// It is the wrong question for a plan: that bedtime is still tonight's,
+    /// overdue, until the wake it was planning for. Counting down "Bed in
+    /// 23h 59m", or judging an evening nap against tomorrow night's bed, is
+    /// what asking the wrong question looked like.
+    ///
+    /// - Parameter sleepMinutes: how long the night lasts, which sets when
+    ///   the bedtime finally expires. A caller with a fixed wake should use
+    ///   `ResolvedSleepEpisode.window` with that wake instead.
+    static func tonightsOccurrence(
+        ofMinutesFromMidnight minutesFromMidnight: Double,
+        sleepMinutes: Double,
+        after now: Date,
+        calendar: Calendar = .current
+    ) -> Date? {
+        ResolvedSleepEpisode.window(
+            bedMinute: minutesFromMidnight,
+            wakeMinute: minutesFromMidnight + max(1, sleepMinutes),
+            containingOrAfter: now,
+            calendar: calendar
+        )?.start
+    }
 }

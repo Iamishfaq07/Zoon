@@ -189,6 +189,8 @@ enum GuidedExperiment {
         guard adherentTrial.count >= minimumPeriodNights else { return nil }
         let baselineValues = baseline.compactMap(primaryMetric.value(from:))
         let trialValues = adherentTrial.compactMap(primaryMetric.value(from:))
+        let baselineDates = baseline.filter { primaryMetric.value(from: $0) != nil }.map(\.date)
+        let trialDates = adherentTrial.filter { primaryMetric.value(from: $0) != nil }.map(\.date)
         guard let baselineMedian = Statistics.median(baselineValues),
               let trialMedian = Statistics.median(trialValues) else { return nil }
         let interval = medianDifferenceInterval(baseline: baselineValues, trial: trialValues)
@@ -209,7 +211,11 @@ enum GuidedExperiment {
             direction: direction,
             trialCompliantNightCount: trialCompliantNightCount,
             uncertaintyLower: interval?.lower,
-            uncertaintyUpper: interval?.upper
+            uncertaintyUpper: interval?.upper,
+            baselineUsableCount: baselineValues.count,
+            trialUsableCount: trialValues.count,
+            baselineNightDates: baselineDates,
+            trialNightDates: trialDates
         )
     }
 
@@ -279,6 +285,8 @@ enum GuidedExperiment {
         // from three block pairs, which no shipping design reaches.
         var trialValues: [Double] = []
         var baselineValues: [Double] = []
+        var trialDates: [Date] = []
+        var baselineDates: [Date] = []
         for assignment in schedule {
             let day = calendar.startOfDay(for: assignment.date)
             guard let observation = byDay[day],
@@ -288,7 +296,13 @@ enum GuidedExperiment {
             default: false
             }
             guard followed else { continue }
-            if assignment.arm == trialArm { trialValues.append(value) } else { baselineValues.append(value) }
+            if assignment.arm == trialArm {
+                trialValues.append(value)
+                trialDates.append(day)
+            } else {
+                baselineValues.append(value)
+                baselineDates.append(day)
+            }
         }
         let interval = medianDifferenceInterval(baseline: baselineValues, trial: trialValues)
 
@@ -308,7 +322,11 @@ enum GuidedExperiment {
             direction: direction,
             trialCompliantNightCount: adherence.adherent,
             uncertaintyLower: interval?.lower,
-            uncertaintyUpper: interval?.upper
+            uncertaintyUpper: interval?.upper,
+            baselineUsableCount: baselineValues.count,
+            trialUsableCount: trialValues.count,
+            baselineNightDates: baselineDates,
+            trialNightDates: trialDates
         )
     }
 

@@ -903,7 +903,7 @@ struct CorrelationRow: View {
 
                 Spacer()
 
-                Text(String(format: "%+.0f%%", finding.percentChange))
+                Text(finding.signedEffectLabel)
                     .font(Theme.label(14, weight: .bold))
                     .monospacedDigit()
                     .foregroundStyle(tint)

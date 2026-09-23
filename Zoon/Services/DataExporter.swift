@@ -35,7 +35,10 @@ enum DataExporter {
     /// restoring one would silently return every behaviour to unknown.
     /// Older archives still import -- the field is optional and the
     /// version guard is `<=`.
-    static let formatVersion = 5
+    /// 6 adds behaviour detail (quantity, unit, event time, intensity) to
+    /// each observation, and alertness-check sessions. Both are optional,
+    /// so a 5 or older archive decodes and imports them as absent.
+    static let formatVersion = 6
 
     struct Archive: Codable {
         let formatVersion: Int
@@ -72,6 +75,9 @@ enum DataExporter {
         /// archive taken before this existed, which imports as no
         /// definitions -- honest, and the observations still restore.
         var customBehaviors: [CustomBehavior]? = nil
+        /// Alertness-check sessions. `nil` before format 6, which imports as
+        /// no sessions rather than a history of zeros.
+        var alertnessSessions: [AlertnessCheck.Session]? = nil
 
         struct EpisodeRecord: Codable {
             let id: String
@@ -102,6 +108,12 @@ enum DataExporter {
             /// `BehaviorObservationSource.rawValue`.
             let source: String
             let observedAt: Date
+            /// Format 6. Optional keys: absent in an older archive, and
+            /// absent on a row with no detail -- never a zero standing in.
+            var quantity: Double? = nil
+            var unit: String? = nil
+            var eventTime: Date? = nil
+            var intensity: Double? = nil
         }
 
         struct JournalRecord: Codable {
@@ -221,7 +233,8 @@ enum DataExporter {
         behaviorObservations: [Archive.BehaviorObservationRecordExport] = [],
         evidenceHistory: [EvidenceLedger.Revision] = [],
         personalSetup: PersonalSetup? = nil,
-        customBehaviors: [CustomBehavior] = []
+        customBehaviors: [CustomBehavior] = [],
+        alertnessSessions: [AlertnessCheck.Session] = []
     ) -> Archive {
         Archive(
             formatVersion: formatVersion,
@@ -278,7 +291,8 @@ enum DataExporter {
             behaviorObservations: behaviorObservations,
             evidenceHistory: evidenceHistory,
             personalSetup: personalSetup,
-            customBehaviors: customBehaviors
+            customBehaviors: customBehaviors,
+            alertnessSessions: alertnessSessions
         )
     }
 
@@ -401,7 +415,13 @@ enum DataExporter {
         }
     }
 
+    /// Larger than any real archive by an order of magnitude: ten years of
+    /// nights with every optional field is a few megabytes. The cap is
+    /// against a file that would exhaust memory decoding, not a quota.
+    static let maximumArchiveBytes = 64 * 1024 * 1024
+
     static func decode(_ data: Data) throws -> Archive {
+        guard data.count <= maximumArchiveBytes else { throw ImportError.unreadable }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let archive = try? decoder.decode(Archive.self, from: data) else {
@@ -410,11 +430,125 @@ enum DataExporter {
         guard archive.formatVersion <= formatVersion else {
             throw ImportError.unsupportedVersion(archive.formatVersion)
         }
-        guard archive.formatVersion > 0, archive.goalMinutes.isFinite,
-              archive.nights.allSatisfy({ $0.bedtime < $0.wakeTime && $0.timeAsleepMinutes.isFinite && $0.timeAsleepMinutes >= 0 }),
-              archive.naps.allSatisfy({ $0.start < $0.end }) else { throw ImportError.unreadable }
-        guard archive.personalSetup?.isValid != false else { throw ImportError.unreadable }
+        guard archive.formatVersion > 0, validationFailure(archive) == nil else {
+            throw ImportError.unreadable
+        }
         return archive
+    }
+
+    /// Why an archive cannot be imported, or `nil` when it can.
+    ///
+    /// Run on the whole file **before any write**. Checking a handful of
+    /// fields let through reversed episode intervals -- which later reach
+    /// `DateInterval(start:end:)`, a trap -- and finite values large enough
+    /// to overflow an `Int` conversion on screen. An archive either passes
+    /// every rule or none of it is imported: a partial restore of a file
+    /// that is wrong somewhere is a restore of data nobody can vouch for.
+    ///
+    /// Returned as a reason rather than a Bool so a test can say which rule
+    /// caught which mutation.
+    static func validationFailure(_ archive: Archive) -> String? {
+        let day: Double = 24 * 60
+        func minutes(_ value: Double) -> Bool { value.isFinite && value >= 0 && value <= day }
+        func text(_ value: String?, _ limit: Int) -> Bool { (value?.count ?? 0) <= limit }
+
+        guard (1...formatVersion).contains(archive.formatVersion) else { return "version" }
+        guard archive.goalMinutes.isFinite, (60...day).contains(archive.goalMinutes) else { return "goal" }
+
+        // Counts: far beyond any real history, well short of exhausting memory.
+        guard archive.nights.count <= 20_000,
+              archive.journal.count <= 20_000,
+              archive.naps.count <= 20_000,
+              (archive.episodes?.count ?? 0) <= 50_000,
+              (archive.snoreSummaries?.count ?? 0) <= 1_000,
+              (archive.soundEvents?.count ?? 0) <= 10_000,
+              (archive.behaviorObservations?.count ?? 0) <= 200_000,
+              (archive.evidenceHistory?.count ?? 0) <= 50_000,
+              (archive.wristTemperatures?.count ?? 0) <= 20_000,
+              (archive.customBehaviors?.count ?? 0) <= 1_000,
+              (archive.alertnessSessions?.count ?? 0) <= 10_000
+        else { return "count" }
+
+        var nightDates = Set<Date>()
+        for night in archive.nights {
+            guard night.bedtime < night.wakeTime,
+                  night.wakeTime.timeIntervalSince(night.bedtime) <= day * 60,
+                  minutes(night.timeInBedMinutes), minutes(night.timeAsleepMinutes),
+                  minutes(night.coreMinutes), minutes(night.deepMinutes),
+                  minutes(night.remMinutes), minutes(night.unspecifiedAsleepMinutes),
+                  minutes(night.awakeMinutes),
+                  (0...500).contains(night.wakeCount)
+            else { return "night" }
+            guard nightDates.insert(night.date).inserted else { return "duplicate night" }
+        }
+
+        for nap in archive.naps {
+            guard nap.start < nap.end, nap.end.timeIntervalSince(nap.start) <= 12 * 3600 else { return "nap" }
+        }
+
+        var episodeIDs = Set<String>()
+        for episode in archive.episodes ?? [] {
+            guard episode.startDate < episode.endDate,
+                  episode.endDate.timeIntervalSince(episode.startDate) <= day * 60,
+                  minutes(episode.asleepMinutes), minutes(episode.timeInBedMinutes),
+                  !episode.nightKey.isEmpty, text(episode.nightKey, 64),
+                  TimeZone(identifier: episode.timezoneIdentifier) != nil,
+                  text(episode.sourceName, 256), text(episode.episodeType, 64)
+            else { return "episode" }
+            guard episodeIDs.insert(episode.id).inserted else { return "duplicate episode" }
+        }
+
+        let rating = 1...5
+        for entry in archive.journal {
+            guard text(entry.note, 10_000), entry.tags.count <= 200,
+                  entry.tags.allSatisfy({ text($0, 100) }),
+                  [entry.rested, entry.energy, entry.sleepiness, entry.mood]
+                    .allSatisfy({ $0.map(rating.contains) ?? true }),
+                  text(entry.nightKey, 64)
+            else { return "journal" }
+        }
+
+        for summary in archive.snoreSummaries ?? [] {
+            guard minutes(summary.monitoredMinutes), minutes(summary.snoreMinutes),
+                  summary.snoreMinutes <= summary.monitoredMinutes + 0.5
+            else { return "snore" }
+        }
+
+        for record in archive.wristTemperatures ?? [] {
+            guard record.absoluteCelsius.isFinite, (25...45).contains(record.absoluteCelsius) else {
+                return "temperature"
+            }
+        }
+
+        var observationIDs = Set<String>()
+        for observation in archive.behaviorObservations ?? [] {
+            guard !observation.nightKey.isEmpty, text(observation.nightKey, 64),
+                  !observation.behaviorIdentifier.isEmpty, text(observation.behaviorIdentifier, 200),
+                  text(observation.state, 32), text(observation.source, 32),
+                  observation.quantity.map({ $0.isFinite && $0 >= 0 && $0 <= 100_000 }) ?? true,
+                  observation.intensity.map({ $0.isFinite && (0...1).contains($0) }) ?? true,
+                  text(observation.unit, 32)
+            else { return "observation" }
+            let identity = BehaviorObservationRecord.identity(
+                nightKey: observation.nightKey, behaviorIdentifier: observation.behaviorIdentifier
+            )
+            guard observationIDs.insert(identity).inserted else { return "duplicate observation" }
+        }
+
+        for event in archive.soundEvents ?? [] {
+            guard event.confidence.isFinite, (0...1).contains(event.confidence),
+                  text(event.identifier, 128)
+            else { return "sound event" }
+        }
+
+        var sessionIDs = Set<UUID>()
+        for session in archive.alertnessSessions ?? [] {
+            guard AlertnessCheckStore.isPlausible(session) else { return "alertness" }
+            guard sessionIDs.insert(session.id).inserted else { return "duplicate alertness" }
+        }
+
+        guard archive.personalSetup?.isValid != false else { return "setup" }
+        return nil
     }
 }
 

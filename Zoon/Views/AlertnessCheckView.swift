@@ -84,10 +84,10 @@ struct AlertnessCheckView: View {
                 Text("Use this after waking, before caffeine, when you can sit safely.").font(Theme.text(14)).multilineTextAlignment(.center)
                 Button("Begin check") { begin() }.buttonStyle(.borderedProminent)
             case .waiting:
-                Text("Wait…").font(Theme.numeral(28))
+                Text("Wait…").font(Theme.heading(28))
                 reactionButton(color: Theme.neutral(0.12)) { tooSoon() }
             case .ready:
-                Text("Tap now").font(Theme.numeral(28)).foregroundStyle(Theme.Metric.recoveryHigh)
+                Text("Tap now").font(Theme.heading(28)).foregroundStyle(Theme.Metric.recoveryHigh)
                 reactionButton(color: Theme.Metric.recoveryHigh) { recordTap() }
             case .tooSoon:
                 Text("Too soon — wait for the change").font(Theme.label(16, weight: .semibold))
@@ -102,14 +102,14 @@ struct AlertnessCheckView: View {
                 if wasNotSaved {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.system(size: 54)).foregroundStyle(Theme.Metric.recoveryMid)
-                    Text("Not saved").font(Theme.numeral(24))
+                    Text("Not saved").font(Theme.heading(24))
                     Text("Too few responses to make a median worth keeping.")
                         .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 54)).foregroundStyle(Theme.Metric.recoveryHigh)
-                    Text("Saved on this device").font(Theme.numeral(24))
+                    Text("Saved on this device").font(Theme.heading(24))
                     if let latest = store.sessions.first {
                         summary(latest)
                     }

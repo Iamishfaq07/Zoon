@@ -23,7 +23,7 @@ struct AlgorithmTransparencyView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("How your score works")
-                .font(Theme.numeral(20))
+                .font(Theme.heading(20))
             Text("Five sleep-period components. Recovery and body-signal anomalies are kept separate so the headline remains easy to interpret.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)

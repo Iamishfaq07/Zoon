@@ -82,14 +82,21 @@ struct TonightPlan: Hashable, Sendable {
     }
 
     /// The bedtime every surface must show.
+    ///
+    /// Resolved through `ResolvedSleepEpisode.window`, like the reminders,
+    /// the alarm and Tonight: a bedtime that has passed stays tonight's until
+    /// the wake it was planning for. The next occurrence after `now` jumped
+    /// to tomorrow the minute bedtime passed, and the fallback's "wake
+    /// tomorrow" was the morning after next once past midnight.
     func bedtime(now: Date = .now, calendar: Calendar = .current) -> Date? {
         if let autopilot,
-           let bed = PlannedBedtimeResolver.nextOccurrence(
-            ofMinutesFromMidnight: autopilot.targetBedtimeMinutes,
-            after: now,
+           let window = ResolvedSleepEpisode.window(
+            bedMinute: autopilot.targetBedtimeMinutes,
+            wakeMinute: autopilot.targetWakeMinutes,
+            containingOrAfter: now,
             calendar: calendar
            ) {
-            return bed
+            return window.start
         }
         return fallbackBedtime(now: now, calendar: calendar)
     }
@@ -117,15 +124,13 @@ struct TonightPlan: Hashable, Sendable {
     /// composed `SleepNeed.totalNeedMinutes` (a different repayment).
     private func fallbackBedtime(now: Date, calendar: Calendar) -> Date? {
         let wake = calendar.dateComponents([.hour, .minute], from: fallbackWake)
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
-              let wakeTomorrow = calendar.date(
-                  bySettingHour: wake.hour ?? 7,
-                  minute: wake.minute ?? 0,
-                  second: 0,
-                  of: tomorrow
-              )
-        else { return nil }
-        return wakeTomorrow.addingTimeInterval(-suggestedSleepTargetMinutes * 60)
+        let wakeMinute = Double((wake.hour ?? 7) * 60 + (wake.minute ?? 0))
+        return ResolvedSleepEpisode.window(
+            bedMinute: wakeMinute - suggestedSleepTargetMinutes,
+            wakeMinute: wakeMinute,
+            containingOrAfter: now,
+            calendar: calendar
+        )?.start
     }
 }
 
@@ -141,9 +146,14 @@ enum TonightPlanner {
         obligationWake: Date? = nil,
         obligationSource: TonightPlan.ObligationSource = .none,
         windDownLeadMinutes: Double = ZoonTomorrow.windDownLeadMinutes,
+        planning explicitPlanning: SleepPlanningInputs? = nil,
         calendar: Calendar = .current
     ) -> TonightPlan {
-        let planning = sleepNeed.planningInputs(
+        // `explicitPlanning` is the as-of-now figure `DayContextBuilder`
+        // composes: the shortfall through the night just slept plus today's
+        // naps and strain (`SleepPlanningInputs.asOfNow`). Without one, the
+        // plan is composed from `sleepNeed` as before.
+        let planning = explicitPlanning ?? sleepNeed.planningInputs(
             outstandingShortfallMinutes: outstandingShortfallMinutes
         )
         let obligationMinutes = obligationWake.map {

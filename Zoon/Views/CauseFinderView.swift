@@ -18,7 +18,7 @@ struct CauseFinderView: View {
     @Environment(UserPreferences.self) private var preferences
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case helps = "Helps", hurts = "Hurts", noEffect = "No Effect", learning = "Still Learning"
+        case helps = "Helps", hurts = "Hurts", noEffect = "No Clear Link", learning = "Still Learning"
         var id: String { rawValue }
     }
 
@@ -125,7 +125,7 @@ struct CauseFinderView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("What affects your sleep?")
-                .font(Theme.numeral(20))
+                .font(Theme.heading(20))
             Text("Patterns found in your own sleep history -- an association, not proof of cause.")
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
@@ -136,6 +136,7 @@ struct CauseFinderView: View {
     private func content(_ observations: [JournalCorrelator.Observation]) -> some View {
         switch tab {
         case .helps:
+            comparisonNote(observations)
             let helpful = findings(from: observations).filter(\.isImprovement)
             if helpful.isEmpty {
                 emptyState("Nothing clears the bar yet. Keep logging -- a real helpful pattern will show up here once there's enough matched data.")
@@ -143,6 +144,7 @@ struct CauseFinderView: View {
                 ForEach(helpful) { CauseFinderRow(finding: $0) }
             }
         case .hurts:
+            comparisonNote(observations)
             let harmful = findings(from: observations).filter { !$0.isImprovement }
             if harmful.isEmpty {
                 emptyState("Nothing clears the bar yet. That's a genuinely good sign, not a data gap.")
@@ -166,6 +168,20 @@ struct CauseFinderView: View {
             } else {
                 ForEach(learning) { LearningRow(tag: $0) }
             }
+        }
+    }
+
+    /// How many comparisons were run, so one striking finding can be weighed
+    /// against the number of places Zoon looked. See
+    /// `JournalCorrelator.comparisonCount`.
+    @ViewBuilder
+    private func comparisonNote(_ observations: [JournalCorrelator.Observation]) -> some View {
+        let count = JournalCorrelator().comparisonCount(from: observations, catalog: coordinator.behaviorCatalog)
+        if count > 1 {
+            Text("Zoon compared \(count) behaviour and outcome pairs. With that many, a few can look notable by chance.")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -298,7 +314,7 @@ private struct NoEffectRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
                     .font(Theme.label(14, weight: .semibold))
-                Text("No meaningful difference found in your data so far.")
+                Text("No clear association in your data so far. That is not evidence of no effect.")
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkSecondary)
             }
@@ -411,7 +427,7 @@ private struct GuidedExperimentCard: View {
                 }
 
             case .noEffect:
-                Text("No meaningful difference found in your data so far.")
+                Text("No clear association in your data so far. That is not evidence of no effect.")
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkSecondary)
             }
@@ -562,6 +578,34 @@ private struct PastExperimentRow: View {
                         .font(Theme.text(12))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    // Logged is not measured. The medians above rest on the
+                    // nights where the metric actually arrived, and when
+                    // that is fewer than the nights logged the reader is
+                    // told, not left to assume every night counted.
+                    if let baselineUsable = outcome.baselineUsableCount,
+                       let trialUsable = outcome.trialUsableCount {
+                        Text("Measured on \(baselineUsable) of \(outcome.baselineNightCount) baseline nights and \(trialUsable) of \(outcome.trialCompliantNightCount ?? outcome.trialNightCount) trial nights.")
+                            .font(Theme.text(11))
+                            .foregroundStyle(Theme.inkTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let baselineDates = outcome.baselineNightDates,
+                       let trialDates = outcome.trialNightDates {
+                        // What counted, not only how many: the nights the
+                        // two medians above were computed from.
+                        DisclosureGroup("Which nights counted") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Before: \(EvidenceNights.list(baselineDates))")
+                                Text("During: \(EvidenceNights.list(trialDates))")
+                            }
+                            .font(Theme.text(11))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .font(Theme.text(12, weight: .medium))
+                        .tint(Theme.ink)
+                    }
                     if let adherenceRate = outcome.adherenceRate, let compliant = outcome.trialCompliantNightCount, let direction = outcome.direction {
                         // "The rest" used to be one bucket. It is two, and
                         // they mean different things: a night that broke the

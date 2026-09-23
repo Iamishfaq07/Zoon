@@ -8,19 +8,32 @@ import SwiftUI
 /// the detail on the Bed node -- so the plan and the adjustment to it read
 /// as one thing, which they are.
 ///
-/// Every time comes from where it always did: the target bedtime from
-/// `DayContext.targetBedtime()` (the same value the reminder is scheduled
-/// against), wind-down from `BedtimeReminder.windDownLeadMinutes`, the
-/// caffeine cutoff from `CaffeineCutoff.time(bedtime:)`, wake from
-/// `BodyClock.window(for:)`, and the shift from `SleepAutopilot.plan`.
+/// Bed, wind-down and wake all come from one `ResolvedSleepEpisode` -- the
+/// same one the reminder, the alarm and the nap coach use. The Bed node used
+/// to read `DayContext.targetBedtime()` while the sentence under it read the
+/// autopilot, and the wake read `BodyClock.window(for: now)`, which after
+/// midnight is tomorrow's. The caffeine cutoff still comes from
+/// `CaffeineCutoff.time(bedtime:)` and the shift from `SleepAutopilot.plan`.
 struct TonightSection: View {
     let context: DayContext
     let autopilot: SleepAutopilot.Plan?
+    /// Tonight, resolved. `nil` falls back to the context's own bedtime and
+    /// body-clock wake, for previews and a first launch with no history.
+    var episode: ResolvedSleepEpisode?
     var now: Date = .now
+    /// When Health data last arrived. `nil` with `showsDataStatus` reads
+    /// "not synced yet" rather than hiding the line.
+    var lastSync: Date? = nil
+    /// Previews and snapshots leave the data line off.
+    var showsDataStatus: Bool = false
 
     @Environment(UserPreferences.self) private var preferences
+    @State private var setup = PersonalSetupStore.shared
+    @State private var isEditing = false
 
-    private var bedtime: Date? { context.targetBedtime(now: now) }
+    private var bedtime: Date? { episode?.bed ?? context.targetBedtime(now: now) }
+
+    private var wake: Date? { episode?.wake ?? context.bodyClock?.window(for: now)?.end }
 
     private var nodes: [ZoonTimeline.Node] {
         guard let bedtime else { return [] }
@@ -36,7 +49,8 @@ struct TonightSection: View {
 
         result.append(.init(
             id: "windDown",
-            time: bedtime.addingTimeInterval(-Double(BedtimeReminder.windDownLeadMinutes) * 60),
+            time: episode?.windDown
+                ?? bedtime.addingTimeInterval(-Double(BedtimeReminder.windDownLeadMinutes) * 60),
             title: "Wind down",
             symbol: "moon.haze.fill", tint: Theme.Family.circadian
         ))
@@ -56,7 +70,7 @@ struct TonightSection: View {
             ))
         }
 
-        if let wake = context.bodyClock?.window(for: now)?.end {
+        if let wake {
             result.append(.init(id: "wake", time: wake, title: "Wake", symbol: "sunrise.fill", tint: Theme.Metric.battery))
         }
         return result
@@ -64,6 +78,13 @@ struct TonightSection: View {
 
     /// The autopilot's sentence, or the plain need when there is no plan yet.
     private var bedDetail: String? {
+        if let episode, episode.source == .manualPlan {
+            let name = episode.planName.map { "Your plan \u{201C}\($0)\u{201D}" } ?? "Your plan"
+            guard !episode.isFeasible else { return name }
+            // Shown, not hidden: the wake is a commitment and cannot move to
+            // make the target fit.
+            return "\(name) leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short of tonight's need"
+        }
         if let autopilot {
             return autopilot.isHolding
                 ? "Your usual time works tonight"
@@ -79,6 +100,53 @@ struct TonightSection: View {
                     countdown(to: bedtime)
                 }
                 ZoonTimeline(nodes: nodes, now: now)
+                scheduleStatus
+                if showsDataStatus {
+                    Text(TonightDataStatus.line(
+                        lastSync: lastSync,
+                        sourceName: context.night.sourceName,
+                        now: now,
+                        stagedMinutes: context.night.coreMinutes + context.night.deepMinutes + context.night.remMinutes,
+                        unstagedMinutes: context.night.unspecifiedAsleepMinutes
+                    ))
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let episode {
+                    // The same one-night editor as the week plan: a change
+                    // here is a plan for this night, so the reminders, the
+                    // alarm, the runway and the Watch all follow it.
+                    Button {
+                        Haptics.select()
+                        isEditing = true
+                    } label: {
+                        Label(episode.source == .manualPlan ? "Change tonight's times" : "Set tonight's times", systemImage: "pencil")
+                            .font(Theme.label(13, weight: .semibold))
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.Family.sleep)
+                    .sheet(isPresented: $isEditing) {
+                        NightPlanEditor(
+                            morning: episode.wake, bed: episode.bed, wake: episode.wake,
+                            preview: { bed, wake in
+                                SchedulePreview.lines(
+                                    bed: bed, wake: wake,
+                                    settings: .current(preferences),
+                                    isSkipped: setup.value.isSkipped(wake: wake),
+                                    now: .now,
+                                    timeText: { $0.formatted(date: .omitted, time: .shortened) }
+                                )
+                            }
+                        ) { bed, wake in
+                            NightPlanEditor.save(bed: bed, wake: wake, morning: episode.wake, in: &setup.value)
+                            isEditing = false
+                        }
+                        .presentationDetents([.medium])
+                    }
+                }
                 if let autopilot {
                     Text(autopilot.caveat)
                         .font(Theme.text(11))
@@ -87,6 +155,40 @@ struct TonightSection: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// What is actually set for tonight, and whether each item is a
+    /// notification or an alarm -- read from what the last reconciliation
+    /// recorded, not from the toggles. A plan whose reminder failed to
+    /// schedule, or whose alarm needs permission, says so here, beside the
+    /// times it was meant to act on.
+    @ViewBuilder
+    private var scheduleStatus: some View {
+        let store = ScheduleStateStore()
+        let slots: [(ScheduleStateStore.Slot, ScheduleReconciliation.Delivery)] = [
+            (.bedtime, .notification),
+            (.wakeWindow, .notification),
+            (.wakeAlarm, .alarm)
+        ]
+        let lines: [String] = slots.compactMap { slot, delivery in
+            let entry = store.entry(slot)
+            return ScheduleReconciliation.statusLine(
+                label: slot.label, delivery: delivery, status: entry.status,
+                scheduledFor: entry.scheduledFor, now: now,
+                timeText: { $0.formatted(date: .omitted, time: .shortened) }
+            )
+        }
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(lines, id: \.self) { line in
+                    Text(line)
+                }
+            }
+            .font(Theme.text(11))
+            .foregroundStyle(Theme.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
         }
     }
 

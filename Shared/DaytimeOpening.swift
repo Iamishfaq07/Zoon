@@ -196,7 +196,11 @@ enum DaytimeOpening {
             return address(line, name: name)
         }
 
-        return address("\(morningClause(band: band)). \(current.clause).", name: name, capitalised: true)
+        // The current clause starts a new sentence here, so it takes a
+        // capital; it is written lowercase because the withheld case above
+        // uses it mid-sentence after "but".
+        let second = current.clause.prefix(1).uppercased() + current.clause.dropFirst()
+        return address("\(morningClause(band: band)). \(second).", name: name, startsWithName: true)
     }
 
     /// A line the person can act on, or `nil`.
@@ -219,12 +223,16 @@ enum DaytimeOpening {
     }
 
     /// Prefixes the name when there is one, and capitalises otherwise.
-    private static func address(_ line: String, name: String, capitalised: Bool = false) -> String {
+    ///
+    /// `startsWithName` marks a line that opens with a score's own name
+    /// ("Morning Recovery"), which keeps its capital after the person's
+    /// name too -- it used to be lowercased into "Ishfaq, morning Recovery
+    /// was moderate", which reads as a typo.
+    private static func address(_ line: String, name: String, startsWithName: Bool = false) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            return capitalised ? line : line.prefix(1).uppercased() + line.dropFirst()
+            return startsWithName ? line : line.prefix(1).uppercased() + line.dropFirst()
         }
-        let body = capitalised ? line.prefix(1).lowercased() + line.dropFirst() : line
-        return "\(trimmed), \(body)"
+        return "\(trimmed), \(line)"
     }
 }

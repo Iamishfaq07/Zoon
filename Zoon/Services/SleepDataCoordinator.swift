@@ -187,6 +187,112 @@ final class SleepDataCoordinator {
 
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
+    // MARK: - Model evaluation
+
+    /// The sleep-debt model against the person's own morning ratings.
+    /// See `NeedModelEvaluation`: measured, never used to adjust anything.
+    ///
+    /// Each night is paired with the shortfall *through* it -- the debt the
+    /// next night carried in, or the current figure for the latest -- because
+    /// that is what the model says the person woke up owing. Strata are the
+    /// night's stage source and the person's schedule mode.
+    func needModelEvaluation() -> [NeedModelEvaluation.Summary] {
+        let nights = recentNights.sorted { $0.date < $1.date }
+        guard !nights.isEmpty else { return [] }
+        let entries = journal.allEntries()
+        let byKey = Dictionary(
+            entries.compactMap { entry in entry.nightKey.map { ($0, entry) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let byDay = Dictionary(
+            entries.map { (Calendar.current.startOfDay(for: $0.date), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let shift = preferences.isShiftWorkModeEnabled
+        return NeedModelEvaluation.evaluate(nights.enumerated().map { index, night in
+            let through = index + 1 < nights.count
+                ? nights[index + 1].sleepDebtMinutes
+                : state.context?.shortfallNowMinutes
+            let entry = byKey[night.nightKey] ?? byDay[Calendar.current.startOfDay(for: night.date)]
+            let source = night.stageTrust.supportsStageFigures ? "Measured stages" : "Unstaged or unknown source"
+            return NeedModelEvaluation.Night(
+                shortfallMinutes: through,
+                restedRating: entry?.restedRaw,
+                stratum: shift ? "\(source), shift work" : source
+            )
+        })
+    }
+
+    // MARK: - Tonight
+
+    /// The habitual wake clock, on `SleepAutopilot`'s signed scale.
+    ///
+    /// The body clock's when it exists, last night's wake otherwise. Only the
+    /// clock time is used, so which day `window(for:)` lands on does not
+    /// matter here -- which is the one place that is true.
+    private func usualWakeMinute(_ context: DayContext, now: Date) -> Double {
+        let wake = context.bodyClock?.window(for: now)?.end ?? context.night.wakeTime
+        return Statistics.circularMinutesFromMidnight(wake)
+    }
+
+    /// Tonight's autopilot plan. One place, so the Today hero, the nap coach,
+    /// the watch snapshot and the episode all read the same plan instead of
+    /// each rebuilding it with slightly different inputs.
+    ///
+    /// - Parameter context: the context to plan from, when the caller holds
+    ///   one that has not been published to `state` yet.
+    func tonightAutopilotPlan(
+        for context: DayContext? = nil,
+        now: Date = .now
+    ) -> SleepAutopilot.Plan? {
+        guard let context = context ?? state.context else { return nil }
+        // Tonight's need before repayment, and the whole outstanding
+        // shortfall: the autopilot owns the repayment rule. It used to be
+        // handed `sleepNeed.debtMinutes` -- already a 33% repayment of the
+        // debt carried into *last* night -- and took 25% of that again, so
+        // tonight asked for about 8% of a figure that did not include the
+        // night just slept.
+        //
+        // Now built once, in `DayContextBuilder`, as `context.tonight`: the
+        // same inputs and the same habitual wake as `usualWakeMinute`. This
+        // returns that plan rather than a second one.
+        return context.tonight.autopilot
+    }
+
+    /// Tonight's episode: the one bed, wind-down and wake every surface uses.
+    ///
+    /// The person's own plan wins when it covers tonight; otherwise the
+    /// autopilot's bedtime against their usual wake; otherwise their usual
+    /// wake minus tonight's need. See `ResolvedSleepEpisode` for why this is
+    /// resolved once rather than per screen.
+    func tonightEpisode(
+        for context: DayContext? = nil,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> ResolvedSleepEpisode? {
+        tonightHorizon(nights: 1, for: context, now: now, calendar: calendar).first
+    }
+
+    /// Tonight and the nights after it, for scheduling ahead.
+    func tonightHorizon(
+        nights: Int,
+        for explicitContext: DayContext? = nil,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> [ResolvedSleepEpisode] {
+        let context = explicitContext ?? state.context
+        return ResolvedSleepEpisode.horizon(
+            nights: nights,
+            plans: PersonalSetupStore.shared.value.plans,
+            autopilot: tonightAutopilotPlan(for: context, now: now),
+            usualWakeMinute: context.map { usualWakeMinute($0, now: now) },
+            needMinutes: context?.tonightPlanning.tonightNeedMinutes ?? preferences.sleepGoalMinutes,
+            windDownLeadMinutes: BedtimeReminder.windDownLeadMinutes,
+            now: now,
+            calendar: calendar
+        )
+    }
+
     func nightsForRepair() -> [SleepNightFeatures] { store.historicalFeatures(goalMinutes: preferences.sleepGoalMinutes, manualNaps: naps.naps) }
     private func applyLocalRepairs() {
         store.excludedNightKeys = Set(PersonalSetupStore.shared.value.repairs.filter(\.excluded).map(\.nightKey))
@@ -374,41 +480,29 @@ final class SleepDataCoordinator {
     /// of why a given device's HealthKit call never completes. 20 seconds is
     /// well past how long even both system sheets, answered promptly, should
     /// ever take.
+    ///
+    /// The deadline is `Deadline.race`, not a task group: a group waits for
+    /// every child, so a HealthKit call that never completed kept the
+    /// "timed-out" request waiting anyway. A second call while one is still
+    /// outstanding returns at once rather than stacking a second prompt.
     func requestHealthAccess() async {
-        guard DataEnvironment.current.isLive else { return }
+        guard DataEnvironment.current.isLive, !isRequestingHealthAccess else { return }
+        isRequestingHealthAccess = true
+        defer { isRequestingHealthAccess = false }
         do {
-            try await Self.withTimeout(seconds: 20) { [healthKit] in
+            try await Deadline.race(seconds: 20) { [healthKit] in
                 try await healthKit.requestAuthorization()
             }
-        } catch is TimeoutError {
+        } catch is Deadline.Expired {
             logger.error("Authorization request timed out after 20s; proceeding without waiting further")
         } catch {
             logger.error("Authorization request failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    private struct TimeoutError: Error {}
-
-    /// Races `operation` against a deadline. If the deadline wins, `operation`
-    /// is left to finish on its own (its `Task` is cancelled, but a
-    /// completion-handler-backed call like HealthKit's can't actually be
-    /// interrupted mid-flight) and this throws `TimeoutError` so the caller
-    /// can stop waiting rather than hang indefinitely.
-    private static func withTimeout<T: Sendable>(
-        seconds: UInt64,
-        operation: @escaping @Sendable () async throws -> T
-    ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
-                throw TimeoutError()
-            }
-            defer { group.cancelAll() }
-            guard let result = try await group.next() else { throw TimeoutError() }
-            return result
-        }
-    }
+    /// True while a permission request is outstanding, so two callers
+    /// cannot put two sheets up.
+    private var isRequestingHealthAccess = false
 
     /// Starts the pipeline: observers plus an initial refresh. Does **not**
     /// request HealthKit authorization — that is `requestHealthAccess()`'s
@@ -446,6 +540,9 @@ final class SleepDataCoordinator {
         watchLink.onQuickAction = { [weak self] event in
             guard let self, !isErasing, preferences.hasCompletedOnboarding else { return }
             Self.apply(event, journal: journal, naps: naps, behaviors: behaviors)
+            if case .nap = event.action {
+                Task { await self.napRecorded() }
+            }
         }
 
         // Screenshot/demo runs take no permission sheet, run no queries, and
@@ -924,6 +1021,15 @@ final class SleepDataCoordinator {
             restingProvenance: resting.provenance
         )
 
+        // The night's own heart rate, for the hypnogram. Five-minute bins:
+        // hourly ones give a seven-hour night seven points and flatten the
+        // dip that makes the line worth drawing.
+        let overnightHeartRate = night.bedtime < night.wakeTime
+            ? ((try? await healthKit.binnedHeartRate(
+                in: DateInterval(start: night.bedtime, end: night.wakeTime), binMinutes: 5
+            )) ?? [])
+            : []
+
         guard !isErasing, generation == storeGeneration else { return }
 
         // Generation is deferred into the builder rather than run above,
@@ -952,7 +1058,14 @@ final class SleepDataCoordinator {
             age: preferences.age,
             sex: preferences.biologicalSex,
             bodyMassIndex: preferences.bodyMassIndex,
-            obligationWeekdays: preferences.obligationWeekdays
+            obligationWeekdays: preferences.obligationWeekdays,
+            // Tonight is planned from the ledger with last night on it and
+            // from today's naps -- not from what was carried into last night.
+            shortfallThroughLatestNightMinutes: store.currentBaseline(
+                goalMinutes: goal, manualNaps: naps.naps
+            ).sleepDebtMinutes,
+            napMinutesToday: napMinutesToday(),
+            overnightHeartRate: overnightHeartRate
         ))
 
         store.attach(context.insight, to: record)
@@ -969,6 +1082,22 @@ final class SleepDataCoordinator {
     func republishGlanceSurfaces() {
         guard let context = state.context else { return }
         publishSnapshot(context, goal: preferences.sleepGoalMinutes)
+    }
+
+    /// A nap was recorded -- finished on the phone or logged from the Watch.
+    ///
+    /// Today's nap credit feeds tonight's need, and that is fixed when the
+    /// day's context is built, so republishing the existing context left
+    /// tonight's plan (Today, the widgets, the Watch) without the nap until
+    /// the next Health refresh. This rebuilds from stored data -- no Health
+    /// query -- and publishes. Sample data has nothing to rebuild from, so
+    /// there it only republishes.
+    func napRecorded() async {
+        guard !state.isMock, !DataEnvironment.current.isSample else {
+            republishGlanceSurfaces()
+            return
+        }
+        await publishLatest()
     }
 
     /// Nap credit for the night ending `night`, combining manually-logged
@@ -1269,7 +1398,9 @@ final class SleepDataCoordinator {
             sleepIntelligencePercent: context.sleepIntelligence.percent,
             sleepIntelligenceBand: context.sleepIntelligence.band.label,
             sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
-            isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled
+            isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
+            // The same shortfall Today's arc shows, last night included.
+            currentShortfallMinutes: context.shortfallNowMinutes
         )
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).
@@ -1297,6 +1428,44 @@ final class SleepDataCoordinator {
             snapshot.tonightTargetNote = plan.sentence
             snapshot.tonightTargetNoteShort = plan.shortSentence
             snapshot.isTonightTargetHolding = plan.isHolding
+        }
+        // The times themselves come from the resolved episode, the same one
+        // the phone's Tonight section, reminders and alarm use. The label
+        // used to be the autopilot's range, which knew nothing of a manual
+        // plan and could put a different bed on the wrist from the phone.
+        // The wake alarm's recorded state, else the wake window's: the one
+        // thing the wrist most needs to know at bedtime is whether anything
+        // will wake them, and which kind of thing it is.
+        let schedules = ScheduleStateStore()
+        let wakeSlots: [(ScheduleStateStore.Slot, ScheduleReconciliation.Delivery)] = [
+            (.wakeAlarm, .alarm),
+            (.wakeWindow, .notification)
+        ]
+        snapshot.wakeStatusLine = ""
+        for (slot, delivery) in wakeSlots {
+            let entry = schedules.entry(slot)
+            if let line = ScheduleReconciliation.statusLine(
+                label: slot.label, delivery: delivery, status: entry.status,
+                scheduledFor: entry.scheduledFor, now: .now,
+                timeText: { $0.formatted(date: .omitted, time: .shortened) }
+            ) {
+                snapshot.wakeStatusLine = line
+                break
+            }
+        }
+        if let episode = tonightEpisode(for: context) {
+            snapshot.tonightTargetLabel = episode.rangeLabel
+            if episode.source == .manualPlan {
+                let name = episode.planName.map { "Your plan \u{201C}\($0)\u{201D}." } ?? "Your plan."
+                let short = episode.isFeasible
+                    ? ""
+                    : " \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short of tonight's need."
+                snapshot.tonightTargetNote = name + short
+                snapshot.tonightTargetNoteShort = episode.isFeasible
+                    ? "Your plan"
+                    : "\(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short"
+                snapshot.isTonightTargetHolding = false
+            }
         }
         if let forecast = UncertaintyForecast.forecastAll(nights: recentNights).first {
             snapshot.tomorrowRangeLabel = forecast.rangeLabel
@@ -1764,7 +1933,8 @@ final class SleepDataCoordinator {
             age: preferences.age ?? 34,
             sex: preferences.biologicalSex,
             bodyMassIndex: preferences.bodyMassIndex,
-            obligationWeekdays: preferences.obligationWeekdays
+            obligationWeekdays: preferences.obligationWeekdays,
+            overnightHeartRate: MockData.overnightHeartRate(bedtime: night.bedtime, wakeTime: night.wakeTime)
         ))
 
         state = .mock(context)
@@ -1798,7 +1968,38 @@ final class SleepDataCoordinator {
     /// Name paired with the stable bundle identifier to actually store as
     /// the preference -- see `SleepHistoryStore.knownSleepSources()`.
     func knownSleepSources() -> [(name: String, bundleIdentifier: String?)] {
-        store.knownSleepSources()
+        SleepSourceList.merged(stored: store.knownSleepSources(), writers: sleepWriters)
+    }
+
+    /// Every writer HealthKit reports for sleep, refreshed by
+    /// `refreshSleepWriters()`. Empty until then, and in demo mode.
+    private(set) var sleepWriters: [(name: String, bundleIdentifier: String)] = []
+
+    /// Asks HealthKit which apps and devices have written sleep. Failure
+    /// leaves the list as it was: the stored winners still populate the
+    /// picker, which is what it showed before this existed.
+    func refreshSleepWriters() async {
+        guard DataEnvironment.current.isLive,
+              let writers = try? await healthKit.sleepSources() else { return }
+        sleepWriters = writers
+    }
+
+    /// The one way a preferred sleep source is chosen, from either screen.
+    ///
+    /// Settings and Data Repair each had their own picker. Settings stored
+    /// the bundle identifier and cleared the sync anchor so the choice
+    /// re-arbitrated stored history; Data Repair cleared the identifier and
+    /// only refreshed from the anchor, so the same choice made there applied
+    /// to new nights alone. Both now call this.
+    func selectSleepSource(named name: String?) async {
+        let chosen = name.flatMap { $0.isEmpty ? nil : $0 }
+        preferences.preferredSleepSourceName = chosen
+        preferences.preferredSleepSourceBundleIdentifier = chosen.flatMap { chosen in
+            knownSleepSources().first { $0.name == chosen }?.bundleIdentifier
+        }
+        // Re-arbitrate what is already stored, not only new nights.
+        AnchorStore.clear()
+        await refresh()
     }
 
     func setEngine(_ choice: UserPreferences.EngineChoice) {
@@ -1858,6 +2059,7 @@ final class SleepDataCoordinator {
         // The definitions, so the restored answers have names. Existing ones
         // win, the same rule every other importer here follows.
         CustomBehaviorStore.shared.importBehaviors(archive.customBehaviors ?? [])
+        let restoredAlertness = AlertnessCheckStore().importSessions(archive.alertnessSessions ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -1916,9 +2118,9 @@ final class SleepDataCoordinator {
 
         if preferences.bedtimeRemindersEnabled {
             await reminders.refreshAuthorization()
-            if let bedtime = state.context?.targetBedtime() {
-                await reminders.schedule(bedtime: bedtime)
-            }
+            await reminders.schedule(
+                bedtimes: tonightHorizon(nights: ReminderSchedule.horizonNights).map(\.bed)
+            )
         }
 
         // Every count, every chance to read "1 naps". Restoring a backup with
@@ -1935,8 +2137,21 @@ final class SleepDataCoordinator {
         if restoredObservations > 0 {
             extras.append(restoredObservations.pluralized("behaviour answer"))
         }
+        if restoredAlertness > 0 {
+            extras.append(restoredAlertness.pluralized("alertness check"))
+        }
         if !extras.isEmpty {
             summary += " Also restored \(extras.joined(separator: ", "))."
+        }
+        // Counted from what reached disk. A restore that failed part-way
+        // says so instead of reporting the archive's size as a success.
+        let unsavedNights = archive.nights.count - nights
+        let unsavedEpisodes = (archive.episodes ?? []).count - restoredEpisodes
+        if unsavedNights > 0 || unsavedEpisodes > 0 {
+            var failed: [String] = []
+            if unsavedNights > 0 { failed.append(unsavedNights.pluralized("night")) }
+            if unsavedEpisodes > 0 { failed.append(unsavedEpisodes.pluralized("sleep episode")) }
+            summary += " \(failed.joined(separator: " and ")) could not be saved; the rest were restored."
         }
         return summary
     }
@@ -2009,6 +2224,10 @@ final class SleepDataCoordinator {
         todayLifestyleInsights = nil
         lastRefresh = nil
         WidgetCenter.shared.reloadAllTimelines()
+        // Last, once the persisted data is gone: live holders -- a snore
+        // session still listening, a screen's store with erased summaries in
+        // memory -- stop or reload rather than writing them back.
+        DataErasure.announce()
 
         return alarmDeleted
             && nightsDeleted
@@ -2639,9 +2858,14 @@ final class SleepDataCoordinator {
             currentRegularityIndex: context?.regularity.index.rounded(to: 0),
             currentRegularityBand: context?.regularity.hasEnoughData == true ? context?.regularity.band.label : nil,
             learnedSleepNeedMinutes: context?.learnedSleepNeed.minutes.rounded(to: 0),
-            sleepDebtMinutes: context?.night.sleepDebtMinutes?.rounded(to: 0),
+            // The shortfall itself. This was `sleepNeed.debtMinutes`, which is
+            // a 33% repayment slice, so the coach quoted a third of the debt
+            // as the debt.
+            sleepDebtMinutes: context?.shortfallNowMinutes?.rounded(to: 0),
             activeExperimentTag: preferences.activeExperimentTag?.label,
-            causeFinderFindings: findings.map {
+            // Percent-scaled findings only: the digest carries a percentage,
+            // and a zero-baseline finding has none to give.
+            causeFinderFindings: findings.filter(\.hasRelativeScale).map {
                 CoachContextDigest.CorrelatorFinding(
                     behavior: $0.label,
                     metric: $0.metric.shortLabel,

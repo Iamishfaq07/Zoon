@@ -86,17 +86,57 @@ final class SnoreStore {
     /// the rest of the app builds baselines from.
     private let maxStored = 30
 
-    init(defaults: UserDefaults = .standard) {
+    /// The erase generation `nights` was loaded under. See `DataErasure`.
+    private var loadedGeneration: Int
+    private var erasureObserver: NSObjectProtocol?
+
+    init(defaults: UserDefaults = .standard, center: NotificationCenter = .default) {
         self.defaults = defaults
+        self.loadedGeneration = DataErasure.generation
+        load()
+        erasureObserver = center.addObserver(
+            forName: DataErasure.didErase, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reloadAfterErasure() }
+        }
+    }
+
+    private func load() {
+        nights = []
         if let data = defaults.data(forKey: Self.key),
            let decoded = try? JSONDecoder().decode([NightSummary].self, from: data) {
             nights = decoded
         }
     }
 
+    /// Drops whatever this instance still held in memory. Persisting it
+    /// later would bring erased summaries back.
+    private func reloadAfterErasure() {
+        loadedGeneration = DataErasure.generation
+        load()
+    }
+
     func record(_ summary: NightSummary) {
+        // An instance that missed the notification still cannot write back
+        // what was erased: it reloads from the (now empty) store first.
+        if loadedGeneration != DataErasure.generation { reloadAfterErasure() }
+        // A second session on the same night adds to the first. It used to
+        // replace it: stop listening at 03:00 after an interruption, start
+        // again, and the first four hours vanished from the night's total.
+        // Every summary comes from a distinct capture -- `SnoreDetector`
+        // produces one per stop -- so there is no double-recording to guard
+        // against by overwriting.
+        let earlier = nights.filter { Self.isSameNight($0, summary) }
         nights.removeAll { Self.isSameNight($0, summary) }
-        nights.append(summary)
+        nights.append(earlier.reduce(summary) { merged, previous in
+            NightSummary(
+                date: max(merged.date, previous.date),
+                monitoredMinutes: merged.monitoredMinutes + previous.monitoredMinutes,
+                snoreMinutes: merged.snoreMinutes + previous.snoreMinutes,
+                nightKey: merged.nightKey ?? previous.nightKey,
+                timezoneIdentifier: merged.timezoneIdentifier ?? previous.timezoneIdentifier
+            )
+        })
         persist()
     }
 

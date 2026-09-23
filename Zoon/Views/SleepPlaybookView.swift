@@ -54,7 +54,7 @@ struct SleepPlaybookView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("What's usually there on your best nights")
-                .font(Theme.numeral(18))
+                .font(Theme.heading(18))
             Text("Built from your own history -- conditions that show up disproportionately around your best sleep, not a hypothesis test on any one behaviour.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)

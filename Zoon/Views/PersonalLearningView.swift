@@ -35,7 +35,7 @@ struct PersonalLearningView: View {
     private var introduction: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text("What Zoon is learning about your response")
-                .font(Theme.numeral(25))
+                .font(Theme.heading(25))
             Text("These are observational summaries from your own history. Zoon withholds them until there is enough repeated data and never treats them as medical conclusions.")
                 .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
         }.glassCard()

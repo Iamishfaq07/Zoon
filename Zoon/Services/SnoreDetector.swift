@@ -77,6 +77,65 @@ final class SnoreDetector {
         )
     }
 
+    private var erasureObserver: NSObjectProtocol?
+
+    init(center: NotificationCenter = .default) {
+        // Delete Everything stops the microphone and throws the session
+        // away rather than finalizing it. A summary produced after the erase
+        // would be data Zoon kept from before it.
+        erasureObserver = center.addObserver(
+            forName: DataErasure.didErase, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.discard() }
+        }
+    }
+
+    /// Stops capture without producing a summary, and forgets the session.
+    ///
+    /// For erasure: the running or paused session must not be summarised
+    /// or checkpointed back into the stores that were just cleared. Resets
+    /// through `resetSession`, the same block `start` uses, so a field added
+    /// to the session is cleared here too.
+    func discard() {
+        guard isRunning || monitoredSeconds > 0 || openGapStartedAt != nil else { return }
+        removeTapIfNeeded()
+        engine.stop()
+        soundClassifier.stop()
+        AudioSessionCoordinator.shared.release(audioOwner)
+        isRunning = false
+        resetSession()
+        logger.info("Snore detection discarded")
+    }
+
+    /// Everything one listening session accumulates, back to empty, and the
+    /// crash checkpoint cleared.
+    private func resetSession() {
+        monitoredSeconds = 0
+        snoreSeconds = 0
+        heuristicSnoreSeconds = 0
+        classifierSnoreSeconds = 0
+        cadence = SnoreCadenceTracker()
+        lastBurst = nil
+        isInsideBurst = false
+        tickAccumulator = 0
+        recentEvents.removeAll()
+        classifierWindows.removeAll()
+        heuristicIntervals.removeAll()
+        heuristicOpenStart = nil
+        lastBufferAt = nil
+        sessionStartedAt = .now
+        sessionID = UUID()
+        interruptionGaps = 0
+        lastCheckpointAt = nil
+        monitoringGaps = []
+        openGapStartedAt = nil
+        fusedIntervals = []
+        frozenQuality = nil
+        sessionTimeZoneIdentifier = TimeZone.current.identifier
+        pendingGapClose = false
+        SnoreCheckpoint.clear()
+    }
+
     var isAvailable: Bool {
         AVAudioApplication.shared.recordPermission != .denied
     }
@@ -101,30 +160,7 @@ final class SnoreDetector {
         )
 
         if resetAccumulators {
-            monitoredSeconds = 0
-            snoreSeconds = 0
-            heuristicSnoreSeconds = 0
-            classifierSnoreSeconds = 0
-            cadence = SnoreCadenceTracker()
-            lastBurst = nil
-            isInsideBurst = false
-            tickAccumulator = 0
-            recentEvents.removeAll()
-            classifierWindows.removeAll()
-            heuristicIntervals.removeAll()
-            heuristicOpenStart = nil
-            lastBufferAt = nil
-            sessionStartedAt = .now
-            sessionID = UUID()
-            interruptionGaps = 0
-            lastCheckpointAt = nil
-            monitoringGaps = []
-            openGapStartedAt = nil
-            fusedIntervals = []
-            frozenQuality = nil
-            sessionTimeZoneIdentifier = TimeZone.current.identifier
-            pendingGapClose = false
-            SnoreCheckpoint.clear()
+            resetSession()
         }
 
         try installTapAndStartEngine(releaseOwnerOnFailure: true)

@@ -54,17 +54,24 @@ struct RootView: View {
     var body: some View {
         @Bindable var bindablePresentation = presentation
 
+        // Each tab keeps a system `tabItem` even though the bar is hidden:
+        // the hidden buttons stay in the accessibility tree, and without a
+        // label they are four unnamed buttons to VoiceOver and the audit.
         TabView(selection: $selection) {
             TodayView()
+                .tabItem { Label("Today", systemImage: "moon.fill") }
                 .tag(Tab.today)
 
             SleepTabView(path: $sleepPath)
+                .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(Tab.sleep)
 
             TrendsView()
+                .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }
                 .tag(Tab.trends)
 
             CoachTabView()
+                .tabItem { Label("Coach", systemImage: "sparkles") }
                 .tag(Tab.coach)
         }
         // The system bar is hidden and replaced by a floating capsule. The
@@ -102,12 +109,11 @@ struct RootView: View {
             await coordinator.start()
             await refreshReminders()
         }
-        .onChange(of: setup.value.plans) { _, _ in Task { await refreshReminders() } }
+        // Everything that must re-queue reminders and refresh the widgets
+        // and Watch when it changes. Its own modifier: inline, this chain
+        // was too long for the type checker.
+        .modifier(ScheduleSyncTriggers(setup: setup, refreshReminders: { await refreshReminders() }))
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
-        .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: preferences.smartWakeEnabled) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: preferences.wakeAlarmEnabled) { _, _ in Task { await refreshReminders() } }
         .onAppear {
             // A launch argument is consumed once, on appear. It is not routed
             // through DeepLink's shared storage, which is for cross-process
@@ -167,7 +173,7 @@ struct RootView: View {
     /// 1. A slot stayed armed when the toggle stayed on but the target went
     ///    away. `guard enabled, let target else { if !enabled { cancel() } }`
     ///    cancels on the toggle and does nothing on the missing target — and
-    ///    `BedtimeReminder` uses `repeats: true` calendar triggers, so that
+    ///    `BedtimeReminder` then used `repeats: true` calendar triggers, so that
     ///    was not one stale notification but one every day, indefinitely, at
     ///    a time Zoon no longer believed in.
     /// 2. The bedtime guard `return`ed, so switching bedtime reminders off
@@ -177,10 +183,25 @@ struct RootView: View {
     ///    the toggle back rather than say whether anything was armed.
     private func refreshReminders() async {
         guard preferences.hasCompletedOnboarding else { return }
+        // The Focus filter may have changed this since launch; see
+        // `UserPreferences.reloadFocusState`.
+        preferences.reloadFocusState()
         await reminders.refreshAuthorization()
         let notificationsPermitted = reminders.authorization == .authorized
             || reminders.authorization == .provisional
-        let context = coordinator.state.context
+        // Every slot reads one horizon of resolved episodes. The bedtime
+        // used to come from a manual plan or `targetBedtime()`, the wake
+        // from a manual plan or `BodyClock.window(for: .now)` -- which after
+        // midnight is tomorrow's, so re-arming at 02:00 moved this morning's
+        // alarm a day later.
+        let now = Date.now
+        // A night the person switched reminders off for is dropped from the
+        // horizon here, so no slot -- bedtime, wake window, brief or alarm --
+        // is queued for it. The plan itself still shows the night.
+        let horizon = coordinator.tonightHorizon(nights: ReminderSchedule.horizonNights, now: now)
+            .filter { !setup.value.isSkipped(wake: $0.wake) }
+        let upcomingBeds = horizon.map(\.bed).filter { $0 > now }
+        let upcomingWakes = horizon.map(\.wake).filter { $0 > now }
 
         // `focusSilencesBedtimeNudges` is checked here as well as in the
         // filter itself: without it, opening the app during a Focus would
@@ -192,28 +213,29 @@ struct RootView: View {
             .bedtime,
             wanted: bedtimeWanted,
             permitted: notificationsPermitted,
-            target: bedtimeWanted ? (setup.value.nextWindow()?.start ?? context?.targetBedtime()) : nil,
-            schedule: { await reminders.schedule(bedtime: $0) },
-            cancel: { reminders.cancel() }
+            target: bedtimeWanted ? upcomingBeds.first : nil,
+            rescheduleAlways: true,
+            schedule: { _ in await reminders.schedule(bedtimes: upcomingBeds, now: now) },
+            cancel: { reminders.cancel(); return true }
         )
 
         // The wake window rides on the same authorization and the same
-        // body-clock data as the bedtime nudge, but is its own toggle —
+        // episode as the bedtime nudge, but is its own toggle —
         // someone might want the bedtime nudge without a second alarm
         // layered on top of the one they already use.
-        let wakeTarget = setup.value.nextWindow()?.end ?? context?.bodyClock?.window(for: .now)?.end
         let wakeWindowWanted = preferences.smartWakeEnabled
         await reconcile(
             .wakeWindow,
             wanted: wakeWindowWanted,
             permitted: notificationsPermitted,
-            target: wakeWindowWanted ? wakeTarget : nil,
-            schedule: {
+            target: wakeWindowWanted ? upcomingWakes.first : nil,
+            rescheduleAlways: true,
+            schedule: { _ in
                 await reminders.scheduleWakeWindow(
-                    wakeTime: $0, leadMinutes: Self.wakeWindowLeadMinutes
+                    wakeTimes: upcomingWakes, leadMinutes: Self.wakeWindowLeadMinutes, now: now
                 )
             },
-            cancel: { reminders.cancelWakeWindow() }
+            cancel: { reminders.cancelWakeWindow(); return true }
         )
 
         // The notification and the alarm are two halves of one idea, not
@@ -222,12 +244,17 @@ struct RootView: View {
         // rings at the *end* of it as the backstop that actually wakes anyone
         // still asleep. Scheduling the alarm at the window's start instead
         // would just be an alarm 20 minutes early.
+        //
+        // The alarm is one dated alarm for the next wake. It is re-armed on
+        // every activation; an app left closed past that wake has no alarm
+        // for the morning after, and Settings shows the date it is set for
+        // rather than implying it repeats.
         let alarmWanted = preferences.smartWakeEnabled && preferences.wakeAlarmEnabled
         await reconcile(
             .wakeAlarm,
             wanted: alarmWanted,
             permitted: wakeAlarm.isAvailable,
-            target: alarmWanted ? wakeTarget : nil,
+            target: alarmWanted ? upcomingWakes.first : nil,
             schedule: { await wakeAlarm.schedule(at: $0) },
             cancel: { wakeAlarm.cancel() }
         )
@@ -237,28 +264,39 @@ struct RootView: View {
             .morningBrief,
             wanted: morningBriefWanted,
             permitted: notificationsPermitted,
-            target: morningBriefWanted ? wakeTarget : nil,
-            schedule: {
+            target: morningBriefWanted ? upcomingWakes.first : nil,
+            rescheduleAlways: true,
+            schedule: { _ in
                 await reminders.scheduleMorningBrief(
-                    wakeTime: $0,
-                    actionableTip: coordinator.state.context?.insight.actionableTip ?? ""
+                    wakeTimes: upcomingWakes,
+                    actionableTip: coordinator.state.context?.insight.actionableTip ?? "",
+                    now: now
                 )
             },
-            cancel: { reminders.cancelMorningBrief() }
+            cancel: { reminders.cancelMorningBrief(); return true }
         )
     }
 
     /// One slot: decide, act, record.
     ///
-    /// - Parameter schedule: returns whether the OS accepted the request, so a
-    ///   refusal records `.failed` rather than claiming something is armed.
+    /// - Parameters:
+    ///   - rescheduleAlways: re-queue even when the first date is unchanged.
+    ///     Notification slots queue a horizon of nights, and a plan edited
+    ///     for Thursday leaves tonight's date the same -- comparing only the
+    ///     first date would never queue Thursday's change.
+    ///   - schedule: returns whether the OS accepted the request, so a
+    ///     refusal records `.failed` rather than claiming something is armed.
+    ///   - cancel: returns whether the cancellation took. A failed cancel
+    ///     keeps the old date on record and says `.failed`: clearing the
+    ///     record anyway told Settings "off" while an alarm stayed set.
     private func reconcile(
         _ slot: ScheduleStateStore.Slot,
         wanted: Bool,
         permitted: Bool,
         target: Date?,
+        rescheduleAlways: Bool = false,
         schedule: (Date) async -> Bool,
-        cancel: () -> Void
+        cancel: () -> Bool
     ) async {
         // Permission folds into the desired value rather than being checked
         // separately: an unpermitted slot wants nothing scheduled, and
@@ -268,15 +306,22 @@ struct RootView: View {
         let status = ScheduleReconciliation.status(
             wanted: wanted, permitted: permitted, hasTarget: target != nil
         )
+        let previous = schedules.scheduledFor(slot)
 
-        switch ScheduleReconciliation.action(
-            desired: desired, scheduled: schedules.scheduledFor(slot)
-        ) {
+        var action = ScheduleReconciliation.action(desired: desired, scheduled: previous)
+        if rescheduleAlways, action == .noChange, let desired {
+            action = .replace(desired)
+        }
+
+        switch action {
         case .noChange:
-            schedules.record(schedules.scheduledFor(slot), status: status, for: slot)
+            schedules.record(previous, status: status, for: slot)
         case .cancel:
-            cancel()
-            schedules.record(nil, status: status, for: slot)
+            if cancel() {
+                schedules.record(nil, status: status, for: slot)
+            } else {
+                schedules.record(previous, status: .failed, for: slot)
+            }
         case .replace(let date):
             if await schedule(date) {
                 schedules.record(date, status: status, for: slot)
@@ -289,7 +334,7 @@ struct RootView: View {
     /// How early the wake-window notification can fire relative to the usual
     /// wake time. Wider than the bedtime lead — a wake window is trying to
     /// straddle a plausible light-sleep stretch, not just give advance notice.
-    private static let wakeWindowLeadMinutes = 20
+    private static let wakeWindowLeadMinutes = SchedulePreview.wakeWindowLeadMinutes
 
     private func consumeDeepLink() {
         guard let destination = DeepLink.consume() else { return }
@@ -346,7 +391,7 @@ struct SleepTabView: View {
                         if !context.night.stageSegments.isEmpty {
                             HypnogramV4(
                                 night: context.night,
-                                heartRateSamples: context.hourlyHeartRate,
+                                heartRateSamples: context.overnightHeartRate,
                                 soundEvents: soundEventStore.recentEvents
                             )
                             .entrance(2)
@@ -497,4 +542,91 @@ struct SleepTabView: View {
 
 #Preview("Root") {
     RootView().zoonPreviewEnvironment()
+}
+
+/// The changes after which the reminders are re-reconciled and the glance
+/// surfaces (widgets, Watch) republished. Kept together so a new trigger is
+/// added in one place, and out of `RootView.body`, whose modifier chain
+/// became too long for the type checker.
+private struct ScheduleSyncTriggers: ViewModifier {
+    let setup: PersonalSetupStore
+    let refreshReminders: () async -> Void
+
+    @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
+    @Environment(NapStore.self) private var naps
+
+    func body(content: Content) -> some View {
+        activityTriggers(planTriggers(content))
+    }
+
+    /// Plan edits, skipped nights, and the clock or zone moving.
+    private func planTriggers(_ content: Content) -> some View {
+        content
+            // Reminders first, then the glance surfaces: the widgets and the
+            // Watch read tonight's times and the alarm status from the
+            // snapshot, which otherwise kept the old plan until the next Health
+            // refresh -- an edited night disagreed with the wrist.
+            .onChange(of: setup.value.plans) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            .onChange(of: setup.value.skippedReminderNights) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            // Every reminder is a dated request built in the zone it was queued
+            // in. Foregrounding re-reconciles, which covers a zone change while
+            // the phone was locked; these cover one while Zoon is open, which
+            // otherwise left the old zone's times queued until the next launch.
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+    }
+
+    /// Naps and the reminder switches in Settings.
+    private func activityTriggers(_ content: some View) -> some View {
+        content
+            // A nap recorded, closed or removed -- here, from the Watch, or by
+            // the auto-close on activation -- changes tonight's need and so the
+            // bedtime. Rebuild first, then re-queue against the rebuilt plan;
+            // before, the reminders kept the pre-nap bedtime until the next
+            // foreground.
+            .onChange(of: naps.naps.count) { _, _ in
+                Task {
+                    await coordinator.napRecorded()
+                    await refreshReminders()
+                }
+            }
+            .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
+            .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
+            // These two also republish: the Watch's wake line says whether an
+            // alarm or a wake-window notification is set, and it read the old
+            // state until the next Health refresh.
+            .onChange(of: preferences.smartWakeEnabled) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+            .onChange(of: preferences.wakeAlarmEnabled) { _, _ in
+                Task {
+                    await refreshReminders()
+                    coordinator.republishGlanceSurfaces()
+                }
+            }
+    }
 }

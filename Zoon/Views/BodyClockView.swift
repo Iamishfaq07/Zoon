@@ -200,7 +200,8 @@ struct BodyClockView: View {
     private func energyWindows(bodyClock: BodyClock, night: SleepNightFeatures) -> [EnergyForecast.Window] {
         EnergyForecast.compute(
             wakeTime: night.wakeTime,
-            sleepDebtMinutes: night.sleepDebtMinutes ?? 0,
+            // Same shortfall as Today's energy forecast, last night included.
+            sleepDebtMinutes: coordinator.state.context?.shortfallNowMinutes ?? night.sleepDebtMinutes ?? 0,
             windDownHour: bodyClock.isEstimate ? nil : bodyClock.onsetHour
         ).windows.filter {
             $0.kind == .morningPeak || $0.kind == .afternoonDip || $0.kind == .windDown

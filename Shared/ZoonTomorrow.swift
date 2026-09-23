@@ -168,10 +168,18 @@ enum ZoonTomorrow {
             // Capping means the plan may not reach `targetSleep` tonight.
             // That is the honest outcome: the alarm cannot move, and a
             // bedtime nobody will keep is not a plan.
+            //
+            // Resolved as the bedtime of the night that *ends* at this wake,
+            // not the next time the clock reads that bedtime: at 23:01 for a
+            // 23:00 bed, the next occurrence is tomorrow night -- after the
+            // wake it was meant to precede.
             if let autopilot,
-               let bed = PlannedBedtimeResolver.nextOccurrence(
-                ofMinutesFromMidnight: autopilot.targetBedtimeMinutes, after: now, calendar: calendar
-               ) {
+               let bed = ResolvedSleepEpisode.window(
+                bedMinute: autopilot.targetBedtimeMinutes,
+                wakeMinute: minutesFromMidnight(wakeFromEvent, calendar: calendar),
+                containingOrAfter: wakeFromEvent.addingTimeInterval(-60),
+                calendar: calendar
+               )?.start {
                 bedtime = bed
                 bedtimeIsRateLimited = true
             } else {
@@ -183,8 +191,11 @@ enum ZoonTomorrow {
                 ) ?? wake
             }
         } else if let autopilot,
-                  let bed = PlannedBedtimeResolver.nextOccurrence(
-                    ofMinutesFromMidnight: autopilot.targetBedtimeMinutes, after: now, calendar: calendar
+                  let bed = PlannedBedtimeResolver.tonightsOccurrence(
+                    ofMinutesFromMidnight: autopilot.targetBedtimeMinutes,
+                    sleepMinutes: autopilot.targetSleepMinutes,
+                    after: now,
+                    calendar: calendar
                   ) {
             bedtime = bed
             bedtimeIsRateLimited = true

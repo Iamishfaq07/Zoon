@@ -166,7 +166,7 @@ struct TodayView: View {
                 )
                 .entrance(2)
 
-                TonightSection(context: context, autopilot: autopilotPlan(context))
+                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(3)
                 TravelTonightCard()
                     .entrance(3)
@@ -273,7 +273,7 @@ struct TodayView: View {
             }
 
             if moment == .morning || moment == .day {
-                TonightSection(context: context, autopilot: autopilotPlan(context))
+                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(6)
                 NavigationLink {
                     ZoonTomorrowView()
@@ -311,6 +311,19 @@ struct TodayView: View {
                     result[dimension] = entry?.value(for: dimension)
                 }
                 }
+
+                // The optional reaction check, one tap from the check-in it
+                // complements, for anyone who wants a measure beside the
+                // self-report. Never prompted, never required.
+                NavigationLink {
+                    AlertnessCheckView()
+                } label: {
+                    Label("Optional: a quick reaction check", systemImage: "bolt.fill")
+                        .font(Theme.text(12, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                }
+                .buttonStyle(.plain)
+                .entrance(7)
             }
 
             if moment == .morning || moment == .day {
@@ -324,7 +337,7 @@ struct TodayView: View {
             if moment == .morning || moment == .day {
                 NapsTodayCard(
                     napMinutesToday: napMinutesToday,
-                    debtMinutes: context.night.sleepDebtMinutes ?? 0,
+                    debtMinutes: context.shortfallNowMinutes ?? 0,
                     recommendation: napRecommendation(context)
                 )
                 .entrance(8)
@@ -373,7 +386,7 @@ struct TodayView: View {
 
     private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {
         NapCoach.recommend(
-            debtMinutes: max(0, context.night.sleepDebtMinutes ?? 0),
+            debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: plannedBedtime(context),
             napMinutesToday: napMinutesToday
         )
@@ -382,17 +395,18 @@ struct TodayView: View {
     /// Tonight's target bedtime as a `Date`, which is what `NapCoach` needs
     /// to judge "is bedtime too close for this nap to be worth it".
     ///
-    /// The plan stores minutes-from-midnight and wraps past 1440 for a
-    /// bedtime after midnight, so the wrap decides the day: 23:10 is tonight,
-    /// 00:40 is tomorrow. Resolving it against today's midnight alone would
-    /// put an after-midnight bedtime in the past and make every nap look
-    /// safe.
+    /// Tonight's episode, so this is the same bed the Tonight section and
+    /// the reminder show. A bedtime that has passed stays tonight's (overdue)
+    /// rather than rolling to tomorrow, which made every late-evening nap
+    /// look safe against a bed 23 hours away.
     private func plannedBedtime(_ context: DayContext) -> Date? {
-        context.tonight.bedtime()
+        coordinator.tonightEpisode()?.bed
     }
 
     private func oneThing(for context: DayContext) -> OneThing.Selection? {
-        let bed = context.tonight.bedtime()
+        // The bedtime Today shows -- the resolved episode, which honours a
+        // plan the person set -- not the plan's own, which does not.
+        let bed = plannedBedtime(context)
         let candidates = OneThingCandidates.gather(
             tonight: context.tonight,
             nap: napRecommendation(context),
@@ -528,7 +542,10 @@ struct TodayView: View {
         let plan = ZoonTomorrow.plan(
             event: event,
             nights: coordinator.recentNights,
-            planning: context.tonight.planning,
+            // Baseline plus the outstanding shortfall, not the composed total:
+            // that already carries a repayment, and the planner applies its
+            // own. See `SleepPlanningInputs`.
+            planning: context.tonightPlanning,
             napMinutesToday: napMinutesToday,
             readyBufferMinutes: preferences.morningReadyBufferMinutes
         )
@@ -563,7 +580,7 @@ struct TodayView: View {
     private func energyForecast(_ context: DayContext) -> EnergyForecast {
         EnergyForecast.compute(
             wakeTime: context.night.wakeTime,
-            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            sleepDebtMinutes: context.shortfallNowMinutes ?? 0,
             windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
         )
     }
@@ -576,7 +593,7 @@ struct TodayView: View {
                 .foregroundStyle(Theme.inkSecondary)
 
             SleepDebtArcView(
-                debtMinutes: max(0, (context.night.sleepDebtMinutes ?? 0) - napMinutesToday),
+                debtMinutes: max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday),
                 weekChangeMinutes: weekChange(context),
                 repaymentMinutes: plan?.debtRepaymentMinutes
             )
@@ -590,22 +607,38 @@ struct TodayView: View {
     /// half-hour `TonightSection` already talks about, given a place on the
     /// line rather than only a sentence.
     private func tonightSteps(_ context: DayContext) -> [TonightPlanCardView.Step] {
-        guard let bed = plannedBedtime(context) else { return [] }
-        let plan = autopilotPlan(context)
-        let windDown = context.tonight.windDownStart() ?? bed.addingTimeInterval(-context.tonight.windDownLeadMinutes * 60)
-        let wake = context.tonight.wakeTime() ?? bed.addingTimeInterval(context.tonight.suggestedSleepTargetMinutes * 60)
+        // Every time from the one resolved episode. The wake used to be
+        // `bed + targetSleep`, a third wake time beside the alarm's and the
+        // Tonight section's, and on a night the target does not fit it was
+        // later than the wake the alarm would actually ring at.
+        guard let plan = autopilotPlan(context), let episode = coordinator.tonightEpisode() else { return [] }
+        let windDown = episode.windDown
+        let bed = episode.bed
+        let wake = episode.wake
 
         var bedNote: String?
-        if let plan, plan.debtRepaymentMinutes >= 1 {
-            bedNote = "\(Int(plan.debtRepaymentMinutes.rounded())) minutes earlier than your habit, to start clearing the shortfall."
-        } else if plan?.isHolding == true {
+        // The shift, not the repayment: the repayment is how much extra
+        // sleep tonight asks for, the shift is how far bed actually moved
+        // after the nightly cap. Quoting the first as the second claimed a
+        // 30-minute move the cap had held to 20.
+        // And only when the autopilot set tonight's bed: under a plan the
+        // person made, "earlier than your habit" describes a bed nobody chose.
+        if episode.source != .autopilot {
+            bedNote = nil
+        } else if plan.shiftMinutes <= -1, plan.debtRepaymentMinutes >= 1 {
+            bedNote = "\(Int((-plan.shiftMinutes).rounded())) minutes earlier than your habit, to start clearing the shortfall."
+        } else if plan.isHolding {
             bedNote = "Where you already are — this target is holding, not correcting."
         }
 
         return [
             .init(kind: .windDown, time: windDown, note: nil),
             .init(kind: .bed, time: bed, note: bedNote),
-            .init(kind: .wake, time: wake, note: nil)
+            // Said where the numbers are. The card shows the target above
+            // these times, and a window shorter than the target with nothing
+            // beside it reads as a plan that fits.
+            .init(kind: .wake, time: wake, note: episode.isFeasible ? nil
+                  : "This window leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) of the target for another night.")
         ]
     }
 
@@ -616,7 +649,7 @@ struct TodayView: View {
     /// that mistake once put "improved by 24h 4m" on this screen.
     private func weekChange(_ context: DayContext) -> Double? {
         guard let weekAgo = debtWeekAgo(context) else { return nil }
-        return (context.night.sleepDebtMinutes ?? 0) - weekAgo
+        return (context.shortfallNowMinutes ?? 0) - weekAgo
     }
 
     /// Derived from `moment`, not from the clock.
@@ -656,19 +689,13 @@ struct TodayView: View {
             EnergyHorizon(
                 forecast: energyForecast(context),
                 battery: context.bodyBattery,
-                targetBedtime: context.targetBedtime()
+                targetBedtime: plannedBedtime(context) ?? context.targetBedtime()
             )
         }
     }
 
     // MARK: - Tonight
 
-    /// Tonight's autopilot plan, or `nil` when there is too little history.
-    ///
-    /// Written as a method rather than inline in the body so the optional
-    /// wake time has somewhere to land: `bodyClock?.window(for:)?.end` is a
-    /// non-optional `Date` *inside* the chain, so mapping it there applies
-    /// `map` to `Date` rather than to `Date?`.
     /// The debt figure from a week back, for the reservoir's trend line.
     ///
     /// Returned as `displayed debt − the change over the week`, not as the
@@ -701,11 +728,13 @@ struct TodayView: View {
         )
         guard let latest = series.last, series.count >= 8 else { return nil }
         let change = latest - series[series.count - 8]
-        return (context.night.sleepDebtMinutes ?? 0) - change
+        return (context.shortfallNowMinutes ?? 0) - change
     }
 
+    /// Tonight's autopilot plan, or `nil` when there is too little history.
+    /// Built by the coordinator so this screen and the watch read one plan.
     private func autopilotPlan(_ context: DayContext) -> SleepAutopilot.Plan? {
-        context.tonight.autopilot
+        coordinator.tonightAutopilotPlan(for: context)
     }
 
     // MARK: - Footer

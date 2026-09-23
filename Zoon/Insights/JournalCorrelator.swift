@@ -254,6 +254,18 @@ struct JournalCorrelator {
             return pairDeltaMedian / abs(matchedMedian) * 100
         }
 
+        /// Whether a percentage means anything here. Not when the comparison
+        /// nights sat at zero: there is nothing to be a percent of, and
+        /// "0% worse" would hide a real difference behind a false one.
+        var hasRelativeScale: Bool { matchedMedian != 0 }
+
+        /// The size, signed, in whichever form is meaningful: "+12%" or,
+        /// against a zero comparison, the difference in the metric's own
+        /// units ("+3.0").
+        var signedEffectLabel: String {
+            hasRelativeScale ? String(format: "%+.0f%%", percentChange) : metric.format(delta)
+        }
+
         var isImprovement: Bool {
             metric.higherIsBetter ? delta > 0 : delta < 0
         }
@@ -282,6 +294,9 @@ struct JournalCorrelator {
         }
 
         var headline: String {
+            guard hasRelativeScale else {
+                return "\(label): \(metric.format(delta)) \(metric.shortLabel)"
+            }
             let direction = isImprovement ? "better" : "worse"
             let magnitude = abs(percentChange)
             return "\(label): \(String(format: "%.0f%%", magnitude)) \(direction) \(metric.shortLabel)"
@@ -420,12 +435,25 @@ struct JournalCorrelator {
                 let pairDeltas = pairs.map(\.delta)
                 guard let taggedMedian = Statistics.median(taggedValues),
                       let matchedMedian = Statistics.median(matchedValues),
-                      let pairDeltaMedian = Statistics.median(pairDeltas),
-                      matchedMedian != 0 else { continue }
+                      let pairDeltaMedian = Statistics.median(pairDeltas) else { continue }
 
-                let percentChange = abs(pairDeltaMedian / abs(matchedMedian) * 100)
-                guard percentChange >= metric.minimumEffectPercent,
-                      abs(pairDeltaMedian) >= metric.minimumAbsoluteEffect else { continue }
+                // A comparison median of zero -- no awakenings on the matched
+                // nights -- has no percentage, and was dropped outright, so
+                // 0 -> 3 awakenings could never be reported. It is judged on
+                // the absolute bar alone and reported as an absolute
+                // difference (see `Finding.hasRelativeScale`).
+                //
+                // Only for a metric with an absolute bar of its own. For the
+                // rest the absolute bar is zero, and a zero median there
+                // means unmeasured -- unstaged nights read 0 deep minutes --
+                // so any difference at all would pass.
+                if matchedMedian != 0 {
+                    let percentChange = abs(pairDeltaMedian / abs(matchedMedian) * 100)
+                    guard percentChange >= metric.minimumEffectPercent else { continue }
+                } else {
+                    guard metric.minimumAbsoluteEffect > 0 else { continue }
+                }
+                guard abs(pairDeltaMedian) >= metric.minimumAbsoluteEffect else { continue }
 
                 let ci = Statistics.pairedBootstrapCI(deltas: pairDeltas)
 
@@ -574,6 +602,28 @@ struct JournalCorrelator {
         }
     }
 
+    /// How many behaviour-and-outcome comparisons had enough matched nights
+    /// to be tested at all.
+    ///
+    /// Every one is a separate chance for noise to clear the bar. With ten
+    /// behaviours and five outcomes, fifty comparisons run, and a handful
+    /// will look notable by chance alone. The count is shown beside the
+    /// findings so the reader can weigh one striking result against how many
+    /// were looked at -- the plain-language form of a multiple-comparison
+    /// correction, without pretending to a p-value these sample sizes cannot
+    /// support.
+    func comparisonCount(
+        from observations: [Observation],
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> Int {
+        catalog.analysable.reduce(0) { total, behavior in
+            total + Metric.allCases.filter { metric in
+                (matchedPairs(behavior: behavior, metric: metric, observations: observations)?.count ?? 0)
+                    >= Self.minimumMatchedPairs
+            }.count
+        }
+    }
+
     // MARK: - Matching
 
     private struct MatchedPair {
@@ -599,7 +649,15 @@ struct JournalCorrelator {
         // `.no` only, never `.unknown` -- an un-journaled night has told
         // Zoon nothing about whether this tag applied, so it can't stand in
         // as a confident comparison night. See `ExposureState`'s doc comment.
-        var pool = observations.filter { $0.exposureState(for: behavior) == .no }
+        //
+        // And only nights that have this metric. The nearest control used to
+        // be picked first and its metric checked after: when that night had
+        // no HRV, say, the exposed night was dropped outright even though a
+        // slightly less similar control with HRV was sitting in the pool.
+        // Pairs were lost per metric for a reason unrelated to the metric.
+        var pool = observations.filter {
+            $0.exposureState(for: behavior) == .no && metric.value(from: $0) != nil
+        }
         var pairs: [MatchedPair] = []
 
         for night in exposed.sorted(by: { $0.date < $1.date }) {

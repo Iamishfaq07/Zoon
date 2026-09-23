@@ -87,6 +87,8 @@ struct SensorTruthView: View {
                     reliabilitySection.entrance(3)
                 }
 
+                needModelSection.entrance(3)
+
                 ForEach(Array(SensorTruth.all.enumerated()), id: \.element.id) { index, fact in
                     row(fact).entrance(min(index + 4, 6))
                 }
@@ -249,6 +251,38 @@ struct SensorTruthView: View {
     /// same question the screen exists for -- how much of this should I
     /// believe -- about the last thing that had no answer.
     @ViewBuilder
+    /// Whether the shortfall the model reports tracks how rested the person
+    /// said they felt. Shown only once there are enough paired mornings to
+    /// say anything; below that it says how many more are needed.
+    private var needModelSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            let summaries = coordinator.needModelEvaluation()
+            let overall = summaries.first
+            Text("Sleep debt against how rested you felt")
+                .font(Theme.label(15, weight: .semibold))
+            if let overall, let rho = overall.rankCorrelation {
+                Text("Across \(overall.usable) mornings with a rating, higher shortfall went with \(rho <= -0.3 ? "feeling less rested" : rho >= 0.3 ? "feeling more rested, the opposite of what the model assumes" : "no clear change in how rested you felt") (rank correlation \(String(format: "%.2f", rho))).")
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(summaries.dropFirst(), id: \.stratum) { summary in
+                    Text("\(summary.stratum): \(summary.usable) of \(summary.nights) nights rated\(summary.rankCorrelation.map { String(format: ", %.2f", $0) } ?? ", too few to compare")")
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+            } else {
+                let usable = overall?.usable ?? 0
+                Text("\(usable) of \(NeedModelEvaluation.minimumUsable) rated mornings so far. Rate how rested you feel in the Journal and this will check the model against it.")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text("An association in your own data. It checks the model; it does not change it.")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(Theme.text(12))
+        .foregroundStyle(Theme.inkSecondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
     private var reliabilitySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {

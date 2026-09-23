@@ -312,6 +312,12 @@ final class GuidedExperimentTests: XCTestCase {
         XCTAssertEqual(outcome.trialCompliantNightCount, 28)
         XCTAssertEqual(outcome.trialKnownNightCount, 28)
         XCTAssertEqual(outcome.baselineNightCount, 14, "the with arm's followed nights")
+        XCTAssertEqual(outcome.baselineNightDates?.count, outcome.baselineUsableCount)
+        XCTAssertEqual(outcome.trialNightDates?.count, outcome.trialUsableCount)
+        XCTAssertEqual(
+            Set(outcome.baselineNightDates ?? []),
+            Set(schedule.filter { $0.arm == .with }.map { calendar.startOfDay(for: $0.date) })
+        )
         XCTAssertEqual(outcome.startDate, schedule.first?.date)
         XCTAssertEqual(outcome.direction, .avoid)
     }
@@ -365,5 +371,57 @@ final class GuidedExperimentTests: XCTestCase {
         XCTAssertNil(GuidedExperiment.medianDifferenceInterval(
             baseline: Array(baseline.dropLast()), trial: trial
         ))
+    }
+
+    // MARK: - Logged is not usable (Z12)
+
+    /// Seven logged nights per side, but the primary metric arrived on one
+    /// baseline night. That is a median of one value, and it must read as
+    /// inconclusive however the medians fell.
+    func testSevenLoggedAndOneMeasuredIsInconclusive() throws {
+        let baseline = (0..<14).map { day in
+            observation(
+                date: dateOffset(-14 + day, from: startDate),
+                tags: [.alcohol],
+                sleepPerformance: day == 0 ? 60 : nil
+            )
+        }
+        let trial = (0..<14).map { day in
+            observation(date: dateOffset(day, from: startDate), tags: [], sleepPerformance: 90)
+        }
+        let outcome = try XCTUnwrap(GuidedExperiment.summarize(
+            tag: .alcohol, hypothesis: nil, primaryMetric: .sleepPerformance,
+            direction: .avoid, startDate: startDate, endDate: dateOffset(13, from: startDate),
+            observations: baseline + trial, calendar: calendar
+        ))
+        XCTAssertEqual(outcome.baselineNightCount, 14, "logged")
+        XCTAssertEqual(outcome.baselineUsableCount, 1, "usable")
+        XCTAssertEqual(outcome.trialUsableCount, 14)
+        // The notebook's "which nights counted" is exactly the measured ones.
+        XCTAssertEqual(outcome.baselineNightDates, [dateOffset(-14, from: startDate)])
+        XCTAssertEqual(outcome.trialNightDates?.count, 14)
+        XCTAssertNil(outcome.uncertaintyLower)
+        XCTAssertEqual(EvidenceLedger.experimentStatus(for: outcome), .inconclusive)
+    }
+
+    /// Enough measured nights on both sides and a clear shift still reads
+    /// as a result: the gate is on evidence, not on results in general.
+    func testEnoughUsableNightsStillProduceAResult() throws {
+        let baseline = (0..<14).map { day in
+            observation(date: dateOffset(-14 + day, from: startDate), tags: [.alcohol],
+                        sleepPerformance: 60 + Double(day % 3))
+        }
+        let trial = (0..<14).map { day in
+            observation(date: dateOffset(day, from: startDate), tags: [],
+                        sleepPerformance: 88 + Double(day % 3))
+        }
+        let outcome = try XCTUnwrap(GuidedExperiment.summarize(
+            tag: .alcohol, hypothesis: nil, primaryMetric: .sleepPerformance,
+            direction: .avoid, startDate: startDate, endDate: dateOffset(13, from: startDate),
+            observations: baseline + trial, calendar: calendar
+        ))
+        XCTAssertEqual(outcome.baselineUsableCount, 14)
+        XCTAssertNotNil(outcome.uncertaintyLower)
+        XCTAssertEqual(EvidenceLedger.experimentStatus(for: outcome), .supported)
     }
 }

@@ -56,6 +56,7 @@ struct DayContextBuilder {
         let hourlyHeartRate: [(date: Date, bpm: Double)]
         /// Age-derived or measured. Used for heart-rate reserve.
         let maxHeartRate: Double
+        /// Naps on the day before `night`'s wake. Assessment only.
         let napMinutes: Double
         let bedtimeConsistencyMinutes: Double?
         /// For cardiovascular age. Nil disables that card rather than guessing.
@@ -69,6 +70,15 @@ struct DayContextBuilder {
         /// for `SleepRegularity`'s work/free split -- see
         /// `UserPreferences.obligationWeekdays`.
         var obligationWeekdays: Set<Int> = SleepRegularity.defaultObligationWeekdays
+        /// The outstanding shortfall with `night` already applied, for
+        /// planning tonight. `nil` falls back to one decay step of the
+        /// night's own ledger -- see `build`.
+        var shortfallThroughLatestNightMinutes: Double? = nil
+        /// Naps since `night`'s wake, deduplicated. Planning only.
+        var napMinutesToday: Double = 0
+        /// Heart rate between `night`'s bed and wake. See
+        /// `DayContext.overnightHeartRate`.
+        var overnightHeartRate: [(date: Date, bpm: Double)] = []
     }
 
     func build(_ inputs: Inputs) -> DayContext {
@@ -94,6 +104,22 @@ struct DayContextBuilder {
             yesterdayStrain: inputs.yesterdayStrain.value,
             napMinutes: inputs.napMinutes,
             achievedMinutes: night.timeAsleepMinutes
+        )
+
+        // --- Tonight, as of now --------------------------------------------
+        // Planning is not assessment. The need above scores last night; this
+        // plans tonight, with last night's shortfall on the ledger and
+        // today's strain and naps as the modifiers. Without a figure from
+        // the store, the ledger is advanced by one step of the same model
+        // the store uses: decay what was carried in, add last night's gap.
+        let shortfallThroughLatest = inputs.shortfallThroughLatestNightMinutes
+            ?? (SleepDebtCalculator.decayPerNight * max(0, night.sleepDebtMinutes ?? 0)
+                + max(0, (night.sleepNeedBaselineMinutes ?? learnedNeed.minutes) - night.total24hAsleepMinutes))
+        let tonightPlanning = SleepPlanningInputs.asOfNow(
+            baselineNeedMinutes: learnedNeed.minutes,
+            shortfallThroughLatestNightMinutes: shortfallThroughLatest,
+            todayStrain: inputs.todayStrain.value,
+            napMinutesToday: inputs.napMinutesToday
         )
 
         // --- Recovery -----------------------------------------------------
@@ -192,7 +218,8 @@ struct DayContextBuilder {
             remMinutes: night.remMinutes,
             deepMinutes: night.deepMinutes,
             asleepMinutes: night.timeAsleepMinutes,
-            sleepDebtMinutes: night.sleepDebtMinutes ?? 0
+            sleepDebtMinutes: night.sleepDebtMinutes ?? 0,
+            coreMinutes: night.coreMinutes
         )
 
         let sleepIntelligence = SleepIntelligenceScore.compute(.init(
@@ -211,13 +238,20 @@ struct DayContextBuilder {
             habitualMidpointHours: bodyClock?.isEstimate == false ? bodyClock?.midpoint : nil
         ))
 
+        // One tonight: the as-of-now planning above (latest night's
+        // shortfall, today's naps and strain), and the same habitual wake
+        // `SleepDataCoordinator.usualWakeMinute` uses -- the body clock's,
+        // else last night's -- so the episode, reminders and this plan
+        // agree.
+        let habitualWake = bodyClock?.window(for: .now)?.end
         let tonight = TonightPlanner.build(
             nights: fullHistory,
             sleepNeed: sleepNeed,
-            outstandingShortfallMinutes: night.sleepDebtMinutes ?? 0,
+            outstandingShortfallMinutes: tonightPlanning.currentShortfallMinutes,
             lastWake: night.wakeTime,
-            obligationWake: bodyClock?.window(for: .now)?.end,
-            obligationSource: .bodyClock
+            obligationWake: habitualWake ?? night.wakeTime,
+            obligationSource: habitualWake == nil ? .none : .bodyClock,
+            planning: tonightPlanning
         )
 
         return DayContext(
@@ -226,6 +260,7 @@ struct DayContextBuilder {
             recovery: recovery,
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedNeed,
+            shortfallNowMinutes: shortfallThroughLatest,
             sleepScore: SleepScore.compute(
                 for: night,
                 goalMinutes: inputs.goalMinutes,
@@ -243,6 +278,10 @@ struct DayContextBuilder {
             healthRadar: HealthRadar.detect(nights: fullHistory),
             bodyClock: bodyClock,
             hourlyHeartRate: inputs.hourlyHeartRate,
+            overnightHeartRate: OvernightSeries.clipped(
+                inputs.overnightHeartRate,
+                to: DateInterval(start: min(night.bedtime, night.wakeTime), end: max(night.bedtime, night.wakeTime))
+            ),
             cognitiveEnergy: cognitiveEnergy,
             academicSleepRegularity: academicSRI,
             tonight: tonight

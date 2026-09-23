@@ -184,6 +184,14 @@ enum Theme {
     /// file's Settings screen, which uses opaque system-background rows and
     /// looks crisp for free) is pushing the material toward *opaque white*,
     /// which is a light tint at high alpha, not a dark one at low alpha.
+    /// Under the floating tab bar's material, so the labels sit on a
+    /// predictable ground rather than on whatever content is behind them.
+    /// An opaque card surface for Reduce Transparency: roughly what a card
+    /// looks like over the page, with nothing showing through.
+    static var solidSurface: Color { cardTint(dark: (0.10, 0.11, 0.20, 1), light: (0.97, 0.97, 0.99, 1)) }
+
+    static var tabBarWash: Color { cardTint(dark: (0.05, 0.06, 0.13, 0.72), light: (0.97, 0.97, 0.99, 0.72)) }
+
     static var cardFill: Color { cardTint(dark: (1, 1, 1, 0.05), light: (1, 1, 1, 0.65)) }
 
     /// Builds a colour whose RGB *and* alpha both depend on the trait
@@ -289,12 +297,16 @@ enum Theme {
         cardTint(dark: (1, 1, 1, 1), light: (0.09, 0.09, 0.16, 1))
     }
 
+    /// Raised after Apple's accessibility audit (`ZoonUITests
+    /// .testAccessibilityAudit`) failed contrast on most caption-sized text
+    /// in these two inks, on all four tabs: the old 0.74 and 0.56 read well on
+    /// the bare navy but not over the lighter glass cards most text sits on.
     static var inkSecondary: Color {
-        cardTint(dark: (1, 1, 1, 0.74), light: (0.09, 0.09, 0.16, 0.68))
+        cardTint(dark: (1, 1, 1, 0.84), light: (0.09, 0.09, 0.16, 0.80))
     }
 
     static var inkTertiary: Color {
-        cardTint(dark: (1, 1, 1, 0.56), light: (0.09, 0.09, 0.16, 0.52))
+        cardTint(dark: (1, 1, 1, 0.70), light: (0.09, 0.09, 0.16, 0.68))
     }
 
     /// A glass card's specular highlight -- the soft sheen a curved glass
@@ -448,6 +460,23 @@ enum Theme {
             case .inBed: Color.primary.opacity(0.18)
             }
         }
+
+        /// A stage's colour for text, not for a bar.
+        ///
+        /// The bar colours are chosen to read as fills; as 9-14pt labels
+        /// several of them fail contrast -- Deep is about 2.3:1 on the dark
+        /// ground, and the accessibility audit flagged it on the Sleep tab.
+        /// Same hue, lifted in Dark and deepened in Light.
+        static func textColor(for stage: SleepStage) -> Color {
+            switch stage {
+            case .deep: Theme.cardTint(dark: (0.66, 0.62, 1.00, 1), light: (0.24, 0.18, 0.66, 1))
+            case .rem: Theme.cardTint(dark: (0.76, 0.66, 1.00, 1), light: (0.40, 0.24, 0.80, 1))
+            case .core: Theme.cardTint(dark: (0.56, 0.78, 1.00, 1), light: (0.10, 0.38, 0.76, 1))
+            case .awake: Theme.cardTint(dark: (1.00, 0.72, 0.42, 1), light: (0.66, 0.34, 0.02, 1))
+            case .unspecified: Theme.cardTint(dark: (0.56, 0.86, 0.92, 1), light: (0.08, 0.44, 0.50, 1))
+            case .inBed: Theme.inkSecondary
+            }
+        }
     }
 
     // MARK: - Scales
@@ -541,6 +570,16 @@ enum Theme {
         }
     }
 
+    /// A screen or state heading in the numerals' rounded bold face, but
+    /// scaling with Dynamic Type. Words are not numerals: "Ask Zoon" set in
+    /// `numeral(28)` stayed 28pt at every text size, and Apple's
+    /// accessibility audit flagged it as not supporting Dynamic Type.
+    /// 26pt and up map to `.title` (28pt at the default size), anything
+    /// smaller to `.title2` (22pt).
+    static func heading(_ size: CGFloat) -> Font {
+        .system(size >= 26 ? .title : .title2, design: .rounded, weight: .bold)
+    }
+
     /// Big display numerals — a recovery percentage, a night's duration.
     ///
     /// Deliberately **not** scaled, and the only thing here that isn't. These
@@ -608,6 +647,10 @@ struct GlassCard: ViewModifier {
     var padding: CGFloat = Theme.cardPadding
 
     @Environment(\.colorScheme) private var colorScheme
+    /// Solid surface, no sheen. The system makes its own materials opaque
+    /// under this setting; the tint and highlight layered on top are ours,
+    /// so they are handled here rather than left to it.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
         content
@@ -621,7 +664,11 @@ struct GlassCard: ViewModifier {
                     // "cheap, washed-out card" look. .regularMaterial is denser
                     // and holds its own shape against a pale ground the way
                     // ultraThin does against a dark one.
-                    .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial))
+                    .fill(
+                        reduceTransparency
+                            ? AnyShapeStyle(Theme.solidSurface)
+                            : colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial)
+                    )
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(Theme.cardFill)
@@ -643,7 +690,7 @@ struct GlassCard: ViewModifier {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [Theme.glassHighlight(0.10), Theme.glassHighlight(0)],
+                                    colors: [Theme.glassHighlight(reduceTransparency ? 0 : 0.10), Theme.glassHighlight(0)],
                                     startPoint: .top,
                                     endPoint: UnitPoint(x: 0.5, y: 0.45)
                                 )
@@ -1041,9 +1088,14 @@ struct StatusPill: View {
             if let systemImage {
                 Image(systemName: systemImage)
                     .font(Theme.text(10, weight: .bold))
+                    .foregroundStyle(tint)
             }
             Text(text)
                 .font(Theme.label(11))
+                // The icon carries the tint; the words are ink. Tinted text on its
+                // own tinted glass ("Sample data", indigo on indigo) failed the
+                // accessibility audit's contrast check.
+                .foregroundStyle(Theme.ink)
                 // Without this the pill stacked its text a letter per line at
                 // accessibility sizes -- "Sample" became a column of six
                 // letters inside a capsule six lines tall. The row around it
@@ -1054,7 +1106,6 @@ struct StatusPill: View {
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
         .zoonGlassPill(tint: tint)
-        .foregroundStyle(tint)
     }
 }
 

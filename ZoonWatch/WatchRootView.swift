@@ -385,6 +385,18 @@ private struct TonightPage: View {
                     .minimumScaleFactor(0.8)
             }
 
+            // Whether anything will wake them, and what kind of thing. Only
+            // when the phone sent it; an absent line says nothing rather
+            // than implying no alarm.
+            if !snapshot.wakeStatusLine.isEmpty {
+                Text(snapshot.wakeStatusLine)
+                    .font(Theme.text(9))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+
             HStack(spacing: 10) {
                 WatchMiniStat(
                     value: SleepNightFeatures.formatMinutes(snapshot.goalMinutes),
@@ -412,6 +424,7 @@ private struct TonightPage: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "Tonight. \(snapshot.tonightTargetLabel). \(snapshot.tonightTargetNote) "
+            + (snapshot.wakeStatusLine.isEmpty ? "" : "\(snapshot.wakeStatusLine). ")
             + "Need \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes)), "
             + "shortfall \(snapshot.balanceLabel)."
         )

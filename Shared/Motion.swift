@@ -28,7 +28,9 @@ enum Motion {
     static let value = Animation.smooth(duration: 0.65)
 
     /// Taps, toggles, selection. Fast enough to feel like a direct response.
-    static let tap = Animation.snappy(duration: 0.26)
+    /// 0.22 s: inside the 180-250 ms the release brief sets for selection
+    /// feedback (it was 0.26).
+    static let tap = Animation.snappy(duration: 0.22)
 
     /// How long each successive card waits before appearing.
     ///
@@ -81,7 +83,9 @@ enum Motion {
     /// A chart or ribbon revealing left → right the first time it appears.
     /// Fires once per data change, never on scroll re-entry (callers gate
     /// on `.onAppear` + a `@State` flag, not on visibility).
-    static let draw = Animation.easeOut(duration: 0.7)
+    /// 0.6 s: inside the brief's 450-650 ms for a single orienting reveal
+    /// (it was 0.7).
+    static let draw = Animation.easeOut(duration: 0.6)
 
     /// Scrub/selection updates: the highlighted mark and the headline value
     /// move together. Short enough that a finger dragging never outruns it.

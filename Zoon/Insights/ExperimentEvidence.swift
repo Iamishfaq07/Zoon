@@ -87,6 +87,18 @@ extension EvidenceLedger {
         guard let adherence = outcome.adherenceRate,
               adherence >= experimentMinimumAdherence else { return .inconclusive }
 
+        // Usable nights, not logged ones. When the outcome records them,
+        // each side needs enough measured values, and the interval has to
+        // exist: a missing interval was what let a median of one value
+        // through, because the gate below only applied when bounds existed.
+        if let baselineUsable = outcome.baselineUsableCount,
+           let trialUsable = outcome.trialUsableCount {
+            guard baselineUsable >= GuidedExperiment.minimumPeriodNights,
+                  trialUsable >= GuidedExperiment.minimumPeriodNights,
+                  outcome.uncertaintyLower != nil, outcome.uncertaintyUpper != nil
+            else { return .inconclusive }
+        }
+
         let baseline = abs(outcome.baselineMedian)
         guard baseline > 0 else { return .inconclusive }
         guard abs(outcome.delta) / baseline >= experimentMinimumRelativeChange else {

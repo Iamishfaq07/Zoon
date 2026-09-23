@@ -84,17 +84,18 @@ Release for the `Zoon` target as:
 
 ```
 INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate,
-HRV, respiratory rate, blood oxygen and wrist temperature to explain how you
-slept. Everything is processed on this device and never leaves it."
+HRV, breathing, blood oxygen, wrist temperature and daily activity to explain how
+you slept and recovered. It is processed on your iPhone and Apple Watch and is
+never sent to Zoon or anyone else; it leaves only in a backup you choose to export."
 ```
 
-To change the wording: target **Zoon** → **Build Settings** → search
-`NSHealthShareUsageDescription`. Or add a real `Info.plist` and set
+To change the wording, edit `HEALTH_DESC` in `Tools/generate-pbxproj.py` and
+regenerate the project (the build setting is generated from it). Or add a real `Info.plist` and set
 `INFOPLIST_FILE`, in which case the key is:
 
 ```xml
 <key>NSHealthShareUsageDescription</key>
-<string>Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.</string>
+<string>Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist temperature and daily activity to explain how you slept and recovered. It is processed on your iPhone and Apple Watch and is never sent to Zoon or anyone else; it leaves only in a backup you choose to export.</string>
 ```
 
 > **`NSHealthUpdateUsageDescription` is present, as a harmless precaution.**

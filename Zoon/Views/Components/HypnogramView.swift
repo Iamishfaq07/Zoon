@@ -25,6 +25,7 @@ struct HypnogramView: View {
     /// Optional sound-event markers (snoring, coughing, etc.), drawn as small
     /// dots along the top edge at the moment each was detected.
     var soundEvents: [SoundEvent] = []
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Stage rows, top to bottom. Awake at the top so the trace descends into
     /// deep sleep — the convention people already know how to read.
@@ -70,7 +71,7 @@ struct HypnogramView: View {
             if showsAxis && selectedFraction == nil {
                 Text("Drag to see stage and time")
                     .font(Theme.text(9))
-                    .foregroundStyle(.quaternary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .padding(.leading, 42)
             }
         }
@@ -81,21 +82,28 @@ struct HypnogramView: View {
 
     /// Stage names down the left edge.
     ///
-    /// `lineLimit(1)` and a scale floor, because the column is a fixed width
-    /// and the type is no longer a fixed size. When the fonts became Dynamic
-    /// Type-aware, `label(9)` started resolving to `.caption2` — larger than
-    /// the 9 points this 34-wide column was measured for — and "Awake" wrapped
-    /// to "Awak / e" in the middle of the chart. Shrinking beats wrapping for
-    /// an axis label, and a wider column would eat chart width at every size
-    /// to fix the widest one.
+    /// The column is a fixed 42 points and the type follows Dynamic Type.
+    /// At standard sizes a two-word name wraps onto two lines; at
+    /// accessibility sizes it may also shrink a little, because there a
+    /// single word like "Awake" would otherwise break mid-word, and a wider
+    /// column would eat chart width at every size to fix the largest.
     private var rowLabels: some View {
         VStack(spacing: 0) {
             ForEach(rows, id: \.self) { stage in
+                // Two lines allowed: the accessibility audit found "Light
+                // sleep" clipped in one. Each row is a quarter of the chart
+                // tall, so a second line fits where extra width would not.
                 Text(stage.displayName)
                     .font(Theme.label(9, weight: .medium))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .foregroundStyle(Theme.Stage.color(for: stage))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+                    // Shrinking only at accessibility sizes. At standard
+                    // sizes SwiftUI shrank "Light sleep" onto one line
+                    // rather than wrapping it, and the audit reports text
+                    // drawn below its size as clipped, on all four labels.
+                    .fixedSize(horizontal: false, vertical: !dynamicTypeSize.isAccessibilitySize)
+                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 0.8 : 1)
+                    .foregroundStyle(Theme.Stage.textColor(for: stage))
                     .frame(height: height / CGFloat(rows.count), alignment: .center)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -116,7 +124,7 @@ struct HypnogramView: View {
                     let total = span.duration
 
                     func rect(for segment: StageSegment) -> CGRect? {
-                        guard let rowIndex = rows.firstIndex(of: normalized(segment.stage)) else { return nil }
+                        guard let rowIndex = rows.firstIndex(of: segment.stage.hypnogramRow) else { return nil }
                         let x = (segment.start.timeIntervalSince(span.start) / total) * size.width
                         let width = max(1.5, (segment.duration / total) * size.width)
                         let y = CGFloat(rowIndex) * rowHeight + (rowHeight - blockHeight) / 2
@@ -140,7 +148,9 @@ struct HypnogramView: View {
 
                     for segment in ordered {
                         guard let frame = rect(for: segment) else { continue }
-                        let color = Theme.Stage.color(for: normalized(segment.stage))
+                        // The stage's own colour: unstaged sleep is neutral,
+                        // not Core's, and in-bed time is not Awake's.
+                        let color = Theme.Stage.color(for: segment.stage)
                         let shape = Path(roundedRect: frame, cornerRadius: min(4, frame.height / 2))
 
                         context.fill(shape, with: .linearGradient(
@@ -148,10 +158,33 @@ struct HypnogramView: View {
                             startPoint: CGPoint(x: frame.minX, y: frame.minY),
                             endPoint: CGPoint(x: frame.minX, y: frame.maxY)
                         ))
+
+                        // Unstaged sleep is also hatched, so it reads as
+                        // "not classified" without relying on its colour --
+                        // it shares the Core row, and a neutral fill alone is
+                        // easy to take for a paler Core block.
+                        if segment.stage == .unspecified {
+                            context.drawLayer { layer in
+                                layer.clip(to: shape)
+                                let hatch = Path { p in
+                                    var x = frame.minX - frame.height
+                                    while x < frame.maxX {
+                                        p.move(to: CGPoint(x: x, y: frame.maxY))
+                                        p.addLine(to: CGPoint(x: x + frame.height, y: frame.minY))
+                                        x += 5
+                                    }
+                                }
+                                layer.stroke(hatch, with: .color(Theme.neutral(0.35)), lineWidth: 1)
+                            }
+                        }
                     }
 
-                    if heartRateSamples.count >= 2 {
-                        let bpms = heartRateSamples.map(\.bpm)
+                    // Only the samples inside the night: the scale and the
+                    // availability both used to count points the line could
+                    // never draw. See `OvernightSeries`.
+                    let nightHeartRate = OvernightSeries.clipped(heartRateSamples, to: span)
+                    if nightHeartRate.count >= 2 {
+                        let bpms = nightHeartRate.map(\.bpm)
                         let minBPM = bpms.min() ?? 0
                         let maxBPM = bpms.max() ?? 1
                         let bpmRange = max(1, maxBPM - minBPM)
@@ -168,7 +201,7 @@ struct HypnogramView: View {
 
                         let path = Path { p in
                             var started = false
-                            for sample in heartRateSamples.sorted(by: { $0.date < $1.date }) {
+                            for sample in nightHeartRate {
                                 guard let point = point(for: sample) else { continue }
                                 if started { p.addLine(to: point) } else { p.move(to: point); started = true }
                             }
@@ -232,17 +265,12 @@ struct HypnogramView: View {
         .padding(.leading, 42)
     }
 
-    /// Sources without staging write `unspecified`; render it on the Core row
-    /// so the chart still has a shape rather than an empty band.
-    private func normalized(_ stage: SleepStage) -> SleepStage {
-        stage == .unspecified ? .core : (stage == .inBed ? .awake : stage)
-    }
 
     private func badgeLines(for segment: StageSegment) -> [(label: String, value: String, tint: Color)] {
         var lines: [(label: String, value: String, tint: Color)] = [(
             "Stage",
-            normalized(segment.stage).displayName,
-            Theme.Stage.color(for: normalized(segment.stage))
+            segment.stage.chartLabel,
+            Theme.Stage.color(for: segment.stage)
         )]
         if let nearestHR = nearestHeartRate(to: segment.start) {
             lines.append(("Heart rate", "\(Int(nearestHR.rounded())) bpm", Theme.Metric.heart))
@@ -254,7 +282,8 @@ struct HypnogramView: View {
     }
 
     private func nearestHeartRate(to time: Date) -> Double? {
-        heartRateSamples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }?.bpm
+        guard let span else { return nil }
+        return OvernightSeries.nearest(to: time, in: heartRateSamples, over: span)
     }
 
     private func midpointLabel(_ span: DateInterval) -> String {
@@ -285,7 +314,9 @@ struct StageProportionBar: View {
         [
             (.deep, features.deepMinutes),
             (.rem, features.remMinutes),
-            (.core, features.coreMinutes + features.unspecifiedAsleepMinutes),
+            (.core, features.coreMinutes),
+            // Its own neutral part, never added to Core: nothing classified it.
+            (.unspecified, features.unspecifiedAsleepMinutes),
             (.awake, features.awakeMinutes)
         ].filter { $0.minutes > 0 }
     }
@@ -332,7 +363,7 @@ struct StageProportionBar: View {
         return parts
             .map { part in
                 let percent = Int((part.minutes / total * 100).rounded())
-                return "\(part.stage.displayName) \(percent) percent"
+                return "\(part.stage.chartLabel) \(percent) percent"
             }
             .joined(separator: ", ")
     }
@@ -342,13 +373,29 @@ struct StageProportionBar: View {
 struct StageLegend: View {
     let features: SleepNightFeatures
 
+    /// Reference ranges only where the stages were measured. On a night a
+    /// schedule or a phone "staged", or with most of it unstaged, "Deep
+    /// 13–23%" beside a figure nothing measured invites a comparison the data
+    /// cannot support.
+    private var showsReferences: Bool {
+        let asleep = features.coreMinutes + features.deepMinutes + features.remMinutes
+            + features.unspecifiedAsleepMinutes
+        guard features.stageTrust.supportsStageFigures, asleep > 0 else { return false }
+        return features.unspecifiedAsleepMinutes / asleep < 0.25
+    }
+
     private var rows: [(stage: SleepStage, minutes: Double, reference: String)] {
-        [
-            (.deep, features.deepMinutes, "13–23%"),
-            (.rem, features.remMinutes, "20–25%"),
-            (.core, features.coreMinutes + features.unspecifiedAsleepMinutes, "45–60%"),
-            (.awake, features.awakeMinutes, "—")
+        let shown = showsReferences
+        var result: [(stage: SleepStage, minutes: Double, reference: String)] = [
+            (.deep, features.deepMinutes, shown ? "13–23%" : "—"),
+            (.rem, features.remMinutes, shown ? "20–25%" : "—"),
+            (.core, features.coreMinutes, shown ? "45–60%" : "—")
         ]
+        if features.unspecifiedAsleepMinutes > 0 {
+            result.append((.unspecified, features.unspecifiedAsleepMinutes, "—"))
+        }
+        result.append((.awake, features.awakeMinutes, "—"))
+        return result
     }
 
     var body: some View {
@@ -359,7 +406,7 @@ struct StageLegend: View {
                         .fill(Theme.Stage.color(for: row.stage))
                         .frame(width: 8, height: 8)
 
-                    Text(row.stage.displayName)
+                    Text(row.stage.chartLabel)
                         .font(Theme.label(13, weight: .medium))
 
                     Spacer()
