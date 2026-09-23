@@ -86,6 +86,16 @@ struct HypnogramV4: View {
     private static let replayFramesPerSecond = 30.0
 
     private var fullSpan: DateInterval? { night.stageSegments.span }
+
+    private func zoomToHalf(first: Bool, of span: DateInterval) {
+        let middle = span.start.addingTimeInterval(span.duration / 2)
+        Haptics.tap()
+        withAnimation(Motion.respecting(reduceMotion, Motion.hero)) {
+            zoom = first
+                ? DateInterval(start: span.start, end: middle)
+                : DateInterval(start: middle, end: span.end)
+        }
+    }
     private var shownSpan: DateInterval? { zoom ?? fullSpan }
 
     /// Segments clipped to the shown window, so a zoomed chart's blocks are
@@ -189,9 +199,18 @@ struct HypnogramV4: View {
                     .font(Theme.supportingValue)
                     .monospacedDigit()
                 Spacer(minLength: 0)
-                Text("Drag to explore")
-                    .font(Theme.text(11))
-                    .foregroundStyle(.quaternary)
+                // Zoom into either half of the night. Tapping an awakening
+                // was the only way in, so a night with none could not be
+                // looked at more closely at all.
+                Menu {
+                    Button("First half") { zoomToHalf(first: true, of: fullSpan) }
+                    Button("Second half") { zoomToHalf(first: false, of: fullSpan) }
+                } label: {
+                    Label("Zoom", systemImage: "plus.magnifyingglass")
+                        .font(Theme.text(12, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                }
+                .accessibilityHint("Shows half of the night across the full width.")
             }
         }
         .frame(minHeight: 28)
