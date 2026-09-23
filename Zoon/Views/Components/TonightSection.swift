@@ -21,8 +21,15 @@ struct TonightSection: View {
     /// body-clock wake, for previews and a first launch with no history.
     var episode: ResolvedSleepEpisode?
     var now: Date = .now
+    /// When Health data last arrived. `nil` with `showsDataStatus` reads
+    /// "not synced yet" rather than hiding the line.
+    var lastSync: Date? = nil
+    /// Previews and snapshots leave the data line off.
+    var showsDataStatus: Bool = false
 
     @Environment(UserPreferences.self) private var preferences
+    @State private var setup = PersonalSetupStore.shared
+    @State private var isEditing = false
 
     private var bedtime: Date? { episode?.bed ?? context.targetBedtime(now: now) }
 
@@ -94,6 +101,35 @@ struct TonightSection: View {
                 }
                 ZoonTimeline(nodes: nodes, now: now)
                 scheduleStatus
+                if showsDataStatus {
+                    Text(TonightDataStatus.line(lastSync: lastSync, sourceName: context.night.sourceName, now: now))
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let episode {
+                    // The same one-night editor as the week plan: a change
+                    // here is a plan for this night, so the reminders, the
+                    // alarm, the runway and the Watch all follow it.
+                    Button {
+                        Haptics.select()
+                        isEditing = true
+                    } label: {
+                        Label(episode.source == .manualPlan ? "Change tonight's times" : "Set tonight's times", systemImage: "pencil")
+                            .font(Theme.label(13, weight: .semibold))
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Theme.Family.sleep)
+                    .sheet(isPresented: $isEditing) {
+                        NightPlanEditor(morning: episode.wake, bed: episode.bed, wake: episode.wake) { bed, wake in
+                            NightPlanEditor.save(bed: bed, wake: wake, morning: episode.wake, in: &setup.value)
+                            isEditing = false
+                        }
+                        .presentationDetents([.medium])
+                    }
+                }
                 if let autopilot {
                     Text(autopilot.caveat)
                         .font(Theme.text(11))

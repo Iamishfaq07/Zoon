@@ -209,17 +209,22 @@ struct SleepRunwayCard: View {
 
 /// Sets one night's bed and wake as a one-night sleep plan.
 struct NightPlanEditor: View {
-    let night: SleepRunway.Day
+    /// The morning the edited night ends on.
+    let morning: Date
     let onSave: (Date, Date) -> Void
     @State private var bed: Date
     @State private var wake: Date
     @Environment(\.dismiss) private var dismiss
 
-    init(night: SleepRunway.Day, onSave: @escaping (Date, Date) -> Void) {
-        self.night = night
+    init(morning: Date, bed: Date, wake: Date, onSave: @escaping (Date, Date) -> Void) {
+        self.morning = morning
         self.onSave = onSave
-        _bed = State(initialValue: night.bedtime)
-        _wake = State(initialValue: night.wake)
+        _bed = State(initialValue: bed)
+        _wake = State(initialValue: wake)
+    }
+
+    init(night: SleepRunway.Day, onSave: @escaping (Date, Date) -> Void) {
+        self.init(morning: night.date, bed: night.bedtime, wake: night.wake, onSave: onSave)
     }
 
     var body: some View {
@@ -227,7 +232,7 @@ struct NightPlanEditor: View {
             Form {
                 DatePicker("Bed", selection: $bed, displayedComponents: .hourAndMinute)
                 DatePicker("Wake", selection: $wake, displayedComponents: .hourAndMinute)
-                Text("For the night ending \(night.date.formatted(.dateTime.weekday(.wide).month().day())) only. Reminders and the alarm follow these times.")
+                Text("For the night ending \(morning.formatted(.dateTime.weekday(.wide).month().day())) only. Reminders and the alarm follow these times.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -247,11 +252,15 @@ struct NightPlanEditor: View {
     }
 
     static func save(bed: Date, wake: Date, night: SleepRunway.Day, in setup: inout PersonalSetup) {
+        save(bed: bed, wake: wake, morning: night.date, in: &setup)
+    }
+
+    static func save(bed: Date, wake: Date, morning: Date, in setup: inout PersonalSetup) {
         setup.setNightPlan(
             bedMinute: minuteOfDay(bed),
             wakeMinute: minuteOfDay(wake),
-            morning: night.date,
-            name: "Just \(night.date.formatted(.dateTime.weekday(.wide)))"
+            morning: morning,
+            name: "Just \(morning.formatted(.dateTime.weekday(.wide)))"
         )
     }
 

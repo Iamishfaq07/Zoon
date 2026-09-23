@@ -164,7 +164,7 @@ struct TodayView: View {
                 )
                 .entrance(2)
 
-                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode())
+                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(3)
                 TravelTonightCard()
                     .entrance(3)
@@ -266,7 +266,7 @@ struct TodayView: View {
             }
 
             if moment == .morning || moment == .day {
-                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode())
+                TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(6)
                 NavigationLink {
                     ZoonTomorrowView()
