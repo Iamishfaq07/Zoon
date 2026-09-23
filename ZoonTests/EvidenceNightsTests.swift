@@ -16,7 +16,7 @@ final class EvidenceNightsTests: XCTestCase {
         let later = calendar.date(byAdding: .day, value: 1, to: base)!
         let sameDayAsBase = calendar.date(byAdding: .hour, value: 10, to: base)!
         let text = EvidenceNights.list([later, base, sameDayAsBase], calendar: calendar, locale: Locale(identifier: "en_US_POSIX"))
-        let parts = text.components(separatedBy: ", ")
+        let parts = text.components(separatedBy: " · ")
         XCTAssertEqual(parts.count, 2, text)
         XCTAssertTrue(parts[0].contains("14"), text)
         XCTAssertTrue(parts[1].contains("15"), text)
