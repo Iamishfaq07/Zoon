@@ -160,8 +160,12 @@ final class SleepAutopilotTests: XCTestCase {
     func testWithAFixedWakeTimeTheBedtimeMoves() throws {
         let plan = try plan(bedtimeMinutes: 0, needMinutes: 480, obligationWakeMinutes: 420)
         XCTAssertLessThan(plan.shiftMinutes, 0, "an earlier bedtime, not a later alarm")
-        XCTAssertEqual(plan.targetWakeMinutes,
-                       plan.targetBedtimeMinutes + plan.targetSleepMinutes, accuracy: 0.001)
+        // And the alarm really does not move. This used to assert the wake
+        // was bed plus target -- 07:40 here, forty minutes past the 07:00
+        // obligation, because the nightly cap held bed to 23:40 (Z19).
+        XCTAssertEqual(plan.targetWakeMinutes, 420, accuracy: 0.001)
+        XCTAssertEqual(plan.shortfallMinutes,
+                       plan.targetSleepMinutes - (420 - plan.targetBedtimeMinutes), accuracy: 0.001)
     }
 
     /// Without an alarm the correction comes from the duration shortfall
