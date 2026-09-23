@@ -126,6 +126,22 @@ struct RootView: View {
             }
         }
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
+        // Every reminder is a dated request built in the zone it was queued
+        // in. Foregrounding re-reconciles, which covers a zone change while
+        // the phone was locked; these cover one while Zoon is open, which
+        // otherwise left the old zone's times queued until the next launch.
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            Task {
+                await refreshReminders()
+                coordinator.republishGlanceSurfaces()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
+            Task {
+                await refreshReminders()
+                coordinator.republishGlanceSurfaces()
+            }
+        }
         .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
         // These two also republish: the Watch's wake line says whether an
