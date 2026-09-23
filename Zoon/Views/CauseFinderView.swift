@@ -136,6 +136,7 @@ struct CauseFinderView: View {
     private func content(_ observations: [JournalCorrelator.Observation]) -> some View {
         switch tab {
         case .helps:
+            comparisonNote(observations)
             let helpful = findings(from: observations).filter(\.isImprovement)
             if helpful.isEmpty {
                 emptyState("Nothing clears the bar yet. Keep logging -- a real helpful pattern will show up here once there's enough matched data.")
@@ -143,6 +144,7 @@ struct CauseFinderView: View {
                 ForEach(helpful) { CauseFinderRow(finding: $0) }
             }
         case .hurts:
+            comparisonNote(observations)
             let harmful = findings(from: observations).filter { !$0.isImprovement }
             if harmful.isEmpty {
                 emptyState("Nothing clears the bar yet. That's a genuinely good sign, not a data gap.")
@@ -166,6 +168,20 @@ struct CauseFinderView: View {
             } else {
                 ForEach(learning) { LearningRow(tag: $0) }
             }
+        }
+    }
+
+    /// How many comparisons were run, so one striking finding can be weighed
+    /// against the number of places Zoon looked. See
+    /// `JournalCorrelator.comparisonCount`.
+    @ViewBuilder
+    private func comparisonNote(_ observations: [JournalCorrelator.Observation]) -> some View {
+        let count = JournalCorrelator().comparisonCount(from: observations, catalog: coordinator.behaviorCatalog)
+        if count > 1 {
+            Text("Zoon compared \(count) behaviour and outcome pairs. With that many, a few can look notable by chance.")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

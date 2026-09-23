@@ -224,4 +224,14 @@ final class JournalCorrelatorTests: XCTestCase {
             "every pair was lost to the first unmeasured control"
         )
     }
+
+    /// The count of comparisons is what the multiple-comparison note shows.
+    func testComparisonCountCountsOnlyTestablePairs() {
+        let tagged = (0..<10).map { observation(daysAgo: $0 * 2, tags: [.alcohol], wakeCount: 3) }
+        let control = (0..<10).map { observation(daysAgo: $0 * 2 + 1, tags: [], wakeCount: 0) }
+        let count = JournalCorrelator().comparisonCount(from: tagged + control)
+        XCTAssertGreaterThanOrEqual(count, 1)
+        XCTAssertLessThanOrEqual(count, JournalCorrelator.Metric.allCases.count * BehaviorTag.allCases.count)
+        XCTAssertEqual(JournalCorrelator().comparisonCount(from: []), 0)
+    }
 }

@@ -602,6 +602,28 @@ struct JournalCorrelator {
         }
     }
 
+    /// How many behaviour-and-outcome comparisons had enough matched nights
+    /// to be tested at all.
+    ///
+    /// Every one is a separate chance for noise to clear the bar. With ten
+    /// behaviours and five outcomes, fifty comparisons run, and a handful
+    /// will look notable by chance alone. The count is shown beside the
+    /// findings so the reader can weigh one striking result against how many
+    /// were looked at -- the plain-language form of a multiple-comparison
+    /// correction, without pretending to a p-value these sample sizes cannot
+    /// support.
+    func comparisonCount(
+        from observations: [Observation],
+        catalog: BehaviorCatalog = .builtInOnly
+    ) -> Int {
+        catalog.analysable.reduce(0) { total, behavior in
+            total + Metric.allCases.filter { metric in
+                (matchedPairs(behavior: behavior, metric: metric, observations: observations)?.count ?? 0)
+                    >= Self.minimumMatchedPairs
+            }.count
+        }
+    }
+
     // MARK: - Matching
 
     private struct MatchedPair {
