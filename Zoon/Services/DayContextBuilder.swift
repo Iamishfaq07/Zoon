@@ -76,6 +76,9 @@ struct DayContextBuilder {
         var shortfallThroughLatestNightMinutes: Double? = nil
         /// Naps since `night`'s wake, deduplicated. Planning only.
         var napMinutesToday: Double = 0
+        /// Heart rate between `night`'s bed and wake. See
+        /// `DayContext.overnightHeartRate`.
+        var overnightHeartRate: [(date: Date, bpm: Double)] = []
     }
 
     func build(_ inputs: Inputs) -> DayContext {
@@ -148,6 +151,10 @@ struct DayContextBuilder {
                 startLevel: startLevel,
                 wakeTime: night.wakeTime,
                 hourlyHeartRate: inputs.hourlyHeartRate,
+            overnightHeartRate: OvernightSeries.clipped(
+                inputs.overnightHeartRate,
+                to: DateInterval(start: min(night.bedtime, night.wakeTime), end: max(night.bedtime, night.wakeTime))
+            ),
                 restingHeartRate: restingInput.value,
                 maxHeartRate: inputs.maxHeartRate,
                 restingBaselineSource: restingInput.source

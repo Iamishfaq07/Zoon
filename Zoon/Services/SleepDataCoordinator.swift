@@ -971,6 +971,15 @@ final class SleepDataCoordinator {
             restingProvenance: resting.provenance
         )
 
+        // The night's own heart rate, for the hypnogram. Five-minute bins:
+        // hourly ones give a seven-hour night seven points and flatten the
+        // dip that makes the line worth drawing.
+        let overnightHeartRate = night.bedtime < night.wakeTime
+            ? ((try? await healthKit.binnedHeartRate(
+                in: DateInterval(start: night.bedtime, end: night.wakeTime), binMinutes: 5
+            )) ?? [])
+            : []
+
         guard !isErasing, generation == storeGeneration else { return }
 
         // Generation is deferred into the builder rather than run above,
@@ -1005,7 +1014,8 @@ final class SleepDataCoordinator {
             shortfallThroughLatestNightMinutes: store.currentBaseline(
                 goalMinutes: goal, manualNaps: naps.naps
             ).sleepDebtMinutes,
-            napMinutesToday: napMinutesToday()
+            napMinutesToday: napMinutesToday(),
+            overnightHeartRate: overnightHeartRate
         ))
 
         store.attach(context.insight, to: record)
@@ -1817,7 +1827,8 @@ final class SleepDataCoordinator {
             age: preferences.age ?? 34,
             sex: preferences.biologicalSex,
             bodyMassIndex: preferences.bodyMassIndex,
-            obligationWeekdays: preferences.obligationWeekdays
+            obligationWeekdays: preferences.obligationWeekdays,
+            overnightHeartRate: MockData.overnightHeartRate(bedtime: night.bedtime, wakeTime: night.wakeTime)
         ))
 
         state = .mock(context)

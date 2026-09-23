@@ -150,8 +150,12 @@ struct HypnogramView: View {
                         ))
                     }
 
-                    if heartRateSamples.count >= 2 {
-                        let bpms = heartRateSamples.map(\.bpm)
+                    // Only the samples inside the night: the scale and the
+                    // availability both used to count points the line could
+                    // never draw. See `OvernightSeries`.
+                    let nightHeartRate = OvernightSeries.clipped(heartRateSamples, to: span)
+                    if nightHeartRate.count >= 2 {
+                        let bpms = nightHeartRate.map(\.bpm)
                         let minBPM = bpms.min() ?? 0
                         let maxBPM = bpms.max() ?? 1
                         let bpmRange = max(1, maxBPM - minBPM)
@@ -168,7 +172,7 @@ struct HypnogramView: View {
 
                         let path = Path { p in
                             var started = false
-                            for sample in heartRateSamples.sorted(by: { $0.date < $1.date }) {
+                            for sample in nightHeartRate {
                                 guard let point = point(for: sample) else { continue }
                                 if started { p.addLine(to: point) } else { p.move(to: point); started = true }
                             }
@@ -254,7 +258,8 @@ struct HypnogramView: View {
     }
 
     private func nearestHeartRate(to time: Date) -> Double? {
-        heartRateSamples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }?.bpm
+        guard let span else { return nil }
+        return OvernightSeries.nearest(to: time, in: heartRateSamples, over: span)
     }
 
     private func midpointLabel(_ span: DateInterval) -> String {

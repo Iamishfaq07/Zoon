@@ -122,7 +122,7 @@ struct SleepDetailView: View {
                 )
                 HypnogramView(
                     segments: context.night.stageSegments,
-                    heartRateSamples: context.hourlyHeartRate,
+                    heartRateSamples: context.overnightHeartRate,
                     soundEvents: soundEventStore.recentEvents
                 )
             }

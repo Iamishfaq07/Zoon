@@ -280,6 +280,24 @@ enum MockData {
         }
     }
 
+    /// A plausible night of heart rate for demo mode and previews, in
+    /// five-minute bins between bed and wake: settling after lights-out, a
+    /// low stretch through the first half, drifting up towards morning.
+    /// Demo data only -- live screens get HealthKit's or nothing.
+    static func overnightHeartRate(bedtime: Date, wakeTime: Date) -> [(date: Date, bpm: Double)] {
+        let duration = wakeTime.timeIntervalSince(bedtime)
+        guard duration > 600 else { return [] }
+        let steps = Int(duration / 300)
+        return (1..<steps).map { index in
+            let fraction = Double(index) / Double(steps)
+            // A shallow U: 64 at lights-out, 52 near a third of the way in,
+            // back to 60 by the wake.
+            let dip = 52 + 12 * pow(fraction - 0.35, 2) / 0.1225
+            let wobble = sin(Double(index) * 0.9) * 1.5
+            return (date: bedtime.addingTimeInterval(Double(index) * 300), bpm: min(66, dip + wobble))
+        }
+    }
+
     // MARK: - Builder
 
     private static func makeNight(

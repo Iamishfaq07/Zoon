@@ -25,8 +25,18 @@ import SwiftUI
 /// Draw-in is once per night (`drawOnce`) and never replays on scroll.
 struct HypnogramV4: View {
     let night: SleepNightFeatures
+    /// Overnight heart rate. Clipped to the night before use; see
+    /// `OvernightSeries` for the daytime series this used to be handed.
     var heartRateSamples: [(date: Date, bpm: Double)] = []
     var soundEvents: [SoundEvent] = []
+
+    private var nightInterval: DateInterval {
+        DateInterval(start: min(night.bedtime, night.wakeTime), end: max(night.bedtime, night.wakeTime))
+    }
+
+    private var nightHeartRate: [(date: Date, bpm: Double)] {
+        OvernightSeries.clipped(heartRateSamples, to: nightInterval)
+    }
 
     enum Overlay: String, CaseIterable, Identifiable {
         case heart, breathing, sound
@@ -207,7 +217,7 @@ struct HypnogramV4: View {
                     segments: shownSegments,
                     height: 190,
                     showsAxis: false,
-                    heartRateSamples: overlays.contains(.heart) ? heartRateSamples : [],
+                    heartRateSamples: overlays.contains(.heart) ? nightHeartRate : [],
                     soundEvents: overlays.contains(.sound) ? soundEvents : []
                 )
                 .allowsHitTesting(false)
@@ -471,7 +481,7 @@ struct HypnogramV4: View {
 
     private func isAvailable(_ overlay: Overlay) -> Bool {
         switch overlay {
-        case .heart: heartRateSamples.count >= 2
+        case .heart: nightHeartRate.count >= 2
         case .breathing: night.avgRespiratoryRate != nil
         case .sound: !soundEvents.isEmpty
         }
@@ -564,9 +574,7 @@ struct HypnogramV4: View {
     }
 
     private func nearestHeartRate(to time: Date) -> Double? {
-        heartRateSamples
-            .filter { abs($0.date.timeIntervalSince(time)) <= 30 * 60 }
-            .min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }?.bpm
+        OvernightSeries.nearest(to: time, in: heartRateSamples, over: nightInterval)
     }
 
     private func nearestSoundEvent(to time: Date) -> SoundEvent? {
@@ -602,7 +610,7 @@ struct HypnogramV4: View {
     return ScrollView {
         HypnogramV4(
             night: staged,
-            heartRateSamples: MockData.hourlyHeartRate(wakeTime: staged.wakeTime),
+            heartRateSamples: MockData.overnightHeartRate(bedtime: staged.bedtime, wakeTime: staged.wakeTime),
             soundEvents: []
         )
         .padding()

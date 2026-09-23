@@ -376,7 +376,7 @@ struct SleepTabView: View {
                         if !context.night.stageSegments.isEmpty {
                             HypnogramV4(
                                 night: context.night,
-                                heartRateSamples: context.hourlyHeartRate,
+                                heartRateSamples: context.overnightHeartRate,
                                 soundEvents: soundEventStore.recentEvents
                             )
                             .entrance(2)

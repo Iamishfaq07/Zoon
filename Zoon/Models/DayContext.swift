@@ -34,6 +34,10 @@ struct DayContext: Equatable {
     /// Carried through so views (e.g. the hypnogram's HR overlay) can reuse
     /// it rather than each running their own HealthKit query.
     let hourlyHeartRate: [(date: Date, bpm: Double)]
+    /// Heart rate across last night, bed to wake, in five-minute bins. What
+    /// the hypnogram's Heart overlay draws. Not `hourlyHeartRate`, which is
+    /// the day since waking and has no points inside the night at all.
+    var overnightHeartRate: [(date: Date, bpm: Double)] = []
     /// Hourly cognitive-energy amplitude from last night's HRV, HR dip,
     /// and REM/Deep mix. Shape still comes from `EnergyForecast`; this is
     /// how high the peak sits and how deep the slump goes.
@@ -72,6 +76,7 @@ struct DayContext: Equatable {
             healthRadar: healthRadar,
             bodyClock: bodyClock,
             hourlyHeartRate: hourlyHeartRate,
+            overnightHeartRate: overnightHeartRate,
             cognitiveEnergy: cognitiveEnergy,
             academicSleepRegularity: academicSleepRegularity
         )
