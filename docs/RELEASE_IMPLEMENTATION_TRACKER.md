@@ -14,7 +14,11 @@ watchOS build) on **`42c0656`**, run 35837024213, and again with the Phase 3
 additions on **`1f3ec8c`**, run 35841299860. Screenshots regenerated from that
 build (commit `9441ba5`) show the Tonight card and the Tonight section giving
 the same countdown ("Bed in 13h 45m"); the build before the fix showed 15h 38m
-and 14h 26m on the same screen.
+and 14h 26m on the same screen. Latest full green run, covering the accessibility
+fixes, pinch zoom, the Tonight data line, and the "which nights counted" lists:
+**`242f72d`**, run 35908383051. One intermediate run (35905062519) failed a
+UI wait on a slow runner and passed on re-run with no code change; the waits
+were raised from 5 s to 15 s.
 
 Status key: **fixed**: changed, with tests · **already correct**: the defect
 isn't in this revision, with the evidence · **partial**: part done, the rest
