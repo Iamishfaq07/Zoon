@@ -102,7 +102,13 @@ struct TonightSection: View {
                 ZoonTimeline(nodes: nodes, now: now)
                 scheduleStatus
                 if showsDataStatus {
-                    Text(TonightDataStatus.line(lastSync: lastSync, sourceName: context.night.sourceName, now: now))
+                    Text(TonightDataStatus.line(
+                        lastSync: lastSync,
+                        sourceName: context.night.sourceName,
+                        now: now,
+                        stagedMinutes: context.night.coreMinutes + context.night.deepMinutes + context.night.remMinutes,
+                        unstagedMinutes: context.night.unspecifiedAsleepMinutes
+                    ))
                         .font(Theme.text(11))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)

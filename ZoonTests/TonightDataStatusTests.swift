@@ -30,4 +30,20 @@ final class TonightDataStatusTests: XCTestCase {
                 .hasPrefix("Health synced just now")
         )
     }
+
+    func testStageCoverageSaysWhetherStagesWereMeasured() {
+        XCTAssertNil(TonightDataStatus.stageCoverage(stagedMinutes: 0, unstagedMinutes: 0))
+        XCTAssertEqual(TonightDataStatus.stageCoverage(stagedMinutes: 0, unstagedMinutes: 420), "duration only, no stages")
+        XCTAssertEqual(TonightDataStatus.stageCoverage(stagedMinutes: 420, unstagedMinutes: 0), "staged")
+        XCTAssertEqual(TonightDataStatus.stageCoverage(stagedMinutes: 300, unstagedMinutes: 120), "staged for 71% of it")
+        // Rounded down, so "staged" is never claimed for a night that was not.
+        XCTAssertEqual(TonightDataStatus.stageCoverage(stagedMinutes: 94.9, unstagedMinutes: 5.1), "staged for 94% of it")
+    }
+
+    func testCoverageJoinsTheSourceClause() {
+        XCTAssertEqual(
+            TonightDataStatus.line(lastSync: nil, sourceName: "Oura", now: now, stagedMinutes: 0, unstagedMinutes: 400),
+            "Health not synced yet · last night from Oura, duration only, no stages"
+        )
+    }
 }
