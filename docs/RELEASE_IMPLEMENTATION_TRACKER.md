@@ -65,7 +65,7 @@ listed · **open**: not started · **device gate**: needs real hardware.
 | Editable seven‑day plan | partial | The runway's day detail now names the main constraint (`ScheduleFriction`) and has a per‑night "Reminders for this night" switch. A skipped night is dropped from the reminder and alarm horizon (`PersonalSetup.skippedReminderNights`, `SkippedNightTests`), the plan still shows it, and past skips are forgotten. Setting or locking a custom time per day isn't built. |
 | Honest interactive night story | partial | Z08–Z10 make the stage, awakening and HR layers honest and spoken. Zoom isn't built. |
 | Personal evidence card | partial | Usable N is now stored (Z12); UI disclosure pending. |
-| Fast morning check | open | — |
+| Fast morning check | mostly present | Already in this revision: `MorningCheckInCard` is a one‑tap feeling plus four optional 1–5 questions (rested, energy, sleepiness, mood), skippable, editable, never blended into a score, and backed up with the journal. The forecast‑feedback half is the Z20 panel on "Where the numbers come from", which reads the optional *rested* answer. Not built: a prompt at a chosen time, and linking the reaction test from the card. |
 | Shift/travel episode ownership | partial | Episode handles day sleep and zones; Z17 fixes after‑midnight logs. |
 | Watch wake and quick controls | open | — |
 
