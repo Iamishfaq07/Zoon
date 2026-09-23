@@ -31,12 +31,16 @@ final class ZoonUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["zoon.tab.today"].waitForExistence(timeout: 10))
 
+        // 15s, not 5: a loaded CI runner once took over 5s to show Coach
+        // (run 35905062519, green on re-run with no code change). The wait
+        // returns as soon as the element exists, so this costs nothing when
+        // the app is quick.
         app.buttons["zoon.tab.sleep"].tap()
-        XCTAssertTrue(app.navigationBars["Sleep"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Last night in numbers"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Sleep"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Last night in numbers"].waitForExistence(timeout: 15))
 
         app.buttons["zoon.tab.coach"].tap()
-        XCTAssertTrue(app.staticTexts["Ask Zoon"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Ask Zoon"].waitForExistence(timeout: 15))
     }
 
     /// Apple's accessibility audit on the four main tabs, in demo mode.
