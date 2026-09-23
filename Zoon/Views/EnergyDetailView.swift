@@ -70,7 +70,7 @@ struct EnergyDetailView: View {
     private var forecast: EnergyForecast {
         EnergyForecast.compute(
             wakeTime: context.night.wakeTime,
-            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            sleepDebtMinutes: context.shortfallNowMinutes ?? 0,
             windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
         )
     }

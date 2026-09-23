@@ -317,7 +317,7 @@ struct TodayView: View {
             if moment == .morning || moment == .day {
                 NapsTodayCard(
                     napMinutesToday: napMinutesToday,
-                    debtMinutes: context.night.sleepDebtMinutes ?? 0,
+                    debtMinutes: context.shortfallNowMinutes ?? 0,
                     recommendation: napRecommendation(context)
                 )
                 .entrance(8)
@@ -532,7 +532,7 @@ struct TodayView: View {
     private func energyForecast(_ context: DayContext) -> EnergyForecast {
         EnergyForecast.compute(
             wakeTime: context.night.wakeTime,
-            sleepDebtMinutes: context.night.sleepDebtMinutes ?? 0,
+            sleepDebtMinutes: context.shortfallNowMinutes ?? 0,
             windDownHour: (context.bodyClock?.isEstimate == false) ? context.bodyClock?.onsetHour : nil
         )
     }
@@ -545,7 +545,7 @@ struct TodayView: View {
                 .foregroundStyle(Theme.inkSecondary)
 
             SleepDebtArcView(
-                debtMinutes: max(0, (context.night.sleepDebtMinutes ?? 0) - napMinutesToday),
+                debtMinutes: max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday),
                 weekChangeMinutes: weekChange(context),
                 repaymentMinutes: plan?.debtRepaymentMinutes
             )
@@ -597,7 +597,7 @@ struct TodayView: View {
     /// that mistake once put "improved by 24h 4m" on this screen.
     private func weekChange(_ context: DayContext) -> Double? {
         guard let weekAgo = debtWeekAgo(context) else { return nil }
-        return (context.night.sleepDebtMinutes ?? 0) - weekAgo
+        return (context.shortfallNowMinutes ?? 0) - weekAgo
     }
 
     /// Derived from `moment`, not from the clock.
@@ -676,7 +676,7 @@ struct TodayView: View {
         )
         guard let latest = series.last, series.count >= 8 else { return nil }
         let change = latest - series[series.count - 8]
-        return (context.night.sleepDebtMinutes ?? 0) - change
+        return (context.shortfallNowMinutes ?? 0) - change
     }
 
     /// Tonight's autopilot plan, or `nil` when there is too little history.

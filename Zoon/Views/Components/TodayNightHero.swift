@@ -132,7 +132,7 @@ struct TodayNeedTracks: View {
     /// Today's naps come off today's shortfall, and cannot take it below
     /// zero.
     private var debt: Double {
-        max(0, (context.night.sleepDebtMinutes ?? 0) - napMinutesToday)
+        max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday)
     }
     private var need: Double { max(context.sleepNeed.totalNeedMinutes, 1) }
 

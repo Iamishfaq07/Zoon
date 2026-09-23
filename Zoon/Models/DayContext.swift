@@ -19,6 +19,14 @@ struct DayContext: Equatable {
     /// before it. This carries the debt with last night applied, today's
     /// strain and today's naps. See `SleepPlanningInputs.asOfNow`.
     let tonightPlanning: SleepPlanningInputs
+    /// The shortfall **now**: the ledger with last night on it. What every
+    /// "current sleep debt" figure shows.
+    ///
+    /// Not `night.sleepDebtMinutes`, which is the debt carried *into* last
+    /// night -- the stored baseline for a night excludes that night -- so the
+    /// headline number ignored the night just slept until the next one was
+    /// written. `nil` only when there is no night at all to measure.
+    var shortfallNowMinutes: Double? = nil
     let sleepScore: SleepScore
     let sleepIntelligence: SleepIntelligenceScore
     let strain: StrainScore
@@ -65,6 +73,7 @@ struct DayContext: Equatable {
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedSleepNeed,
             tonightPlanning: tonightPlanning,
+            shortfallNowMinutes: shortfallNowMinutes,
             sleepScore: sleepScore,
             sleepIntelligence: sleepIntelligence,
             strain: strain,

@@ -245,6 +245,7 @@ struct DayContextBuilder {
             sleepNeed: sleepNeed,
             learnedSleepNeed: learnedNeed,
             tonightPlanning: tonightPlanning,
+            shortfallNowMinutes: shortfallThroughLatest,
             sleepScore: SleepScore.compute(
                 for: night,
                 goalMinutes: inputs.goalMinutes,

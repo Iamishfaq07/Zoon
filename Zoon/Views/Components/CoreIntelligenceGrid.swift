@@ -61,7 +61,7 @@ struct CoreIntelligenceGrid: View {
     // MARK: - Sleep Debt -- a filled arc gauge.
 
     private var sleepDebtTile: some View {
-        let debt = context.night.sleepDebtMinutes ?? 0
+        let debt = context.shortfallNowMinutes ?? 0
         // Debt beyond about 5 hours reads as "full" on the gauge -- past
         // that point the exact figure matters more than the fill amount,
         // and the number below the gauge still carries it precisely.

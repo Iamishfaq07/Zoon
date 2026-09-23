@@ -524,13 +524,16 @@ extension SleepSnapshot {
         sleepIntelligencePercent: Int = 0,
         sleepIntelligenceBand: String = "",
         sleepIntelligenceVersion: Int = 0,
-        isShiftWorkModeEnabled: Bool = false
+        isShiftWorkModeEnabled: Bool = false,
+        currentShortfallMinutes: Double? = nil
     ) {
         self.date = features.date
         self.score = score.value
         self.scoreBand = score.band.label
         self.timeAsleepMinutes = features.timeAsleepMinutes
-        self.sleepDebtMinutes = features.sleepDebtMinutes ?? 0
+        // The shortfall now, with the night just slept on it, when the
+        // caller has it; the night's carried-in debt otherwise.
+        self.sleepDebtMinutes = currentShortfallMinutes ?? features.sleepDebtMinutes ?? 0
         self.goalMinutes = goalMinutes
         self.insightSummary = insight.summary
         self.generatedAt = .now

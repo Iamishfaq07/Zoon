@@ -454,6 +454,7 @@
 		56541B308507C47C97DA7463 /* RecoveryDayPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F469633104E821F966418EE /* RecoveryDayPlan.swift */; };
 		568B20415CA2A8AE84494F2E /* SpotlightIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B09B31C7251DB5C2AD3FFB /* SpotlightIndexer.swift */; };
 		56B082348918AEFB14D30692 /* SourceCoverage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE4A990528A240EACB4B9AB /* SourceCoverage.swift */; };
+		56BCB0ADE5E4D39B5E7BFC47 /* ShortfallNowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD233ACBE479DB9B01CC49A /* ShortfallNowTests.swift */; };
 		56C191727BAA7791C1681BD1 /* SleepAutopilot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D3C0C43E308D15F89442C2 /* SleepAutopilot.swift */; };
 		56C6C7E0285212AA00F761CD /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
 		5711CC3F266878822C52A5F8 /* SleepStory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7060DA0F52BD67E4086F62D /* SleepStory.swift */; };
@@ -1647,6 +1648,7 @@
 		6D2F15BCC2EEE83CC473EA89 /* SleepFingerprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepFingerprintTests.swift"; sourceTree = "<group>"; };
 		6D31C7DE63B4080D06AF6341 /* MetricConfidenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MetricConfidenceTests.swift"; sourceTree = "<group>"; };
 		6DC9B4657137BA5F3066D5E1 /* NightSky.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightSky.swift"; sourceTree = "<group>"; };
+		6DD233ACBE479DB9B01CC49A /* ShortfallNowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShortfallNowTests.swift"; sourceTree = "<group>"; };
 		6DE8982C23D4D9CA3E186C1E /* SensorTruthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SensorTruthView.swift"; sourceTree = "<group>"; };
 		6E407BFB2B97A928A2461870 /* CircadianPhaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CircadianPhaseTests.swift"; sourceTree = "<group>"; };
 		6E73BF56BE184A76A17FDF61 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TrendsView.swift"; sourceTree = "<group>"; };
@@ -2459,6 +2461,7 @@
 				64591C61C9C3F6C341DD3EE9,
 				44F44E13AE5A512DF79F5896,
 				222AA307323FF3B9A1DFE1F8,
+				6DD233ACBE479DB9B01CC49A,
 				736828F06A8E5E012E893923,
 				4B4EA7A3F0FBA1BDE06EA9BF,
 				DC43FF9D3006A214F135CF01,
@@ -3919,6 +3922,7 @@
 				947C167552B66752BA130362,
 				47B30835B051616524766B37,
 				32443B02BF8C6F999F1A227B,
+				56BCB0ADE5E4D39B5E7BFC47,
 				8BF7E4571FE7E967ACE13D5F,
 				C4E6BA2494C983118079DFB7,
 				75A145F4FB05473E1608C586,

@@ -193,7 +193,9 @@ struct CoachTabView: View {
             return "Which of my habits might be affecting my sleep?"
         }()
 
-        let plan: String = (night.sleepDebtMinutes ?? 0) >= 45
+        // The shortfall now, last night included -- see
+        // `DayContext.shortfallNowMinutes`.
+        let plan: String = (coordinator.state.context?.shortfallNowMinutes ?? night.sleepDebtMinutes ?? 0) >= 45
             ? "How should I catch up on sleep this week?"
             : "How should I prepare for tomorrow?"
 
@@ -388,7 +390,7 @@ struct CoachTabView: View {
                 picked.append(deviation < 0 ? "Why was my HRV low last night?" : "Why was my HRV higher than usual?")
             }
         }
-        if let debt = night.sleepDebtMinutes, debt >= 45 {
+        if let debt = coordinator.state.context?.shortfallNowMinutes ?? night.sleepDebtMinutes, debt >= 45 {
             picked.append("Am I behind on sleep?")
         }
         if night.wakeCount >= 3 {

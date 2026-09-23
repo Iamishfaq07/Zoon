@@ -1337,7 +1337,9 @@ final class SleepDataCoordinator {
             sleepIntelligencePercent: context.sleepIntelligence.percent,
             sleepIntelligenceBand: context.sleepIntelligence.band.label,
             sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
-            isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled
+            isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
+            // The same shortfall Today's arc shows, last night included.
+            currentShortfallMinutes: context.shortfallNowMinutes
         )
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).
@@ -2775,7 +2777,10 @@ final class SleepDataCoordinator {
             currentRegularityIndex: context?.regularity.index.rounded(to: 0),
             currentRegularityBand: context?.regularity.hasEnoughData == true ? context?.regularity.band.label : nil,
             learnedSleepNeedMinutes: context?.learnedSleepNeed.minutes.rounded(to: 0),
-            sleepDebtMinutes: context?.sleepNeed.debtMinutes.rounded(to: 0),
+            // The shortfall itself. This was `sleepNeed.debtMinutes`, which is
+            // a 33% repayment slice, so the coach quoted a third of the debt
+            // as the debt.
+            sleepDebtMinutes: context?.shortfallNowMinutes?.rounded(to: 0),
             activeExperimentTag: preferences.activeExperimentTag?.label,
             // Percent-scaled findings only: the digest carries a percentage,
             // and a zero-baseline finding has none to give.
