@@ -304,6 +304,19 @@ struct TodayView: View {
                     result[dimension] = entry?.value(for: dimension)
                 }
                 }
+
+                // The optional reaction check, one tap from the check-in it
+                // complements, for anyone who wants a measure beside the
+                // self-report. Never prompted, never required.
+                NavigationLink {
+                    AlertnessCheckView()
+                } label: {
+                    Label("Optional: a quick reaction check", systemImage: "bolt.fill")
+                        .font(Theme.text(12, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                }
+                .buttonStyle(.plain)
+                .entrance(7)
             }
 
             if moment == .morning || moment == .day {
