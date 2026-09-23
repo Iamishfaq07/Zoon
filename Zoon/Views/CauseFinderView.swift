@@ -595,8 +595,8 @@ private struct PastExperimentRow: View {
                         // two medians above were computed from.
                         DisclosureGroup("Which nights counted") {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Before: \(CauseFinderView.nightList(baselineDates))")
-                                Text("During: \(CauseFinderView.nightList(trialDates))")
+                                Text("Before: \(EvidenceNights.list(baselineDates))")
+                                Text("During: \(EvidenceNights.list(trialDates))")
                             }
                             .font(Theme.text(11))
                             .foregroundStyle(Theme.inkSecondary)
@@ -636,14 +636,4 @@ private struct PastExperimentRow: View {
 #Preview("Cause Finder") {
     NavigationStack { CauseFinderView() }
         .zoonPreviewEnvironment()
-}
-
-extension CauseFinderView {
-    /// "Mon 14 Sep, Tue 15 Sep, …", or "none" for an empty side.
-    static func nightList(_ dates: [Date]) -> String {
-        guard !dates.isEmpty else { return "none" }
-        return dates.sorted()
-            .map { $0.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)) }
-            .joined(separator: ", ")
-    }
 }
