@@ -2723,7 +2723,9 @@ final class SleepDataCoordinator {
             learnedSleepNeedMinutes: context?.learnedSleepNeed.minutes.rounded(to: 0),
             sleepDebtMinutes: context?.sleepNeed.debtMinutes.rounded(to: 0),
             activeExperimentTag: preferences.activeExperimentTag?.label,
-            causeFinderFindings: findings.map {
+            // Percent-scaled findings only: the digest carries a percentage,
+            // and a zero-baseline finding has none to give.
+            causeFinderFindings: findings.filter(\.hasRelativeScale).map {
                 CoachContextDigest.CorrelatorFinding(
                     behavior: $0.label,
                     metric: $0.metric.shortLabel,

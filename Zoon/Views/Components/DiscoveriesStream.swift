@@ -94,6 +94,9 @@ struct DiscoveriesStream: View {
     /// "Associated with 12% better deep sleep" -- the finding's own
     /// `headline`, reworded from "Tag: 12% better deep sleep" to a sentence.
     private func effectSentence(_ finding: JournalCorrelator.Finding) -> String {
+        guard finding.hasRelativeScale else {
+            return "Associated with \(finding.signedEffectLabel) \(finding.metric.shortLabel) on matched nights"
+        }
         let direction = finding.isImprovement ? "better" : "worse"
         return "Associated with \(String(format: "%.0f%%", abs(finding.percentChange))) \(direction) \(finding.metric.shortLabel) on matched nights"
     }
@@ -163,7 +166,7 @@ struct ExperimentPreview: View {
                         ZoonEvidenceBadge(confidence: strongest.confidence == .high ? .high : strongest.confidence == .moderate ? .moderate : .low)
                     }
                 case .noEffect:
-                    Text("No meaningful difference found so far")
+                    Text("No clear association so far")
                         .font(Theme.text(14))
                         .foregroundStyle(Theme.inkSecondary)
                 }

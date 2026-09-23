@@ -196,4 +196,32 @@ final class JournalCorrelatorTests: XCTestCase {
         let top = JournalCorrelator().topFindingPerTag(from: observations).filter { $0.tag == .alcohol }
         XCTAssertEqual(top.map(\.metric), [.efficiency])
     }
+
+    // MARK: - Z13
+
+    /// Zero awakenings on the comparison nights, three on the tagged ones.
+    /// There is no percentage of zero, and the finding used to be dropped.
+    func testAZeroBaselineIsReportedAsAnAbsoluteDifference() throws {
+        let tagged = (0..<10).map { observation(daysAgo: $0 * 2, tags: [.alcohol], wakeCount: 3) }
+        let control = (0..<10).map { observation(daysAgo: $0 * 2 + 1, tags: [], wakeCount: 0) }
+        let findings = JournalCorrelator().findings(from: tagged + control)
+        let finding = try XCTUnwrap(findings.first { $0.tag == .alcohol && $0.metric == .wakeCount })
+        XCTAssertFalse(finding.hasRelativeScale)
+        XCTAssertEqual(finding.signedEffectLabel, "+3.0")
+        XCTAssertFalse(finding.headline.contains("%"), finding.headline)
+    }
+
+    /// The nearest comparison night has no value for this metric, but a
+    /// slightly less similar one does. The pair has to be made with that
+    /// one, not dropped.
+    func testAControlMissingTheMetricIsSkippedNotFatal() {
+        let tagged = (0..<10).map { observation(daysAgo: $0, tags: [.alcohol], sleepPerformance: 60) }
+        let unmeasured = (10..<20).map { observation(daysAgo: $0, tags: [], sleepPerformance: nil) }
+        let measured = (20..<30).map { observation(daysAgo: $0, tags: [], sleepPerformance: 85) }
+        let findings = JournalCorrelator().findings(from: tagged + unmeasured + measured)
+        XCTAssertNotNil(
+            findings.first { $0.tag == .alcohol && $0.metric == .sleepPerformance },
+            "every pair was lost to the first unmeasured control"
+        )
+    }
 }

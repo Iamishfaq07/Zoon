@@ -18,7 +18,7 @@ struct CauseFinderView: View {
     @Environment(UserPreferences.self) private var preferences
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case helps = "Helps", hurts = "Hurts", noEffect = "No Effect", learning = "Still Learning"
+        case helps = "Helps", hurts = "Hurts", noEffect = "No Clear Link", learning = "Still Learning"
         var id: String { rawValue }
     }
 
@@ -298,7 +298,7 @@ private struct NoEffectRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
                     .font(Theme.label(14, weight: .semibold))
-                Text("No meaningful difference found in your data so far.")
+                Text("No clear association in your data so far. That is not evidence of no effect.")
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkSecondary)
             }
@@ -411,7 +411,7 @@ private struct GuidedExperimentCard: View {
                 }
 
             case .noEffect:
-                Text("No meaningful difference found in your data so far.")
+                Text("No clear association in your data so far. That is not evidence of no effect.")
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkSecondary)
             }
