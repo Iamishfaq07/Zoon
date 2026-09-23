@@ -24,4 +24,18 @@ final class ShortfallNowTests: XCTestCase {
         let night = Fixture.night(daysAgo: 0)
         XCTAssertEqual(snapshot(current: nil).sleepDebtMinutes, night.sleepDebtMinutes ?? 0)
     }
+
+    /// The wake line survives the trip to the watch, and an older payload
+    /// without it decodes to empty rather than failing.
+    func testTheWakeStatusLineRoundTrips() throws {
+        var sent = snapshot(current: 60)
+        sent.wakeStatusLine = "Wake alarm (alarm): 7:00"
+        let data = try JSONEncoder().encode(sent)
+        XCTAssertEqual(try JSONDecoder().decode(SleepSnapshot.self, from: data).wakeStatusLine, "Wake alarm (alarm): 7:00")
+
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json.removeValue(forKey: "wakeStatusLine")
+        let old = try JSONDecoder().decode(SleepSnapshot.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertEqual(old.wakeStatusLine, "")
+    }
 }

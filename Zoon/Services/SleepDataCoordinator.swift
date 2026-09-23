@@ -1408,6 +1408,26 @@ final class SleepDataCoordinator {
         // the phone's Tonight section, reminders and alarm use. The label
         // used to be the autopilot's range, which knew nothing of a manual
         // plan and could put a different bed on the wrist from the phone.
+        // The wake alarm's recorded state, else the wake window's: the one
+        // thing the wrist most needs to know at bedtime is whether anything
+        // will wake them, and which kind of thing it is.
+        let schedules = ScheduleStateStore()
+        let wakeSlots: [(ScheduleStateStore.Slot, ScheduleReconciliation.Delivery)] = [
+            (.wakeAlarm, .alarm),
+            (.wakeWindow, .notification)
+        ]
+        snapshot.wakeStatusLine = ""
+        for (slot, delivery) in wakeSlots {
+            let entry = schedules.entry(slot)
+            if let line = ScheduleReconciliation.statusLine(
+                label: slot.label, delivery: delivery, status: entry.status,
+                scheduledFor: entry.scheduledFor, now: .now,
+                timeText: { $0.formatted(date: .omitted, time: .shortened) }
+            ) {
+                snapshot.wakeStatusLine = line
+                break
+            }
+        }
         if let episode = tonightEpisode(for: context) {
             snapshot.tonightTargetLabel = episode.rangeLabel
             if episode.source == .manualPlan {
