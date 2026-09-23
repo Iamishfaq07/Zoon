@@ -18,7 +18,7 @@ and 14h 26m on the same screen. Latest full green run, covering the accessibilit
 fixes, pinch zoom, the Tonight data line, and the "which nights counted" lists:
 **`242f72d`**, run 35908383051. One intermediate run (35905062519) failed a
 UI wait on a slow runner and passed on re-run with no code change; the waits
-were raised from 5 s to 15 s.
+were raised from 5 s to 15 s. Then the Health usage string and the schedule preview: green on **`bdf03db`**, run 35912080966 (one compile error on the way, a main‑actor initializer used as a default argument, fixed in that commit).
 
 Status key: **fixed**: changed, with tests · **already correct**: the defect
 isn't in this revision, with the evidence · **partial**: part done, the rest
@@ -81,7 +81,7 @@ listed · **open**: not started · **device gate**: needs real hardware.
 
 | Item | Status | What exists / what does not |
 |---|---|---|
-| Today | partial | Moment‑aware Today (morning/day/evening layouts) with one Tonight section driven by the resolved episode; the data line gives last Health sync, last night's source and stage coverage, and one tap sets tonight's times. A first night without history shows `FirstNightCard` rather than a pretend score. Not done: a single "Explore why" entry, and a review of which secondary cards could move behind disclosure. |
+| Today | partial | Moment‑aware Today (morning/day/evening layouts) with one Tonight section driven by the resolved episode; the data line gives last Health sync, last night's source and stage coverage, and one tap sets tonight's times. A first night without history shows `FirstNightCard` rather than a pretend score. "Explore why" already exists: a disclosure in the morning and day layouts that reveals the score breakdown and the health strip, hidden by default and absent in score‑light mode. Not done: a device review of whether further secondary cards should move behind disclosure — a layout judgement, not a defect. |
 | Sleep | mostly done | Full‑width chart with half‑night zoom, awakening zoom and pinch zoom; unstaged time hatched; in‑bed distinct; legend in words with non‑colour coding; spoken summary; overnight HR clipped to the night (Z08–Z10); stage labels in text‑safe colours. Open: the audit's "clipped" flag on the stage names (see Z21). |
 | Tonight | mostly done | Bed / wind‑down / wake from one episode crossing midnight, a missed bedtime stays overdue until the wake (Z02), status lines say what is actually scheduled as a notification or an alarm (Z03), and tonight's times are editable in place. Editing a night (from Tonight or the week plan) now previews what saving will queue: each notification and the alarm at its fire time, or why one will not happen (already past, permission off, night skipped, all switched off) — `SchedulePreview`, tested. Its lead times are the ones the scheduler reads, so the two cannot differ. |
 | Patterns and Lab | mostly done | Paired plots with points, usable N, interval, "association, not proof of cause", "No Clear Link", and the list of nights that counted; experiments show measured‑vs‑logged nights, adherence and inconclusive outcomes. No new 0–100 score was added. |
