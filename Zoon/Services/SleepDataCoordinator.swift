@@ -187,6 +187,42 @@ final class SleepDataCoordinator {
 
     private let healthKit: HealthKitManager
     private let store: SleepHistoryStore
+    // MARK: - Model evaluation
+
+    /// The sleep-debt model against the person's own morning ratings.
+    /// See `NeedModelEvaluation`: measured, never used to adjust anything.
+    ///
+    /// Each night is paired with the shortfall *through* it -- the debt the
+    /// next night carried in, or the current figure for the latest -- because
+    /// that is what the model says the person woke up owing. Strata are the
+    /// night's stage source and the person's schedule mode.
+    func needModelEvaluation() -> [NeedModelEvaluation.Summary] {
+        let nights = recentNights.sorted { $0.date < $1.date }
+        guard !nights.isEmpty else { return [] }
+        let entries = journal.allEntries()
+        let byKey = Dictionary(
+            entries.compactMap { entry in entry.nightKey.map { ($0, entry) } },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let byDay = Dictionary(
+            entries.map { (Calendar.current.startOfDay(for: $0.date), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let shift = preferences.isShiftWorkModeEnabled
+        return NeedModelEvaluation.evaluate(nights.enumerated().map { index, night in
+            let through = index + 1 < nights.count
+                ? nights[index + 1].sleepDebtMinutes
+                : state.context?.shortfallNowMinutes
+            let entry = byKey[night.nightKey] ?? byDay[Calendar.current.startOfDay(for: night.date)]
+            let source = night.stageTrust.supportsStageFigures ? "Measured stages" : "Unstaged or unknown source"
+            return NeedModelEvaluation.Night(
+                shortfallMinutes: through,
+                restedRating: entry?.restedRaw,
+                stratum: shift ? "\(source), shift work" : source
+            )
+        })
+    }
+
     // MARK: - Tonight
 
     /// The habitual wake clock, on `SleepAutopilot`'s signed scale.
