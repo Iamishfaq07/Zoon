@@ -27,6 +27,8 @@ struct FloatingTabBar<Tab: Hashable>: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Namespace private var indicator
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(items) { item in
@@ -41,7 +43,7 @@ struct FloatingTabBar<Tab: Hashable>: View {
             // underneath set the contrast of 10pt labels, and the
             // accessibility audit failed them wherever that card was bright.
             Capsule()
-                .fill(.regularMaterial)
+                .fill(reduceTransparency ? AnyShapeStyle(Theme.solidSurface) : AnyShapeStyle(.regularMaterial))
                 .background(Capsule().fill(Theme.tabBarWash))
                 .overlay {
                     Capsule().stroke(Theme.neutral(0.12), lineWidth: 1)

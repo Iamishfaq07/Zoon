@@ -186,6 +186,10 @@ enum Theme {
     /// which is a light tint at high alpha, not a dark one at low alpha.
     /// Under the floating tab bar's material, so the labels sit on a
     /// predictable ground rather than on whatever content is behind them.
+    /// An opaque card surface for Reduce Transparency: roughly what a card
+    /// looks like over the page, with nothing showing through.
+    static var solidSurface: Color { cardTint(dark: (0.10, 0.11, 0.20, 1), light: (0.97, 0.97, 0.99, 1)) }
+
     static var tabBarWash: Color { cardTint(dark: (0.05, 0.06, 0.13, 0.72), light: (0.97, 0.97, 0.99, 0.72)) }
 
     static var cardFill: Color { cardTint(dark: (1, 1, 1, 0.05), light: (1, 1, 1, 0.65)) }
@@ -643,6 +647,10 @@ struct GlassCard: ViewModifier {
     var padding: CGFloat = Theme.cardPadding
 
     @Environment(\.colorScheme) private var colorScheme
+    /// Solid surface, no sheen. The system makes its own materials opaque
+    /// under this setting; the tint and highlight layered on top are ours,
+    /// so they are handled here rather than left to it.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
         content
@@ -656,7 +664,11 @@ struct GlassCard: ViewModifier {
                     // "cheap, washed-out card" look. .regularMaterial is denser
                     // and holds its own shape against a pale ground the way
                     // ultraThin does against a dark one.
-                    .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial))
+                    .fill(
+                        reduceTransparency
+                            ? AnyShapeStyle(Theme.solidSurface)
+                            : colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial)
+                    )
                     .overlay {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(Theme.cardFill)
@@ -678,7 +690,7 @@ struct GlassCard: ViewModifier {
                         RoundedRectangle(cornerRadius: Theme.cardRadius, style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [Theme.glassHighlight(0.10), Theme.glassHighlight(0)],
+                                    colors: [Theme.glassHighlight(reduceTransparency ? 0 : 0.10), Theme.glassHighlight(0)],
                                     startPoint: .top,
                                     endPoint: UnitPoint(x: 0.5, y: 0.45)
                                 )
