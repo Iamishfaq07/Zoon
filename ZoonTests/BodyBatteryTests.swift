@@ -53,7 +53,10 @@ final class BodyBatteryTests: XCTestCase {
             wakeTime: wake,
             hourlyHeartRate: [(date: wake.addingTimeInterval(3600), bpm: 150)],
             restingHeartRate: 55,
-            maxHeartRate: 180
+            maxHeartRate: 180,
+            // Buckets are stamped at their start, so the bucket beginning an
+            // hour after waking is observed only once that hour has passed.
+            now: wake.addingTimeInterval(3 * 3600)
         )
         XCTAssertLessThan(battery.current, 80)
         XCTAssertFalse(battery.points.last!.isCharging)
@@ -66,7 +69,8 @@ final class BodyBatteryTests: XCTestCase {
             wakeTime: wake,
             hourlyHeartRate: [(date: wake.addingTimeInterval(3600), bpm: 55)],
             restingHeartRate: 55,
-            maxHeartRate: 180
+            maxHeartRate: 180,
+            now: wake.addingTimeInterval(3 * 3600)
         )
         XCTAssertGreaterThan(battery.current, 50)
         XCTAssertTrue(battery.points.last!.isCharging)
@@ -97,7 +101,8 @@ final class BodyBatteryTests: XCTestCase {
             wakeTime: wake,
             hourlyHeartRate: samples,
             restingHeartRate: 55,
-            maxHeartRate: 180
+            maxHeartRate: 180,
+            now: wake.addingTimeInterval(22 * 3600)
         )
         XCTAssertGreaterThanOrEqual(battery.dayLow, 0)
         XCTAssertLessThanOrEqual(battery.morningPeak, 100)
@@ -174,5 +179,71 @@ final class BodyBatteryTests: XCTestCase {
     func testSpentTodayIsTheDropFromMorningPeak() {
         let battery = BodyBattery(points: [], current: 40, morningPeak: 70, dayLow: 35)
         XCTAssertEqual(battery.spentToday, 30)
+    }
+
+    // MARK: - Integration over observed time (Z11)
+
+    private func clock(_ hour: Int, _ minute: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar.date(from: DateComponents(year: 2026, month: 9, day: 22, hour: hour, minute: minute))!
+    }
+
+    /// Wake at 07:10. The 07:00 bucket is 50 minutes of the day, not none:
+    /// it used to be dropped for starting before the wake.
+    func testABucketThatStartsBeforeWakeCountsForItsWakingPart() {
+        let battery = BodyBattery.build(
+            startLevel: 80, wakeTime: clock(7, 10),
+            hourlyHeartRate: [(date: clock(7, 0), bpm: 150)],
+            restingHeartRate: 55, maxHeartRate: 180, now: clock(9, 0)
+        )
+        XCTAssertLessThan(battery.current, 80)
+        XCTAssertEqual(battery.observedDaytimeHours ?? 0, 50.0 / 60, accuracy: 0.001)
+    }
+
+    /// One reading in the 08:00 bucket at 08:05 is five minutes observed,
+    /// not an hour of effort.
+    func testABucketInProgressCountsOnlyUpToNow() {
+        let partial = BodyBattery.build(
+            startLevel: 80, wakeTime: clock(7, 10),
+            hourlyHeartRate: [(date: clock(8, 0), bpm: 150)],
+            restingHeartRate: 55, maxHeartRate: 180, now: clock(8, 5)
+        )
+        let whole = BodyBattery.build(
+            startLevel: 80, wakeTime: clock(7, 10),
+            hourlyHeartRate: [(date: clock(8, 0), bpm: 150)],
+            restingHeartRate: 55, maxHeartRate: 180, now: clock(10, 0)
+        )
+        let partialDrop = 80 - (partial.points.last?.level ?? 80)
+        let wholeDrop = 80 - (whole.points.last?.level ?? 80)
+        XCTAssertEqual(partialDrop * 12, wholeDrop, accuracy: 0.01)
+    }
+
+    /// A missing afternoon is a gap, not rest, and it lowers confidence.
+    func testAMissingAfternoonIsNotChargedAsRest() {
+        let morning = (8...11).map { (date: clock($0, 0), bpm: 70.0) }
+        let battery = BodyBattery.build(
+            startLevel: 70, wakeTime: clock(7, 0),
+            hourlyHeartRate: morning,
+            restingHeartRate: 55, maxHeartRate: 180, now: clock(19, 0)
+        )
+        XCTAssertEqual(battery.observedDaytimeHours ?? 0, 4, accuracy: 0.001)
+        XCTAssertEqual(battery.elapsedDaytimeHours ?? 0, 12, accuracy: 0.001)
+        XCTAssertEqual(battery.lastObservedAt, clock(12, 0))
+        var withProvenance = battery
+        withProvenance.provenance = .fullPhysiologicalRecovery
+        XCTAssertLessThan(withProvenance.confidence, .high)
+        XCTAssertTrue(withProvenance.confidenceNote?.contains("4 of 12") ?? false, withProvenance.confidenceNote ?? "")
+    }
+
+    /// No heart rate all day: the curve is last night's charge, and says so.
+    func testAllDayWithoutDataSaysSo() {
+        var battery = BodyBattery.build(
+            startLevel: 70, wakeTime: clock(7, 0), hourlyHeartRate: [],
+            restingHeartRate: 55, maxHeartRate: 180, now: clock(19, 0)
+        )
+        battery.provenance = .fullPhysiologicalRecovery
+        XCTAssertEqual(battery.confidence, .low)
+        XCTAssertTrue(battery.confidenceNote?.contains("No heart rate since you woke") ?? false)
     }
 }

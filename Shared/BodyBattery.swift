@@ -42,6 +42,16 @@ struct BodyBattery: Codable, Hashable, Sendable {
     /// curve must disclose when it lacks a stable personal resting baseline.
     var restingBaselineSource: RestingBaselineSource = .unavailable
 
+    /// Hours since waking that heart rate actually covered, and how many
+    /// hours have passed. `nil` for a battery built before these existed or
+    /// without a daytime series at all. A curve drawn through three observed
+    /// hours out of nine is a different claim from one drawn through nine.
+    var observedDaytimeHours: Double? = nil
+    var elapsedDaytimeHours: Double? = nil
+
+    /// When the last heart-rate bucket ended, for staleness.
+    var lastObservedAt: Date? = nil
+
     /// What the overnight charge — the level the whole day is drawn down
     /// from — was actually built on.
     ///
@@ -92,7 +102,16 @@ struct BodyBattery: Codable, Hashable, Sendable {
         let fromResting: MetricConfidence = restingBaselineSource.isPersonalized
             ? .high
             : (restingBaselineSource == .unavailable ? .low : .moderate)
-        return min(fromProvenance, fromResting)
+        // Daytime coverage. Nothing observed since waking means the curve is
+        // last night's charge and nothing else; under half the elapsed day
+        // observed means the drawdown is mostly unobserved.
+        let fromCoverage: MetricConfidence
+        if let observed = observedDaytimeHours, let elapsed = elapsedDaytimeHours, elapsed >= 1 {
+            fromCoverage = observed <= 0 ? .low : (observed / elapsed < 0.5 ? .moderate : .high)
+        } else {
+            fromCoverage = .high
+        }
+        return min(fromProvenance, fromResting, fromCoverage)
     }
 
     struct Point: Codable, Hashable, Sendable, Identifiable {
@@ -162,14 +181,33 @@ struct BodyBattery: Codable, Hashable, Sendable {
     ///     a resting hour.
     ///   - restingHeartRate: the user's own resting rate, the drain threshold.
     ///   - maxHeartRate: for scaling; pass an age-derived estimate if unknown.
+    /// - Parameters:
+    ///   - hourlyHeartRate: bucketed averages, each stamped at its bucket's
+    ///     *start*, as `HealthKitManager.binnedSeries` returns them.
+    ///   - bucketMinutes: the bucket length those stamps begin.
+    ///   - now: the end of the day so far; a bucket still in progress counts
+    ///     only up to it.
+    ///
+    /// **Integrated over the observed time, not per sample.** Each bucket
+    /// used to apply a full hour's change whatever it covered, and a bucket
+    /// that began before the wake was dropped entirely: waking at 07:10
+    /// threw away 07:10-08:00, and the 08:00 bucket in progress at 08:05 was
+    /// charged as a whole hour. Each bucket now contributes in proportion to
+    /// the part of it that falls between the wake and now. Hours with no
+    /// bucket contribute nothing -- an unobserved gap is not rest -- and the
+    /// covered and elapsed hours are recorded so confidence can say so.
     static func build(
         startLevel: Double,
         wakeTime: Date,
         hourlyHeartRate: [(date: Date, bpm: Double)],
         restingHeartRate: Double,
         maxHeartRate: Double,
-        restingBaselineSource: RestingBaselineSource = .personalBaseline
+        restingBaselineSource: RestingBaselineSource = .personalBaseline,
+        bucketMinutes: Double = 60,
+        now: Date = .now
     ) -> BodyBattery {
+        let elapsed = max(0, now.timeIntervalSince(wakeTime)) / 3600
+        let bucket = max(1, bucketMinutes) * 60
 
         guard !hourlyHeartRate.isEmpty else {
             let level = Int(startLevel.rounded())
@@ -180,30 +218,43 @@ struct BodyBattery: Codable, Hashable, Sendable {
                 dayLow: level
             )
             result.restingBaselineSource = restingBaselineSource
+            result.observedDaytimeHours = 0
+            result.elapsedDaytimeHours = elapsed
             return result
         }
 
         let reserve = max(20, maxHeartRate - restingHeartRate)
         var level = startLevel
         var points: [Point] = [Point(date: wakeTime, level: level, delta: 0)]
+        var observed: TimeInterval = 0
+        var lastObservedAt: Date?
 
-        for sample in hourlyHeartRate.sorted(by: { $0.date < $1.date }) where sample.date >= wakeTime {
-            // Heart-rate reserve for this hour: 0 at rest, 1 at max.
+        for sample in hourlyHeartRate.sorted(by: { $0.date < $1.date }) {
+            guard sample.bpm.isFinite, sample.bpm > 0 else { continue }
+            let start = max(sample.date, wakeTime)
+            let end = min(sample.date.addingTimeInterval(bucket), max(now, wakeTime))
+            let covered = end.timeIntervalSince(start)
+            guard covered > 0 else { continue }
+
+            // Heart-rate reserve for this bucket: 0 at rest, 1 at max.
             let intensity = max(0, (sample.bpm - restingHeartRate) / reserve)
 
-            let delta: Double
+            let hourly: Double
             if intensity < 0.08 {
                 // At or near resting while awake — genuine recovery. Charging
                 // is capped low because waking rest never refills like sleep.
-                delta = 2.5 * (1 - intensity / 0.08)
+                hourly = 2.5 * (1 - intensity / 0.08)
             } else {
                 // Superlinear drain: an hour at threshold should cost far more
                 // than two easy hours, or the model would reward grinding.
-                delta = -(pow(intensity, 1.6) * 34)
+                hourly = -(pow(intensity, 1.6) * 34)
             }
+            let delta = hourly * covered / 3600
 
             level = min(100, max(0, level + delta))
-            points.append(Point(date: sample.date, level: level, delta: delta))
+            points.append(Point(date: end, level: level, delta: delta))
+            observed += covered
+            lastObservedAt = end
         }
 
         let levels = points.map(\.level)
@@ -214,6 +265,9 @@ struct BodyBattery: Codable, Hashable, Sendable {
             dayLow: Int((levels.min() ?? startLevel).rounded())
         )
         result.restingBaselineSource = restingBaselineSource
+        result.observedDaytimeHours = observed / 3600
+        result.elapsedDaytimeHours = elapsed
+        result.lastObservedAt = lastObservedAt
         return result
     }
 
@@ -255,7 +309,17 @@ struct BodyBattery: Codable, Hashable, Sendable {
         case .sleepingLowEstimate: "Estimated from the night's lowest heart-rate reading; daytime drain may be less reliable."
         case .unavailable: "Overnight reserve only. Daytime change needs a personal resting heart-rate baseline."
         }
-        return fromCharge ?? fromDrawdown
+        let fromCoverage: String? = {
+            guard let observed = observedDaytimeHours, let elapsed = elapsedDaytimeHours, elapsed >= 1 else {
+                return nil
+            }
+            if observed <= 0 { return "No heart rate since you woke, so this is last night's charge only." }
+            if observed / elapsed < 0.5 {
+                return "Heart rate covered \(Int(observed.rounded())) of \(Int(elapsed.rounded())) hours since waking; the gaps are not counted as rest."
+            }
+            return nil
+        }()
+        return fromCharge ?? fromDrawdown ?? fromCoverage
     }
 }
 
