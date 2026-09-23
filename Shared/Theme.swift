@@ -184,6 +184,10 @@ enum Theme {
     /// file's Settings screen, which uses opaque system-background rows and
     /// looks crisp for free) is pushing the material toward *opaque white*,
     /// which is a light tint at high alpha, not a dark one at low alpha.
+    /// Under the floating tab bar's material, so the labels sit on a
+    /// predictable ground rather than on whatever content is behind them.
+    static var tabBarWash: Color { cardTint(dark: (0.05, 0.06, 0.13, 0.72), light: (0.97, 0.97, 0.99, 0.72)) }
+
     static var cardFill: Color { cardTint(dark: (1, 1, 1, 0.05), light: (1, 1, 1, 0.65)) }
 
     /// Builds a colour whose RGB *and* alpha both depend on the trait
