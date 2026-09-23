@@ -222,7 +222,8 @@ struct DayContextBuilder {
             remMinutes: night.remMinutes,
             deepMinutes: night.deepMinutes,
             asleepMinutes: night.timeAsleepMinutes,
-            sleepDebtMinutes: night.sleepDebtMinutes ?? 0
+            sleepDebtMinutes: night.sleepDebtMinutes ?? 0,
+            coreMinutes: night.coreMinutes
         )
 
         let sleepIntelligence = SleepIntelligenceScore.compute(.init(

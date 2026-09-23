@@ -85,4 +85,33 @@ final class CognitiveEnergyCurveTests: XCTestCase {
         )
         XCTAssertEqual(short.hours.count, 12)
     }
+
+    /// A duration-only night: seven hours asleep, nothing staged. Zero REM
+    /// and zero deep are unmeasured, not observed, and must not pull the
+    /// whole curve down.
+    func testADurationOnlyNightIsNotPenalised() {
+        let wake = Date(timeIntervalSince1970: 1_700_000_000)
+        func curve(rem: Double, deep: Double, core: Double) -> CognitiveEnergyCurve {
+            CognitiveEnergyCurve.compute(
+                wakeTime: wake, hrvSDNN: nil, hrvBaseline: nil, restingHeartRate: nil,
+                minOvernightHeartRate: nil, remMinutes: rem, deepMinutes: deep,
+                asleepMinutes: 420, sleepDebtMinutes: 0, coreMinutes: core
+            )
+        }
+        let unstaged = curve(rem: 0, deep: 0, core: 0)
+        let neutral = CognitiveEnergyCurve.compute(
+            wakeTime: wake, hrvSDNN: nil, hrvBaseline: nil, restingHeartRate: nil,
+            minOvernightHeartRate: nil, remMinutes: 0, deepMinutes: 0,
+            asleepMinutes: 0, sleepDebtMinutes: 0
+        )
+        XCTAssertTrue(unstaged.missing.contains("sleep stages"))
+        XCTAssertEqual(unstaged.hours.map(\.level), neutral.hours.map(\.level),
+                       "an unstaged night reads exactly like no stage data")
+
+        // A partly staged night (half the time classified) is not enough
+        // coverage to judge the mix either.
+        XCTAssertTrue(curve(rem: 40, deep: 30, core: 140).missing.contains("sleep stages"))
+        // A fully staged night is.
+        XCTAssertFalse(curve(rem: 90, deep: 70, core: 260).missing.contains("sleep stages"))
+    }
 }

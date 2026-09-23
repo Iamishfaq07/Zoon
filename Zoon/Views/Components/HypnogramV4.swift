@@ -157,9 +157,9 @@ struct HypnogramV4: View {
                     .font(Theme.supportingValue)
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                Text(HypnogramV4.normalized(segment.stage).displayName)
+                Text(segment.stage.chartLabel)
                     .font(Theme.label(14, weight: .semibold))
-                    .foregroundStyle(Theme.Stage.color(for: HypnogramV4.normalized(segment.stage)))
+                    .foregroundStyle(Theme.Stage.color(for: segment.stage))
                 if let hr = nearestHeartRate(to: time) {
                     metric("HR", "\(Int(hr.rounded())) bpm", tint: Theme.Metric.heart)
                 }
@@ -584,18 +584,16 @@ struct HypnogramV4: View {
             .min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }
     }
 
-    /// Sources without staging write `unspecified`; shown as Core, as
-    /// `HypnogramView` does.
-    static func normalized(_ stage: SleepStage) -> SleepStage {
-        stage == .unspecified ? .core : (stage == .inBed ? .awake : stage)
-    }
 
     private var accessibilitySummary: String {
         guard !night.stageSegments.isEmpty else { return "No stage detail available" }
-        var parts = SleepStage.hypnogramOrder.compactMap { stage -> String? in
+        // Unstaged sleep and in-bed time are spoken too, under their own
+        // names: the chart draws them, so the summary cannot leave them out
+        // or fold them into a stage.
+        var parts = (SleepStage.hypnogramOrder + [.unspecified, .inBed]).compactMap { stage -> String? in
             let minutes = night.stageSegments.minutes(of: stage)
             guard minutes > 0 else { return nil }
-            return "\(stage.displayName) \(SleepNightFeatures.formatMinutes(minutes))"
+            return "\(stage.chartLabel) \(SleepNightFeatures.formatMinutes(minutes))"
         }
         if !awakenings.isEmpty {
             parts.append("\(awakenings.count) awakening\(awakenings.count == 1 ? "" : "s") after falling asleep")

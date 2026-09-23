@@ -116,7 +116,7 @@ struct HypnogramView: View {
                     let total = span.duration
 
                     func rect(for segment: StageSegment) -> CGRect? {
-                        guard let rowIndex = rows.firstIndex(of: normalized(segment.stage)) else { return nil }
+                        guard let rowIndex = rows.firstIndex(of: segment.stage.hypnogramRow) else { return nil }
                         let x = (segment.start.timeIntervalSince(span.start) / total) * size.width
                         let width = max(1.5, (segment.duration / total) * size.width)
                         let y = CGFloat(rowIndex) * rowHeight + (rowHeight - blockHeight) / 2
@@ -140,7 +140,9 @@ struct HypnogramView: View {
 
                     for segment in ordered {
                         guard let frame = rect(for: segment) else { continue }
-                        let color = Theme.Stage.color(for: normalized(segment.stage))
+                        // The stage's own colour: unstaged sleep is neutral,
+                        // not Core's, and in-bed time is not Awake's.
+                        let color = Theme.Stage.color(for: segment.stage)
                         let shape = Path(roundedRect: frame, cornerRadius: min(4, frame.height / 2))
 
                         context.fill(shape, with: .linearGradient(
@@ -236,17 +238,12 @@ struct HypnogramView: View {
         .padding(.leading, 42)
     }
 
-    /// Sources without staging write `unspecified`; render it on the Core row
-    /// so the chart still has a shape rather than an empty band.
-    private func normalized(_ stage: SleepStage) -> SleepStage {
-        stage == .unspecified ? .core : (stage == .inBed ? .awake : stage)
-    }
 
     private func badgeLines(for segment: StageSegment) -> [(label: String, value: String, tint: Color)] {
         var lines: [(label: String, value: String, tint: Color)] = [(
             "Stage",
-            normalized(segment.stage).displayName,
-            Theme.Stage.color(for: normalized(segment.stage))
+            segment.stage.chartLabel,
+            Theme.Stage.color(for: segment.stage)
         )]
         if let nearestHR = nearestHeartRate(to: segment.start) {
             lines.append(("Heart rate", "\(Int(nearestHR.rounded())) bpm", Theme.Metric.heart))
@@ -290,7 +287,9 @@ struct StageProportionBar: View {
         [
             (.deep, features.deepMinutes),
             (.rem, features.remMinutes),
-            (.core, features.coreMinutes + features.unspecifiedAsleepMinutes),
+            (.core, features.coreMinutes),
+            // Its own neutral part, never added to Core: nothing classified it.
+            (.unspecified, features.unspecifiedAsleepMinutes),
             (.awake, features.awakeMinutes)
         ].filter { $0.minutes > 0 }
     }
@@ -337,7 +336,7 @@ struct StageProportionBar: View {
         return parts
             .map { part in
                 let percent = Int((part.minutes / total * 100).rounded())
-                return "\(part.stage.displayName) \(percent) percent"
+                return "\(part.stage.chartLabel) \(percent) percent"
             }
             .joined(separator: ", ")
     }
@@ -347,13 +346,29 @@ struct StageProportionBar: View {
 struct StageLegend: View {
     let features: SleepNightFeatures
 
+    /// Reference ranges only where the stages were measured. On a night a
+    /// schedule or a phone "staged", or with most of it unstaged, "Deep
+    /// 13–23%" beside a figure nothing measured invites a comparison the data
+    /// cannot support.
+    private var showsReferences: Bool {
+        let asleep = features.coreMinutes + features.deepMinutes + features.remMinutes
+            + features.unspecifiedAsleepMinutes
+        guard features.stageTrust.supportsStageFigures, asleep > 0 else { return false }
+        return features.unspecifiedAsleepMinutes / asleep < 0.25
+    }
+
     private var rows: [(stage: SleepStage, minutes: Double, reference: String)] {
-        [
-            (.deep, features.deepMinutes, "13–23%"),
-            (.rem, features.remMinutes, "20–25%"),
-            (.core, features.coreMinutes + features.unspecifiedAsleepMinutes, "45–60%"),
-            (.awake, features.awakeMinutes, "—")
+        let shown = showsReferences
+        var result: [(stage: SleepStage, minutes: Double, reference: String)] = [
+            (.deep, features.deepMinutes, shown ? "13–23%" : "—"),
+            (.rem, features.remMinutes, shown ? "20–25%" : "—"),
+            (.core, features.coreMinutes, shown ? "45–60%" : "—")
         ]
+        if features.unspecifiedAsleepMinutes > 0 {
+            result.append((.unspecified, features.unspecifiedAsleepMinutes, "—"))
+        }
+        result.append((.awake, features.awakeMinutes, "—"))
+        return result
     }
 
     var body: some View {
@@ -364,7 +379,7 @@ struct StageLegend: View {
                         .fill(Theme.Stage.color(for: row.stage))
                         .frame(width: 8, height: 8)
 
-                    Text(row.stage.displayName)
+                    Text(row.stage.chartLabel)
                         .font(Theme.label(13, weight: .medium))
 
                     Spacer()

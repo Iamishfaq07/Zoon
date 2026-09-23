@@ -40,6 +40,31 @@ enum SleepStage: String, Codable, Hashable, CaseIterable, Sendable {
         }
     }
 
+    /// What a chart calls a block of this stage.
+    ///
+    /// Distinct from `displayName` for the two values that are not a
+    /// measured stage. Unstaged sleep used to be drawn, coloured and read out
+    /// as Core -- a stage nothing classified -- and in-bed time as Awake,
+    /// which nothing observed either. Both keep their row so the chart still
+    /// has a shape, and say what they are.
+    var chartLabel: String {
+        switch self {
+        case .unspecified: "Asleep, stage not recorded"
+        case .inBed: "In bed"
+        default: displayName
+        }
+    }
+
+    /// The hypnogram row a block of this stage sits on. Placement only:
+    /// colour and label come from the stage itself.
+    var hypnogramRow: SleepStage {
+        switch self {
+        case .unspecified: .core
+        case .inBed: .awake
+        default: self
+        }
+    }
+
     /// Vertical position in a hypnogram, 0 = deepest at the bottom.
     ///
     /// The conventional ordering puts Awake at the top and Deep at the bottom,
