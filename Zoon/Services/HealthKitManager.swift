@@ -153,6 +153,28 @@ final class HealthKitManager {
     /// underlying record (spotting vs flow) are not distinguished here — cycle
     /// *day*, which is what the correlation needs, only requires knowing which
     /// days a period started.
+    /// Every app or device that has written sleep analysis, winning or not.
+    ///
+    /// The source pickers used to list only sources that had *won* a stored
+    /// night, so a writer that always lost the overlap -- a second tracker
+    /// that recorded every night but never beat the Watch -- could never be
+    /// chosen, which is exactly the case a preferred-source setting is for.
+    /// `HKSourceQuery` returns the writers of a sample type directly.
+    func sleepSources() async throws -> [(name: String, bundleIdentifier: String)] {
+        let type = HKCategoryType(.sleepAnalysis)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSourceQuery(sampleType: type, samplePredicate: nil) { _, sources, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    let found = (sources ?? []).map { (name: $0.name, bundleIdentifier: $0.bundleIdentifier) }
+                    continuation.resume(returning: found.sorted { $0.name < $1.name })
+                }
+            }
+            store.execute(query)
+        }
+    }
+
     func menstrualFlowSamples(in window: DateInterval) async throws -> [HKCategorySample] {
         let type = HKCategoryType(.menstrualFlow)
         let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end)

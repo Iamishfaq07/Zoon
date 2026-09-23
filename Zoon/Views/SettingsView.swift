@@ -47,6 +47,10 @@ struct SettingsView: View {
             dataSection
         }
         .scrollContentBackground(.hidden)
+        // Every writer HealthKit knows, so the source section can offer one
+        // that never won a night -- and can appear at all when only such a
+        // writer makes a second choice.
+        .task { await coordinator.refreshSleepWriters() }
         .nightBackground()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -597,22 +601,12 @@ struct SettingsView: View {
                 Picker("Preferred source", selection: Binding(
                     get: { preferences.preferredSleepSourceName ?? "" },
                     set: { newValue in
-                        preferences.preferredSleepSourceName = newValue.isEmpty ? nil : newValue
-                        // Written alongside the name -- see
-                        // `SleepSessionBuilder.preferredSourceBundleIdentifier`'s
-                        // doc comment for why matching by this instead of
-                        // the name alone is worth doing. `nil` for a source
-                        // whose stored nights all predate the column; the
-                        // name-based fallback still makes the choice work
-                        // until a re-sync backfills it.
-                        preferences.preferredSleepSourceBundleIdentifier =
-                            sources.first { $0.name == newValue }?.bundleIdentifier
-                        // The picked source only takes effect for nights
-                        // processed from here on -- force a full re-sync so
-                        // it also applies to what's already stored, the same
-                        // way restoring a backup does.
-                        AnchorStore.clear()
-                        Task { await coordinator.refresh() }
+                        // One path for both pickers -- see
+                        // `SleepDataCoordinator.selectSleepSource`. It stores
+                        // the bundle identifier alongside the name and forces
+                        // a full re-sync so the choice applies to stored
+                        // history, not only nights processed from here on.
+                        Task { await coordinator.selectSleepSource(named: newValue) }
                     }
                 )) {
                     Text("Automatic").tag("")

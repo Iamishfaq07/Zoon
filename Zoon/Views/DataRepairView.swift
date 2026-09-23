@@ -18,9 +18,7 @@ struct DataRepairView: View {
                 Picker("Preferred sleep source", selection: Binding(
                     get: { preferences.preferredSleepSourceName ?? "" },
                     set: { value in
-                        preferences.preferredSleepSourceName = value.isEmpty ? nil : value
-                        preferences.preferredSleepSourceBundleIdentifier = nil
-                        Task { await coordinator.refresh() }
+                        Task { await coordinator.selectSleepSource(named: value) }
                     })) {
                     Text("Automatic").tag("")
                     ForEach(coordinator.knownSleepSources(), id: \.name) { Text($0.name).tag($0.name) }
@@ -58,6 +56,8 @@ struct DataRepairView: View {
             }
         }
         .navigationTitle("Repair sleep data")
+        // Every writer HealthKit knows, including ones that never won a night.
+        .task { await coordinator.refreshSleepWriters() }
         .scrollContentBackground(.hidden).nightBackground()
         .sheet(item: Binding(get: { candidate.map(RepairPreview.init) }, set: { candidate = $0?.night })) { preview in
             NavigationStack {

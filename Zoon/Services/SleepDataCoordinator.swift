@@ -1862,7 +1862,38 @@ final class SleepDataCoordinator {
     /// Name paired with the stable bundle identifier to actually store as
     /// the preference -- see `SleepHistoryStore.knownSleepSources()`.
     func knownSleepSources() -> [(name: String, bundleIdentifier: String?)] {
-        store.knownSleepSources()
+        SleepSourceList.merged(stored: store.knownSleepSources(), writers: sleepWriters)
+    }
+
+    /// Every writer HealthKit reports for sleep, refreshed by
+    /// `refreshSleepWriters()`. Empty until then, and in demo mode.
+    private(set) var sleepWriters: [(name: String, bundleIdentifier: String)] = []
+
+    /// Asks HealthKit which apps and devices have written sleep. Failure
+    /// leaves the list as it was: the stored winners still populate the
+    /// picker, which is what it showed before this existed.
+    func refreshSleepWriters() async {
+        guard DataEnvironment.current.isLive,
+              let writers = try? await healthKit.sleepSources() else { return }
+        sleepWriters = writers
+    }
+
+    /// The one way a preferred sleep source is chosen, from either screen.
+    ///
+    /// Settings and Data Repair each had their own picker. Settings stored
+    /// the bundle identifier and cleared the sync anchor so the choice
+    /// re-arbitrated stored history; Data Repair cleared the identifier and
+    /// only refreshed from the anchor, so the same choice made there applied
+    /// to new nights alone. Both now call this.
+    func selectSleepSource(named name: String?) async {
+        let chosen = name.flatMap { $0.isEmpty ? nil : $0 }
+        preferences.preferredSleepSourceName = chosen
+        preferences.preferredSleepSourceBundleIdentifier = chosen.flatMap { chosen in
+            knownSleepSources().first { $0.name == chosen }?.bundleIdentifier
+        }
+        // Re-arbitrate what is already stored, not only new nights.
+        AnchorStore.clear()
+        await refresh()
     }
 
     func setEngine(_ choice: UserPreferences.EngineChoice) {
