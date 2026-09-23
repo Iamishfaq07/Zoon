@@ -586,7 +586,11 @@ struct TodayView: View {
         return [
             .init(kind: .windDown, time: windDown, note: nil),
             .init(kind: .bed, time: bed, note: bedNote),
-            .init(kind: .wake, time: wake, note: nil)
+            // Said where the numbers are. The card shows the target above
+            // these times, and a window shorter than the target with nothing
+            // beside it reads as a plan that fits.
+            .init(kind: .wake, time: wake, note: episode.isFeasible ? nil
+                  : "This window leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) of the target for another night.")
         ]
     }
 
