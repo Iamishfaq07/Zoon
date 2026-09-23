@@ -10,7 +10,11 @@ contains the change. Nothing below was tested on a physical device.
 
 **CI status:** every item below, including all the tests named in this
 file, passed the full `build.yml` run (iOS build + `ZoonTests` + `ZoonUITests`,
-watchOS build) on **`42c0656`**, run 35837024213.
+watchOS build) on **`42c0656`**, run 35837024213, and again with the Phase 3
+additions on **`1f3ec8c`**, run 35841299860. Screenshots regenerated from that
+build (commit `9441ba5`) show the Tonight card and the Tonight section giving
+the same countdown ("Bed in 13h 45m"); the build before the fix showed 15h 38m
+and 14h 26m on the same screen.
 
 Status key: **fixed**: changed, with tests · **already correct**: the defect
 isn't in this revision, with the evidence · **partial**: part done, the rest
