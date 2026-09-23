@@ -77,6 +77,20 @@ listed · **open**: not started · **device gate**: needs real hardware.
 | Shift/travel episode ownership | partial | Episode handles day sleep and zones; Z17 fixes after‑midnight logs. |
 | Watch wake and quick controls | partial | The Watch shows tonight's wake/alarm state from the phone's last reconciliation (`SleepSnapshot.wakeStatusLine`), and Watch quick logs attach to the right night (Z17). Not done: small‑watch layout check and handoff reliability need hardware; no live‑stage waking is claimed or built. |
 
+## Phase 4 — design, motion, graphics (status against the brief)
+
+| Item | Status | What exists / what does not |
+|---|---|---|
+| Today | partial | Moment‑aware Today (morning/day/evening layouts) with one Tonight section driven by the resolved episode; the data line gives last Health sync, last night's source and stage coverage, and one tap sets tonight's times. A first night without history shows `FirstNightCard` rather than a pretend score. Not done: a single "Explore why" entry, and a review of which secondary cards could move behind disclosure. |
+| Sleep | mostly done | Full‑width chart with half‑night zoom, awakening zoom and pinch zoom; unstaged time hatched; in‑bed distinct; legend in words with non‑colour coding; spoken summary; overnight HR clipped to the night (Z08–Z10); stage labels in text‑safe colours. Open: the audit's "clipped" flag on the stage names (see Z21). |
+| Tonight | mostly done | Bed / wind‑down / wake from one episode crossing midnight, a missed bedtime stays overdue until the wake (Z02), status lines say what is actually scheduled as a notification or an alarm (Z03), and tonight's times are editable in place. Not done: a *preview* of what will be scheduled before saving an edit. |
+| Patterns and Lab | mostly done | Paired plots with points, usable N, interval, "association, not proof of cause", "No Clear Link", and the list of nights that counted; experiments show measured‑vs‑logged nights, adherence and inconclusive outcomes. No new 0–100 score was added. |
+| Watch / widgets | partial | Watch shows wake/alarm state from the same reconciliation; no‑data states exist. Not verified: 40 mm layout, complication and widget refresh after schedule changes — needs hardware. |
+| Motion | partial | New motion in this pass goes through `Motion.respecting(reduceMotion, …)` (zoom, tab selection, chart reveal); the reveal is once per night and never repeats on scroll; scrubbing follows the finger with haptics at stage boundaries. Not done: a timing audit of every existing animation against the 180–650 ms ranges, and a Reduce Transparency pass (materials fall back to opaque by the system, not checked on device). |
+| Graphics and icon | not started | Deliberately: the brief says to inspect the current moon assets and icons first, and their source/licence is unrecorded (`docs/ASSET-LEDGER.md`). No asset was replaced or downloaded. |
+
+**Wording audit (release gate).** In‑app copy passes through `DiagnosticLanguageGuard` (no apnea/insomnia/diagnosis wording); the apnea‑event type is read but its name is never shown. The Health usage string was corrected in this pass: it listed six kinds of data while the app also reads activity and Apple's breathing‑disturbance data, and it said the data "never leaves" the device although a summary syncs to the person's Watch and a backup can be exported. It now names both. Microphone and speech strings match the code (on‑device recognition is required, not preferred). No new permission was added in this pass.
+
 ## Persistent stores (Z05 inventory)
 
 | Store | In backup | Notes |

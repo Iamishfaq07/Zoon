@@ -767,9 +767,14 @@ emit("PBXProject",
      f'\t\t}};')
 
 # --- Build configurations -------------------------------------------------
-HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen "
-               "and wrist temperature to explain how you slept. Everything is processed "
-               "on this device and never leaves it.")
+# Names every kind of data `HealthKitManager` reads (activity and Apple's
+# breathing-disturbance data were missing), and says where it goes: a
+# summary syncs to the person's own Apple Watch, and a backup leaves only
+# when they export one. "Never leaves this device" was not true of either.
+HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist "
+               "temperature and daily activity to explain how you slept and recovered. "
+               "It is processed on your iPhone and Apple Watch and is never sent to Zoon "
+               "or anyone else; it leaves only in a backup you choose to export.")
 # Apple requires an update-purpose string when the app invokes HealthKit's
 # authorization API, even when the share set is empty. Zoon remains strictly
 # read-only; this text makes that boundary explicit to users and App Review.

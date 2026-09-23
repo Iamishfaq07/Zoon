@@ -4539,7 +4539,7 @@
 				CODE_SIGN_ENTITLEMENTS = Zoon/Zoon.entitlements;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist temperature and daily activity to explain how you slept and recovered. It is processed on your iPhone and Apple Watch and is never sent to Zoon or anyone else; it leaves only in a backup you choose to export.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only when you start Snore Check or Voice Journal. Snore Check processes short audio bursts and Voice Journal transcribes speech on this device; audio is never saved or sent anywhere.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
@@ -4750,7 +4750,7 @@
 				CODE_SIGN_ENTITLEMENTS = Zoon/Zoon.entitlements;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, respiratory rate, blood oxygen and wrist temperature to explain how you slept. Everything is processed on this device and never leaves it.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist temperature and daily activity to explain how you slept and recovered. It is processed on your iPhone and Apple Watch and is never sent to Zoon or anyone else; it leaves only in a backup you choose to export.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only when you start Snore Check or Voice Journal. Snore Check processes short audio bursts and Voice Journal transcribes speech on this device; audio is never saved or sent anywhere.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
