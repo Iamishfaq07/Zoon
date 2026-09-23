@@ -18,7 +18,7 @@ and 14h 26m on the same screen. Latest full green run, covering the accessibilit
 fixes, pinch zoom, the Tonight data line, and the "which nights counted" lists:
 **`242f72d`**, run 35908383051. One intermediate run (35905062519) failed a
 UI wait on a slow runner and passed on re-run with no code change; the waits
-were raised from 5 s to 15 s. Then the Health usage string and the schedule preview: green on **`bdf03db`**, run 35912080966 (one compile error on the way, a main‑actor initializer used as a default argument, fixed in that commit).
+were raised from 5 s to 15 s. Then the Health usage string and the schedule preview: green on **`bdf03db`**, run 35912080966 (one compile error on the way, a main‑actor initializer used as a default argument, fixed in that commit). Then the motion timings, Reduce Transparency, and the schedule‑sync fixes (widgets/Watch after plan edits and Settings switches, Sleep Focus reload, time‑zone change, nap rebuild): green on **`79c54a1`**, run 35923234133 (one type‑check timeout on the way, from RootView's modifier chain, fixed by moving the observers into `ScheduleSyncTriggers`).
 
 Status key: **fixed**: changed, with tests · **already correct**: the defect
 isn't in this revision, with the evidence · **partial**: part done, the rest
