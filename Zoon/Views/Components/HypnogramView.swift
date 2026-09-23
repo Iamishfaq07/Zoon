@@ -70,7 +70,7 @@ struct HypnogramView: View {
             if showsAxis && selectedFraction == nil {
                 Text("Drag to see stage and time")
                     .font(Theme.text(9))
-                    .foregroundStyle(.quaternary)
+                    .foregroundStyle(Theme.inkTertiary)
                     .padding(.leading, 42)
             }
         }
@@ -99,7 +99,7 @@ struct HypnogramView: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.trailing)
                     .minimumScaleFactor(0.8)
-                    .foregroundStyle(Theme.Stage.color(for: stage))
+                    .foregroundStyle(Theme.Stage.textColor(for: stage))
                     .frame(height: height / CGFloat(rows.count), alignment: .center)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }

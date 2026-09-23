@@ -39,7 +39,7 @@ struct DataQualityView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("What Zoon has actually seen")
-                .font(Theme.numeral(20))
+                .font(Theme.heading(20))
             Text("""
                 Coverage over the last \(quality.windowDays) days for every metric a score on this app \
                 depends on. A gap here is the real reason a score's confidence is lower than usual -- \

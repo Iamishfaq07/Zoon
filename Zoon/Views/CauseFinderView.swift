@@ -125,7 +125,7 @@ struct CauseFinderView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("What affects your sleep?")
-                .font(Theme.numeral(20))
+                .font(Theme.heading(20))
             Text("Patterns found in your own sleep history -- an association, not proof of cause.")
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)

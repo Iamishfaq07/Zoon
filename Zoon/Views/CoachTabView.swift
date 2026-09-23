@@ -336,7 +336,7 @@ struct CoachTabView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Ask Zoon")
-                .font(Theme.numeral(28))
+                .font(Theme.heading(28))
             // Was "Your sleep intelligence assistant", which is a tagline:
             // true of the screen before any data existed and after all of it
             // was deleted. `capabilityCard` states the evidence base

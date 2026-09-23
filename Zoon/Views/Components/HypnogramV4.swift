@@ -167,7 +167,7 @@ struct HypnogramV4: View {
                     .contentTransition(.numericText())
                 Text(segment.stage.chartLabel)
                     .font(Theme.label(14, weight: .semibold))
-                    .foregroundStyle(Theme.Stage.color(for: segment.stage))
+                    .foregroundStyle(Theme.Stage.textColor(for: segment.stage))
                 if let hr = nearestHeartRate(to: time) {
                     metric("HR", "\(Int(hr.rounded())) bpm", tint: Theme.Metric.heart)
                 }

@@ -456,6 +456,23 @@ enum Theme {
             case .inBed: Color.primary.opacity(0.18)
             }
         }
+
+        /// A stage's colour for text, not for a bar.
+        ///
+        /// The bar colours are chosen to read as fills; as 9-14pt labels
+        /// several of them fail contrast -- Deep is about 2.3:1 on the dark
+        /// ground, and the accessibility audit flagged it on the Sleep tab.
+        /// Same hue, lifted in Dark and deepened in Light.
+        static func textColor(for stage: SleepStage) -> Color {
+            switch stage {
+            case .deep: Theme.cardTint(dark: (0.66, 0.62, 1.00, 1), light: (0.24, 0.18, 0.66, 1))
+            case .rem: Theme.cardTint(dark: (0.76, 0.66, 1.00, 1), light: (0.40, 0.24, 0.80, 1))
+            case .core: Theme.cardTint(dark: (0.56, 0.78, 1.00, 1), light: (0.10, 0.38, 0.76, 1))
+            case .awake: Theme.cardTint(dark: (1.00, 0.72, 0.42, 1), light: (0.66, 0.34, 0.02, 1))
+            case .unspecified: Theme.cardTint(dark: (0.56, 0.86, 0.92, 1), light: (0.08, 0.44, 0.50, 1))
+            case .inBed: Theme.inkSecondary
+            }
+        }
     }
 
     // MARK: - Scales
@@ -547,6 +564,16 @@ enum Theme {
         case ..<30: .title2
         default: .title
         }
+    }
+
+    /// A screen or state heading in the numerals' rounded bold face, but
+    /// scaling with Dynamic Type. Words are not numerals: "Ask Zoon" set in
+    /// `numeral(28)` stayed 28pt at every text size, and Apple's
+    /// accessibility audit flagged it as not supporting Dynamic Type.
+    /// 26pt and up map to `.title` (28pt at the default size), anything
+    /// smaller to `.title2` (22pt).
+    static func heading(_ size: CGFloat) -> Font {
+        .system(size >= 26 ? .title : .title2, design: .rounded, weight: .bold)
     }
 
     /// Big display numerals — a recovery percentage, a night's duration.
@@ -1049,9 +1076,14 @@ struct StatusPill: View {
             if let systemImage {
                 Image(systemName: systemImage)
                     .font(Theme.text(10, weight: .bold))
+                    .foregroundStyle(tint)
             }
             Text(text)
                 .font(Theme.label(11))
+                // The icon carries the tint; the words are ink. Tinted text on its
+                // own tinted glass ("Sample data", indigo on indigo) failed the
+                // accessibility audit's contrast check.
+                .foregroundStyle(Theme.ink)
                 // Without this the pill stacked its text a letter per line at
                 // accessibility sizes -- "Sample" became a column of six
                 // letters inside a capsule six lines tall. The row around it
@@ -1062,7 +1094,6 @@ struct StatusPill: View {
         .padding(.horizontal, 9)
         .padding(.vertical, 5)
         .zoonGlassPill(tint: tint)
-        .foregroundStyle(tint)
     }
 }
 
