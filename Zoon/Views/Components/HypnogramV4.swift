@@ -240,12 +240,12 @@ struct HypnogramV4: View {
                     soundEvents: overlays.contains(.sound) ? soundEvents : []
                 )
                 .allowsHitTesting(false)
-                .mask(alignment: .leading) {
-                    // Left → right reveal, once.
-                    GeometryReader { geo in
-                        Rectangle().frame(width: geo.size.width * progress)
-                    }
-                }
+                // Left → right reveal, once, across the plot only: the stage
+                // names down the left (42pt column + 8pt gap) are there from
+                // the start. The mask is removed once the reveal completes;
+                // left on, the accessibility audit reported those names as
+                // clipped.
+                .modifier(RevealMask(progress: progress, leading: 50))
 
                 if let scrubFraction {
                     ScrubCursor(fraction: scrubFraction)
@@ -662,4 +662,32 @@ struct HypnogramV4: View {
     }
     .nightBackground()
     .preferredColorScheme(.dark)
+}
+
+/// Masks everything right of `leading` to `progress` of the remaining
+/// width, and applies no mask at all once `progress` reaches 1.
+///
+/// `Animatable` so the body sees each interpolated value: `drawOnce` sets
+/// `progress = 1` inside `withAnimation`, and a plain modifier would read
+/// the final 1 at once and skip the reveal.
+private struct RevealMask: ViewModifier, Animatable {
+    var progress: Double
+    let leading: CGFloat
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        if progress >= 1 {
+            content
+        } else {
+            content.mask(alignment: .leading) {
+                GeometryReader { geo in
+                    Rectangle().frame(width: leading + max(0, geo.size.width - leading) * CGFloat(progress))
+                }
+            }
+        }
+    }
 }
