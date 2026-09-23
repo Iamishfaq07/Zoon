@@ -199,7 +199,9 @@ struct NapView: View {
 
                 Button {
                     naps.finish()
-                    coordinator.republishGlanceSurfaces()
+                    // Finishing adds today's nap credit to tonight's plan,
+                    // which a republish of the old context would not show.
+                    Task { await coordinator.napRecorded() }
                     Haptics.success()
                 } label: {
                     Label("I'm awake", systemImage: "sun.max.fill")

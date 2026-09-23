@@ -541,6 +541,9 @@ final class SleepDataCoordinator {
         watchLink.onQuickAction = { [weak self] event in
             guard let self, !isErasing, preferences.hasCompletedOnboarding else { return }
             Self.apply(event, journal: journal, naps: naps, behaviors: behaviors)
+            if case .nap = event.action {
+                Task { await self.napRecorded() }
+            }
         }
 
         // Screenshot/demo runs take no permission sheet, run no queries, and
@@ -1073,6 +1076,22 @@ final class SleepDataCoordinator {
     func republishGlanceSurfaces() {
         guard let context = state.context else { return }
         publishSnapshot(context, goal: preferences.sleepGoalMinutes)
+    }
+
+    /// A nap was recorded -- finished on the phone or logged from the Watch.
+    ///
+    /// Today's nap credit feeds tonight's need, and that is fixed when the
+    /// day's context is built, so republishing the existing context left
+    /// tonight's plan (Today, the widgets, the Watch) without the nap until
+    /// the next Health refresh. This rebuilds from stored data -- no Health
+    /// query -- and publishes. Sample data has nothing to rebuild from, so
+    /// there it only republishes.
+    func napRecorded() async {
+        guard !state.isMock, !DataEnvironment.current.isSample else {
+            republishGlanceSurfaces()
+            return
+        }
+        await publishLatest()
     }
 
     /// Nap credit for the night ending `night`, combining manually-logged
