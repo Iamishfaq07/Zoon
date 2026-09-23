@@ -8,6 +8,10 @@ test result here comes from the repository's GitHub Actions `build.yml` run
 runs no tests). "Verified" means that workflow passed on a commit that
 contains the change. Nothing below was tested on a physical device.
 
+**CI status:** every item below, including all the tests named in this
+file, passed the full `build.yml` run (iOS build + `ZoonTests` + `ZoonUITests`,
+watchOS build) on **`42c0656`**, run 35837024213.
+
 Status key: **fixed**: changed, with tests · **already correct**: the defect
 isn't in this revision, with the evidence · **partial**: part done, the rest
 listed · **open**: not started · **device gate**: needs real hardware.
