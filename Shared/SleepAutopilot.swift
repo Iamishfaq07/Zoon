@@ -147,26 +147,6 @@ enum SleepAutopilot {
             return "\(SleepNightFeatures.formatMinutes(abs(shiftMinutes))) \(direction) than usual"
         }
 
-        /// The same plan in the room a watch actually has.
-        ///
-        /// `sentence` above runs to about eighty characters once a debt
-        /// clause joins it. The watch renders it at ten points on a screen
-        /// forty millimetres across, and the capture shows the result: "Aim
-        /// for 20m earlier than…", truncated before the word that says what
-        /// it is earlier *than*. A sentence cut at the ellipsis has lost the
-        /// thing it was for.
-        ///
-        /// So the watch gets the fact and not the reasoning: direction and
-        /// magnitude, which is the whole of what somebody acts on at
-        /// bedtime. The debt clause is detail, and detail belongs on the
-        /// phone -- the same split `DaytimeOpening.Length` makes for the same
-        /// reason. Watch is not a tiny iPhone.
-        var shortSentence: String {
-            guard !isHolding else { return "Your usual night" }
-            let direction = shiftMinutes < 0 ? "earlier" : "later"
-            return "\(SleepNightFeatures.formatMinutes(abs(shiftMinutes))) \(direction) than usual"
-        }
-
         /// Travels with every plan. Arranging someone's own numbers into a
         /// schedule is not evidence that following it helps them.
         var caveat: String {
