@@ -241,9 +241,9 @@ struct SensorTruthView: View {
     /// said they felt. Shown only once there are enough paired mornings to
     /// say anything; below that it says how many more are needed.
     private var needModelSection: some View {
-        let summaries = coordinator.needModelEvaluation()
-        let overall = summaries.first
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            let summaries = coordinator.needModelEvaluation()
+            let overall = summaries.first
             Text("Sleep debt against how rested you felt")
                 .font(Theme.label(15, weight: .semibold))
             if let overall, let rho = overall.rankCorrelation {
