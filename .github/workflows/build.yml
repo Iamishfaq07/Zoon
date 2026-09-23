@@ -421,7 +421,7 @@ jobs:
           echo "Accessibility audit issues: ${COUNT:-0}"
           grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
           echo "--- details ---"
-          grep "A11Y-DETAIL" uitest.log 2>/dev/null | grep -E "no description|too small|Contrast|clipped" | sort -u | head -120 || true
+          grep "A11Y-DETAIL" uitest.log 2>/dev/null | grep -v "Dynamic Type" | sort -u | head -160 || true
           {
             echo "### Accessibility audit"
             echo ""

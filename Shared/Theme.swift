@@ -289,12 +289,16 @@ enum Theme {
         cardTint(dark: (1, 1, 1, 1), light: (0.09, 0.09, 0.16, 1))
     }
 
+    /// Raised after Apple's accessibility audit (`ZoonUITests
+    /// .testAccessibilityAudit`) failed contrast on most caption-sized text
+    /// in these two inks, on all four tabs: the old 0.74 and 0.56 read well on
+    /// the bare navy but not over the lighter glass cards most text sits on.
     static var inkSecondary: Color {
-        cardTint(dark: (1, 1, 1, 0.74), light: (0.09, 0.09, 0.16, 0.68))
+        cardTint(dark: (1, 1, 1, 0.84), light: (0.09, 0.09, 0.16, 0.80))
     }
 
     static var inkTertiary: Color {
-        cardTint(dark: (1, 1, 1, 0.56), light: (0.09, 0.09, 0.16, 0.52))
+        cardTint(dark: (1, 1, 1, 0.70), light: (0.09, 0.09, 0.16, 0.68))
     }
 
     /// A glass card's specular highlight -- the soft sheen a curved glass
