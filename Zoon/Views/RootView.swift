@@ -142,6 +142,17 @@ struct RootView: View {
                 coordinator.republishGlanceSurfaces()
             }
         }
+        // A nap recorded, closed or removed -- here, from the Watch, or by
+        // the auto-close on activation -- changes tonight's need and so the
+        // bedtime. Rebuild first, then re-queue against the rebuilt plan;
+        // before, the reminders kept the pre-nap bedtime until the next
+        // foreground.
+        .onChange(of: naps.naps.count) { _, _ in
+            Task {
+                await coordinator.napRecorded()
+                await refreshReminders()
+            }
+        }
         .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
         // These two also republish: the Watch's wake line says whether an
