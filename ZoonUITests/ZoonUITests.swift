@@ -38,4 +38,33 @@ final class ZoonUITests: XCTestCase {
         app.buttons["zoon.tab.coach"].tap()
         XCTAssertTrue(app.staticTexts["Ask Zoon"].waitForExistence(timeout: 5))
     }
+
+    /// Apple's accessibility audit on the four main tabs, in demo mode.
+    ///
+    /// Reports rather than fails, for now: every issue is logged with an
+    /// `A11Y-AUDIT` prefix -- screen, audit type, and the element's label --
+    /// and CI prints the list. An audit that failed on its first run would
+    /// only say that something is wrong, not what, and the point of this pass
+    /// is the list. Once it has been worked through, the handler should
+    /// return `false` so new issues fail the build.
+    func testAccessibilityAudit() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-zoonDemo", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["zoon.tab.today"].waitForExistence(timeout: 10))
+
+        for tab in ["today", "sleep", "insights", "coach"] {
+            app.buttons["zoon.tab.\(tab)"].tap()
+            // Let the entrance animations settle; an audit of a half-faded
+            // screen reports contrast that is not there at rest.
+            _ = app.buttons["zoon.tab.\(tab)"].waitForExistence(timeout: 2)
+            sleep(2)
+            try app.performAccessibilityAudit { issue in
+                let label = issue.element?.label ?? "(no element)"
+                print("A11Y-AUDIT \(tab) | \(issue.auditType) | \(issue.compactDescription) | \(label)")
+                return true
+            }
+        }
+    }
 }
+

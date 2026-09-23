@@ -410,6 +410,25 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Report accessibility audit
+        # ZoonUITests.testAccessibilityAudit logs every issue Apple's audit
+        # finds, prefixed A11Y-AUDIT, and deliberately does not fail on them:
+        # the first job is to see what is there. Printed to the job log as
+        # well as the summary so it can be read without the artifact.
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          COUNT=$(grep -c "A11Y-AUDIT" uitest.log 2>/dev/null || true)
+          echo "Accessibility audit issues: ${COUNT:-0}"
+          grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
+          {
+            echo "### Accessibility audit"
+            echo ""
+            echo "${COUNT:-0} issue line(s)."
+            echo '```'
+            grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify every source compiled
         # A file dropped from a target, or excluded by a #if that quietly
         # evaluated false, produces a *successful* build with the feature
