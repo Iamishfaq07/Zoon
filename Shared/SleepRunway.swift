@@ -49,6 +49,10 @@ enum SleepRunway {
         case calendar
         /// The standing morning time the person set.
         case manual
+        /// A sleep plan the person saved for this night: bed and wake both.
+        /// The same plan tonight's episode, the reminders and the alarm use,
+        /// so the runway cannot show a habit where they show the plan.
+        case plan
         /// This person's own habit for that weekday.
         case habit
         /// This person's own habit, overall — not enough same-weekday nights.
@@ -58,6 +62,7 @@ enum SleepRunway {
             switch self {
             case .calendar: "From your calendar"
             case .manual: "The time you set"
+            case .plan: "Your saved plan"
             case .habit: "Your usual for this day"
             case .overallHabit: "Your usual"
             }
@@ -65,7 +70,7 @@ enum SleepRunway {
 
         /// Whether this morning is pinned by something outside the person's
         /// control tonight. A habit can move; a meeting cannot.
-        var isFixed: Bool { self == .calendar || self == .manual }
+        var isFixed: Bool { self == .calendar || self == .manual || self == .plan }
     }
 
     struct Day: Identifiable, Hashable, Sendable {
@@ -126,6 +131,7 @@ enum SleepRunway {
         manual: ManualCommitment? = nil,
         obligationWeekdays: Set<Int> = [],
         readyBufferMinutes: Double = ZoonTomorrow.readyBufferMinutes,
+        plans: [PersonalSetup.SleepPlan] = [],
         calendar: Calendar = .current
     ) -> Plan? {
         // Every night on the horizon is planned from the baseline. Today's
@@ -171,9 +177,19 @@ enum SleepRunway {
                 )
             }
 
+            // A saved plan covering this night sets both ends of it, above
+            // everything else: the person chose these times for this night.
+            let planned = plans
+                .compactMap { $0.nextWindow(after: calendar.startOfDay(for: morning)) }
+                .filter { calendar.isDate($0.end, inSameDayAs: morning) }
+                .min { $0.start < $1.start }
+
             let wake: Date
             let source: WakeSource
-            if let commitment {
+            if let planned {
+                wake = planned.end
+                source = .plan
+            } else if let commitment {
                 wake = commitment
                 source = .calendar
                 usedCalendar = true
@@ -198,8 +214,9 @@ enum SleepRunway {
             // minutes: subtracting a 23:00 bedtime from a 07:00 wake has to
             // give eight hours, not minus sixteen.
             let bedtimeMinutes = habit.bedtime(forWeekday: weekday) ?? overallBedtime
-            guard let bedtime = Self.date(minutesFromMidnight: bedtimeMinutes, on: morning, calendar: calendar)
+            guard let habitBedtime = Self.date(minutesFromMidnight: bedtimeMinutes, on: morning, calendar: calendar)
             else { continue }
+            let bedtime = planned?.start ?? habitBedtime
 
             let opportunity = max(0, wake.timeIntervalSince(bedtime) / 60)
 

@@ -102,6 +102,47 @@ struct PersonalSetup: Codable, Equatable, Sendable {
         skippedReminderNights = keys.isEmpty ? nil : keys.sorted()
     }
 
+    /// Sets one night's bed and wake as a one-night plan, replacing any
+    /// one-night plan already covering that night. Standing weekday plans
+    /// are left alone: this is "just this night".
+    ///
+    /// - Parameter morning: the morning the night ends on. The bed falls the
+    ///   evening before, or that morning's own date when it is after
+    ///   midnight (a bed clock time at or before the wake's).
+    mutating func setNightPlan(
+        bedMinute: Int,
+        wakeMinute: Int,
+        morning: Date,
+        name: String,
+        calendar: Calendar = .current
+    ) {
+        clearNightPlan(morning: morning, calendar: calendar)
+        guard bedMinute != wakeMinute,
+              (0..<1440).contains(bedMinute), (0..<1440).contains(wakeMinute) else { return }
+        let morningDay = calendar.startOfDay(for: morning)
+        let bedDay = bedMinute > wakeMinute
+            ? (calendar.date(byAdding: .day, value: -1, to: morningDay) ?? morningDay)
+            : morningDay
+        plans.append(SleepPlan(
+            name: name,
+            timeZoneIdentifier: calendar.timeZone.identifier,
+            bedtimeMinute: bedMinute,
+            wakeMinute: wakeMinute,
+            weekdays: [],
+            firstDate: bedDay
+        ))
+    }
+
+    /// Removes the one-night plans for the night ending on `morning`.
+    mutating func clearNightPlan(morning: Date, calendar: Calendar = .current) {
+        let morningDay = calendar.startOfDay(for: morning)
+        let dayBefore = calendar.date(byAdding: .day, value: -1, to: morningDay) ?? morningDay
+        plans.removeAll { plan in
+            guard plan.weekdays.isEmpty, let window = plan.nextWindow(after: dayBefore) else { return false }
+            return calendar.isDate(window.end, inSameDayAs: morningDay)
+        }
+    }
+
     func nextWindow(after date: Date = .now) -> DateInterval? {
         plans.compactMap { $0.nextWindow(after: date) }.min { $0.start < $1.start }
     }

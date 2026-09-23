@@ -136,7 +136,7 @@ enum ScheduleFriction {
         case .calendar:
             contributors.append(isShiftWork ? .shift : .calendarEvent)
             constraintTime = firstCommitment ?? day.wake
-        case .manual:
+        case .manual, .plan:
             contributors.append(.protectedWakeTime)
             constraintTime = day.wake
         case .habit, .overallHabit:

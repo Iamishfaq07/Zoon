@@ -47,7 +47,8 @@ final class SleepRunwayTests: XCTestCase {
         commitments: [Date: Date] = [:],
         manual: ManualCommitment? = nil,
         obligationWeekdays: Set<Int> = [],
-        readyBuffer: Double = 50
+        readyBuffer: Double = 50,
+        plans: [PersonalSetup.SleepPlan] = []
     ) -> SleepRunway.Plan? {
         SleepRunway.build(
             now: now,
@@ -60,6 +61,7 @@ final class SleepRunwayTests: XCTestCase {
             manual: manual,
             obligationWeekdays: obligationWeekdays,
             readyBufferMinutes: readyBuffer,
+            plans: plans,
             calendar: calendar
         )
     }
@@ -241,5 +243,47 @@ final class SleepRunwayTests: XCTestCase {
             )).confidence,
             .high
         )
+    }
+
+    // MARK: - Saved plans
+
+    /// A night the person set times for shows those times here, the same
+    /// ones tonight's episode and the reminders use.
+    func testASavedNightPlanSetsThatNight() throws {
+        var setup = PersonalSetup()
+        // Thursday the 17th: bed 21:30 Wednesday, up at 05:00.
+        setup.setNightPlan(bedMinute: 21 * 60 + 30, wakeMinute: 5 * 60,
+                           morning: date(17, 0), name: "Early Thursday", calendar: calendar)
+        let plan = try XCTUnwrap(build(plans: setup.plans))
+        let thursday = try XCTUnwrap(plan.days.first { calendar.isDate($0.date, inSameDayAs: date(17, 0)) })
+        XCTAssertEqual(thursday.wakeSource, .plan)
+        XCTAssertEqual(thursday.bedtime, date(16, 21, 30))
+        XCTAssertEqual(thursday.wake, date(17, 5))
+        // Only that night.
+        XCTAssertEqual(plan.days.filter { $0.wakeSource == .plan }.count, 1)
+    }
+
+    /// Setting a night twice replaces it; clearing it restores the habit.
+    func testSettingTwiceReplacesAndClearingRestores() throws {
+        var setup = PersonalSetup()
+        setup.setNightPlan(bedMinute: 22 * 60, wakeMinute: 6 * 60, morning: date(17, 0), name: "a", calendar: calendar)
+        setup.setNightPlan(bedMinute: 21 * 60, wakeMinute: 5 * 60, morning: date(17, 0), name: "b", calendar: calendar)
+        XCTAssertEqual(setup.plans.count, 1)
+        XCTAssertEqual(setup.plans.first?.name, "b")
+        setup.clearNightPlan(morning: date(17, 0), calendar: calendar)
+        XCTAssertTrue(setup.plans.isEmpty)
+        let plan = try XCTUnwrap(build(plans: setup.plans))
+        XCTAssertFalse(plan.days.contains { $0.wakeSource == .plan })
+    }
+
+    /// A standing weekday plan is not removed by clearing one night.
+    func testClearingANightLeavesStandingPlans() {
+        var setup = PersonalSetup()
+        setup.plans = [PersonalSetup.SleepPlan(
+            name: "Weekdays", timeZoneIdentifier: "GMT", bedtimeMinute: 23 * 60, wakeMinute: 7 * 60,
+            weekdays: [2, 3, 4, 5, 6], firstDate: date(1, 0)
+        )]
+        setup.clearNightPlan(morning: date(17, 0), calendar: calendar)
+        XCTAssertEqual(setup.plans.count, 1)
     }
 }

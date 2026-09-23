@@ -152,7 +152,10 @@ struct ZoonTomorrowView: View {
             commitments: horizonCommitments,
             manual: preferences.manualCommitment,
             obligationWeekdays: preferences.obligationWeekdays,
-            readyBufferMinutes: preferences.morningReadyBufferMinutes
+            readyBufferMinutes: preferences.morningReadyBufferMinutes,
+            // The same saved plans tonight's episode uses, so a night the
+            // person planned shows their times here too.
+            plans: PersonalSetupStore.shared.value.plans
         )
     }
 
