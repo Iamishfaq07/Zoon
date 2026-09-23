@@ -1923,6 +1923,7 @@ final class SleepDataCoordinator {
         // The definitions, so the restored answers have names. Existing ones
         // win, the same rule every other importer here follows.
         CustomBehaviorStore.shared.importBehaviors(archive.customBehaviors ?? [])
+        let restoredAlertness = AlertnessCheckStore().importSessions(archive.alertnessSessions ?? [])
 
         // The archive carries the goal the data was recorded against. Adopting
         // it matters: sleep debt, need and recovery are all measured against
@@ -2000,8 +2001,21 @@ final class SleepDataCoordinator {
         if restoredObservations > 0 {
             extras.append(restoredObservations.pluralized("behaviour answer"))
         }
+        if restoredAlertness > 0 {
+            extras.append(restoredAlertness.pluralized("alertness check"))
+        }
         if !extras.isEmpty {
             summary += " Also restored \(extras.joined(separator: ", "))."
+        }
+        // Counted from what reached disk. A restore that failed part-way
+        // says so instead of reporting the archive's size as a success.
+        let unsavedNights = archive.nights.count - nights
+        let unsavedEpisodes = (archive.episodes ?? []).count - restoredEpisodes
+        if unsavedNights > 0 || unsavedEpisodes > 0 {
+            var failed: [String] = []
+            if unsavedNights > 0 { failed.append(unsavedNights.pluralized("night")) }
+            if unsavedEpisodes > 0 { failed.append(unsavedEpisodes.pluralized("sleep episode")) }
+            summary += " \(failed.joined(separator: " and ")) could not be saved; the rest were restored."
         }
         return summary
     }

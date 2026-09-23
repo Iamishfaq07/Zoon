@@ -427,8 +427,17 @@ final class SleepHistoryStore {
     /// recording since shouldn't discard or duplicate its own episodes.
     /// - Returns: how many rows were written.
     @discardableResult
+    /// - Returns: how many episodes reached disk. Counted per save, not per
+    ///   attempt: this used to return `episodes.count` whatever happened,
+    ///   and the restore message then reported rows that were never stored.
     func importEpisodes(_ episodes: [DataExporter.Archive.EpisodeRecord]) -> Int {
+        var committed = 0
         for episode in episodes {
+            // Belt and braces: `DataExporter.validate` rejects these before
+            // any write, but a reversed interval must never reach
+            // `DateInterval(start:end:)`, which traps on it.
+            guard episode.startDate < episode.endDate else { continue }
+            beginTrackingWrites()
             upsertEpisode(
                 id: episode.id, nightKey: episode.nightKey,
                 startDate: episode.startDate, endDate: episode.endDate,
@@ -437,8 +446,9 @@ final class SleepHistoryStore {
                 asleepMinutes: episode.asleepMinutes, timeInBedMinutes: episode.timeInBedMinutes,
                 sourceName: episode.sourceName
             )
+            if writesSucceeded { committed += 1 }
         }
-        return episodes.count
+        return committed
     }
 
     /// Wipes all stored nights. Exposed in Settings — a local-first app owes the
@@ -469,7 +479,7 @@ final class SleepHistoryStore {
     /// restored night had no key at all, so `secondaryEpisodeAsleepMinutes`
     /// -- which looks episodes up by key -- could never credit the naps and
     /// split-sleep blocks restored from the same archive.
-    /// - Returns: how many rows were written.
+    /// - Returns: how many rows reached disk.
     @discardableResult
     func importNights(
         _ nights: [SleepNightFeatures],
@@ -477,12 +487,16 @@ final class SleepHistoryStore {
     ) -> Int {
         var written = 0
         for night in nights.sorted(by: { $0.date < $1.date }) {
+            beginTrackingWrites()
             upsert(
                 night,
                 absoluteWristTempC: absoluteTemperatures[night.date],
                 nightKey: night.nightKey
             )
-            written += 1
+            // Counted only once the save reached disk. `save()` swallows its
+            // error by design, so without this a failed restore reported
+            // "Restored 212 nights".
+            if writesSucceeded { written += 1 }
         }
         return written
     }

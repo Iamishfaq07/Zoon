@@ -242,7 +242,8 @@ struct MoreView: View {
                     behaviorObservations: coordinator.behaviorObservationsForExport(),
                     evidenceHistory: coordinator.evidenceHistoryForExport(),
                     personalSetup: setup.value,
-                    customBehaviors: CustomBehaviorStore.shared.behaviors
+                    customBehaviors: CustomBehaviorStore.shared.behaviors,
+                    alertnessSessions: AlertnessCheckStore().sessions
                 )
                 let plain = try DataExporter.jsonData(archive)
                 let data = encryptBackup ? try ArchiveCipher.seal(plain, passphrase: archivePassphrase) : plain

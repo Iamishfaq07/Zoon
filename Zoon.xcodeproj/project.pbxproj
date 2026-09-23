@@ -233,6 +233,7 @@
 		25C24B9B1E242C7A6AE22070 /* SnoreStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED7225BE24ECD0414B324C9 /* SnoreStore.swift */; };
 		25E2BD1A1A24E3B9C02FEB0B /* ScoreLightSnapshotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0278D14480A795D4342D056A /* ScoreLightSnapshotView.swift */; };
 		2633F84AED3B6953ABBD7C6E /* HypnogramV4.swift in Sources */ = {isa = PBXBuildFile; fileRef = 427D7648D38B1148AC3FFCDB /* HypnogramV4.swift */; };
+		264A052A910C66BCEAA005B9 /* ArchiveIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86A1128988A8BDE9022C6B78 /* ArchiveIntegrityTests.swift */; };
 		267A21093E1C627DB6E74928 /* BreathingCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = C306D669251A84B1C8762BF5 /* BreathingCoach.swift */; };
 		271DE062D46481958EDF063A /* NightKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428FBEDA15967526E0AD1710 /* NightKey.swift */; };
 		27B1442D2ED595C794392958 /* ShiftPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08C0FC759927724DB5C51C9 /* ShiftPlan.swift */; };
@@ -1677,6 +1678,7 @@
 		854198DBD17EC0FC3B27D0C9 /* fire.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "fire.mp3"; sourceTree = "<group>"; };
 		85BB99436FE8700165423D56 /* HealthRadarTint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadarTint.swift"; sourceTree = "<group>"; };
 		8606120C4F55B28506D369CC /* WatchActionEnvelope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchActionEnvelope.swift"; sourceTree = "<group>"; };
+		86A1128988A8BDE9022C6B78 /* ArchiveIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ArchiveIntegrityTests.swift"; sourceTree = "<group>"; };
 		86B73D68A2DABAB452A03AC3 /* MorningCheckInCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MorningCheckInCard.swift"; sourceTree = "<group>"; };
 		872BECC77F2A5D37C6E336D9 /* WatchQuickActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchQuickActionTests.swift"; sourceTree = "<group>"; };
 		87660F95EBEBDD0369FCE858 /* RelatedReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RelatedReading.swift"; sourceTree = "<group>"; };
@@ -2293,6 +2295,7 @@
 				64228777507BB45421BDB205,
 				FB3F01710088F5096D867D2D,
 				E50EC5A8E37A7C304F240966,
+				86A1128988A8BDE9022C6B78,
 				2BD9B956F82E92BC29D959B2,
 				62800921DB19CE9DC1D6FE74,
 				ADF23C34D1708D038807008F,
@@ -3730,6 +3733,7 @@
 				31FB8744B6164B0E0F905A91,
 				5BDB93FB28F4B80FF2467E7D,
 				CCA2B049CAD7A841F7B2AABC,
+				264A052A910C66BCEAA005B9,
 				1808479A30A37BE186115C17,
 				814F7B8B47D5DE99C1BC3938,
 				FDA742141BA7F3592F374663,

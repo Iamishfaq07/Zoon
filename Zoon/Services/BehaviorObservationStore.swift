@@ -291,7 +291,14 @@ final class BehaviorObservationStore {
                 behaviorIdentifier: $0.behaviorIdentifier,
                 state: $0.stateRaw,
                 source: $0.sourceRaw,
-                observedAt: $0.observedAt
+                observedAt: $0.observedAt,
+                // The detail travels with the answer. Dropping it restored
+                // "had caffeine" without the 14:30 and the 2 cups that made
+                // the answer worth giving.
+                quantity: $0.quantity,
+                unit: $0.unit,
+                eventTime: $0.eventTime,
+                intensity: $0.intensity
             )
         }
     }
@@ -323,7 +330,13 @@ final class BehaviorObservationStore {
                 behaviorIdentifier: record.behaviorIdentifier,
                 state: state,
                 source: BehaviorObservationSource(rawValue: record.source) ?? .manual,
-                observedAt: record.observedAt
+                observedAt: record.observedAt,
+                detail: BehaviorDetail(
+                    quantity: record.quantity,
+                    unit: record.unit,
+                    eventTime: record.eventTime,
+                    intensity: record.intensity
+                )
             ))
             existingIdentities.insert(identity)
             created += 1
