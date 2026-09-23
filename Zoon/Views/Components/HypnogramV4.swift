@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The RIBBON visual grammar for last night: the hypnogram as the Sleep
 /// tab's hero, edge-to-edge, with overlay toggles, a scrub readout and
-/// tap-to-zoom on any awakening.
+/// tap-to-zoom on any awakening, and pinch to zoom.
 ///
 /// Wraps `HypnogramView`'s proven Canvas drawing rather than re-implementing
 /// it: the stage blocks, risers, HR line and sound dots are the same code
@@ -271,6 +271,28 @@ struct HypnogramV4: View {
             .overlay {
                 Color.clear
                     .zoonScrubbable(fraction: $scrubFraction, detent: segmentDetent)
+                    // Pinch to zoom around the fingers; pinch back out to
+                    // the whole night. Applied when the pinch ends rather
+                    // than live, so the drag readout never has to follow a
+                    // window that is still moving under it. The Zoom menu
+                    // and the awakening chips remain the non-gesture route.
+                    .simultaneousGesture(
+                        MagnifyGesture()
+                            .onEnded { value in
+                                guard let fullSpan else { return }
+                                let next = ChartZoom.window(
+                                    current: zoom ?? fullSpan,
+                                    full: fullSpan,
+                                    magnification: value.magnification,
+                                    anchorFraction: value.startAnchor.x
+                                )
+                                guard next != zoom else { return }
+                                Haptics.tap()
+                                withAnimation(Motion.respecting(reduceMotion, Motion.hero)) {
+                                    zoom = next
+                                }
+                            }
+                    )
                     .padding(.leading, 50)
             }
             .onChange(of: scrubFraction) { _, fraction in
