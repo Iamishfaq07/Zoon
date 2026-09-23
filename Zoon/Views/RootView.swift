@@ -128,8 +128,21 @@ struct RootView: View {
         .onChange(of: setup.value.scoreLight) { _, _ in Task { await coordinator.recomputeDerivedValues() } }
         .onChange(of: preferences.bedtimeRemindersEnabled) { _, _ in Task { await refreshReminders() } }
         .onChange(of: preferences.morningBriefEnabled) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: preferences.smartWakeEnabled) { _, _ in Task { await refreshReminders() } }
-        .onChange(of: preferences.wakeAlarmEnabled) { _, _ in Task { await refreshReminders() } }
+        // These two also republish: the Watch's wake line says whether an
+        // alarm or a wake-window notification is set, and it read the old
+        // state until the next Health refresh.
+        .onChange(of: preferences.smartWakeEnabled) { _, _ in
+            Task {
+                await refreshReminders()
+                coordinator.republishGlanceSurfaces()
+            }
+        }
+        .onChange(of: preferences.wakeAlarmEnabled) { _, _ in
+            Task {
+                await refreshReminders()
+                coordinator.republishGlanceSurfaces()
+            }
+        }
         .onAppear {
             // A launch argument is consumed once, on appear. It is not routed
             // through DeepLink's shared storage, which is for cross-process
