@@ -949,6 +949,7 @@
 		B6F1D2474486EF5E74817394 /* BehaviorDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2635A3D35E4CFF48DE1D28C1 /* BehaviorDetail.swift */; };
 		B74DFB56C3B6F94957B118E2 /* EvidenceNights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 123B462AA0E8168B7C494B7C /* EvidenceNights.swift */; };
 		B7B139091F67CD8B8AE2265D /* SleepDayKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB0716483B53D50F81083840 /* SleepDayKey.swift */; };
+		B7B47242D226DBF6E066174D /* FocusStateReloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400FB093036022B71090A06A /* FocusStateReloadTests.swift */; };
 		B82D5F0F8B9361D70C9A1E0B /* BehaviorDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2635A3D35E4CFF48DE1D28C1 /* BehaviorDetail.swift */; };
 		B857B1C9AC79ABCE5959AD59 /* MorningBriefCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6A1E27EBE86B02315182828 /* MorningBriefCopyTests.swift */; };
 		B862ACC47533B1C5DCECCD35 /* Pluralization.swift in Sources */ = {isa = PBXBuildFile; fileRef = B66AB7D457143EE80D839E0D /* Pluralization.swift */; };
@@ -1548,6 +1549,7 @@
 		3EF1C9099097D4B3F551844E /* OnDeviceNarrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OnDeviceNarrator.swift"; sourceTree = "<group>"; };
 		3EF70FCAEC5DB960C4760917 /* ocean.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "ocean.mp3"; sourceTree = "<group>"; };
 		3F21546113919F11FF8C44B7 /* NapsTodayCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapsTodayCard.swift"; sourceTree = "<group>"; };
+		400FB093036022B71090A06A /* FocusStateReloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FocusStateReloadTests.swift"; sourceTree = "<group>"; };
 		402E03BA65124BBEB8E4D4BF /* SleepStreakTravelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepStreakTravelTests.swift"; sourceTree = "<group>"; };
 		406D31EF0E61E462C6DAC9C5 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RootView.swift"; sourceTree = "<group>"; };
 		409E6B042148E88000B17850 /* InsightCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightCacheTests.swift"; sourceTree = "<group>"; };
@@ -2443,6 +2445,7 @@
 				844B434C335D18DD6B927A95,
 				21ACF000A7CA836C9A5E78E7,
 				2135A8CBD44D449B01F90A94,
+				400FB093036022B71090A06A,
 				F9D161E199A78597F89A52D9,
 				2A088D94B376B7C6652E976B,
 				490F6EA8AB3100BA90479FF6,
@@ -3932,6 +3935,7 @@
 				5C04B1B5AB2945E5CDFB21A5,
 				EC9B094C46BFF7D4B5496E83,
 				01E4CA226CB04D52DD87DEE5,
+				B7B47242D226DBF6E066174D,
 				728E1AA5461D144B2450A89E,
 				21D5835007FCFA81EF145704,
 				EDE00C239948508871B82BFA,

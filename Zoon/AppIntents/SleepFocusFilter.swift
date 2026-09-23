@@ -65,6 +65,9 @@ struct SleepFocusFilter: SetFocusFilterIntent {
 
         if silencesBedtimeNudges {
             BedtimeReminder().cancel()
+            // Say so where the status is read. Tonight and Settings showed
+            // "Bedtime reminder ... at 23:00" after the Focus had cancelled it.
+            ScheduleStateStore().record(nil, status: .notScheduled, for: .bedtime)
         }
 
         return .result()

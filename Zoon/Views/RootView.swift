@@ -199,6 +199,9 @@ struct RootView: View {
     ///    the toggle back rather than say whether anything was armed.
     private func refreshReminders() async {
         guard preferences.hasCompletedOnboarding else { return }
+        // The Focus filter may have changed this since launch; see
+        // `UserPreferences.reloadFocusState`.
+        preferences.reloadFocusState()
         await reminders.refreshAuthorization()
         let notificationsPermitted = reminders.authorization == .authorized
             || reminders.authorization == .provisional
