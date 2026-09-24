@@ -13,7 +13,8 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     let score: Int
     let scoreBand: String
     let timeAsleepMinutes: Double
-    /// Positive = under-slept, in minutes, over the trailing 14 days.
+    /// Recent shortfall, in minutes: the decayed running total from
+    /// `RecentSleepShortfall`, not a fixed 14-day sum. Positive = under-slept.
     let sleepDebtMinutes: Double
     let goalMinutes: Double
     let insightSummary: String
