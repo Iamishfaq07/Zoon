@@ -17,7 +17,7 @@ struct NapLiveActivity: Widget {
 
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: NapActivityAttributes.self) { context in
-            lockScreen(context)
+            NapActivityContent(context: context, napTint: napTint)
                 .activityBackgroundTint(Color(red: 0.051, green: 0.063, blue: 0.141))
                 .activitySystemActionForegroundColor(Color(red: 0.482, green: 0.380, blue: 1.0))
         } dynamicIsland: { context in
@@ -66,14 +66,45 @@ struct NapLiveActivity: Widget {
             }
             .keylineTint(napTint)
         }
+        // `.small` is the Apple Watch Smart Stack (and CarPlay) layout.
+        .supplementalActivityFamilies([.small, .medium])
     }
 
     // Colours are literals rather than Theme references: this file is compiled
     // into the widget extension, and a Live Activity must render identically
     // whether or not the app's asset catalog is loaded.
     private var napTint: Color { Color(red: 0.482, green: 0.380, blue: 1.0) }
+}
 
-    private func lockScreen(_ context: ActivityViewContext<NapActivityAttributes>) -> some View {
+/// The Lock Screen card (`.medium`) or the Apple Watch Smart Stack (`.small`).
+private struct NapActivityContent: View {
+    let context: ActivityViewContext<NapActivityAttributes>
+    let napTint: Color
+    @Environment(\.activityFamily) private var family
+
+    var body: some View {
+        if family == .small {
+            small
+        } else {
+            lockScreen
+        }
+    }
+
+    private var small: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label("Nap", systemImage: "powersleep")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(napTint)
+            Text(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: true)
+                .font(.system(.title3, design: .rounded).weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+    }
+
+    private var lockScreen: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 3) {
                 Label("Napping", systemImage: "powersleep")
