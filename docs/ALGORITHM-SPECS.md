@@ -29,17 +29,21 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Missing behavior:** continuity is omitted when asleep duration is zero.
 - **Tests:** score, session, wake-count, WASO, duplicate interval, and staged/non-staged tests.
 
-## Sleep Intelligence v3
+## Sleep Intelligence v4
 
 - **Question:** how solid was the sleep period itself?
-- **Inputs:** sleep minutes, computed sleep need, efficiency/WASO/wake rate, regularity index, habitual midpoint, optional staged Deep/REM pattern.
+- **Inputs:** sleep minutes, computed sleep need, efficiency/WASO/wake rate, regularity index, habitual midpoint, optional staged Deep/REM composition.
 - **Weights:** Duration 0.40; Continuity 0.30; Regularity 0.20; Timing 0.05; Stage Pattern 0.05.
 - **Normalization:** piecewise-linear anchors in `Shared/SleepIntelligenceScore.swift`; included weights renormalize to one.
-- **Baseline:** regularity and timing use the bounded habit window; timing drift is measured on the 24-hour circle; stage pattern requires at least five staged prior nights and robust z-scores.
+- **Stage Pattern (changed in v4):** Deep and REM as a *share of staged sleep* (core + deep + REM), not minutes, so a short night with an ordinary split is charged once, by Duration. Runs only on stages `StageTrust` accepts, against the last 30 trusted nights from the same `stageSourcePriority` (a change of watch is not a change in sleep); fewer than 5 such nights and the component is omitted. Robust z-scores; a typical night sits at |z| = 0.6745, the component's neutral.
+- **Continuity (changed in v4):** when time in bed was inferred (`timeInBedIsEstimated`), efficiency is not scored as if measured; WASO and awakening rate carry it 60:40 and the detail says "time in bed estimated".
+- **Severity ceiling (new in v4):** a night short of need caps the headline — 60 min short at most 84 (Good), 120 min at most 69 (Fair), 180 min at most 49 (Poor). The cap never raises a score; the uncapped sum and the reason are stored on the score (`durationCap`) and shown on the card.
+- **Baseline:** regularity and timing use the bounded habit window; timing drift is measured on the 24-hour circle.
 - **Missing behavior:** unavailable components are excluded; `dataCompletenessPercent` and `MetricConfidence` disclose coverage, and confidence is insufficient below 70% completeness (Duration alone is never enough). Recovery, HRV, RHR, temperature and breathing do not affect this score.
 - **Bands:** Poor <50; Fair 50–69; Good 70–84; Excellent ≥85.
-- **Tests:** `SleepIntelligenceScoreTests`, `ScoreMeaningTests`, `FlagshipScoreTests`, `SleepVocabularyTests`.
-- **Allowed:** “Sleep Intelligence,” “Duration held the night back.” **Disallowed:** “Your body is ready,” diagnosis, or claiming stages are directly measured by Zoon.
+- **Versioning:** `currentVersion = 4`. Stored v3 payloads decode as v3 with no cap and are not rescored in place.
+- **Tests:** `SleepIntelligenceV4Tests`, `SleepIntelligenceScoreTests`, `ScoreMeaningTests`, `ScoreExplainabilityTests`, `FlagshipScoreTests`, `SleepVocabularyTests`.
+- **Allowed:** “Sleep Intelligence,” “Duration held the night back,” “Capped at 69 because the night was 2h short.” **Disallowed:** “Your body is ready,” diagnosis, or claiming stages are directly measured by Zoon.
 
 ## Legacy SleepScore
 
@@ -62,8 +66,9 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Question:** how much recent weighted shortfall is present against the selected nightly target?
 - **Units/rule:** minutes; each night adds `max(need − sleep, 0)` and prior state decays by about 0.933 per night. Surplus does not create banked credit.
 - **Window semantics:** exponential recent weighting approximates a two-week balance; it is not a literal hour-for-hour physiological debt.
-- **Missing behavior:** missing per-night need uses the documented goal used for that historical calculation; the UI marks the output estimated.
-- **Tests:** `RecentSleepShortfallTests`, `SleepAutopilotTests`, `SensorTruthTests`.
+- **Missing behavior:** missing per-night need uses the documented goal used for that historical calculation; the UI marks the output estimated. Decay counts calendar nights (DST-safe), so an unworn stretch still decays.
+- **When it is measured:** a night's stored `sleepDebtMinutes` is the shortfall *entering* that night (`shortfallBeforeNightMinutes`). `shortfallAddedByNightMinutes` is that night's own gap against its own need; `shortfallThroughNightMinutes` is one ledger step later. Coach answers "did last night add to it?" from the added figure, never from the entering one; with no recorded need it makes no claim about the night.
+- **Tests:** `RecentSleepShortfallTests`, `ShortfallSemanticsTests`, `SleepAutopilotTests`, `SensorTruthTests`.
 - **Allowed:** “recent sleep shortfall,” “planning estimate.” **Disallowed:** “you owe exactly 4.7 hours” or “one long sleep repays it.”
 
 ## Regularity, SRI, body clock, social jet lag
