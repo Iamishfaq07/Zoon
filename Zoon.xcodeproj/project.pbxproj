@@ -698,6 +698,7 @@
 		7A3040A75B98864852ECACBA /* SleepDaySummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1190A10B903B486E621C2C23 /* SleepDaySummary.swift */; };
 		7A403BCA8DC228A114DEF4EA /* WatchActionEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8606120C4F55B28506D369CC /* WatchActionEnvelope.swift */; };
 		7AA70281593CF7D1246AFC3C /* WatchActionEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8606120C4F55B28506D369CC /* WatchActionEnvelope.swift */; };
+		7AAA866530623097D3883E02 /* SleepDataCoordinator+CoachContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329D63A5AC64B8FF21ED8DD9 /* SleepDataCoordinator+CoachContext.swift */; };
 		7AC3D5E553B2D4086E7BCCAA /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
 		7AD42F3601D4FDAA1FED993D /* EnergyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E8412807D761D3BAC2CBF0 /* EnergyForecast.swift */; };
 		7AD7DBAEC0C3A8AEABE60C2A /* EvidenceClaims.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF227D05982E42FE973BE69D /* EvidenceClaims.swift */; };
@@ -1695,6 +1696,7 @@
 		3150FC3EEA03A2CC36022FA3 /* CoreIntelligenceGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreIntelligenceGrid.swift"; sourceTree = "<group>"; };
 		3230BB2DBAC3F13F25335EBC /* FetchState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FetchState.swift"; sourceTree = "<group>"; };
 		32391DFF099379A08D5BD5A4 /* WidgetRelevanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WidgetRelevanceTests.swift"; sourceTree = "<group>"; };
+		329D63A5AC64B8FF21ED8DD9 /* SleepDataCoordinator+CoachContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDataCoordinator+CoachContext.swift"; sourceTree = "<group>"; };
 		32B703D845C762279417E217 /* WeeklyReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeeklyReport.swift"; sourceTree = "<group>"; };
 		32DF84481F1211BF95927815 /* SleepDaySummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDaySummaryTests.swift"; sourceTree = "<group>"; };
 		330761C5EA614104E6172BEB /* IntegrationFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntegrationFlowTests.swift"; sourceTree = "<group>"; };
@@ -2501,6 +2503,7 @@
 				6FBB5235F0BEECDDFFFF4A95,
 				DE7FB093E433D30982864FBB,
 				2737914DCB7E7960D6E8862E,
+				329D63A5AC64B8FF21ED8DD9,
 				B0E516994F630E303DD12E36,
 				1AF6BFEAF25ED5145D61FB79,
 				7C5056DFADE6AA9868C543E9,
@@ -3675,6 +3678,7 @@
 				36134FBAD886EFF35F3E5CC5,
 				0AF0CB34F0DF3B7527E4B281,
 				7BD74E0AA147B8EEBB8B8D3A,
+				7AAA866530623097D3883E02,
 				F7D50D4A2644F88D12CE6225,
 				C90E2F37C8EFF888714E9A17,
 				AD04426F85852FA876D1783B,
