@@ -69,11 +69,24 @@ final class ScoreMeaningTests: XCTestCase {
         XCTAssertEqual(score(ordinary).percent, score(abnormal).percent)
     }
 
+    /// Ordinary means a typical distance from the median, not zero distance:
+    /// half of all nights sit further out than one MAD-scaled 0.6745. In this
+    /// history (shares spread 1 point either side of 18% / 22%) that is one
+    /// percentage point off the median.
     func testAnOrdinaryStagePatternNightIsTypical() throws {
-        let stages = try component("Stage Pattern", of: watchNight())
+        let stages = try component("Stage Pattern", of: watchNight(deepShare: 0.19, remShare: 0.21))
         XCTAssertGreaterThan(stages.normalized, 0.9)
         XCTAssertEqual(stages.role, .typical)
         XCTAssertEqual(stages.pointContribution, 0, accuracy: 0.3)
+    }
+
+    /// Exactly on the median is the best case the curve allows. It may read
+    /// as helping, but at a 5% weight it is worth well under a point.
+    func testAMedianStagePatternNightHelpsByUnderHalfAPoint() throws {
+        let stages = try component("Stage Pattern", of: watchNight())
+        XCTAssertEqual(stages.normalized, 1, accuracy: 0.0001)
+        XCTAssertLessThan(stages.pointContribution, 0.5)
+        XCTAssertGreaterThanOrEqual(stages.pointContribution, 0)
     }
 
     func testContributorListsPartitionComponents() {
