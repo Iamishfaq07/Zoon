@@ -463,7 +463,7 @@ struct SleepSessionBuilder {
             segments: segments,
             sourceName: samples.first?.sourceRevision.source.name,
             sourceBundleIdentifier: samples.first?.sourceRevision.source.bundleIdentifier,
-            timeZoneIdentifier: samples.compactMap { sample in
+            timeZoneIdentifier: samples.compactMap { sample -> String? in
                 guard let identifier = sample.metadata?[HKMetadataKeyTimeZone] as? String,
                       TimeZone(identifier: identifier) != nil else { return nil }
                 return identifier
