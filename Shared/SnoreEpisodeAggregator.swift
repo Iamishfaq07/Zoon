@@ -244,3 +244,58 @@ struct SnoreConfidenceBreakdown: Equatable, Sendable {
         return "Snoring flagged in the \(coveragePercent)% of the night that was monitored. Snoring on its own is not a medical finding."
     }
 }
+
+/// What the Snore Check result card shows for one stored night (audit §19).
+///
+/// The card used to headline "N% of the night", where N was snoring as a
+/// share of *monitored* time -- so 31 monitored minutes with no snoring read
+/// as "0% of the night". The headline now says what the number is a share
+/// of, and a quiet night with too little coverage to conclude anything says
+/// so instead of showing a reassuring zero.
+struct SnoreResultSummary: Equatable, Sendable {
+    struct Row: Identifiable, Equatable, Sendable {
+        let label: String
+        let value: String
+        var id: String { label }
+    }
+
+    /// "No conclusion", "None flagged", or "12% of monitored time".
+    let headline: String
+    /// Monitored, coverage, interruptions and quality, one per row.
+    let rows: [Row]
+    let isConclusive: Bool
+
+    init(
+        monitoredMinutes: Double,
+        snoreMinutes: Double,
+        coveragePercent: Int?,
+        interruptionMinutes: Double?,
+        quality: SnoreMonitoringConfidence?
+    ) {
+        let flagged = snoreMinutes >= 1
+        isConclusive = flagged || quality != .limited
+        if flagged {
+            let share = monitoredMinutes > 0 ? Int((snoreMinutes / monitoredMinutes * 100).rounded()) : 0
+            headline = "\(share)% of monitored time"
+        } else {
+            headline = isConclusive ? "None flagged" : "No conclusion"
+        }
+        var rows = [Row(label: "Monitored", value: Self.duration(monitoredMinutes))]
+        if let coveragePercent { rows.append(Row(label: "Planned night covered", value: "\(coveragePercent)%")) }
+        if let interruptionMinutes, interruptionMinutes >= 1 {
+            rows.append(Row(label: "Interrupted", value: Self.duration(interruptionMinutes)))
+        }
+        if let quality { rows.append(Row(label: "Monitoring quality", value: quality.label)) }
+        if flagged { rows.append(Row(label: "Flagged", value: Self.duration(snoreMinutes))) }
+        self.rows = rows
+    }
+
+    /// "45 min", "7 h 5 min".
+    static func duration(_ minutes: Double) -> String {
+        let total = max(0, Int(minutes.rounded()))
+        guard total >= 60 else { return "\(total) min" }
+        let hours = total / 60
+        let rest = total % 60
+        return rest == 0 ? "\(hours) h" : "\(hours) h \(rest) min"
+    }
+}

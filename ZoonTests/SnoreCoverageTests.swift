@@ -84,4 +84,46 @@ final class SnoreCoverageTests: XCTestCase {
         XCTAssertEqual(SnoreCoverage(monitoredSeconds: 10 * 3600, interruptionSeconds: 0, intendedWindowSeconds: 8 * 3600).ratio, 1)
         XCTAssertEqual(SnoreCoverage(monitoredSeconds: 3600, interruptionSeconds: 0, intendedWindowSeconds: 0).ratio, 0)
     }
+
+    // MARK: - Result card (audit §19)
+
+    /// 31 quiet minutes used to headline "0% of the night".
+    func testAShortQuietSessionHeadlinesNoConclusionNotZero() {
+        let result = SnoreResultSummary(monitoredMinutes: 31, snoreMinutes: 0, coveragePercent: 6,
+                                        interruptionMinutes: nil, quality: .limited)
+        XCTAssertEqual(result.headline, "No conclusion")
+        XCTAssertFalse(result.isConclusive)
+        XCTAssertFalse(result.headline.contains("0%"))
+    }
+
+    func testAWellCoveredQuietNightSaysNoneFlagged() {
+        let result = SnoreResultSummary(monitoredMinutes: 420, snoreMinutes: 0, coveragePercent: 88,
+                                        interruptionMinutes: 0, quality: .high)
+        XCTAssertEqual(result.headline, "None flagged")
+        XCTAssertTrue(result.isConclusive)
+    }
+
+    /// The percentage names what it is a share of.
+    func testSnoringIsAShareOfMonitoredTime() {
+        let result = SnoreResultSummary(monitoredMinutes: 400, snoreMinutes: 48, coveragePercent: 83,
+                                        interruptionMinutes: 12, quality: .moderate)
+        XCTAssertEqual(result.headline, "12% of monitored time")
+        XCTAssertEqual(result.rows.map(\.label), ["Monitored", "Planned night covered", "Interrupted", "Monitoring quality", "Flagged"])
+        XCTAssertEqual(result.rows.map(\.value), ["6 h 40 min", "83%", "12 min", "Moderate", "48 min"])
+    }
+
+    /// Summaries stored before coverage existed show what they have.
+    func testAnOlderSummaryShowsOnlyWhatItStored() {
+        let result = SnoreResultSummary(monitoredMinutes: 360, snoreMinutes: 0, coveragePercent: nil,
+                                        interruptionMinutes: nil, quality: nil)
+        XCTAssertEqual(result.rows.map(\.label), ["Monitored"])
+        XCTAssertEqual(result.headline, "None flagged")
+    }
+
+    func testDurations() {
+        XCTAssertEqual(SnoreResultSummary.duration(45), "45 min")
+        XCTAssertEqual(SnoreResultSummary.duration(60), "1 h")
+        XCTAssertEqual(SnoreResultSummary.duration(425), "7 h 5 min")
+        XCTAssertEqual(SnoreResultSummary.duration(-3), "0 min")
+    }
 }

@@ -54,6 +54,24 @@ Each is a behaviour a person could have seen, with the commit that fixed it.
 16. **Unsynchronised `SoundEventClassifier`** under `@unchecked Sendable`: `stop()` could clear the analyzer and handler while the audio tap was mid-call. `a6934c4`
 17. **Algorithm spec described v3 and named a test file that did not exist.** `0aa970a`
 
+## Regressions caught during the work
+
+Two failures introduced on this branch were caught by CI before anything
+shipped, and are recorded because both are the kind of thing to watch for:
+
+- **Launch hang (`d035b7f`, fixed in `749172c`).** Recording each store
+  read's outcome mutated an `@Observable` property, and stores are read
+  inside SwiftUI view bodies. An observable property's modify accessor
+  registers an access before it mutates, so every such body came to depend
+  on the log it wrote and re-rendered forever; all four UI tests timed out
+  on their first query. Unit tests passed throughout. Recording now goes to
+  unobserved storage and is published a turn later, only on change, with
+  `withObservationTracking` tests pinning it.
+- **Stage Pattern "ordinary night" test (`01e9c53`, fixed in `696475e`).**
+  The v4 fixture put tonight exactly on the history median, which the curve
+  treats as its best case; the test now uses a typical distance and a new
+  test bounds the median night's bonus.
+
 ## Algorithm and version changes
 
 | Item | Change | Version |
@@ -69,7 +87,7 @@ Each is a behaviour a person could have seen, with the commit that fixed it.
 
 ## Files
 
-84 files changed since `12ddd69` (new files in **bold**):
+About 80 files changed since `12ddd69` across 19 commits (new files in **bold**):
 
 - Scoring and semantics: `Shared/SleepIntelligenceScore.swift`, `Shared/RecentSleepShortfall.swift` (renamed), `Shared/SleepNightFeatures.swift`, `Shared/CoachEvidence.swift`, **`Shared/InsightDriver.swift`**, `Shared/SnoreEpisodeAggregator.swift`, **`Shared/LearningUnlockMap.swift`**
 - Audio: **`Shared/NoiseGenerator.swift`**, `Shared/SessionRecoveryPolicy.swift`, `Zoon/Services/SoundscapeEngine.swift`, `Zoon/Services/AudioSessionCoordinator.swift`, **`Shared/SleepSpeech.swift`**, **`Zoon/Services/SpeechVoices.swift`**, `Zoon/Services/OnDeviceNarrator.swift`, `Zoon/Services/BreathingCoach.swift`, `Zoon/Services/SoundEventClassifier.swift`
