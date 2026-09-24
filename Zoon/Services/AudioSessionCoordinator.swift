@@ -23,6 +23,11 @@ final class AudioSessionCoordinator {
     }
 
     private(set) var lastMediaServicesResetSucceeded = true
+    /// `false` when the last interruption ended but the session could not be
+    /// reactivated after `InterruptionResumePolicy`'s attempts. Owners stay
+    /// paused; a screen can offer to start again rather than show playing.
+    private(set) var lastInterruptionResumeSucceeded = true
+    private var resumeTask: Task<Void, Never>?
 
     private init() {
         let center = NotificationCenter.default
@@ -77,6 +82,9 @@ final class AudioSessionCoordinator {
     }
 
     private func interrupt() {
+        // A new interruption supersedes a resume still retrying.
+        resumeTask?.cancel()
+        resumeTask = nil
         let callbacks = owners.values.map(\.stop)
         for stop in callbacks { stop() }
     }
@@ -111,11 +119,26 @@ final class AudioSessionCoordinator {
         for callback in callbacks { callback() }
     }
 
+    /// Reactivates, with bounded retries, and only then asks owners to
+    /// resume. See `InterruptionResumePolicy`.
     private func resumeInterrupted(shouldResume: Bool) {
-        guard shouldResume else { return }
-        try? AVAudioSession.sharedInstance().setActive(true)
-        let callbacks = owners.values.compactMap(\.resume)
-        for resume in callbacks { resume() }
+        guard shouldResume, !owners.isEmpty else { return }
+        resumeTask?.cancel()
+        resumeTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let resumed = await InterruptionResumePolicy.resume(
+                sleep: { try? await Task.sleep(for: .seconds($0)) },
+                shouldContinue: { !Task.isCancelled && !self.owners.isEmpty },
+                activate: { try AVAudioSession.sharedInstance().setActive(true) },
+                notify: {
+                    let callbacks = self.owners.values.compactMap(\.resume)
+                    for resume in callbacks { resume() }
+                }
+            )
+            if !Task.isCancelled {
+                self.lastInterruptionResumeSucceeded = resumed
+            }
+        }
     }
 
     /// Headphones unplugged: playback owners must not dump to speakers.

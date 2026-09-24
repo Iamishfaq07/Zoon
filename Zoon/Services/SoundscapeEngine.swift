@@ -10,7 +10,14 @@ import MediaPlayer
 /// Brown, pink and white stay **synthesised** so they never seam and add
 /// nothing to the download. Weather, night and room beds are **recorded**
 /// ~90s loops bundled on device — nothing is streamed, nothing phones home.
-/// The loops are loudness-matched and crossfaded at the join.
+/// Each is decoded once and turned into a seamless loop (`SeamlessLoop`:
+/// equal-power crossfade of its tail into its head), then looped
+/// sample-accurately on an `AVAudioPlayerNode`. It used to be
+/// `AVAudioPlayer.numberOfLoops = -1` under a comment claiming a crossfade
+/// that did not exist.
+///
+/// Generated noise is synthesised off the main actor (`NoiseRenderer`); only
+/// the finished buffer is scheduled from here.
 ///
 /// Sleep onset still drops volume (and, for generated noise, high harmonics)
 /// as overnight heart rate falls below resting.
@@ -192,7 +199,6 @@ final class SoundscapeEngine {
 
     /// True when the graph is actually producing audio.
     var isGraphAudible: Bool {
-        if let filePlayer, filePlayer.isPlaying { return true }
         if let engine, let player, engine.isRunning, player.isPlaying { return true }
         return false
     }
@@ -218,8 +224,10 @@ final class SoundscapeEngine {
     private var retiringPlayers: [(AVAudioEngine, AVAudioPlayerNode)] = []
     private var engine: AVAudioEngine?
     private var player: AVAudioPlayerNode?
-    private var filePlayer: AVAudioPlayer?
-    private var retiringFilePlayer: AVAudioPlayer?
+    /// The seamless loop for the recorded bed playing now, kept so a resume
+    /// after an interruption can reschedule it. `nil` for generated noise.
+    private var loopBuffer: AVAudioPCMBuffer?
+    private let renderer = NoiseRenderer()
     private var timerTask: Task<Void, Never>?
     private var fadeMultiplier: Float = 1
     /// 1 = full presence; drops toward 0.45 as overnight HR falls below
@@ -268,13 +276,9 @@ final class SoundscapeEngine {
         playbackGeneration = UUID()
         let oldEngine = engine
         let oldPlayer = player
-        let oldFile = filePlayer
-        filePlayer = nil
         crossfadeTask?.cancel()
         for (engine, player) in retiringPlayers { player.stop(); engine.stop() }
         retiringPlayers = []
-        retiringFilePlayer?.stop()
-        retiringFilePlayer = oldFile
         interruptionMessage = nil
         canResumeOnSpeaker = false
         loadError = nil
@@ -292,104 +296,107 @@ final class SoundscapeEngine {
             } onRouteLost: { [weak self] in
                 self?.pauseForRouteLoss()
             }
+        } catch {
+            logger.error("Audio start failed: \(error.localizedDescription, privacy: .public)")
+            stop()
+            return
+        }
 
-            if sound.fileName != nil {
-                if let url = sound.recordedURL() {
-                    let recorded = try AVAudioPlayer(contentsOf: url)
-                    recorded.numberOfLoops = -1
-                    recorded.volume = 0
-                    recorded.prepareToPlay()
-                    guard recorded.play() else {
-                        loadError = "Couldn't start \(sound.label)."
-                        AudioSessionCoordinator.shared.release(audioOwner)
-                        return
-                    }
-                    oldPlayer?.stop()
-                    oldEngine?.stop()
-                    self.engine = nil
-                    self.player = nil
-                    self.filePlayer = recorded
-                    self.playing = sound
-                    lastSuccessfulPlayback = .now
-                    watchdogRecoveredGeneration = nil
-                    logger.info("Playing recorded bed \(sound.rawValue, privacy: .public) from \(url.lastPathComponent, privacy: .public)")
-                    armWatchdog()
-                    publishNowPlaying()
-                    resumeInheritedTimerIfNeeded()
-                    crossfadeTask = Task { [weak self] in
-                        for step in 1...20 {
-                            do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
-                            guard let self else { return }
-                            let fraction = Float(step) / 20
-                            recorded.volume = volume * fadeMultiplier * biometricAttenuation * fraction
-                            oldFile?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
-                        }
-                        oldFile?.stop()
-                        self?.retiringFilePlayer = nil
-                    }
-                    return
-                }
+        if sound.fileName != nil {
+            guard let url = sound.recordedURL() else {
                 logger.error("Recorded bed \(sound.rawValue, privacy: .public) missing from bundle; not synthesizing")
                 loadError = "Couldn't load \(sound.label). The recording isn't in this build."
                 oldPlayer?.stop()
                 oldEngine?.stop()
-                oldFile?.stop()
                 self.engine = nil
                 self.player = nil
-                self.filePlayer = nil
+                self.loopBuffer = nil
                 self.playing = nil
                 AudioSessionCoordinator.shared.release(audioOwner)
                 return
             }
-
-            let engine = AVAudioEngine()
-            let player = AVAudioPlayerNode()
-            engine.attach(player)
-
-            guard let format = AVAudioFormat(
-                standardFormatWithSampleRate: sampleRate,
-                channels: 2
-            ) else {
-                AudioSessionCoordinator.shared.release(audioOwner)
-                return
-            }
-
-            engine.connect(player, to: engine.mainMixerNode, format: format)
-            try engine.start()
-
-            player.volume = 0
-            player.play()
-
-            self.engine = engine
-            self.player = player
+            // Selected now, so the UI reflects the tap; audible once the loop
+            // is decoded. Decoding ~90 s of audio is off the main actor.
             self.playing = sound
-            lastSuccessfulPlayback = .now
-            watchdogRecoveredGeneration = nil
-            oldFile?.stop()
-            self.retiringFilePlayer = nil
+            let generation = playbackGeneration
+            crossfadeTask = Task { [weak self] in
+                let loop = await RecordedLoopLoader.loop(url: url)
+                guard let self, self.playbackGeneration == generation else { return }
+                guard let loop else {
+                    self.loadError = "Couldn't start \(sound.label)."
+                    oldPlayer?.stop()
+                    oldEngine?.stop()
+                    self.playing = nil
+                    AudioSessionCoordinator.shared.release(self.audioOwner)
+                    return
+                }
+                self.loopBuffer = loop
+                self.startGraph(sound: sound, format: loop.format, oldEngine: oldEngine, oldPlayer: oldPlayer) { player in
+                    player.scheduleBuffer(loop, at: nil, options: .loops)
+                }
+                self.logger.info("Playing recorded bed \(sound.rawValue, privacy: .public) as a seamless loop")
+            }
+            return
+        }
 
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else {
+            AudioSessionCoordinator.shared.release(audioOwner)
+            return
+        }
+        loopBuffer = nil
+        startGraph(sound: sound, format: format, oldEngine: oldEngine, oldPlayer: oldPlayer) { [weak self] _ in
             // Prime with a few buffers, then keep the queue topped up as each
             // one finishes. Scheduling one at a time would gap on a slow frame.
-            for _ in 0..<3 { scheduleBuffer(sound, format: format) }
-            armWatchdog()
-            publishNowPlaying()
-            resumeInheritedTimerIfNeeded()
-            if let oldEngine, let oldPlayer { retiringPlayers = [(oldEngine, oldPlayer)] }
-            crossfadeTask = Task { [weak self] in
-                for step in 1...20 {
-                    do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
-                    guard let self else { return }
-                    let fraction = Float(step) / 20
-                    player.volume = volume * fadeMultiplier * biometricAttenuation * fraction
-                    oldPlayer?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
-                }
-                oldPlayer?.stop()
-                oldEngine?.stop()
-                self?.retiringPlayers = []
-            }
+            self?.primeNoise(sound, format: format)
+        }
+    }
+
+    /// Builds a fresh engine and player for `format`, fades it in over the
+    /// old graph, and retires the old one. `schedule` queues the audio.
+    private func startGraph(
+        sound: Sound,
+        format: AVAudioFormat,
+        oldEngine: AVAudioEngine?,
+        oldPlayer: AVAudioPlayerNode?,
+        schedule: (AVAudioPlayerNode) -> Void
+    ) {
+        let engine = AVAudioEngine()
+        let player = AVAudioPlayerNode()
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        do {
+            try engine.start()
         } catch {
             logger.error("Audio start failed: \(error.localizedDescription, privacy: .public)")
             stop()
+            return
+        }
+
+        player.volume = 0
+        schedule(player)
+        player.play()
+
+        self.engine = engine
+        self.player = player
+        self.playing = sound
+        lastSuccessfulPlayback = .now
+        watchdogRecoveredGeneration = nil
+
+        armWatchdog()
+        publishNowPlaying()
+        resumeInheritedTimerIfNeeded()
+        if let oldEngine, let oldPlayer { retiringPlayers = [(oldEngine, oldPlayer)] }
+        crossfadeTask = Task { [weak self] in
+            for step in 1...20 {
+                do { try await Task.sleep(for: .milliseconds(25)) } catch { return }
+                guard let self else { return }
+                let fraction = Float(step) / 20
+                player.volume = volume * fadeMultiplier * biometricAttenuation * fraction
+                oldPlayer?.volume = volume * fadeMultiplier * biometricAttenuation * (1 - fraction)
+            }
+            oldPlayer?.stop()
+            oldEngine?.stop()
+            self?.retiringPlayers = []
         }
     }
 
@@ -437,10 +444,7 @@ final class SoundscapeEngine {
         engine?.stop()
         player = nil
         engine = nil
-        filePlayer?.stop()
-        filePlayer = nil
-        retiringFilePlayer?.stop()
-        retiringFilePlayer = nil
+        loopBuffer = nil
         playing = nil
         timerMinutes = nil
         remainingSeconds = 0
@@ -465,10 +469,8 @@ final class SoundscapeEngine {
         interruptionMessage = "Playback paused. It will resume when the interruption ends, or tap a sound to start again."
         publishNowPlaying()
         player?.pause()
-        filePlayer?.pause()
         for layer in scenePlayers {
             layer.player?.pause()
-            layer.filePlayer?.pause()
         }
     }
 
@@ -476,21 +478,16 @@ final class SoundscapeEngine {
         guard wasInterrupted else { return }
         wasInterrupted = false
         interruptionMessage = nil
-        if playing != nil, player != nil || filePlayer != nil, restartEnginesIfNeeded() {
+        if playing != nil, player != nil, restartEnginesIfNeeded() {
+            requeueAfterStop()
             player?.play()
-            let fileOK = filePlayer.map { $0.play() } ?? true
-            if let sound = playing, let format = player?.outputFormat(forBus: 0), filePlayer == nil {
-                scheduleBuffer(sound, format: format)
-            }
             for layer in scenePlayers {
+                layer.requeueAfterStop()
                 layer.player?.play()
-                _ = layer.filePlayer?.play()
             }
-            if fileOK {
-                lastSuccessfulPlayback = .now
-                publishNowPlaying()
-                return
-            }
+            lastSuccessfulPlayback = .now
+            publishNowPlaying()
+            return
         }
         restoreSelection()
     }
@@ -524,10 +521,8 @@ final class SoundscapeEngine {
         wasInterrupted = false
         interruptionMessage = nil
         player?.pause()
-        filePlayer?.pause()
         for layer in scenePlayers {
             layer.player?.pause()
-            layer.filePlayer?.pause()
         }
         publishNowPlaying()
     }
@@ -539,18 +534,29 @@ final class SoundscapeEngine {
         }
         pausedByUser = false
         wasInterrupted = false
-        if playing != nil, player != nil || filePlayer != nil, restartEnginesIfNeeded() {
+        if playing != nil, player != nil, restartEnginesIfNeeded() {
             player?.play()
-            _ = filePlayer?.play()
             for layer in scenePlayers {
                 layer.player?.play()
-                _ = layer.filePlayer?.play()
             }
             lastSuccessfulPlayback = .now
             publishNowPlaying()
             return
         }
         restoreSelection()
+    }
+
+    /// After an interruption the node's queue may have drained or been
+    /// cleared. A recorded bed reschedules its loop (replacing whatever is
+    /// queued, so it cannot double up); generated noise queues one more
+    /// buffer, as it always did.
+    fileprivate func requeueAfterStop() {
+        guard let player, let sound = playing else { return }
+        if let loopBuffer {
+            player.scheduleBuffer(loopBuffer, at: nil, options: [.loops, .interrupts])
+        } else {
+            scheduleBuffer(sound, format: player.outputFormat(forBus: 0))
+        }
     }
 
     /// An interruption can stop an `AVAudioEngine` underneath its paused
@@ -695,15 +701,8 @@ final class SoundscapeEngine {
             return
         }
         watchdogRecoveredGeneration = playbackGeneration
-        if let filePlayer {
-            guard filePlayer.play(), filePlayer.isPlaying else {
-                markPlaybackFailed()
-                return
-            }
-            lastSuccessfulPlayback = .now
-            return
-        }
         if restartEnginesIfNeeded(), let player {
+            requeueAfterStop()
             player.play()
             if isGraphAudible {
                 lastSuccessfulPlayback = .now
@@ -777,15 +776,50 @@ final class SoundscapeEngine {
     private func applyOutputVolume() {
         let v = volume * fadeMultiplier * biometricAttenuation
         player?.volume = v
-        filePlayer?.volume = v
     }
 
     // MARK: - Synthesis
 
-    private func scheduleBuffer(_ sound: Sound, format: AVAudioFormat) {
-        guard let player, let buffer = makeBuffer(sound, format: format) else { return }
-
+    /// Renders and queues the first buffers in order, on one task, so the
+    /// generator's filter state runs continuously across them.
+    private func primeNoise(_ sound: Sound, format: AVAudioFormat) {
+        guard let kind = sound.noiseKind else { return }
         let generation = playbackGeneration
+        let presence = harmonicPresence
+        let frames = Int(sampleRate * bufferSeconds)
+        Task { [weak self] in
+            guard let self else { return }
+            for _ in 0..<3 {
+                let rendered = await self.renderer.render(kind, frames: frames, harmonicPresence: presence)
+                guard self.enqueue(rendered, sound: sound, format: format, generation: generation) else { return }
+            }
+        }
+    }
+
+    /// Queues one more buffer. Called as each finishes, so renders are
+    /// strictly sequential without a lock.
+    private func scheduleBuffer(_ sound: Sound, format: AVAudioFormat) {
+        guard let kind = sound.noiseKind else { return }
+        let generation = playbackGeneration
+        let presence = harmonicPresence
+        let frames = Int(sampleRate * bufferSeconds)
+        Task { [weak self] in
+            guard let self else { return }
+            let rendered = await self.renderer.render(kind, frames: frames, harmonicPresence: presence)
+            _ = self.enqueue(rendered, sound: sound, format: format, generation: generation)
+        }
+    }
+
+    /// Copies a rendered buffer into PCM and schedules it -- the only audio
+    /// work left on the main actor, a memcpy per five seconds.
+    private func enqueue(
+        _ rendered: (left: [Float], right: [Float]),
+        sound: Sound,
+        format: AVAudioFormat,
+        generation: UUID
+    ) -> Bool {
+        guard playing == sound, playbackGeneration == generation, let player,
+              let buffer = Self.pcmBuffer(rendered, format: format) else { return false }
         player.scheduleBuffer(buffer) { [weak self] in
             // Completion fires on an audio thread; hop back before touching
             // any of this actor's state.
@@ -794,83 +828,95 @@ final class SoundscapeEngine {
                 self.scheduleBuffer(sound, format: format)
             }
         }
+        return true
     }
 
-    /// Generator state carried across buffers so filters don't click at seams.
-    private var brownState: Float = 0
-    private var pinkRows = [Float](repeating: 0, count: 7)
-    private var lowpassState: Float = 0
+    private static func pcmBuffer(_ rendered: (left: [Float], right: [Float]), format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        let frames = AVAudioFrameCount(rendered.left.count)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames),
+              let channels = buffer.floatChannelData, format.channelCount >= 2 else { return nil }
+        buffer.frameLength = frames
+        rendered.left.withUnsafeBufferPointer { channels[0].update(from: $0.baseAddress!, count: $0.count) }
+        rendered.right.withUnsafeBufferPointer { channels[1].update(from: $0.baseAddress!, count: $0.count) }
+        return buffer
+    }
+}
 
-    private func makeBuffer(_ sound: Sound, format: AVAudioFormat) -> AVAudioPCMBuffer? {
-        // Recorded beds never share this generator. A missing file stops in
-        // `play()` rather than becoming brown noise.
-        guard sound.fileName == nil else { return nil }
+// MARK: - Off-main-actor audio work
 
-        let frameCount = AVAudioFrameCount(sampleRate * bufferSeconds)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
-              let channels = buffer.floatChannelData else { return nil }
-
-        buffer.frameLength = frameCount
-        let left = channels[0]
-        let right = channels[1]
-
-        for frame in 0..<Int(frameCount) {
-            let white = Float.random(in: -1...1)
-            var sample: Float
-
-            switch sound {
-            case .whiteNoise:
-                sample = white * 0.25
-
-            case .pinkNoise:
-                // Voss-McCartney: sum of octave-spaced random rows. Cheaper and
-                // more stable than an IIR pink filter.
-                sample = pinkSample(white) * 0.16
-
-            case .brownNoise:
-                // Integrated white noise, leaked toward zero so it can't drift
-                // into DC offset over a long session.
-                brownState = (brownState + white * 0.02) * 0.995
-                sample = brownState * 2.4
-
-            default:
-                return nil
-            }
-
-            sample = max(-1, min(1, sample))
-            if harmonicPresence < 0.999 {
-                // Extra pole on top of each sound's own filter: as HR dips,
-                // the remaining high-frequency content is stripped so the
-                // soundscape recedes rather than staying bright at the
-                // pillow.
-                let coefficient = 0.08 + 0.45 * harmonicPresence
-                sample = lowpass(sample, coefficient: coefficient)
-            }
-
-            // Slight stereo decorrelation. Identical channels image as a point
-            // inside your head, which is fatiguing; a touch of difference makes
-            // it sit around you instead.
-            left[frame] = sample
-            right[frame] = sample * 0.92 + Float.random(in: -0.02...0.02)
+extension SoundscapeEngine.Sound {
+    /// Which generator a synthesised sound uses; `nil` for recorded beds.
+    var noiseKind: NoiseGenerator.Kind? {
+        switch self {
+        case .whiteNoise: .white
+        case .pinkNoise: .pink
+        case .brownNoise: .brown
+        default: nil
         }
+    }
+}
 
+/// Owns the noise generator so its per-sample work runs off the main actor.
+/// One instance per engine, and calls are made one at a time, so buffers
+/// come out in order and the filters stay continuous across them.
+actor NoiseRenderer {
+    private var generator = NoiseGenerator(seed: UInt64.random(in: 1...UInt64.max))
+
+    func render(_ kind: NoiseGenerator.Kind, frames: Int, harmonicPresence: Float) -> (left: [Float], right: [Float]) {
+        generator.render(kind, frames: frames, harmonicPresence: harmonicPresence)
+    }
+}
+
+/// Decodes a recorded bed and builds its seamless loop, off the main actor.
+///
+/// Only plain sample arrays cross back to the main actor; the PCM buffer the
+/// player needs is made there. Peak memory is the decoded file plus one copy
+/// (~60 MB for a 90 s stereo bed) and settles at one copy while playing.
+enum RecordedLoopLoader {
+
+    struct Decoded: Sendable {
+        let sampleRate: Double
+        let channels: [[Float]]
+    }
+
+    @MainActor
+    static func loop(url: URL) async -> AVAudioPCMBuffer? {
+        guard let decoded = await decode(url: url),
+              let first = decoded.channels.first,
+              let format = AVAudioFormat(
+                  standardFormatWithSampleRate: decoded.sampleRate,
+                  channels: AVAudioChannelCount(decoded.channels.count)
+              ),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(first.count)),
+              let out = buffer.floatChannelData else { return nil }
+        buffer.frameLength = AVAudioFrameCount(first.count)
+        for (channel, samples) in decoded.channels.enumerated() {
+            samples.withUnsafeBufferPointer { out[channel].update(from: $0.baseAddress!, count: $0.count) }
+        }
         return buffer
     }
 
-    private func pinkSample(_ white: Float) -> Float {
-        var sum: Float = 0
-        for row in 0..<pinkRows.count {
-            // Each row updates half as often as the one before it.
-            if Int.random(in: 0..<(1 << row)) == 0 {
-                pinkRows[row] = Float.random(in: -1...1)
+    static func decode(url: URL) async -> Decoded? {
+        await Task.detached(priority: .userInitiated) { () -> Decoded? in
+            guard let file = try? AVAudioFile(forReading: url) else { return nil }
+            let format = file.processingFormat
+            let frames = AVAudioFrameCount(file.length)
+            let crossfade = Int(format.sampleRate * SeamlessLoop.defaultCrossfadeSeconds)
+            var channels: [[Float]] = []
+            do {
+                guard frames > 0,
+                      let source = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames) else { return nil }
+                guard (try? file.read(into: source)) != nil,
+                      let input = source.floatChannelData else { return nil }
+                let length = Int(source.frameLength)
+                for channel in 0..<Int(format.channelCount) {
+                    channels.append(Array(UnsafeBufferPointer(start: input[channel], count: length)))
+                }
             }
-            sum += pinkRows[row]
-        }
-        return (sum / Float(pinkRows.count)) + white * 0.1
-    }
-
-    private func lowpass(_ input: Float, coefficient: Float) -> Float {
-        lowpassState += coefficient * (input - lowpassState)
-        return lowpassState
+            for index in channels.indices {
+                guard SeamlessLoop.makeInPlace(&channels[index], crossfadeFrames: crossfade) else { return nil }
+            }
+            return channels.isEmpty ? nil : Decoded(sampleRate: format.sampleRate, channels: channels)
+        }.value
     }
 }
