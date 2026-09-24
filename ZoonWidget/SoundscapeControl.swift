@@ -46,6 +46,24 @@ struct NapControl: ControlWidget {
     }
 }
 
+/// Unlike the two above, this one starts what it names: tapped at bedtime,
+/// "Wind Down" that only opened a settings screen would be the do-nothing
+/// control the note at the top warns about. The app still does the work
+/// (`RootView.consumeDeepLink`); this only asks for it.
+@available(iOS 18.0, *)
+struct WindDownControl: ControlWidget {
+
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "com.zoon.sleep.control.windDown") {
+            ControlWidgetButton(action: OpenWindDownIntent()) {
+                Label("Wind Down", systemImage: "moon.stars")
+            }
+        }
+        .displayName("Wind Down")
+        .description("Open Zoon and begin the Tonight routine.")
+    }
+}
+
 // MARK: - Previews
 
 // There are none, and that is a verified fact rather than an oversight.
@@ -60,7 +78,7 @@ struct NapControl: ControlWidget {
 //     type 'WidgetFamily' has no member 'controlCenter'
 //     cannot find 'ControlWidgetPreviewValue' in scope
 //
-// So the two controls above are inspectable only by building to a device or
+// So the controls above are inspectable only by building to a device or
 // simulator and opening Control Center's gallery. If a future SDK adds a
 // control-shaped preview, this comment is the thing to delete.
 
@@ -90,6 +108,19 @@ struct OpenNapIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         DeepLink.pending = .nap
+        return .result()
+    }
+}
+
+@available(iOS 18.0, *)
+struct OpenWindDownIntent: AppIntent {
+    static let title: LocalizedStringResource = "Begin Wind Down"
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        DeepLink.pending = .windDown
+        DeepLink.pendingStartsWindDown = true
         return .result()
     }
 }
