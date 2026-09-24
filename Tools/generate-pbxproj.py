@@ -261,6 +261,12 @@ APP_PRIVACY = "Zoon/PrivacyInfo.xcprivacy"
 EXT_PRIVACY = "ZoonWidget/PrivacyInfo.xcprivacy"
 WATCH_PRIVACY = "ZoonWatch/PrivacyInfo.xcprivacy"
 WATCH_EXT_PRIVACY = "ZoonWatchWidget/PrivacyInfo.xcprivacy"
+# String Catalogs (audit §15). English is the source language; with
+# SWIFT_EMIT_LOC_STRINGS=YES a build in Xcode syncs every Text/String(localized:)
+# literal into these, which is what makes the app translatable at all.
+APP_STRINGS = "Zoon/Localizable.xcstrings"
+EXT_STRINGS = "ZoonWidget/Localizable.xcstrings"
+WATCH_STRINGS = "ZoonWatch/Localizable.xcstrings"
 
 
 def sound_files():
@@ -307,6 +313,8 @@ def file_ref(path, ftype=None, name=None):
             ftype = "text.xml"
         elif base.endswith(".mp3"):
             ftype = "audio.mp3"
+        elif base.endswith(".xcstrings"):
+            ftype = "text.json.xcstrings"
         else:
             ftype = "text"
     emit("PBXFileReference",
@@ -319,6 +327,7 @@ refs = {}
 for p in SHARED + APP_SRC + EXT_SRC + WATCH_SRC + WATCH_EXT_SRC + TESTS_SRC + UITESTS_SRC + [
     APP_ASSETS, EXT_ASSETS, WATCH_ASSETS,
     APP_PRIVACY, EXT_PRIVACY, WATCH_PRIVACY, WATCH_EXT_PRIVACY,
+    APP_STRINGS, EXT_STRINGS, WATCH_STRINGS,
 ] + DOCS + SOUND_FILES:
     refs[p] = file_ref(p)
 
@@ -396,11 +405,11 @@ def resource_file(path, target):
     return bid
 
 
-app_resources = [resource_file(APP_ASSETS, APP), resource_file(APP_PRIVACY, APP)] + [
+app_resources = [resource_file(APP_ASSETS, APP), resource_file(APP_PRIVACY, APP), resource_file(APP_STRINGS, APP)] + [
     resource_file(p, APP) for p in SOUND_FILES
 ]
-ext_resources = [resource_file(EXT_ASSETS, EXT), resource_file(EXT_PRIVACY, EXT)]
-watch_resources = [resource_file(WATCH_ASSETS, WATCH), resource_file(WATCH_PRIVACY, WATCH)]
+ext_resources = [resource_file(EXT_ASSETS, EXT), resource_file(EXT_PRIVACY, EXT), resource_file(EXT_STRINGS, EXT)]
+watch_resources = [resource_file(WATCH_ASSETS, WATCH), resource_file(WATCH_PRIVACY, WATCH), resource_file(WATCH_STRINGS, WATCH)]
 watch_ext_resources = [resource_file(WATCH_EXT_PRIVACY, WATCH_EXT)]
 
 EMBED_WATCH_EXT_BF = uid("embed:watchappex")
@@ -463,10 +472,10 @@ def tree_groups(prefix, files, extra=()):
 
 shared_group = tree_groups("Shared", SHARED)
 sounds_group = group("Zoon/Sounds", "Sounds", [refs[p] for p in SOUND_FILES], path="Sounds") if SOUND_FILES else None
-app_extra = [refs[APP_ASSETS], refs[APP_PRIVACY]] + ([sounds_group] if sounds_group else [])
+app_extra = [refs[APP_ASSETS], refs[APP_PRIVACY], refs[APP_STRINGS]] + ([sounds_group] if sounds_group else [])
 app_group = tree_groups("Zoon", APP_SRC, extra=app_extra)
-ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS], refs[EXT_PRIVACY]])
-watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS], refs[WATCH_PRIVACY]])
+ext_group = tree_groups("ZoonWidget", EXT_SRC, extra=[refs[EXT_ASSETS], refs[EXT_PRIVACY], refs[EXT_STRINGS]])
+watch_group = tree_groups("ZoonWatch", WATCH_SRC, extra=[refs[WATCH_ASSETS], refs[WATCH_PRIVACY], refs[WATCH_STRINGS]])
 watch_ext_group = tree_groups("ZoonWatchWidget", WATCH_EXT_SRC, extra=[refs[WATCH_EXT_PRIVACY]])
 tests_group = tree_groups("ZoonTests", TESTS_SRC)
 uitests_group = tree_groups("ZoonUITests", UITESTS_SRC)
