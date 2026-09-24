@@ -113,6 +113,22 @@ struct StartSoundscapeIntent: AppIntent {
     }
 }
 
+/// Starts the Tonight routine: guided breathing and the saved sound scene,
+/// with its countdown on the Lock Screen. Opens the app, because the audio
+/// session and the routine live there.
+struct StartWindDownIntent: AppIntent {
+    static let title: LocalizedStringResource = "Start Wind Down"
+    static let description = IntentDescription("Begin Zoon's Tonight routine: guided breathing and your sound scene.")
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        DeepLink.pending = .windDown
+        DeepLink.pendingStartsWindDown = true
+        return .result(dialog: "Starting your wind-down.")
+    }
+}
+
 struct GetBedtimeIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Tonight's Bedtime"
     static let description = IntentDescription("Tonight's bed and wake target from Zoon.")
@@ -203,6 +219,15 @@ struct ZoonShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Sleep Sounds",
             systemImageName: "waveform"
+        )
+        AppShortcut(
+            intent: StartWindDownIntent(),
+            phrases: [
+                "Start wind down in \(.applicationName)",
+                "Start my bedtime routine in \(.applicationName)"
+            ],
+            shortTitle: "Wind Down",
+            systemImageName: "moon.stars"
         )
         AppShortcut(
             intent: GetBedtimeIntent(),

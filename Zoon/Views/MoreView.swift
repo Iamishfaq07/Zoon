@@ -97,7 +97,7 @@ struct MoreView: View {
                 case .sensorTruth: SensorTruthView()
                 case .tomorrow: ZoonTomorrowView()
                 // Owned by the Sleep tab.
-                case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock: EmptyView()
+                case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock, .windDown: EmptyView()
                 // Presented as its own sheet from GlobalPresentation, not
                 // reachable through this stack.
                 case .journal: EmptyView()
