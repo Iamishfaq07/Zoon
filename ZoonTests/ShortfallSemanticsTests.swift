@@ -149,4 +149,33 @@ final class ShortfallSemanticsTests: XCTestCase {
         let unknown = CoachEvidence(night: night(asleep: 400, entering: 30, need: nil), history: [])
         XCTAssertEqual(unknown.catalog["debt"]?.hasPrefix("Recent shortfall entering this night"), true)
     }
+
+    // MARK: - Timeframes (audit §17.6)
+
+    func testAnswersNameTheTimeTheyAreAbout() {
+        let today = CoachEvidence(night: night(asleep: 400, entering: 30), history: [])
+        XCTAssertEqual(today.reply(to: "How did I sleep last night?").timeframe, "Last night")
+        XCTAssertEqual(today.reply(to: "Am I behind on sleep?").timeframe, "Recent nights")
+        XCTAssertEqual(today.reply(to: "When should I sleep tonight?").timeframe, "Tonight")
+    }
+
+    func testAnOlderNightIsNamedByItsDateNotLastNight() throws {
+        let older = CoachEvidence(night: night(daysAgo: 4, asleep: 400, entering: 30), history: [])
+        let timeframe = try XCTUnwrap(older.reply(to: "How did I sleep?").timeframe)
+        XCTAssertTrue(timeframe.hasPrefix("Night of "), timeframe)
+    }
+
+    /// Greetings, referrals and redirections are not about a span of time.
+    func testAnswersNotAboutASpanHaveNone() {
+        let evidence = CoachEvidence(night: night(asleep: 400, entering: 30), history: [])
+        XCTAssertNil(evidence.reply(to: "hi").timeframe)
+        XCTAssertNil(evidence.reply(to: "Do I have sleep apnea?").timeframe)
+    }
+
+    func testATrendNamesHowManyNightsItCompares() {
+        let history = (1...20).map { night(daysAgo: $0, asleep: 420, entering: 0) }
+        let evidence = CoachEvidence(night: night(asleep: 400, entering: 30), history: history)
+        XCTAssertEqual(evidence.trendTimeframe, "Last 20 nights")
+        XCTAssertNil(CoachEvidence(night: night(asleep: 400, entering: 30), history: Array(history.prefix(5))).trendTimeframe)
+    }
 }

@@ -15,6 +15,30 @@ struct CoachEvidence: Sendable {
         let text: String
         let evidence: String?
         let action: String?
+        /// The stretch of time the answer is about -- "Last night",
+        /// "Night of Sat 19 Sep", "Recent nights", "Last 28 nights",
+        /// "Tonight" (audit §17.6). `nil` when an answer is not about one.
+        var timeframe: String? = nil
+
+        func within(_ timeframe: String?) -> Reply {
+            var scoped = self
+            scoped.timeframe = timeframe
+            return scoped
+        }
+    }
+
+    /// The night this evidence describes, as a person would name it.
+    var nightTimeframe: String {
+        Calendar.current.isDateInToday(night.date)
+            ? "Last night"
+            : "Night of \(night.bedtime.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))"
+    }
+
+    /// The span `trendReply` compares, or `nil` when it has too few nights
+    /// to compare anything. Mirrors that function's own guard.
+    var trendTimeframe: String? {
+        let prior = history.suffix(28)
+        return prior.count >= 8 ? "Last \(prior.count) nights" : nil
     }
 
     var vitals: VitalsStatus {
@@ -81,26 +105,26 @@ struct CoachEvidence: Sendable {
             // duration — it contains "sleep", and that branch ran first.
             switch call.kind {
             case .getTonight, .getTomorrow:
-                return tonightReply()
+                return tonightReply().within("Tonight")
             case .getFatigueContext:
-                return fatigueReply()
+                return fatigueReply().within(nightTimeframe)
             case .getTrainingContext:
-                return trainReply()
+                return trainReply().within(nightTimeframe)
             case .getCurrentPriority:
                 return priorityReply()
             case .getSleepDuration, .getSleepScore:
-                return sleepReply()
+                return sleepReply().within(nightTimeframe)
             case .getLastNightSummary:
                 // Catalog maps HRV and wake questions here too. Do not
                 // collapse them into duration copy — the local keyword
                 // branches are finer than the catalog kind.
-                return lastNightReply(to: question)
+                return lastNightReply(to: question).within(nightTimeframe)
             case .getShortfall:
-                return debtReply()
+                return debtReply().within("Recent nights")
             case .getTrendSummary, .getMonthlyChange:
-                return trendReply()
+                return trendReply().within(trendTimeframe)
             case .getRecovery:
-                return recoveryLocalReply()
+                return recoveryLocalReply().within(nightTimeframe)
             case .getEnergy:
                 return energyLocalReply()
             case .getDailyLoad, .getPhysiologicalLoad:
@@ -108,11 +132,11 @@ struct CoachEvidence: Sendable {
             case .getMovement:
                 return movementLocalReply()
             case .getBehaviorEvidence:
-                return behaviorReply()
+                return behaviorReply().within(nightTimeframe)
             case .getLearningStatus:
                 return learningReply()
             case .getWeeklyPlan:
-                return weeklyReply()
+                return weeklyReply().within("Recent nights")
             default:
                 break
             }
@@ -123,32 +147,32 @@ struct CoachEvidence: Sendable {
         let q = question.lowercased()
 
         if matches(q, ["behind", "debt", "catch up", "enough sleep", "short on sleep", "sleep enough"]) {
-            return debtReply()
+            return debtReply().within("Recent nights")
         }
         if matches(q, ["hrv", "recovery signal", "heart rate variability"]) {
-            return hrvReply()
+            return hrvReply().within(nightTimeframe)
         }
         if matches(q, ["heart", "rhr", "resting"]) && !q.contains("rate variability") {
-            return heartReply()
+            return heartReply().within(nightTimeframe)
         }
         if matches(q, ["wake", "woke", "awake", "interrupt", "fragment"]) {
-            return wakeReply()
+            return wakeReply().within(nightTimeframe)
         }
         if matches(q, ["train", "workout", "strain", "exercise"]) && !q.contains("energy") {
-            return trainReply()
+            return trainReply().within(nightTimeframe)
         }
         if matches(q, ["tired", "fatigue", "exhausted", "why am i so sleepy"]) {
-            return fatigueReply()
+            return fatigueReply().within(nightTimeframe)
         }
         if matches(q, ["tonight", "bedtime", "prepare", "wind down", "what should i do", "when should i sleep"]) {
-            return tonightReply()
+            return tonightReply().within("Tonight")
         }
         if matches(q, ["deep", "rem", "stage", "solid", "how did i sleep", "last night", "how much did i sleep"]) {
-            return sleepReply()
+            return sleepReply().within(nightTimeframe)
         }
 
         if matches(q, ["sleep", "slept"]) {
-            return sleepReply()
+            return sleepReply().within(nightTimeframe)
         }
         return unknownReply()
     }

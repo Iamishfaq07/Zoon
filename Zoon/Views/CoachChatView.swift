@@ -209,6 +209,15 @@ struct CoachChatView: View {
                             tint: confidence == .grounded ? Theme.Metric.sleep : Theme.inkSecondary
                         )
                     }
+                    // Which stretch of time the answer is about (audit
+                    // §17.6), so "last night" and "recent nights" answers
+                    // are never mistaken for each other.
+                    if let timeframe = message.timeframe {
+                        Text(timeframe)
+                            .font(Theme.label(11, weight: .semibold))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .accessibilityLabel("About \(timeframe)")
+                    }
                 }
                 // Direct Answer.
                 Text(message.text)
