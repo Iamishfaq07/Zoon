@@ -182,6 +182,9 @@ final class SleepDataCoordinator {
     /// Populated only when Lifestyle Insights is on. `nil` otherwise,
     /// including on every code path that never asks HealthKit for it.
     private(set) var todayLifestyleInsights: LifestyleInsights?
+    /// Mood logged in Apple Health after full vs short nights. `nil` until
+    /// Lifestyle Insights is on and the first read has run.
+    private(set) var moodSleepLink: MoodSleepLink.Result?
 
     // MARK: - Dependencies
 
@@ -434,6 +437,9 @@ final class SleepDataCoordinator {
             todayLifestyleInsights = LifestyleInsights(
                 caffeineMg: 140, alcoholicBeverages: nil, daylightMinutes: 38, mindfulMinutes: 10
             )
+            moodSleepLink = MoodSleepLink.Result(
+                daysAfterFullNights: 18, daysAfterShortNights: 7, moodAfterFull: 0.42, moodAfterShort: 0.18
+            )
             return
         }
         do {
@@ -446,11 +452,44 @@ final class SleepDataCoordinator {
 
     func disableLifestyleInsights() {
         todayLifestyleInsights = nil
+        moodSleepLink = nil
     }
 
     private func refreshLifestyleInsights() async {
         let today = DateInterval(start: Calendar.current.startOfDay(for: .now), end: .now)
         todayLifestyleInsights = await healthKit.lifestyleInsights(for: today)
+        await recordMeasuredMorningDaylight()
+        await refreshMoodSleepLink()
+    }
+
+    /// Fills in tonight's "time outdoors this morning" as *yes* when the watch
+    /// measured enough morning daylight and nobody has answered yet. Never
+    /// writes *no* and never replaces an answer. See `MorningDaylight`.
+    private func recordMeasuredMorningDaylight(now: Date = .now) async {
+        guard let window = MorningDaylight.window(on: now, now: now) else { return }
+        let minutes = await healthRead("daylight.morning", source: "timeInDaylight", {
+            try await healthKit.daylightMinutes(in: window)
+        }) ?? nil
+        guard MorningDaylight.counts(minutes) else { return }
+        let nightDate = MorningDaylight.nightDate(for: now)
+        let key = BehaviorObservationRecord.provisionalNightKey(for: nightDate)
+        guard behaviors.answers(forNightKey: key).state(for: .morningDaylight) == .unknown else { return }
+        behaviors.set(.yes, for: .morningDaylight, nightKey: key, source: .healthKit)
+        // The journal's tag set mirrors yes answers, as `setBehavior` does.
+        if !journal.entryOrCreate(for: nightDate, nightKey: key).contains(.morningDaylight) {
+            journal.toggle(.morningDaylight, on: nightDate, nightKey: key)
+        }
+    }
+
+    /// Reads the last 90 days of daily mood and pairs each with the night
+    /// before it. See `MoodSleepLink`.
+    private func refreshMoodSleepLink() async {
+        let end = Date.now
+        guard let start = Calendar.current.date(byAdding: .day, value: -90, to: end) else { return }
+        let logs = await healthRead("mood.daily", source: "stateOfMind", {
+            try await healthKit.dailyMoodLogs(in: DateInterval(start: start, end: end))
+        }) ?? []
+        moodSleepLink = MoodSleepLink.compute(moods: MoodSleepLink.dailyMeans(logs), nights: recentNights)
     }
 
     private func refreshCycleData() async {

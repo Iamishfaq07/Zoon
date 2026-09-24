@@ -6,7 +6,7 @@ Zoon is a local-first sleep and recovery application. It does not require an acc
 
 ## Data Zoon reads
 
-With permission, Zoon reads selected Apple Health categories used to produce sleep and recovery features, including sleep analysis, heart rate, resting heart rate, heart-rate variability, respiratory rate, oxygen saturation, sleeping wrist temperature, breathing disturbances, workouts, and activity data. Menstrual-flow dates are requested separately and only when cycle tracking is enabled.
+With permission, Zoon reads selected Apple Health categories used to produce sleep and recovery features, including sleep analysis, heart rate, resting heart rate, heart-rate variability, respiratory rate, oxygen saturation, sleeping wrist temperature, breathing disturbances, workouts, and activity data. Menstrual-flow dates are requested separately and only when cycle tracking is enabled. Caffeine, alcohol, time in daylight, mindfulness sessions and daily mood logs (State of Mind) are requested separately and only when Lifestyle Insights is enabled; daily mood is compared with your own sleep on the device and is never sent anywhere.
 
 Zoon requests read access only. It does not write or modify data in Apple Health.
 

@@ -23,6 +23,7 @@ struct ZoonWidgetBundle: WidgetBundle {
         // app's iOS 18 floor in places, so each is gated rather than assumed.
         #if canImport(ActivityKit)
         NapLiveActivity()
+        WindDownLiveActivity()
         #endif
 
         if #available(iOS 18.0, *) {

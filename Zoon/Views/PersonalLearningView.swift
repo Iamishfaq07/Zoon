@@ -4,6 +4,7 @@ import SwiftUI
 /// honestly have nothing to show yet.
 struct PersonalLearningView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
     @State private var resilience: [PersonalLearning.Resilience] = []
     @State private var circadian: PersonalLearning.CircadianResponse?
 
@@ -14,6 +15,8 @@ struct PersonalLearningView: View {
                     .entrance(0)
                 unlockMap
                     .entrance(0)
+                moodSection
+                    .entrance(1)
                 resilienceSection
                     .entrance(1)
                 circadianSection
@@ -92,6 +95,33 @@ struct PersonalLearningView: View {
         case .unlocked: "Ready"
         case .next(let remaining), .later(let remaining): LearningUnlockMap.remainingCopy(remaining)
         }
+    }
+
+    /// Mood logged in Apple Health after full vs short nights. Needs
+    /// Lifestyle Insights, the same opt-in as caffeine and daylight.
+    @ViewBuilder private var moodSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "Mood and sleep",
+                subtitle: "Mood you log in Apple Health, after nights that met your need and after short ones.",
+                systemImage: "face.smiling"
+            )
+            if !preferences.lifestyleInsightsEnabled {
+                learningMessage("Turn on Lifestyle Insights in Settings to compare your sleep with the daily mood you log in the Health app or the Mindfulness app on Apple Watch. Zoon only reads it, on this device.")
+            } else if let link = coordinator.moodSleepLink {
+                Text(link.sentence)
+                    .font(Theme.label(14, weight: link.isReady ? .semibold : .regular))
+                    .foregroundStyle(link.isReady ? Theme.ink : Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if link.isReady {
+                    Text("Full night: within 15 minutes of your need. Short night: an hour or more below it. Nights in between are left out.")
+                        .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                learningMessage("Log your daily mood in the Health app to start this comparison.")
+            }
+        }.glassCard()
     }
 
     @ViewBuilder private var resilienceSection: some View {
