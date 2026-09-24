@@ -61,4 +61,16 @@ final class AwakeningInspectorTests: XCTestCase {
         XCTAssertEqual(found.count, 1)
         XCTAssertEqual(found.first?.start, date(4, 0))
     }
+
+    /// Was "Light sleep sleep resumed" in the inspector.
+    func testResumeCaptionsNeverRepeatSleep() {
+        for stage in SleepStage.asleepStages {
+            let caption = AwakeningInspector.resumeCaption(for: stage)
+            XCTAssertFalse(caption.lowercased().contains("sleep sleep"), caption)
+            XCTAssertFalse(caption.lowercased().contains("asleep sleep"), caption)
+            XCTAssertTrue(caption.hasSuffix("resumed"), caption)
+        }
+        XCTAssertEqual(AwakeningInspector.resumeCaption(for: .deep), "Deep sleep resumed")
+        XCTAssertEqual(AwakeningInspector.resumeCaption(for: .rem), "REM sleep resumed")
+    }
 }

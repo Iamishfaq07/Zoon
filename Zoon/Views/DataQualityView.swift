@@ -19,6 +19,7 @@ struct DataQualityView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                 ZoonCoverageMatrix(nights: coordinator.recentNights)
+                readSection
                 lapseSection
                 VStack(alignment: .leading, spacing: 10) {
 
@@ -51,6 +52,54 @@ struct DataQualityView: View {
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var readProblems: [FetchDiagnostic] {
+        FetchDiagnostics.shared.log.problems
+    }
+
+    /// Audit §10: a gap above can be "nothing was recorded" or "Zoon could
+    /// not read it". This says which, without showing a raw error.
+    private var readSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ZoonSectionHeader("What Zoon couldn't read")
+            if readProblems.isEmpty {
+                Text("Every read since Zoon opened worked. A gap above means nothing was recorded, not that Zoon couldn't reach it.")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("dataQuality.readsOK")
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(readProblems.enumerated()), id: \.element.id) { index, problem in
+                        if index > 0 { Rectangle().fill(Theme.cardStroke).frame(height: 1) }
+                        readRow(problem).padding(.vertical, 10)
+                    }
+                }
+            }
+        }
+    }
+
+    private func readRow(_ problem: FetchDiagnostic) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(problem.displayName)
+                    .font(Theme.label(13, weight: .medium))
+                Spacer()
+                Text(problem.issue.shortLabel)
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.Family.attention)
+            }
+            Text(problem.issue.explanation)
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(problem.timestamp.formatted(date: .abbreviated, time: .shortened))
+                .font(Theme.text(10))
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(problem.displayName): \(problem.issue.shortLabel). \(problem.issue.explanation)")
     }
 
     private var lapses: [DataQuality.Lapse] {

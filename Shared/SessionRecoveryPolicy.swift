@@ -24,3 +24,49 @@ enum SnoreResumePolicy: Sendable {
         engineStarted && receivedBuffer
     }
 }
+
+/// Resuming after an interruption (a call, Siri, an alarm) ends.
+///
+/// Audit §9.3: the coordinator used to run `try? setActive(true)` and then
+/// tell every owner to resume whatever happened, so a failed reactivation
+/// had owners start engines on a dead session and report themselves playing.
+/// Now activation is retried a bounded number of times and owners are told
+/// to resume only after it succeeds. A final failure leaves them paused and
+/// is reported, never spun on forever.
+enum InterruptionResumePolicy: Sendable {
+
+    /// Delay before each activation attempt: at once, then twice with
+    /// backoff. Three tries over two seconds -- enough for the common case
+    /// where the other app has not quite released the session yet.
+    static let attemptDelays: [TimeInterval] = [0, 0.5, 1.5]
+
+    /// Runs the attempts. `activate` throws on failure; `notify` runs only
+    /// after a successful activation. Returns whether the session resumed.
+    /// Stops early, without notifying, when `shouldContinue` turns false (a
+    /// new interruption began, or every owner released).
+    ///
+    /// `@MainActor` because the closures read and call main-actor audio
+    /// owners; a nonisolated async function would run them off the main
+    /// actor.
+    @MainActor
+    static func resume(
+        delays: [TimeInterval] = attemptDelays,
+        sleep: (TimeInterval) async -> Void,
+        shouldContinue: () -> Bool = { true },
+        activate: () throws -> Void,
+        notify: () -> Void
+    ) async -> Bool {
+        for delay in delays {
+            if delay > 0 { await sleep(delay) }
+            guard shouldContinue() else { return false }
+            do {
+                try activate()
+            } catch {
+                continue
+            }
+            notify()
+            return true
+        }
+        return false
+    }
+}

@@ -1,29 +1,55 @@
 import Foundation
 
-/// The running-shortfall math behind the Sleep Debt screen, pulled out as a
-/// pure function so it can be tested without a SwiftData store behind it.
+/// A decaying record of recent sleep below the person's baseline target.
+///
+/// **What it is not.** It is not a literal physiological debt account, and it
+/// was named `SleepDebtCalculator` until the 2026 audit. Recovery from chronic
+/// sleep restriction is complex: different outcomes recover at different
+/// rates, and a long night does not instantly erase a short week -- but extra
+/// recovery sleep is not worthless either. This figure makes no claim either
+/// way. It records shortfall and lets it fade; it does not model repayment.
 ///
 /// Three deliberate choices:
 ///
-/// - **Surplus does not cancel debt.** Sleeping ten hours on Saturday does
-///   not undo five short weeknights; the physiology doesn't work that way and
-///   a metric that says otherwise encourages exactly the wrong behaviour. Only
-///   nights *below* goal contribute.
+/// - **One-sided.** Only nights *below* target add to it; a night above
+///   target adds nothing and subtracts nothing. That is a choice about what
+///   this number reports (recent shortfall), not a statement that surplus
+///   sleep has no recovery value. Whether a capped recovery credit would
+///   better match how people feel is an evaluation question for
+///   `NeedModelEvaluation` and morning check-ins, not something to ship on
+///   a competitor's say-so.
 /// - **Missing nights are skipped, not counted as zero sleep.** A night you
 ///   didn't wear the watch isn't a night you didn't sleep, and treating it as
-///   8 hours of debt would make the number useless after one forgotten charge.
+///   8 hours of shortfall would make the number useless after one forgotten
+///   charge.
 /// - **Decays night-over-night rather than dropping off a hard window edge.**
 ///   A flat N-night cutoff makes the number lurch on a day when nothing
 ///   happened: the night that ages out of the window vanishes from the sum in
-///   one step, so someone who slept fine last night can still see debt fall
-///   sharply for a reason that has nothing to do with last night. Instead each
-///   past shortfall fades out gradually every night that follows it — still a
-///   "recent nights matter more than old ones" figure, just without the
-///   cliff. `decayPerNight` is chosen so the total lands close to an old
-///   flat-14-night sum in steady state (half-life ≈ 10 nights).
-enum SleepDebtCalculator {
+///   one step. Instead each past shortfall fades a little every night that
+///   follows it. `decayPerNight` is chosen so the total lands close to an old
+///   flat-14-night sum in steady state (half-life ≈ 10 nights) -- which is
+///   why older comments still say "14-day"; it is not a 14-day window.
+///
+/// **Temporal meaning.** A night's stored `sleepDebtMinutes` is the shortfall
+/// *entering* that night. See `SleepNightFeatures.shortfallBeforeNightMinutes`
+/// and `shortfallThroughNightMinutes` for the named forms, and use those.
+enum RecentSleepShortfall {
 
     static let decayPerNight = 0.933
+
+    /// One night on the ledger: what was carried in, faded by the nights
+    /// since, plus this night's own gap below target. The only place the
+    /// step is written, so the series, the as-of-now figure and a night's
+    /// "through" figure cannot use different rules.
+    static func step(
+        enteringMinutes: Double,
+        needMinutes: Double,
+        asleepMinutes: Double,
+        gapDays: Int = 1
+    ) -> Double {
+        let decay = gapDays == 1 ? decayPerNight : pow(decayPerNight, Double(gapDays))
+        return max(0, enteringMinutes) * decay + max(0, needMinutes - asleepMinutes)
+    }
 
     /// - Parameter timeAsleepMinutesNewestFirst: minutes asleep per night,
     ///   ordered most recent first. Nights the caller has already excluded
@@ -178,10 +204,9 @@ enum SleepDebtCalculator {
         var series: [Double] = []
         for (index, (minutes, goal)) in zip(nights, goals).enumerated() {
             let gapDays = index < gaps.count ? gaps[index] : 1
-            // A plain multiply for the common case keeps the undated path
-            // bit-identical to what it always produced.
-            let decay = gapDays == 1 ? decayPerNight : pow(decayPerNight, Double(gapDays))
-            debt = debt * decay + max(0, goal - minutes)
+            // `step` uses a plain multiply for the common case, which keeps
+            // the undated path bit-identical to what it always produced.
+            debt = step(enteringMinutes: debt, needMinutes: goal, asleepMinutes: minutes, gapDays: gapDays)
             series.append(debt)
         }
         return series

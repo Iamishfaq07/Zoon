@@ -15,6 +15,30 @@ struct CoachEvidence: Sendable {
         let text: String
         let evidence: String?
         let action: String?
+        /// The stretch of time the answer is about -- "Last night",
+        /// "Night of Sat 19 Sep", "Recent nights", "Last 28 nights",
+        /// "Tonight" (audit §17.6). `nil` when an answer is not about one.
+        var timeframe: String? = nil
+
+        func within(_ timeframe: String?) -> Reply {
+            var scoped = self
+            scoped.timeframe = timeframe
+            return scoped
+        }
+    }
+
+    /// The night this evidence describes, as a person would name it.
+    var nightTimeframe: String {
+        Calendar.current.isDateInToday(night.date)
+            ? "Last night"
+            : "Night of \(night.bedtime.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))"
+    }
+
+    /// The span `trendReply` compares, or `nil` when it has too few nights
+    /// to compare anything. Mirrors that function's own guard.
+    var trendTimeframe: String? {
+        let prior = history.suffix(28)
+        return prior.count >= 8 ? "Last \(prior.count) nights" : nil
     }
 
     var vitals: VitalsStatus {
@@ -33,8 +57,10 @@ struct CoachEvidence: Sendable {
         ]
         if let hrv = night.avgHRV { values["hrv"] = "HRV: \(Int(hrv.rounded())) ms" }
         if let hr = night.restingHeartRate { values["heart"] = "Resting heart rate: \(Int(hr.rounded())) bpm" }
-        if let debt = night.sleepDebtMinutes {
-            values["debt"] = "Sleep debt: \(Int(debt.rounded())) minutes"
+        if let through = night.shortfallThroughNightMinutes {
+            values["debt"] = "Recent shortfall after this night: \(Int(through.rounded())) minutes"
+        } else if let before = night.shortfallBeforeNightMinutes {
+            values["debt"] = "Recent shortfall entering this night: \(Int(before.rounded())) minutes"
         }
         return values
     }
@@ -55,6 +81,12 @@ struct CoachEvidence: Sendable {
     /// Local, deterministic reply. Always available — Apple Intelligence is
     /// optional colour on top, not the only way to answer "Am I behind?".
     func reply(to question: String) -> Reply {
+        // Before any routing: a question about a condition is answered as
+        // one. "Do I have sleep apnea?" contains "sleep", and the keyword
+        // fallback used to answer it with last night's duration.
+        if Self.isMedicalQuestion(question) {
+            return medicalReply()
+        }
         switch CoachIntentRouter.classify(question) {
         case .greeting:
             return Reply(text: CoachIntentRouter.greetingReply(), evidence: nil, action: nil)
@@ -73,26 +105,26 @@ struct CoachEvidence: Sendable {
             // duration — it contains "sleep", and that branch ran first.
             switch call.kind {
             case .getTonight, .getTomorrow:
-                return tonightReply()
+                return tonightReply().within("Tonight")
             case .getFatigueContext:
-                return fatigueReply()
+                return fatigueReply().within(nightTimeframe)
             case .getTrainingContext:
-                return trainReply()
+                return trainReply().within(nightTimeframe)
             case .getCurrentPriority:
                 return priorityReply()
             case .getSleepDuration, .getSleepScore:
-                return sleepReply()
+                return sleepReply().within(nightTimeframe)
             case .getLastNightSummary:
                 // Catalog maps HRV and wake questions here too. Do not
                 // collapse them into duration copy — the local keyword
                 // branches are finer than the catalog kind.
-                return lastNightReply(to: question)
+                return lastNightReply(to: question).within(nightTimeframe)
             case .getShortfall:
-                return debtReply()
+                return debtReply().within("Recent nights")
             case .getTrendSummary, .getMonthlyChange:
-                return trendReply()
+                return trendReply().within(trendTimeframe)
             case .getRecovery:
-                return recoveryLocalReply()
+                return recoveryLocalReply().within(nightTimeframe)
             case .getEnergy:
                 return energyLocalReply()
             case .getDailyLoad, .getPhysiologicalLoad:
@@ -100,11 +132,11 @@ struct CoachEvidence: Sendable {
             case .getMovement:
                 return movementLocalReply()
             case .getBehaviorEvidence:
-                return behaviorReply()
+                return behaviorReply().within(nightTimeframe)
             case .getLearningStatus:
                 return learningReply()
             case .getWeeklyPlan:
-                return weeklyReply()
+                return weeklyReply().within("Recent nights")
             default:
                 break
             }
@@ -115,34 +147,56 @@ struct CoachEvidence: Sendable {
         let q = question.lowercased()
 
         if matches(q, ["behind", "debt", "catch up", "enough sleep", "short on sleep", "sleep enough"]) {
-            return debtReply()
+            return debtReply().within("Recent nights")
         }
         if matches(q, ["hrv", "recovery signal", "heart rate variability"]) {
-            return hrvReply()
+            return hrvReply().within(nightTimeframe)
         }
         if matches(q, ["heart", "rhr", "resting"]) && !q.contains("rate variability") {
-            return heartReply()
+            return heartReply().within(nightTimeframe)
         }
         if matches(q, ["wake", "woke", "awake", "interrupt", "fragment"]) {
-            return wakeReply()
+            return wakeReply().within(nightTimeframe)
         }
         if matches(q, ["train", "workout", "strain", "exercise"]) && !q.contains("energy") {
-            return trainReply()
+            return trainReply().within(nightTimeframe)
         }
         if matches(q, ["tired", "fatigue", "exhausted", "why am i so sleepy"]) {
-            return fatigueReply()
+            return fatigueReply().within(nightTimeframe)
         }
         if matches(q, ["tonight", "bedtime", "prepare", "wind down", "what should i do", "when should i sleep"]) {
-            return tonightReply()
+            return tonightReply().within("Tonight")
         }
         if matches(q, ["deep", "rem", "stage", "solid", "how did i sleep", "last night", "how much did i sleep"]) {
-            return sleepReply()
+            return sleepReply().within(nightTimeframe)
         }
 
         if matches(q, ["sleep", "slept"]) {
-            return sleepReply()
+            return sleepReply().within(nightTimeframe)
         }
         return unknownReply()
+    }
+
+    /// Terms that make a question about a medical condition rather than
+    /// about last night's numbers.
+    static let medicalQuestionTerms = [
+        "apnea", "apnoea", "insomnia", "narcolepsy", "disorder", "diagnos",
+        "syndrome", "disease", "medical condition", "restless leg", "is something wrong with me"
+    ]
+
+    static func isMedicalQuestion(_ question: String) -> Bool {
+        let q = question.lowercased()
+        return medicalQuestionTerms.contains { q.contains($0) }
+    }
+
+    /// No diagnosis, no reassurance, and a clear route to someone who can
+    /// actually answer. Worded to pass `DiagnosticLanguageGuard` itself.
+    private func medicalReply() -> Reply {
+        Reply(
+            text: "Zoon can't tell whether you have a medical condition — a wearable's sleep numbers aren't a clinical test. It can show what was measured, like breathing disturbances Apple recorded or how often you woke. If snoring, pauses in breathing or daytime sleepiness worry you, that's worth raising with a clinician.",
+            evidence: nil,
+            action: nil
+        )
     }
 
     /// Small talk is handled by `CoachIntentRouter` before this type runs.
@@ -163,18 +217,61 @@ struct CoachEvidence: Sendable {
 
     // MARK: - Intents
 
+    /// Below this, a night's own gap is not reported as "adding" to the
+    /// shortfall: a quarter hour is inside ordinary night-to-night noise.
+    static let addedShortfallThresholdMinutes = 15.0
+
+    /// The running shortfall as of the morning after `night` -- that night's
+    /// figure, never today's. Falls back to the figure *entering* the night
+    /// only where the night's need was never recorded, and every reply that
+    /// uses the fallback avoids claiming anything about the night itself.
+    private var runningShortfall: Double {
+        night.shortfallThroughNightMinutes ?? night.shortfallBeforeNightMinutes ?? 0
+    }
+
+    /// "Am I behind?" and "Did last night add to it?".
+    ///
+    /// This used to read `sleepDebtMinutes`, the shortfall *entering* the
+    /// night, and on a small value answer "last night did not add to your
+    /// sleep debt" -- a claim about a night that figure does not include. A
+    /// 5h30 night after a clean week was told it added nothing. It now reads
+    /// the shortfall through the night and the night's own gap.
     private func debtReply() -> Reply {
         let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        let debt = night.sleepDebtMinutes ?? 0
-        if debt >= 45 {
+        let total = runningShortfall
+        let added = night.shortfallAddedByNightMinutes
+        let threshold = Self.addedShortfallThresholdMinutes
+
+        if total >= 45 {
+            var text = "Yes — you're carrying about \(SleepNightFeatures.formatMinutes(total)) of shortfall across recent nights"
+            if let added, added >= threshold {
+                text += ", including about \(SleepNightFeatures.formatMinutes(added)) from this night"
+            } else if added != nil {
+                text += "; this night itself met or came close to your need"
+            }
+            text += ". That's a running shortfall, not a verdict on how you will feel today."
             return Reply(
-                text: "Yes — you're carrying about \(SleepNightFeatures.formatMinutes(debt)) of unpaid sleep across recent nights. That's a running shortfall, not a verdict on how you will feel today.",
+                text: text,
                 evidence: catalog["debt"] ?? catalog["sleep"],
                 action: "Aim for an earlier wind-down tonight so the next night can repay some of it."
             )
         }
+        guard let added else {
+            return Reply(
+                text: "No — your recent shortfall is small. Zoon doesn't have the need this night was measured against, so it can't say whether the night itself added to it. You were asleep \(asleep).",
+                evidence: catalog["debt"] ?? catalog["sleep"],
+                action: nil
+            )
+        }
+        if added >= threshold {
+            return Reply(
+                text: "Not much overall, but this night did add to it: you were asleep \(asleep), about \(SleepNightFeatures.formatMinutes(added)) short of your need. The running shortfall is still small.",
+                evidence: catalog["debt"] ?? catalog["sleep"],
+                action: "Keep tonight's window protected so it doesn't build."
+            )
+        }
         return Reply(
-            text: "No — last night did not add to your sleep debt. You were asleep \(asleep).",
+            text: "No — this night met your need, so it did not add to your shortfall. You were asleep \(asleep).",
             evidence: catalog["sleep"],
             action: "Keep tonight close to the same window if it felt restful."
         )
@@ -232,17 +329,16 @@ struct CoachEvidence: Sendable {
 
     private func fatigueReply() -> Reply {
         let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        let debt = night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) }
         var text = "Zoon can't know exactly why you feel tired, but a few signals may be relevant. Last night you were asleep \(asleep)."
-        if let debt {
-            text += " Recent shortfall is \(debt)."
+        if night.shortfallThroughNightMinutes != nil || night.shortfallBeforeNightMinutes != nil {
+            text += " Recent shortfall is \(SleepNightFeatures.formatMinutes(runningShortfall))."
         }
         text += " Pair that with Morning Recovery, Energy, and current Load — this is not a medical claim."
         return Reply(text: text, evidence: catalog["sleep"], action: nil)
     }
 
     private func trainReply() -> Reply {
-        let debt = night.sleepDebtMinutes ?? 0
+        let debt = runningShortfall
         var lines: [String] = []
         if let hours = night.lastWorkoutHoursBeforeBed, hours < 3 {
             lines.append("Yesterday's session ended about \(Int(hours.rounded()))h before bed. That is a timing observation, not proof that the workout shortened the night.")
@@ -264,7 +360,7 @@ struct CoachEvidence: Sendable {
     }
 
     private func tonightReply() -> Reply {
-        let debt = night.sleepDebtMinutes ?? 0
+        let debt = runningShortfall
         let extra = debt >= 45
             ? " There is an outstanding shortfall of \(SleepNightFeatures.formatMinutes(debt)); Tonight will show how much of that is repaid in this plan."
             : " Tonight's window is computed independently of last night's clocks."
@@ -277,7 +373,8 @@ struct CoachEvidence: Sendable {
 
     /// "What should I focus on?" is the current priority, not Tonight by default.
     private func priorityReply() -> Reply {
-        if let debt = night.sleepDebtMinutes, debt >= 45 {
+        if runningShortfall >= 45 {
+            let debt = runningShortfall
             return Reply(
                 text: "Protect tonight's earlier sleep window. Recent shortfall is \(SleepNightFeatures.formatMinutes(debt)). That is the one action last night's record supports — not a live Energy or Load read.",
                 evidence: catalog["debt"] ?? catalog["sleep"],
@@ -434,7 +531,7 @@ struct CoachEvidence: Sendable {
     }
 
     private func weeklyReply() -> Reply {
-        let debt = night.sleepDebtMinutes ?? 0
+        let debt = runningShortfall
         if debt < 20 {
             return Reply(
                 text: "There is no meaningful shortfall to catch up this week. Keep tonight's window close to usual.",

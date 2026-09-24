@@ -22,15 +22,19 @@ enum PersistentStore {
     /// device: the Simulator has no App Group entitlement, so `open()` uses a
     /// different store URL there and CI never reaches the recovery path at
     /// all. Both containers now build from this.
-    static let schema = Schema([
-        SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
-        BehaviorObservationRecord.self, EvidenceRevisionRecord.self
-    ])
+    ///
+    /// Built from `ZoonSchemaV1`, the versioned description of the same five
+    /// models (audit §13).
+    static let schema = Schema(versionedSchema: ZoonSchemaV1.self)
 
     @MainActor
     static func open() throws -> ModelContainer {
         let configuration = diskConfiguration()
-        let container = try ModelContainer(for: schema, configurations: configuration)
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: ZoonMigrationPlan.self,
+            configurations: configuration
+        )
         if AppGroup.isConfigured {
             // A failed copy leaves the legacy store in place (the flag is
             // not set and the files are not erased on throw). Failing
@@ -153,7 +157,9 @@ enum PersistentStore {
         }
 
         let legacy = try ModelContainer(
-            for: schema, configurations: legacyDiskConfiguration(url: legacyURL)
+            for: schema,
+            migrationPlan: ZoonMigrationPlan.self,
+            configurations: legacyDiskConfiguration(url: legacyURL)
         )
         let legacyNightCount = try legacy.mainContext.fetchCount(
             FetchDescriptor<SleepNightRecord>()
@@ -302,4 +308,40 @@ enum PersistentStore {
         }
         return succeeded
     }
+}
+
+// MARK: - Schema versions (audit §13)
+
+/// The schema every shipped build has written, now named. Before this there
+/// was one unversioned `Schema`, and any change to a stored property would
+/// have relied on SwiftData inferring a lightweight migration -- or failing
+/// at launch on someone's phone.
+///
+/// V1 is the current models exactly, so a store written by an earlier
+/// build opens as V1 with nothing migrated (`SchemaMigrationTests` opens one
+/// written the old way). The next change to a stored property adds
+/// `ZoonSchemaV2` with nested copies of the changed models and a stage in
+/// `ZoonMigrationPlan`, with a fixture test beside that one.
+///
+/// Rules for that stage: preserve every night, episode, journal entry,
+/// behaviour observation and evidence revision, and their `nightKey`,
+/// timezone, source provenance and algorithm version. No stage may delete
+/// user rows; if a change cannot be expressed without dropping data it is
+/// preceded by an export the person asks for.
+enum ZoonSchemaV1: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            SleepNightRecord.self, JournalEntry.self, SleepEpisodeRecord.self,
+            BehaviorObservationRecord.self, EvidenceRevisionRecord.self
+        ]
+    }
+}
+
+enum ZoonMigrationPlan: SchemaMigrationPlan {
+    static var schemas: [any VersionedSchema.Type] { [ZoonSchemaV1.self] }
+
+    /// None yet: V1 is the only version. See `ZoonSchemaV1`.
+    static var stages: [MigrationStage] { [] }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// Checks the sleep-debt model against how people said they felt.
 ///
-/// **What this is for.** `SleepDebtCalculator`'s decay (0.933 a night) and the
+/// **What this is for.** `RecentSleepShortfall`'s decay (0.933 a night) and the
 /// two repayment rules -- `SleepNeed`'s 33% up to 90 minutes, which *assesses*
 /// a night, and `SleepAutopilot`'s 25% up to 30, which *plans* one -- are
 /// modelling choices, not measurements. The release brief is explicit that

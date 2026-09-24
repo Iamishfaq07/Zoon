@@ -146,7 +146,10 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
             )
 
             guard let insight = Self.validate(
-                response.content, prompt: prompt, historyNights: baseline.sampleCount
+                response.content,
+                prompt: prompt,
+                drivers: Self.drivers(features: features, baseline: baseline, goalMinutes: goalMinutes),
+                historyNights: baseline.sampleCount
             ) else {
                 logger.notice("Model output failed validation; falling back to rules")
                 FoundationModelDiagnostics.shared.record(
@@ -192,8 +195,9 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
 
         Rules:
         - "summary": one sentence, plain language, describing the night factually.
-        - "likelyCause": only name a cause the numbers actually support. If nothing \
-        in the data explains the night, leave it empty. Do not guess.
+        - "driverID": the id of one supported driver from the list you are given, \
+        or "none". Never write a cause in your own words, and never name a cause \
+        that is not in the list.
         - "actionableTip": one specific thing to do tonight.
         - Never diagnose a medical condition. Never mention sleep apnea, insomnia, \
         or any other diagnosis by name.
@@ -212,7 +216,20 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
 
         Last night:
         \(features.summaryForLLM)
+
+        \(InsightDriverSelection.promptBlock(drivers(features: features, baseline: baseline, goalMinutes: goalMinutes)))
         """
+    }
+
+    /// The causes the rules proved from this night -- the only ones the
+    /// model may cite. Computed from the same inputs as the prompt, so the
+    /// list it was shown and the list it is checked against are one list.
+    static func drivers(
+        features: SleepNightFeatures,
+        baseline: RollingBaseline,
+        goalMinutes: Double
+    ) -> [InsightDriver] {
+        RuleBasedInsightEngine().eligibleDrivers(for: features, baseline: baseline, goalMinutes: goalMinutes)
     }
 
     // MARK: - Validation
@@ -229,8 +246,11 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
         @Guide(description: "One factual sentence describing how the night went. No advice here.")
         var summary: String
 
-        @Guide(description: "The most likely driver, only if the data supports one. Empty string if nothing does.")
-        var likelyCause: String
+        /// Was `likelyCause`, free text. A model could name a cause nothing
+        /// measured as long as it stated no number. It now names one of the
+        /// drivers the rules proved, by id, and the sentence is theirs.
+        @Guide(description: "Exactly one id from the supported drivers list, or none if the list is empty or nothing applies.")
+        var driverID: String
 
         @Guide(description: "One concrete, specific thing to do tonight.")
         var actionableTip: String
@@ -246,15 +266,25 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
     static func validate(
         _ generated: GeneratedInsight,
         prompt: String,
+        drivers: [InsightDriver],
         historyNights: Int
     ) -> SleepInsight? {
         let summary = generated.summary.trimmingCharacters(in: .whitespacesAndNewlines)
         let tip = generated.actionableTip.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !summary.isEmpty, !tip.isEmpty else { return nil }
 
+        // The cause is chosen, not written. An id that was not offered is
+        // invented evidence, and the whole generation falls back to rules.
+        let cause: String?
+        switch InsightDriverSelection.resolve(generated.driverID, eligible: drivers) {
+        case .none: cause = nil
+        case .driver(let driver): cause = driver.observed
+        case .rejected: return nil
+        }
+
         // Backstop on the diagnosis rule. The instructions forbid it; this makes
         // it structural rather than a request the model may or may not honour.
-        let combined = "\(summary) \(generated.likelyCause) \(tip)"
+        let combined = "\(summary) \(tip)"
         guard !DiagnosticLanguageGuard.rejects(combined) else { return nil }
 
         // Every number the text states has to be one the prompt gave it.
@@ -263,14 +293,11 @@ struct FoundationModelInsightEngine: SleepInsightEngine {
         // failure this app's provenance rules exist to prevent.
         guard GeneratedTextGrounding.isGrounded(combined, in: prompt) else { return nil }
         // And the text is bounded, so it cannot outgrow the card it fills.
-        guard summary.count <= 400, tip.count <= 240, generated.likelyCause.count <= 240 else { return nil }
-
-        let cause = generated.likelyCause.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanedCause = cause.isEmpty || cause.lowercased() == "null" ? nil : cause
+        guard summary.count <= 400, tip.count <= 240 else { return nil }
 
         return SleepInsight(
             summary: summary,
-            likelyCause: cleanedCause,
+            likelyCause: cause,
             actionableTip: tip,
             // Generated text never claims high confidence. The rules can prove
             // their claims; a model cannot. And with under a week of history

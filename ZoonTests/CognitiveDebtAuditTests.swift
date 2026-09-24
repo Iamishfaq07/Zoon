@@ -7,10 +7,10 @@ final class CognitiveDebtAuditTests: XCTestCase {
     func testFourteenNightWindowAgreesWithRecurrenceOnAllShortfalls() {
         // Newest first: 14 nights, each 60 minutes short of an 8h goal.
         let nights = [Double](repeating: 420, count: 14)
-        let recursive = SleepDebtCalculator.debt(
+        let recursive = RecentSleepShortfall.debt(
             timeAsleepMinutesNewestFirst: nights, goalMinutes: 480
         )!
-        let window = SleepDebtCalculator.weightedWindow(
+        let window = RecentSleepShortfall.weightedWindow(
             timeAsleepMinutesNewestFirst: nights, goalMinutes: 480
         )
         // Same shortfall every night, same decay: the two sums are the
@@ -22,14 +22,14 @@ final class CognitiveDebtAuditTests: XCTestCase {
 
     func testWindowIgnoresSurplusTheSameWayTheRecurrenceDoes() {
         let nights = [600.0, 420.0] // newest: surplus, then a 60-min shortfall
-        let window = SleepDebtCalculator.weightedWindow(
+        let window = RecentSleepShortfall.weightedWindow(
             timeAsleepMinutesNewestFirst: nights, goalMinutes: 480
         )
         XCTAssertGreaterThan(window, 0)
         // Surplus night contributes 0, not −120.
-        let onlyShort = SleepDebtCalculator.weightedWindow(
+        let onlyShort = RecentSleepShortfall.weightedWindow(
             timeAsleepMinutesNewestFirst: [420], goalMinutes: 480
         )
-        XCTAssertEqual(window, onlyShort * SleepDebtCalculator.decayPerNight, accuracy: 0.01)
+        XCTAssertEqual(window, onlyShort * RecentSleepShortfall.decayPerNight, accuracy: 0.01)
     }
 }

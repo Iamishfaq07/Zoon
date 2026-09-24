@@ -6,6 +6,7 @@ import SwiftUI
 struct SnoreCheckView: View {
 
     @Environment(SnoreSessionController.self) private var session
+    @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(SoundscapeEngine.self) private var soundscape
     @Environment(\.scenePhase) private var scenePhase
     @State private var permissionDenied = false
@@ -162,16 +163,35 @@ struct SnoreCheckView: View {
     }
 
     private func lastNightCard(_ summary: SnoreStore.NightSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let result = SnoreResultSummary(
+            monitoredMinutes: summary.monitoredMinutes,
+            snoreMinutes: summary.snoreMinutes,
+            coveragePercent: summary.coveragePercent,
+            interruptionMinutes: summary.interruptionDurationMinutes,
+            quality: summary.monitoringQuality.flatMap(SnoreMonitoringConfidence.init(rawValue:))
+        )
+        return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Last session", systemImage: "clock.arrow.circlepath")
             HStack {
                 Text("Estimated snoring")
                 Spacer()
-                Text("\(summary.snorePercent)% of the night")
-                    .foregroundStyle(Theme.Metric.recoveryMid)
+                Text(result.headline)
+                    .foregroundStyle(result.isConclusive ? Theme.Metric.recoveryMid : Theme.inkSecondary)
                     .monospacedDigit()
             }
             .font(Theme.label(13))
+            .accessibilityElement(children: .combine)
+
+            ForEach(result.rows) { row in
+                HStack {
+                    Text(row.label)
+                    Spacer()
+                    Text(row.value).monospacedDigit()
+                }
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.inkSecondary)
+                .accessibilityElement(children: .combine)
+            }
 
             Text(partialLine(summary))
                 .font(.caption2)
@@ -180,14 +200,15 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    /// The sentence under the rows: what the numbers do and do not mean.
     private func partialLine(_ summary: SnoreStore.NightSummary) -> String {
-        var parts = ["\(Int(summary.monitoredMinutes)) minutes monitored, \(Int(summary.snoreMinutes)) minutes flagged."]
-        if summary.isPartial == true { parts.append("Partial session.") }
-        if let quality = summary.monitoringQuality {
-            parts.append("Monitoring quality \(quality).")
-        } else {
-            parts.append("Monitoring quality is an estimate of coverage, not a diagnosis.")
+        var parts: [String] = []
+        // A quiet result on a short session is not a finding.
+        if summary.snoreMinutes < 1, summary.monitoringQuality == SnoreMonitoringConfidence.limited.rawValue {
+            parts.append("Not enough of the night was monitored to say there was no snoring.")
         }
+        if summary.isPartial == true { parts.append("Partial session.") }
+        parts.append("Monitoring quality describes coverage, not a diagnosis. Snoring on its own is not a medical finding.")
         return parts.joined(separator: " ")
     }
 
@@ -349,7 +370,10 @@ struct SnoreCheckView: View {
         }
         if let message = await session.start(
             soundscapePlaying: soundscape.isPlaying || soundscape.playing != nil,
-            routineActive: TonightRoutineController.shared.active
+            routineActive: TonightRoutineController.shared.active,
+            // Coverage is judged against tonight's planned window, the same
+            // episode the reminders and the alarm use.
+            intendedWindowSeconds: coordinator.tonightEpisode().map { $0.opportunityMinutes * 60 }
         ) {
             if message.lowercased().contains("microphone") {
                 permissionDenied = true

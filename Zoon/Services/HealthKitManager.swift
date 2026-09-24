@@ -1069,17 +1069,6 @@ struct WorkoutSummary: Identifiable, Hashable, Sendable {
     }
 }
 
-enum HealthKitError: LocalizedError {
-    case unavailable
-
-    var errorDescription: String? {
-        switch self {
-        case .unavailable:
-            "Health data isn't available on this device. Zoon needs an iPhone with the Health app."
-        }
-    }
-}
-
 // MARK: - Anchor persistence
 
 /// The `HKQueryAnchor`-typed half of `AnchorStore`. The enum itself, and its

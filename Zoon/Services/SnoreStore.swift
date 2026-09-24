@@ -31,6 +31,9 @@ final class SnoreStore {
         let endedUnexpectedly: Bool?
         let monitoringQuality: String?
         let interruptionDurationMinutes: Double?
+        /// Monitored time as a percent of the intended sleep window (audit
+        /// §8). `nil` on summaries stored before coverage was tracked.
+        let coveragePercent: Int?
 
         init(
             date: Date,
@@ -41,7 +44,8 @@ final class SnoreStore {
             isPartial: Bool? = nil,
             endedUnexpectedly: Bool? = nil,
             monitoringQuality: String? = nil,
-            interruptionDurationMinutes: Double? = nil
+            interruptionDurationMinutes: Double? = nil,
+            coveragePercent: Int? = nil
         ) {
             self.date = date
             self.monitoredMinutes = monitoredMinutes
@@ -52,6 +56,7 @@ final class SnoreStore {
             self.endedUnexpectedly = endedUnexpectedly
             self.monitoringQuality = monitoringQuality
             self.interruptionDurationMinutes = interruptionDurationMinutes
+            self.coveragePercent = coveragePercent
         }
 
         /// Prefers the night key so a row keeps one identity even if the

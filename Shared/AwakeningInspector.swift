@@ -187,7 +187,7 @@ enum AwakeningInspector {
             markers.append(Marker(
                 date: resume.start,
                 kind: .stageResume,
-                caption: "\(resume.stage.displayName) sleep resumed"
+                caption: Self.resumeCaption(for: resume.stage)
             ))
         }
 
@@ -216,6 +216,17 @@ enum AwakeningInspector {
 }
 
 // MARK: - Deriving the layers from real series
+
+extension AwakeningInspector {
+    /// "Deep sleep resumed", "Light sleep resumed" -- not "Light sleep sleep
+    /// resumed", which is what appending "sleep" to a stage name that already
+    /// ends in it produced. An unstaged "Asleep" block is just "Sleep resumed".
+    static func resumeCaption(for stage: SleepStage) -> String {
+        if stage == .unspecified { return "Sleep resumed" }
+        let name = stage.displayName
+        return name.lowercased().hasSuffix("sleep") ? "\(name) resumed" : "\(name) sleep resumed"
+    }
+}
 
 extension AwakeningInspector {
 

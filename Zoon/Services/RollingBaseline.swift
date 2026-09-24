@@ -13,7 +13,8 @@ import Foundation
 struct RollingBaseline: Sendable {
     /// Mean overnight HRV, previous 7 nights, excluding tonight.
     let hrv7DayAvg: Double?
-    /// Cumulative shortfall vs the sleep goal over 14 days, minutes. Never < 0.
+    /// Recent shortfall *entering* tonight (`RecentSleepShortfall`: a decaying
+    /// record, not a 14-day window), minutes. Never < 0.
     let sleepDebtMinutes: Double?
     /// Mean deep-sleep minutes over the previous 7 nights.
     let deep7DayAvg: Double?

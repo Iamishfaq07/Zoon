@@ -211,7 +211,8 @@ enum AchievementEngine {
             target: 25
         ))
 
-        // Debt cleared. Measured as nights where the rolling 14-day shortfall
+        // Debt cleared. Measured as nights where the recent shortfall entering
+        // the night (decaying, `RecentSleepShortfall`)
         // sat under half an hour — "no debt" is a range, not a point.
         let clearNights = sorted.filter { abs($0.sleepDebtMinutes ?? 999) <= 30 }.count
         out.append(Achievement(

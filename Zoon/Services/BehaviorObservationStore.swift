@@ -29,14 +29,14 @@ final class BehaviorObservationStore {
         let descriptor = FetchDescriptor<BehaviorObservationRecord>(
             sortBy: [SortDescriptor(\.observedAt, order: .reverse)]
         )
-        return (try? context.fetch(descriptor)) ?? []
+        return context.readAll(descriptor, operation: "behaviors.all") ?? []
     }
 
     func answers(forNightKey nightKey: String) -> BehaviorAnswers {
         let descriptor = FetchDescriptor<BehaviorObservationRecord>(
             predicate: #Predicate { $0.nightKey == nightKey }
         )
-        let records = (try? context.fetch(descriptor)) ?? []
+        let records = context.readAll(descriptor, operation: "behaviors.forNight") ?? []
         return Self.answers(from: records)
     }
 
@@ -60,13 +60,17 @@ final class BehaviorObservationStore {
     }
 
     func record(nightKey: String, behaviorIdentifier: String) -> BehaviorObservationRecord? {
+        lookupRecord(nightKey: nightKey, behaviorIdentifier: behaviorIdentifier).value
+    }
+
+    private func lookupRecord(nightKey: String, behaviorIdentifier: String) -> StoreLookup<BehaviorObservationRecord> {
         let identity = BehaviorObservationRecord.identity(
             nightKey: nightKey, behaviorIdentifier: behaviorIdentifier
         )
         let descriptor = FetchDescriptor<BehaviorObservationRecord>(
             predicate: #Predicate { $0.id == identity }
         )
-        return try? context.fetch(descriptor).first
+        return context.lookupFirst(descriptor, operation: "behaviors.record")
     }
 
     // MARK: - Writing
@@ -126,7 +130,11 @@ final class BehaviorObservationStore {
         // event nobody had.
         let detail = state == .no ? nil : detail
 
-        if let existing = record(nightKey: nightKey, behaviorIdentifier: behavior.identifier) {
+        let lookup = lookupRecord(nightKey: nightKey, behaviorIdentifier: behavior.identifier)
+        // Could not look for the existing answer: write nothing rather than
+        // a second row for the same night and behaviour.
+        if case .unreadable = lookup { return }
+        if let existing = lookup.value {
             existing.state = state
             existing.source = source
             existing.detail = detail

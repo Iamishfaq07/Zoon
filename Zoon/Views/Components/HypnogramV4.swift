@@ -64,7 +64,8 @@ struct HypnogramV4: View {
         }
     }
 
-    @State private var narrator = OnDeviceNarrator()
+    /// Shared, so two charts can never read over each other.
+    private var narrator: OnDeviceNarrator { .shared }
     @State private var replayHaptics = false
     @State private var stageHaptics = HypnogramHaptics()
     @State private var overlays: Set<Overlay> = []

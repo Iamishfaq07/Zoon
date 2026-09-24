@@ -25,13 +25,17 @@ final class JournalStore {
         let descriptor = FetchDescriptor<JournalEntry>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        return (try? context.fetch(descriptor)) ?? []
+        return context.readAll(descriptor, operation: "journal.all") ?? []
     }
 
     func entry(for date: Date) -> JournalEntry? {
+        lookupEntry(for: date).value
+    }
+
+    private func lookupEntry(for date: Date) -> StoreLookup<JournalEntry> {
         let day = Calendar.current.startOfDay(for: date)
         let descriptor = FetchDescriptor<JournalEntry>(predicate: #Predicate { $0.date == day })
-        return try? context.fetch(descriptor).first
+        return context.lookupFirst(descriptor, operation: "journal.entryForDate")
     }
 
     /// Fetches the entry for a day, creating an empty one if needed.
@@ -49,9 +53,18 @@ final class JournalStore {
     ///   action logged against "today," a day the picker shows before any
     ///   night exists for it yet); those entries keep matching by `date`
     ///   alone until something does supply a key for them.
+    ///
+    /// When the store cannot be read to look for the day's row, the entry
+    /// returned is **not inserted**: edits to it are not saved, rather than
+    /// creating a second row for the same day. The failure is recorded for
+    /// Data Quality.
     @discardableResult
     func entryOrCreate(for date: Date, nightKey: String? = nil) -> JournalEntry {
-        if let existing = entry(for: date) {
+        let lookup = lookupEntry(for: date)
+        if case .unreadable = lookup {
+            return JournalEntry(date: date, nightKey: nightKey)
+        }
+        if let existing = lookup.value {
             if existing.nightKey == nil, let nightKey {
                 existing.nightKey = nightKey
                 save()
@@ -70,7 +83,7 @@ final class JournalStore {
     /// matters: `date` alone can silently mismatch after the user travels.
     func entry(forNightKey nightKey: String, fallbackDate date: Date) -> JournalEntry? {
         let descriptor = FetchDescriptor<JournalEntry>(predicate: #Predicate { $0.nightKey == nightKey })
-        if let keyed = try? context.fetch(descriptor).first {
+        if let keyed = context.lookupFirst(descriptor, operation: "journal.entryForNight").value {
             return keyed
         }
         return entry(for: date)

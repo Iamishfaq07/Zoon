@@ -720,7 +720,7 @@ struct TodayView: View {
     private func debtWeekAgo(_ context: DayContext) -> Double? {
         let nights = coordinator.recentNights
         guard nights.count >= 8 else { return nil }
-        let series = SleepDebtCalculator.debtSeries(
+        let series = RecentSleepShortfall.debtSeries(
             timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
             goalMinutesOldestFirst: nights.map {
                 $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes

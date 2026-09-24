@@ -38,6 +38,9 @@ final class CoachChat {
         /// earlier bedtime tonight." `nil` for user turns and for an answer
         /// that didn't call for one (most factual questions don't).
         var bestAction: String?
+        /// What stretch of time the answer is about ("Last night", "Recent
+        /// nights"), shown above it. `nil` when that is not one span.
+        var timeframe: String?
 
         /// Whether this answer is tied to a specific number from the user's
         /// own data, or is a general statement. Deliberately **not** the
@@ -55,12 +58,13 @@ final class CoachChat {
             return (groundedIn?.isEmpty == false) ? .grounded : .general
         }
 
-        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil, bestAction: String? = nil) {
+        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil, bestAction: String? = nil, timeframe: String? = nil) {
             self.id = id
             self.role = role
             self.text = text
             self.groundedIn = groundedIn
             self.bestAction = bestAction
+            self.timeframe = timeframe
         }
     }
 
@@ -189,7 +193,8 @@ final class CoachChat {
             role: .assistant,
             text: reply?.text ?? "Choose a recorded night to explore its sleep, timing, HRV, or resting heart rate.",
             groundedIn: reply?.evidence,
-            bestAction: reply?.action
+            bestAction: reply?.action,
+            timeframe: reply?.timeframe
         ))
     }
 

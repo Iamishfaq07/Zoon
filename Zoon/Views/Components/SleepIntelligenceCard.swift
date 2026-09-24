@@ -51,7 +51,9 @@ struct SleepIntelligenceCard: View {
                         // so the one place explaining the score used two words for
                         // it that appear nowhere else in the app.
                         "Combines five sleep-period components -- Duration, Continuity, Regularity, Timing, and Stage Pattern. Recovery and body-signal anomalies are reported separately.",
-                        "A component with no data tonight (not enough timing history or no stage detail) is left out and the rest are reweighted to fill 100% -- missing data never counts against you."
+                        "A component with no data tonight (not enough timing history or no stage detail) is left out and the rest are reweighted to fill 100% -- missing data never counts against you.",
+                        "Stage Pattern compares your Deep and REM share of sleep with your own nights from the same kind of device, and only counts stages your watch or wearable classified. It is 5% of the score and says nothing about whether more deep sleep is better.",
+                        "A night well short of your need is capped: 60 minutes short can be at most Good, 120 at most Fair, 180 Poor. When that happens the card says so."
                     ],
                     // No baseline facet. Each component is already scored
                     // against its own `expectedNeutral`, so "your usual" is
@@ -74,6 +76,16 @@ struct SleepIntelligenceCard: View {
                 Text(score.band.label)
                     .font(Theme.label(16, weight: .semibold))
                     .foregroundStyle(Theme.inkSecondary)
+            }
+
+            // Said beside the number it changed, not behind a tap: a capped
+            // score is a different claim from the weighted sum, and the
+            // person should not have to open a breakdown to learn that.
+            if let cap = score.durationCap {
+                Text(cap.explanation)
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Button {

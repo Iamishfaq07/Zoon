@@ -50,7 +50,7 @@ struct TrendsView: View {
         // Settings goal uniformly -- both so this matches the exact
         // accounting SleepHistoryStore uses to compute the live
         // sleepDebtMinutes shown elsewhere. See that property's doc comment.
-        let fullSeries = SleepDebtCalculator.debtSeries(
+        let fullSeries = RecentSleepShortfall.debtSeries(
             timeAsleepMinutesOldestFirst: coordinator.recentNights.map(\.total24hAsleepMinutes),
             goalMinutesOldestFirst: coordinator.recentNights.map { $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes }
         )
@@ -532,7 +532,7 @@ struct HRVChartCard: View {
 
 /// Running sleep debt across the window.
 ///
-/// Plots `SleepDebtCalculator.debtSeries` -- the exact same decay recurrence
+/// Plots `RecentSleepShortfall.debtSeries` -- the exact same decay recurrence
 /// the Sleep Debt screen's headline number comes from, not a second,
 /// independent running total. That used to be two different algorithms: this
 /// chart previously accumulated `max(0, goal - sleep)` with no decay, which
@@ -540,11 +540,11 @@ struct HRVChartCard: View {
 /// decaying figure that can fall night to night -- so the same user, the same
 /// nights, could show two different "Sleep Debt" numbers depending which
 /// screen they were on. There is now exactly one implementation of this
-/// metric; see `SleepDebtCalculator`.
+/// metric; see `RecentSleepShortfall`.
 struct SleepDebtChartCard: View {
     let nights: [SleepNightFeatures]
     /// Debt in minutes as of each night in `nights`, same order and count.
-    /// Computed by the caller (`TrendsView`) via `SleepDebtCalculator
+    /// Computed by the caller (`TrendsView`) via `RecentSleepShortfall
     /// .debtSeries` over the *full* stored history, not just this chart's
     /// display window -- a night's debt depends on decayed contributions
     /// from nights before the window starts, so slicing history before
@@ -824,7 +824,7 @@ struct ChartCard<Content: View>: View {
             HRVChartCard(nights: MockData.history)
             SleepDebtChartCard(
                 nights: MockData.history,
-                debtMinutes: SleepDebtCalculator.debtSeries(
+                debtMinutes: RecentSleepShortfall.debtSeries(
                     timeAsleepMinutesOldestFirst: MockData.history.map(\.timeAsleepMinutes),
                     goalMinutes: 480
                 )

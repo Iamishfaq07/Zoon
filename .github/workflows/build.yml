@@ -36,6 +36,9 @@ jobs:
         run: |
           python3 Tools/generate-pbxproj.py
           git diff --exit-code -- Zoon.xcodeproj/project.pbxproj Zoon.xcodeproj/xcshareddata/xcschemes/Zoon.xcscheme
+      - name: Check deployment targets and Swift version
+        run: python3 Tools/check-build-settings.py Zoon.xcodeproj/project.pbxproj
+
       - name: Parse project.pbxproj
         run: python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
       - name: Check App Store Connect cert-slot helper
@@ -50,10 +53,16 @@ jobs:
   # through an API that serves the tail. Here the whole log is the probe.
   sdk-probe:
     name: Probe installed SDK
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest`, so a runner
+    # image change cannot silently change the compiler; the Xcode inside
+    # it is chosen by Tools/select-xcode.sh.
+    runs-on: macos-26
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       - name: Probe HealthKit workout-zone API
         run: |
@@ -96,10 +105,16 @@ jobs:
 
   watch:
     name: Build (watchOS Simulator)
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest`, so a runner
+    # image change cannot silently change the compiler; the Xcode inside
+    # it is chosen by Tools/select-xcode.sh.
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       # The watch app has only ever been built as something the iOS app
       # embeds. That proves it compiles -- `Verify every source compiled`
@@ -183,11 +198,17 @@ jobs:
   build:
     name: Build (iOS Simulator)
     needs: project
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest`, so a runner
+    # image change cannot silently change the compiler; the Xcode inside
+    # it is chosen by Tools/select-xcode.sh.
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       - name: Show toolchain
         run: |
@@ -235,11 +256,15 @@ jobs:
             | python3 -c "import json,sys; data=json.load(sys.stdin)['devices']; \
               print(next(d['udid'] for runtime in data.values() for d in runtime if d['name'].startswith('iPhone')))")
           echo "Testing on simulator $UDID"
+          # A result bundle as well as the text log: it carries each
+          # failure's attachments and the exact test that was running.
+          rm -rf ZoonTests.xcresult
           xcodebuild test \
             -project Zoon.xcodeproj \
             -scheme Zoon \
             -only-testing:ZoonTests \
             -destination "id=$UDID" \
+            -resultBundlePath ZoonTests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -348,11 +373,13 @@ jobs:
           echo "Testing on simulator $UDID"
 
           run_uitests() {
+            rm -rf ZoonUITests.xcresult
             xcodebuild test \
               -project Zoon.xcodeproj \
               -scheme Zoon \
               -only-testing:ZoonUITests \
               -destination "id=$UDID" \
+              -resultBundlePath ZoonUITests.xcresult \
               CODE_SIGNING_ALLOWED=NO \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGN_IDENTITY="" \
@@ -411,25 +438,45 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Report accessibility audit
-        # ZoonUITests.testAccessibilityAudit logs every issue Apple's audit
-        # finds, prefixed A11Y-AUDIT, and deliberately does not fail on them:
-        # the first job is to see what is there. Printed to the job log as
-        # well as the summary so it can be read without the artifact.
+        # ZoonUITests.testAccessibilityAudit is a gate (audit §14): a kind of
+        # issue the app has never had fails it. Known kinds (contrast, Dynamic
+        # Type, clipped text) are counted per tab against the baseline in
+        # ZoonUITests.knownIssues (A11Y-GATE lines) but not enforced -- they
+        # move with async content and date-relative demo labels. Every issue
+        # is still printed, prefixed A11Y-AUDIT, to the job log as well as the
+        # summary so it can be read without the artifact.
         if: always() && steps.build.outcome == 'success'
         run: |
-          COUNT=$(grep -c "A11Y-AUDIT" uitest.log 2>/dev/null || true)
+          COUNT=$(grep -c "A11Y-AUDIT " uitest.log 2>/dev/null || true)
           echo "Accessibility audit issues: ${COUNT:-0}"
+          grep "A11Y-GATE" uitest.log 2>/dev/null | sort -u || true
           grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
           echo "--- details ---"
           grep "A11Y-DETAIL" uitest.log 2>/dev/null | grep -v "Dynamic Type" | sort -u | head -160 || true
           {
             echo "### Accessibility audit"
             echo ""
-            echo "${COUNT:-0} issue line(s)."
+            echo "${COUNT:-0} issue line(s). Known kinds, per tab (found / baseline):"
+            echo '```'
+            grep "A11Y-GATE" uitest.log 2>/dev/null | sort -u || true
+            echo '```'
             echo '```'
             grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test result bundles
+        # Only when something failed: the bundles are large, and on a green
+        # run the logs above say everything.
+        if: failure() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-result-bundles
+          path: |
+            ZoonTests.xcresult
+            ZoonUITests.xcresult
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Verify every source compiled
         # A file dropped from a target, or excluded by a #if that quietly
@@ -547,6 +594,22 @@ jobs:
             fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The measured numbers the audit report quotes -- loop seams before
+      # and after, noise render cost, the Coach evaluation rates, the score's
+      # severity table -- printed last so they sit in the tail of the job
+      # log, which is what the API serves.
+      - name: Audit metrics
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          {
+            echo "### Audit metrics"
+            echo '```'
+            grep -hE "Executed [0-9]+ tests" test.log uitest.log 2>/dev/null | tail -4 || true
+            grep -hE "^(SEAM |NOISE-RENDER|COACH-EVAL|SI-v4)" test.log 2>/dev/null | sort -u | head -80 || true
+            grep -h "A11Y-GATE" uitest.log 2>/dev/null | sort -u || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload full log
         if: always()
         uses: actions/upload-artifact@v4
@@ -563,3 +626,91 @@ jobs:
             uitest-first-attempt.log
           retention-days: 14
           if-no-files-found: warn
+
+  release-build:
+    name: Build (iOS Release)
+    needs: project
+    # A Debug build and test pass says nothing about Release: optimisation,
+    # `#if DEBUG` branches and whole-module compilation all differ. This
+    # compiles what TestFlight would ship, without signing.
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
+
+      - name: Build app, widgets and watch app in Release
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            2>&1 | tee release-build.log
+          {
+            echo "### Release build"
+            echo ""
+            echo '```'
+            grep -E "error:" release-build.log | sort -u | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Audit §12, stage 2 of the Swift 6 migration: the same app built with
+      # complete concurrency checking, still in Swift 5 mode, *reported* not
+      # enforced. The count is the migration's to-do list; it should only go
+      # down. Runs here because this job finishes well before the test job,
+      # so it adds no wall-clock time to a push.
+      - name: Strict concurrency probe (report only)
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/strict-concurrency \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SWIFT_STRICT_CONCURRENCY=complete \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            > strict-concurrency.log 2>&1
+          STATUS=$?
+          grep -E "(warning|error): " strict-concurrency.log | sort -u > strict-concurrency-diagnostics.txt
+          TOTAL=$(grep -c . strict-concurrency-diagnostics.txt || true)
+          {
+            echo "### Strict concurrency probe"
+            echo ""
+            echo "Build exit status ${STATUS}. ${TOTAL:-0} unique diagnostic(s) with SWIFT_STRICT_CONCURRENCY=complete (Swift 5 mode)."
+            echo ""
+            echo "By file:"
+            echo '```'
+            sed -E 's#^.*/([^/]+\.swift):[0-9]+:[0-9]+: .*#\1#' strict-concurrency-diagnostics.txt \
+              | grep "\.swift$" | sort | uniq -c | sort -rn | head -40 || true
+            echo '```'
+            echo "By message:"
+            echo '```'
+            sed -E 's#^.*: (warning|error): ##' strict-concurrency-diagnostics.txt \
+              | sed -E "s/'[^']*'/'_'/g" | sort | uniq -c | sort -rn | head -25 || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-build-log
+          path: |
+            release-build.log
+            strict-concurrency-diagnostics.txt
+          if-no-files-found: ignore

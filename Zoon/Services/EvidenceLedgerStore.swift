@@ -16,8 +16,13 @@ struct EvidenceLedgerStore {
     /// `EvidenceLedger.timeline(for:in:)` or `claimIDs(in:)`, so sorting here
     /// would be a second ordering to keep in step with those.
     func allRevisions() -> [EvidenceLedger.Revision] {
-        (try? context.fetch(FetchDescriptor<EvidenceRevisionRecord>()))?
-            .map(\.revision) ?? []
+        readableRevisions() ?? []
+    }
+
+    /// `nil` when the store could not be read. `record` must not treat that
+    /// as an empty history, or it re-records what is already there.
+    private func readableRevisions() -> [EvidenceLedger.Revision]? {
+        context.readAll(FetchDescriptor<EvidenceRevisionRecord>(), operation: "evidence.ledger")?.map(\.revision)
     }
 
     func timeline(for claimID: String) -> [EvidenceLedger.Revision] {
@@ -35,7 +40,7 @@ struct EvidenceLedgerStore {
     /// - Returns: true when a revision was written.
     @discardableResult
     func record(_ candidate: EvidenceLedger.Revision) -> Bool {
-        let history = allRevisions()
+        guard let history = readableRevisions() else { return false }
         let updated = EvidenceLedger.recording(candidate, into: history)
         guard updated.count > history.count else { return false }
         context.insert(EvidenceRevisionRecord(candidate))

@@ -14,7 +14,7 @@ import Foundation
 /// | Continuity | 30% | Efficiency, WASO, and awakening rate |
 /// | Regularity | 20% | Bedtime/wake consistency (reuses `SleepRegularity`) |
 /// | Timing | 5% | Tonight's midpoint vs. your habitual `BodyClock` |
-/// | Stage Pattern | 5% | How close tonight's deep/REM split is to your own |
+/// | Stage Pattern | 5% | How close tonight's deep/REM *percentages* are to your own (trusted stages only) |
 ///
 /// A missing component (no HRV sensor, no `BodyClock` yet, a source with no
 /// stage data) is excluded and the remaining weights renormalize to 100 —
@@ -26,7 +26,24 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// Bumped whenever the anchor tables or weights change, so a score
     /// computed under an old version stays interpretable as such rather than
     /// silently meaning something different after an app update.
-    static let currentVersion = 3
+    ///
+    /// **v4** (this version) changed what two things mean, so it is a new
+    /// version rather than a fix to v3:
+    /// - Stage Pattern compares stage *composition* (Deep and REM as a share
+    ///   of staged sleep), not absolute minutes. v3 compared minutes, so a
+    ///   short night with an ordinary split lost points here as well as in
+    ///   Duration -- the same shortfall counted twice.
+    /// - Stage Pattern runs only on stages `StageTrust` accepts, against a
+    ///   history from the same kind of source. v3 let inferred or
+    ///   unattributed stages move the headline.
+    /// - A severe shortfall caps the headline (`durationCeilings`). v3 could
+    ///   call a night 90 minutes short "Excellent" when everything else was
+    ///   perfect.
+    /// - Continuity no longer treats an inferred time in bed as a measured
+    ///   efficiency.
+    /// Scores stored under v3 keep `scoringVersion == 3` and are not
+    /// rewritten.
+    static let currentVersion = 4
 
     let percent: Int
     let scoringVersion: Int
@@ -35,6 +52,42 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
     /// What fraction of the full five-component model actually had enough
     /// data to run tonight, as a percent 0–100.
     let dataCompletenessPercent: Int
+    /// Set when a severe shortfall held the headline below what the weighted
+    /// sum gave. `nil` when no ceiling applied, and on every score stored
+    /// before v4.
+    let durationCap: DurationCap?
+
+    /// A transparent limit, not a hidden adjustment: the number it replaced
+    /// and the rule that replaced it are both kept, so the UI can say why.
+    struct DurationCap: Codable, Hashable, Sendable {
+        /// Minutes short of tonight's need.
+        let shortfallMinutes: Int
+        /// The highest percent a night this short may show.
+        let ceiling: Int
+        /// What the weighted components summed to before the ceiling.
+        let uncappedPercent: Int
+
+        var explanation: String {
+            "Capped at \(ceiling) because the night was \(shortfallMinutes)m short of your need. "
+                + "The other components summed to \(uncappedPercent)."
+        }
+    }
+
+    /// The most a night may score for how far short of need it fell.
+    ///
+    /// An engineering guardrail, stated here rather than tuned silently: with
+    /// every other component perfect, v3 scored a 90-minute shortfall 86
+    /// ("Excellent") and a 120-minute shortfall 78 ("Good"). Each ceiling
+    /// sits one point under a band boundary (`Band.forPercent`), so a night
+    /// this short cannot be *labelled* better than the band named here:
+    /// 60+ minutes short at most Good, 120+ at most Fair, 180+ Poor.
+    static let durationCeilings: [(shortfallMinutes: Double, ceiling: Int)] = [
+        (180, 49), (120, 69), (60, 84)
+    ]
+
+    /// Trusted, same-source nights a stage composition needs before it is
+    /// compared with anything.
+    static let minimumStageBaselineNights = 5
 
     struct Component: Codable, Hashable, Sendable, Identifiable {
         let label: String
@@ -188,13 +241,26 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
                 awakeningRate,
                 anchors: [(0, 100), (0.25, 100), (0.5, 90), (1.0, 70), (1.5, 45), (2.5, 10), (4, 0)]
             )
-            let continuityNormalized = (efficiencyScore * 0.50 + wasoScore * 0.30 + rateScore * 0.20) / 100
+            // An efficiency is asleep over *time in bed*. When the source gave
+            // no time in bed (Apple Watch alone never does) the window was
+            // inferred from the sleep itself, and "efficiency" is then just
+            // the awake share restated -- WASO counted twice under a name
+            // that claims a measurement. So an estimated window scores what
+            // was genuinely measured: time awake inside sleep, and how often
+            // it broke.
+            let estimated = night.timeInBedIsEstimated
+            let continuityNormalized = estimated
+                ? (wasoScore * Self.estimatedWindowWeights.waso + rateScore * Self.estimatedWindowWeights.rate) / 100
+                : (efficiencyScore * 0.50 + wasoScore * 0.30 + rateScore * 0.20) / 100
+            let wakes = night.wakeCount == 1 ? "1 awakening" : "\(night.wakeCount) awakenings"
             raw.append((Component(
                 label: "Continuity",
-                detail: "\(Int(night.sleepEfficiencyPercent))% efficient, \(Int(waso))m awake",
+                detail: estimated
+                    ? "\(Int(waso))m awake within sleep, \(wakes) (time in bed estimated)"
+                    : "\(Int(night.sleepEfficiencyPercent))% efficient, \(Int(waso))m awake",
                 normalized: continuityNormalized,
                 weightUsed: 0,
-                expectedNeutral: Self.continuityNeutral
+                expectedNeutral: estimated ? Self.estimatedWindowContinuityNeutral : Self.continuityNeutral
             ), nominalWeightsByName["Continuity"] ?? 0))
         }
 
@@ -275,51 +341,67 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             }
             : []
 
-        let percent = Int((components.reduce(0.0) { $0 + $1.normalized * $1.weightUsed } * 100).rounded())
+        let weighted = Int((components.reduce(0.0) { $0 + $1.normalized * $1.weightUsed } * 100).rounded())
+        let uncapped = max(0, min(100, weighted))
         let completeness = Int((totalNominal * 100).rounded())
 
+        let shortfall = max(0, -deltaMinutes)
+        var cap: DurationCap?
+        if let ceiling = durationCeilings.first(where: { shortfall >= $0.shortfallMinutes })?.ceiling,
+           uncapped > ceiling {
+            cap = DurationCap(
+                shortfallMinutes: Int(shortfall.rounded()),
+                ceiling: ceiling,
+                uncappedPercent: uncapped
+            )
+        }
+
         return SleepIntelligenceScore(
-            percent: max(0, min(100, percent)),
+            percent: cap?.ceiling ?? uncapped,
             scoringVersion: currentVersion,
             components: components,
             confidence: confidenceLevel(nightCount: history.count, completeness: completeness),
-            dataCompletenessPercent: completeness
+            dataCompletenessPercent: completeness,
+            durationCap: cap
         )
     }
 
     // MARK: - Component helpers
 
-    /// How close tonight's deep/REM split is to this person's own.
+    /// How close tonight's Deep/REM *composition* is to this person's own.
     ///
-    /// Named "Architecture" until now, and shown to people under that word,
-    /// which was wrong in a way the maths makes unavoidable: this scores
-    /// `abs(z)`, so a night with unusually *high* deep sleep is marked down
-    /// exactly as far as one with unusually low deep sleep. Under the label
-    /// "Architecture Quality" that reads as a bug -- more deep sleep is
-    /// supposed to be good, and a user seeing a great deep-sleep night
-    /// docked for it would be right to distrust the whole score.
+    /// Named "Architecture" once, and still scored as distance in either
+    /// direction: an unusually deep night moves as far from the pattern as an
+    /// unusually light one. That is "distance from my usual stage pattern",
+    /// not "stage quality" -- more deep sleep is not better here.
     ///
-    /// The measurement is not the problem. Distance from your own pattern is
-    /// a real and useful thing to track, and an abrupt change in either
-    /// direction is worth noticing. Only the name promised something else.
-    /// So the maths is unchanged and the concept is now called what it is.
+    /// **v4: composition, not minutes.** v3 z-scored Deep and REM *minutes*,
+    /// so a 360-minute night at the usual 18% Deep / 22% REM scored as an
+    /// unusual stage pattern against 450-minute history -- a shortfall
+    /// Duration had already charged, charged again. This compares each
+    /// stage's share of staged sleep, so a night's length cannot move it.
     ///
-    /// Weights stay at 5%: a single unusual staged night is not an
-    /// architecture problem, and wearable stage estimates do not deserve to
-    /// look clinically precise.
+    /// **v4: trusted stages only.** The night and every baseline night must
+    /// pass `StageTrust.supportsStageFigures`, and the baseline comes from the
+    /// same kind of source (`stageSourcePriority`): two vendors' classifiers
+    /// produce different distributions, and a change of watch is not a change
+    /// in someone's sleep. Too little trusted, same-source history and the
+    /// component is omitted; completeness and confidence say so.
+    ///
+    /// Weight stays at 5%.
     private static func stagePatternComponent(
         night: SleepNightFeatures,
         history: [SleepNightFeatures]
     ) -> (normalized: Double, expectedNeutral: Double)? {
-        guard night.hasStageBreakdown else { return nil }
-        let history30 = Array(history.suffix(30)).filter(\.hasStageBreakdown)
-        guard history30.count >= 5 else { return nil }
+        guard let tonight = StageComposition(night) else { return nil }
+        let baseline = stageBaseline(for: night, history: history)
+        guard baseline.count >= minimumStageBaselineNights else { return nil }
 
         var deviations: [Double] = []
-        if let z = Statistics.robustZ(night.deepMinutes, in: history30.map(\.deepMinutes)) {
+        if let z = Statistics.robustZ(tonight.deepShare, in: baseline.map(\.deepShare)) {
             deviations.append(abs(z))
         }
-        if let z = Statistics.robustZ(night.remMinutes, in: history30.map(\.remMinutes)) {
+        if let z = Statistics.robustZ(tonight.remShare, in: baseline.map(\.remShare)) {
             deviations.append(abs(z))
         }
         guard !deviations.isEmpty else { return nil }
@@ -329,30 +411,53 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             interpolate(avgDeviation, anchors: anchors) / 100,
             // Zero distance from your own median is the best case, not the
             // typical one -- half of all nights sit further out than this.
-            // Scored against 0.5 the typical night looked like a night your
-            // sleep stages actively helped.
             interpolate(expectedAbsoluteZ, anchors: anchors) / 100
         )
     }
 
-    /// "Deep 1h14 (usually 1h02-1h25)" -- the number, and the range it is
-    /// being judged against.
+    /// Deep and REM as shares of *staged* sleep (core + deep + REM).
     ///
-    /// The old detail read "81m deep, 99m REM", which states two numbers and
-    /// leaves the reader to guess whether either is unusual for them. The
-    /// range is what makes the component legible, and it is the same history
-    /// the score itself is computed from.
+    /// Staged sleep, not all sleep: minutes a source marked only "asleep"
+    /// carry no stage, and counting them in the denominator would make a
+    /// partly staged night look light on every stage at once.
+    struct StageComposition: Hashable, Sendable {
+        let deepShare: Double
+        let remShare: Double
+
+        /// A trusted night with enough staged sleep to have a composition.
+        init?(_ night: SleepNightFeatures) {
+            guard night.stageTrust.supportsStageFigures else { return nil }
+            let staged = night.coreMinutes + night.deepMinutes + night.remMinutes
+            guard staged >= 60 else { return nil }
+            deepShare = night.deepMinutes / staged
+            remShare = night.remMinutes / staged
+        }
+    }
+
+    /// The last 30 trusted nights from the same kind of source as `night`.
+    static func stageBaseline(
+        for night: SleepNightFeatures,
+        history: [SleepNightFeatures]
+    ) -> [StageComposition] {
+        history.suffix(30)
+            .filter { $0.stageSourcePriority == night.stageSourcePriority }
+            .compactMap(StageComposition.init)
+    }
+
+    /// "Deep 18% (usually 15-21%), REM 22%" -- tonight's composition, and
+    /// the range it is judged against.
     private static func stagePatternDetail(
         night: SleepNightFeatures,
         history: [SleepNightFeatures]
     ) -> String {
-        let deep = SleepNightFeatures.formatMinutes(night.deepMinutes)
-        let history30 = Array(history.suffix(30)).filter(\.hasStageBreakdown).map(\.deepMinutes)
-        guard let low = Statistics.percentile(history30, 25),
-              let high = Statistics.percentile(history30, 75) else {
-            return "Deep \(deep)"
+        guard let tonight = StageComposition(night) else { return "Stages not scored" }
+        func pct(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
+        let deepHistory = stageBaseline(for: night, history: history).map(\.deepShare)
+        guard let low = Statistics.percentile(deepHistory, 25),
+              let high = Statistics.percentile(deepHistory, 75) else {
+            return "Deep \(pct(tonight.deepShare)), REM \(pct(tonight.remShare))"
         }
-        return "Deep \(deep) (usually \(SleepNightFeatures.formatMinutes(low))-\(SleepNightFeatures.formatMinutes(high)))"
+        return "Deep \(pct(tonight.deepShare)) (usually \(pct(low))-\(pct(high))), REM \(pct(tonight.remShare))"
     }
 
     // MARK: - Expected states
@@ -406,6 +511,25 @@ struct SleepIntelligenceScore: Codable, Hashable, Sendable {
             anchors: [(0, 100), (0.25, 100), (0.5, 90), (1.0, 70), (1.5, 45), (2.5, 10), (4, 0)]
         )
         return (efficiency * 0.50 + waso * 0.30 + rate * 0.20) / 100
+    }
+
+    /// Continuity's subweights when the time in bed was estimated: WASO and
+    /// awakening rate carry efficiency's share in the ratio they already
+    /// had (30:20).
+    static let estimatedWindowWeights = (waso: 0.60, rate: 0.40)
+
+    /// The neutral for an estimated window, through the same two curves at
+    /// the same ordinary-night inputs as `continuityNeutral`.
+    static var estimatedWindowContinuityNeutral: Double {
+        let waso = interpolate(
+            5,
+            anchors: [(0, 100), (3, 100), (5, 90), (10, 70), (15, 45), (25, 10), (40, 0)]
+        )
+        let rate = interpolate(
+            0.6,
+            anchors: [(0, 100), (0.25, 100), (0.5, 90), (1.0, 70), (1.5, 45), (2.5, 10), (4, 0)]
+        )
+        return (waso * estimatedWindowWeights.waso + rate * estimatedWindowWeights.rate) / 100
     }
 
     private static func confidenceLevel(nightCount: Int, completeness: Int) -> Confidence {

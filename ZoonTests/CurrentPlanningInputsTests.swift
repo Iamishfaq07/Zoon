@@ -10,7 +10,7 @@ final class CurrentPlanningInputsTests: XCTestCase {
     /// to say so. Planned, tonight owes 300 minutes, and the plan asks for a
     /// bounded slice of it rather than nothing.
     func testAShortLatestNightReachesTonight() throws {
-        let throughLatest = try XCTUnwrap(SleepDebtCalculator.debt(
+        let throughLatest = try XCTUnwrap(RecentSleepShortfall.debt(
             timeAsleepMinutesNewestFirst: [180], goalMinutes: 480
         ))
         XCTAssertEqual(throughLatest, 300, accuracy: 0.01)

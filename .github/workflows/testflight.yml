@@ -67,7 +67,10 @@ concurrency:
 jobs:
   release:
     name: Archive and upload
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest` (audit §16), so
+    # a runner image change cannot silently change the compiler; the Xcode
+    # inside it is chosen by Tools/select-xcode.sh, as in Build.
+    runs-on: macos-26
     timeout-minutes: 45
 
     # Job-level so the caching steps' `if:` conditions below can read
@@ -78,6 +81,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       - name: Check required secrets
         # Fails in seconds with a clear message, instead of failing 20
