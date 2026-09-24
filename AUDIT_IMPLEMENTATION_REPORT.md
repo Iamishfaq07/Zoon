@@ -344,6 +344,10 @@ rather than defaulting them.
 - **Live Activity lifecycle.** A wind-down card left by a run the system
   ended (app killed mid-routine) is closed at launch; past their stale date
   both cards say the nap or wind-down is over instead of showing 0:00.
+- **Start Wind Down (Siri, Shortcuts, Control Center).** "Start wind down
+  in Zoon" and a Control Center button open the app on the Tonight routine
+  and begin it; Spotlight opens the screen without starting it. The start
+  flag is consumed once, and a routine already playing is not restarted.
 
 ## Release blockers
 
