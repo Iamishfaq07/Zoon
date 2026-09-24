@@ -103,8 +103,19 @@ final class SnoreSessionController {
         }
     }
 
-    func start(soundscapePlaying: Bool, routineActive: Bool) async -> String? {
+    var confidenceBreakdown: SnoreConfidenceBreakdown { detector.liveBreakdown }
+
+    /// - Parameter intendedWindowSeconds: tonight's sleep window, which
+    ///   coverage confidence is measured against. `nil` keeps the default.
+    func start(
+        soundscapePlaying: Bool,
+        routineActive: Bool,
+        intendedWindowSeconds: TimeInterval? = nil
+    ) async -> String? {
         conflictMessage = nil
+        if let intendedWindowSeconds, intendedWindowSeconds >= 3600 {
+            detector.intendedWindowSeconds = intendedWindowSeconds
+        }
         if soundscapePlaying || routineActive {
             let message = "Snore Check needs the microphone without Zoon audio playing. Stop Rain and Wind Down, then start Snore Check?"
             conflictMessage = message

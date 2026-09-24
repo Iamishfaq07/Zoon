@@ -64,8 +64,15 @@ final class SnoreDetector {
         return liveQuality
     }
 
-    var liveQuality: SnoreMonitoringConfidence {
-        SnoreEpisodeAggregator.confidence(
+    /// The sleep window this session is meant to cover, for coverage
+    /// confidence. Set at start from tonight's plan; 8 hours otherwise.
+    var intendedWindowSeconds: TimeInterval = SnoreCoverage.defaultIntendedWindowSeconds
+
+    var liveQuality: SnoreMonitoringConfidence { liveBreakdown.final }
+
+    /// Detector and coverage confidence separately, for the result screen.
+    var liveBreakdown: SnoreConfidenceBreakdown {
+        SnoreEpisodeAggregator.breakdown(
             classifierAvailable: classifierAvailable,
             classifierSupportsSnoring: classifierSupportsSnoring,
             monitoredSeconds: monitoredSeconds,
@@ -73,7 +80,8 @@ final class SnoreDetector {
             heuristicSeconds: heuristicSnoreSeconds,
             classifierSeconds: classifierSnoreSeconds,
             sessionEnded: !isRunning && monitoredSeconds > 0,
-            interruptionDuration: monitoringGaps.reduce(0) { $0 + $1.duration }
+            interruptionDuration: monitoringGaps.reduce(0) { $0 + $1.duration },
+            intendedWindowSeconds: intendedWindowSeconds
         )
     }
 
@@ -241,7 +249,8 @@ final class SnoreDetector {
             isPartial: false,
             endedUnexpectedly: false,
             monitoringQuality: frozenQuality?.rawValue,
-            interruptionDurationMinutes: monitoringGaps.reduce(0) { $0 + $1.duration } / 60
+            interruptionDurationMinutes: monitoringGaps.reduce(0) { $0 + $1.duration } / 60,
+            coveragePercent: liveBreakdown.coveragePercent
         )
     }
 

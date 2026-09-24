@@ -38,11 +38,13 @@ final class SnoreEpisodeAggregatorTests: XCTestCase {
         XCTAssertEqual(band, .limited)
     }
 
+    /// Was 40 minutes -- which is the §8 defect: a sliver of the night read
+    /// as strong. Coverage now has to be most of the night too.
     func testHighConfidenceNeedsAgreementAndCoverage() {
         let band = SnoreEpisodeAggregator.confidence(
             classifierAvailable: true,
             classifierSupportsSnoring: true,
-            monitoredSeconds: 40 * 60,
+            monitoredSeconds: 7 * 3600,
             lastBufferAge: 0.4,
             heuristicSeconds: 12,
             classifierSeconds: 15
@@ -54,7 +56,7 @@ final class SnoreEpisodeAggregatorTests: XCTestCase {
         let band = SnoreEpisodeAggregator.confidence(
             classifierAvailable: true,
             classifierSupportsSnoring: true,
-            monitoredSeconds: 40 * 60,
+            monitoredSeconds: 7 * 3600,
             lastBufferAge: 8_000,
             heuristicSeconds: 12,
             classifierSeconds: 15,

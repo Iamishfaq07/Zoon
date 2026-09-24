@@ -1119,6 +1119,7 @@
 		C8BAD6302CB48AA37DB2DAAB /* SnoreMonitoringGap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 850082B1717342AC8E0B9B06 /* SnoreMonitoringGap.swift */; };
 		C8ED74936C7A2AA9FB7D27A3 /* DateInterval+Subtracting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E98EDB5E5022A03033E5A73 /* DateInterval+Subtracting.swift */; };
 		C90E2F37C8EFF888714E9A17 /* SleepExperimentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AF6BFEAF25ED5145D61FB79 /* SleepExperimentStore.swift */; };
+		C95CA9E7B56744509CC7F9E3 /* SnoreCoverageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84071EA1A680047CFCC74F85 /* SnoreCoverageTests.swift */; };
 		C968E3C958AFCA12AD5EF741 /* ZoonTomorrowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00337A562633E6066C887E3E /* ZoonTomorrowTests.swift */; };
 		C9B15020CD092211AD3906BA /* SleepSourceArbitration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCC204477232E68E017061A /* SleepSourceArbitration.swift */; };
 		C9E11F58E708C31FE69D679F /* RecoveryMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC68C5081CD20CB2DA2E6CC /* RecoveryMode.swift */; };
@@ -1883,6 +1884,7 @@
 		8135A3405E0C2B74EDDE28B9 /* harbor.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "harbor.mp3"; sourceTree = "<group>"; };
 		82AB084AF04F6614781B2A5C /* SleepSufficiencyEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSufficiencyEngineTests.swift"; sourceTree = "<group>"; };
 		834993D3DFFF430EB3AE89C6 /* SleepSnapshotCompatibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepSnapshotCompatibilityTests.swift"; sourceTree = "<group>"; };
+		84071EA1A680047CFCC74F85 /* SnoreCoverageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreCoverageTests.swift"; sourceTree = "<group>"; };
 		84337AD8D27FCD69AF2C4FC2 /* Zoon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zoon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		844B434C335D18DD6B927A95 /* Fixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Fixtures.swift"; sourceTree = "<group>"; };
 		84D90D78C6473C9DAE817703 /* SleepMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepMetricsView.swift"; sourceTree = "<group>"; };
@@ -2746,6 +2748,7 @@
 				4A6B18A98872BE0FE6523094,
 				A8E607EED1FABF1D28504128,
 				EF6B2D5EAFD3E25FB969E767,
+				84071EA1A680047CFCC74F85,
 				F5F6475AAB9A8680ECB53879,
 				446505AAEC563408E7B0379B,
 				DF6BCFC8B0ACCBC5470DF3C4,
@@ -4340,6 +4343,7 @@
 				5B6E52F6E2F001D69A922845,
 				DE3516751BB88CAFC7C58149,
 				D6F170BFBBF1E06DBB485695,
+				C95CA9E7B56744509CC7F9E3,
 				F4AE0992C5C0DADCC257704C,
 				A39361731828407D2BB333AF,
 				DE877ECB17E3E70CC0E5174C,
