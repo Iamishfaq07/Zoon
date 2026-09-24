@@ -236,6 +236,9 @@ struct MoreView: View {
         do {
             let url: URL
             if json {
+                // A read that fails while gathering history must not become
+                // a backup that looks complete. See `StoreRead`.
+                let readFailuresBefore = StoreRead.failureCount
                 let archive = DataExporter.archive(
                     nights: coordinator.nightsForRepair(),
                     journal: coordinator.journal.allEntries(),
@@ -253,6 +256,7 @@ struct MoreView: View {
                     customBehaviors: CustomBehaviorStore.shared.behaviors,
                     alertnessSessions: AlertnessCheckStore().sessions
                 )
+                guard StoreRead.failureCount == readFailuresBefore else { throw IncompleteHistoryReadError() }
                 let plain = try DataExporter.jsonData(archive)
                 let data = encryptBackup ? try ArchiveCipher.seal(plain, passphrase: archivePassphrase) : plain
                 url = try DataExporter.writeTemporary(

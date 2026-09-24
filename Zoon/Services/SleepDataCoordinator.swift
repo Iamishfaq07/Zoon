@@ -456,7 +456,7 @@ final class SleepDataCoordinator {
             start: Calendar.current.date(byAdding: .day, value: -180, to: .now) ?? .now,
             end: .now
         )
-        guard let samples = try? await healthKit.menstrualFlowSamples(in: window) else { return }
+        guard let samples = await healthRead("cycle.flow", source: "menstrualFlow", { try await healthKit.menstrualFlowSamples(in: window) }) else { return }
         cyclePeriodStarts = CycleContext.periodStarts(from: samples)
     }
 
@@ -1025,9 +1025,11 @@ final class SleepDataCoordinator {
         // hourly ones give a seven-hour night seven points and flatten the
         // dip that makes the line worth drawing.
         let overnightHeartRate = night.bedtime < night.wakeTime
-            ? ((try? await healthKit.binnedHeartRate(
-                in: DateInterval(start: night.bedtime, end: night.wakeTime), binMinutes: 5
-            )) ?? [])
+            ? (await healthRead("night.binnedHeartRate", source: "heartRate", {
+                try await healthKit.binnedHeartRate(
+                    in: DateInterval(start: night.bedtime, end: night.wakeTime), binMinutes: 5
+                )
+            }) ?? [])
             : []
 
         guard !isErasing, generation == storeGeneration else { return }
@@ -1302,9 +1304,9 @@ final class SleepDataCoordinator {
         let today = await todayTask
         let yesterday = await yesterdayTask
 
-        let hourly = (try? await healthKit.hourlyHeartRate(
-            in: DateInterval(start: min(wakeTime, .now), end: .now)
-        )) ?? []
+        let hourly = await healthRead("day.hourlyHeartRate", source: "heartRate", {
+            try await healthKit.hourlyHeartRate(in: DateInterval(start: min(wakeTime, .now), end: .now))
+        }) ?? []
 
         return (today, yesterday, hourly)
     }
@@ -1318,12 +1320,16 @@ final class SleepDataCoordinator {
     ) async -> StrainScore {
         guard interval.duration > 0 else { return .zero }
 
-        let energy = (try? await healthKit.sum(.activeEnergyBurned, unit: .kilocalorie(), in: interval)) ?? nil
-        let exercise = (try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)) ?? nil
+        let energy = await healthRead("strain.energy", source: "activeEnergyBurned", {
+            try await healthKit.sum(.activeEnergyBurned, unit: .kilocalorie(), in: interval)
+        }) ?? nil
+        let exercise = await healthRead("strain.exercise", source: "appleExerciseTime", {
+            try await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)
+        }) ?? nil
 
-        guard let result = try? await healthKit.heartRateZones(
-            in: interval, restingHeartRate: restingHR, maxHeartRate: maxHR
-        ), !result.zones.isEmpty, result.coverage >= 0.4 else {
+        guard let result = await healthRead("strain.zones", source: "heartRate", {
+            try await healthKit.heartRateZones(in: interval, restingHeartRate: restingHR, maxHeartRate: maxHR)
+        }), !result.zones.isEmpty, result.coverage >= 0.4 else {
             // Thin heart-rate coverage — fall back to the energy estimate and
             // let the UI say so rather than presenting a confident wrong number.
             return .estimate(activeEnergyKcal: energy ?? 0, exerciseMinutes: exercise ?? 0)
@@ -1605,9 +1611,9 @@ final class SleepDataCoordinator {
         // Same idiom as `strain(in:...)` above: a throw and a no-data result
         // both collapse to nil, and nil steps is a reportable state rather
         // than a failure -- it is what "movement is unknown" means.
-        let todaySteps = (try? await healthKit.sum(
-            .stepCount, unit: .count(), in: DateInterval(start: startOfToday, end: now)
-        )) ?? nil
+        let todaySteps = await healthRead("activity.steps", source: "stepCount", {
+            try await healthKit.sum(.stepCount, unit: .count(), in: DateInterval(start: startOfToday, end: now))
+        }) ?? nil
 
         // The same *point in the day*, four same-weekdays back. The slice is
         // `MovementContext`'s to define -- see `comparableSlice`, which is
@@ -1618,9 +1624,9 @@ final class SleepDataCoordinator {
                   let slice = MovementContext.comparableSlice(
                       of: day, matching: now, calendar: calendar
                   ) else { continue }
-            let steps = (try? await healthKit.sum(
-                .stepCount, unit: .count(), in: slice
-            )) ?? nil
+            let steps = await healthRead("activity.priorSteps", source: "stepCount", {
+                try await healthKit.sum(.stepCount, unit: .count(), in: slice)
+            }) ?? nil
             guard let steps else { continue }
             priors.append(steps)
         }
@@ -1629,12 +1635,12 @@ final class SleepDataCoordinator {
         // steps are: an absent reading is not a zero one, and the snapshot
         // omits what it did not get rather than reporting none of it.
         let interval = DateInterval(start: startOfToday, end: now)
-        let exercise = (try? await healthKit.sum(
-            .appleExerciseTime, unit: .minute(), in: interval
-        )) ?? nil
-        let activeEnergy = (try? await healthKit.sum(
-            .activeEnergyBurned, unit: .kilocalorie(), in: interval
-        )) ?? nil
+        let exercise = await healthRead("activity.exercise", source: "appleExerciseTime", {
+            try await healthKit.sum(.appleExerciseTime, unit: .minute(), in: interval)
+        }) ?? nil
+        let activeEnergy = await healthRead("activity.energy", source: "activeEnergyBurned", {
+            try await healthKit.sum(.activeEnergyBurned, unit: .kilocalorie(), in: interval)
+        }) ?? nil
 
         let typical = Statistics.median(priors).map { Int($0.rounded()) }
         todayMovement = MovementContext.snapshot(
@@ -1673,7 +1679,7 @@ final class SleepDataCoordinator {
         guard dayStart < now else { return }
         let interval = DateInterval(start: dayStart, end: now)
 
-        let workouts = (try? await healthKit.workouts(in: interval)) ?? []
+        let workouts = await healthRead("workouts", source: "workout", { try await healthKit.workouts(in: interval) }) ?? []
         let excluded = workouts.map {
             DateInterval(
                 start: $0.startDate,
@@ -1759,7 +1765,7 @@ final class SleepDataCoordinator {
         guard samplingStart < now else { return }
         let interval = DateInterval(start: samplingStart, end: now)
 
-        let workouts = (try? await healthKit.workouts(in: interval)) ?? []
+        let workouts = await healthRead("workouts", source: "workout", { try await healthKit.workouts(in: interval) }) ?? []
         // One row per real session. A run recorded by the Watch and mirrored
         // by a third-party app arrives as two workouts with different UUIDs,
         // and the day's list showed it twice.
@@ -1793,7 +1799,7 @@ final class SleepDataCoordinator {
         // already queries, at hourly resolution -- fine-grained enough to
         // isolate genuinely active hours without a second new HealthKit
         // permission.
-        let hourlyEnergy = (try? await healthKit.hourlyActiveEnergy(in: interval)) ?? []
+        let hourlyEnergy = await healthRead("movement.hourlyEnergy", source: "activeEnergyBurned", { try await healthKit.hourlyActiveEnergy(in: interval) }) ?? []
         let highMovementIntervals = hourlyEnergy
             .filter { $0.bpm >= Self.highMovementKcalPerHour }
             .map { DateInterval(start: $0.date, duration: 3600) }
@@ -1850,14 +1856,14 @@ final class SleepDataCoordinator {
         ), start < end else { return (nil, nil) }
         let window = DateInterval(start: start, end: end)
 
-        let workouts = (try? await healthKit.workouts(in: window)) ?? []
+        let workouts = await healthRead("workouts", source: "workout", { try await healthKit.workouts(in: window) }) ?? []
         let workoutIntervals = workouts.map {
             DateInterval(
                 start: $0.startDate,
                 end: $0.endDate.addingTimeInterval(Self.postWorkoutBufferMinutes * 60)
             )
         }
-        let hourlyEnergy = (try? await healthKit.hourlyActiveEnergy(in: window)) ?? []
+        let hourlyEnergy = await healthRead("movement.hourlyEnergy", source: "activeEnergyBurned", { try await healthKit.hourlyActiveEnergy(in: window) }) ?? []
         let movementIntervals = hourlyEnergy
             .filter { $0.bpm >= Self.highMovementKcalPerHour }
             .map { DateInterval(start: $0.date, duration: 3600) }
@@ -1980,7 +1986,7 @@ final class SleepDataCoordinator {
     /// picker, which is what it showed before this existed.
     func refreshSleepWriters() async {
         guard DataEnvironment.current.isLive,
-              let writers = try? await healthKit.sleepSources() else { return }
+              let writers = await healthRead("sources.sleep", source: "sleepAnalysis", { try await healthKit.sleepSources() }) else { return }
         sleepWriters = writers
     }
 
@@ -3003,5 +3009,16 @@ final class SleepDataCoordinator {
             goalMinutes: preferences.sleepGoalMinutes,
             consistencyMinutes: state.context?.chronotype.consistencyMinutes
         )
+    }
+}
+
+// MARK: - HealthKit reads that keep why they failed
+
+extension SleepDataCoordinator {
+    /// See `HealthRead`: `nil` is still "unknown", but a denied permission
+    /// or a locked device is recorded for Data Quality instead of looking
+    /// like an empty night.
+    func healthRead<T>(_ operation: String, source: String, _ read: () async throws -> T) async -> T? {
+        await HealthRead.value(operation, source: source, read)
     }
 }

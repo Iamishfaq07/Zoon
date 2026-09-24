@@ -158,10 +158,16 @@ struct FeatureExtractor {
 
         let workoutHours = await lastWorkoutContext(before: session.start)
         let waking = SleepContextWindow.waking(before: session.start, previousWake: previousWake)
-        let measuredAlcoholicBeverages = try? await healthKit.sum(.numberOfAlcoholicBeverages, unit: .count(), in: waking)
-        let exercisePrevious = try? await healthKit.sum(.appleExerciseTime, unit: .minute(), in: waking)
-        let measuredLateCaffeineMg = try? await healthKit.sum(.dietaryCaffeine, unit: .gramUnit(with: .milli),
-            in: SleepContextWindow.lateCaffeine(before: session.start, waking: waking))
+        let measuredAlcoholicBeverages = await HealthRead.value("night.alcohol", source: "numberOfAlcoholicBeverages", {
+            try await healthKit.sum(.numberOfAlcoholicBeverages, unit: .count(), in: waking)
+        }) ?? nil
+        let exercisePrevious = await HealthRead.value("night.exercise", source: "appleExerciseTime", {
+            try await healthKit.sum(.appleExerciseTime, unit: .minute(), in: waking)
+        }) ?? nil
+        let measuredLateCaffeineMg = await HealthRead.value("night.caffeine", source: "dietaryCaffeine", {
+            try await healthKit.sum(.dietaryCaffeine, unit: .gramUnit(with: .milli),
+                in: SleepContextWindow.lateCaffeine(before: session.start, waking: waking))
+        }) ?? nil
 
         let wristTemp = wristTempOutcome.value
 
@@ -336,7 +342,9 @@ struct FeatureExtractor {
     /// days ago says nothing about tonight, and "72.4 hours since last workout"
     /// is noise the insight engine would have to defend against.
     private func lastWorkoutContext(before bedtime: Date) async -> Double? {
-        guard let workout = try? await healthKit.lastWorkout(before: bedtime) else { return nil }
+        guard let workout = await HealthRead.value("night.lastWorkout", source: "workout", {
+            try await healthKit.lastWorkout(before: bedtime)
+        }) ?? nil else { return nil }
         let hours = bedtime.timeIntervalSince(workout.endDate) / 3600
         return hours >= 0 ? hours : nil
     }

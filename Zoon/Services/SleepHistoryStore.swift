@@ -20,12 +20,19 @@ final class SleepHistoryStore {
     }
 
     func evidenceHistory() -> [EvidenceLedger.Revision] {
-        ((try? context.fetch(FetchDescriptor<EvidenceRevisionRecord>())) ?? []).map(\.revision)
+        readableEvidenceHistory() ?? []
+    }
+
+    /// `nil` when the store could not be read -- which writers must not
+    /// mistake for "no history yet", or every revision is written again.
+    private func readableEvidenceHistory() -> [EvidenceLedger.Revision]? {
+        context.readAll(FetchDescriptor<EvidenceRevisionRecord>(), operation: "evidence.all")?.map(\.revision)
     }
 
     @discardableResult
     func importEvidenceHistory(_ revisions: [EvidenceLedger.Revision]) -> Int {
-        var known = Set(evidenceHistory())
+        guard let existing = readableEvidenceHistory() else { return 0 }
+        var known = Set(existing)
         let additions = revisions.filter { known.insert($0).inserted }
         for revision in additions { context.insert(EvidenceRevisionRecord(revision)) }
         do { try context.save(); return additions.count }
@@ -33,7 +40,7 @@ final class SleepHistoryStore {
     }
 
     func recordBelief(_ revision: EvidenceLedger.Revision) {
-        let history = evidenceHistory()
+        guard let history = readableEvidenceHistory() else { return }
         guard EvidenceLedger.recording(revision, into: history).count > history.count else { return }
         context.insert(EvidenceRevisionRecord(revision))
         save()
@@ -47,12 +54,7 @@ final class SleepHistoryStore {
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         if let limit { descriptor.fetchLimit = limit }
-        do {
-            return try context.fetch(descriptor)
-        } catch {
-            logger.error("Fetch failed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
+        return context.readAll(descriptor, operation: "history.allNights") ?? []
     }
 
     /// Nights within the last `days` calendar days, oldest first — the order
@@ -65,12 +67,7 @@ final class SleepHistoryStore {
             predicate: #Predicate { $0.date >= cutoff },
             sortBy: [SortDescriptor(\.date, order: .forward)]
         )
-        do {
-            return try context.fetch(descriptor)
-        } catch {
-            logger.error("Windowed fetch failed: \(error.localizedDescription, privacy: .public)")
-            return []
-        }
+        return context.readAll(descriptor, operation: "history.window") ?? []
     }
 
     var latestNight: SleepNightRecord? {
@@ -82,11 +79,14 @@ final class SleepHistoryStore {
         let descriptor = FetchDescriptor<SleepNightRecord>(
             predicate: #Predicate { $0.date == day }
         )
-        return try? context.fetch(descriptor).first
+        return context.lookupFirst(descriptor, operation: "history.nightOnDate").value
     }
 
+    /// An unreadable store is **not** empty. Sync treats an empty store as
+    /// licence to accept an empty HealthKit fetch and prune the window; a
+    /// read failure answering "empty" would have let one bad moment wipe it.
     var isEmpty: Bool {
-        (try? context.fetchCount(FetchDescriptor<SleepNightRecord>())) ?? 0 == 0
+        context.readCount(FetchDescriptor<SleepNightRecord>(), operation: "history.count").map { $0 == 0 } ?? false
     }
 
     /// Distinct HealthKit source names seen across every stored night and
@@ -97,7 +97,8 @@ final class SleepHistoryStore {
     /// this person, not every source HealthKit happens to know about.
     func knownSourceNames() -> [String] {
         let nightSources = allNights().compactMap(\.sourceName)
-        let episodeSources = (try? context.fetch(FetchDescriptor<SleepEpisodeRecord>()))?.compactMap(\.sourceName) ?? []
+        let episodeSources = context.readAll(FetchDescriptor<SleepEpisodeRecord>(), operation: "episodes.sources")?
+            .compactMap(\.sourceName) ?? []
         return Set(nightSources + episodeSources).sorted()
     }
 
@@ -175,18 +176,28 @@ final class SleepHistoryStore {
     ///   data for, which may therefore clear a stored value. Defaults to empty
     ///   so callers without query provenance -- an archive import, say -- can
     ///   never clear a measured value they know nothing about.
+    ///
+    /// Returns `nil`, writes nothing and marks the batch as not persisted
+    /// when the store cannot be read to look for the existing row: inserting
+    /// blind would duplicate the night. The caller then keeps its HealthKit
+    /// anchor where it was, so the night is retried rather than lost.
     @discardableResult
     func upsert(
         _ features: SleepNightFeatures,
         absoluteWristTempC: Double? = nil,
         confirmedAbsent: Set<VitalMetric> = [],
         nightKey: String? = nil
-    ) -> SleepNightRecord {
-        if let existing = matchingNight(
+    ) -> SleepNightRecord? {
+        let lookup = matchingNight(
             key: nightKey,
             date: features.date,
             wakeTime: features.wakeTime
-        ) {
+        )
+        if case .unreadable = lookup {
+            writesSucceeded = false
+            return nil
+        }
+        if let existing = lookup.value {
             // A legacy row may have been filed using the device timezone at the
             // time of import. Once the recorded timezone is available, migrate
             // both its stable key and canonical wake-date boundary in place.
@@ -214,27 +225,37 @@ final class SleepHistoryStore {
         key: String?,
         date: Date,
         wakeTime: Date
-    ) -> SleepNightRecord? {
+    ) -> StoreLookup<SleepNightRecord> {
         if let key {
             let descriptor = FetchDescriptor<SleepNightRecord>(
                 predicate: #Predicate { $0.nightKey == key }
             )
-            if let keyed = try? context.fetch(descriptor).first {
-                return keyed
+            switch context.lookupFirst(descriptor, operation: "history.upsertByKey") {
+            case .found(let keyed): return .found(keyed)
+            case .unreadable: return .unreadable
+            case .absent: break
             }
         }
 
         // Migration fallback for rows created before `nightKey`: the same
         // HealthKit episode can move to a different absolute midnight after a
         // timezone change, but its actual wake instant remains stable.
-        if let nearby = allNights().min(by: {
+        guard let all = context.readAll(
+            FetchDescriptor<SleepNightRecord>(sortBy: [SortDescriptor(\.date, order: .reverse)]),
+            operation: "history.upsertByWake"
+        ) else { return .unreadable }
+        if let nearby = all.min(by: {
             abs($0.wakeTime.timeIntervalSince(wakeTime))
                 < abs($1.wakeTime.timeIntervalSince(wakeTime))
         }), abs(nearby.wakeTime.timeIntervalSince(wakeTime)) < 6 * 3_600 {
-            return nearby
+            return .found(nearby)
         }
 
-        return night(on: date)
+        let day = Calendar.current.startOfDay(for: date)
+        return context.lookupFirst(
+            FetchDescriptor<SleepNightRecord>(predicate: #Predicate { $0.date == day }),
+            operation: "history.upsertByDate"
+        )
     }
 
     func attach(_ insight: SleepInsight, to record: SleepNightRecord) {
@@ -258,13 +279,8 @@ final class SleepHistoryStore {
         let descriptor = FetchDescriptor<SleepNightRecord>(
             predicate: #Predicate { $0.date >= start && $0.date <= end }
         )
-        let inWindow: [SleepNightRecord]
-        do {
-            inWindow = try context.fetch(descriptor)
-        } catch {
-            logger.error("Prune fetch failed: \(error.localizedDescription, privacy: .public)")
-            return
-        }
+        // Unreadable: prune nothing. Never delete because a read failed.
+        guard let inWindow = context.readAll(descriptor, operation: "history.prune") else { return }
         let stale = inWindow.filter { !validDates.contains($0.date) }
         guard !stale.isEmpty else { return }
         for night in stale { context.delete(night) }
@@ -288,7 +304,14 @@ final class SleepHistoryStore {
         sourceName: String?
     ) {
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(predicate: #Predicate { $0.id == id })
-        if let existing = try? context.fetch(descriptor).first {
+        let lookup = context.lookupFirst(descriptor, operation: "episodes.upsert")
+        if case .unreadable = lookup {
+            // Same rule as `upsert`: no blind insert, and the batch is not
+            // reported as persisted.
+            writesSucceeded = false
+            return
+        }
+        if let existing = lookup.value {
             existing.nightKey = nightKey
             existing.startDate = startDate
             existing.endDate = endDate
@@ -331,13 +354,7 @@ final class SleepHistoryStore {
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(
             predicate: #Predicate { $0.startDate >= start && $0.startDate <= end }
         )
-        let inWindow: [SleepEpisodeRecord]
-        do {
-            inWindow = try context.fetch(descriptor)
-        } catch {
-            logger.error("Episode prune fetch failed: \(error.localizedDescription, privacy: .public)")
-            return
-        }
+        guard let inWindow = context.readAll(descriptor, operation: "episodes.prune") else { return }
         let stale = inWindow.filter { !validEpisodeIDs.contains($0.id) }
         guard !stale.isEmpty else { return }
         for episode in stale { context.delete(episode) }
@@ -363,7 +380,7 @@ final class SleepHistoryStore {
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(
             predicate: #Predicate { $0.nightKey == nightKey }
         )
-        let episodes = (try? context.fetch(descriptor)) ?? []
+        let episodes = context.readAll(descriptor, operation: "episodes.forNight") ?? []
         let day = SleepContextWindow.napDay(before: wakeDate, timeZone: timeZone)
         // A split main sleep belongs to its night key. Naps belong to their
         // occurrence interval, regardless of which source recorded them.
@@ -395,7 +412,7 @@ final class SleepHistoryStore {
         let descriptor = FetchDescriptor<SleepEpisodeRecord>(
             predicate: #Predicate { $0.episodeTypeRaw == napRaw && $0.startDate >= start && $0.startDate < end }
         )
-        let episodes = (try? context.fetch(descriptor)) ?? []
+        let episodes = context.readAll(descriptor, operation: "episodes.naps") ?? []
         return episodes.map {
             SleepDaySummary.AutoEpisode(
                 isNap: true,
@@ -411,7 +428,7 @@ final class SleepHistoryStore {
     /// re-derivable from a fresh HealthKit anchor sync alone (a resync
     /// starts from "now," not from a backup's own history).
     func episodesForExport() -> [DataExporter.Archive.EpisodeRecord] {
-        let episodes = (try? context.fetch(FetchDescriptor<SleepEpisodeRecord>())) ?? []
+        let episodes = context.readAll(FetchDescriptor<SleepEpisodeRecord>(), operation: "episodes.export") ?? []
         return episodes.map {
             DataExporter.Archive.EpisodeRecord(
                 id: $0.id, nightKey: $0.nightKey, startDate: $0.startDate, endDate: $0.endDate,

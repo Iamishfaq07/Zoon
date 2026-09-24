@@ -112,6 +112,12 @@ TESTS_EXTRA_APP_FILES = [
     # SleepHistoryStoreIntegrationTests' header.
     "Zoon/Services/SleepHistoryStore.swift",
     "Zoon/Services/JournalStore.swift",
+    # Foundation/SwiftData/os only -- the typed reads every store above now
+    # goes through (audit §10), so an unreadable store is never empty.
+    "Zoon/Services/StoreRead.swift",
+    # Foundation/HealthKit/os only -- maps a HealthKit error to a FetchIssue
+    # and records it; exercised by FetchStateTests.
+    "Zoon/Services/HealthFetchClassifier.swift",
     "Zoon/Services/SnoreSignalAnalyzer.swift",
     # Pure logic over SleepNightFeatures (which is already in SHARED), so it
     # brings no app-only dependencies into the test target. Needed because
