@@ -53,7 +53,10 @@ permissions:
 jobs:
   capture:
     name: Capture screenshots
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest` (audit §16), so
+    # a runner image change cannot silently change the compiler; the Xcode
+    # inside it is chosen by Tools/select-xcode.sh, as in Build.
+    runs-on: macos-26
     timeout-minutes: 45
 
     env:
@@ -64,6 +67,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       - name: Boot simulator
         id: sim
@@ -564,7 +570,10 @@ jobs:
 
   watch:
     name: Watch screenshots
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest` (audit §16), so
+    # a runner image change cannot silently change the compiler; the Xcode
+    # inside it is chosen by Tools/select-xcode.sh, as in Build.
+    runs-on: macos-26
     # After the phone capture rather than beside it. Both jobs commit their
     # renders to the same branch, and two pushes racing on one ref is a
     # conflict nobody needs; `always()` so a phone failure does not silence
@@ -574,6 +583,9 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       # The watch had never been photographed -- not photographed badly, not
       # at all. Two things were missing and both are now in place: a scheme
