@@ -256,11 +256,15 @@ jobs:
             | python3 -c "import json,sys; data=json.load(sys.stdin)['devices']; \
               print(next(d['udid'] for runtime in data.values() for d in runtime if d['name'].startswith('iPhone')))")
           echo "Testing on simulator $UDID"
+          # A result bundle as well as the text log: it carries each
+          # failure's attachments and the exact test that was running.
+          rm -rf ZoonTests.xcresult
           xcodebuild test \
             -project Zoon.xcodeproj \
             -scheme Zoon \
             -only-testing:ZoonTests \
             -destination "id=$UDID" \
+            -resultBundlePath ZoonTests.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -369,11 +373,13 @@ jobs:
           echo "Testing on simulator $UDID"
 
           run_uitests() {
+            rm -rf ZoonUITests.xcresult
             xcodebuild test \
               -project Zoon.xcodeproj \
               -scheme Zoon \
               -only-testing:ZoonUITests \
               -destination "id=$UDID" \
+              -resultBundlePath ZoonUITests.xcresult \
               CODE_SIGNING_ALLOWED=NO \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGN_IDENTITY="" \
@@ -432,25 +438,44 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Report accessibility audit
-        # ZoonUITests.testAccessibilityAudit logs every issue Apple's audit
-        # finds, prefixed A11Y-AUDIT, and deliberately does not fail on them:
-        # the first job is to see what is there. Printed to the job log as
-        # well as the summary so it can be read without the artifact.
+        # ZoonUITests.testAccessibilityAudit is a gate (audit §14): a new kind
+        # of issue on a tab fails it, and known kinds may not grow past the
+        # baseline in ZoonUITests.knownIssues. Every issue is still printed,
+        # prefixed A11Y-AUDIT, with the per-tab gate lines (A11Y-GATE), to the
+        # job log as well as the summary so it can be read without the
+        # artifact.
         if: always() && steps.build.outcome == 'success'
         run: |
-          COUNT=$(grep -c "A11Y-AUDIT" uitest.log 2>/dev/null || true)
+          COUNT=$(grep -c "A11Y-AUDIT " uitest.log 2>/dev/null || true)
           echo "Accessibility audit issues: ${COUNT:-0}"
+          grep "A11Y-GATE" uitest.log 2>/dev/null | sort -u || true
           grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
           echo "--- details ---"
           grep "A11Y-DETAIL" uitest.log 2>/dev/null | grep -v "Dynamic Type" | sort -u | head -160 || true
           {
             echo "### Accessibility audit"
             echo ""
-            echo "${COUNT:-0} issue line(s)."
+            echo "${COUNT:-0} issue line(s). Gate, per tab (found / known):"
+            echo '```'
+            grep "A11Y-GATE" uitest.log 2>/dev/null | sort -u || true
+            echo '```'
             echo '```'
             grep "A11Y-AUDIT" uitest.log 2>/dev/null | sort | uniq -c | sort -rn | head -80 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test result bundles
+        # Only when something failed: the bundles are large, and on a green
+        # run the logs above say everything.
+        if: failure() && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-result-bundles
+          path: |
+            ZoonTests.xcresult
+            ZoonUITests.xcresult
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Verify every source compiled
         # A file dropped from a target, or excluded by a #if that quietly
