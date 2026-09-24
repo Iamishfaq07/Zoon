@@ -745,9 +745,9 @@ extension View {
     /// accessibility size would make body text.
     ///
     /// No `.dynamicTypeSize(...)` range at all: the last one here was
-    /// `...accessibility5`, the largest size, so it limited nothing, and a
-    /// range on every screen root is the likeliest reason Apple's audit
-    /// called ordinary scaling text "partially supported".
+    /// `...accessibility5`, the largest size, so it limited nothing. (Removing
+    /// it did not change the accessibility audit's "partially supported"
+    /// counts, so that finding has another cause.)
     func zoonTypography() -> some View {
         self
             // Sets the three hierarchical levels for descendants that use
