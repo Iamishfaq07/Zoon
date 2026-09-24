@@ -124,7 +124,9 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
 
     // MARK: - Rule registry
 
-    private typealias Rule = (SleepNightFeatures, RollingBaseline, Double) -> Finding?
+    /// `@Sendable`: the engine is `Sendable`, and every rule is a pure function
+    /// of its inputs and the static thresholds in `T`.
+    private typealias Rule = @Sendable (SleepNightFeatures, RollingBaseline, Double) -> Finding?
 
     /// Order here is irrelevant — priority decides. Grouped by theme for reading.
     private var allRules: [Rule] { identifiedRules.map(\.rule) }

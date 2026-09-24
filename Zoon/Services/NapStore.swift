@@ -359,8 +359,9 @@ final class NapStore {
         // Dismiss immediately rather than leaving it to the default policy:
         // once the nap is over the card is stale, and a stale countdown on the
         // Lock Screen is worse than no countdown.
-        for activity in Activity<NapActivityAttributes>.activities {
-            Task {
+        // Enumerated inside the task, so no `Activity` crosses into it.
+        Task {
+            for activity in Activity<NapActivityAttributes>.activities {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }

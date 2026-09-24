@@ -16,7 +16,9 @@ import Foundation
 /// Implementations:
 /// - `RuleBasedInsightEngine` — complete, deterministic, always available.
 /// - `LocalLLMInsightEngine` — stub; wraps a fallback engine.
-protocol SleepInsightEngine {
+/// `Sendable`: engines are values (a name, a fallback engine, a logger), and
+/// the coordinator awaits `prepare` on them across actors.
+protocol SleepInsightEngine: Sendable {
 
     /// Human-readable name, shown in Settings.
     var displayName: String { get }

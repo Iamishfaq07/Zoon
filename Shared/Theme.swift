@@ -743,8 +743,13 @@ extension View {
     /// fixed. The one deliberately non-scaling element left is the hero
     /// numeral (see `Theme.numeral`), which is already larger than any
     /// accessibility size would make body text.
+    ///
+    /// No `.dynamicTypeSize(...)` range at all: the last one here was
+    /// `...accessibility5`, the largest size, so it limited nothing. (Removing
+    /// it did not change the accessibility audit's "partially supported"
+    /// counts, so that finding has another cause.)
     func zoonTypography() -> some View {
-        dynamicTypeSize(...DynamicTypeSize.accessibility5)
+        self
             // Sets the three hierarchical levels for descendants that use
             // SwiftUI's own `.secondary`/`.tertiary` -- system controls,
             // mostly. This alone did NOT move the app's own text (see

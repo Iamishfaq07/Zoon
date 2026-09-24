@@ -13,8 +13,8 @@ import SwiftData
 /// `PersistentStore` rather than the lightweight snapshot.
 
 struct GetRecoveryIntent: AppIntent {
-    static var title: LocalizedStringResource = "Get Recovery"
-    static var description = IntentDescription("Your latest recovery score from Zoon.")
+    static let title: LocalizedStringResource = "Get Recovery"
+    static let description = IntentDescription("Your latest recovery score from Zoon.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
@@ -36,8 +36,8 @@ struct GetRecoveryIntent: AppIntent {
 }
 
 struct GetSleepSummaryIntent: AppIntent {
-    static var title: LocalizedStringResource = "Get Last Night's Sleep"
-    static var description = IntentDescription("How long you slept and your Sleep Intelligence result for last night.")
+    static let title: LocalizedStringResource = "Get Last Night's Sleep"
+    static let description = IntentDescription("How long you slept and your Sleep Intelligence result for last night.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
@@ -49,8 +49,8 @@ struct GetSleepSummaryIntent: AppIntent {
 }
 
 struct LogSleepTagIntent: AppIntent {
-    static var title: LocalizedStringResource = "Log a Sleep Habit"
-    static var description = IntentDescription("Log something that might affect tonight's sleep in Zoon's journal.")
+    static let title: LocalizedStringResource = "Log a Sleep Habit"
+    static let description = IntentDescription("Log something that might affect tonight's sleep in Zoon's journal.")
 
     @Parameter(title: "Habit")
     var tag: BehaviorTag
@@ -73,9 +73,9 @@ struct LogSleepTagIntent: AppIntent {
 }
 
 struct StartNapIntent: AppIntent {
-    static var title: LocalizedStringResource = "Start a Nap"
-    static var description = IntentDescription("Start Zoon's nap timer.")
-    static var openAppWhenRun = true
+    static let title: LocalizedStringResource = "Start a Nap"
+    static let description = IntentDescription("Start Zoon's nap timer.")
+    static let openAppWhenRun = true
 
     @Parameter(title: "Minutes", default: 20)
     var minutes: Int
@@ -94,9 +94,9 @@ struct StartNapIntent: AppIntent {
 }
 
 struct StartSoundscapeIntent: AppIntent {
-    static var title: LocalizedStringResource = "Start Sleep Sounds"
-    static var description = IntentDescription("Open Zoon's sleep sounds.")
-    static var openAppWhenRun = true
+    static let title: LocalizedStringResource = "Start Sleep Sounds"
+    static let description = IntentDescription("Open Zoon's sleep sounds.")
+    static let openAppWhenRun = true
 
     @Parameter(title: "Sound", default: .brownNoise)
     var sound: SoundscapeSound
@@ -114,8 +114,8 @@ struct StartSoundscapeIntent: AppIntent {
 }
 
 struct GetBedtimeIntent: AppIntent {
-    static var title: LocalizedStringResource = "Get Tonight's Bedtime"
-    static var description = IntentDescription("Tonight's bed and wake target from Zoon.")
+    static let title: LocalizedStringResource = "Get Tonight's Bedtime"
+    static let description = IntentDescription("Tonight's bed and wake target from Zoon.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read(), !snapshot.tonightTargetLabel.isEmpty else {
@@ -129,9 +129,9 @@ struct GetBedtimeIntent: AppIntent {
 }
 
 struct PrepareTomorrowIntent: AppIntent {
-    static var title: LocalizedStringResource = "Prepare Me for Tomorrow"
-    static var description = IntentDescription("Open Zoon Tomorrow to protect a morning start time.")
-    static var openAppWhenRun = true
+    static let title: LocalizedStringResource = "Prepare Me for Tomorrow"
+    static let description = IntentDescription("Open Zoon Tomorrow to protect a morning start time.")
+    static let openAppWhenRun = true
 
     @Parameter(title: "Hour", default: 8)
     var hour: Int

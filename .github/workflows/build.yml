@@ -634,7 +634,7 @@ jobs:
     # `#if DEBUG` branches and whole-module compilation all differ. This
     # compiles what TestFlight would ship, without signing.
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -664,13 +664,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # Audit §12, stage 2 of the Swift 6 migration: the same app built with
-      # complete concurrency checking, still in Swift 5 mode, *reported* not
-      # enforced. The count is the migration's to-do list; it should only go
-      # down. Runs here because this job finishes well before the test job,
-      # so it adds no wall-clock time to a push.
-      - name: Strict concurrency probe (report only)
+      # complete concurrency checking, still in Swift 5 mode. It started at
+      # 65 diagnostics and was brought to zero, so it is now enforced: any
+      # new diagnostic fails this job. Runs here because this job finishes
+      # well before the test job, so it adds no wall-clock time to a push.
+      - name: Strict concurrency gate
         if: always()
-        continue-on-error: true
         run: |
           set +e
           xcodebuild build \
@@ -705,6 +704,45 @@ jobs:
               | sed -E "s/'[^']*'/'_'/g" | sort | uniq -c | sort -rn | head -25 || true
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
+          # The full list, path-trimmed, into the job log only: it is the
+          # migration's to-do list and artifacts are not readable everywhere.
+          echo "--- strict concurrency diagnostics ---"
+          sed -E 's#^/Users/runner/work/Zoon/Zoon/##' strict-concurrency-diagnostics.txt | head -200
+          if [ "$STATUS" -ne 0 ] || [ "${TOTAL:-0}" -gt 0 ]; then
+            echo "::error::Complete concurrency checking found ${TOTAL:-0} diagnostic(s) (build status ${STATUS}). It was clean; fix them rather than relaxing the gate."
+            exit 1
+          fi
+
+      # Audit §12, stage 3: the same build in Swift 6 language mode, reported
+      # only. The strict-concurrency gate above keeps Swift 5 mode clean;
+      # this says what flipping the language mode would still take.
+      - name: Swift 6 language mode probe (report only)
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/swift6 \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SWIFT_VERSION=6 \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            > swift6.log 2>&1
+          STATUS=$?
+          grep -E "(warning|error): " swift6.log | sort -u > swift6-diagnostics.txt
+          {
+            echo "### Swift 6 language mode probe"
+            echo ""
+            echo "Build exit status ${STATUS}. $(grep -c ' error: ' swift6-diagnostics.txt || true) error(s), $(grep -c ' warning: ' swift6-diagnostics.txt || true) warning(s)."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "--- swift 6 diagnostics ---"
+          sed -E 's#^/Users/runner/work/Zoon/Zoon/##' swift6-diagnostics.txt | head -200
 
       - uses: actions/upload-artifact@v4
         if: always()

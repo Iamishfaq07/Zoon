@@ -317,6 +317,10 @@ struct BreathingModifier: ViewModifier {
 ///
 /// iOS-only: the widget extension compiles this file too, and UIKit's feedback
 /// generators aren't available there.
+///
+/// `@MainActor` because the UIKit generators are; every caller is a view or a
+/// main-actor controller.
+@MainActor
 enum Haptics {
     #if canImport(UIKit) && !os(watchOS)
     static func tap() {

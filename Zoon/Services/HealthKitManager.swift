@@ -348,9 +348,12 @@ final class HealthKitManager {
                     )
                 }
             } else {
+                // HealthKit's completion handler is not `Sendable`, but it is
+                // called exactly once, here, after the change is handled.
+                nonisolated(unsafe) let completion = completionHandler
                 Task {
                     await onChange()
-                    completionHandler()
+                    completion()
                 }
                 return
             }
