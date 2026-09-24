@@ -36,6 +36,9 @@ jobs:
         run: |
           python3 Tools/generate-pbxproj.py
           git diff --exit-code -- Zoon.xcodeproj/project.pbxproj Zoon.xcodeproj/xcshareddata/xcschemes/Zoon.xcscheme
+      - name: Check deployment targets and Swift version
+        run: python3 Tools/check-build-settings.py Zoon.xcodeproj/project.pbxproj
+
       - name: Parse project.pbxproj
         run: python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
       - name: Check App Store Connect cert-slot helper
@@ -50,10 +53,16 @@ jobs:
   # through an API that serves the tail. Here the whole log is the probe.
   sdk-probe:
     name: Probe installed SDK
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest`, so a runner
+    # image change cannot silently change the compiler; the Xcode inside
+    # it is chosen by Tools/select-xcode.sh.
+    runs-on: macos-26
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       - name: Probe HealthKit workout-zone API
         run: |
@@ -96,10 +105,16 @@ jobs:
 
   watch:
     name: Build (watchOS Simulator)
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest`, so a runner
+    # image change cannot silently change the compiler; the Xcode inside
+    # it is chosen by Tools/select-xcode.sh.
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       # The watch app has only ever been built as something the iOS app
       # embeds. That proves it compiles -- `Verify every source compiled`
@@ -183,11 +198,17 @@ jobs:
   build:
     name: Build (iOS Simulator)
     needs: project
-    runs-on: macos-latest
+    # Pinned to the macOS 26 image rather than `macos-latest`, so a runner
+    # image change cannot silently change the compiler; the Xcode inside
+    # it is chosen by Tools/select-xcode.sh.
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
 
       - name: Show toolchain
         run: |
@@ -563,3 +584,46 @@ jobs:
             uitest-first-attempt.log
           retention-days: 14
           if-no-files-found: warn
+
+  release-build:
+    name: Build (iOS Release)
+    needs: project
+    # A Debug build and test pass says nothing about Release: optimisation,
+    # `#if DEBUG` branches and whole-module compilation all differ. This
+    # compiles what TestFlight would ship, without signing.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Tools/select-xcode.sh
+
+      - name: Build app, widgets and watch app in Release
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+            2>&1 | tee release-build.log
+          {
+            echo "### Release build"
+            echo ""
+            echo '```'
+            grep -E "error:" release-build.log | sort -u | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-build-log
+          path: release-build.log
+          if-no-files-found: ignore
