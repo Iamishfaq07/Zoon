@@ -140,16 +140,18 @@ Test counts and measured values from CI: see **CI results** below.
 
 ## CI results
 
-Measured on CI run 36002012278 (commit `749172c`, Xcode 26.6, iOS 26.5
-simulator). These are the numbers the audit-metrics step prints.
+**Final run: CI run 36005219698 on `2ab322e`, every job green** (Xcode 26.6,
+iOS 26.5 simulator). The measured numbers below are what its audit-metrics
+step printed; the strict-concurrency figures are from run 36002012278.
 
 | Check | Result |
 |---|---|
 | Validate project file, deployment targets / Swift version / String Catalogs | pass |
 | Build (watchOS Simulator) | pass |
 | Build (iOS Release), warnings as errors | pass |
-| `ZoonTests` | **2,563 tests, 0 failures** (baseline 2,449) |
-| `ZoonUITests` | 4 tests; launch, core flows and long-string/RTL pass. The accessibility test failed on a *count* ceiling (Insights Dynamic Type 20 vs 11 in the baseline run) caused by content that differs between runs, not by a change here; the gate was changed as described under Accessibility and re-run below. |
+| `ZoonTests` | **2,573 tests, 0 failures** (baseline 2,449) |
+| `ZoonUITests` | **4 tests, 0 failures**: launch, core flows, long strings + right to left, accessibility gate |
+| Accessibility, known kinds per tab (found / baseline) | Today contrast 18/16, Dynamic Type 7/6, clipped 4/4; Sleep 22/22, 9/9, 4/4; Insights 7/7, 20/11; Coach 8/10, 17/17. No new kind of issue. |
 | Strict concurrency probe (report only) | **65** unique diagnostics with `SWIFT_STRICT_CONCURRENCY=complete`: 17 `ZoonIntents.swift`, 12 `Motion.swift`, 3 each `WatchLink`, `SpotlightIndexer`, `SleepHistoryStore`, 2 `SleepFocusFilter`, 1 each in 8 files. By kind: 22 missing `Sendable` conformances, 19 global mutable statics, 12 main-actor calls from nonisolated contexts, 5 `sending` risks, 7 other. |
 
 **Coach evaluation** (`COACH-EVAL`): 110 answers, diagnosis 0, unknown
@@ -209,7 +211,7 @@ up; after the change the join is an ordinary step inside the recording rather
 than a coincidence at the file boundary, and is still well under their
 interior maximum.
 
-**Noise render cost** (`NOISE-RENDER`): 141 ms to render one 5-second
+**Noise render cost** (`NOISE-RENDER`): 141–151 ms across two runs to render one 5-second
 buffer on the CI simulator in a Debug build, now on the `NoiseRenderer`
 actor rather than the main actor. Not a device figure.
 
