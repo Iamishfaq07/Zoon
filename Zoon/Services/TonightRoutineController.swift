@@ -240,6 +240,15 @@ final class TonightRoutineController {
     }
 
     private func endLiveActivity() {
+        Self.endLeftoverLiveActivities()
+    }
+
+    /// Called at launch. A routine lives only in memory (a paused one has
+    /// already ended its activity), so a wind-down card that exists when the
+    /// app starts was left by a run the system ended -- the app killed or
+    /// crashed mid-routine. Nothing can update it any more; close it rather
+    /// than leave a frozen countdown on the Lock Screen.
+    static func endLeftoverLiveActivities() {
         #if canImport(ActivityKit)
         Task {
             for activity in Activity<WindDownActivityAttributes>.activities {

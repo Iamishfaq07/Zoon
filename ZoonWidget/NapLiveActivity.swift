@@ -83,11 +83,23 @@ private struct NapActivityContent: View {
     @Environment(\.activityFamily) private var family
 
     var body: some View {
-        if family == .small {
+        if context.isStale {
+            finished
+        } else if family == .small {
             small
         } else {
             lockScreen
         }
+    }
+
+    /// Past its stale date nothing is updating the card; say the nap is over
+    /// rather than show a countdown frozen at 0:00.
+    private var finished: some View {
+        Label("Nap over", systemImage: "sun.max")
+            .font(family == .small ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
+            .foregroundStyle(napTint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(family == .small ? 8 : 16)
     }
 
     private var small: some View {

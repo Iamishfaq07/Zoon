@@ -77,11 +77,24 @@ private struct WindDownActivityContent: View {
     @Environment(\.activityFamily) private var family
 
     var body: some View {
-        if family == .small {
+        if context.isStale {
+            finished
+        } else if family == .small {
             small
         } else {
             lockScreen
         }
+    }
+
+    /// Past its stale date the app is no longer updating the card (the
+    /// routine ended without closing it, or the app was stopped); a countdown
+    /// frozen at 0:00 would say something is still running.
+    private var finished: some View {
+        Label("Wind-down finished", systemImage: "moon.zzz")
+            .font(family == .small ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(family == .small ? 8 : 16)
     }
 
     /// A watch face is small and seen at a glance: the stage and the time left.

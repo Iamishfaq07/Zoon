@@ -92,6 +92,7 @@ struct ZoonApp: App {
         } else {
             _coordinator = State(initialValue: nil)
         }
+        TonightRoutineController.endLeftoverLiveActivities()
     }
 
     var body: some Scene {
