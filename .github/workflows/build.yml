@@ -265,6 +265,7 @@ jobs:
             -only-testing:ZoonTests \
             -destination "id=$UDID" \
             -resultBundlePath ZoonTests.xcresult \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
