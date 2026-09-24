@@ -617,7 +617,7 @@ jobs:
     # `#if DEBUG` branches and whole-module compilation all differ. This
     # compiles what TestFlight would ship, without signing.
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -646,9 +646,54 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Audit §12, stage 2 of the Swift 6 migration: the same app built with
+      # complete concurrency checking, still in Swift 5 mode, *reported* not
+      # enforced. The count is the migration's to-do list; it should only go
+      # down. Runs here because this job finishes well before the test job,
+      # so it adds no wall-clock time to a push.
+      - name: Strict concurrency probe (report only)
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          xcodebuild build \
+            -project Zoon.xcodeproj \
+            -scheme Zoon \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/strict-concurrency \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            SWIFT_STRICT_CONCURRENCY=complete \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            > strict-concurrency.log 2>&1
+          STATUS=$?
+          grep -E "(warning|error): " strict-concurrency.log | sort -u > strict-concurrency-diagnostics.txt
+          TOTAL=$(grep -c . strict-concurrency-diagnostics.txt || true)
+          {
+            echo "### Strict concurrency probe"
+            echo ""
+            echo "Build exit status ${STATUS}. ${TOTAL:-0} unique diagnostic(s) with SWIFT_STRICT_CONCURRENCY=complete (Swift 5 mode)."
+            echo ""
+            echo "By file:"
+            echo '```'
+            sed -E 's#^.*/([^/]+\.swift):[0-9]+:[0-9]+: .*#\1#' strict-concurrency-diagnostics.txt \
+              | grep "\.swift$" | sort | uniq -c | sort -rn | head -40 || true
+            echo '```'
+            echo "By message:"
+            echo '```'
+            sed -E 's#^.*: (warning|error): ##' strict-concurrency-diagnostics.txt \
+              | sed -E "s/'[^']*'/'_'/g" | sort | uniq -c | sort -rn | head -25 || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: release-build-log
-          path: release-build.log
+          path: |
+            release-build.log
+            strict-concurrency-diagnostics.txt
           if-no-files-found: ignore
