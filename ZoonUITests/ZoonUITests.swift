@@ -60,8 +60,7 @@ final class ZoonUITests: XCTestCase {
             for tab in ["sleep", "insights", "coach", "today"] {
                 let button = app.buttons["zoon.tab.\(tab)"]
                 XCTAssertTrue(button.waitForExistence(timeout: 10), "\(variant.name): no \(tab) tab")
-                button.tap()
-                XCTAssertTrue(button.isSelected, "\(variant.name): \(tab) did not open")
+                XCTAssertTrue(select(button), "\(variant.name): \(tab) did not open")
             }
             let screenshot = XCTAttachment(screenshot: app.screenshot())
             screenshot.name = "Today, \(variant.name)"
@@ -69,6 +68,26 @@ final class ZoonUITests: XCTestCase {
             add(screenshot)
             app.terminate()
         }
+    }
+
+    /// Taps a tab and waits for it to become selected.
+    ///
+    /// On a loaded runner a tap can arrive while the previous tab is still
+    /// settling and be dropped (run 36061792999: the Sleep tap took 35s to
+    /// deliver, the Insights tap straight after it did not register, and the
+    /// Coach and Today taps that followed did). So the check waits for the
+    /// selection rather than reading it the instant the tap returns, and taps
+    /// once more if the first tap was lost. A tab that never opens still fails.
+    private func select(_ button: XCUIElement) -> Bool {
+        button.tap()
+        if waitUntilSelected(button, timeout: 5) { return true }
+        button.tap()
+        return waitUntilSelected(button, timeout: 10)
+    }
+
+    private func waitUntilSelected(_ button: XCUIElement, timeout: TimeInterval) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: button)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
     /// Apple's accessibility audit on the four main tabs, in demo mode, as a
