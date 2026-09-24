@@ -1409,6 +1409,7 @@
 		F8C9869BEDB9015FCD4098C8 /* ShiftPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08C0FC759927724DB5C51C9 /* ShiftPlan.swift */; };
 		F9061A1B41637857E5AAD1D6 /* ChartRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = B695F3694C1C1509E14BE78C /* ChartRequest.swift */; };
 		F90F7C41A05FB5ADED03A8E5 /* SensitivityCurve.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBF8F87E90B5D41E0C99CED /* SensitivityCurve.swift */; };
+		F94EC11E060EF996D0EF7AA6 /* SleepIntelligenceV4Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDFA9CFE13D03C384EB388CB /* SleepIntelligenceV4Tests.swift */; };
 		F9606C4254904484491DD60F /* ContextForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44354442EF56D3F66F5A44C9 /* ContextForecast.swift */; };
 		F975AEF960918955595FAD4C /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
 		F99A72CF0ABD1AC852FC9B39 /* RecoveryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBF13117CFB2BE353EB64293 /* RecoveryDetailView.swift */; };
@@ -2118,6 +2119,7 @@
 		DC86AAF5AF3281FE0FDFE01F /* WeekOverWeek.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeekOverWeek.swift"; sourceTree = "<group>"; };
 		DCB0F21F66C29F4639E509DB /* RestingHRProvenanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RestingHRProvenanceTests.swift"; sourceTree = "<group>"; };
 		DCEC17D735BD667BC05BFDC9 /* SleepResilienceTypedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepResilienceTypedTests.swift"; sourceTree = "<group>"; };
+		DDFA9CFE13D03C384EB388CB /* SleepIntelligenceV4Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepIntelligenceV4Tests.swift"; sourceTree = "<group>"; };
 		DE0980BAD4F97A00BC192866 /* SleepReplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepReplay.swift"; sourceTree = "<group>"; };
 		DE7FB093E433D30982864FBB /* RollingBaseline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RollingBaseline.swift"; sourceTree = "<group>"; };
 		DF06FF95BE14BA5FB26750E2 /* SnoreEpisodeAggregator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SnoreEpisodeAggregator.swift"; sourceTree = "<group>"; };
@@ -2695,6 +2697,7 @@
 				C7700BC5A9C298B80602F5A5,
 				609825EF9FEE9342ACE3B4C4,
 				687A7DF767C43328C86D58E2,
+				DDFA9CFE13D03C384EB388CB,
 				9C5DFA724348089E9D19996D,
 				9BFDEF068FEB9BC31970772C,
 				ED3533F8BC0469D5CA49CFA9,
@@ -4281,6 +4284,7 @@
 				7DD112D0CD1BF6F7833FE8C9,
 				6198D747B24D464F27331AFB,
 				28AA11794CB5EA667DDF1F0D,
+				F94EC11E060EF996D0EF7AA6,
 				428F835C77993F29739A4C03,
 				B69B930112C887FE0A9418E1,
 				6EDF62F26038C1B55C641086,

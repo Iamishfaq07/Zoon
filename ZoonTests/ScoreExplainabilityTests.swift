@@ -133,14 +133,17 @@ final class ScoreExplainabilityTests: XCTestCase {
             return Fixture.night(
                 daysAgo: daysAgo,
                 deepMinutes: 81 + wobble,
-                remMinutes: 99 - wobble
+                remMinutes: 99 - wobble,
+                // Trusted and attributed: v4 scores Stage Pattern only on
+                // stages a watch or wearable classified.
+                stageSourcePriority: .appleWatch
             )
         }
     }
 
     private func fullyPopulatedScore() -> SleepIntelligenceScore {
         SleepIntelligenceScore.compute(.init(
-            night: Fixture.night(daysAgo: 0),
+            night: Fixture.night(daysAgo: 0, stageSourcePriority: .appleWatch),
             history: variedHistory(),
             sleepNeedMinutes: 480,
             // Both supplied: a "fully populated" night that leaves Regularity

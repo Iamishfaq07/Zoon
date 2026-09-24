@@ -4,15 +4,32 @@ import XCTest
 /// autonomic recovery and breathing from the headline so those signals cannot
 /// be counted once as sleep and again as Recovery/Vitals.
 final class ScoreMeaningTests: XCTestCase {
+    /// Apple Watch nights whose Deep/REM *share* varies a little from night
+    /// to night. v4 compares composition, and a history where every night
+    /// had exactly 18% Deep has no spread to measure against.
     private var history: [SleepNightFeatures] {
         (0..<20).map { index in
             let offset = Double(index % 5) - 2
+            let asleep = 450 + 10 * offset
             return Fixture.night(
-                daysAgo: index + 1, timeAsleepMinutes: 450 + 10 * offset,
+                daysAgo: index + 1, timeAsleepMinutes: asleep,
                 avgHRV: 55 + 5 * offset, restingHeartRate: 54 + 2 * offset,
-                avgRespiratoryRate: 14.5 + 0.5 * offset
+                avgRespiratoryRate: 14.5 + 0.5 * offset,
+                deepMinutes: asleep * (0.18 + 0.01 * offset),
+                remMinutes: asleep * (0.22 - 0.01 * offset),
+                stageSourcePriority: .appleWatch
             )
         }
+    }
+
+    /// Tonight, staged by Apple Watch at the history's median composition
+    /// unless told otherwise.
+    private func watchNight(asleep: Double = 460, deepShare: Double = 0.18, remShare: Double = 0.22) -> SleepNightFeatures {
+        Fixture.night(
+            daysAgo: 0, timeAsleepMinutes: asleep,
+            deepMinutes: asleep * deepShare, remMinutes: asleep * remShare,
+            stageSourcePriority: .appleWatch
+        )
     }
 
     private func score(_ night: SleepNightFeatures) -> SleepIntelligenceScore {
@@ -53,7 +70,7 @@ final class ScoreMeaningTests: XCTestCase {
     }
 
     func testAnOrdinaryStagePatternNightIsTypical() throws {
-        let stages = try component("Stage Pattern", of: Fixture.night(daysAgo: 0, timeAsleepMinutes: 460))
+        let stages = try component("Stage Pattern", of: watchNight())
         XCTAssertGreaterThan(stages.normalized, 0.9)
         XCTAssertEqual(stages.role, .typical)
         XCTAssertEqual(stages.pointContribution, 0, accuracy: 0.3)
@@ -68,21 +85,26 @@ final class ScoreMeaningTests: XCTestCase {
     }
 
     func testStagePatternNameAndDetailMatchMeaning() throws {
-        let stages = try component("Stage Pattern", of: Fixture.night(daysAgo: 0, timeAsleepMinutes: 460))
+        let stages = try component("Stage Pattern", of: watchNight())
         XCTAssertTrue(stages.detail.hasPrefix("Deep "), stages.detail)
+        XCTAssertTrue(stages.detail.contains("%"), "v4 states composition: \(stages.detail)")
         XCTAssertTrue(stages.detail.contains("usually"), stages.detail)
         XCTAssertFalse(score(Fixture.night(daysAgo: 0)).components.contains { $0.label == "Architecture" })
     }
 
+    /// Distance from the person's own mix, in either direction. This used to
+    /// vary the night's *duration* (480 vs 420 minutes) and expect a stage
+    /// penalty -- which was the v3 double count itself. It now varies the
+    /// Deep share at a fixed duration.
     func testUnusuallyHighAndLowDeepSleepScoreSymmetrically() throws {
-        let more = try component("Stage Pattern", of: Fixture.night(daysAgo: 0, timeAsleepMinutes: 480))
-        let less = try component("Stage Pattern", of: Fixture.night(daysAgo: 0, timeAsleepMinutes: 420))
+        let more = try component("Stage Pattern", of: watchNight(deepShare: 0.24, remShare: 0.16))
+        let less = try component("Stage Pattern", of: watchNight(deepShare: 0.12, remShare: 0.28))
         XCTAssertEqual(more.normalized, less.normalized, accuracy: 0.02)
         XCTAssertLessThan(more.normalized, 0.85)
     }
 
     func testScoringVersionMovedWithMeaning() {
-        XCTAssertEqual(SleepIntelligenceScore.currentVersion, 3)
-        XCTAssertEqual(score(Fixture.night(daysAgo: 0)).scoringVersion, 3)
+        XCTAssertEqual(SleepIntelligenceScore.currentVersion, 4)
+        XCTAssertEqual(score(Fixture.night(daysAgo: 0)).scoringVersion, 4)
     }
 }
