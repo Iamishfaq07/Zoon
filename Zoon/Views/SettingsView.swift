@@ -458,7 +458,7 @@ struct SettingsView: View {
             )) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Lifestyle Insights")
-                    Text("Reads measured caffeine, alcohol, daylight, and mindfulness from Health.")
+                    Text("Reads measured caffeine, alcohol, daylight, mindfulness and logged mood from Health.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                 }
@@ -468,9 +468,12 @@ struct SettingsView: View {
         } footer: {
             Text("""
                 Off by default. Turning this on asks Health for caffeine, alcohol, \
-                time in daylight, and Mindfulness sessions — a separate permission \
-                from everything else Zoon reads. Shown alongside your Journal tags \
-                as measured reference, not a replacement for them.
+                time in daylight, Mindfulness sessions and the daily mood you log \
+                (State of Mind) — a separate permission from everything else Zoon \
+                reads. Shown alongside your Journal tags as measured reference. \
+                When your watch measured ten minutes or more of morning daylight, \
+                tonight's "time outdoors this morning" is marked yes for you; it is \
+                never marked no, and an answer you gave is never changed.
                 """)
         }
     }

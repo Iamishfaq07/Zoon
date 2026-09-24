@@ -121,6 +121,8 @@ struct FetchDiagnostic: Codable, Equatable, Sendable, Identifiable {
         "sleepAnalysis": "Sleep sources",
         "numberOfAlcoholicBeverages": "Alcohol",
         "dietaryCaffeine": "Caffeine",
+        "timeInDaylight": "Time in daylight",
+        "stateOfMind": "Mood (State of Mind)",
         "SleepNightRecord": "Saved nights",
         "SleepEpisodeRecord": "Saved naps and split sleep",
         "EvidenceRevisionRecord": "Evidence history",

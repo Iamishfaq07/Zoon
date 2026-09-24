@@ -203,7 +203,10 @@ final class HealthKitManager {
             HKQuantityType(.dietaryCaffeine),
             HKQuantityType(.numberOfAlcoholicBeverages),
             HKQuantityType(.timeInDaylight),
-            HKCategoryType(.mindfulSession)
+            HKCategoryType(.mindfulSession),
+            // Daily mood logged in Health or the Watch's Mindfulness app,
+            // for Mood and sleep (`MoodSleepLink`). Read only.
+            HKObjectType.stateOfMindType()
         ]
     }
 
@@ -240,6 +243,41 @@ final class HealthKitManager {
     /// category type rather than a quantity type -- HealthKit records each
     /// session as a start/end interval, not a running sum, so the minutes
     /// have to be totalled from the samples directly.
+    /// Daily-mood State of Mind logs in `window`, as (date, valence -1...1).
+    /// Momentary emotions are left out: Mood and sleep compares days, and a
+    /// single in-the-moment log is not a day's mood.
+    func dailyMoodLogs(in window: DateInterval) async throws -> [(date: Date, valence: Double)] {
+        let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end)
+        return try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.stateOfMindType(),
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, error in
+                if let error {
+                    if (error as? HKError)?.code == .errorNoData {
+                        continuation.resume(returning: [])
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
+                    return
+                }
+                let logs = ((samples as? [HKStateOfMind]) ?? [])
+                    .filter { $0.kind == .dailyMood }
+                    .map { (date: $0.startDate, valence: $0.valence) }
+                continuation.resume(returning: logs)
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Minutes of measured daylight in `window` (Apple Watch). `nil` when
+    /// nothing was recorded.
+    func daylightMinutes(in window: DateInterval) async throws -> Double? {
+        try await sum(.timeInDaylight, unit: .minute(), in: window)
+    }
+
     private func mindfulMinutes(in window: DateInterval) async throws -> Double? {
         let type = HKCategoryType(.mindfulSession)
         let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end)
