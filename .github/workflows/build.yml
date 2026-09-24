@@ -593,6 +593,22 @@ jobs:
             fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The measured numbers the audit report quotes -- loop seams before
+      # and after, noise render cost, the Coach evaluation rates, the score's
+      # severity table -- printed last so they sit in the tail of the job
+      # log, which is what the API serves.
+      - name: Audit metrics
+        if: always() && steps.build.outcome == 'success'
+        run: |
+          {
+            echo "### Audit metrics"
+            echo '```'
+            grep -hE "Executed [0-9]+ tests" test.log uitest.log 2>/dev/null | tail -4 || true
+            grep -hE "^(SEAM |NOISE-RENDER|COACH-EVAL|SI-v4)" test.log 2>/dev/null | sort -u | head -80 || true
+            grep -h "A11Y-GATE" uitest.log 2>/dev/null | sort -u || true
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Upload full log
         if: always()
         uses: actions/upload-artifact@v4
