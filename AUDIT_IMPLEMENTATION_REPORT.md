@@ -294,7 +294,7 @@ Not measured on a device. What can be said from CI:
 | §15 translations, plurals/units audit | Infrastructure only | Catalogs, settings guard and a pseudolocalization + RTL test exist; translating needs the catalogs populated in Xcode first. |
 | §17.1–17.4 UI redesign (native tab bar, Today hierarchy, hypnogram layers, Body Clock), §18 Sound Studio, §20 readiness, §21 room sound | Not done | Design work that needs looking at the result on a device; the audit orders it after P0/P1. |
 | §17.5 unlock map | Done | Personal learning, from the engines' own thresholds. |
-| §17.6 Coach | Partly done | Each local answer shows the time it is about ("Last night", "Night of …", "Recent nights", "Last N nights", "Tonight"); medical questions get a referral. Deep links from evidence chips, multiple chips per answer and deterministic suggested questions are not done. |
+| §17.6 Coach | Partly done | Each local answer shows the time it is about ("Last night", "Night of …", "Recent nights", "Last N nights", "Tonight"); medical questions get a referral. Suggested questions are deterministic: picked from last night's data (HRV off its baseline, a sleep shortfall, three or more wakes) with fixed fallbacks. Deep links from evidence chips and multiple chips per answer are not done. |
 | §19 Snore results | Mostly done | The result card shows monitored time, % of the planned night covered, interruptions, monitoring quality and flagged time, and says "No conclusion" instead of "0%" when coverage is limited; the existing coverage card already draws the interruption gaps. Per-event confidence bands on a timeline are not done. |
 | §19 optional audio snippets | Not done, deliberately | Product decision with consent and retention design; not a default. |
 | §22 smart alarm | Nothing to change | Confirmed honest: Settings says the wake window is "not a live sleep-stage alarm"; nothing infers wake stage from HealthKit history. |
@@ -338,6 +338,12 @@ rather than defaulting them.
   person gave. `MorningDaylight`.
 - **Wind-down Live Activity.** The Tonight routine shows a Lock Screen and
   Dynamic Island countdown to lights-out with the current stage.
+- **Apple Watch Smart Stack.** Both Live Activities (nap, wind-down)
+  declare the small activity family, so the watch shows a purpose-made
+  glance instead of a cut-down Dynamic Island.
+- **Live Activity lifecycle.** A wind-down card left by a run the system
+  ended (app killed mid-routine) is closed at launch; past their stale date
+  both cards say the nap or wind-down is over instead of showing 0:00.
 
 ## Release blockers
 
