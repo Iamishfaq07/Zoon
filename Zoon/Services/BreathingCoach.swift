@@ -268,64 +268,30 @@ final class BreathingCoach: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     private func enqueue(_ line: String) {
-        let utterance = AVSpeechUtterance(string: line)
-        utterance.voice = resolvedVoice()
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
-        utterance.pitchMultiplier = 0.92
-        utterance.preUtteranceDelay = 0.15
-        utterance.postUtteranceDelay = 0.2
-        synthesizer.speak(utterance)
+        let voice = resolvedVoice()
+        for utterance in SpeechVoices.utterances(for: line, profile: .breathing, voice: voice) {
+            synthesizer.speak(utterance)
+        }
     }
 
     func previewVoice() {
         speak("Breathe in slowly. Let your shoulders soften.")
     }
 
+    /// The Wind Down voice if still installed, else the best installed voice
+    /// for this language. Shared with the night narrator (`SpeechVoices`).
     func resolvedVoice() -> AVSpeechSynthesisVoice? {
-        let voices = AVSpeechSynthesisVoice.speechVoices()
-        if let voiceIdentifier, let match = voices.first(where: { $0.identifier == voiceIdentifier }) {
-            selectedVoiceName = match.name
-            return match
-        }
-        let locale = Locale.current.identifier
-        let ranked = voices
-            .filter { $0.language.hasPrefix(String(locale.prefix(2))) }
-            .sorted { lhs, rhs in
-                qualityRank(lhs) > qualityRank(rhs)
-            }
-        let chosen = ranked.first ?? AVSpeechSynthesisVoice(language: locale)
+        let chosen = SpeechVoices.resolve(preferredIdentifier: voiceIdentifier)
         selectedVoiceName = chosen?.name
         return chosen
     }
 
     static func installedVoices() -> [AVSpeechSynthesisVoice] {
-        let locale = Locale.current.identifier
-        return AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.hasPrefix(String(locale.prefix(2))) }
-            .sorted { lhs, rhs in
-                if qualityRank(lhs) != qualityRank(rhs) { return qualityRank(lhs) > qualityRank(rhs) }
-                return lhs.name < rhs.name
-            }
+        SpeechVoices.installed()
     }
 
     static func qualityLabel(_ voice: AVSpeechSynthesisVoice) -> String {
-        switch voice.quality {
-        case .premium: "Premium"
-        case .enhanced: "Enhanced"
-        default: "Default"
-        }
-    }
-
-    private static func qualityRank(_ voice: AVSpeechSynthesisVoice) -> Int {
-        switch voice.quality {
-        case .premium: 3
-        case .enhanced: 2
-        default: 1
-        }
-    }
-
-    private func qualityRank(_ voice: AVSpeechSynthesisVoice) -> Int {
-        Self.qualityRank(voice)
+        SpeechVoices.qualityLabel(voice)
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
