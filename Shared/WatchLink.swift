@@ -327,10 +327,15 @@ extension WatchLink: WCSessionDelegate {
         activationDidCompleteWith state: WCSessionActivationState,
         error: Error?
     ) {
+        // WatchConnectivity payloads are property-list dictionaries: `[String:
+        // Any]` is not `Sendable`, but each is delivered once and never
+        // mutated, so it is read here and handed to the main actor as is.
+        nonisolated(unsafe) let received = session.receivedApplicationContext
+        let reason = error?.localizedDescription
         Task { @MainActor in
             isActivated = state == .activated
             if state == .activated {
-                apply(session.receivedApplicationContext)
+                apply(received)
                 if UserDefaults.standard.bool(forKey: Self.pendingDeletionKey) {
                     sendPendingDeletionIfPossible()
                 } else if let pendingSnapshot {
@@ -344,7 +349,7 @@ extension WatchLink: WCSessionDelegate {
                 // rows spinning would be worse than saying so.
                 pendingQuickActions = []
                 logSync.failAllPending(
-                    reason: error?.localizedDescription ?? "Your phone isn't connected."
+                    reason: reason ?? "Your phone isn't connected."
                 )
             }
         }
@@ -354,6 +359,7 @@ extension WatchLink: WCSessionDelegate {
         _ session: WCSession,
         didReceiveApplicationContext context: [String: Any]
     ) {
+        nonisolated(unsafe) let context = context  // See activationDidCompleteWith.
         Task { @MainActor in
             apply(context)
         }
@@ -367,6 +373,7 @@ extension WatchLink: WCSessionDelegate {
         _ session: WCSession,
         didReceiveUserInfo userInfo: [String: Any]
     ) {
+        nonisolated(unsafe) let userInfo = userInfo  // See activationDidCompleteWith.
         Task { @MainActor in
             if let data = userInfo[Self.acknowledgementKey] as? Data {
                 applyAcknowledgement(data)

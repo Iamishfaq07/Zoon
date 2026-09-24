@@ -255,7 +255,9 @@ enum ContextForecast {
         /// is right for the 0-100 scores.
         typealias Format = (Double) -> String
 
-        static let integerFormat: Format = { String(Int($0.rounded())) }
+        /// Computed, not stored: a stored closure of a non-`Sendable` type is
+        /// global mutable state as far as strict concurrency is concerned.
+        static var integerFormat: Format { { String(Int($0.rounded())) } }
 
         /// "79–86". The interval, first and alone. There is deliberately no
         /// rendering anywhere in this type that produces a single number for

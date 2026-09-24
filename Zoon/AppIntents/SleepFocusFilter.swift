@@ -23,9 +23,9 @@ import AppIntents
 /// system already lets them choose which.
 struct SleepFocusFilter: SetFocusFilterIntent {
 
-    static var title: LocalizedStringResource = "Silence Zoon's bedtime nudges"
+    static let title: LocalizedStringResource = "Silence Zoon's bedtime nudges"
 
-    static var description: IntentDescription? = IntentDescription(
+    static let description: IntentDescription? = IntentDescription(
         """
         While this Focus is on, Zoon won't send its wind-down or bedtime \
         reminders — you've already said you're going to bed. Sleep tracking \

@@ -616,7 +616,11 @@ extension Double {
 extension ISO8601DateFormatter {
     /// Date-only ISO formatter. The LLM never needs the wall-clock time of the
     /// record, and including it invites the model to reason about timezones.
-    static let dayOnly: ISO8601DateFormatter = {
+    ///
+    /// `nonisolated(unsafe)`: `ISO8601DateFormatter` is documented as thread
+    /// safe but is not marked `Sendable`, and this instance is configured once
+    /// here and never mutated afterwards.
+    nonisolated(unsafe) static let dayOnly: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withFullDate]
         return f

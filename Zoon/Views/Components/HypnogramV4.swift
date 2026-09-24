@@ -675,7 +675,9 @@ private struct RevealMask: ViewModifier, Animatable {
     var progress: Double
     let leading: CGFloat
 
-    var animatableData: Double {
+    /// `nonisolated`: `Animatable` is not main-actor isolated, and SwiftUI
+    /// reads this off the view's isolation while interpolating.
+    nonisolated var animatableData: Double {
         get { progress }
         set { progress = newValue }
     }
