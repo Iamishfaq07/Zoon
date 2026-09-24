@@ -131,11 +131,15 @@ struct FetchDiagnostic: Codable, Equatable, Sendable, Identifiable {
 
 /// The latest problem per data source. A later successful read of the same
 /// source clears it, so what is listed is what is wrong now.
+///
+/// Recording is idempotent: the same problem seen again keeps its first
+/// timestamp and changes nothing, which is what lets a read repeated on
+/// every render settle instead of churning.
 struct FetchDiagnosticLog: Equatable, Sendable {
     static let capacity = 50
 
     private(set) var current: [FetchDiagnostic] = []
-    /// Every problem recorded since launch, including ones since cleared.
+    /// Distinct problems recorded since launch, including ones since cleared.
     private(set) var totalRecorded = 0
 
     mutating func record(_ diagnostic: FetchDiagnostic) {
@@ -143,6 +147,7 @@ struct FetchDiagnosticLog: Equatable, Sendable {
             clear(subsystem: diagnostic.subsystem, sourceType: diagnostic.sourceType)
             return
         }
+        if current.contains(where: { $0.id == diagnostic.id && $0.issue == diagnostic.issue }) { return }
         totalRecorded += 1
         current.removeAll { $0.id == diagnostic.id }
         current.append(diagnostic)
@@ -150,6 +155,7 @@ struct FetchDiagnosticLog: Equatable, Sendable {
     }
 
     mutating func clear(subsystem: FetchDiagnostic.Subsystem, sourceType: String) {
+        guard current.contains(where: { $0.subsystem == subsystem && $0.sourceType == sourceType }) else { return }
         current.removeAll { $0.subsystem == subsystem && $0.sourceType == sourceType }
     }
 
@@ -162,22 +168,54 @@ struct FetchDiagnosticLog: Equatable, Sendable {
 }
 
 /// The app's diagnostics, in memory only. Nothing leaves the device.
+///
+/// Reads happen inside SwiftUI view bodies (stores are queried while views
+/// render), so recording must not touch observed state: an `@Observable`
+/// property's modify accessor registers an *access* before it mutates, which
+/// made every body that read the store depend on the log it was writing --
+/// invalidate, re-render, read, write, forever. Recording therefore goes to
+/// `latest`, which is not observed, and `log` (what Data Quality shows) is
+/// updated after the current update, only when something changed.
 @MainActor
 @Observable
 final class FetchDiagnostics {
     static let shared = FetchDiagnostics()
 
+    /// What views show. Trails `latest` by one main-actor turn.
     private(set) var log = FetchDiagnosticLog()
 
+    /// The up-to-date log, readable without creating a view dependency.
+    @ObservationIgnored private(set) var latest = FetchDiagnosticLog()
+    @ObservationIgnored private var published = FetchDiagnosticLog()
+    @ObservationIgnored private var publishScheduled = false
+
     func record(_ subsystem: FetchDiagnostic.Subsystem, operation: String, sourceType: String, issue: FetchIssue, at date: Date = .now) {
-        log.record(FetchDiagnostic(subsystem: subsystem, operation: operation, issue: issue, sourceType: sourceType, timestamp: date))
+        latest.record(FetchDiagnostic(subsystem: subsystem, operation: operation, issue: issue, sourceType: sourceType, timestamp: date))
+        schedulePublish()
     }
 
     func succeeded(_ subsystem: FetchDiagnostic.Subsystem, sourceType: String) {
-        log.clear(subsystem: subsystem, sourceType: sourceType)
+        latest.clear(subsystem: subsystem, sourceType: sourceType)
+        schedulePublish()
     }
 
     func reset() {
-        log = FetchDiagnosticLog()
+        latest = FetchDiagnosticLog()
+        schedulePublish()
+    }
+
+    /// Copies `latest` into `log` now. The scheduled publish calls this;
+    /// tests call it to avoid waiting a turn.
+    func flush() {
+        publishScheduled = false
+        guard latest != published else { return }
+        published = latest
+        log = latest
+    }
+
+    private func schedulePublish() {
+        guard latest != published, !publishScheduled else { return }
+        publishScheduled = true
+        Task { @MainActor [weak self] in self?.flush() }
     }
 }

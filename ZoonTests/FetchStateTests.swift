@@ -1,4 +1,5 @@
 import HealthKit
+import Observation
 import SwiftData
 import XCTest
 
@@ -82,6 +83,18 @@ final class FetchStateTests: XCTestCase {
         XCTAssertEqual(log.problems.count, 2)
     }
 
+    /// A read repeated on every render must settle: the same problem seen
+    /// again changes nothing, not even its timestamp.
+    func testRecordingTheSameProblemAgainChangesNothing() {
+        var log = FetchDiagnosticLog()
+        log.record(diagnostic("stepCount", .accessDenied, 30))
+        let once = log
+        log.record(diagnostic("stepCount", .accessDenied, 0))
+        XCTAssertEqual(log, once)
+        log.clear(subsystem: .healthKit, sourceType: "workout")
+        XCTAssertEqual(log, once, "clearing a source with no problem is not a change")
+    }
+
     func testTheLogIsBounded() {
         var log = FetchDiagnosticLog()
         for i in 0..<(FetchDiagnosticLog.capacity + 20) {
@@ -95,6 +108,56 @@ final class FetchStateTests: XCTestCase {
         XCTAssertEqual(diagnostic("stepCount", .accessDenied).displayName, "Steps")
         XCTAssertEqual(diagnostic("SleepNightRecord", .storeUnreadable).displayName, "Saved nights")
         XCTAssertEqual(diagnostic("somethingNew", .queryFailed).displayName, "somethingNew")
+    }
+
+    // MARK: - Observation
+
+    /// Stores are read inside SwiftUI view bodies. Recording from there must
+    /// not make the body depend on the log it writes, or the body invalidates
+    /// itself on every render -- which hung the app at launch.
+    func testRecordingInsideAViewUpdateCreatesNoDependency() {
+        let diagnostics = FetchDiagnostics()
+        let fired = Flag()
+        withObservationTracking {
+            diagnostics.record(.store, operation: "test", sourceType: "SleepNightRecord", issue: .storeUnreadable)
+            diagnostics.succeeded(.healthKit, sourceType: "stepCount")
+            diagnostics.record(.healthKit, operation: "test", sourceType: "workout", issue: .queryFailed)
+        } onChange: {
+            fired.value = true
+        }
+        diagnostics.flush()
+        XCTAssertEqual(diagnostics.log.issue(for: "workout"), .queryFailed, "published once the update is over")
+        XCTAssertFalse(fired.value, "recording registered an access to the observed log")
+    }
+
+    /// Data Quality, which does read the log, is told when it changes.
+    func testAReaderOfTheLogIsToldWhenItChanges() {
+        let diagnostics = FetchDiagnostics()
+        let fired = Flag()
+        withObservationTracking {
+            _ = diagnostics.log.problems
+        } onChange: {
+            fired.value = true
+        }
+        diagnostics.record(.healthKit, operation: "test", sourceType: "heartRate", issue: .accessDenied)
+        diagnostics.flush()
+        XCTAssertTrue(fired.value)
+    }
+
+    func testNothingNewPublishesNothing() {
+        let diagnostics = FetchDiagnostics()
+        diagnostics.record(.healthKit, operation: "test", sourceType: "heartRate", issue: .accessDenied)
+        diagnostics.flush()
+        let fired = Flag()
+        withObservationTracking {
+            _ = diagnostics.log.problems
+        } onChange: {
+            fired.value = true
+        }
+        diagnostics.record(.healthKit, operation: "test", sourceType: "heartRate", issue: .accessDenied)
+        diagnostics.succeeded(.healthKit, sourceType: "stepCount")
+        diagnostics.flush()
+        XCTAssertFalse(fired.value, "a repeat of a known problem re-rendered Data Quality")
     }
 
     // MARK: - HealthKit classification
@@ -130,7 +193,7 @@ final class FetchStateTests: XCTestCase {
         }
         XCTAssertNil(state.value)
         XCTAssertEqual(state.issue, .accessDenied)
-        XCTAssertEqual(diagnostics.log.issue(for: "stepCount"), .accessDenied)
+        XCTAssertEqual(diagnostics.latest.issue(for: "stepCount"), .accessDenied)
     }
 
     func testASuccessfulReadClearsAnEarlierFailure() async {
@@ -138,10 +201,10 @@ final class FetchStateTests: XCTestCase {
         _ = await HealthRead.fetch("activity.steps", source: "stepCount", diagnostics: diagnostics) { () -> Double in
             throw HKError(.errorDatabaseInaccessible)
         }
-        XCTAssertEqual(diagnostics.log.issue(for: "stepCount"), .temporarilyUnavailable)
+        XCTAssertEqual(diagnostics.latest.issue(for: "stepCount"), .temporarilyUnavailable)
         let state = await HealthRead.fetch("activity.steps", source: "stepCount", diagnostics: diagnostics) { 1234.0 }
         XCTAssertEqual(state.value, 1234)
-        XCTAssertNil(diagnostics.log.issue(for: "stepCount"))
+        XCTAssertNil(diagnostics.latest.issue(for: "stepCount"))
     }
 
     // MARK: - Store lookups
@@ -179,9 +242,9 @@ final class FetchStateTests: XCTestCase {
         let before = StoreRead.failureCount
         StoreRead.failed(operation: "test", type: "SleepNightRecord", error: NSError(domain: "test", code: 1))
         XCTAssertEqual(StoreRead.failureCount, before + 1)
-        XCTAssertEqual(FetchDiagnostics.shared.log.issue(for: "SleepNightRecord"), .storeUnreadable)
+        XCTAssertEqual(FetchDiagnostics.shared.latest.issue(for: "SleepNightRecord"), .storeUnreadable)
         StoreRead.succeeded(type: "SleepNightRecord")
-        XCTAssertNil(FetchDiagnostics.shared.log.issue(for: "SleepNightRecord"))
+        XCTAssertNil(FetchDiagnostics.shared.latest.issue(for: "SleepNightRecord"))
     }
 
     func testTheBackupRefusalSaysNothingWasChanged() {
@@ -189,4 +252,9 @@ final class FetchStateTests: XCTestCase {
         XCTAssertTrue(message.contains("no backup was made"), message)
         XCTAssertTrue(message.contains("Nothing was changed"), message)
     }
+}
+
+/// Set from `withObservationTracking`'s change handler.
+private final class Flag {
+    var value = false
 }
