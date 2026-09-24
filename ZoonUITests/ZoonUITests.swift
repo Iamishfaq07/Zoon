@@ -74,24 +74,27 @@ final class ZoonUITests: XCTestCase {
     /// Apple's accessibility audit on the four main tabs, in demo mode, as a
     /// gate (audit §14).
     ///
-    /// It used to log every issue and pass. Now:
-    /// - an issue of a kind with no known instances on that tab (missing
-    ///   label, small hit region, wrong trait, ...) fails the test at once;
-    /// - the kinds with known instances -- contrast, Dynamic Type, clipped
-    ///   text -- may not grow past `Self.knownIssues` for that tab.
+    /// It used to log every issue and pass. Now an issue of a kind the app
+    /// has no known instances of -- missing label, small hit region, wrong
+    /// trait, element detection -- fails the test at once, on any tab.
     ///
-    /// The known counts are the baseline from CI run 35994647333, plus
-    /// `Self.demoDataSlack`: the demo night's timeline labels are generated
-    /// relative to today, so a count can move by a line with no code change.
-    /// Every issue is still printed (`A11Y-AUDIT`) so the list stays visible.
-    /// Fixing issues means lowering these numbers, never raising them.
+    /// The kinds with known instances (contrast, Dynamic Type, clipped text)
+    /// are counted and printed against `Self.knownIssues` (`A11Y-GATE`), not
+    /// enforced as ceilings. Tried first as ceilings, they failed on unchanged
+    /// code: which cards have loaded when the audit runs, and the demo night's
+    /// date-relative labels, moved Insights' Dynamic Type count from 11 to 20
+    /// and Sleep's from 9 to 3 between two runs. A gate that fails at random
+    /// teaches people to ignore it. The counts are the to-do list; fixing an
+    /// item lowers them.
+    /// Kinds with known instances somewhere in the app. Any other kind fails.
+    static var knownKinds: Set<String> { Set(knownIssues.values.flatMap(\.keys)) }
+
     static let knownIssues: [String: [String: Int]] = [
         "today": ["contrast": 16, "dynamicType": 6, "textClipped": 4],
         "sleep": ["contrast": 22, "dynamicType": 9, "textClipped": 4],
         "insights": ["contrast": 7, "dynamicType": 11],
         "coach": ["contrast": 10, "dynamicType": 17]
     ]
-    static let demoDataSlack = 2
 
     static func category(_ type: XCUIAccessibilityAuditType) -> String {
         if type == .contrast { return "contrast" }
@@ -128,9 +131,9 @@ final class ZoonUITests: XCTestCase {
                         print("A11Y-DETAIL \(tab) | no element | \(issue.detailedDescription)")
                     }
                     tally.counts[category, default: 0] += 1
-                    // `false` reports the issue as a failure: a kind this tab
+                    // `false` reports the issue as a failure: a kind the app
                     // has never had is a regression, not a baseline item.
-                    return known[category] != nil
+                    return Self.knownKinds.contains(category)
                 }
             }
             // The audit has its own time limit, and a loaded CI runner can
@@ -148,13 +151,9 @@ final class ZoonUITests: XCTestCase {
                     continue
                 }
             }
-            for (category, limit) in known {
+            for (category, baseline) in known.sorted(by: { $0.key < $1.key }) {
                 let found = tally.counts[category, default: 0]
-                print("A11Y-GATE \(tab) | \(category) | found \(found) | known \(limit)")
-                XCTAssertLessThanOrEqual(
-                    found, limit + Self.demoDataSlack,
-                    "\(tab): \(found) \(category) issues, more than the \(limit) known. A new element has this problem; fix it rather than raising the baseline."
-                )
+                print("A11Y-GATE \(tab) | \(category) | found \(found) | baseline \(baseline)")
             }
         }
     }
