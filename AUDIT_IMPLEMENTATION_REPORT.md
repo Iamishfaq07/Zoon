@@ -348,6 +348,15 @@ rather than defaulting them.
   in Zoon" and a Control Center button open the app on the Tonight routine
   and begin it; Spotlight opens the screen without starting it. The start
   flag is consumed once, and a routine already playing is not restarted.
+- **Health permission text.** Now names every type Zoon can read,
+  including the opt-in ones (cycle, caffeine, alcohol, daylight, mindful
+  minutes, mood). It had listed only the core reads.
+- **Not a medical device.** Said on the first onboarding page and in a
+  "Health, not medicine" section in Settings, with when to see a doctor
+  (guideline 1.4.1).
+- **App Store rating.** Asked for at most once per version, after two weeks
+  of nights, the morning after a night that met sleep need; never in demo
+  launches. `ReviewPrompt`.
 
 ## Release blockers
 
