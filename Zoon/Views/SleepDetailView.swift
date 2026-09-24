@@ -86,10 +86,15 @@ struct SleepDetailView: View {
                     text: "\(Int(context.sleepNeed.performancePercent))% of target",
                     tint: Theme.Metric.sleep
                 )
+                // The flagship score, the same number and band the Sleep tab
+                // headlines. This showed the legacy SleepScore (93 beside the
+                // tab's 78 for the same demo night), which the algorithm spec
+                // keeps only for old snapshots.
                 StatusPill(
-                    text: "\(context.sleepScore.value) score",
-                    tint: Theme.recoveryColor(Double(context.sleepScore.value))
+                    text: "\(context.sleepIntelligence.percent) · \(context.sleepIntelligence.band.label)",
+                    tint: Theme.recoveryColor(Double(context.sleepIntelligence.percent))
                 )
+                .accessibilityLabel("Sleep Intelligence \(context.sleepIntelligence.percent), \(context.sleepIntelligence.band.label)")
                 if context.night.isMock {
                     StatusPill(text: "Sample", systemImage: "wand.and.stars", tint: Theme.inkSecondary)
                 }
