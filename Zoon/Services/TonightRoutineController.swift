@@ -1,4 +1,8 @@
 import Foundation
+import os
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 @MainActor @Observable
 final class TonightRoutineController {
@@ -79,6 +83,7 @@ final class TonightRoutineController {
         }
         breathingPausedInPlace = false
         startPoll()
+        startLiveActivity(startedAt: liveStart, endsAt: Date.now.addingTimeInterval(remaining))
     }
 
     func pause() {
@@ -95,6 +100,7 @@ final class TonightRoutineController {
         audio?.stop()
         audio = nil
         active = false
+        endLiveActivity()
     }
 
     func stop() {
@@ -158,6 +164,7 @@ final class TonightRoutineController {
                     let next = self.guidance.stage(elapsed: Date.now.timeIntervalSince(start))
                     if next != self.stage {
                         self.stage = next
+                        self.updateLiveActivity(endsAt: session.deadline)
                         if next == .quiet || next == .close {
                             self.breathing.stop()
                         }
@@ -172,11 +179,74 @@ final class TonightRoutineController {
     }
 
     private func stopResources() {
+        endLiveActivity()
         task?.cancel(); task = nil
         breathing.stop()
         audio?.stop(); audio = nil
         active = false
         startedAt = nil
+    }
+
+    // MARK: - Live Activity
+
+    private let logger = Logger(subsystem: "com.zoon.sleep", category: "TonightRoutine")
+
+    /// What the Lock Screen calls the current stage.
+    static func stageLabel(_ stage: WindDownGuidanceConfiguration.Stage) -> String {
+        switch stage {
+        case .arrive: "Arrive"
+        case .guided: "Guided breathing"
+        case .quiet: "Quiet"
+        case .close: "Settling"
+        }
+    }
+
+    /// Fire-and-forget, like the nap's: a routine that cannot show on the
+    /// Lock Screen is still a working routine.
+    private func startLiveActivity(startedAt: Date, endsAt: Date) {
+        #if canImport(ActivityKit)
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let state = WindDownActivityAttributes.ContentState(endsAt: endsAt, stageLabel: Self.stageLabel(stage))
+        let logger = logger
+        // One task, in order: any activity left from a paused or earlier run
+        // ends first, then the new one starts, so the ending can never catch
+        // the activity just requested.
+        Task {
+            for activity in Activity<WindDownActivityAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+            do {
+                _ = try Activity.request(
+                    attributes: WindDownActivityAttributes(startedAt: startedAt),
+                    content: .init(state: state, staleDate: endsAt.addingTimeInterval(120)),
+                    pushType: nil
+                )
+            } catch {
+                logger.error("Wind-down Live Activity request failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        #endif
+    }
+
+    private func updateLiveActivity(endsAt: Date) {
+        #if canImport(ActivityKit)
+        let state = WindDownActivityAttributes.ContentState(endsAt: endsAt, stageLabel: Self.stageLabel(stage))
+        Task {
+            for activity in Activity<WindDownActivityAttributes>.activities {
+                await activity.update(.init(state: state, staleDate: endsAt.addingTimeInterval(120)))
+            }
+        }
+        #endif
+    }
+
+    private func endLiveActivity() {
+        #if canImport(ActivityKit)
+        Task {
+            for activity in Activity<WindDownActivityAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+        #endif
     }
 
     var remainingCaption: String? {
