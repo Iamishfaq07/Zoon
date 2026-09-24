@@ -12,6 +12,8 @@ struct PersonalLearningView: View {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 introduction
                     .entrance(0)
+                unlockMap
+                    .entrance(0)
                 resilienceSection
                     .entrance(1)
                 circadianSection
@@ -39,6 +41,57 @@ struct PersonalLearningView: View {
             Text("These are observational summaries from your own history. Zoon withholds them until there is enough repeated data and never treats them as medical conclusions.")
                 .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
         }.glassCard()
+    }
+
+    /// Audit §17.5: what the history unlocks, from the engines' own
+    /// thresholds. Nights, not dates.
+    private var unlockMap: some View {
+        let nights = coordinator.recentNights.count
+        return VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(
+                title: "What \(nights) \(nights == 1 ? "night" : "nights") can tell you",
+                subtitle: "Each of these waits for enough of your own nights. A missed night is just one more to go.",
+                systemImage: "lock.open"
+            )
+            ForEach(LearningUnlockMap.progress(nightCount: nights), id: \.milestone.id) { item in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: symbol(for: item.state))
+                        .foregroundStyle(item.state == .unlocked ? Theme.Family.recovery : Theme.inkTertiary)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(item.milestone.title).font(Theme.label(14, weight: .semibold))
+                            Spacer()
+                            Text(stateLabel(item.state))
+                                .font(Theme.text(12))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        Text(item.milestone.detail)
+                            .font(Theme.text(12))
+                            .foregroundStyle(Theme.inkTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(item.milestone.title): \(stateLabel(item.state)). \(item.milestone.detail)")
+            }
+        }.glassCard()
+    }
+
+    private func symbol(for state: LearningUnlockMap.State) -> String {
+        switch state {
+        case .unlocked: "checkmark.circle.fill"
+        case .next: "circle.lefthalf.filled"
+        case .later: "circle.dotted"
+        }
+    }
+
+    /// Text as well as the symbol, so the state never rests on colour.
+    private func stateLabel(_ state: LearningUnlockMap.State) -> String {
+        switch state {
+        case .unlocked: "Ready"
+        case .next(let remaining), .later(let remaining): LearningUnlockMap.remainingCopy(remaining)
+        }
     }
 
     @ViewBuilder private var resilienceSection: some View {

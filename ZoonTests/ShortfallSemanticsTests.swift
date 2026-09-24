@@ -61,6 +61,35 @@ final class ShortfallSemanticsTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(series.last), ledger, accuracy: 0.0001)
     }
 
+    // MARK: - Calendar gaps
+
+    /// Nights either side of a clock change are still consecutive nights: a
+    /// 23- or 25-hour day must not read as zero or two nights of decay.
+    func testDaylightSavingChangesDoNotAddOrRemoveANight() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        func day(_ month: Int, _ day: Int) throws -> Date {
+            try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: 7)))
+        }
+        let asleep: [Double] = [400, 380, 420, 390]
+        let goals = Array(repeating: 480.0, count: asleep.count)
+        let undated = RecentSleepShortfall.debtSeries(timeAsleepMinutesOldestFirst: asleep, goalMinutesOldestFirst: goals)
+        // US clocks go forward on 8 March 2026 and back on 1 November 2026.
+        for dates in [
+            [try day(3, 6), try day(3, 7), try day(3, 8), try day(3, 9)],
+            [try day(10, 30), try day(10, 31), try day(11, 1), try day(11, 2)]
+        ] {
+            let dated = RecentSleepShortfall.debtSeries(
+                timeAsleepMinutesOldestFirst: asleep,
+                goalMinutesOldestFirst: goals,
+                nightDatesOldestFirst: dates,
+                calendar: calendar
+            )
+            XCTAssertEqual(dated.count, undated.count)
+            for (a, b) in zip(dated, undated) { XCTAssertEqual(a, b, accuracy: 0.0001) }
+        }
+    }
+
     // MARK: - Coach
 
     /// Zero shortfall entering, a 5h30 night: the night added to it, and
