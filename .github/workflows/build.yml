@@ -705,6 +705,10 @@ jobs:
               | sed -E "s/'[^']*'/'_'/g" | sort | uniq -c | sort -rn | head -25 || true
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
+          # The full list, path-trimmed, into the job log only: it is the
+          # migration's to-do list and artifacts are not readable everywhere.
+          echo "--- strict concurrency diagnostics ---"
+          sed -E 's#^/Users/runner/work/Zoon/Zoon/##' strict-concurrency-diagnostics.txt | head -200
 
       - uses: actions/upload-artifact@v4
         if: always()
