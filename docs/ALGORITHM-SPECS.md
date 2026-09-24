@@ -57,13 +57,13 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Tests:** `SleepNeedTests`, `LearnedSleepNeedTests`, `SleepSufficiencyEngineTests`, `SleepAutopilotTests`.
 - **Allowed:** “estimated need/target.” **Disallowed:** a clinical prescription.
 
-## Recent Sleep Shortfall (`SleepDebtCalculator`)
+## Recent Sleep Shortfall (`RecentSleepShortfall`)
 
 - **Question:** how much recent weighted shortfall is present against the selected nightly target?
 - **Units/rule:** minutes; each night adds `max(need − sleep, 0)` and prior state decays by about 0.933 per night. Surplus does not create banked credit.
 - **Window semantics:** exponential recent weighting approximates a two-week balance; it is not a literal hour-for-hour physiological debt.
 - **Missing behavior:** missing per-night need uses the documented goal used for that historical calculation; the UI marks the output estimated.
-- **Tests:** `SleepDebtCalculatorTests`, `SleepAutopilotTests`, `SensorTruthTests`.
+- **Tests:** `RecentSleepShortfallTests`, `SleepAutopilotTests`, `SensorTruthTests`.
 - **Allowed:** “recent sleep shortfall,” “planning estimate.” **Disallowed:** “you owe exactly 4.7 hours” or “one long sleep repays it.”
 
 ## Regularity, SRI, body clock, social jet lag

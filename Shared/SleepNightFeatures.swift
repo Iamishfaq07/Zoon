@@ -127,9 +127,15 @@ struct SleepNightFeatures: Codable, Identifiable, Hashable, Sendable {
 
     /// Mean overnight HRV across the previous 7 nights, excluding this one.
     let hrv7DayAvg: Double?
-    /// Cumulative shortfall against the user's sleep goal over 14 days, in
-    /// minutes. Positive = under-slept. Never negative — banking extra sleep
-    /// does not create credit.
+    /// The recent shortfall **entering** this night, in minutes: the ledger
+    /// built from nights *before* this one (`RecentSleepShortfall`, decaying,
+    /// not a 14-day window). Positive = under-slept; never negative.
+    ///
+    /// Stored and exported under this name for compatibility. It does not
+    /// include the night it is attached to, so it cannot say whether this
+    /// night added to the shortfall -- read `shortfallBeforeNightMinutes`,
+    /// `shortfallAddedByNightMinutes` or `shortfallThroughNightMinutes`
+    /// instead of this in new code.
     let sleepDebtMinutes: Double?
     /// Hours between the end of the last workout and `bedtime`.
     /// `nil` if no workout that day.
@@ -625,5 +631,36 @@ extension ISO8601DateFormatter {
         f.formatOptions = [.withFullDate]
         f.timeZone = timeZone
         return f.string(from: date)
+    }
+}
+
+// MARK: - Shortfall, named by when it is measured
+
+extension SleepNightFeatures {
+
+    /// The shortfall carried *into* this night. Same value as the stored
+    /// `sleepDebtMinutes`, under a name that says when it applies.
+    var shortfallBeforeNightMinutes: Double? { sleepDebtMinutes }
+
+    /// This night's own gap below its target, 24-hour asleep total against
+    /// the need that was authoritative when it was processed. `nil` when
+    /// that need was never recorded: a gap against today's goal would not be
+    /// this night's gap.
+    var shortfallAddedByNightMinutes: Double? {
+        guard let need = sleepNeedBaselineMinutes else { return nil }
+        return max(0, need - total24hAsleepMinutes)
+    }
+
+    /// The shortfall *after* waking from this night: what was carried in,
+    /// faded one night, plus this night's gap. For the latest night this is
+    /// the current shortfall; for an older night it is the figure as of that
+    /// morning, never today's.
+    var shortfallThroughNightMinutes: Double? {
+        guard let need = sleepNeedBaselineMinutes else { return nil }
+        return RecentSleepShortfall.step(
+            enteringMinutes: sleepDebtMinutes ?? 0,
+            needMinutes: need,
+            asleepMinutes: total24hAsleepMinutes
+        )
     }
 }

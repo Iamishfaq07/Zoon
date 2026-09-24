@@ -34,7 +34,7 @@ final class SleepNightRecord {
     /// The sleep-need baseline (see `LearnedSleepNeed`) that was
     /// authoritative *at the moment this night was processed*, frozen
     /// forever after -- never recomputed against a later, more-informed
-    /// learned figure. See `SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`'s
+    /// learned figure. See `RecentSleepShortfall.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`'s
     /// doc comment for why: without this, sleep debt would either use a
     /// single value across all of history (unable to reflect a personal
     /// learned need at all, only ever the raw Settings goal) or recompute

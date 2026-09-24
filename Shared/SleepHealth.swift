@@ -128,7 +128,7 @@ struct SleepHealth: Sendable {
         // recorded, not one current Settings goal applied uniformly to
         // nights that may have been processed under a different learned
         // baseline -- the same semantics canonical Sleep Debt already uses
-        // (see `SleepDebtCalculator.debtSeries`'s per-night goal overload).
+        // (see `RecentSleepShortfall.debtSeries`'s per-night goal overload).
         let personalNeeds = windowNights.map { $0.sleepNeedBaselineMinutes ?? goalMinutes }
         let averageNeed = Statistics.mean(personalNeeds) ?? goalMinutes
 
@@ -177,7 +177,7 @@ struct SleepHealth: Sendable {
         // Three nights' worth of the window's average need is treated as
         // "as bad as this component usefully distinguishes" -- beyond
         // that, more debt doesn't make the underlying pattern any clearer.
-        let debtSeries = SleepDebtCalculator.debtSeries(
+        let debtSeries = RecentSleepShortfall.debtSeries(
             timeAsleepMinutesOldestFirst: windowNights.map(\.total24hAsleepMinutes),
             goalMinutesOldestFirst: personalNeeds
         )

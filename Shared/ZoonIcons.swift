@@ -46,7 +46,7 @@ enum ZoonIcon {
     }
 
     /// Sleep Debt: a ring with a deliberate gap -- the deficit -- rather
-    /// than a complete circle, echoing `SleepDebtCalculator`'s ring
+    /// than a complete circle, echoing `RecentSleepShortfall`'s ring
     /// visualizations elsewhere in the app.
     struct SleepDebt: View {
         var tint: Color = Theme.Metric.recoveryMid

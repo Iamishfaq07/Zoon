@@ -113,8 +113,12 @@ struct DayContextBuilder {
         // the store, the ledger is advanced by one step of the same model
         // the store uses: decay what was carried in, add last night's gap.
         let shortfallThroughLatest = inputs.shortfallThroughLatestNightMinutes
-            ?? (SleepDebtCalculator.decayPerNight * max(0, night.sleepDebtMinutes ?? 0)
-                + max(0, (night.sleepNeedBaselineMinutes ?? learnedNeed.minutes) - night.total24hAsleepMinutes))
+            ?? night.shortfallThroughNightMinutes
+            ?? RecentSleepShortfall.step(
+                enteringMinutes: night.sleepDebtMinutes ?? 0,
+                needMinutes: learnedNeed.minutes,
+                asleepMinutes: night.total24hAsleepMinutes
+            )
         let tonightPlanning = SleepPlanningInputs.asOfNow(
             baselineNeedMinutes: learnedNeed.minutes,
             shortfallThroughLatestNightMinutes: shortfallThroughLatest,

@@ -33,8 +33,10 @@ struct CoachEvidence: Sendable {
         ]
         if let hrv = night.avgHRV { values["hrv"] = "HRV: \(Int(hrv.rounded())) ms" }
         if let hr = night.restingHeartRate { values["heart"] = "Resting heart rate: \(Int(hr.rounded())) bpm" }
-        if let debt = night.sleepDebtMinutes {
-            values["debt"] = "Sleep debt: \(Int(debt.rounded())) minutes"
+        if let through = night.shortfallThroughNightMinutes {
+            values["debt"] = "Recent shortfall after this night: \(Int(through.rounded())) minutes"
+        } else if let before = night.shortfallBeforeNightMinutes {
+            values["debt"] = "Recent shortfall entering this night: \(Int(before.rounded())) minutes"
         }
         return values
     }
@@ -163,18 +165,61 @@ struct CoachEvidence: Sendable {
 
     // MARK: - Intents
 
+    /// Below this, a night's own gap is not reported as "adding" to the
+    /// shortfall: a quarter hour is inside ordinary night-to-night noise.
+    static let addedShortfallThresholdMinutes = 15.0
+
+    /// The running shortfall as of the morning after `night` -- that night's
+    /// figure, never today's. Falls back to the figure *entering* the night
+    /// only where the night's need was never recorded, and every reply that
+    /// uses the fallback avoids claiming anything about the night itself.
+    private var runningShortfall: Double {
+        night.shortfallThroughNightMinutes ?? night.shortfallBeforeNightMinutes ?? 0
+    }
+
+    /// "Am I behind?" and "Did last night add to it?".
+    ///
+    /// This used to read `sleepDebtMinutes`, the shortfall *entering* the
+    /// night, and on a small value answer "last night did not add to your
+    /// sleep debt" -- a claim about a night that figure does not include. A
+    /// 5h30 night after a clean week was told it added nothing. It now reads
+    /// the shortfall through the night and the night's own gap.
     private func debtReply() -> Reply {
         let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        let debt = night.sleepDebtMinutes ?? 0
-        if debt >= 45 {
+        let total = runningShortfall
+        let added = night.shortfallAddedByNightMinutes
+        let threshold = Self.addedShortfallThresholdMinutes
+
+        if total >= 45 {
+            var text = "Yes — you're carrying about \(SleepNightFeatures.formatMinutes(total)) of shortfall across recent nights"
+            if let added, added >= threshold {
+                text += ", including about \(SleepNightFeatures.formatMinutes(added)) from this night"
+            } else if added != nil {
+                text += "; this night itself met or came close to your need"
+            }
+            text += ". That's a running shortfall, not a verdict on how you will feel today."
             return Reply(
-                text: "Yes — you're carrying about \(SleepNightFeatures.formatMinutes(debt)) of unpaid sleep across recent nights. That's a running shortfall, not a verdict on how you will feel today.",
+                text: text,
                 evidence: catalog["debt"] ?? catalog["sleep"],
                 action: "Aim for an earlier wind-down tonight so the next night can repay some of it."
             )
         }
+        guard let added else {
+            return Reply(
+                text: "No — your recent shortfall is small. Zoon doesn't have the need this night was measured against, so it can't say whether the night itself added to it. You were asleep \(asleep).",
+                evidence: catalog["debt"] ?? catalog["sleep"],
+                action: nil
+            )
+        }
+        if added >= threshold {
+            return Reply(
+                text: "Not much overall, but this night did add to it: you were asleep \(asleep), about \(SleepNightFeatures.formatMinutes(added)) short of your need. The running shortfall is still small.",
+                evidence: catalog["debt"] ?? catalog["sleep"],
+                action: "Keep tonight's window protected so it doesn't build."
+            )
+        }
         return Reply(
-            text: "No — last night did not add to your sleep debt. You were asleep \(asleep).",
+            text: "No — this night met your need, so it did not add to your shortfall. You were asleep \(asleep).",
             evidence: catalog["sleep"],
             action: "Keep tonight close to the same window if it felt restful."
         )
@@ -232,17 +277,16 @@ struct CoachEvidence: Sendable {
 
     private func fatigueReply() -> Reply {
         let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        let debt = night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) }
         var text = "Zoon can't know exactly why you feel tired, but a few signals may be relevant. Last night you were asleep \(asleep)."
-        if let debt {
-            text += " Recent shortfall is \(debt)."
+        if night.shortfallThroughNightMinutes != nil || night.shortfallBeforeNightMinutes != nil {
+            text += " Recent shortfall is \(SleepNightFeatures.formatMinutes(runningShortfall))."
         }
         text += " Pair that with Morning Recovery, Energy, and current Load — this is not a medical claim."
         return Reply(text: text, evidence: catalog["sleep"], action: nil)
     }
 
     private func trainReply() -> Reply {
-        let debt = night.sleepDebtMinutes ?? 0
+        let debt = runningShortfall
         var lines: [String] = []
         if let hours = night.lastWorkoutHoursBeforeBed, hours < 3 {
             lines.append("Yesterday's session ended about \(Int(hours.rounded()))h before bed. That is a timing observation, not proof that the workout shortened the night.")
@@ -264,7 +308,7 @@ struct CoachEvidence: Sendable {
     }
 
     private func tonightReply() -> Reply {
-        let debt = night.sleepDebtMinutes ?? 0
+        let debt = runningShortfall
         let extra = debt >= 45
             ? " There is an outstanding shortfall of \(SleepNightFeatures.formatMinutes(debt)); Tonight will show how much of that is repaid in this plan."
             : " Tonight's window is computed independently of last night's clocks."
@@ -277,7 +321,8 @@ struct CoachEvidence: Sendable {
 
     /// "What should I focus on?" is the current priority, not Tonight by default.
     private func priorityReply() -> Reply {
-        if let debt = night.sleepDebtMinutes, debt >= 45 {
+        if runningShortfall >= 45 {
+            let debt = runningShortfall
             return Reply(
                 text: "Protect tonight's earlier sleep window. Recent shortfall is \(SleepNightFeatures.formatMinutes(debt)). That is the one action last night's record supports — not a live Energy or Load read.",
                 evidence: catalog["debt"] ?? catalog["sleep"],
@@ -434,7 +479,7 @@ struct CoachEvidence: Sendable {
     }
 
     private func weeklyReply() -> Reply {
-        let debt = night.sleepDebtMinutes ?? 0
+        let debt = runningShortfall
         if debt < 20 {
             return Reply(
                 text: "There is no meaningful shortfall to catch up this week. Keep tonight's window close to usual.",

@@ -599,7 +599,7 @@ final class SleepHistoryStore {
 
     // MARK: - Statistics
 
-    /// See `SleepDebtCalculator` for the model and why it decays rather than
+    /// See `RecentSleepShortfall` for the model and why it decays rather than
     /// using a hard window cutoff. `nights` arrives newest-first, matching
     /// what that function expects.
     ///
@@ -614,7 +614,7 @@ final class SleepHistoryStore {
     /// `sleepNeedBaselineMinutesAtProcessing` when one exists, not against
     /// `goalMinutes` uniformly -- `goalMinutes` is only the fallback for
     /// nights stored before that column existed. See
-    /// `SleepDebtCalculator.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`
+    /// `RecentSleepShortfall.debtSeries(timeAsleepMinutesOldestFirst:goalMinutesOldestFirst:)`
     /// for why a single shared value can't be used once a night's target can
     /// be a learned figure rather than a stable one.
     ///
@@ -624,7 +624,7 @@ final class SleepHistoryStore {
     private func sleepDebt(
         nights: [SleepNightRecord], goalMinutes: Double, manualNaps: [NapStore.Nap] = []
     ) -> Double? {
-        SleepDebtCalculator.debt(
+        RecentSleepShortfall.debt(
             timeAsleepMinutesNewestFirst: nights.map {
                 $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(
                     forNightKey: $0.nightKey ?? "", wakeDate: $0.date,

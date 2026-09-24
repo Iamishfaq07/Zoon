@@ -243,7 +243,7 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
 
     /// Debt above which a night is a repayment rather than a baseline.
     ///
-    /// Units matter here: `sleepDebtMinutes` is `SleepDebtCalculator`'s
+    /// Units matter here: `sleepDebtMinutes` is `RecentSleepShortfall`'s
     /// *decayed cumulative* figure, not last night's shortfall. Its steady
     /// state under a constant nightly shortfall is shortfall / (1 - 0.933),
     /// about fifteen times the nightly figure -- so a chronic 15-minute

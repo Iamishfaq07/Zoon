@@ -137,7 +137,7 @@ enum WeekOverWeek {
             )
         )
 
-        let series = SleepDebtCalculator.debtSeries(
+        let series = RecentSleepShortfall.debtSeries(
             timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
             goalMinutesOldestFirst: nights.map { $0.sleepNeedBaselineMinutes ?? goalMinutes }
         )
