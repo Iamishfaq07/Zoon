@@ -20,8 +20,18 @@ a device.
 The audit asks for Xcode 27. Phase 0 pins the runner image (`macos-26`) and
 adds `Tools/select-xcode.sh`, which selects Xcode 27 when the image has it and
 otherwise the newest installed Xcode, and writes the choice to each job
-summary. Whether GitHub's hosted image carries Xcode 27 is read from the next
-run, not assumed.
+summary. Read from the first run with the script (run 35994647333, job "Probe
+installed SDK"): the pinned `macos-26` image carries **Xcode 26.0 through
+26.6 and no Xcode 27**, so the script selected Xcode 26.6 (iOS/watchOS 26.5
+SDKs). Consequences recorded here rather than worked around:
+
+- Xcode 27 cannot be pinned on GitHub-hosted runners today. The script will
+  pick it up automatically once the image ships it; setting
+  `ZOON_REQUIRE_XCODE_MAJOR=27` turns its absence into a failure.
+- iOS 27 / watchOS 27 APIs (Foundation Models context/token APIs, Dynamic
+  Profiles, Evaluations -- audit §7.2) cannot be compiled or checked against
+  an installed SDK here, and the audit forbids inventing APIs, so they are
+  not adopted in this pass.
 
 ## Build and test status at baseline
 

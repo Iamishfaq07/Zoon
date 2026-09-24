@@ -127,20 +127,40 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
     private typealias Rule = (SleepNightFeatures, RollingBaseline, Double) -> Finding?
 
     /// Order here is irrelevant — priority decides. Grouped by theme for reading.
-    private var allRules: [Rule] {
+    private var allRules: [Rule] { identifiedRules.map(\.rule) }
+
+    /// Every rule with a stable id. The id is what a generated insight may
+    /// cite (`InsightDriver`); renaming one is a behaviour change for the
+    /// Apple Intelligence path, so they are written out rather than derived.
+    private var identifiedRules: [(id: String, rule: Rule)] {
         [
-            possibleIllnessRule,       // 100 — physiological, most important to surface
-            lowSpO2Rule,               //  95
-            lateWorkoutRule,           //  80
-            strainRule,                //  75
-            fragmentationRule,         //  70
-            highLatencyRule,           //  65
-            shortSleepRule,            //  60
-            irregularScheduleRule,     //  55
-            sleepDebtRule,             //  50
-            lowDeepRule,               //  45
-            lowREMRule                 //  40
+            ("possible-illness", possibleIllnessRule),   // 100 — physiological, most important to surface
+            ("low-spo2", lowSpO2Rule),                   //  95
+            ("late-workout", lateWorkoutRule),           //  80
+            ("strain", strainRule),                      //  75
+            ("fragmentation", fragmentationRule),        //  70
+            ("high-latency", highLatencyRule),           //  65
+            ("short-sleep", shortSleepRule),             //  60
+            ("irregular-schedule", irregularScheduleRule), //  55
+            ("sleep-debt", sleepDebtRule),               //  50
+            ("low-deep", lowDeepRule),                   //  45
+            ("low-rem", lowREMRule)                      //  40
         ]
+    }
+
+    /// The causes tonight's data supports, strongest first -- the only
+    /// causes a generated insight may name.
+    func eligibleDrivers(
+        for features: SleepNightFeatures,
+        baseline: RollingBaseline,
+        goalMinutes: Double
+    ) -> [InsightDriver] {
+        identifiedRules
+            .compactMap { entry in
+                entry.rule(features, baseline, goalMinutes).map { (id: entry.id, finding: $0) }
+            }
+            .sorted { $0.finding.priority > $1.finding.priority }
+            .map { InsightDriver(id: $0.id, observed: $0.finding.observed) }
     }
 
     // MARK: - Rules

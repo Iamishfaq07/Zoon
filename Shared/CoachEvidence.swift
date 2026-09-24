@@ -57,6 +57,12 @@ struct CoachEvidence: Sendable {
     /// Local, deterministic reply. Always available — Apple Intelligence is
     /// optional colour on top, not the only way to answer "Am I behind?".
     func reply(to question: String) -> Reply {
+        // Before any routing: a question about a condition is answered as
+        // one. "Do I have sleep apnea?" contains "sleep", and the keyword
+        // fallback used to answer it with last night's duration.
+        if Self.isMedicalQuestion(question) {
+            return medicalReply()
+        }
         switch CoachIntentRouter.classify(question) {
         case .greeting:
             return Reply(text: CoachIntentRouter.greetingReply(), evidence: nil, action: nil)
@@ -145,6 +151,28 @@ struct CoachEvidence: Sendable {
             return sleepReply()
         }
         return unknownReply()
+    }
+
+    /// Terms that make a question about a medical condition rather than
+    /// about last night's numbers.
+    static let medicalQuestionTerms = [
+        "apnea", "apnoea", "insomnia", "narcolepsy", "disorder", "diagnos",
+        "syndrome", "disease", "medical condition", "restless leg", "is something wrong with me"
+    ]
+
+    static func isMedicalQuestion(_ question: String) -> Bool {
+        let q = question.lowercased()
+        return medicalQuestionTerms.contains { q.contains($0) }
+    }
+
+    /// No diagnosis, no reassurance, and a clear route to someone who can
+    /// actually answer. Worded to pass `DiagnosticLanguageGuard` itself.
+    private func medicalReply() -> Reply {
+        Reply(
+            text: "Zoon can't tell whether you have a medical condition — a wearable's sleep numbers aren't a clinical test. It can show what was measured, like breathing disturbances Apple recorded or how often you woke. If snoring, pauses in breathing or daytime sleepiness worry you, that's worth raising with a clinician.",
+            evidence: nil,
+            action: nil
+        )
     }
 
     /// Small talk is handled by `CoachIntentRouter` before this type runs.
