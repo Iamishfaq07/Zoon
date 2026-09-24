@@ -191,7 +191,9 @@ final class FetchStateTests: XCTestCase {
         let state: MetricFetchState<Double?> = await HealthRead.fetch("activity.steps", source: "stepCount", diagnostics: diagnostics) {
             throw HKError(.errorAuthorizationDenied)
         }
-        XCTAssertNil(state.value)
+        // `value` is `Double??` here: nil means no read at all, not a read
+        // that returned nil.
+        XCTAssertTrue(state.value == nil)
         XCTAssertEqual(state.issue, .accessDenied)
         XCTAssertEqual(diagnostics.latest.issue(for: "stepCount"), .accessDenied)
     }
