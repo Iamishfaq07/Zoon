@@ -300,6 +300,45 @@ Not measured on a device. What can be said from CI:
 | §22 smart alarm | Nothing to change | Confirmed honest: Settings says the wake window is "not a live sleep-stage alarm"; nothing infers wake stage from HealthKit history. |
 | §26 device QA matrix | Open | Requires hardware. |
 
+## Final App Store pass
+
+A last sweep for crash patterns, App Review requirements and 2026 platform
+features, on `main` after #352.
+
+**Crash patterns.** No `try!`, `fatalError`, forced casts or force-unwrapped
+`first`/`last` in app, widget or watch code. Every `Int(...)` of a computed
+division was checked for a zero or non-finite divisor; all are guarded. The
+headline engines (Recovery, sleep need, performance) exclude missing inputs
+rather than defaulting them.
+
+**App Review checklist.**
+
+| Requirement | State |
+|---|---|
+| Usage strings for every protected resource used (Health read, microphone, speech, calendar, AlarmKit, notifications) | Present, and specific to what Zoon does |
+| Health access matches the privacy policy | Read-only in code (`toShare: []`); the policy says read-only |
+| Privacy manifests (app, widget, watch, watch widget) | Tracking off, no collected data types (nothing leaves the device), UserDefaults reason declared; no other required-reason API is used |
+| In-app privacy policy link (5.1.1) | Data & Privacy → "Read the full privacy policy" |
+| App icon | 1024×1024 opaque RGB, plus dark and tinted variants (with alpha, as Apple expects); watch icon 1024×1024 RGB |
+| No diagnosis (1.4.1) | `DiagnosticLanguageGuard` plus the Coach evaluation corpus; snore and breathing copy says it is not a medical finding |
+| Export compliance | `ITSAppUsesNonExemptEncryption` is **not** set, so App Store Connect asks on each upload. Backups are encrypted with CryptoKit (Apple's own AES), which is normally exempt; setting the key to NO is the owner's legal call, not made here. |
+
+**Added in this pass.**
+
+- **Mood and sleep** (Personal learning). Daily mood logged in Apple
+  Health / the Watch's Mindfulness app (State of Mind, iOS 18) is paired
+  with the night that ended that morning, and mood after nights that met
+  need is compared with mood after nights an hour or more short. Nothing
+  is said until each side has five days; the result is worded as an
+  association. Read-only, on-device, part of the Lifestyle Insights
+  permission. `MoodSleepLink`, `MoodAndDaylightTests`.
+- **Measured morning daylight.** Ten minutes or more of Watch-measured
+  daylight between 05:00 and 11:00 marks tonight's "time outdoors this
+  morning" as yes (source Health). Never no; never over an answer the
+  person gave. `MorningDaylight`.
+- **Wind-down Live Activity.** The Tonight routine shows a Lock Screen and
+  Dynamic Island countdown to lights-out with the current stage.
+
 ## Release blockers
 
 1. **Device QA (§26)** — at minimum: an overnight Soundscape soak with each
