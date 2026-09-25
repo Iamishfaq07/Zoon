@@ -357,6 +357,11 @@ rather than defaulting them.
 - **App Store rating.** Asked for at most once per version, after two weeks
   of nights, the morning after a night that met sleep need; never in demo
   launches. `ReviewPrompt`.
+- **Tonight widget and wind-down reminder.** The medium Tonight widget has
+  a Wind down button, and the evening reminder a "Start wind down" action;
+  both begin the routine. The app had no notification delegate, so a
+  reminder that fired with Zoon open was dropped; `NotificationRouter` now
+  shows it (quietly, if the routine is already playing).
 
 ## Release blockers
 
