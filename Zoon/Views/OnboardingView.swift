@@ -104,6 +104,8 @@ struct OnboardingView: View {
             body: """
                 Zoon reads the sleep your Watch already kept and tells the story \
                 of last night — why it went the way it did, not just how long it lasted.
+
+                It is not a medical device. For sleep problems that persist, talk to a doctor.
                 """
         )
     }

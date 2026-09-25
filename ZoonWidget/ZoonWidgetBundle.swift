@@ -29,6 +29,7 @@ struct ZoonWidgetBundle: WidgetBundle {
         if #available(iOS 18.0, *) {
             SoundscapeControl()
             NapControl()
+            WindDownControl()
         }
     }
 }

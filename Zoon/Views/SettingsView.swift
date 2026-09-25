@@ -45,6 +45,7 @@ struct SettingsView: View {
             engineSection
             sourceSection
             dataSection
+            medicalSection
         }
         .scrollContentBackground(.hidden)
         // Every writer HealthKit knows, so the source section can offer one
@@ -627,6 +628,20 @@ struct SettingsView: View {
                     """)
             }
         }
+    }
+
+    /// Said once in onboarding and kept here, where someone looks for what
+    /// the app is and is not. The feature screens (Snore Check, Breathing,
+    /// the clinician report) repeat it where a result could be read as one.
+    private var medicalSection: some View {
+        Section {
+            Text("Zoon describes your sleep from the data your devices record. It is not a medical device and does not diagnose, treat or prevent any condition.")
+            Text("If you are often very sleepy during the day, stop breathing or gasp in your sleep, or have trouble sleeping for weeks, talk to a doctor.")
+        } header: {
+            Text("Health, not medicine")
+        }
+        .font(.footnote)
+        .foregroundStyle(Theme.inkSecondary)
     }
 
     private var dataSection: some View {

@@ -22,4 +22,20 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(DeepLink.consumeSound(), "rain")
         XCTAssertNil(DeepLink.consumeSound())
     }
+
+    func testTheWindDownStartIsConsumedOnce() {
+        DeepLink.pendingStartsWindDown = true
+        XCTAssertTrue(DeepLink.consumeStartsWindDown())
+        XCTAssertFalse(DeepLink.consumeStartsWindDown(), "a leftover flag must not start a routine on a later launch")
+    }
+
+    func testClearDropsAPendingWindDownStart() {
+        DeepLink.pendingStartsWindDown = true
+        DeepLink.clear()
+        XCTAssertFalse(DeepLink.pendingStartsWindDown)
+    }
+
+    func testTheWindDownScreenBelongsToTheSleepTab() {
+        XCTAssertEqual(DeepLink.Destination.windDown.tab, "sleep")
+    }
 }

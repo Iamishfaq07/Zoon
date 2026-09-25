@@ -77,6 +77,12 @@ enum SpotlightIndexer {
                 subtitle: "Guided breathing before bed",
                 keywords: ["breathing", "wind down", "4-7-8", "relax", "calm", "meditate"]
             )
+        case .windDown:
+            Entry(
+                title: "Tonight Routine",
+                subtitle: "Breathing and your sound scene, fading out at lights-out",
+                keywords: ["tonight", "routine", "wind down", "bedtime routine", "settle", "lights out"]
+            )
         case .snoreCheck:
             Entry(
                 title: "Snore Check",

@@ -36,11 +36,14 @@ enum DeepLink {
         case patterns
         case sensorTruth
         case tomorrow
+        /// The Tonight routine. Opened by `StartWindDownIntent`, which also
+        /// starts it (see `pendingStartsWindDown`).
+        case windDown
 
         /// Which tab owns this screen.
         var tab: String {
             switch self {
-            case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock: "sleep"
+            case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock, .windDown: "sleep"
             case .report, .settings, .badges, .evidence, .patterns, .sensorTruth, .tomorrow: "more"
             case .journal: "journal"
             }
@@ -50,6 +53,7 @@ enum DeepLink {
     private static let key = "zoon.deeplink.pending"
     private static let napMinutesKey = "zoon.deeplink.napMinutes"
     private static let soundKey = "zoon.deeplink.sound"
+    private static let startWindDownKey = "zoon.deeplink.startWindDown"
 
     private static var defaults: UserDefaults {
         AppGroup.containerURL != nil
@@ -123,14 +127,37 @@ enum DeepLink {
         return value
     }
 
+    /// Set by Siri's "Start wind down" so the routine begins on arrival,
+    /// rather than only opening its screen (Spotlight opens the screen and
+    /// leaves this unset). Consumed with the destination, like the nap's
+    /// minutes, so a leftover flag cannot start a routine on a later launch.
+    static var pendingStartsWindDown: Bool {
+        get { defaults.bool(forKey: startWindDownKey) }
+        set {
+            if newValue {
+                defaults.set(true, forKey: startWindDownKey)
+            } else {
+                defaults.removeObject(forKey: startWindDownKey)
+            }
+        }
+    }
+
+    static func consumeStartsWindDown() -> Bool {
+        let value = pendingStartsWindDown
+        pendingStartsWindDown = false
+        return value
+    }
+
     /// Clears both possible stores so changing App Group configuration cannot
     /// resurrect a destination written by an older build.
     static func clear() {
         UserDefaults.standard.removeObject(forKey: key)
         UserDefaults.standard.removeObject(forKey: napMinutesKey)
         UserDefaults.standard.removeObject(forKey: soundKey)
+        UserDefaults.standard.removeObject(forKey: startWindDownKey)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: key)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: napMinutesKey)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: soundKey)
+        UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: startWindDownKey)
     }
 }

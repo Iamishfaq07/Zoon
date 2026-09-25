@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import UIKit
 
 /// The morning screen: last night, in one look.
@@ -27,6 +28,7 @@ struct TodayView: View {
     @State private var checkInDetails: [CheckInDimension: Int] = [:]
     /// Shared between the orbit and its legend so either can drive selection.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.requestReview) private var requestReview
     /// The hero and the qualifying lines compose differently at accessibility
     /// text sizes -- see `daytimeHero`.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -132,6 +134,23 @@ struct TodayView: View {
                 : nil,
             secondaryAction: ("Check again", { Task { await coordinator.refresh() } })
         )
+    }
+
+    /// The one App Store rating request (`ReviewPrompt`): never in demo or
+    /// screenshot launches, and a moment after the card settles rather than
+    /// over it.
+    private func askForReviewIfDue(after night: SleepNightFeatures) async {
+        guard !LaunchOptions.isDemo,
+              ReviewPrompt.shouldAsk(
+                  nightsRecorded: coordinator.recentNights.count,
+                  lastNight: night,
+                  currentVersion: ReviewPrompt.currentVersion,
+                  lastAskedVersion: ReviewPrompt.lastAskedVersion
+              ) else { return }
+        try? await Task.sleep(for: .seconds(3))
+        guard !Task.isCancelled else { return }
+        ReviewPrompt.lastAskedVersion = ReviewPrompt.currentVersion
+        requestReview()
     }
 
     // MARK: - Loaded
@@ -310,6 +329,7 @@ struct TodayView: View {
                 checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
                     result[dimension] = entry?.value(for: dimension)
                 }
+                await askForReviewIfDue(after: context.night)
                 }
 
                 // The optional reaction check, one tap from the check-in it

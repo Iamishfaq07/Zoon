@@ -11,6 +11,9 @@ struct RootView: View {
     /// away -- see the `scenePhase` handler.
     @Environment(NapStore.self) private var naps
     @Environment(GlobalPresentation.self) private var presentation
+    /// The engine the Tonight routine plays through, for Siri's "Start wind
+    /// down".
+    @Environment(SoundscapeEngine.self) private var soundscape
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialScreen?.tab
@@ -344,6 +347,13 @@ struct RootView: View {
                 coordinator.republishGlanceSurfaces()
             }
         }
+        // Consumed whatever the destination, so a flag left by an intent
+        // that never reached here cannot start a routine later. A routine
+        // already playing is left alone rather than restarted from Arrive.
+        if DeepLink.consumeStartsWindDown(), destination == .windDown,
+           !TonightRoutineController.shared.active {
+            TonightRoutineController.shared.start(audio: soundscape)
+        }
         push(destination)
     }
 
@@ -352,7 +362,7 @@ struct RootView: View {
     /// longer live on the tab bar.
     private func push(_ destination: DeepLink.Destination) {
         switch destination {
-        case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock:
+        case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock, .windDown:
             selection = .sleep
             sleepPath = NavigationPath()
             sleepPath.append(destination)
@@ -501,6 +511,7 @@ struct SleepTabView: View {
                 case .breathing: BreathingView()
                 case .snoreCheck: SnoreCheckView()
                 case .bodyClock: BodyClockView()
+                case .windDown: TonightRoutineView()
                 // Reachable in the app from "All N nights" below; a
                 // destination as well so screenshot capture can render the
                 // past-night moons, which sit too far down the Sleep tab for

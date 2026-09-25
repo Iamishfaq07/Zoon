@@ -782,8 +782,13 @@ emit("PBXProject",
 # breathing-disturbance data were missing), and says where it goes: a
 # summary syncs to the person's own Apple Watch, and a backup leaves only
 # when they export one. "Never leaves this device" was not true of either.
+# The second sentence covers the opt-in reads (Cycle Insights, Lifestyle
+# Insights: `menstrualFlow`, caffeine, alcohol, time in daylight, mindful
+# minutes, State of Mind), which the first did not name.
 HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist "
-               "temperature and daily activity to explain how you slept and recovered. "
+               "temperature, activity and workouts to explain how you slept and recovered. "
+               "If you turn them on, it also reads cycle data, caffeine, alcohol, time in "
+               "daylight, mindful minutes and logged mood. "
                "It is processed on your iPhone and Apple Watch and is never sent to Zoon "
                "or anyone else; it leaves only in a backup you choose to export.")
 # Apple requires an update-purpose string when the app invokes HealthKit's
