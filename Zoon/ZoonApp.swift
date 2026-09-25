@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 /// Zoon Sleep — local-first sleep insights.
 ///
@@ -93,6 +94,8 @@ struct ZoonApp: App {
             _coordinator = State(initialValue: nil)
         }
         TonightRoutineController.endLeftoverLiveActivities()
+        // Before launch finishes, so a tap that launched the app is delivered.
+        UNUserNotificationCenter.current().delegate = NotificationRouter.shared
     }
 
     var body: some Scene {

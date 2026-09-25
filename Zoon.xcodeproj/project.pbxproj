@@ -526,6 +526,7 @@
 		56C191727BAA7791C1681BD1 /* SleepAutopilot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D3C0C43E308D15F89442C2 /* SleepAutopilot.swift */; };
 		56C6C7E0285212AA00F761CD /* Statistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16548B3EE90E9079A3D9AEA9 /* Statistics.swift */; };
 		5711CC3F266878822C52A5F8 /* SleepStory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7060DA0F52BD67E4086F62D /* SleepStory.swift */; };
+		57B3329D926494D4EFC8B3F8 /* NotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43FB2871F3D29C2C0A3C3F74 /* NotificationRouter.swift */; };
 		584A68BDE47FA1CCE2A854FE /* SleepIntelligenceScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6868DEFF98DF1C38239CDC19 /* SleepIntelligenceScore.swift */; };
 		58737C73BAFF8CB167CD97AE /* DataErasure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 459D3B934E107E6C8D190412 /* DataErasure.swift */; };
 		58CBFD9D04BB5D9600F5FF55 /* RestorativeWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8713A1E2D16B52644E7647 /* RestorativeWindow.swift */; };
@@ -1763,6 +1764,7 @@
 		4289B24A9E74399A939DC4CE /* blizzard.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "blizzard.mp3"; sourceTree = "<group>"; };
 		428FBEDA15967526E0AD1710 /* NightKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NightKey.swift"; sourceTree = "<group>"; };
 		43ECDC12A5A45FB363525AB3 /* ClockTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClockTextTests.swift"; sourceTree = "<group>"; };
+		43FB2871F3D29C2C0A3C3F74 /* NotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotificationRouter.swift"; sourceTree = "<group>"; };
 		4423A4E415346D2848DCFF7D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
 		44354442EF56D3F66F5A44C9 /* ContextForecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContextForecast.swift"; sourceTree = "<group>"; };
 		445F8A134A58B330BC70BD4E /* ZoonCoverageMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonCoverageMatrix.swift"; sourceTree = "<group>"; };
@@ -2528,6 +2530,7 @@
 				7F46BC3EE713C870940781F8,
 				7C1DB3776628821BCA9A8964,
 				3C1A84A69DF140554FD8BBC3,
+				43FB2871F3D29C2C0A3C3F74,
 				3EF1C9099097D4B3F551844E,
 				753455C5E45B0F317E8996AE,
 				6FBB5235F0BEECDDFFFF4A95,
@@ -3714,6 +3717,7 @@
 				A4044DEBAD8303B65A79371E,
 				402487B4962F61C60243F542,
 				F6A2C04D8B49679EEDB51129,
+				57B3329D926494D4EFC8B3F8,
 				AA331F4D633010983D39FF78,
 				1209AD7C72CC0DF78D801683,
 				36134FBAD886EFF35F3E5CC5,

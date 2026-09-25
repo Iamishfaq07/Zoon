@@ -50,6 +50,22 @@ final class BedtimeReminder {
 
     init(center: UNUserNotificationCenter = .current()) {
         self.center = center
+        // The wind-down reminder's "Start wind down" button. Registered
+        // every launch: categories are not persisted across installs.
+        center.setNotificationCategories([
+            UNNotificationCategory(
+                identifier: ReminderNotification.windDownCategory,
+                actions: [
+                    UNNotificationAction(
+                        identifier: ReminderNotification.startWindDownAction,
+                        title: "Start wind down",
+                        options: [.foreground]
+                    )
+                ],
+                intentIdentifiers: [],
+                options: []
+            )
+        ])
     }
 
     // MARK: - Authorisation
@@ -107,7 +123,8 @@ final class BedtimeReminder {
         let windDownAdded = await add(
             windDowns,
             title: "Wind down",
-            body: "Bedtime in \(Self.windDownLeadMinutes) minutes. Dim the lights and put the screens away."
+            body: "Bedtime in \(Self.windDownLeadMinutes) minutes. Dim the lights and put the screens away.",
+            category: ReminderNotification.windDownCategory
         )
         let bedtimeAdded = await add(
             beds,
@@ -201,13 +218,19 @@ final class BedtimeReminder {
     }
 
     /// Adds every request; true only if all were accepted.
-    private func add(_ requests: [ReminderSchedule.Request], title: String, body: String) async -> Bool {
+    private func add(
+        _ requests: [ReminderSchedule.Request],
+        title: String,
+        body: String,
+        category: String? = nil
+    ) async -> Bool {
         var allAdded = true
         for request in requests {
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body
             content.sound = .default
+            if let category { content.categoryIdentifier = category }
             // No health numbers in the payload. Notification text appears on a
             // locked screen, where anyone in the room can read it — "you slept
             // 4h12m" is not something to broadcast to a bedroom.
