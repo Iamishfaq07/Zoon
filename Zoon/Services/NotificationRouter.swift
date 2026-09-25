@@ -32,7 +32,14 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate, Send
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        // A wind-down reminder while the routine is already playing would
+        // interrupt the thing it asks for. It still goes to Notification
+        // Center, without a banner or sound.
+        if notification.request.content.categoryIdentifier == ReminderNotification.windDownCategory,
+           await MainActor.run(body: { TonightRoutineController.shared.active }) {
+            return [.list]
+        }
+        return [.banner, .list, .sound]
     }
 
     func userNotificationCenter(
