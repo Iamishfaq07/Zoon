@@ -832,12 +832,22 @@ final class SoundscapeEngine {
     }
 
     private static func pcmBuffer(_ rendered: (left: [Float], right: [Float]), format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        // An empty render has no base address to copy from, and a right
+        // channel longer than the left would write past the buffer, so both
+        // are refused rather than trusted.
+        guard !rendered.left.isEmpty, rendered.right.count == rendered.left.count else { return nil }
         let frames = AVAudioFrameCount(rendered.left.count)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames),
               let channels = buffer.floatChannelData, format.channelCount >= 2 else { return nil }
         buffer.frameLength = frames
-        rendered.left.withUnsafeBufferPointer { channels[0].update(from: $0.baseAddress!, count: $0.count) }
-        rendered.right.withUnsafeBufferPointer { channels[1].update(from: $0.baseAddress!, count: $0.count) }
+        rendered.left.withUnsafeBufferPointer { source in
+            guard let base = source.baseAddress else { return }
+            channels[0].update(from: base, count: source.count)
+        }
+        rendered.right.withUnsafeBufferPointer { source in
+            guard let base = source.baseAddress else { return }
+            channels[1].update(from: base, count: source.count)
+        }
         return buffer
     }
 }
@@ -881,8 +891,11 @@ enum RecordedLoopLoader {
 
     @MainActor
     static func loop(url: URL) async -> AVAudioPCMBuffer? {
+        // A recording too short to decode to any frames, or channels of
+        // unequal length, would crash the copy below; neither is a loop.
         guard let decoded = await decode(url: url),
-              let first = decoded.channels.first,
+              let first = decoded.channels.first, !first.isEmpty,
+              decoded.channels.allSatisfy({ $0.count == first.count }),
               let format = AVAudioFormat(
                   standardFormatWithSampleRate: decoded.sampleRate,
                   channels: AVAudioChannelCount(decoded.channels.count)
@@ -891,7 +904,10 @@ enum RecordedLoopLoader {
               let out = buffer.floatChannelData else { return nil }
         buffer.frameLength = AVAudioFrameCount(first.count)
         for (channel, samples) in decoded.channels.enumerated() {
-            samples.withUnsafeBufferPointer { out[channel].update(from: $0.baseAddress!, count: $0.count) }
+            samples.withUnsafeBufferPointer { source in
+                guard let base = source.baseAddress else { return }
+                out[channel].update(from: base, count: source.count)
+            }
         }
         return buffer
     }
