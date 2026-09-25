@@ -126,7 +126,9 @@ struct TonightWidgetView: View {
                     Text(snapshot.tonightTargetNote)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(3)
+                        // Two lines, not three: the Wind Down button below
+                        // needs the room, and the full reason is one tap away.
+                        .lineLimit(entry.isPlaceholder ? 3 : 2)
                 } else {
                     Text(waitingCopy)
                         .font(.caption2)
@@ -134,7 +136,18 @@ struct TonightWidgetView: View {
                 }
 
                 Spacer(minLength: 0)
-                if entry.isPlaceholder { placeholderBadge }
+                if entry.isPlaceholder {
+                    placeholderBadge
+                } else {
+                    // The routine this plan leads into, one tap from the Home
+                    // Screen: opens Zoon and begins it (`OpenWindDownIntent`).
+                    Button(intent: OpenWindDownIntent()) {
+                        Label("Wind down", systemImage: "moon.stars")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.Metric.sleep)
+                }
             }
 
             if !snapshot.tomorrowRangeLabel.isEmpty {
