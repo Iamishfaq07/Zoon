@@ -145,6 +145,11 @@ struct RootView: View {
             else { return }
             push(destination)
         }
+        // A reminder's "Start wind down" can be delivered after the app is
+        // already active, when the `.active` check below has passed.
+        .onReceive(NotificationCenter.default.publisher(for: NotificationRouter.deepLinkPosted)) { _ in
+            consumeDeepLink()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             // Controls launch the app rather than acting in place (an extension
