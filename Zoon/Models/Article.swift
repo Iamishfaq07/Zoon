@@ -109,7 +109,7 @@ extension Article {
             body: [
                 "Your circadian rhythm — the internal clock that governs when you feel alert or sleepy — is set largely by consistency: the same wake time, the same light exposure, day after day. It adapts slowly, which means it doesn't reset cleanly just because you slept in.",
                 "This is the mechanism behind \"social jetlag\": a mismatch between your weekday and weekend sleep schedule that behaves, physiologically, a lot like crossing time zones without going anywhere. A few hours of drift on weekends can leave you feeling off on Monday in a way that mirrors mild jet lag.",
-                "Two people who each average 7.5 hours a night can have very different sleep quality if one keeps a steady schedule and the other's varies by two or three hours night to night. Regularity gives your body a predictable window to prepare for sleep — hormonally and behaviorally — before you even lie down.",
+                "Two people who each average 7.5 hours a night can have very different sleep quality if one keeps a steady schedule and the other's varies by two or three hours night to night. Regularity gives your body a predictable window to prepare for sleep — hormonally and behaviourally — before you even lie down.",
                 "This doesn't mean rigid perfection. It means that if you're choosing between an extra hour of sleep on an irregular schedule and a consistent schedule with slightly less total sleep, the consistent one is often the better trade for how you'll actually feel."
             ],
             takeaway: "If your schedule has to give somewhere, protect your wake time first — it's the anchor your body clock uses to set everything else."
