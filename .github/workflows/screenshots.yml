@@ -511,6 +511,17 @@ jobs:
             # sips ships with macOS, so no extra tooling to install.
             sips -Z 900 -s format jpeg -s formatOptions 70 "$f" --out "$out" > /dev/null
           done
+          # A sharper copy of the screens marketing uses (launch video, App
+          # Store listing). 900 px is right for reviewing a diff and too soft
+          # for a 1080p frame; only these few are kept large, so the
+          # repository grows by a handful of files rather than every screen.
+          mkdir -p docs/screenshots/hires
+          for name in today today-night today-morning today-light sleepDetail coach trends soundscapes \
+                      bodyClock tomorrow evidence patterns breathing nap journal onboarding splash nightHistory; do
+            [ -f "screenshots/$name.png" ] || continue
+            sips -Z 2000 -s format jpeg -s formatOptions 88 \
+              "screenshots/$name.png" --out "docs/screenshots/hires/$name.jpg" > /dev/null
+          done
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -808,6 +819,13 @@ jobs:
             base=$(basename "$png" .png)
             sips -Z 400 -s format jpeg -s formatOptions 70 \
               "$png" --out "docs/screenshots/watch/$base.jpg" >/dev/null
+          done
+          # Sharper copies of the watch faces marketing uses, as for the phone.
+          mkdir -p docs/screenshots/watch/hires
+          for png in watch-screenshots/page-*.png watch-screenshots/ultra-3-49mm.png; do
+            [ -f "$png" ] || continue
+            sips -Z 900 -s format jpeg -s formatOptions 88 \
+              "$png" --out "docs/screenshots/watch/hires/$(basename "$png" .png).jpg" >/dev/null
           done
           # The single-size render this job used to produce, now superseded by
           # the per-case-size set.
