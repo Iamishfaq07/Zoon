@@ -10,13 +10,14 @@ const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 const { spawn } = require('child_process');
 const FFMPEG = process.env.FFMPEG || 'ffmpeg';
 const V = process.env.VERTICAL === '1';
-const FPS = 30, DUR = 49.0;
+const FPS = 30;
 const out = process.argv[2] || (V ? 'Zoon-Launch-9x16.mp4' : 'Zoon-Launch-16x9.mp4');
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: V ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 } });
   await page.goto('file://' + __dirname + '/film.html' + (V ? '?v=1' : ''));
   await page.evaluate(() => window.ready);
+  const DUR = await page.evaluate(() => window.DURATION);
   const ff = spawn(FFMPEG, [
     '-y', '-loglevel', 'error',
     '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',

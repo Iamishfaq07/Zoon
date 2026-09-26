@@ -1,7 +1,7 @@
 # The launch film score: an original ambient piece, synthesised here so it
 # carries no licence. Writes score.wav next to this file for render.js.
 import numpy as np, wave
-SR = 48000; DUR = 49.5; N = int(SR * DUR)
+SR = 48000; DUR = 57.0; N = int(SR * DUR)
 t = np.arange(N) / SR
 rng = np.random.default_rng(3)
 L = np.zeros(N); R = np.zeros(N)
@@ -30,11 +30,11 @@ def pad_voice(m, start, end, gain, pan):
 
 # Chords: (start, end, midi notes). D major world, ending home.
 chords = [
-    (0.0, 9.8,  [50, 57, 62, 66, 69, 76]),      # Dmaj9-ish
-    (9.2, 21.6, [47, 54, 59, 62, 66, 73]),      # Bm9
-    (21.0, 33.6,[43, 50, 55, 59, 66, 69]),      # Gmaj7 add9
-    (33.0, 43.8,[45, 52, 57, 61, 64, 71]),      # A6/9
-    (43.0, 49.5,[50, 57, 62, 66, 69, 73, 76]),  # Dmaj9 home
+    (0.0, 11.8,  [50, 57, 62, 66, 69, 76]),      # Dmaj9-ish: moon, the watch
+    (11.2, 23.8, [47, 54, 59, 62, 66, 73]),      # Bm9: the night, tonight's need
+    (23.0, 35.8, [43, 50, 55, 59, 66, 69]),      # Gmaj7 add9: coach, wind down
+    (35.0, 47.0, [45, 52, 57, 61, 64, 71]),      # A6/9: body clock, everywhere
+    (46.2, 57.0, [50, 57, 62, 66, 69, 73, 76]),  # Dmaj9 home: privacy, end card
 ]
 for s, e, notes in chords:
     for i, m in enumerate(notes):
@@ -50,8 +50,8 @@ for s, e, notes in chords:
     L += sub; R += sub
 
 # Bell motif on each scene change: soft FM-ish bell, pentatonic in D.
-bells = [(1.7, 81), (2.6, 78), (5.3, 76), (7.4, 81), (9.8, 74), (15.7, 78), (21.4, 76),
-         (27.2, 81), (27.6, 83), (33.4, 78), (39.1, 74), (44.0, 81), (44.8, 78), (45.8, 86)]
+bells = [(1.7, 81), (2.6, 78), (5.6, 76), (8.6, 81), (11.4, 74), (17.4, 78), (23.2, 76),
+         (29.4, 81), (29.8, 83), (35.2, 78), (40.8, 74), (46.8, 81), (51.6, 81), (52.4, 78), (53.4, 86)]
 for when, m in bells:
     a = int(when * SR); n = int(4.5 * SR); b = min(N, a + n)
     tt = np.arange(b - a) / SR
@@ -65,11 +65,11 @@ for when, m in bells:
 
 # A soft pulse at resting heart rate under the feature scenes.
 bpm = 64; beat = 60 / bpm
-for k in range(int((38.6 - 9.4) / beat)):
-    when = 9.4 + k * beat
+for k in range(int((46.2 - 11.2) / beat)):
+    when = 11.2 + k * beat
     a = int(when * SR); n = int(0.5 * SR); b = min(N, a + n)
     tt = np.arange(b - a) / SR
-    swell = min(1, k / 6) * (1 - max(0, (when - 35) / 3.6))
+    swell = min(1, k / 6) * (1 - max(0, (when - 42.4) / 3.8))
     thump = np.sin(2 * np.pi * (58 + 40 * np.exp(-tt * 30)) * tt) * np.exp(-tt * 9) * 0.10 * swell
     L[a:b] += thump; R[a:b] += thump
 
@@ -81,7 +81,7 @@ for ch in range(2):
     # vectorised one-pole low-pass via lfilter-like cumulative trick
     from itertools import accumulate
     y = np.array(list(accumulate(noise[ch], lambda p, x: k * p + (1 - k) * x)))
-    breath = 0.012 * (0.6 + 0.4 * np.sin(2 * np.pi * 0.07 * t + ch)) * env(0, 49.5, 3, 3)
+    breath = 0.012 * (0.6 + 0.4 * np.sin(2 * np.pi * 0.07 * t + ch)) * env(0, DUR, 3, 3)
     (L if ch == 0 else R)[:] += y * breath
 
 # Hall reverb: convolution with a decaying stereo noise tail.

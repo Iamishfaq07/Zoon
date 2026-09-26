@@ -5,231 +5,197 @@
 <title>Zoon Launch Film</title>
 <!--
   The launch film. Every frame is drawn by render(t) at a fixed clock, so a
-  render is identical every time. Screens come from docs/screenshots/hires,
-  which the Screenshots workflow refreshes; re-render after it runs.
+  render is identical every time. Real screens come from docs/screenshots/hires
+  (refreshed by the Screenshots workflow); everything else is drawn here.
   Widescreen: film.html   Vertical 9:16: film.html?v=1   (see render.js)
 -->
 <link rel="stylesheet" href="fonts.css">
 <style>
   :root {
-    --night-0: #05060d;
-    --night-1: #0b0d1f;
-    --night-2: #151936;
-    --violet: #9e8ff2;
-    --violet-deep: #7b61ff;
-    --moonlight: #eef1fb;
-    --ink: #f4f5fb;
-    --ink-2: rgba(244, 245, 251, 0.72);
-    --ink-3: rgba(244, 245, 251, 0.5);
-    --recovery: #f5a25d;
-    --calm: #3fd6a0;
+    --violet: #9e8ff2; --violet-deep: #7b61ff; --ink: #f4f5fb;
+    --ink-2: rgba(244,245,251,0.72); --ink-3: rgba(244,245,251,0.5);
+    --amber: #f5a25d; --calm: #3fd6a0; --sky: #62b3ff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--night-0); }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #05060d; }
+  html.vertical, html.vertical body { width: 1080px; height: 1920px; }
   body { font-family: 'Manrope', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
   #stage { position: absolute; inset: 0; overflow: hidden; }
-  canvas#sky { position: absolute; inset: 0; }
-  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+  canvas { position: absolute; inset: 0; }
+  .layer { position: absolute; inset: 0; }
+  .abs { position: absolute; }
+  .center { position: absolute; left: 0; width: 100%; text-align: center; }
 
   .kicker { font: 700 22px/1 'Manrope'; letter-spacing: 0.28em; text-transform: uppercase; color: var(--violet); }
-  .headline { font: 800 88px/1.02 'Nunito'; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
-  .body { font: 500 30px/1.45 'Manrope'; color: var(--ink-2); max-width: 620px; text-wrap: pretty; }
-  .word { display: inline-block; will-change: opacity, transform, filter; }
-  /* A soft dark halo: keeps small stars from reading as punctuation beside a glyph. */
-  .kicker, .headline, .body, .tagline, .soon, .wordmark, .lockword { text-shadow: 0 0 14px rgba(6,7,16,0.95), 0 0 30px rgba(6,7,16,0.8); }
-  .accent { text-shadow: none; filter: drop-shadow(0 0 12px rgba(6,7,16,0.95)); }
+  .headline { font: 800 84px/1.04 'Nunito'; letter-spacing: -0.02em; text-wrap: balance; }
+  .headline.m { font-size: 68px; }
+  .body { font: 500 29px/1.45 'Manrope'; color: var(--ink-2); text-wrap: pretty; }
+  .small { font: 600 22px/1.3 'Manrope'; color: var(--ink-2); }
+  .tagline { font: 600 38px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-2); }
+  .soon { font: 700 22px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
+  .wordmark { font: 800 150px/1 'Nunito'; letter-spacing: 0.02em; }
+  .lockword { font: 800 120px/1 'Nunito'; letter-spacing: -0.02em; }
+  .num { font-family: 'Nunito'; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .word { display: inline-block; }
+  .kicker, .headline, .body, .tagline, .soon, .wordmark, .lockword, .small { text-shadow: 0 0 14px rgba(6,7,16,0.95), 0 0 30px rgba(6,7,16,0.8); }
+  .accent { background: linear-gradient(90deg, #c4b8ff, #7b61ff 60%, #3fd6a0); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
 
-  .phone {
-    position: absolute; width: 404px; height: 878px; border-radius: 66px; padding: 12px;
+  .vertical .headline { font-size: 76px; }
+  .vertical .headline.m { font-size: 64px; }
+  .vertical .body { font-size: 32px; }
+  .vertical .wordmark { font-size: 140px; }
+  .vertical .tagline { font-size: 32px; }
+  .vertical .lockword { font-size: 90px; }
+
+  /* Real screens */
+  .phone { position: absolute; width: 404px; height: 878px; border-radius: 66px; padding: 12px; transform-origin: 50% 0;
     background: linear-gradient(160deg, #2a2d3f, #0c0d14 40%, #1b1d29);
-    box-shadow:
-      0 0 0 2px rgba(255,255,255,0.08) inset,
-      0 60px 120px rgba(0,0,0,0.55),
-      0 0 140px rgba(123, 97, 255, 0.22);
-  }
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.08) inset, 0 60px 120px rgba(0,0,0,0.55), 0 0 140px rgba(123,97,255,0.22); }
   .phone img { display: block; width: 380px; height: 854px; object-fit: cover; object-position: top; border-radius: 55px; }
-  .phone::after {
-    content: ""; position: absolute; inset: 12px; border-radius: 55px; pointer-events: none;
-    background: linear-gradient(115deg, rgba(255,255,255,0.10), rgba(255,255,255,0) 28%);
-  }
-
-  .watch {
-    position: absolute; width: 330px; height: 400px; border-radius: 92px; padding: 26px;
+  .watch { position: absolute; width: 330px; height: 400px; border-radius: 92px; padding: 26px;
     background: linear-gradient(160deg, #3a3d4c, #111219 45%, #24262f);
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.07) inset, 0 50px 100px rgba(0,0,0,0.6), 0 0 120px rgba(63,214,160,0.16);
-  }
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.07) inset, 0 50px 100px rgba(0,0,0,0.6), 0 0 120px rgba(63,214,160,0.16); }
   .watch img { width: 278px; height: 348px; border-radius: 68px; object-fit: cover; display: block; }
   .crown { position: absolute; right: -16px; top: 110px; width: 18px; height: 70px; border-radius: 8px; background: linear-gradient(90deg,#2b2d38,#5a5d6c); }
 
-  .live {
-    position: absolute; width: 760px; height: 176px; border-radius: 44px; padding: 34px 44px;
-    background: rgba(13, 16, 36, 0.92);
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 40px 90px rgba(0,0,0,0.5);
-    display: flex; align-items: center; justify-content: space-between;
-    backdrop-filter: blur(20px);
-  }
+  /* Sensor chips */
+  .chip { position: absolute; display: flex; align-items: center; gap: 14px; padding: 14px 22px 14px 16px; border-radius: 22px;
+    background: rgba(20,22,44,0.82); box-shadow: 0 0 0 1px rgba(255,255,255,0.09) inset, 0 20px 50px rgba(0,0,0,0.45); white-space: nowrap; }
+  .chip .dot { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; }
+  .chip .v { font: 800 30px/1 'Nunito'; font-variant-numeric: tabular-nums; }
+  .chip .k { font: 600 17px/1 'Manrope'; color: var(--ink-3); margin-top: 6px; letter-spacing: 0.04em; }
+
+  /* Plan rows */
+  .plan { position: absolute; display: flex; align-items: center; gap: 18px; width: 500px; padding: 18px 22px; border-radius: 24px;
+    background: rgba(22,24,46,0.8); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset; }
+  .plan .ic { width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center; }
+  .plan .lb { font: 700 26px/1.1 'Manrope'; }
+  .plan .sub { font: 500 18px/1.2 'Manrope'; color: var(--ink-3); margin-top: 4px; }
+  .plan .tm { margin-left: auto; font: 800 28px/1 'Nunito'; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Chat */
+  .bubble { position: absolute; max-width: 640px; padding: 22px 28px; border-radius: 30px; font: 600 28px/1.4 'Manrope'; }
+  .bubble.me { background: linear-gradient(135deg, #7b61ff, #5a44d8); border-bottom-right-radius: 10px; }
+  .bubble.zoon { background: rgba(26,28,52,0.92); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset; border-bottom-left-radius: 10px; color: var(--ink); }
+  .typing { position: absolute; display: flex; gap: 10px; padding: 26px 30px; border-radius: 30px; border-bottom-left-radius: 10px; background: rgba(26,28,52,0.92); }
+  .typing i { width: 14px; height: 14px; border-radius: 50%; background: var(--violet); display: block; }
+  .evidence { position: absolute; display: inline-flex; gap: 10px; align-items: center; padding: 12px 20px; border-radius: 999px;
+    font: 700 20px/1 'Manrope'; color: var(--ink-2); background: rgba(255,255,255,0.06); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset; }
+
+  /* Lock Screen and Siri */
+  .live { position: absolute; width: 760px; height: 176px; border-radius: 44px; padding: 34px 44px; background: rgba(13,16,36,0.92);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 40px 90px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: space-between; }
   .live .l1 { font: 700 22px/1 'Manrope'; color: #9e8ff2; display: flex; gap: 12px; align-items: center; }
   .live .l2 { font: 600 30px/1.2 'Manrope'; color: rgba(255,255,255,0.88); margin-top: 12px; }
   .live .l3 { font: 500 22px/1.2 'Manrope'; color: rgba(255,255,255,0.6); margin-top: 8px; }
   .live .timer { font: 700 64px/1 'Nunito'; color: #9e8ff2; font-variant-numeric: tabular-nums; }
-  .island { position: absolute; height: 74px; border-radius: 37px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .island { position: absolute; width: 420px; height: 74px; border-radius: 37px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
   .island .t { font: 700 30px/1 'Nunito'; color: #9e8ff2; font-variant-numeric: tabular-nums; }
+  .siri { position: absolute; display: flex; align-items: center; gap: 22px; padding: 18px 34px 18px 18px; border-radius: 999px;
+    background: rgba(18,20,40,0.9); box-shadow: 0 0 0 1px rgba(255,255,255,0.1) inset, 0 30px 70px rgba(0,0,0,0.5); font: 600 30px/1 'Manrope'; white-space: nowrap; }
+  .orb { width: 58px; height: 58px; border-radius: 50%; background: conic-gradient(from 0deg, #7b61ff, #3fd6a0, #62b3ff, #f5a25d, #7b61ff); filter: blur(0.5px); box-shadow: 0 0 30px rgba(123,97,255,0.7); }
 
-  .lockword { font: 800 128px/1 'Nunito'; letter-spacing: -0.02em; }
-  .wordmark { font: 800 150px/1 'Nunito'; letter-spacing: 0.02em; }
-  .tagline { font: 600 38px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-2); }
-  .soon { font: 700 22px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
-  .accent { background: linear-gradient(90deg, #b9adff, #7b61ff 60%, #3fd6a0); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
-  /* ---------- 9:16 cut (film.html?v=1) ---------- */
-  html.vertical, html.vertical body { width: 1080px; height: 1920px; }
-  .vertical #moon { left: 360px !important; top: 440px !important; }
-  .vertical #s1-title { top: 880px !important; }
-  .vertical #s1-tag { top: 1070px !important; font-size: 32px; }
-  .vertical #s2a, .vertical #s2b { top: 820px !important; padding: 0 90px; }
-  .vertical #s2a { font-size: 68px !important; }
-  .vertical #s2b { font-size: 84px !important; }
-  .vertical .copy { left: 90px !important; top: 150px !important; width: 900px !important; }
-  .vertical .copy .headline { font-size: 80px; }
-  .vertical .copy .body { font-size: 32px; max-width: 900px; }
-  .vertical #s3p, .vertical #s4p, .vertical #s5p { left: 338px !important; top: 560px !important; transform-origin: 50% 0; }
-  .vertical #s5q { left: 640px !important; top: 640px !important; transform-origin: 50% 0; }
-  .vertical #s6h { top: 150px !important; font-size: 72px !important; padding: 0 250px; line-height: 1.12; }
-  .vertical #s6a { left: 70px !important; top: 760px !important; }
-  .vertical #s6b { left: 338px !important; top: 700px !important; }
-  .vertical #s6c { left: 606px !important; top: 760px !important; }
-  .vertical #s7h { top: 170px !important; font-size: 72px !important; padding: 0 60px; line-height: 1.12; }
-  .vertical #s7w { left: 375px !important; top: 520px !important; }
-  .vertical #s7i { left: 330px !important; top: 1020px !important; }
-  .vertical #s7l { left: 160px !important; top: 1150px !important; }
-  .vertical #s7b { left: 160px !important; top: 1390px !important; }
-  .vertical #lock { left: 480px !important; top: 560px !important; }
-  .vertical #s8h { top: 800px !important; font-size: 88px; padding: 0 40px; }
-  .vertical #s8b { top: 1120px !important; padding: 0 90px; }
-  .vertical #s8c { top: 1260px !important; }
-  .vertical #s9i { left: 420px !important; top: 560px !important; }
-  .vertical #s9w { top: 880px !important; }
-  .vertical #s9t { top: 1070px !important; font-size: 32px; }
-  .vertical #s9s { top: 1190px !important; }
+  .dial-label { position: absolute; font: 700 22px/1.2 'Manrope'; white-space: nowrap; }
+  .dial-label span { display: block; font: 800 26px/1.1 'Nunito'; color: var(--ink); font-variant-numeric: tabular-nums; }
+  #fade { position: absolute; inset: 0; background: #000; }
 </style>
 </head>
 <body>
 <div id="stage">
   <canvas id="sky"></canvas>
+  <canvas id="fx"></canvas>
 
-  <!-- 1. Opening: the moon, the name, the line -->
+  <!-- 1. Moon and name -->
   <div class="layer" id="s1">
-    <svg id="moon" width="360" height="360" viewBox="0 0 360 360" style="position:absolute;left:780px;top:170px;overflow:visible">
-      <defs>
-        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#c9c4ff" stop-opacity="0.55"/>
-          <stop offset="60%" stop-color="#7b61ff" stop-opacity="0.12"/>
-          <stop offset="100%" stop-color="#7b61ff" stop-opacity="0"/>
-        </radialGradient>
-        <linearGradient id="lunar" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#f5f5f2"/>
-          <stop offset="100%" stop-color="#dfe6f6"/>
-        </linearGradient>
-        <mask id="crescent">
-          <rect width="360" height="360" fill="black"/>
-          <circle cx="180" cy="180" r="112" fill="white"/>
-          <circle id="bite" cx="232" cy="156" r="100" fill="black"/>
-        </mask>
-        <filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>
-      </defs>
-      <circle cx="180" cy="180" r="180" fill="url(#glow)"/>
-      <rect width="360" height="360" fill="url(#lunar)" mask="url(#crescent)" filter="url(#soft)" opacity="0.55"/>
-      <rect width="360" height="360" fill="url(#lunar)" mask="url(#crescent)"/>
-    </svg>
-    <div id="s1-title" class="wordmark" style="position:absolute;width:100%;top:590px;text-align:center"></div>
-    <div id="s1-tag" class="tagline" style="position:absolute;width:100%;top:780px;text-align:center"></div>
+    <div id="s1t" class="wordmark center"></div>
+    <div id="s1g" class="tagline center"></div>
   </div>
 
-  <!-- 2. The premise -->
+  <!-- 2. The night your watch records -->
   <div class="layer" id="s2">
-    <div id="s2a" class="headline" style="position:absolute;width:100%;top:430px;text-align:center;font-size:76px"></div>
-    <div id="s2b" class="headline" style="position:absolute;width:100%;top:430px;text-align:center;font-size:96px"></div>
+    <div id="s2a" class="headline m center"></div>
+    <div id="s2b" class="headline center"></div>
+    <div class="chip" id="c0"><div class="dot" style="background:rgba(255,107,129,0.18)"><svg width="24" height="24" viewBox="0 0 24 24" fill="#ff6b81"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6.1 4.5c2.2 0 3.6 1.2 4.4 2.6h3c.8-1.4 2.2-2.6 4.4-2.6 3.8 0 5.7 3.9 4.1 7.2C19.5 16.4 12 21 12 21z" transform="scale(0.92) translate(1,1)"/></svg></div><div><div class="v">58 bpm</div><div class="k">HEART RATE</div></div></div>
+    <div class="chip" id="c1"><div class="dot" style="background:rgba(98,179,255,0.18)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#62b3ff" stroke-width="2.4" stroke-linecap="round"><path d="M2 12h4l3-7 4 14 3-7h6"/></svg></div><div><div class="v">64 ms</div><div class="k">HRV</div></div></div>
+    <div class="chip" id="c2"><div class="dot" style="background:rgba(63,214,160,0.18)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3fd6a0" stroke-width="2.4" stroke-linecap="round"><path d="M3 8c3-3 6 3 9 0s6 3 9 0M3 16c3-3 6 3 9 0s6 3 9 0"/></svg></div><div><div class="v">14.2 /min</div><div class="k">BREATHING</div></div></div>
+    <div class="chip" id="c3"><div class="dot" style="background:rgba(245,162,93,0.18)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f5a25d" stroke-width="2.4" stroke-linecap="round"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/></svg></div><div><div class="v">+0.2°</div><div class="k">WRIST TEMP</div></div></div>
+    <div class="chip" id="c4"><div class="dot" style="background:rgba(196,184,255,0.18)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c4b8ff" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8" /></svg></div><div><div class="v">97%</div><div class="k">BLOOD OXYGEN</div></div></div>
   </div>
 
-  <!-- 3. Recovery -->
+  <!-- 3. The whole night -->
   <div class="layer" id="s3">
-    <div class="copy" style="position:absolute;left:180px;top:330px;width:760px">
-      <div class="kicker">Sleep need</div>
-      <div id="s3h" class="headline" style="margin-top:26px"></div>
-      <div id="s3b" class="body" style="margin-top:32px"></div>
-    </div>
-    <div class="phone" id="s3p" style="left:1180px;top:101px"><img src="../../docs/screenshots/hires/today.jpg"></div>
+    <div class="abs" id="s3c"><div class="kicker">Last night</div><div id="s3h" class="headline" style="margin-top:22px"></div></div>
+    <div class="abs" id="s3n" style="text-align:right"><div id="s3v" class="num" style="font-size:96px;line-height:1">0h 00m</div><div class="small" style="margin-top:8px">asleep, stage by stage</div></div>
+    <div class="abs small" id="lW">Awake</div><div class="abs small" id="lR">REM</div><div class="abs small" id="lL">Light</div><div class="abs small" id="lD">Deep</div>
+    <div class="abs small" id="h0">11:14 PM</div><div class="abs small" id="h1">1:00 AM</div><div class="abs small" id="h2">3:00 AM</div><div class="abs small" id="h3">5:00 AM</div><div class="abs small" id="h4">6:46 AM</div>
   </div>
 
-  <!-- 4. Last night -->
+  <!-- 4. What tonight needs -->
   <div class="layer" id="s4">
-    <div class="phone" id="s4p" style="left:300px;top:101px"><img src="../../docs/screenshots/hires/sleepDetail.jpg"></div>
-    <div class="copy" style="position:absolute;left:940px;top:330px;width:800px">
-      <div class="kicker">Last night</div>
-      <div id="s4h" class="headline" style="margin-top:26px"></div>
-      <div id="s4b" class="body" style="margin-top:32px"></div>
+    <div class="abs" id="s4c"><div class="kicker">Sleep need</div><div id="s4h" class="headline" style="margin-top:22px"></div></div>
+    <div class="abs" id="s4r" style="width:420px;text-align:center">
+      <div class="kicker" style="color:var(--ink-3);letter-spacing:0.2em">Sleep shortfall</div>
+      <div id="s4v" class="num" style="font-size:92px;margin-top:14px">0h 00m</div>
+      <div class="small" style="margin-top:10px;color:#f5a25d">Moderate debt · −29m tonight</div>
     </div>
+    <div class="plan" id="p0"><div class="ic" style="background:rgba(123,97,255,0.2)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c4b8ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></div><div><div class="lb">Wind down</div><div class="sub">Dim lights, screens away</div></div><div class="tm" style="color:#c4b8ff">10:36 PM</div></div>
+    <div class="plan" id="p1"><div class="ic" style="background:rgba(98,179,255,0.18)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#62b3ff" stroke-width="2.2" stroke-linecap="round"><path d="M3 18v-6h18v6M3 12V7M21 18v-3M6 12V9h5v3"/></svg></div><div><div class="lb">Bed</div><div class="sub">20 min earlier than usual</div></div><div class="tm" style="color:#62b3ff">11:06 PM</div></div>
+    <div class="plan" id="p2"><div class="ic" style="background:rgba(245,162,93,0.18)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f5a25d" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="15" r="4"/><path d="M2 19h20M12 5v3M4.9 8.9l2 2M19.1 8.9l-2 2"/></svg></div><div><div class="lb">Wake</div><div class="sub">Protects your first event</div></div><div class="tm" style="color:#f5a25d">6:51 AM</div></div>
+    <div class="phone" id="s4p"><img src="../../docs/screenshots/hires/today.jpg"></div>
   </div>
 
   <!-- 5. Coach -->
   <div class="layer" id="s5">
-    <div class="copy" style="position:absolute;left:180px;top:330px;width:720px">
-      <div class="kicker">Coach</div>
-      <div id="s5h" class="headline" style="margin-top:26px"></div>
-      <div id="s5b" class="body" style="margin-top:32px"></div>
-    </div>
-    <div class="phone" id="s5q" style="left:1380px;top:151px;opacity:0.55"><img src="../../docs/screenshots/hires/trends.jpg"></div>
-    <div class="phone" id="s5p" style="left:1060px;top:101px"><img src="../../docs/screenshots/hires/coach.jpg"></div>
+    <div class="abs" id="s5c"><div class="kicker">Coach</div><div id="s5h" class="headline" style="margin-top:22px"></div><div id="s5b" class="body" style="margin-top:22px"></div></div>
+    <div class="bubble me" id="b0">Why did I wake up so much last night?</div>
+    <div class="typing" id="b1"><i></i><i></i><i></i></div>
+    <div class="bubble zoon" id="b2"><span id="b2t"></span></div>
+    <div class="evidence" id="b3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg>Why Zoon said this</div>
+    <div class="phone" id="s5p"><img src="../../docs/screenshots/hires/coach.jpg"></div>
   </div>
 
-  <!-- 6. Plan, wind down, wake -->
+  <!-- 6. Wind down -->
   <div class="layer" id="s6">
-    <div id="s6h" class="headline" style="position:absolute;width:100%;top:62px;text-align:center;font-size:74px"></div>
-    <div class="phone" id="s6a" style="left:418px;top:170px;transform-origin:50% 0"><img src="../../docs/screenshots/hires/tomorrow.jpg"></div>
-    <div class="phone" id="s6b" style="left:758px;top:150px;transform-origin:50% 0"><img src="../../docs/screenshots/hires/breathing.jpg"></div>
-    <div class="phone" id="s6c" style="left:1098px;top:170px;transform-origin:50% 0"><img src="../../docs/screenshots/hires/bodyClock.jpg"></div>
+    <div class="abs" id="s6c"><div class="kicker">Wind down</div><div id="s6h" class="headline" style="margin-top:22px"></div><div id="s6b" class="body" style="margin-top:22px"></div></div>
+    <div class="abs" id="s6l" style="width:360px;text-align:center"><div id="s6w" class="num" style="font-size:52px">Breathe in</div><div id="s6n" class="small" style="margin-top:8px">4</div></div>
+    <div class="abs small" id="s6s" style="width:700px;text-align:center">Rain · Brown noise · fades out at lights-out</div>
   </div>
 
-  <!-- 7. Wrist and Lock Screen -->
+  <!-- 7. Body clock -->
   <div class="layer" id="s7">
-    <div id="s7h" class="headline" style="position:absolute;width:100%;top:120px;text-align:center;font-size:74px"></div>
-    <div class="watch" id="s7w" style="left:300px;top:390px"><img src="../../docs/screenshots/watch/hires/page-today.jpg"><div class="crown"></div></div>
-    <div class="island" id="s7i" style="left:900px;top:420px;width:420px">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
-      <span class="t" id="s7it">18:42</span>
-    </div>
-    <div class="live" id="s7l" style="left:900px;top:560px">
-      <div>
-        <div class="l1"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Winding down</div>
-        <div class="l2">Guided breathing</div>
-        <div class="l3">Lights out at 10:45 PM</div>
-      </div>
-      <div class="timer" id="s7lt">18:42</div>
-    </div>
-    <div id="s7b" class="body" style="position:absolute;left:900px;top:790px;max-width:760px"></div>
+    <div class="abs" id="s7c"><div class="kicker">Body clock</div><div id="s7h" class="headline" style="margin-top:22px"></div><div id="s7b" class="body" style="margin-top:22px"></div></div>
+    <div class="abs" id="s7m" style="width:300px;text-align:center"><div class="kicker" style="color:var(--ink-3);letter-spacing:0.2em">Aligned</div><div id="s7v" class="num" style="font-size:110px;margin-top:10px">0</div></div>
+    <div class="dial-label" id="m0" style="color:#ffcf6b">Wake<span>6:46 AM</span></div>
+    <div class="dial-label" id="m1" style="color:#ffe08a">Best light<span>8:16 AM</span></div>
+    <div class="dial-label" id="m2" style="color:#3fd6a0">Peak focus<span>10:27 AM</span></div>
+    <div class="dial-label" id="m3" style="color:#f5a25d">Afternoon dip<span>1:35 PM</span></div>
+    <div class="dial-label" id="m4" style="color:#c4b8ff">Wind down<span>10:22 PM</span></div>
   </div>
 
-  <!-- 8. Privacy -->
+  <!-- 8. Everywhere -->
   <div class="layer" id="s8">
-    <svg id="lock" width="120" height="150" viewBox="0 0 120 150" style="position:absolute;left:900px;top:220px">
-      <path d="M30 66 V44 a30 30 0 0 1 60 0 V66" fill="none" stroke="#9e8ff2" stroke-width="10" stroke-linecap="round"/>
-      <rect x="12" y="64" width="96" height="80" rx="22" fill="#9e8ff2"/>
-      <circle cx="60" cy="100" r="10" fill="#0b0d1f"/>
-      <rect x="56" y="104" width="8" height="18" rx="4" fill="#0b0d1f"/>
-    </svg>
-    <div id="s8h" class="lockword" style="position:absolute;width:100%;top:430px;text-align:center"></div>
-    <div id="s8b" class="body" style="position:absolute;left:0;width:100%;max-width:none;top:600px;text-align:center"></div>
-    <div id="s8c" class="soon" style="position:absolute;width:100%;top:720px;text-align:center;letter-spacing:0.22em"></div>
+    <div id="s8h" class="headline m center"></div>
+    <div class="watch" id="s8w"><img src="../../docs/screenshots/watch/hires/page-today.jpg"><div class="crown"></div></div>
+    <div class="siri" id="s8s"><div class="orb"></div>“Start wind down in Zoon”</div>
+    <div class="island" id="s8i"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span class="t" id="s8it">18:42</span></div>
+    <div class="live" id="s8l"><div><div class="l1"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Winding down</div><div class="l2">Guided breathing</div><div class="l3">Lights out at 10:45 PM</div></div><div class="timer" id="s8lt">18:42</div></div>
+    <div id="s8b" class="body abs"></div>
   </div>
 
-  <!-- 9. End card -->
+  <!-- 9. Privacy -->
   <div class="layer" id="s9">
-    <img id="s9i" src="../../Zoon/Assets.xcassets/AppIcon.appiconset/icon-1024.png" style="position:absolute;left:840px;top:170px;width:240px;height:240px;border-radius:54px;box-shadow:0 30px 90px rgba(0,0,0,0.6),0 0 160px rgba(123,97,255,0.35)">
-    <div id="s9w" class="wordmark" style="position:absolute;width:100%;top:480px;text-align:center"></div>
-    <div id="s9t" class="tagline" style="position:absolute;width:100%;top:672px;text-align:center"></div>
-    <div id="s9s" class="soon" style="position:absolute;width:100%;top:800px;text-align:center"></div>
+    <div id="s9h" class="lockword center"></div>
+    <div id="s9b" class="body center"></div>
+    <div id="s9c" class="soon center" style="letter-spacing:0.22em"></div>
   </div>
 
+  <!-- 10. End card -->
+  <div class="layer" id="s10">
+    <img id="s10i" src="../../Zoon/Assets.xcassets/AppIcon.appiconset/icon-1024.png" style="position:absolute;width:240px;height:240px;border-radius:54px;box-shadow:0 30px 90px rgba(0,0,0,0.6),0 0 160px rgba(123,97,255,0.35)">
+    <div id="s10w" class="wordmark center"></div>
+    <div id="s10t" class="tagline center"></div>
+    <div id="s10s" class="soon center"></div>
+  </div>
   <div id="fade"></div>
 </div>
 
@@ -237,18 +203,68 @@
 const VERTICAL = new URLSearchParams(location.search).get('v') === '1';
 if (VERTICAL) document.documentElement.classList.add('vertical');
 const W = VERTICAL ? 1080 : 1920, H = VERTICAL ? 1920 : 1080;
-// ---------- timing helpers ----------
+const $ = id => document.getElementById(id);
+
+// ---------- timing ----------
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
-const ease = t => 1 - Math.pow(1 - clamp(t), 3);            // out-cubic
-const easeIO = t => { t = clamp(t); return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; };
+const ease = t => 1 - Math.pow(1 - clamp(t), 3);
+const easeIO = t => { t = clamp(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const back = t => { t = clamp(t); const c = 1.5; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 const prog = (t, a, b) => clamp((t - a) / (b - a));
-// visible: fades in over [a, a+fi], out over [b-fo, b]
-const vis = (t, a, b, fi = 0.7, fo = 0.7) => Math.min(ease(prog(t, a, a + fi)), 1 - easeIO(prog(t, b - fo, b)));
+const vis = (t, a, b, fi = 0.6, fo = 0.6) => Math.min(ease(prog(t, a, a + fi)), 1 - easeIO(prog(t, b - fo, b)));
+const hm = m => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, '0')}m`;
 
-// ---------- word-by-word text ----------
+// Scene windows [start, end].
+const S = { 1: [0, 5.6], 2: [5.4, 11.4], 3: [11.2, 17.4], 4: [17.2, 23.2], 5: [23.0, 29.4],
+            6: [29.2, 35.2], 7: [35.0, 40.8], 8: [40.6, 46.4], 9: [46.2, 51.0], 10: [50.8, 57.0] };
+const DUR = 56.5;
+
+// ---------- layout: [x, y, width] per orientation ----------
+const Lh = {
+  moon: [960, 360, 150], s1t: [null, 590], s1g: [null, 782],
+  s2a: [null, 96], s2b: [null, 96], watch: [560, 600, 1], orb: [1400, 600],
+  chips: [[790, 300], [860, 440], [890, 580], [860, 720], [790, 860]],
+  s3c: [180, 110, 900], s3n: [1180, 120, 560], chart: [330, 440, 1640, 860],
+  s4c: [180, 110, 900], ring: [450, 640, 200], plans: [[780, 430], [780, 560], [780, 690]], s4p: [1420, 101, null],
+  s5c: [180, 110, 800], chat: [180, 440, 900], s5p: [1300, 101, null],
+  s6c: [180, 300, 640], breath: [1260, 470, 150], s6s: [910, 890],
+  s7c: [180, 300, 620], dial: [1300, 540, 300],
+  s8h: [null, 110], s8w: [300, 380], s8s: [900, 300], s8i: [900, 450], s8l: [900, 565], s8b: [900, 790, 760],
+  shield: [960, 360, 170], cloud: [1500, 360], s9h: [null, 640], s9b: [null, 800], s9c: [null, 890],
+  s10i: [840, 170], s10w: [null, 480], s10t: [null, 672], s10s: [null, 800]
+};
+const Lv = {
+  moon: [540, 640, 170], s1t: [null, 900], s1g: [null, 1080],
+  s2a: [null, 150], s2b: [null, 150], watch: [540, 720, 1.1], orb: [540, 1560],
+  chips: [[120, 1020], [620, 1090], [150, 1190], [640, 1260], [330, 1340]],
+  s3c: [90, 150, 900], s3n: [90, 420, 900], chart: [220, 760, 1000, 1480],
+  s4c: [90, 150, 900], ring: [540, 800, 240], plans: [[290, 1170], [290, 1300], [290, 1430]], s4p: null,
+  s5c: [90, 150, 900], chat: [90, 640, 900], s5p: [338, 1290, null],
+  s6c: [90, 150, 900], breath: [540, 960, 170], s6s: [190, 1470],
+  s7c: [90, 150, 900], dial: [540, 1100, 330],
+  s8h: [null, 170], s8w: [375, 480], s8s: [150, 980], s8i: [330, 1130], s8l: [160, 1250], s8b: [160, 1480, 760],
+  shield: [540, 700, 200], cloud: [540, 1160], s9h: [null, 1320], s9b: [null, 1520], s9c: [null, 1610],
+  s10i: [420, 560], s10w: [null, 880], s10t: [null, 1070], s10s: [null, 1190]
+};
+const L = VERTICAL ? Lv : Lh;
+function place(id, p) {
+  const el = $(id); if (!el) return;
+  if (!p) { el.style.display = 'none'; el.dataset.off = '1'; return; }
+  if (p[0] !== null) el.style.left = p[0] + 'px';
+  el.style.top = p[1] + 'px';
+  if (p[2]) el.style.width = p[2] + 'px';
+}
+['s1t','s1g','s2a','s2b','s3c','s4c','s4p','s5c','s5p','s6c','s6s','s7c','s8h','s8w','s8s','s8i','s8l','s8b','s9h','s9b','s9c','s10i','s10w','s10t','s10s']
+  .forEach(id => place(id, L[id]));
+place('s3n', L.s3n);
+L.chips.forEach((p, i) => place('c' + i, p));
+L.plans.forEach((p, i) => place('p' + i, p));
+if (VERTICAL) $('s3n').style.textAlign = 'left';
+if (VERTICAL) ['s2a','s2b','s8h','s9b'].forEach(id => $(id).style.padding = '0 80px');
+
+// ---------- word reveals ----------
 function words(el, text, accentFrom = -1) {
-  // A lone "|" is a forced line break.
   el.innerHTML = text.split(' ').map((w, i) => w === '|' ? '<br>' :
     `<span class="word${accentFrom >= 0 && i >= accentFrom ? ' accent' : ''}">${w}</span>`).join(' ');
   return Array.from(el.querySelectorAll('.word'));
@@ -256,218 +272,448 @@ function words(el, text, accentFrom = -1) {
 function reveal(spans, t, start, step = 0.08, dur = 0.7, rise = 26) {
   spans.forEach((s, i) => {
     const p = ease(prog(t, start + i * step, start + i * step + dur));
-    s.style.opacity = p;
-    s.style.transform = `translateY(${(1 - p) * rise}px)`;
-    s.style.filter = `blur(${(1 - p) * 8}px)`;
+    s.style.opacity = p; s.style.transform = `translateY(${(1 - p) * rise}px)`; s.style.filter = `blur(${(1 - p) * 8}px)`;
   });
 }
-
-const $ = id => document.getElementById(id);
+function pop(el, t, start, from = 30, dur = 0.8) {
+  const p = ease(prog(t, start, start + dur));
+  el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * from}px)`;
+  return p;
+}
 const T = {
-  s1t: words($('s1-title'), 'Zoon'),
-  s1g: words($('s1-tag'), 'Sleep, understood.'),
-  s2a: words($('s2a'), 'Your Apple Watch already records every night.'),
+  s1t: words($('s1t'), 'Zoon'), s1g: words($('s1g'), 'Sleep, understood.'),
+  s2a: words($('s2a'), 'Your Apple Watch records every night.'),
   s2b: words($('s2b'), 'Zoon tells you what it meant.', 3),
-  s3h: words($('s3h'), 'Know what tonight needs.'),
-  s3b: words($('s3b'), 'Your shortfall against your own sleep need, never a crowd average, and a plan to clear it.'),
-  s4h: words($('s4h'), 'See the whole night.'),
-  s4b: words($('s4b'), 'Every stage and every wake, with what the data can and cannot tell you.'),
+  s3h: words($('s3h'), 'See the whole night.'),
+  s4h: words($('s4h'), VERTICAL ? 'Know what tonight needs.' : 'Know what | tonight needs.'),
   s5h: words($('s5h'), 'Ask Zoon.'),
-  s5b: words($('s5b'), 'Answers built from your own nights, worked out privately on your iPhone.'),
-  s6h: words($('s6h'), 'Plan tonight. Wind down. Wake ready.', 4),
-  s7h: words($('s7h'), VERTICAL ? 'On your wrist. | On your Lock Screen.' : 'On your wrist. On your Lock Screen.'),
-  s7b: words($('s7b'), 'Start wind down from Siri, a widget or Control Center.'),
-  s8h: words($('s8h'), 'No account. No server.'),
-  s8b: words($('s8b'), 'Your sleep stays on your iPhone and Apple Watch.'),
-  s8c: words($('s8c'), 'Reads Apple Health · Never writes to it'),
-  s9w: words($('s9w'), 'Zoon'),
-  s9t: words($('s9t'), 'Sleep, understood.'),
-  s9s: words($('s9s'), 'Coming soon on the App Store'),
+  s5b: words($('s5b'), 'Answers from your own nights, worked out on your iPhone.'),
+  s6h: words($('s6h'), 'Breathe. Settle. Sleep.', 2),
+  s6b: words($('s6b'), 'Guided 4-7-8 breathing and your sound scene, fading out at lights-out.'),
+  s7h: words($('s7h'), 'Your body clock, mapped.'),
+  s7b: words($('s7b'), 'When focus peaks, when the dip comes, when to wind down.'),
+  s8h: words($('s8h'), VERTICAL ? 'On your wrist. | On your Lock Screen.' : 'On your wrist. On your Lock Screen.'),
+  s8b: words($('s8b'), 'Start wind down from Siri, a widget or Control Center.'),
+  s9h: words($('s9h'), 'No account. No server.'),
+  s9b: words($('s9b'), 'Your sleep stays on your iPhone and Apple Watch.'),
+  s9c: words($('s9c'), 'Reads Apple Health · Never writes to it'),
+  s10w: words($('s10w'), 'Zoon'), s10t: words($('s10t'), 'Sleep, understood.'),
+  s10s: words($('s10s'), 'Coming soon on the App Store'),
 };
 
-// ---------- the sky ----------
-const sky = $('sky'), g = sky.getContext('2d');
-sky.width = W; sky.height = H;
+// ---------- canvases ----------
+const sky = $('sky'), g = sky.getContext('2d'), fx = $('fx'), c = fx.getContext('2d');
+sky.width = fx.width = W; sky.height = fx.height = H;
 let seed = 7;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const stars = Array.from({ length: VERTICAL ? 480 : 420 }, () => ({
-  x: rnd() * W, y: rnd() * (H + 220), r: 0.4 + Math.pow(rnd(), 3) * 2.1,
-  tw: 0.6 + rnd() * 2.2, ph: rnd() * 6.28, depth: 0.2 + rnd() * 0.8
-}));
-// Text boxes on screen this frame, grown by a margin: no star is drawn inside
-// one, so a star can never sit beside a glyph and read as punctuation.
+  x: rnd() * W, y: rnd() * (H + 220), r: 0.4 + Math.pow(rnd(), 3) * 2.1, tw: 0.6 + rnd() * 2.2, ph: rnd() * 6.28, depth: 0.2 + rnd() * 0.8 }));
+const craters = Array.from({ length: 34 }, () => ({ a: rnd() * 6.283, d: Math.sqrt(rnd()) * 0.9, r: 0.025 + Math.pow(rnd(), 2) * 0.1 }));
+const maria = Array.from({ length: 7 }, () => ({ a: rnd() * 6.283, d: rnd() * 0.6, r: 0.18 + rnd() * 0.22 }));
+const wave = Array.from({ length: 64 }, () => ({ f: 0.6 + rnd() * 2.4, p: rnd() * 6.28, a: 0.3 + rnd() * 0.7 }));
+
 function quietZones() {
   const zones = [];
-  document.querySelectorAll('.kicker, .headline, .body, .tagline, .soon, .wordmark, .lockword').forEach(el => {
+  document.querySelectorAll('.kicker, .headline, .body, .tagline, .soon, .wordmark, .lockword, .small, .num').forEach(el => {
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0 && el.closest('.layer').style.display !== 'none')
       zones.push([r.left - 40, r.top - 30, r.right + 40, r.bottom + 30]);
   });
   return zones;
 }
-function drawSky(t, zones = []) {
+function drawSky(t, zones) {
   const bg = g.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, '#0e1128'); bg.addColorStop(0.55, '#0a0c1d'); bg.addColorStop(1, '#05060d');
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  // two slow nebula glows
-  const glows = [[W * 0.27 + Math.sin(t * 0.07) * 120, H * 0.28, 700, 'rgba(123,97,255,0.13)'],
-                 [W * 0.78 + Math.cos(t * 0.05) * 140, H * 0.76, 800, 'rgba(63,120,214,0.10)']];
-  for (const [x, y, r, c] of glows) {
-    const rg = g.createRadialGradient(x, y, 0, x, y, r);
-    rg.addColorStop(0, c); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  for (const [x, y, r, col] of [[W * 0.27 + Math.sin(t * 0.07) * 120, H * 0.28, 700, 'rgba(123,97,255,0.13)'],
+                                [W * 0.78 + Math.cos(t * 0.05) * 140, H * 0.76, 800, 'rgba(63,120,214,0.10)']]) {
+    const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = rg; g.fillRect(0, 0, W, H);
   }
   for (const s of stars) {
     const y = ((s.y - t * 6 * s.depth) % (H + 220) + (H + 220)) % (H + 220) - 110;
     if (zones.some(z => s.x > z[0] && s.x < z[2] && y > z[1] && y < z[3])) continue;
-    const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph));
-    g.globalAlpha = a * (0.4 + 0.6 * s.depth);
-    g.fillStyle = '#e8ecff';
-    g.beginPath(); g.arc(s.x, y, s.r, 0, 6.283); g.fill();
+    g.globalAlpha = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph))) * (0.4 + 0.6 * s.depth);
+    g.fillStyle = '#e8ecff'; g.beginPath(); g.arc(s.x, y, s.r, 0, 6.283); g.fill();
   }
   g.globalAlpha = 1;
-  // Quiet the stars behind centred type, so none sits beside a glyph.
-  if (window.scrim > 0) {
-    const sg = g.createRadialGradient(W / 2, H * 0.56, 0, W / 2, H * 0.56, 760);
-    sg.addColorStop(0, `rgba(8,9,22,${0.92 * window.scrim})`);
-    sg.addColorStop(0.55, `rgba(8,9,22,${0.7 * window.scrim})`);
-    sg.addColorStop(1, 'rgba(8,9,22,0)');
-    g.fillStyle = sg; g.fillRect(0, 0, W, H);
+}
+
+// ---------- drawings ----------
+function glow(x, y, r, col) {
+  const rg = c.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = rg; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
+}
+function rr(x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
+
+function moon(cx, cy, r, lit, a) {
+  c.save(); c.globalAlpha = a;
+  glow(cx, cy, r * 2.4, 'rgba(190,186,255,0.22)');
+  c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.clip();
+  const base = c.createRadialGradient(cx - r * 0.4, cy - r * 0.4, r * 0.1, cx, cy, r * 1.1);
+  base.addColorStop(0, '#f7f7fb'); base.addColorStop(1, '#a9afc2'); c.fillStyle = base; c.fillRect(cx - r, cy - r, r * 2, r * 2);
+  for (const m of maria) {
+    const x = cx + Math.cos(m.a) * m.d * r, y = cy + Math.sin(m.a) * m.d * r;
+    const mg = c.createRadialGradient(x, y, 0, x, y, m.r * r); mg.addColorStop(0, 'rgba(110,116,140,0.38)'); mg.addColorStop(1, 'rgba(110,116,140,0)');
+    c.fillStyle = mg; c.fillRect(cx - r, cy - r, r * 2, r * 2);
   }
+  for (const k of craters) {
+    const x = cx + Math.cos(k.a) * k.d * r, y = cy + Math.sin(k.a) * k.d * r, cr = k.r * r;
+    const cg = c.createRadialGradient(x + cr * 0.25, y + cr * 0.25, 0, x, y, cr);
+    cg.addColorStop(0, 'rgba(118,124,148,0.30)'); cg.addColorStop(1, 'rgba(118,124,148,0.05)');
+    c.fillStyle = cg; c.beginPath(); c.arc(x, y, cr, 0, 6.283); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = Math.max(1, cr * 0.14);
+    c.beginPath(); c.arc(x, y, cr, 2.4, 4.4); c.stroke();
+  }
+  // Night side: a soft shadow disc that slides off as the moon waxes.
+  // The same navy as the sky behind, with a trace of earthshine, so the dark
+  // limb disappears into the night instead of reading as a black disc.
+  c.shadowColor = 'rgba(13,16,38,1)'; c.shadowBlur = r * 0.3;
+  c.fillStyle = 'rgba(13,16,38,0.955)';
+  c.beginPath(); c.arc(cx + r * lerp(0.35, 1.75, lit), cy - r * 0.1, r * 1.02, 0, 6.283); c.fill();
+  c.restore();
+}
+
+function watchShape(cx, cy, s, a, t) {
+  c.save(); c.globalAlpha = a; c.translate(cx, cy); c.scale(s, s);
+  glow(0, 0, 260, 'rgba(63,214,160,0.16)');
+  c.fillStyle = '#1b1d28'; rr(-70, -210, 140, 90, 26); c.fill(); rr(-70, 120, 140, 90, 26); c.fill();
+  const body = c.createLinearGradient(-110, -135, 110, 135); body.addColorStop(0, '#454858'); body.addColorStop(0.5, '#15161e'); body.addColorStop(1, '#2c2e3a');
+  c.fillStyle = body; rr(-110, -135, 220, 270, 64); c.fill();
+  c.fillStyle = '#05060b'; rr(-94, -119, 188, 238, 52); c.fill();
+  c.fillStyle = '#3a3d4c'; rr(106, -50, 14, 46, 6); c.fill();
+  // screen: pulsing heart-rate trace
+  c.strokeStyle = '#ff6b81'; c.lineWidth = 5; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath();
+  for (let i = 0; i <= 60; i++) {
+    const x = -70 + i * (140 / 60), ph = (i / 60 + t * 0.8) % 1;
+    const y = (ph > 0.45 && ph < 0.52) ? -34 * Math.sin((ph - 0.45) / 0.07 * Math.PI) : (ph > 0.52 && ph < 0.56 ? 14 : 0);
+    i ? c.lineTo(x, y + 10) : c.moveTo(x, y + 10);
+  }
+  c.stroke();
+  c.fillStyle = 'rgba(255,255,255,0.8)'; c.font = '700 22px Manrope'; c.textAlign = 'center'; c.fillText('Sleeping', 0, -60);
+  c.restore();
+}
+
+function streams(t, from, to, cols, a) {
+  c.save();
+  from.forEach((p, i) => {
+    const [x0, y0] = p, [x1, y1] = to, mx = (x0 + x1) / 2, my = (y0 + y1) / 2 + (i - 2) * 40;
+    for (let k = 0; k < 16; k++) {
+      const u = ((t * 0.55 + k / 16 + i * 0.13) % 1);
+      const x = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * mx + u * u * x1;
+      const y = (1 - u) * (1 - u) * y0 + 2 * (1 - u) * u * my + u * u * y1;
+      c.globalAlpha = a * Math.sin(Math.PI * u) * 0.9;
+      c.fillStyle = cols[i]; c.beginPath(); c.arc(x, y, 3.2, 0, 6.283); c.fill();
+    }
+  });
+  c.restore();
+}
+
+// A plausible night: [stage, minutes]; lanes W R L D.
+const NIGHT = [['L',12],['D',38],['L',14],['R',9],['L',18],['D',30],['L',12],['W',4],['L',16],['R',19],['L',24],['D',16],
+               ['L',22],['R',24],['W',5],['L',28],['R',27],['L',22],['W',3],['L',26],['R',31],['L',20],['W',4],['L',8]];
+const NIGHT_TOTAL = NIGHT.reduce((s, x) => s + x[1], 0);
+const LANE = { W: 0, R: 1, L: 2, D: 3 }, LCOL = { W: '#f5a25d', R: '#c4a6ff', L: '#62b3ff', D: '#6a52e0' };
+function hypnogram(p, a) {
+  const [x0, y0, x1, y1] = L.chart, lh = (y1 - y0) / 4, bw = x1 - x0;
+  c.save(); c.globalAlpha = a;
+  c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { c.beginPath(); c.moveTo(x0, y0 + i * lh); c.lineTo(x1, y0 + i * lh); c.stroke(); }
+  const edge = x0 + bw * p;
+  c.beginPath(); c.rect(x0 - 10, y0 - 20, edge - x0 + 10, y1 - y0 + 40); c.clip();
+  let acc = 0, prev = null;
+  for (const [st, m] of NIGHT) {
+    const xa = x0 + bw * acc / NIGHT_TOTAL, xb = x0 + bw * (acc + m) / NIGHT_TOTAL;
+    const yc = y0 + lh * (LANE[st] + 0.5), bh = lh * 0.56;
+    if (prev) {
+      c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(xa, y0 + lh * (LANE[prev] + 0.5)); c.lineTo(xa, yc); c.stroke();
+    }
+    const gr = c.createLinearGradient(0, yc - bh / 2, 0, yc + bh / 2);
+    gr.addColorStop(0, LCOL[st]); gr.addColorStop(1, LCOL[st] + 'aa');
+    c.fillStyle = gr; c.shadowColor = LCOL[st]; c.shadowBlur = 18;
+    rr(xa + 1, yc - bh / 2, Math.max(4, xb - xa - 2), bh, 9); c.fill(); c.shadowBlur = 0;
+    acc += m; prev = st;
+  }
+  c.restore();
+  if (p > 0 && p < 1) {
+    c.save(); c.globalAlpha = a;
+    const gl = c.createLinearGradient(edge - 60, 0, edge, 0); gl.addColorStop(0, 'rgba(196,184,255,0)'); gl.addColorStop(1, 'rgba(196,184,255,0.25)');
+    c.fillStyle = gl; c.fillRect(edge - 60, y0 - 10, 60, y1 - y0 + 20);
+    c.strokeStyle = '#e6e0ff'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(edge, y0 - 16); c.lineTo(edge, y1 + 16); c.stroke();
+    c.restore();
+  }
+}
+function placeChartLabels() {
+  const [x0, y0, x1, y1] = L.chart, lh = (y1 - y0) / 4;
+  ['lW', 'lR', 'lL', 'lD'].forEach((id, i) => { const el = $(id); el.style.left = (x0 - (VERTICAL ? 170 : 150)) + 'px'; el.style.top = (y0 + lh * (i + 0.5) - 14) + 'px'; el.style.color = LCOL['WRLD'[i]]; });
+  const hrs = [0, 106, 226, 346, 452];
+  hrs.forEach((m, i) => { const el = $('h' + i); el.style.left = (x0 + (x1 - x0) * m / 452 - 50) + 'px'; el.style.top = (y1 + 26) + 'px'; el.style.width = '100px'; el.style.textAlign = 'center'; el.style.fontSize = VERTICAL ? '18px' : '20px'; });
+  if (VERTICAL) { $('h1').style.display = 'none'; $('h3').style.display = 'none'; }
+}
+placeChartLabels();
+
+function ring(cx, cy, r, p, a) {
+  c.save(); c.globalAlpha = a; c.lineCap = 'round';
+  const s0 = Math.PI * 0.75, sweep = Math.PI * 1.5;
+  c.lineWidth = 30; c.strokeStyle = 'rgba(255,255,255,0.08)'; c.beginPath(); c.arc(cx, cy, r, s0, s0 + sweep); c.stroke();
+  const gr = c.createLinearGradient(cx - r, cy + r, cx + r, cy - r); gr.addColorStop(0, '#ffcf8a'); gr.addColorStop(1, '#f07f3a');
+  c.strokeStyle = gr; c.shadowColor = '#f5a25d'; c.shadowBlur = 30;
+  c.beginPath(); c.arc(cx, cy, r, s0, s0 + sweep * p); c.stroke();
+  const ex = cx + Math.cos(s0 + sweep * p) * r, ey = cy + Math.sin(s0 + sweep * p) * r;
+  c.shadowBlur = 0; glow(ex, ey, 40, 'rgba(255,207,138,0.6)');
+  c.restore();
+}
+
+function breathing(cx, cy, base, t, a) {
+  // 4-7-8, compressed to 6 seconds so a full cycle fits the scene.
+  const u = t % 6.0;
+  let k, word, n;
+  if (u < 1.6) { k = easeIO(u / 1.6); word = 'Breathe in'; n = 4; }
+  else if (u < 3.0) { k = 1; word = 'Hold'; n = 7; }
+  else { k = 1 - easeIO((u - 3.0) / 2.6); word = 'Breathe out'; n = 8; }
+  const r = base * (1 + 0.62 * k);
+  c.save(); c.globalAlpha = a;
+  glow(cx, cy, r * 2.0, `rgba(123,97,255,${0.18 + 0.12 * k})`);
+  for (let i = 3; i >= 1; i--) {
+    c.strokeStyle = `rgba(196,184,255,${0.08 * i})`; c.lineWidth = 2;
+    c.beginPath(); c.arc(cx, cy, r + i * 26 * (0.6 + 0.4 * k), 0, 6.283); c.stroke();
+  }
+  const fill = c.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+  fill.addColorStop(0, 'rgba(160,140,255,0.55)'); fill.addColorStop(1, 'rgba(63,214,160,0.18)');
+  c.fillStyle = fill; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.fill();
+  c.strokeStyle = 'rgba(230,224,255,0.7)'; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.stroke();
+  c.restore();
+  return { word, n };
+}
+function waveform(x, y, w, t, a) {
+  c.save(); c.globalAlpha = a;
+  const n = wave.length, bw = w / n;
+  for (let i = 0; i < n; i++) {
+    const q = wave[i], h = 10 + 70 * q.a * (0.5 + 0.5 * Math.sin(t * q.f * 2 + q.p)) * (0.6 + 0.4 * Math.sin(i / n * Math.PI));
+    const gr = c.createLinearGradient(0, y - h, 0, y + h); gr.addColorStop(0, '#c4b8ff'); gr.addColorStop(1, '#3fd6a0');
+    c.fillStyle = gr; rr(x + i * bw + bw * 0.25, y - h / 2, bw * 0.5, h, bw * 0.25); c.fill();
+  }
+  c.restore();
+}
+
+const MARKS = [6.77, 8.27, 10.45, 13.58, 22.37];
+const MCOL = ['#ffcf6b', '#ffe08a', '#3fd6a0', '#f5a25d', '#c4b8ff'];
+const ang = h => -Math.PI / 2 + h / 24 * Math.PI * 2;
+function dial(cx, cy, r, hand, a) {
+  c.save(); c.globalAlpha = a;
+  glow(cx, cy, r * 1.5, 'rgba(123,97,255,0.12)');
+  c.strokeStyle = 'rgba(255,255,255,0.09)'; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.stroke();
+  for (let h = 0; h < 24; h++) {
+    const q = ang(h), l = h % 6 === 0 ? 22 : 10;
+    c.strokeStyle = h % 6 === 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)';
+    c.beginPath(); c.moveTo(cx + Math.cos(q) * (r - l), cy + Math.sin(q) * (r - l)); c.lineTo(cx + Math.cos(q) * r, cy + Math.sin(q) * r); c.stroke();
+  }
+  // sleep window 11:14 PM - 6:46 AM
+  c.lineCap = 'round'; c.lineWidth = 28; c.strokeStyle = 'rgba(106,82,224,0.75)';
+  c.beginPath(); c.arc(cx, cy, r - 50, ang(23.23), ang(24 + 6.77)); c.stroke();
+  // day arc swept by the hand
+  const gr = c.createConicGradient(-Math.PI / 2, cx, cy);
+  gr.addColorStop(0.25, '#ffcf6b'); gr.addColorStop(0.45, '#3fd6a0'); gr.addColorStop(0.6, '#f5a25d'); gr.addColorStop(0.93, '#c4b8ff');
+  c.strokeStyle = gr; c.lineWidth = 10; c.beginPath(); c.arc(cx, cy, r - 50, ang(6.77), ang(Math.max(6.77, hand))); c.stroke();
+  MARKS.forEach((h, i) => {
+    if (hand < h) return;
+    const k = back(clamp((hand - h) / 0.9)), q = ang(h), x = cx + Math.cos(q) * (r - 50), y = cy + Math.sin(q) * (r - 50);
+    glow(x, y, 34 * k, MCOL[i] + '99'); c.fillStyle = MCOL[i]; c.beginPath(); c.arc(x, y, 11 * k, 0, 6.283); c.fill();
+  });
+  const q = ang(hand);
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(cx + Math.cos(q) * r * 0.2, cy + Math.sin(q) * r * 0.2); c.lineTo(cx + Math.cos(q) * (r - 14), cy + Math.sin(q) * (r - 14)); c.stroke();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(cx + Math.cos(q) * (r - 14), cy + Math.sin(q) * (r - 14), 7, 0, 6.283); c.fill();
+  c.restore();
+}
+function placeDial() {
+  const [cx, cy, r] = L.dial;
+  $('s7m').style.left = (cx - 150) + 'px'; $('s7m').style.top = (cy - 80) + 'px';
+  MARKS.forEach((h, i) => {
+    const el = $('m' + i), q = ang(h), R = r + (VERTICAL ? 40 : 56);
+    const x = cx + Math.cos(q) * R, y = cy + Math.sin(q) * R;
+    const right = Math.cos(q) >= 0;
+    el.style.top = (y - 26) + 'px';
+    if (right) { el.style.left = x + 'px'; el.style.textAlign = 'left'; }
+    else { el.style.left = (x - 220) + 'px'; el.style.width = '220px'; el.style.textAlign = 'right'; }
+  });
+}
+placeDial();
+
+function privacy(cx, cy, r, cl, t, p, a) {
+  c.save(); c.globalAlpha = a;
+  glow(cx, cy, r * 1.9, 'rgba(123,97,255,0.2)');
+  c.setLineDash([10, 12]); c.lineDashOffset = -t * 30; c.strokeStyle = 'rgba(196,184,255,0.7)'; c.lineWidth = 3;
+  c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.stroke(); c.setLineDash([]);
+  // phone and watch
+  c.strokeStyle = '#e8e4ff'; c.lineWidth = 5; rr(cx - 78, cy - 92, 84, 176, 20); c.stroke();
+  c.fillStyle = '#e8e4ff'; rr(cx - 50, cy - 82, 28, 8, 4); c.fill();
+  rr(cx + 24, cy - 30, 56, 68, 18); c.stroke(); c.fillRect(cx + 40, cy - 46, 24, 14); c.fillRect(cx + 40, cy + 40, 24, 14);
+  // link to a server that breaks
+  const [kx, ky] = L.cloud;
+  const vx = kx - cx, vy = ky - cy, d = Math.hypot(vx, vy), ux = vx / d, uy = vy / d;
+  const sx = cx + ux * (r + 16), sy = cy + uy * (r + 16), ex = kx - ux * 110, ey = ky - uy * 90;
+  const gap = ease(p) * 70, mx = (sx + ex) / 2, my = (sy + ey) / 2;
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.setLineDash([8, 10]); c.lineWidth = 3;
+  c.beginPath(); c.moveTo(sx, sy); c.lineTo(mx - ux * gap, my - uy * gap); c.moveTo(mx + ux * gap, my + uy * gap); c.lineTo(ex, ey); c.stroke(); c.setLineDash([]);
+  if (p > 0) {
+    c.strokeStyle = `rgba(255,122,122,${ease(p)})`; c.lineWidth = 6; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(mx - 18, my - 18); c.lineTo(mx + 18, my + 18); c.moveTo(mx + 18, my - 18); c.lineTo(mx - 18, my + 18); c.stroke();
+  }
+  // cloud, dimmed once cut off
+  c.globalAlpha = a * (1 - 0.6 * ease(p));
+  c.fillStyle = 'rgba(255,255,255,0.14)'; c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 4;
+  c.beginPath(); c.arc(kx - 40, ky + 10, 44, Math.PI * 0.5, Math.PI * 1.5); c.arc(kx, ky - 22, 56, Math.PI, 0); c.arc(kx + 50, ky + 12, 40, -Math.PI * 0.5, Math.PI * 0.5); c.closePath(); c.fill(); c.stroke();
+  c.restore();
 }
 
 // ---------- scenes ----------
-function setLayer(id, o, extra = '') {
-  const el = $(id); el.style.opacity = o; el.style.display = o <= 0.001 ? 'none' : 'block';
-  if (extra) el.style.transform = extra;
-}
-function phoneIn(el, t, start, fromX = 0, fromY = 160, rot = 0, floatAmp = 10, base = 1) {
+function layer(id, o) { const el = $(id); el.style.opacity = o; el.style.display = o <= 0.001 ? 'none' : 'block'; }
+function phoneIn(el, t, start, fromX = 0, fromY = 180, rot = 0, base = 1) {
+  if (!el || el.dataset.off) return;
   const p = ease(prog(t, start, start + 1.3));
-  const float = Math.sin(t * 0.9) * floatAmp;
   el.style.opacity = p;
-  el.style.transform = `translate(${(1 - p) * fromX}px, ${(1 - p) * fromY + float}px) rotate(${rot * p}deg) scale(${base * (0.94 + 0.06 * p)})`;
+  el.style.transform = `translate(${(1 - p) * fromX}px, ${(1 - p) * fromY + Math.sin(t * 0.9) * 10}px) rotate(${rot * p}deg) scale(${base * (0.94 + 0.06 * p)})`;
 }
-function countdown(t, from = 18 * 60 + 42) {
-  const s = Math.max(0, from - Math.floor(t));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
+const countdown = t => { const s = Math.max(0, 18 * 60 + 42 - Math.floor(t)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const ANSWER = 'You woke 3 times, all after 2 AM. Nights like that were more common after caffeine late in the day. A pattern in your own nights, not proof.';
 
 window.render = function (t) {
-  window.scrim = Math.max(vis(t, 1.2, 5.4, 0.9, 0.8), vis(t, 5.2, 9.6, 0.4, 0.6),
-                          vis(t, 38.6, 43.4, 0.5, 0.6), vis(t, 43.2, 50, 0.6, 0.1));
+  c.clearRect(0, 0, W, H);
+  const o = {}; for (const k in S) o[k] = vis(t, S[k][0], S[k][1], k == 1 ? 0.9 : 0.5, k == 10 ? 0.1 : 0.6);
+  for (const k in S) layer('s' + k, o[k]);
 
-  // 1. Opening 0.0 - 5.4
-  const o1 = vis(t, 0, 5.4, 0.9, 0.8);
-  setLayer('s1', o1);
-  if (o1 > 0) {
-    const rise = easeIO(prog(t, 0, 3.2));
-    const lift = easeIO(prog(t, 4.4, 5.4));
-    $('moon').style.transform = `translateY(${(1 - rise) * 140 - lift * 60}px) scale(${0.86 + 0.14 * rise})`;
-    $('bite').setAttribute('cx', lerp(300, 232, easeIO(prog(t, 0.2, 3.4))));
-    reveal(T.s1t, t, 1.7, 0.1, 1.0, 30);
-    reveal(T.s1g, t, 2.6, 0.12, 0.9, 18);
+  // 1. Moon
+  if (o[1] > 0) {
+    const [mx, my, mr] = L.moon, rise = easeIO(prog(t, 0, 3.2)), lift = easeIO(prog(t, 4.6, 5.6));
+    moon(mx, my + (1 - rise) * 120 - lift * 60, mr * (0.86 + 0.14 * rise), easeIO(prog(t, 0.2, 4.0)) * 0.55, o[1]);
+    const sp = prog(t, 3.3, 4.1);
+    if (sp > 0 && sp < 1) {
+      const sx = lerp(W * 0.86, W * 0.56, sp), sy = lerp(H * 0.08, H * 0.3, sp);
+      const tail = c.createLinearGradient(sx, sy, sx + W * 0.1, sy - H * 0.07);
+      tail.addColorStop(0, `rgba(255,255,255,${Math.sin(Math.PI * sp)})`); tail.addColorStop(1, 'rgba(255,255,255,0)');
+      c.strokeStyle = tail; c.lineWidth = 3; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + W * 0.1, sy - H * 0.07); c.stroke();
+    }
+    reveal(T.s1t, t, 1.7, 0.1, 1.0, 30); reveal(T.s1g, t, 2.6, 0.12, 0.9, 18);
   }
 
-  // 2. Premise 5.2 - 9.6
-  const o2 = vis(t, 5.2, 9.6, 0.4, 0.6);
-  setLayer('s2', o2);
-  if (o2 > 0) {
-    const a = 1 - easeIO(prog(t, 7.1, 7.5));
-    $('s2a').style.opacity = a;
-    reveal(T.s2a, t, 5.3, 0.07, 0.7);
-    $('s2b').style.opacity = t > 7.3 ? 1 : 0;
-    reveal(T.s2b, t, 7.4, 0.09, 0.8, 30);
+  // 2. Watch → readings → Zoon
+  if (o[2] > 0) {
+    const [wx, wy, ws] = L.watch, [ox, oy] = L.orb, l = t - S[2][0];
+    watchShape(wx, wy - (1 - ease(prog(l, 0, 1))) * 60, ws, o[2] * ease(prog(l, 0, 1)), t);
+    const cols = ['#ff6b81', '#62b3ff', '#3fd6a0', '#f5a25d', '#c4b8ff'];
+    const anchors = [];
+    L.chips.forEach((p, i) => {
+      const el = $('c' + i), k = back(prog(l, 0.5 + i * 0.18, 1.2 + i * 0.18));
+      el.style.opacity = clamp(k); el.style.transform = `translate(${(1 - k) * (wx - p[0] - 120)}px, ${(1 - k) * (wy - p[1])}px) scale(${0.6 + 0.4 * clamp(k)})`;
+      anchors.push([p[0] + 125, p[1] + 34]);
+    });
+    const s = ease(prog(l, 1.8, 2.6));
+    if (s > 0) streams(t, anchors, [ox, oy], cols, s * o[2]);
+    const orbA = ease(prog(l, 1.9, 3.0)) * o[2];
+    if (orbA > 0) {
+      c.save(); c.globalAlpha = orbA;
+      glow(ox, oy, 230 + 20 * Math.sin(t * 2), 'rgba(123,97,255,0.35)');
+      c.restore();
+      moon(ox, oy, 86, 0.55, orbA);
+    }
+    const sw = prog(l, 2.9, 3.3);
+    $('s2a').style.opacity = 1 - easeIO(sw); reveal(T.s2a, t, S[2][0] + 0.2, 0.07, 0.7);
+    $('s2b').style.opacity = sw > 0 ? 1 : 0; reveal(T.s2b, t, S[2][0] + 3.2, 0.09, 0.8, 30);
   }
 
-  // 3. Recovery 9.4 - 15.4
-  const o3 = vis(t, 9.4, 15.4, 0.5, 0.6);
-  setLayer('s3', o3);
-  if (o3 > 0) {
-    reveal(T.s3h, t, 9.8, 0.08); reveal(T.s3b, t, 10.6, 0.035, 0.6, 14);
-    phoneIn($('s3p'), t, 9.5, 0, 220, 0, 10, VERTICAL ? 1.18 : 1);
+  // 3. Hypnogram
+  if (o[3] > 0) {
+    const l = t - S[3][0], p = easeIO(prog(l, 0.6, 4.6));
+    hypnogram(p, o[3]);
+    reveal(T.s3h, t, S[3][0] + 0.2, 0.08);
+    $('s3v').textContent = hm(452 * p); pop($('s3n'), t, S[3][0] + 0.5);
+    ['lW', 'lR', 'lL', 'lD', 'h0', 'h1', 'h2', 'h3', 'h4'].forEach((id, i) => { if ($(id).style.display !== 'none') pop($(id), t, S[3][0] + 0.4 + i * 0.05, 12); });
   }
 
-  // 4. Last night 15.2 - 21.2
-  const o4 = vis(t, 15.2, 21.2, 0.5, 0.6);
-  setLayer('s4', o4);
-  if (o4 > 0) {
-    phoneIn($('s4p'), t, 15.3, VERTICAL ? 0 : -160, VERTICAL ? 200 : 60, 0, 10, VERTICAL ? 1.18 : 1);
-    reveal(T.s4h, t, 15.7, 0.08); reveal(T.s4b, t, 16.5, 0.035, 0.6, 14);
+  // 4. Shortfall ring + tonight's plan + the real screen
+  if (o[4] > 0) {
+    const l = t - S[4][0], p = easeIO(prog(l, 0.5, 2.6)), [rx, ry, rr_] = L.ring;
+    ring(rx, ry, rr_, 0.79 * p, o[4]);
+    $('s4r').style.left = (rx - 210) + 'px'; $('s4r').style.top = (ry - 80) + 'px';
+    $('s4v').textContent = hm(117 * p); pop($('s4r'), t, S[4][0] + 0.4, 16);
+    reveal(T.s4h, t, S[4][0] + 0.2, 0.08);
+    [0, 1, 2].forEach(i => pop($('p' + i), t, S[4][0] + 1.6 + i * 0.35, 40));
+    phoneIn($('s4p'), t, S[4][0] + 2.2, 200, 40, 0, 0.92);
   }
 
-  // 5. Coach 21.0 - 27.2
-  const o5 = vis(t, 21.0, 27.2, 0.5, 0.6);
-  setLayer('s5', o5);
-  if (o5 > 0) {
-    reveal(T.s5h, t, 21.4, 0.1); reveal(T.s5b, t, 22.1, 0.035, 0.6, 14);
-    phoneIn($('s5p'), t, 21.1, 0, 220, 0, 10, VERTICAL ? 1.18 : 1);
-    const q = ease(prog(t, 21.6, 23.0));
-    $('s5q').style.opacity = 0.5 * q;
-    $('s5q').style.transform = `translate(${(1 - q) * -120}px, ${Math.sin(t * 0.8 + 1) * 8}px) rotate(${6 * q}deg) scale(0.92)`;
+  // 5. Coach conversation
+  if (o[5] > 0) {
+    const l = t - S[5][0], [cx0, cy0, cw] = L.chat;
+    reveal(T.s5h, t, S[5][0] + 0.2, 0.1); reveal(T.s5b, t, S[5][0] + 0.7, 0.035, 0.6, 14);
+    const me = $('b0'); me.style.left = (cx0 + cw - (VERTICAL ? 700 : 620)) + 'px'; me.style.top = cy0 + 'px'; me.style.maxWidth = (VERTICAL ? 700 : 560) + 'px';
+    pop(me, t, S[5][0] + 1.1, 30);
+    const ty = $('b1'); ty.style.left = cx0 + 'px'; ty.style.top = (cy0 + 150) + 'px';
+    const typing = l > 1.9 && l < 2.9; ty.style.opacity = typing ? 1 : 0;
+    ty.querySelectorAll('i').forEach((d, i) => d.style.opacity = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 9 - i * 0.9)));
+    const an = $('b2'); an.style.left = cx0 + 'px'; an.style.top = (cy0 + 150) + 'px'; an.style.maxWidth = (VERTICAL ? 900 : 700) + 'px';
+    an.style.opacity = l >= 2.9 ? 1 : 0;
+    const n = Math.floor(ANSWER.length * clamp((l - 2.9) / 2.2));
+    $('b2t').textContent = ANSWER.slice(0, n);
+    const ev = $('b3'); ev.style.left = cx0 + 'px'; ev.style.top = (cy0 + (VERTICAL ? 470 : 430)) + 'px';
+    pop(ev, t, S[5][0] + 5.2, 16);
+    phoneIn($('s5p'), t, S[5][0] + 0.4, 0, 220, 0, 1);
   }
 
-  // 6. Plan / wind down / wake 27.0 - 33.4
-  const o6 = vis(t, 27.0, 33.4, 0.5, 0.6);
-  setLayer('s6', o6);
-  if (o6 > 0) {
-    reveal(T.s6h, t, 27.2, 0.1, 0.8);
-    phoneIn($('s6a'), t, 27.5, 120, 120, -7, 8, 0.84);
-    phoneIn($('s6b'), t, 27.3, 0, 180, 0, 10, 0.84);
-    phoneIn($('s6c'), t, 27.7, -120, 120, 7, 8, 0.84);
+  // 6. Breathing + sound
+  if (o[6] > 0) {
+    const l = t - S[6][0], [bx, by, br] = L.breath;
+    const b = breathing(bx, by, br, Math.max(0, l - 0.3), o[6] * ease(prog(l, 0, 0.8)));
+    $('s6w').textContent = b.word; $('s6n').textContent = `${b.n} seconds`;
+    $('s6l').style.left = (bx - 180) + 'px'; $('s6l').style.top = (by - 44) + 'px'; $('s6l').style.opacity = ease(prog(l, 0.3, 1));
+    reveal(T.s6h, t, S[6][0] + 0.2, 0.1); reveal(T.s6b, t, S[6][0] + 0.8, 0.035, 0.6, 14);
+    const [wx, wy] = L.s6s;
+    waveform(wx, wy - 70, 700, t, o[6] * ease(prog(l, 0.8, 1.6)));
+    pop($('s6s'), t, S[6][0] + 1.2, 12);
   }
 
-  // 7. Wrist and Lock Screen 33.2 - 38.8
-  const o7 = vis(t, 33.2, 38.8, 0.5, 0.6);
-  setLayer('s7', o7);
-  if (o7 > 0) {
-    reveal(T.s7h, t, 33.4, 0.08, 0.8);
-    const w = ease(prog(t, 33.6, 34.9));
-    $('s7w').style.opacity = w;
-    $('s7w').style.transform = `translateY(${(1 - w) * 120 + Math.sin(t * 0.9) * 8}px)`;
-    const i = ease(prog(t, 34.0, 35.0));
-    $('s7i').style.opacity = i;
-    $('s7i').style.transform = `scaleX(${0.4 + 0.6 * i})`;
-    const l = ease(prog(t, 34.5, 35.7));
-    $('s7l').style.opacity = l;
-    $('s7l').style.transform = `translateY(${(1 - l) * 60}px)`;
-    const cd = countdown(t - 34.0);
-    $('s7it').textContent = cd; $('s7lt').textContent = cd;
-    reveal(T.s7b, t, 35.6, 0.05, 0.6, 14);
+  // 7. Body clock
+  if (o[7] > 0) {
+    const l = t - S[7][0], [dx, dy, dr] = L.dial, hand = lerp(5.5, 23.2, easeIO(prog(l, 0.5, 4.8)));
+    dial(dx, dy, dr, hand, o[7] * ease(prog(l, 0, 0.8)));
+    MARKS.forEach((h, i) => { const el = $('m' + i), k = ease(clamp((hand - h) / 0.8)); el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * 12}px)`; });
+    $('s7v').textContent = Math.round(88 * ease(prog(l, 0.5, 3.5))); pop($('s7m'), t, S[7][0] + 0.4, 12);
+    reveal(T.s7h, t, S[7][0] + 0.2, 0.08); reveal(T.s7b, t, S[7][0] + 0.8, 0.035, 0.6, 14);
   }
 
-  // 8. Privacy 38.6 - 43.4
-  const o8 = vis(t, 38.6, 43.4, 0.5, 0.6);
-  setLayer('s8', o8);
-  if (o8 > 0) {
-    const k = ease(prog(t, 38.7, 39.8));
-    $('lock').style.opacity = k;
-    $('lock').style.transform = `translateY(${(1 - k) * 40}px) scale(${0.8 + 0.2 * k})`;
-    reveal(T.s8h, t, 39.1, 0.12, 0.8, 30);
-    reveal(T.s8b, t, 40.0, 0.05, 0.6, 14);
-    reveal(T.s8c, t, 40.8, 0.06, 0.6, 10);
+  // 8. Wrist, Siri, Dynamic Island, Lock Screen
+  if (o[8] > 0) {
+    const l = t - S[8][0];
+    reveal(T.s8h, t, S[8][0] + 0.2, 0.08, 0.8);
+    const w = ease(prog(l, 0.3, 1.5)); $('s8w').style.opacity = w; $('s8w').style.transform = `translateY(${(1 - w) * 120 + Math.sin(t * 0.9) * 8}px)`;
+    const s = back(prog(l, 0.7, 1.5)); $('s8s').style.opacity = clamp(s); $('s8s').style.transform = `scale(${0.7 + 0.3 * s})`;
+    $('s8s').querySelector('.orb').style.transform = `rotate(${t * 120}deg)`;
+    const i = ease(prog(l, 1.5, 2.4)); $('s8i').style.opacity = i; $('s8i').style.transform = `scaleX(${0.4 + 0.6 * i})`;
+    const lv = ease(prog(l, 1.9, 3.0)); $('s8l').style.opacity = lv; $('s8l').style.transform = `translateY(${(1 - lv) * 60}px)`;
+    const cd = countdown(l - 1.5); $('s8it').textContent = cd; $('s8lt').textContent = cd;
+    reveal(T.s8b, t, S[8][0] + 2.9, 0.05, 0.6, 14);
   }
 
-  // 9. End card 43.2 - 49.0
-  const o9 = vis(t, 43.2, 50, 0.6, 0.1);
-  setLayer('s9', o9);
-  if (o9 > 0) {
-    const ic = ease(prog(t, 43.3, 44.6));
-    $('s9i').style.opacity = ic;
-    $('s9i').style.transform = `translateY(${(1 - ic) * 50}px) scale(${0.82 + 0.18 * ic})`;
-    reveal(T.s9w, t, 44.0, 0.1, 1.0, 30);
-    reveal(T.s9t, t, 44.8, 0.12, 0.9, 18);
-    reveal(T.s9s, t, 45.8, 0.05, 0.7, 10);
+  // 9. Privacy
+  if (o[9] > 0) {
+    const l = t - S[9][0], [px, py, pr] = L.shield;
+    privacy(px, py, pr, L.cloud, t, prog(l, 1.3, 2.3), o[9] * ease(prog(l, 0, 0.8)));
+    reveal(T.s9h, t, S[9][0] + 0.6, 0.12, 0.8, 30); reveal(T.s9b, t, S[9][0] + 1.4, 0.05, 0.6, 14); reveal(T.s9c, t, S[9][0] + 2.2, 0.06, 0.6, 10);
   }
 
-  $('fade').style.opacity = Math.max(1 - ease(prog(t, 0, 1.2)), easeIO(prog(t, 48.0, 49.0)));
-  // Last: the canvas sits behind everything, and needs this frame's text boxes.
+  // 10. End card
+  if (o[10] > 0) {
+    const l = t - S[10][0], ic = ease(prog(l, 0.1, 1.4));
+    $('s10i').style.opacity = ic; $('s10i').style.transform = `translateY(${(1 - ic) * 50}px) scale(${0.82 + 0.18 * ic})`;
+    reveal(T.s10w, t, S[10][0] + 0.8, 0.1, 1.0, 30); reveal(T.s10t, t, S[10][0] + 1.6, 0.12, 0.9, 18); reveal(T.s10s, t, S[10][0] + 2.6, 0.05, 0.7, 10);
+  }
+
+  $('fade').style.opacity = Math.max(1 - ease(prog(t, 0, 1.2)), easeIO(prog(t, DUR - 1.0, DUR)));
   drawSky(t, quietZones());
 };
-
-window.ready = Promise.all([
-  document.fonts.ready,
-  ...Array.from(document.images).map(im => im.decode().catch(() => {}))
-]).then(() => true);
+window.DURATION = DUR;
+window.ready = Promise.all([document.fonts.ready, ...Array.from(document.images).map(im => im.decode().catch(() => {}))]).then(() => true);
 window.render(0);
 </script>
 </body>
