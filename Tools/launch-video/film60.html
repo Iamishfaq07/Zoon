@@ -5,7 +5,7 @@
 <title>Zoon Launch Film</title>
 <!--
   The launch film. Every frame is drawn by render(t) at a fixed clock, so a
-  render is identical every time. Real screens come from docs/screenshots
+  render is identical every time. Real screens come from docs/screenshots/hires
   (refreshed by the Screenshots workflow); everything else is drawn here.
   Widescreen: film.html   Vertical 9:16: film.html?v=1   (see render.js)
 -->
@@ -124,6 +124,17 @@
   .tcap span { display: block; font: 600 18px/1.3 'Manrope'; color: rgba(244,245,251,0.6); margin-top: 4px; }
   .tl-label { position: absolute; width: 180px; text-align: center; font: 700 19px/1.25 'Manrope'; color: rgba(244,245,251,0.65); text-shadow: 0 0 14px rgba(6,7,16,0.95); }
   .tl-label span { display: block; font: 800 25px/1.2 'Nunito'; color: #f4f5fb; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tour { position: absolute; width: 404px; height: 878px; border-radius: 66px; padding: 12px;
+    background: linear-gradient(160deg, #2a2d3f, #0c0d14 40%, #1b1d29); box-shadow: 0 0 0 2px rgba(255,255,255,0.08) inset, 0 60px 120px rgba(0,0,0,0.55), 0 0 140px rgba(123,97,255,0.22); }
+  .tour .screen { position: relative; width: 380px; height: 854px; border-radius: 55px; overflow: hidden; background: #0b0d1f; }
+  .tour .screen img { position: absolute; inset: 0; width: 380px; height: 854px; object-fit: cover; object-position: top; }
+  .finger { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.55), rgba(255,255,255,0.28) 60%, rgba(255,255,255,0.12));
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.65), 0 10px 30px rgba(0,0,0,0.4); }
+  .ripple { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9); }
+  .tour-cap { position: absolute; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.38) 100%); }
+  #grain { position: absolute; inset: 0; pointer-events: none; opacity: 0.05; mix-blend-mode: soft-light; }
   .dial-label { position: absolute; font: 700 22px/1.2 'Manrope'; white-space: nowrap; }
   .dial-label span { display: block; font: 800 26px/1.1 'Nunito'; color: var(--ink); font-variant-numeric: tabular-nums; }
   #fade { position: absolute; inset: 0; background: #000; }
@@ -181,6 +192,20 @@
     <div class="phone" id="s4p"><img src="../../docs/screenshots/hires/today.jpg"></div>
   </div>
 
+  <!-- T. A tour: tap, zoom, move on -->
+  <div class="layer" id="st">
+    <div class="abs tour-cap" id="tcap"><div class="kicker">Take a tour</div>
+      <div class="headline" id="tq0" style="margin-top:22px;position:absolute;width:100%"></div>
+      <div class="headline" id="tq1" style="margin-top:22px;position:absolute;width:100%"></div>
+      <div class="headline" id="tq2" style="margin-top:22px;position:absolute;width:100%"></div>
+    </div>
+    <div class="tour" id="tph"><div class="screen">
+      <img id="ts0" src="../../docs/screenshots/hires/today.jpg"><img id="ts1" src="../../docs/screenshots/hires/sleepDetail.jpg"><img id="ts2" src="../../docs/screenshots/hires/trends.jpg">
+    </div></div>
+    <div class="ripple" id="trp"></div>
+    <div class="finger" id="tfg"></div>
+  </div>
+
   <!-- 5. Coach -->
   <div class="layer" id="s5">
     <div class="abs" id="s5c"><div class="kicker">AI Coach</div><div id="s5h" class="headline" style="margin-top:22px"></div><div id="s5b" class="body" style="margin-top:18px"></div><div class="badge" id="s5g" style="margin-top:22px"><div class="orb"></div>Apple Intelligence · on device</div></div>
@@ -222,7 +247,7 @@
   <div class="layer" id="sp">
     <div class="center headline m" id="sph"></div>
     <div class="center body" id="spb"></div>
-    <div class="phone" id="tp0"><img src="../../docs/screenshots/snoreCheck.jpg"></div>
+    <div class="phone" id="tp0"><img src="../../docs/screenshots/hires/snoreCheck.jpg"></div>
     <div class="phone" id="tp1"><img src="../../docs/screenshots/hires/nap.jpg"></div>
     <div class="phone" id="tp2"><img src="../../docs/screenshots/hires/soundscapes.jpg"></div>
     <div class="tcap" id="tc0">Snore Check<span>Apple's sound classifier, on device</span></div>
@@ -273,6 +298,8 @@
     <div id="s10t" class="tagline center"></div>
     <div id="s10s" class="soon center"></div>
   </div>
+  <div id="vignette"></div>
+  <canvas id="grain"></canvas>
   <div id="fade"></div>
 </div>
 
@@ -294,17 +321,19 @@ const hm = m => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2,
 
 // Scene windows [start, end].
 // 62 s. Neighbouring scenes overlap by 0.1 s, so every cut dips through the sky.
-const S = { h: [0, 3.4], 1: [3.3, 7.2], 2: [7.1, 12.1], 3: [12.0, 16.2], 4: [16.1, 20.9], 5: [20.8, 26.4],
-            l: [26.3, 31.6], 6: [31.5, 35.7], 7: [35.6, 39.8], p: [39.7, 43.9], w: [43.8, 48.2], 8: [48.1, 52.1],
-            9: [52.0, 55.6], m: [55.5, 59.0], 10: [58.9, 62.8] };
-const DUR = 62.3;
+// 66 s. Neighbouring scenes overlap by 0.1 s, so every cut dips through the sky.
+const S = { h: [0, 3.4], 1: [3.3, 7.2], 2: [7.1, 12.1], 3: [12.0, 16.2], t: [16.1, 24.5], 5: [24.4, 30.0],
+            l: [29.9, 35.2], 6: [35.1, 39.3], 7: [39.2, 43.4], p: [43.3, 47.5], w: [47.4, 51.8], 8: [51.7, 55.7],
+            9: [55.6, 59.2], m: [59.1, 62.6], 10: [62.5, 66.4] };
+const DUR = 65.9;
 // Night turns to morning from the morning scene on.
-const dawnAt = t => easeIO(prog(t, 55.3, 58.3));
+const dawnAt = t => easeIO(prog(t, 58.9, 61.9));
 
 // ---------- layout: [x, y, width] per orientation ----------
 const Lh = {
   moon: [960, 360, 150], s1t: [null, 590], s1g: [null, 782],
   sha: [null, 360], shb: [null, 540],
+  tour: { phone: [1198, 101], focus: [1400, 540], zoom: 1.75, cap: [180, 380, 820] },
   s2a: [null, 84], s2b: [null, 84], watch: [200, 560, 0.72], orb: [1640, 600],
   chips: [[380, 250], [380, 395], [380, 540], [380, 685], [380, 830]],
   net: { layers: [[880, 5, 130], [1090, 7, 96], [1300, 5, 130]], cy: 600, horizontal: true }, s2n: [810, 930, 560], s2z: [1540, 760, 200],
@@ -325,6 +354,7 @@ const Lh = {
 const Lv = {
   moon: [540, 640, 170], s1t: [null, 900], s1g: [null, 1080],
   sha: [null, 760], shb: [null, 920],
+  tour: { phone: [338, 700], focus: [540, 1330], zoom: 1.45, cap: [90, 130, 900] },
   s2a: [null, 150], s2b: [null, 150], watch: [540, 440, 0.62], orb: [540, 1540],
   chips: [[40, 640], [40, 780], [40, 920], [40, 1060], [40, 1200]],
   net: { layers: [[470, 5, 140], [660, 7, 100], [850, 5, 140]], cy: 920, horizontal: true }, s2n: [410, 1270, 500], s2z: [440, 1650, 200],
@@ -355,6 +385,7 @@ function place(id, p) {
 place('s3n', L.s3n);
 L.chips.forEach((p, i) => place('c' + i, p));
 L.plans.forEach((p, i) => place('p' + i, p));
+$('s4').style.display = 'none';
 L.wf.forEach((p, i) => place('wf' + i, [p[0], p[1]]));  // p[2] is a scale, not a width
 L.cards.forEach((p, i) => place('e' + i, p));
 L.tools.forEach((p, i) => { place('tp' + i, [p[0], p[1]]); const cap = $('tc' + i); cap.style.left = (p[0] + 202 - 180) + 'px'; cap.style.top = L.tcapY + 'px'; });
@@ -387,6 +418,9 @@ const T = {
   s2b: words($('s2b'), VERTICAL ? 'Read by AI, | on your iPhone.' : 'Read by AI, on your iPhone.', 2, 2),
   s3h: words($('s3h'), 'See the whole night.'),
   s4h: words($('s4h'), VERTICAL ? 'Know what tonight needs.' : 'Know what | tonight needs.'),
+  tq0: words($('tq0'), 'Tap your shortfall. It is measured against your own need.', 2, 2),
+  tq1: words($('tq1'), 'Tap Sleep. Every stage of the night.', 1, 1),
+  tq2: words($('tq2'), 'Tap Insights. It learns how you bounce back.', 1, 1),
   s5h: words($('s5h'), 'Ask Zoon anything.', 2),
   s5b: words($('s5b'), 'Answers from your own nights.'),
   slh: words($('slh'), 'It tests what works for you.', 2, 3),
@@ -411,7 +445,27 @@ const T = {
 
 // ---------- canvases ----------
 const sky = $('sky'), g = sky.getContext('2d'), fx = $('fx'), c = fx.getContext('2d');
-sky.width = fx.width = W; sky.height = fx.height = H;
+// Drawn at the device resolution (2x for the 4K render), not scaled up.
+const DPR = window.devicePixelRatio || 1;
+for (const cv of [sky, fx]) { cv.width = W * DPR; cv.height = H * DPR; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+g.setTransform(DPR, 0, 0, DPR, 0, 0); c.setTransform(DPR, 0, 0, DPR, 0, 0);
+// Film grain: a fixed noise tile, offset every frame. Its fine texture keeps
+// dark gradients from banding when a platform re-encodes the video.
+const grain = $('grain'), gctx = grain.getContext('2d');
+grain.width = W * DPR; grain.height = H * DPR; grain.style.width = W + 'px'; grain.style.height = H + 'px';
+const tile = document.createElement('canvas'); tile.width = tile.height = 256;
+(() => { const tc = tile.getContext('2d'), im = tc.createImageData(256, 256); let sd = 99;
+  for (let i = 0; i < im.data.length; i += 4) { sd = (sd * 16807) % 2147483647; const v = sd % 256; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+  tc.putImageData(im, 0, 0); })();
+// Static and drawn once: grain that changes every frame is pure noise to the
+// encoder and multiplied the bitrate tenfold for no visible gain; a fixed
+// pattern still breaks up the banding and costs almost nothing.
+let grainDrawn = false;
+function drawGrain() {
+  if (grainDrawn) return; grainDrawn = true;
+  gctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  for (let y = 0; y < H; y += 256) for (let x = 0; x < W; x += 256) gctx.drawImage(tile, x, y);
+}
 let seed = 7;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const stars = Array.from({ length: VERTICAL ? 480 : 420 }, () => ({
@@ -774,10 +828,59 @@ const ANSWER = '3 wakes after 2 AM, more common after late caffeine.';
 
 function sun(t) {
   const d = dawnAt(t); if (d <= 0) return;
-  const [sx, sy] = L.sun, x = W * sx, y = lerp(H + 90, H * sy, easeIO(prog(t, 55.7, 61.0)));
+  const [sx, sy] = L.sun, x = W * sx, y = lerp(H + 90, H * sy, easeIO(prog(t, 59.3, 64.6)));
   glow(x, y, 360, `rgba(255,190,130,${0.45 * d})`);
   const sg = c.createRadialGradient(x, y - 20, 10, x, y, 80); sg.addColorStop(0, '#fff6e0'); sg.addColorStop(1, '#ffb877');
   c.globalAlpha = d; c.fillStyle = sg; c.beginPath(); c.arc(x, y, 80, 0, 6.283); c.fill(); c.globalAlpha = 1;
+}
+
+// ---------- the tour ----------
+// Points on each screen, as fractions of the screenshot, from the real layout.
+const TOUR = [
+  { screen: 0, tap: [0.50, 0.30], zoomAt: [0.50, 0.30], at: 0.6 },   // Today: the shortfall ring
+  { screen: 1, tap: [0.39, 0.92], zoomAt: [0.50, 0.49], at: 3.0 },   // Sleep tab, then the stages chart
+  { screen: 2, tap: [0.60, 0.92], zoomAt: [0.50, 0.70], at: 5.6 },   // Insights tab, then Sleep resilience
+];
+function tour(l, t) {
+  const T_ = L.tour, [px, py] = T_.phone, ph = $('tph');
+  const rise = ease(prog(l, 0, 0.7));
+  // Which step, and how far into it.
+  let k = 0; for (let i = 0; i < TOUR.length; i++) if (l >= TOUR[i].at - 0.2) k = i;
+  const st = TOUR[k], sl = l - st.at;
+  // Screens: slide the new one in when its tab is tapped.
+  [0, 1, 2].forEach(i => {
+    const el = $('ts' + i);
+    if (i === 0) { const out = k >= 1 ? ease(prog(l, TOUR[1].at + 0.15, TOUR[1].at + 0.55)) : 0; el.style.transform = `translateX(${-30 * out}%)`; el.style.opacity = 1 - out; }
+    else { const inn = ease(prog(l, TOUR[i].at + 0.15, TOUR[i].at + 0.55)), out = i < 2 && k > i ? ease(prog(l, TOUR[i + 1].at + 0.15, TOUR[i + 1].at + 0.55)) : 0;
+      el.style.transform = `translateX(${100 * (1 - inn) - 30 * out}%)`; el.style.opacity = Math.min(inn, 1 - out); }
+  });
+  // Zoom: after the tap (and the slide), grow around the feature and bring it to the focus point.
+  const zin = easeIO(prog(sl, k === 0 ? 0.35 : 0.75, k === 0 ? 1.0 : 1.35)), zout = k < 2 ? easeIO(prog(sl, 2.0, 2.45)) : 0, z = zin * (1 - zout);
+  const ox = 12 + st.zoomAt[0] * 380, oy = 12 + st.zoomAt[1] * 854;
+  const P0 = [px + ox, py + oy], [fxp, fyp] = T_.focus, dx = (fxp - P0[0]) * z, dy = (fyp - P0[1]) * z, sc = 1 + (T_.zoom - 1) * z;
+  ph.style.left = px + 'px'; ph.style.top = py + 'px'; ph.style.transformOrigin = `${ox}px ${oy}px`;
+  ph.style.opacity = rise;
+  ph.style.transform = `translate(${dx}px, ${dy + (1 - rise) * 200}px) scale(${sc})`;
+  // The finger: glides to the tap point, taps, lifts away before the zoom.
+  const tapPt = [12 + st.tap[0] * 380, 12 + st.tap[1] * 854];
+  const map = q => [P0[0] + dx + (q[0] - ox) * sc, P0[1] + dy + (q[1] - oy) * sc + (1 - rise) * 200];
+  const target = map(tapPt), from = [target[0] + 160, target[1] + 220];
+  const move = easeIO(prog(sl, -0.2, 0.25)), press = prog(sl, 0.25, 0.4), lift = ease(prog(sl, 0.55, 0.85));
+  const fg = $('tfg'), fx_ = lerp(from[0], target[0], move), fy_ = lerp(from[1], target[1], move) + lift * 60;
+  fg.style.left = fx_ + 'px'; fg.style.top = fy_ + 'px';
+  fg.style.opacity = Math.min(move, 1 - lift) * rise;
+  fg.style.transform = `scale(${1 - 0.18 * Math.sin(Math.PI * press)})`;
+  const rp = $('trp'), rk = prog(sl, 0.3, 0.9);
+  rp.style.left = target[0] + 'px'; rp.style.top = target[1] + 'px';
+  rp.style.opacity = rk > 0 && rk < 1 ? 1 - rk : 0; rp.style.transform = `scale(${1 + 2.2 * ease(rk)})`;
+  // Captions: one per step, swapped as the step changes.
+  const cap = $('tcap'); cap.style.left = T_.cap[0] + 'px'; cap.style.top = T_.cap[1] + 'px'; cap.style.width = T_.cap[2] + 'px';
+  [0, 1, 2].forEach(i => {
+    const el = $('tq' + i), on = i === k;
+    const fadeOut = i < 2 ? easeIO(prog(l, TOUR[i + 1].at - 0.35, TOUR[i + 1].at - 0.05)) : 0;
+    el.style.opacity = on ? 1 - fadeOut : (i < k ? 0 : 0);
+    reveal(T['tq' + i], l + S.t[0], S.t[0] + TOUR[i].at + 0.1, 0.06, 0.5, 20);
+  });
 }
 
 window.render = function (t) {
@@ -852,6 +955,9 @@ window.render = function (t) {
     [0, 1, 2].forEach(i => pop($('p' + i), t, S[4][0] + 1.6 + i * 0.35, 40));
     phoneIn($('s4p'), t, S[4][0] + 2.2, 200, 40, 0, 0.92);
   }
+
+  // T. Tour: tap a feature, zoom into it, move on
+  if (o.t > 0) tour(t - S.t[0], t);
 
   // 5. Coach conversation
   if (o[5] > 0) {
@@ -961,6 +1067,7 @@ window.render = function (t) {
   }
 
   $('fade').style.opacity = Math.max(1 - ease(prog(t, 0, 0.35)), easeIO(prog(t, DUR - 0.6, DUR)));
+  drawGrain();
   drawSky(t, quietZones());
 };
 window.DURATION = DUR;
