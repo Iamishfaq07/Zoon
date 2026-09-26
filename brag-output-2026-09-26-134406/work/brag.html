@@ -1,0 +1,453 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Zoon Brag, Intelligence Cut</title>
+<!-- /brag intelligence cut: 38.5 s, 1920x1080. Every frame is render(t); see ../brag-plan.md. -->
+<link rel="stylesheet" href="fonts.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #05060d; }
+  body { font-family: 'Manrope', sans-serif; color: #f4f5fb; -webkit-font-smoothing: antialiased; }
+  canvas, .layer { position: absolute; inset: 0; }
+  .abs { position: absolute; }
+  .center { position: absolute; left: 0; width: 100%; text-align: center; }
+  .word { display: inline-block; }
+  .shadow { text-shadow: 0 0 14px rgba(6,7,16,0.95), 0 0 30px rgba(6,7,16,0.8); }
+  .hero { font: 800 128px/1 'Nunito'; letter-spacing: -0.02em; }
+  .q { font: 700 72px/1.1 'Nunito'; color: rgba(244,245,251,0.85); }
+  .headline { font: 800 80px/1.05 'Nunito'; letter-spacing: -0.02em; }
+  .headline.m { font-size: 66px; }
+  .kicker { font: 700 22px/1 'Manrope'; letter-spacing: 0.28em; text-transform: uppercase; color: #9e8ff2; }
+  .body { font: 500 30px/1.45 'Manrope'; color: rgba(244,245,251,0.78); }
+  .wordmark { font: 800 150px/1 'Nunito'; letter-spacing: 0.02em; }
+  .tagline { font: 600 36px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(244,245,251,0.78); }
+  .soon { font: 700 24px/1 'Manrope'; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(244,245,251,0.72); }
+  .small { font: 600 22px/1.3 'Manrope'; color: rgba(244,245,251,0.72); }
+  .num { font-family: 'Nunito'; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .accent { background: linear-gradient(90deg, #c4b8ff, #7b61ff 55%, #3fd6a0); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+  .phone { position: absolute; width: 404px; height: 878px; border-radius: 66px; padding: 12px; transform-origin: 50% 0;
+    background: linear-gradient(160deg, #2a2d3f, #0c0d14 40%, #1b1d29); box-shadow: 0 0 0 2px rgba(255,255,255,0.08) inset, 0 60px 120px rgba(0,0,0,0.55); }
+  .phone img { display: block; width: 380px; height: 854px; object-fit: cover; object-position: top; border-radius: 55px; }
+  .watch { position: absolute; width: 330px; height: 400px; border-radius: 92px; padding: 26px; transform-origin: 50% 0;
+    background: linear-gradient(160deg, #3a3d4c, #111219 45%, #24262f); box-shadow: 0 0 0 2px rgba(255,255,255,0.07) inset, 0 50px 100px rgba(0,0,0,0.6); }
+  .watch img { width: 278px; height: 348px; border-radius: 68px; object-fit: cover; display: block; }
+  .crown { position: absolute; right: -16px; top: 110px; width: 18px; height: 70px; border-radius: 8px; background: linear-gradient(90deg,#2b2d38,#5a5d6c); }
+  .chip { position: absolute; display: flex; align-items: center; gap: 12px; padding: 12px 20px 12px 14px; border-radius: 20px; white-space: nowrap;
+    background: rgba(20,22,44,0.86); box-shadow: 0 0 0 1px rgba(255,255,255,0.09) inset, 0 16px 40px rgba(0,0,0,0.45); }
+  .chip .dot { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; }
+  .chip .v { font: 800 27px/1 'Nunito'; font-variant-numeric: tabular-nums; }
+  .chip .k { font: 600 15px/1 'Manrope'; color: rgba(244,245,251,0.55); margin-top: 5px; letter-spacing: 0.05em; }
+  .badge { position: absolute; display: inline-flex; align-items: center; gap: 12px; padding: 12px 22px 12px 14px; border-radius: 999px; white-space: nowrap;
+    font: 700 22px/1 'Manrope'; background: rgba(255,255,255,0.07); box-shadow: 0 0 0 1px rgba(196,184,255,0.35) inset; }
+  .orb { width: 34px; height: 34px; border-radius: 50%; background: conic-gradient(from 0deg, #7b61ff, #3fd6a0, #62b3ff, #f5a25d, #7b61ff); box-shadow: 0 0 22px rgba(123,97,255,0.7); }
+  .bubble { position: absolute; max-width: 700px; padding: 22px 30px; border-radius: 30px; font: 600 32px/1.35 'Manrope'; }
+  .me { background: linear-gradient(135deg, #7b61ff, #5a44d8); border-bottom-right-radius: 10px; }
+  .zoon { background: rgba(26,28,52,0.94); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset; border-bottom-left-radius: 10px; }
+  .typing { position: absolute; display: flex; gap: 10px; padding: 28px 32px; border-radius: 30px; border-bottom-left-radius: 10px; background: rgba(26,28,52,0.94); }
+  .typing i { width: 14px; height: 14px; border-radius: 50%; background: #9e8ff2; display: block; }
+  .pill { position: absolute; display: inline-flex; gap: 12px; align-items: center; padding: 14px 22px; border-radius: 999px; font: 700 24px/1 'Manrope';
+    color: rgba(244,245,251,0.86); background: rgba(255,255,255,0.07); box-shadow: 0 0 0 1px rgba(255,255,255,0.1) inset; }
+  .stage { position: absolute; width: 360px; padding: 22px 24px; border-radius: 26px; background: rgba(22,24,46,0.88); box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 24px 60px rgba(0,0,0,0.4); }
+  .stage .st { font: 800 27px/1.15 'Nunito'; }
+  .stage .sd { font: 500 21px/1.35 'Manrope'; color: rgba(244,245,251,0.78); margin-top: 8px; }
+  .dial-label { position: absolute; font: 700 22px/1.2 'Manrope'; white-space: nowrap; text-shadow: 0 0 14px rgba(6,7,16,0.95); }
+  .dial-label span { display: block; font: 800 26px/1.1 'Nunito'; color: #f4f5fb; font-variant-numeric: tabular-nums; }
+  #fade { position: absolute; inset: 0; background: #000; }
+</style>
+</head>
+<body>
+  <canvas id="sky"></canvas>
+  <canvas id="fx"></canvas>
+
+  <!-- 1 Hook -->
+  <div class="layer" id="s1">
+    <div class="center hero shadow" style="top:360px"><span id="s1a"></span></div>
+    <div class="center q shadow" id="s1b" style="top:540px"></div>
+  </div>
+
+  <!-- 2 Reveal -->
+  <div class="layer" id="s2">
+    <div class="abs wordmark shadow" id="s2w" style="left:160px;width:800px;text-align:center;top:560px"></div>
+    <div class="abs tagline shadow" id="s2t" style="left:160px;width:800px;text-align:center;top:748px"></div>
+    <div class="phone" id="s2p" style="left:1250px;top:101px"><img src="img/today.jpg"></div>
+  </div>
+
+  <!-- 3 AI core -->
+  <div class="layer" id="s3">
+    <div class="center headline m shadow" id="s3a" style="top:84px"></div>
+    <div class="center headline m shadow" id="s3b" style="top:84px"></div>
+    <div class="chip" id="c0"><div class="dot" style="background:rgba(255,107,129,0.18)"><svg width="22" height="22" viewBox="0 0 24 24" fill="#ff6b81"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6.1 4.5c2.2 0 3.6 1.2 4.4 2.6h3c.8-1.4 2.2-2.6 4.4-2.6 3.8 0 5.7 3.9 4.1 7.2C19.5 16.4 12 21 12 21z"/></svg></div><div><div class="v">58 bpm</div><div class="k">HEART RATE</div></div></div>
+    <div class="chip" id="c1"><div class="dot" style="background:rgba(98,179,255,0.18)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#62b3ff" stroke-width="2.4" stroke-linecap="round"><path d="M2 12h4l3-7 4 14 3-7h6"/></svg></div><div><div class="v">64 ms</div><div class="k">HRV</div></div></div>
+    <div class="chip" id="c2"><div class="dot" style="background:rgba(63,214,160,0.18)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3fd6a0" stroke-width="2.4" stroke-linecap="round"><path d="M3 8c3-3 6 3 9 0s6 3 9 0M3 16c3-3 6 3 9 0s6 3 9 0"/></svg></div><div><div class="v">14.2/min</div><div class="k">BREATHING</div></div></div>
+    <div class="chip" id="c3"><div class="dot" style="background:rgba(245,162,93,0.18)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a25d" stroke-width="2.4" stroke-linecap="round"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/></svg></div><div><div class="v">+0.2°</div><div class="k">WRIST TEMP</div></div></div>
+    <div class="chip" id="c4"><div class="dot" style="background:rgba(196,184,255,0.18)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c4b8ff" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg></div><div><div class="v">97%</div><div class="k">BLOOD OXYGEN</div></div></div>
+    <div class="abs small shadow" id="s3n" style="left:900px;top:930px;width:560px;text-align:center">On-device model</div>
+    <div class="abs small shadow" id="s3z" style="left:1520px;top:760px;width:200px;text-align:center;color:#e6e0ff">Zoon</div>
+  </div>
+
+  <!-- 4 The night -->
+  <div class="layer" id="s4">
+    <div class="abs" style="left:180px;top:110px"><div class="kicker shadow">Last night</div><div class="headline shadow" id="s4h" style="margin-top:22px"></div></div>
+    <div class="abs" id="s4n" style="left:1180px;top:118px;width:560px;text-align:right"><div class="num shadow" id="s4v" style="font-size:96px;line-height:1">0h 00m</div><div class="small shadow" style="margin-top:8px">asleep, stage by stage</div></div>
+    <div class="abs small shadow" id="lW">Awake</div><div class="abs small shadow" id="lR">REM</div><div class="abs small shadow" id="lL">Light</div><div class="abs small shadow" id="lD">Deep</div>
+    <div class="abs small shadow" id="h0">11:14 PM</div><div class="abs small shadow" id="h1">1:00 AM</div><div class="abs small shadow" id="h2">3:00 AM</div><div class="abs small shadow" id="h3">5:00 AM</div><div class="abs small shadow" id="h4">6:46 AM</div>
+  </div>
+
+  <!-- 5 AI Coach -->
+  <div class="layer" id="s5">
+    <div class="abs" style="left:180px;top:110px"><div class="kicker shadow">AI Coach</div><div class="headline shadow" id="s5h" style="margin-top:22px"></div></div>
+    <div class="badge" id="s5g" style="left:180px;top:300px"><div class="orb"></div>Apple Intelligence · on device</div>
+    <div class="bubble me" id="b0" style="left:480px;top:420px">Why did I wake up so much?</div>
+    <div class="typing" id="b1" style="left:180px;top:560px"><i></i><i></i><i></i></div>
+    <div class="bubble zoon" id="b2" style="left:180px;top:560px"><span id="b2t"></span></div>
+    <div class="pill" id="b3" style="left:180px;top:740px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg>A pattern in your own nights, not proof</div>
+    <div class="phone" id="s5p" style="left:1300px;top:101px"><img src="img/coach.jpg"></div>
+  </div>
+
+  <!-- 6 Learns you -->
+  <div class="layer" id="s6">
+    <div class="abs" style="left:180px;top:110px"><div class="kicker shadow" style="color:#3fd6a0">Learns you</div><div class="headline shadow" id="s6h" style="margin-top:22px"></div></div>
+    <div class="stage" id="e0" style="left:150px;top:640px"><div class="st" style="color:#f5a25d">Suspected</div><div class="sd">Caffeine after 4pm, first logged in your Journal</div></div>
+    <div class="stage" id="e1" style="left:560px;top:640px"><div class="st" style="color:#c4a6ff">Association detected</div><div class="sd">−4% sleep efficiency · 12 matched pairs</div></div>
+    <div class="stage" id="e2" style="left:970px;top:640px"><div class="st" style="color:#62b3ff">Experiment started</div><div class="sd">Less caffeine after 4pm, for 14 nights</div></div>
+    <div class="stage" id="e3" style="left:1380px;top:640px"><div class="st" style="color:#3fd6a0">You tested this</div><div class="sd">Sleep efficiency improved during your trial</div></div>
+  </div>
+
+  <!-- 7 Your day -->
+  <div class="layer" id="s7">
+    <div class="abs" style="left:180px;top:320px;width:640px"><div class="kicker shadow" style="color:#ffcf6b">Your day</div><div class="headline shadow" id="s7h" style="margin-top:22px"></div><div class="body shadow" id="s7b" style="margin-top:24px"></div></div>
+    <div class="abs" id="s7m" style="width:300px;text-align:center"><div class="kicker" style="color:rgba(244,245,251,0.55);letter-spacing:0.2em">Body clock</div><div class="num shadow" id="s7v" style="font-size:104px;margin-top:10px">0</div></div>
+    <div class="dial-label" id="m0" style="color:#ffcf6b">Wake<span>6:46 AM</span></div>
+    <div class="dial-label" id="m1" style="color:#ffe08a">Best light<span>8:16 AM</span></div>
+    <div class="dial-label" id="m2" style="color:#3fd6a0">Peak focus<span>10:27 AM</span></div>
+    <div class="dial-label" id="m3" style="color:#f5a25d">Afternoon dip<span>1:35 PM</span></div>
+    <div class="dial-label" id="m4" style="color:#c4b8ff">Wind down<span>10:22 PM</span></div>
+  </div>
+
+  <!-- 8 Wrist -->
+  <div class="layer" id="s8">
+    <div class="watch" id="s8w" style="left:795px;top:140px"><img src="img/w-tonight.jpg"><div class="crown"></div></div>
+    <div class="center headline shadow" id="s8h" style="top:880px;font-size:74px"></div>
+  </div>
+
+  <!-- 9 Private -->
+  <div class="layer" id="s9">
+    <div class="center headline shadow" id="s9h" style="top:640px;font-size:104px"></div>
+    <div class="center body shadow" id="s9b" style="top:790px"></div>
+  </div>
+
+  <!-- 10 Outro -->
+  <div class="layer" id="s10">
+    <img id="s10i" src="img/icon.png" style="position:absolute;left:840px;top:150px;width:240px;height:240px;border-radius:54px;box-shadow:0 30px 90px rgba(0,0,0,0.5),0 0 160px rgba(123,97,255,0.35)">
+    <div class="center wordmark shadow" id="s10w" style="top:440px"></div>
+    <div class="center tagline shadow" id="s10t" style="top:630px"></div>
+    <div class="center soon shadow" id="s10s" style="top:740px"></div>
+  </div>
+  <div id="fade"></div>
+
+<script>
+const W = 1920, H = 1080, $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => 1 - Math.pow(1 - clamp(t), 3);
+const easeIO = t => { t = clamp(t); return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const back = t => { t = clamp(t); return 1 + 2.5 * Math.pow(t - 1, 3) + 1.5 * Math.pow(t - 1, 2); };
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const vis = (t, a, b, fi = 0.5, fo = 0.5) => Math.min(ease(prog(t, a, a + fi)), 1 - easeIO(prog(t, b - fo, b)));
+const hm = m => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, '0')}m`;
+
+const S = { 1: [0, 3.5], 2: [3.4, 6.9], 3: [6.8, 11.4], 4: [11.3, 15.2], 5: [15.1, 20.8], 6: [20.7, 26.2],
+            7: [26.1, 30.1], 8: [30.0, 33.0], 9: [32.9, 35.6], 10: [35.5, 39.2] };
+const DUR = 38.5;
+const dawnAt = t => easeIO(prog(t, 35.2, 37.2));
+
+function words(el, text, accentFrom = -1, accentTo = 99) {
+  el.innerHTML = text.split(' ').map((w, i) => `<span class="word${i >= accentFrom && i <= accentTo && accentFrom >= 0 ? ' accent' : ''}">${w}</span>`).join(' ');
+  return Array.from(el.querySelectorAll('.word'));
+}
+function reveal(spans, t, start, step = 0.08, dur = 0.6, rise = 26) {
+  spans.forEach((s, i) => { const p = ease(prog(t, start + i * step, start + i * step + dur)); s.style.opacity = p; s.style.transform = `translateY(${(1 - p) * rise}px)`; s.style.filter = `blur(${(1 - p) * 8}px)`; });
+}
+function pop(el, t, start, from = 30, dur = 0.7) { const p = ease(prog(t, start, start + dur)); el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * from}px)`; return p; }
+const T = {
+  s1b: words($('s1b'), 'So why are you tired?', 3),
+  s2w: words($('s2w'), 'Zoon'), s2t: words($('s2t'), 'Sleep, understood.'),
+  s3a: words($('s3a'), 'Five signals from your Watch.'),
+  s3b: words($('s3b'), 'Read by AI, on your iPhone.', 2, 2),
+  s4h: words($('s4h'), 'See the whole night.'),
+  s5h: words($('s5h'), 'Ask Zoon anything.', 2),
+  s6h: words($('s6h'), 'It tests what works for you.', 2, 3),
+  s7h: words($('s7h'), 'It maps your day.'),
+  s7b: words($('s7b'), 'Peak focus, the afternoon dip, and when to wind down.'),
+  s8h: words($('s8h'), 'Tonight’s plan, on your wrist.', 3),
+  s9h: words($('s9h'), 'No account. No server.'),
+  s9b: words($('s9b'), 'Everything stays on your iPhone and Apple Watch.'),
+  s10w: words($('s10w'), 'Zoon'), s10t: words($('s10t'), 'Sleep, understood.'),
+  s10s: words($('s10s'), 'Coming soon on the App Store'),
+};
+
+// ---------- sky ----------
+const sky = $('sky'), g = sky.getContext('2d'), fx = $('fx'), c = fx.getContext('2d');
+sky.width = fx.width = W; sky.height = fx.height = H;
+let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const stars = Array.from({ length: 420 }, () => ({ x: rnd() * W, y: rnd() * (H + 220), r: 0.4 + Math.pow(rnd(), 3) * 2.1, tw: 0.6 + rnd() * 2.2, ph: rnd() * 6.28, depth: 0.2 + rnd() * 0.8 }));
+const craters = Array.from({ length: 34 }, () => ({ a: rnd() * 6.283, d: Math.sqrt(rnd()) * 0.9, r: 0.025 + Math.pow(rnd(), 2) * 0.1 }));
+const maria = Array.from({ length: 7 }, () => ({ a: rnd() * 6.283, d: rnd() * 0.6, r: 0.18 + rnd() * 0.22 }));
+function mix(a, b, k) { const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16)); return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * k)).join(',')})`; }
+function zones() {
+  const z = [];
+  document.querySelectorAll('.shadow, .dial-label').forEach(el => { const r = el.getBoundingClientRect(); if (r.width && r.height && el.closest('.layer').style.display !== 'none') z.push([r.left - 40, r.top - 30, r.right + 40, r.bottom + 30]); });
+  return z;
+}
+function drawSky(t, zs) {
+  const d = dawnAt(t), bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, mix('0e1128', '1b2352', d)); bg.addColorStop(0.55, mix('0a0c1d', '3a2d5a', d)); bg.addColorStop(1, mix('05060d', 'c9765a', d));
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  for (const [x, y, r, col] of [[W * 0.27 + Math.sin(t * 0.2) * 120, H * 0.28, 700, 'rgba(123,97,255,0.13)'], [W * 0.78 + Math.cos(t * 0.15) * 140, H * 0.76, 800, 'rgba(63,120,214,0.10)']]) {
+    const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H);
+  }
+  if (d > 0) { const hg = g.createRadialGradient(W / 2, H * 1.05, 0, W / 2, H * 1.05, H * 0.95); hg.addColorStop(0, `rgba(255,178,120,${0.55 * d})`); hg.addColorStop(0.5, `rgba(240,120,110,${0.18 * d})`); hg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = hg; g.fillRect(0, 0, W, H); }
+  for (const s of stars) {
+    const y = ((s.y - t * 10 * s.depth) % (H + 220) + (H + 220)) % (H + 220) - 110;
+    if (zs.some(z => s.x > z[0] && s.x < z[2] && y > z[1] && y < z[3])) continue;
+    g.globalAlpha = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph))) * (0.4 + 0.6 * s.depth) * (1 - 0.8 * d) * (1 - 0.7 * d * y / H);
+    g.fillStyle = '#e8ecff'; g.beginPath(); g.arc(s.x, y, s.r, 0, 6.283); g.fill();
+  }
+  g.globalAlpha = 1;
+}
+function glow(x, y, r, col) { if (r <= 0) return; const rg = c.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = rg; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill(); }
+function rr(x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
+function moon(cx, cy, r, lit, a) {
+  c.save(); c.globalAlpha = a; glow(cx, cy, r * 2.4, 'rgba(190,186,255,0.22)');
+  c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.clip();
+  const base = c.createRadialGradient(cx - r * 0.4, cy - r * 0.4, r * 0.1, cx, cy, r * 1.1); base.addColorStop(0, '#f7f7fb'); base.addColorStop(1, '#a9afc2');
+  c.fillStyle = base; c.fillRect(cx - r, cy - r, r * 2, r * 2);
+  for (const m of maria) { const x = cx + Math.cos(m.a) * m.d * r, y = cy + Math.sin(m.a) * m.d * r, mg = c.createRadialGradient(x, y, 0, x, y, m.r * r); mg.addColorStop(0, 'rgba(110,116,140,0.38)'); mg.addColorStop(1, 'rgba(110,116,140,0)'); c.fillStyle = mg; c.fillRect(cx - r, cy - r, r * 2, r * 2); }
+  for (const k of craters) { const x = cx + Math.cos(k.a) * k.d * r, y = cy + Math.sin(k.a) * k.d * r, cr = k.r * r, cg = c.createRadialGradient(x + cr * 0.25, y + cr * 0.25, 0, x, y, cr); cg.addColorStop(0, 'rgba(118,124,148,0.30)'); cg.addColorStop(1, 'rgba(118,124,148,0.05)'); c.fillStyle = cg; c.beginPath(); c.arc(x, y, cr, 0, 6.283); c.fill(); c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = Math.max(1, cr * 0.14); c.beginPath(); c.arc(x, y, cr, 2.4, 4.4); c.stroke(); }
+  c.shadowColor = 'rgba(13,16,38,1)'; c.shadowBlur = r * 0.3; c.fillStyle = 'rgba(13,16,38,0.955)';
+  c.beginPath(); c.arc(cx + r * lerp(0.35, 1.75, lit), cy - r * 0.1, r * 1.02, 0, 6.283); c.fill(); c.restore();
+}
+function watchShape(cx, cy, s, a, t) {
+  c.save(); c.globalAlpha = a; c.translate(cx, cy); c.scale(s, s);
+  glow(0, 0, 250, 'rgba(63,214,160,0.14)');
+  c.fillStyle = '#1b1d28'; rr(-70, -210, 140, 90, 26); c.fill(); rr(-70, 120, 140, 90, 26); c.fill();
+  const body = c.createLinearGradient(-110, -135, 110, 135); body.addColorStop(0, '#454858'); body.addColorStop(0.5, '#15161e'); body.addColorStop(1, '#2c2e3a');
+  c.fillStyle = body; rr(-110, -135, 220, 270, 64); c.fill(); c.fillStyle = '#05060b'; rr(-94, -119, 188, 238, 52); c.fill();
+  c.fillStyle = '#3a3d4c'; rr(106, -50, 14, 46, 6); c.fill();
+  c.strokeStyle = '#ff6b81'; c.lineWidth = 5; c.lineCap = 'round'; c.lineJoin = 'round'; c.beginPath();
+  for (let i = 0; i <= 60; i++) { const x = -70 + i * (140 / 60), ph = (i / 60 + t * 0.8) % 1; const y = (ph > 0.45 && ph < 0.52) ? -34 * Math.sin((ph - 0.45) / 0.07 * Math.PI) : (ph > 0.52 && ph < 0.56 ? 14 : 0); i ? c.lineTo(x, y + 10) : c.moveTo(x, y + 10); }
+  c.stroke(); c.fillStyle = 'rgba(255,255,255,0.8)'; c.font = '700 22px Manrope'; c.textAlign = 'center'; c.fillText('Sleeping', 0, -60); c.restore();
+}
+
+// ---------- the neural network ----------
+const CHIPS = [[380, 250], [380, 395], [380, 540], [380, 685], [380, 830]];
+const CCOL = ['#ff6b81', '#62b3ff', '#3fd6a0', '#f5a25d', '#c4b8ff'];
+const LAYERS = [[860, 5], [1070, 7], [1280, 5]];
+const OUT = [1620, 600];
+const nodes = LAYERS.map(([x, n]) => Array.from({ length: n }, (_, i) => [x, 600 + (i - (n - 1) / 2) * (n === 7 ? 96 : 130)]));
+const edges = [];
+for (let l = 0; l < nodes.length - 1; l++) for (const a of nodes[l]) for (const b of nodes[l + 1]) edges.push([a, b, l]);
+for (const a of nodes[2]) edges.push([a, OUT, 2]);
+const edgeSeeds = edges.map(() => [rnd(), 0.6 + rnd() * 0.8]);
+function network(t, l, a) {
+  const on = ease(prog(l, 1.4, 2.4));
+  c.save(); c.globalAlpha = a;
+  glow(1070, 600, 520, `rgba(123,97,255,${0.10 + 0.08 * on})`);
+  edges.forEach(([p, q, layer], i) => {
+    c.strokeStyle = `rgba(196,184,255,${0.07 + 0.1 * on})`; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(p[0], p[1]); c.lineTo(q[0], q[1]); c.stroke();
+    if (on > 0) {
+      const [s0, sp] = edgeSeeds[i], u = (t * sp * 0.9 + s0 + layer * 0.33) % 1;
+      c.globalAlpha = a * on * Math.sin(Math.PI * u);
+      c.fillStyle = layer === 2 ? '#3fd6a0' : '#c4b8ff';
+      c.beginPath(); c.arc(lerp(p[0], q[0], u), lerp(p[1], q[1], u), 3, 0, 6.283); c.fill();
+      c.globalAlpha = a;
+    }
+  });
+  nodes.forEach((layer, li) => layer.forEach(([x, y], i) => {
+    const k = ease(prog(l, 0.6 + li * 0.2 + i * 0.03, 1.2 + li * 0.2 + i * 0.03)), pulse = 0.5 + 0.5 * Math.sin(t * 4 + i + li * 2);
+    glow(x, y, 30 * k * (0.7 + 0.5 * on * pulse), `rgba(196,184,255,${0.5 * on})`);
+    c.fillStyle = '#14162c'; c.strokeStyle = `rgba(206,196,255,${0.6 + 0.4 * on})`; c.lineWidth = 3;
+    c.beginPath(); c.arc(x, y, 13 * k, 0, 6.283); c.fill(); c.stroke();
+  }));
+  c.restore();
+}
+function streams(t, a) {
+  c.save();
+  CHIPS.forEach((p, i) => {
+    const x0 = p[0] + 250, y0 = p[1] + 31, [x1, y1] = nodes[0][i];
+    for (let k = 0; k < 10; k++) { const u = (t * 0.7 + k / 10 + i * 0.13) % 1; c.globalAlpha = a * Math.sin(Math.PI * u); c.fillStyle = CCOL[i]; c.beginPath(); c.arc(lerp(x0, x1, u), lerp(y0, y1, u), 3, 0, 6.283); c.fill(); }
+  });
+  c.restore();
+}
+
+// ---------- hypnogram ----------
+const NIGHT = [['L',12],['D',38],['L',14],['R',9],['L',18],['D',30],['L',12],['W',4],['L',16],['R',19],['L',24],['D',16],['L',22],['R',24],['W',5],['L',28],['R',27],['L',22],['W',3],['L',26],['R',31],['L',20],['W',4],['L',8]];
+const TOTAL = NIGHT.reduce((s, x) => s + x[1], 0), LANE = { W: 0, R: 1, L: 2, D: 3 }, LCOL = { W: '#f5a25d', R: '#c4a6ff', L: '#62b3ff', D: '#6a52e0' };
+const CH = [330, 430, 1640, 850];
+function hypnogram(p, a) {
+  const [x0, y0, x1, y1] = CH, lh = (y1 - y0) / 4, bw = x1 - x0, edge = x0 + bw * p;
+  c.save(); c.globalAlpha = a; c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { c.beginPath(); c.moveTo(x0, y0 + i * lh); c.lineTo(x1, y0 + i * lh); c.stroke(); }
+  c.beginPath(); c.rect(x0 - 10, y0 - 20, edge - x0 + 10, y1 - y0 + 40); c.clip();
+  let acc = 0, prev = null;
+  for (const [st, m] of NIGHT) {
+    const xa = x0 + bw * acc / TOTAL, xb = x0 + bw * (acc + m) / TOTAL, yc = y0 + lh * (LANE[st] + 0.5), bh = lh * 0.56;
+    if (prev) { c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 2; c.beginPath(); c.moveTo(xa, y0 + lh * (LANE[prev] + 0.5)); c.lineTo(xa, yc); c.stroke(); }
+    const gr = c.createLinearGradient(0, yc - bh / 2, 0, yc + bh / 2); gr.addColorStop(0, LCOL[st]); gr.addColorStop(1, LCOL[st] + 'aa');
+    c.fillStyle = gr; c.shadowColor = LCOL[st]; c.shadowBlur = 18; rr(xa + 1, yc - bh / 2, Math.max(4, xb - xa - 2), bh, 9); c.fill(); c.shadowBlur = 0;
+    acc += m; prev = st;
+  }
+  c.restore();
+  if (p > 0 && p < 1) { c.save(); c.globalAlpha = a; c.strokeStyle = '#e6e0ff'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(edge, y0 - 16); c.lineTo(edge, y1 + 16); c.stroke(); glow(edge, y0 - 16, 26, 'rgba(230,224,255,0.7)'); c.restore(); }
+}
+(function place() {
+  const [x0, y0, x1, y1] = CH, lh = (y1 - y0) / 4;
+  ['lW', 'lR', 'lL', 'lD'].forEach((id, i) => { const el = $(id); el.style.left = (x0 - 150) + 'px'; el.style.top = (y0 + lh * (i + 0.5) - 14) + 'px'; el.style.color = LCOL['WRLD'[i]]; });
+  [0, 106, 226, 346, 452].forEach((m, i) => { const el = $('h' + i); el.style.left = (x0 + (x1 - x0) * m / 452 - 50) + 'px'; el.style.top = (y1 + 26) + 'px'; el.style.width = '100px'; el.style.textAlign = 'center'; el.style.fontSize = '20px'; });
+  CHIPS.forEach((p, i) => { $('c' + i).style.left = p[0] + 'px'; $('c' + i).style.top = p[1] + 'px'; });
+})();
+
+// ---------- evidence ladder ----------
+const ECOL = ['#f5a25d', '#c4a6ff', '#62b3ff', '#3fd6a0'], EX = [330, 740, 1150, 1560], EY = 540;
+function ladder(l, a) {
+  c.save(); c.globalAlpha = a; c.lineCap = 'round';
+  c.strokeStyle = 'rgba(255,255,255,0.1)'; c.lineWidth = 6; c.beginPath(); c.moveTo(EX[0], EY); c.lineTo(EX[3], EY); c.stroke();
+  const fill = ease(prog(l, 0.8, 3.4)), xe = lerp(EX[0], EX[3], fill);
+  const gr = c.createLinearGradient(EX[0], 0, EX[3], 0); ECOL.forEach((col, i) => gr.addColorStop(i / 3, col));
+  c.strokeStyle = gr; c.lineWidth = 6; c.beginPath(); c.moveTo(EX[0], EY); c.lineTo(xe, EY); c.stroke();
+  glow(xe, EY, 36, 'rgba(255,255,255,0.35)');
+  EX.forEach((x, i) => {
+    const k = back(prog(l, 0.8 + i * 0.85, 1.4 + i * 0.85));
+    glow(x, EY, 50 * clamp(k), ECOL[i] + '88');
+    c.fillStyle = '#14162c'; c.strokeStyle = ECOL[i]; c.lineWidth = 5; c.beginPath(); c.arc(x, EY, 20 * clamp(k), 0, 6.283); c.fill(); c.stroke();
+    if (k > 0.5) { c.fillStyle = ECOL[i]; c.beginPath(); c.arc(x, EY, 8, 0, 6.283); c.fill(); }
+  });
+  c.restore();
+}
+
+// ---------- body-clock dial ----------
+const MARKS = [6.77, 8.27, 10.45, 13.58, 22.37], MCOL = ['#ffcf6b', '#ffe08a', '#3fd6a0', '#f5a25d', '#c4b8ff'], DIAL = [1330, 560, 300];
+const ang = h => -Math.PI / 2 + h / 24 * Math.PI * 2;
+function dial(hand, a) {
+  const [cx, cy, r] = DIAL;
+  c.save(); c.globalAlpha = a; glow(cx, cy, r * 1.5, 'rgba(123,97,255,0.12)');
+  c.strokeStyle = 'rgba(255,255,255,0.09)'; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.stroke();
+  for (let h = 0; h < 24; h++) { const q = ang(h), l = h % 6 === 0 ? 22 : 10; c.strokeStyle = h % 6 === 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)'; c.beginPath(); c.moveTo(cx + Math.cos(q) * (r - l), cy + Math.sin(q) * (r - l)); c.lineTo(cx + Math.cos(q) * r, cy + Math.sin(q) * r); c.stroke(); }
+  c.lineCap = 'round'; c.lineWidth = 28; c.strokeStyle = 'rgba(106,82,224,0.75)'; c.beginPath(); c.arc(cx, cy, r - 50, ang(23.23), ang(24 + 6.77)); c.stroke();
+  const gr = c.createConicGradient(-Math.PI / 2, cx, cy); gr.addColorStop(0.25, '#ffcf6b'); gr.addColorStop(0.45, '#3fd6a0'); gr.addColorStop(0.6, '#f5a25d'); gr.addColorStop(0.93, '#c4b8ff');
+  c.strokeStyle = gr; c.lineWidth = 10; c.beginPath(); c.arc(cx, cy, r - 50, ang(6.77), ang(Math.max(6.77, hand))); c.stroke();
+  MARKS.forEach((h, i) => { if (hand < h) return; const k = back(clamp((hand - h) / 0.9)), q = ang(h), x = cx + Math.cos(q) * (r - 50), y = cy + Math.sin(q) * (r - 50); glow(x, y, 34 * k, MCOL[i] + '99'); c.fillStyle = MCOL[i]; c.beginPath(); c.arc(x, y, 11 * k, 0, 6.283); c.fill(); });
+  const q = ang(hand); c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 4;
+  c.beginPath(); c.moveTo(cx + Math.cos(q) * r * 0.2, cy + Math.sin(q) * r * 0.2); c.lineTo(cx + Math.cos(q) * (r - 14), cy + Math.sin(q) * (r - 14)); c.stroke();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(cx + Math.cos(q) * (r - 14), cy + Math.sin(q) * (r - 14), 7, 0, 6.283); c.fill(); c.restore();
+}
+(function placeDial() {
+  const [cx, cy, r] = DIAL; $('s7m').style.left = (cx - 150) + 'px'; $('s7m').style.top = (cy - 76) + 'px';
+  MARKS.forEach((h, i) => { const el = $('m' + i), q = ang(h), R = r + 52, x = cx + Math.cos(q) * R, y = cy + Math.sin(q) * R; el.style.top = (y - 26) + 'px';
+    if (Math.cos(q) >= 0) el.style.left = x + 'px'; else { el.style.left = (x - 220) + 'px'; el.style.width = '220px'; el.style.textAlign = 'right'; } });
+})();
+
+// ---------- privacy ----------
+function privacy(t, p, a) {
+  const cx = 960, cy = 340, r = 170, kx = 1480, ky = 340;
+  c.save(); c.globalAlpha = a; glow(cx, cy, r * 1.9, 'rgba(123,97,255,0.2)');
+  c.setLineDash([10, 12]); c.lineDashOffset = -t * 30; c.strokeStyle = 'rgba(196,184,255,0.7)'; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, r, 0, 6.283); c.stroke(); c.setLineDash([]);
+  c.strokeStyle = '#e8e4ff'; c.lineWidth = 5; rr(cx - 78, cy - 92, 84, 176, 20); c.stroke(); c.fillStyle = '#e8e4ff'; rr(cx - 50, cy - 82, 28, 8, 4); c.fill();
+  rr(cx + 24, cy - 30, 56, 68, 18); c.stroke(); c.fillRect(cx + 40, cy - 46, 24, 14); c.fillRect(cx + 40, cy + 40, 24, 14);
+  const sx = cx + r + 16, ex = kx - 110, gap = ease(p) * 70, mx = (sx + ex) / 2;
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.setLineDash([8, 10]); c.lineWidth = 3; c.beginPath(); c.moveTo(sx, cy); c.lineTo(mx - gap, cy); c.moveTo(mx + gap, cy); c.lineTo(ex, cy); c.stroke(); c.setLineDash([]);
+  if (p > 0) { c.strokeStyle = `rgba(255,122,122,${ease(p)})`; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(mx - 18, cy - 18); c.lineTo(mx + 18, cy + 18); c.moveTo(mx + 18, cy - 18); c.lineTo(mx - 18, cy + 18); c.stroke(); }
+  c.globalAlpha = a * (1 - 0.6 * ease(p)); c.fillStyle = 'rgba(255,255,255,0.14)'; c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 4;
+  c.beginPath(); c.arc(kx - 40, ky + 10, 44, Math.PI * 0.5, Math.PI * 1.5); c.arc(kx, ky - 22, 56, Math.PI, 0); c.arc(kx + 50, ky + 12, 40, -Math.PI * 0.5, Math.PI * 0.5); c.closePath(); c.fill(); c.stroke();
+  c.restore();
+}
+
+function layer(id, o) { const el = $(id); el.style.opacity = o; el.style.display = o <= 0.001 ? 'none' : 'block'; }
+function rise(el, t, start, from = 200, base = 1) { const p = ease(prog(t, start, start + 1.1)); el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * from + Math.sin(t * 0.9) * 8}px) scale(${base * (0.94 + 0.06 * p)})`; }
+const ANSWER = '3 wakes after 2 AM, more common after late caffeine.';
+
+window.render = function (t) {
+  c.clearRect(0, 0, W, H);
+  const o = {}; for (const k in S) { o[k] = vis(t, S[k][0], S[k][1], k == 1 ? 0.1 : 0.5, 0.5); layer('s' + k, o[k]); }
+
+  if (o[1] > 0) {
+    $('s1a').innerHTML = `You slept <span class="num">${hm(452 * easeIO(prog(t, 0.15, 0.9)))}</span>.`;
+    pop($('s1a'), t, 0.05, 20, 0.5); reveal(T.s1b, t, 1.15, 0.1, 0.55, 22);
+  }
+  if (o[2] > 0) {
+    const l = t - S[2][0], r1 = easeIO(prog(l, 0, 1.4));
+    moon(560, 360 + (1 - r1) * 80, 130 * (0.86 + 0.14 * r1), 0.2 + 0.35 * r1, o[2]);
+    reveal(T.s2w, t, S[2][0] + 0.5, 0.1, 0.8, 30); reveal(T.s2t, t, S[2][0] + 1.0, 0.1, 0.7, 18);
+    rise($('s2p'), t, S[2][0] + 0.7, 220, 0.94);
+  }
+  if (o[3] > 0) {
+    const l = t - S[3][0];
+    watchShape(170, 540, 0.72, o[3] * ease(prog(l, 0, 0.7)), t);
+    CHIPS.forEach((p, i) => { const el = $('c' + i), k = back(prog(l, 0.3 + i * 0.12, 1.0 + i * 0.12)); el.style.opacity = clamp(k); el.style.transform = `translate(${(1 - k) * -160}px, ${(1 - k) * (540 - p[1])}px) scale(${0.7 + 0.3 * clamp(k)})`; });
+    const sv = ease(prog(l, 1.1, 1.8)); if (sv > 0) streams(t, sv * o[3]);
+    network(t, l, o[3]);
+    const out = ease(prog(l, 2.0, 3.0));
+    if (out > 0) { glow(OUT[0], OUT[1], 200 + 20 * Math.sin(t * 3), `rgba(123,97,255,${0.4 * out * o[3]})`); moon(OUT[0], OUT[1], 90, 0.55, out * o[3]); }
+    pop($('s3n'), t, S[3][0] + 1.2, 12); pop($('s3z'), t, S[3][0] + 2.4, 12);
+    const sw = prog(l, 2.1, 2.4); $('s3a').style.opacity = 1 - easeIO(sw); reveal(T.s3a, t, S[3][0] + 0.2, 0.07, 0.6);
+    $('s3b').style.opacity = sw > 0 ? 1 : 0; reveal(T.s3b, t, S[3][0] + 2.3, 0.08, 0.7, 30);
+  }
+  if (o[4] > 0) {
+    const l = t - S[4][0], p = easeIO(prog(l, 0.4, 2.9));
+    hypnogram(p, o[4]); reveal(T.s4h, t, S[4][0] + 0.15, 0.08);
+    $('s4v').textContent = hm(452 * p); pop($('s4n'), t, S[4][0] + 0.3);
+    ['lW', 'lR', 'lL', 'lD', 'h0', 'h1', 'h2', 'h3', 'h4'].forEach((id, i) => pop($(id), t, S[4][0] + 0.3 + i * 0.04, 12));
+  }
+  if (o[5] > 0) {
+    const l = t - S[5][0];
+    reveal(T.s5h, t, S[5][0] + 0.15, 0.1); pop($('s5g'), t, S[5][0] + 0.5, 16);
+    $('s5g').querySelector('.orb').style.transform = `rotate(${t * 140}deg)`;
+    pop($('b0'), t, S[5][0] + 0.9, 30);
+    $('b1').style.opacity = (l > 1.5 && l < 2.0) ? 1 : 0;
+    $('b1').querySelectorAll('i').forEach((d, i) => d.style.opacity = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 10 - i * 0.9)));
+    $('b2').style.opacity = l >= 2.0 ? 1 : 0;
+    $('b2t').textContent = ANSWER.slice(0, Math.floor(ANSWER.length * clamp((l - 2.0) / 0.8)));
+    pop($('b3'), t, S[5][0] + 2.9, 16);
+    rise($('s5p'), t, S[5][0] + 0.3, 220, 0.94);
+  }
+  if (o[6] > 0) {
+    const l = t - S[6][0];
+    ladder(l, o[6]); reveal(T.s6h, t, S[6][0] + 0.15, 0.08);
+    [0, 1, 2, 3].forEach(i => pop($('e' + i), t, S[6][0] + 1.0 + i * 0.85, 40));
+  }
+  if (o[7] > 0) {
+    const l = t - S[7][0], hand = lerp(5.5, 23.2, easeIO(prog(l, 0.4, 3.0)));
+    dial(hand, o[7] * ease(prog(l, 0, 0.6)));
+    MARKS.forEach((h, i) => { const el = $('m' + i), k = ease(clamp((hand - h) / 0.8)); el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * 12}px)`; });
+    $('s7v').textContent = Math.round(88 * ease(prog(l, 0.4, 2.6))); pop($('s7m'), t, S[7][0] + 0.3, 12);
+    reveal(T.s7h, t, S[7][0] + 0.15, 0.08); reveal(T.s7b, t, S[7][0] + 0.6, 0.035, 0.5, 14);
+  }
+  if (o[8] > 0) {
+    const l = t - S[8][0], k = back(prog(l, 0.1, 1.0));
+    glow(960, 140 + 300, 480 * clamp(k), `rgba(196,184,255,${0.32 * o[8]})`);
+    const w = $('s8w'); w.style.opacity = clamp(k); w.style.transform = `translateY(${(1 - k) * 160 + Math.sin(t * 0.9) * 8}px) scale(${1.5 * (0.85 + 0.15 * clamp(k))})`;
+    reveal(T.s8h, t, S[8][0] + 0.35, 0.08, 0.6);
+  }
+  if (o[9] > 0) {
+    const l = t - S[9][0];
+    privacy(t, prog(l, 0.9, 1.7), o[9] * ease(prog(l, 0, 0.5)));
+    reveal(T.s9h, t, S[9][0] + 0.25, 0.1, 0.6, 26); reveal(T.s9b, t, S[9][0] + 0.7, 0.04, 0.5, 14);
+  }
+  if (o[10] > 0) {
+    const l = t - S[10][0], d = dawnAt(t);
+    if (d > 0) { const y = lerp(H + 90, H * 0.9, easeIO(prog(t, 35.4, 38.2))); glow(W / 2, y, 360, `rgba(255,190,130,${0.45 * d})`); const sg = c.createRadialGradient(W / 2, y - 20, 10, W / 2, y, 80); sg.addColorStop(0, '#fff6e0'); sg.addColorStop(1, '#ffb877'); c.globalAlpha = d; c.fillStyle = sg; c.beginPath(); c.arc(W / 2, y, 80, 0, 6.283); c.fill(); c.globalAlpha = 1; }
+    const ic = ease(prog(l, 0.05, 0.9)); $('s10i').style.opacity = ic; $('s10i').style.transform = `translateY(${(1 - ic) * 40}px) scale(${0.85 + 0.15 * ic})`;
+    reveal(T.s10w, t, S[10][0] + 0.3, 0.1, 0.7, 26); reveal(T.s10t, t, S[10][0] + 0.6, 0.1, 0.6, 16); reveal(T.s10s, t, S[10][0] + 0.9, 0.05, 0.5, 10);
+  }
+  $('fade').style.opacity = Math.max(1 - ease(prog(t, 0, 0.35)), easeIO(prog(t, DUR - 0.5, DUR)));
+  drawSky(t, zones());
+};
+window.DURATION = DUR;
+window.POSTER = 10.9;
+window.ready = Promise.all([document.fonts.ready, ...Array.from(document.images).map(im => im.decode().catch(() => {}))]).then(() => true);
+window.render(0);
+</script>
+</body>
+</html>
