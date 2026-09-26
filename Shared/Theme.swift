@@ -1094,6 +1094,10 @@ struct StatusPill: View {
                 Image(systemName: systemImage)
                     .font(Theme.text(10, weight: .bold))
                     .foregroundStyle(tint)
+                    // Decorative: the words say it. Left visible, VoiceOver
+                    // read the symbol's name ("wand.and.stars") beside "Sample
+                    // data", and the accessibility audit failed on it.
+                    .accessibilityHidden(true)
             }
             Text(text)
                 .font(Theme.label(11))
