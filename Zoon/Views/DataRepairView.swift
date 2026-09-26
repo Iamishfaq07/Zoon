@@ -8,6 +8,16 @@ struct DataRepairView: View {
     @State private var reason = "Conflicting source or incomplete recording"
     @State private var bedShift: Double = 0
     @State private var wakeShift: Double = 0
+    /// The last 30 nights, newest first. Loaded here rather than in `body`:
+    /// it is the whole stored history rebuilt, and `bedShift` and `wakeShift`
+    /// are this view's state, so every slider tick in the editor re-ran it.
+    @State private var repairNights: [SleepNightFeatures] = []
+
+    /// What the list depends on: new data, or a correction saved or reverted.
+    private struct ListInputs: Equatable {
+        let refreshedAt: Date?
+        let repairs: [PersonalSetup.Repair]
+    }
 
 
     var body: some View {
@@ -29,7 +39,7 @@ struct DataRepairView: View {
             }
             Section("Local corrections") {
                 Text("Health is never overwritten. You can exclude a night from comparisons, or move the recorded bedtime and wake so Zoon's engines read the session you actually had. Every change can be undone.")
-                ForEach(coordinator.nightsForRepair().suffix(30).reversed(), id: \.nightKey) { night in
+                ForEach(repairNights, id: \.nightKey) { night in
                     Button {
                         let existing = setup.value.repairs.first { $0.nightKey == night.nightKey }
                         candidate = night
@@ -81,6 +91,9 @@ struct DataRepairView: View {
         .navigationTitle("Repair sleep data")
         // Every writer HealthKit knows, including ones that never won a night.
         .task { await coordinator.refreshSleepWriters() }
+        .task(id: ListInputs(refreshedAt: coordinator.lastRefresh, repairs: setup.value.repairs)) {
+            repairNights = Array(coordinator.nightsForRepair().suffix(30).reversed())
+        }
         .scrollContentBackground(.hidden).nightBackground()
         .sheet(item: Binding(get: { candidate.map(RepairPreview.init) }, set: { candidate = $0?.night })) { preview in
             NavigationStack {
