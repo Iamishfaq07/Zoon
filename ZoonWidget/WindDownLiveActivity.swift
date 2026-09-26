@@ -30,14 +30,14 @@ struct WindDownLiveActivity: Widget {
                         .foregroundStyle(.secondary)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: true)
+                    Text(timerInterval: context.attributes.timerRange(context.state), countsDown: true)
                         .font(.system(size: 30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .multilineTextAlignment(.center)
                         .foregroundStyle(tint)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    ProgressView(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: false) {
+                    ProgressView(timerInterval: context.attributes.timerRange(context.state), countsDown: false) {
                         EmptyView()
                     } currentValueLabel: {
                         EmptyView()
@@ -48,7 +48,7 @@ struct WindDownLiveActivity: Widget {
                 Image(systemName: "moon.stars")
                     .foregroundStyle(tint)
             } compactTrailing: {
-                Text(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: true)
+                Text(timerInterval: context.attributes.timerRange(context.state), countsDown: true)
                     .monospacedDigit()
                     .frame(maxWidth: 44)
                     .foregroundStyle(tint)
@@ -104,7 +104,7 @@ private struct WindDownActivityContent: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(tint)
                 .lineLimit(1)
-            Text(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: true)
+            Text(timerInterval: context.attributes.timerRange(context.state), countsDown: true)
                 .font(.system(.title3, design: .rounded).weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(.white)
@@ -129,7 +129,7 @@ private struct WindDownActivityContent: View {
                     .foregroundStyle(.white.opacity(0.6))
             }
             Spacer()
-            Text(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: true)
+            Text(timerInterval: context.attributes.timerRange(context.state), countsDown: true)
                 .font(.system(size: 34, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .multilineTextAlignment(.trailing)

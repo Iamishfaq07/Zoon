@@ -648,20 +648,21 @@ final class SleepDataCoordinator {
         let startedAt = Date.now
         defer { syncMetrics.lastRefreshSeconds = Date.now.timeIntervalSince(startedAt) }
         #endif
-        await refreshTodayStress()
-        await refreshRestorativeWindows()
-        await refreshAwakeningSeries()
-        await refreshTodayMovement()
-        if preferences.cycleTrackingEnabled { await refreshCycleData() }
-        if preferences.lifestyleInsightsEnabled { await refreshLifestyleInsights() }
-
         // Also guarded here: `refresh()` runs again on every foreground, and a
         // demo session that quietly swapped to live data on the second
         // activation would be worse than one that never started.
         guard DataEnvironment.current.isLive else {
+            await refreshTodaySignals()
             loadMockData()
             return
         }
+        // Today's signals come after the night, not before it. They used to
+        // run first, one after another, so the first screen waited on four to
+        // six HealthKit reads before the sleep sync even began -- and stress,
+        // awakenings and restorative windows read `store.latestNight`, so on
+        // the morning a new night arrived they were computed against the
+        // night before it until the next refresh. The night is published
+        // first, so the screen fills while these are still reading.
 
         if case .idle = state { state = .loading }
 
@@ -746,6 +747,27 @@ final class SleepDataCoordinator {
             if state.context == nil {
                 state = .failed(error.localizedDescription)
             }
+        }
+        await refreshTodaySignals()
+    }
+
+    /// Today's live readings beside the night: stress, restorative windows,
+    /// awakenings, movement and the opt-in cycle and lifestyle reads.
+    ///
+    /// Concurrent: each is its own HealthKit read and writes its own
+    /// property, so there is no order between them. They are main-actor
+    /// methods, so the only interleaving is at their awaits.
+    private func refreshTodaySignals() async {
+        guard !isErasing else { return }
+        let cycle = preferences.cycleTrackingEnabled
+        let lifestyle = preferences.lifestyleInsightsEnabled
+        await withDiscardingTaskGroup { group in
+            group.addTask { await self.refreshTodayStress() }
+            group.addTask { await self.refreshRestorativeWindows() }
+            group.addTask { await self.refreshAwakeningSeries() }
+            group.addTask { await self.refreshTodayMovement() }
+            if cycle { group.addTask { await self.refreshCycleData() } }
+            if lifestyle { group.addTask { await self.refreshLifestyleInsights() } }
         }
     }
 

@@ -33,7 +33,7 @@ struct NapLiveActivity: Widget {
                         .foregroundStyle(.secondary)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(timerInterval: context.attributes.startedAt...context.state.endsAt,
+                    Text(timerInterval: context.attributes.timerRange(context.state),
                          countsDown: true)
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .monospacedDigit()
@@ -42,7 +42,7 @@ struct NapLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     ProgressView(
-                        timerInterval: context.attributes.startedAt...context.state.endsAt,
+                        timerInterval: context.attributes.timerRange(context.state),
                         countsDown: false
                     ) {
                         EmptyView()
@@ -55,7 +55,7 @@ struct NapLiveActivity: Widget {
                 Image(systemName: "powersleep")
                     .foregroundStyle(napTint)
             } compactTrailing: {
-                Text(timerInterval: context.attributes.startedAt...context.state.endsAt,
+                Text(timerInterval: context.attributes.timerRange(context.state),
                      countsDown: true)
                     .monospacedDigit()
                     .frame(maxWidth: 44)
@@ -107,7 +107,7 @@ private struct NapActivityContent: View {
             Label("Nap", systemImage: "powersleep")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(napTint)
-            Text(timerInterval: context.attributes.startedAt...context.state.endsAt, countsDown: true)
+            Text(timerInterval: context.attributes.timerRange(context.state), countsDown: true)
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(.white)
@@ -123,7 +123,7 @@ private struct NapActivityContent: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(napTint)
 
-                Text(timerInterval: context.attributes.startedAt...context.state.endsAt,
+                Text(timerInterval: context.attributes.timerRange(context.state),
                      countsDown: true)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .monospacedDigit()
@@ -136,7 +136,7 @@ private struct NapActivityContent: View {
             Spacer()
 
             ProgressView(
-                timerInterval: context.attributes.startedAt...context.state.endsAt,
+                timerInterval: context.attributes.timerRange(context.state),
                 countsDown: false
             ) {
                 EmptyView()

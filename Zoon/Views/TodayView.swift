@@ -156,7 +156,10 @@ struct TodayView: View {
     // MARK: - Loaded
 
     private func loadedContent(_ context: DayContext) -> some View {
-        VStack(alignment: .leading, spacing: 28) {
+        // Read once per render: each read is a store fetch, and this body
+        // used it five times.
+        let napMinutesToday = self.napMinutesToday
+        return VStack(alignment: .leading, spacing: 28) {
             if moment == .evening || moment == .night {
                 tonightCircleHero(context)
                     .entrance(0)
@@ -269,7 +272,7 @@ struct TodayView: View {
                 )
                 .entrance(4)
 
-                OneThingCard(selection: oneThing(for: context))
+                OneThingCard(selection: oneThing(for: context, napMinutesToday: napMinutesToday))
                     .entrance(4)
             }
 
@@ -358,7 +361,7 @@ struct TodayView: View {
                 NapsTodayCard(
                     napMinutesToday: napMinutesToday,
                     debtMinutes: context.shortfallNowMinutes ?? 0,
-                    recommendation: napRecommendation(context)
+                    recommendation: napRecommendation(context, napMinutesToday: napMinutesToday)
                 )
                 .entrance(8)
             }
@@ -404,7 +407,7 @@ struct TodayView: View {
         )
     }
 
-    private func napRecommendation(_ context: DayContext) -> NapCoach.Recommendation {
+    private func napRecommendation(_ context: DayContext, napMinutesToday: Double) -> NapCoach.Recommendation {
         NapCoach.recommend(
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: plannedBedtime(context),
@@ -423,13 +426,13 @@ struct TodayView: View {
         coordinator.tonightEpisode()?.bed
     }
 
-    private func oneThing(for context: DayContext) -> OneThing.Selection? {
+    private func oneThing(for context: DayContext, napMinutesToday: Double) -> OneThing.Selection? {
         // The bedtime Today shows -- the resolved episode, which honours a
         // plan the person set -- not the plan's own, which does not.
         let bed = plannedBedtime(context)
         let candidates = OneThingCandidates.gather(
             tonight: context.tonight,
-            nap: napRecommendation(context),
+            nap: napRecommendation(context, napMinutesToday: napMinutesToday),
             recovery: context.recovery,
             now: .now,
             caffeineCutoff: bed.flatMap { CaffeineCutoff.time(bedtime: $0) }
