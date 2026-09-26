@@ -1,0 +1,474 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Zoon Launch Film</title>
+<!--
+  The launch film. Every frame is drawn by render(t) at a fixed clock, so a
+  render is identical every time. Screens come from docs/screenshots/hires,
+  which the Screenshots workflow refreshes; re-render after it runs.
+  Widescreen: film.html   Vertical 9:16: film.html?v=1   (see render.js)
+-->
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root {
+    --night-0: #05060d;
+    --night-1: #0b0d1f;
+    --night-2: #151936;
+    --violet: #9e8ff2;
+    --violet-deep: #7b61ff;
+    --moonlight: #eef1fb;
+    --ink: #f4f5fb;
+    --ink-2: rgba(244, 245, 251, 0.72);
+    --ink-3: rgba(244, 245, 251, 0.5);
+    --recovery: #f5a25d;
+    --calm: #3fd6a0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--night-0); }
+  body { font-family: 'Manrope', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+  canvas#sky { position: absolute; inset: 0; }
+  .layer { position: absolute; inset: 0; will-change: opacity, transform; }
+
+  .kicker { font: 700 22px/1 'Manrope'; letter-spacing: 0.28em; text-transform: uppercase; color: var(--violet); }
+  .headline { font: 800 88px/1.02 'Nunito'; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+  .body { font: 500 30px/1.45 'Manrope'; color: var(--ink-2); max-width: 620px; text-wrap: pretty; }
+  .word { display: inline-block; will-change: opacity, transform, filter; }
+  /* A soft dark halo: keeps small stars from reading as punctuation beside a glyph. */
+  .kicker, .headline, .body, .tagline, .soon, .wordmark, .lockword { text-shadow: 0 0 14px rgba(6,7,16,0.95), 0 0 30px rgba(6,7,16,0.8); }
+  .accent { text-shadow: none; filter: drop-shadow(0 0 12px rgba(6,7,16,0.95)); }
+
+  .phone {
+    position: absolute; width: 404px; height: 878px; border-radius: 66px; padding: 12px;
+    background: linear-gradient(160deg, #2a2d3f, #0c0d14 40%, #1b1d29);
+    box-shadow:
+      0 0 0 2px rgba(255,255,255,0.08) inset,
+      0 60px 120px rgba(0,0,0,0.55),
+      0 0 140px rgba(123, 97, 255, 0.22);
+  }
+  .phone img { display: block; width: 380px; height: 854px; object-fit: cover; object-position: top; border-radius: 55px; }
+  .phone::after {
+    content: ""; position: absolute; inset: 12px; border-radius: 55px; pointer-events: none;
+    background: linear-gradient(115deg, rgba(255,255,255,0.10), rgba(255,255,255,0) 28%);
+  }
+
+  .watch {
+    position: absolute; width: 330px; height: 400px; border-radius: 92px; padding: 26px;
+    background: linear-gradient(160deg, #3a3d4c, #111219 45%, #24262f);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.07) inset, 0 50px 100px rgba(0,0,0,0.6), 0 0 120px rgba(63,214,160,0.16);
+  }
+  .watch img { width: 278px; height: 348px; border-radius: 68px; object-fit: cover; display: block; }
+  .crown { position: absolute; right: -16px; top: 110px; width: 18px; height: 70px; border-radius: 8px; background: linear-gradient(90deg,#2b2d38,#5a5d6c); }
+
+  .live {
+    position: absolute; width: 760px; height: 176px; border-radius: 44px; padding: 34px 44px;
+    background: rgba(13, 16, 36, 0.92);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 40px 90px rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(20px);
+  }
+  .live .l1 { font: 700 22px/1 'Manrope'; color: #9e8ff2; display: flex; gap: 12px; align-items: center; }
+  .live .l2 { font: 600 30px/1.2 'Manrope'; color: rgba(255,255,255,0.88); margin-top: 12px; }
+  .live .l3 { font: 500 22px/1.2 'Manrope'; color: rgba(255,255,255,0.6); margin-top: 8px; }
+  .live .timer { font: 700 64px/1 'Nunito'; color: #9e8ff2; font-variant-numeric: tabular-nums; }
+  .island { position: absolute; height: 74px; border-radius: 37px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .island .t { font: 700 30px/1 'Nunito'; color: #9e8ff2; font-variant-numeric: tabular-nums; }
+
+  .lockword { font: 800 128px/1 'Nunito'; letter-spacing: -0.02em; }
+  .wordmark { font: 800 150px/1 'Nunito'; letter-spacing: 0.02em; }
+  .tagline { font: 600 38px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-2); }
+  .soon { font: 700 22px/1 'Manrope'; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-3); }
+  .accent { background: linear-gradient(90deg, #b9adff, #7b61ff 60%, #3fd6a0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
+  /* ---------- 9:16 cut (film.html?v=1) ---------- */
+  html.vertical, html.vertical body { width: 1080px; height: 1920px; }
+  .vertical #moon { left: 360px !important; top: 440px !important; }
+  .vertical #s1-title { top: 880px !important; }
+  .vertical #s1-tag { top: 1070px !important; font-size: 32px; }
+  .vertical #s2a, .vertical #s2b { top: 820px !important; padding: 0 90px; }
+  .vertical #s2a { font-size: 68px !important; }
+  .vertical #s2b { font-size: 84px !important; }
+  .vertical .copy { left: 90px !important; top: 150px !important; width: 900px !important; }
+  .vertical .copy .headline { font-size: 80px; }
+  .vertical .copy .body { font-size: 32px; max-width: 900px; }
+  .vertical #s3p, .vertical #s4p, .vertical #s5p { left: 338px !important; top: 560px !important; transform-origin: 50% 0; }
+  .vertical #s5q { left: 640px !important; top: 640px !important; transform-origin: 50% 0; }
+  .vertical #s6h { top: 150px !important; font-size: 72px !important; padding: 0 250px; line-height: 1.12; }
+  .vertical #s6a { left: 70px !important; top: 760px !important; }
+  .vertical #s6b { left: 338px !important; top: 700px !important; }
+  .vertical #s6c { left: 606px !important; top: 760px !important; }
+  .vertical #s7h { top: 170px !important; font-size: 72px !important; padding: 0 60px; line-height: 1.12; }
+  .vertical #s7w { left: 375px !important; top: 520px !important; }
+  .vertical #s7i { left: 330px !important; top: 1020px !important; }
+  .vertical #s7l { left: 160px !important; top: 1150px !important; }
+  .vertical #s7b { left: 160px !important; top: 1390px !important; }
+  .vertical #lock { left: 480px !important; top: 560px !important; }
+  .vertical #s8h { top: 800px !important; font-size: 88px; padding: 0 40px; }
+  .vertical #s8b { top: 1120px !important; padding: 0 90px; }
+  .vertical #s8c { top: 1260px !important; }
+  .vertical #s9i { left: 420px !important; top: 560px !important; }
+  .vertical #s9w { top: 880px !important; }
+  .vertical #s9t { top: 1070px !important; font-size: 32px; }
+  .vertical #s9s { top: 1190px !important; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="sky"></canvas>
+
+  <!-- 1. Opening: the moon, the name, the line -->
+  <div class="layer" id="s1">
+    <svg id="moon" width="360" height="360" viewBox="0 0 360 360" style="position:absolute;left:780px;top:170px;overflow:visible">
+      <defs>
+        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#c9c4ff" stop-opacity="0.55"/>
+          <stop offset="60%" stop-color="#7b61ff" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#7b61ff" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="lunar" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f5f5f2"/>
+          <stop offset="100%" stop-color="#dfe6f6"/>
+        </linearGradient>
+        <mask id="crescent">
+          <rect width="360" height="360" fill="black"/>
+          <circle cx="180" cy="180" r="112" fill="white"/>
+          <circle id="bite" cx="232" cy="156" r="100" fill="black"/>
+        </mask>
+        <filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>
+      </defs>
+      <circle cx="180" cy="180" r="180" fill="url(#glow)"/>
+      <rect width="360" height="360" fill="url(#lunar)" mask="url(#crescent)" filter="url(#soft)" opacity="0.55"/>
+      <rect width="360" height="360" fill="url(#lunar)" mask="url(#crescent)"/>
+    </svg>
+    <div id="s1-title" class="wordmark" style="position:absolute;width:100%;top:590px;text-align:center"></div>
+    <div id="s1-tag" class="tagline" style="position:absolute;width:100%;top:780px;text-align:center"></div>
+  </div>
+
+  <!-- 2. The premise -->
+  <div class="layer" id="s2">
+    <div id="s2a" class="headline" style="position:absolute;width:100%;top:430px;text-align:center;font-size:76px"></div>
+    <div id="s2b" class="headline" style="position:absolute;width:100%;top:430px;text-align:center;font-size:96px"></div>
+  </div>
+
+  <!-- 3. Recovery -->
+  <div class="layer" id="s3">
+    <div class="copy" style="position:absolute;left:180px;top:330px;width:760px">
+      <div class="kicker">Sleep need</div>
+      <div id="s3h" class="headline" style="margin-top:26px"></div>
+      <div id="s3b" class="body" style="margin-top:32px"></div>
+    </div>
+    <div class="phone" id="s3p" style="left:1180px;top:101px"><img src="../../docs/screenshots/hires/today.jpg"></div>
+  </div>
+
+  <!-- 4. Last night -->
+  <div class="layer" id="s4">
+    <div class="phone" id="s4p" style="left:300px;top:101px"><img src="../../docs/screenshots/hires/sleepDetail.jpg"></div>
+    <div class="copy" style="position:absolute;left:940px;top:330px;width:800px">
+      <div class="kicker">Last night</div>
+      <div id="s4h" class="headline" style="margin-top:26px"></div>
+      <div id="s4b" class="body" style="margin-top:32px"></div>
+    </div>
+  </div>
+
+  <!-- 5. Coach -->
+  <div class="layer" id="s5">
+    <div class="copy" style="position:absolute;left:180px;top:330px;width:720px">
+      <div class="kicker">Coach</div>
+      <div id="s5h" class="headline" style="margin-top:26px"></div>
+      <div id="s5b" class="body" style="margin-top:32px"></div>
+    </div>
+    <div class="phone" id="s5q" style="left:1380px;top:151px;opacity:0.55"><img src="../../docs/screenshots/hires/trends.jpg"></div>
+    <div class="phone" id="s5p" style="left:1060px;top:101px"><img src="../../docs/screenshots/hires/coach.jpg"></div>
+  </div>
+
+  <!-- 6. Plan, wind down, wake -->
+  <div class="layer" id="s6">
+    <div id="s6h" class="headline" style="position:absolute;width:100%;top:62px;text-align:center;font-size:74px"></div>
+    <div class="phone" id="s6a" style="left:418px;top:170px;transform-origin:50% 0"><img src="../../docs/screenshots/hires/tomorrow.jpg"></div>
+    <div class="phone" id="s6b" style="left:758px;top:150px;transform-origin:50% 0"><img src="../../docs/screenshots/hires/breathing.jpg"></div>
+    <div class="phone" id="s6c" style="left:1098px;top:170px;transform-origin:50% 0"><img src="../../docs/screenshots/hires/bodyClock.jpg"></div>
+  </div>
+
+  <!-- 7. Wrist and Lock Screen -->
+  <div class="layer" id="s7">
+    <div id="s7h" class="headline" style="position:absolute;width:100%;top:120px;text-align:center;font-size:74px"></div>
+    <div class="watch" id="s7w" style="left:300px;top:390px"><img src="../../docs/screenshots/watch/hires/page-today.jpg"><div class="crown"></div></div>
+    <div class="island" id="s7i" style="left:900px;top:420px;width:420px">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      <span class="t" id="s7it">18:42</span>
+    </div>
+    <div class="live" id="s7l" style="left:900px;top:560px">
+      <div>
+        <div class="l1"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Winding down</div>
+        <div class="l2">Guided breathing</div>
+        <div class="l3">Lights out at 10:45 PM</div>
+      </div>
+      <div class="timer" id="s7lt">18:42</div>
+    </div>
+    <div id="s7b" class="body" style="position:absolute;left:900px;top:790px;max-width:760px"></div>
+  </div>
+
+  <!-- 8. Privacy -->
+  <div class="layer" id="s8">
+    <svg id="lock" width="120" height="150" viewBox="0 0 120 150" style="position:absolute;left:900px;top:220px">
+      <path d="M30 66 V44 a30 30 0 0 1 60 0 V66" fill="none" stroke="#9e8ff2" stroke-width="10" stroke-linecap="round"/>
+      <rect x="12" y="64" width="96" height="80" rx="22" fill="#9e8ff2"/>
+      <circle cx="60" cy="100" r="10" fill="#0b0d1f"/>
+      <rect x="56" y="104" width="8" height="18" rx="4" fill="#0b0d1f"/>
+    </svg>
+    <div id="s8h" class="lockword" style="position:absolute;width:100%;top:430px;text-align:center"></div>
+    <div id="s8b" class="body" style="position:absolute;left:0;width:100%;max-width:none;top:600px;text-align:center"></div>
+    <div id="s8c" class="soon" style="position:absolute;width:100%;top:720px;text-align:center;letter-spacing:0.22em"></div>
+  </div>
+
+  <!-- 9. End card -->
+  <div class="layer" id="s9">
+    <img id="s9i" src="../../Zoon/Assets.xcassets/AppIcon.appiconset/icon-1024.png" style="position:absolute;left:840px;top:170px;width:240px;height:240px;border-radius:54px;box-shadow:0 30px 90px rgba(0,0,0,0.6),0 0 160px rgba(123,97,255,0.35)">
+    <div id="s9w" class="wordmark" style="position:absolute;width:100%;top:480px;text-align:center"></div>
+    <div id="s9t" class="tagline" style="position:absolute;width:100%;top:672px;text-align:center"></div>
+    <div id="s9s" class="soon" style="position:absolute;width:100%;top:800px;text-align:center"></div>
+  </div>
+
+  <div id="fade"></div>
+</div>
+
+<script>
+const VERTICAL = new URLSearchParams(location.search).get('v') === '1';
+if (VERTICAL) document.documentElement.classList.add('vertical');
+const W = VERTICAL ? 1080 : 1920, H = VERTICAL ? 1920 : 1080;
+// ---------- timing helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => 1 - Math.pow(1 - clamp(t), 3);            // out-cubic
+const easeIO = t => { t = clamp(t); return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; };
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+// visible: fades in over [a, a+fi], out over [b-fo, b]
+const vis = (t, a, b, fi = 0.7, fo = 0.7) => Math.min(ease(prog(t, a, a + fi)), 1 - easeIO(prog(t, b - fo, b)));
+
+// ---------- word-by-word text ----------
+function words(el, text, accentFrom = -1) {
+  // A lone "|" is a forced line break.
+  el.innerHTML = text.split(' ').map((w, i) => w === '|' ? '<br>' :
+    `<span class="word${accentFrom >= 0 && i >= accentFrom ? ' accent' : ''}">${w}</span>`).join(' ');
+  return Array.from(el.querySelectorAll('.word'));
+}
+function reveal(spans, t, start, step = 0.08, dur = 0.7, rise = 26) {
+  spans.forEach((s, i) => {
+    const p = ease(prog(t, start + i * step, start + i * step + dur));
+    s.style.opacity = p;
+    s.style.transform = `translateY(${(1 - p) * rise}px)`;
+    s.style.filter = `blur(${(1 - p) * 8}px)`;
+  });
+}
+
+const $ = id => document.getElementById(id);
+const T = {
+  s1t: words($('s1-title'), 'Zoon'),
+  s1g: words($('s1-tag'), 'Sleep, understood.'),
+  s2a: words($('s2a'), 'Your Apple Watch already records every night.'),
+  s2b: words($('s2b'), 'Zoon tells you what it meant.', 3),
+  s3h: words($('s3h'), 'Know what tonight needs.'),
+  s3b: words($('s3b'), 'Your shortfall against your own sleep need, never a crowd average, and a plan to clear it.'),
+  s4h: words($('s4h'), 'See the whole night.'),
+  s4b: words($('s4b'), 'Every stage and every wake, with what the data can and cannot tell you.'),
+  s5h: words($('s5h'), 'Ask Zoon.'),
+  s5b: words($('s5b'), 'Answers built from your own nights, worked out privately on your iPhone.'),
+  s6h: words($('s6h'), 'Plan tonight. Wind down. Wake ready.', 4),
+  s7h: words($('s7h'), VERTICAL ? 'On your wrist. | On your Lock Screen.' : 'On your wrist. On your Lock Screen.'),
+  s7b: words($('s7b'), 'Start wind down from Siri, a widget or Control Center.'),
+  s8h: words($('s8h'), 'No account. No server.'),
+  s8b: words($('s8b'), 'Your sleep stays on your iPhone and Apple Watch.'),
+  s8c: words($('s8c'), 'Reads Apple Health · Never writes to it'),
+  s9w: words($('s9w'), 'Zoon'),
+  s9t: words($('s9t'), 'Sleep, understood.'),
+  s9s: words($('s9s'), 'Coming soon on the App Store'),
+};
+
+// ---------- the sky ----------
+const sky = $('sky'), g = sky.getContext('2d');
+sky.width = W; sky.height = H;
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const stars = Array.from({ length: VERTICAL ? 480 : 420 }, () => ({
+  x: rnd() * W, y: rnd() * (H + 220), r: 0.4 + Math.pow(rnd(), 3) * 2.1,
+  tw: 0.6 + rnd() * 2.2, ph: rnd() * 6.28, depth: 0.2 + rnd() * 0.8
+}));
+// Text boxes on screen this frame, grown by a margin: no star is drawn inside
+// one, so a star can never sit beside a glyph and read as punctuation.
+function quietZones() {
+  const zones = [];
+  document.querySelectorAll('.kicker, .headline, .body, .tagline, .soon, .wordmark, .lockword').forEach(el => {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0 && el.closest('.layer').style.display !== 'none')
+      zones.push([r.left - 40, r.top - 30, r.right + 40, r.bottom + 30]);
+  });
+  return zones;
+}
+function drawSky(t, zones = []) {
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0e1128'); bg.addColorStop(0.55, '#0a0c1d'); bg.addColorStop(1, '#05060d');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  // two slow nebula glows
+  const glows = [[W * 0.27 + Math.sin(t * 0.07) * 120, H * 0.28, 700, 'rgba(123,97,255,0.13)'],
+                 [W * 0.78 + Math.cos(t * 0.05) * 140, H * 0.76, 800, 'rgba(63,120,214,0.10)']];
+  for (const [x, y, r, c] of glows) {
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, c); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, W, H);
+  }
+  for (const s of stars) {
+    const y = ((s.y - t * 6 * s.depth) % (H + 220) + (H + 220)) % (H + 220) - 110;
+    if (zones.some(z => s.x > z[0] && s.x < z[2] && y > z[1] && y < z[3])) continue;
+    const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph));
+    g.globalAlpha = a * (0.4 + 0.6 * s.depth);
+    g.fillStyle = '#e8ecff';
+    g.beginPath(); g.arc(s.x, y, s.r, 0, 6.283); g.fill();
+  }
+  g.globalAlpha = 1;
+  // Quiet the stars behind centred type, so none sits beside a glyph.
+  if (window.scrim > 0) {
+    const sg = g.createRadialGradient(W / 2, H * 0.56, 0, W / 2, H * 0.56, 760);
+    sg.addColorStop(0, `rgba(8,9,22,${0.92 * window.scrim})`);
+    sg.addColorStop(0.55, `rgba(8,9,22,${0.7 * window.scrim})`);
+    sg.addColorStop(1, 'rgba(8,9,22,0)');
+    g.fillStyle = sg; g.fillRect(0, 0, W, H);
+  }
+}
+
+// ---------- scenes ----------
+function setLayer(id, o, extra = '') {
+  const el = $(id); el.style.opacity = o; el.style.display = o <= 0.001 ? 'none' : 'block';
+  if (extra) el.style.transform = extra;
+}
+function phoneIn(el, t, start, fromX = 0, fromY = 160, rot = 0, floatAmp = 10, base = 1) {
+  const p = ease(prog(t, start, start + 1.3));
+  const float = Math.sin(t * 0.9) * floatAmp;
+  el.style.opacity = p;
+  el.style.transform = `translate(${(1 - p) * fromX}px, ${(1 - p) * fromY + float}px) rotate(${rot * p}deg) scale(${base * (0.94 + 0.06 * p)})`;
+}
+function countdown(t, from = 18 * 60 + 42) {
+  const s = Math.max(0, from - Math.floor(t));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+window.render = function (t) {
+  window.scrim = Math.max(vis(t, 1.2, 5.4, 0.9, 0.8), vis(t, 5.2, 9.6, 0.4, 0.6),
+                          vis(t, 38.6, 43.4, 0.5, 0.6), vis(t, 43.2, 50, 0.6, 0.1));
+
+  // 1. Opening 0.0 - 5.4
+  const o1 = vis(t, 0, 5.4, 0.9, 0.8);
+  setLayer('s1', o1);
+  if (o1 > 0) {
+    const rise = easeIO(prog(t, 0, 3.2));
+    const lift = easeIO(prog(t, 4.4, 5.4));
+    $('moon').style.transform = `translateY(${(1 - rise) * 140 - lift * 60}px) scale(${0.86 + 0.14 * rise})`;
+    $('bite').setAttribute('cx', lerp(300, 232, easeIO(prog(t, 0.2, 3.4))));
+    reveal(T.s1t, t, 1.7, 0.1, 1.0, 30);
+    reveal(T.s1g, t, 2.6, 0.12, 0.9, 18);
+  }
+
+  // 2. Premise 5.2 - 9.6
+  const o2 = vis(t, 5.2, 9.6, 0.4, 0.6);
+  setLayer('s2', o2);
+  if (o2 > 0) {
+    const a = 1 - easeIO(prog(t, 7.1, 7.5));
+    $('s2a').style.opacity = a;
+    reveal(T.s2a, t, 5.3, 0.07, 0.7);
+    $('s2b').style.opacity = t > 7.3 ? 1 : 0;
+    reveal(T.s2b, t, 7.4, 0.09, 0.8, 30);
+  }
+
+  // 3. Recovery 9.4 - 15.4
+  const o3 = vis(t, 9.4, 15.4, 0.5, 0.6);
+  setLayer('s3', o3);
+  if (o3 > 0) {
+    reveal(T.s3h, t, 9.8, 0.08); reveal(T.s3b, t, 10.6, 0.035, 0.6, 14);
+    phoneIn($('s3p'), t, 9.5, 0, 220, 0, 10, VERTICAL ? 1.18 : 1);
+  }
+
+  // 4. Last night 15.2 - 21.2
+  const o4 = vis(t, 15.2, 21.2, 0.5, 0.6);
+  setLayer('s4', o4);
+  if (o4 > 0) {
+    phoneIn($('s4p'), t, 15.3, VERTICAL ? 0 : -160, VERTICAL ? 200 : 60, 0, 10, VERTICAL ? 1.18 : 1);
+    reveal(T.s4h, t, 15.7, 0.08); reveal(T.s4b, t, 16.5, 0.035, 0.6, 14);
+  }
+
+  // 5. Coach 21.0 - 27.2
+  const o5 = vis(t, 21.0, 27.2, 0.5, 0.6);
+  setLayer('s5', o5);
+  if (o5 > 0) {
+    reveal(T.s5h, t, 21.4, 0.1); reveal(T.s5b, t, 22.1, 0.035, 0.6, 14);
+    phoneIn($('s5p'), t, 21.1, 0, 220, 0, 10, VERTICAL ? 1.18 : 1);
+    const q = ease(prog(t, 21.6, 23.0));
+    $('s5q').style.opacity = 0.5 * q;
+    $('s5q').style.transform = `translate(${(1 - q) * -120}px, ${Math.sin(t * 0.8 + 1) * 8}px) rotate(${6 * q}deg) scale(0.92)`;
+  }
+
+  // 6. Plan / wind down / wake 27.0 - 33.4
+  const o6 = vis(t, 27.0, 33.4, 0.5, 0.6);
+  setLayer('s6', o6);
+  if (o6 > 0) {
+    reveal(T.s6h, t, 27.2, 0.1, 0.8);
+    phoneIn($('s6a'), t, 27.5, 120, 120, -7, 8, 0.84);
+    phoneIn($('s6b'), t, 27.3, 0, 180, 0, 10, 0.84);
+    phoneIn($('s6c'), t, 27.7, -120, 120, 7, 8, 0.84);
+  }
+
+  // 7. Wrist and Lock Screen 33.2 - 38.8
+  const o7 = vis(t, 33.2, 38.8, 0.5, 0.6);
+  setLayer('s7', o7);
+  if (o7 > 0) {
+    reveal(T.s7h, t, 33.4, 0.08, 0.8);
+    const w = ease(prog(t, 33.6, 34.9));
+    $('s7w').style.opacity = w;
+    $('s7w').style.transform = `translateY(${(1 - w) * 120 + Math.sin(t * 0.9) * 8}px)`;
+    const i = ease(prog(t, 34.0, 35.0));
+    $('s7i').style.opacity = i;
+    $('s7i').style.transform = `scaleX(${0.4 + 0.6 * i})`;
+    const l = ease(prog(t, 34.5, 35.7));
+    $('s7l').style.opacity = l;
+    $('s7l').style.transform = `translateY(${(1 - l) * 60}px)`;
+    const cd = countdown(t - 34.0);
+    $('s7it').textContent = cd; $('s7lt').textContent = cd;
+    reveal(T.s7b, t, 35.6, 0.05, 0.6, 14);
+  }
+
+  // 8. Privacy 38.6 - 43.4
+  const o8 = vis(t, 38.6, 43.4, 0.5, 0.6);
+  setLayer('s8', o8);
+  if (o8 > 0) {
+    const k = ease(prog(t, 38.7, 39.8));
+    $('lock').style.opacity = k;
+    $('lock').style.transform = `translateY(${(1 - k) * 40}px) scale(${0.8 + 0.2 * k})`;
+    reveal(T.s8h, t, 39.1, 0.12, 0.8, 30);
+    reveal(T.s8b, t, 40.0, 0.05, 0.6, 14);
+    reveal(T.s8c, t, 40.8, 0.06, 0.6, 10);
+  }
+
+  // 9. End card 43.2 - 49.0
+  const o9 = vis(t, 43.2, 50, 0.6, 0.1);
+  setLayer('s9', o9);
+  if (o9 > 0) {
+    const ic = ease(prog(t, 43.3, 44.6));
+    $('s9i').style.opacity = ic;
+    $('s9i').style.transform = `translateY(${(1 - ic) * 50}px) scale(${0.82 + 0.18 * ic})`;
+    reveal(T.s9w, t, 44.0, 0.1, 1.0, 30);
+    reveal(T.s9t, t, 44.8, 0.12, 0.9, 18);
+    reveal(T.s9s, t, 45.8, 0.05, 0.7, 10);
+  }
+
+  $('fade').style.opacity = Math.max(1 - ease(prog(t, 0, 1.2)), easeIO(prog(t, 48.0, 49.0)));
+  // Last: the canvas sits behind everything, and needs this frame's text boxes.
+  drawSky(t, quietZones());
+};
+
+window.ready = Promise.all([
+  document.fonts.ready,
+  ...Array.from(document.images).map(im => im.decode().catch(() => {}))
+]).then(() => true);
+window.render(0);
+</script>
+</body>
+</html>
