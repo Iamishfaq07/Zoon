@@ -5,8 +5,8 @@
 <title>Zoon Launch Film</title>
 <!--
   The launch film. Every frame is drawn by render(t) at a fixed clock, so a
-  render is identical every time. Real screens come from docs/screenshots/hires
-  (refreshed by the Screenshots workflow); everything else is drawn here.
+  render is identical every time. Real screens come from img/ (copied from
+  docs/screenshots/hires); everything else is drawn here.
   Widescreen: film.html   Vertical 9:16: film.html?v=1   (see render.js)
 -->
 <link rel="stylesheet" href="fonts.css">
@@ -95,6 +95,17 @@
     background: rgba(18,20,40,0.9); box-shadow: 0 0 0 1px rgba(255,255,255,0.1) inset, 0 30px 70px rgba(0,0,0,0.5); font: 600 30px/1 'Manrope'; white-space: nowrap; }
   .orb { width: 58px; height: 58px; border-radius: 50%; background: conic-gradient(from 0deg, #7b61ff, #3fd6a0, #62b3ff, #f5a25d, #7b61ff); filter: blur(0.5px); box-shadow: 0 0 30px rgba(123,97,255,0.7); }
 
+  /* Watch faces */
+  .wf { position: absolute; width: 330px; transform-origin: 50% 0; }
+  .wf .watch { position: relative; }
+  .wcap { margin-top: 30px; text-align: center; font: 700 24px/1.2 'Manrope'; color: var(--ink-2); text-shadow: 0 0 14px rgba(6,7,16,0.95); }
+  /* Morning notification */
+  .notif { position: absolute; display: flex; gap: 18px; align-items: flex-start; padding: 22px 26px; border-radius: 32px;
+    background: rgba(255,255,255,0.16); backdrop-filter: blur(24px); box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset, 0 30px 70px rgba(0,0,0,0.35); }
+  .notif img { width: 58px; height: 58px; border-radius: 14px; flex: none; }
+  .notif .nt { font: 700 18px/1 'Manrope'; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); display: flex; justify-content: space-between; }
+  .notif .nh { font: 700 27px/1.2 'Manrope'; margin-top: 8px; }
+  .notif .nb { font: 500 24px/1.35 'Manrope'; color: rgba(255,255,255,0.8); margin-top: 4px; }
   .dial-label { position: absolute; font: 700 22px/1.2 'Manrope'; white-space: nowrap; }
   .dial-label span { display: block; font: 800 26px/1.1 'Nunito'; color: var(--ink); font-variant-numeric: tabular-nums; }
   #fade { position: absolute; inset: 0; background: #000; }
@@ -141,7 +152,7 @@
     <div class="plan" id="p0"><div class="ic" style="background:rgba(123,97,255,0.2)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c4b8ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></div><div><div class="lb">Wind down</div><div class="sub">Dim lights, screens away</div></div><div class="tm" style="color:#c4b8ff">10:36 PM</div></div>
     <div class="plan" id="p1"><div class="ic" style="background:rgba(98,179,255,0.18)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#62b3ff" stroke-width="2.2" stroke-linecap="round"><path d="M3 18v-6h18v6M3 12V7M21 18v-3M6 12V9h5v3"/></svg></div><div><div class="lb">Bed</div><div class="sub">20 min earlier than usual</div></div><div class="tm" style="color:#62b3ff">11:06 PM</div></div>
     <div class="plan" id="p2"><div class="ic" style="background:rgba(245,162,93,0.18)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f5a25d" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="15" r="4"/><path d="M2 19h20M12 5v3M4.9 8.9l2 2M19.1 8.9l-2 2"/></svg></div><div><div class="lb">Wake</div><div class="sub">Protects your first event</div></div><div class="tm" style="color:#f5a25d">6:51 AM</div></div>
-    <div class="phone" id="s4p"><img src="../../docs/screenshots/hires/today.jpg"></div>
+    <div class="phone" id="s4p"><img src="img/today.jpg"></div>
   </div>
 
   <!-- 5. Coach -->
@@ -151,7 +162,7 @@
     <div class="typing" id="b1"><i></i><i></i><i></i></div>
     <div class="bubble zoon" id="b2"><span id="b2t"></span></div>
     <div class="evidence" id="b3"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg>Why Zoon said this</div>
-    <div class="phone" id="s5p"><img src="../../docs/screenshots/hires/coach.jpg"></div>
+    <div class="phone" id="s5p"><img src="img/coach.jpg"></div>
   </div>
 
   <!-- 6. Wind down -->
@@ -172,14 +183,24 @@
     <div class="dial-label" id="m4" style="color:#c4b8ff">Wind down<span>10:22 PM</span></div>
   </div>
 
+  <!-- W. Watch faces -->
+  <div class="layer" id="sw">
+    <div id="swh" class="headline m center"></div>
+    <div class="wf" id="wf0"><div class="watch"><img src="img/w-page-today.jpg"><div class="crown"></div></div><div class="wcap">Recovery</div></div>
+    <div class="wf" id="wf1"><div class="watch"><img src="img/w-page-tonight.jpg"><div class="crown"></div></div><div class="wcap">Tonight's plan</div></div>
+    <div class="wf" id="wf2"><div class="watch"><img src="img/w-page-nap.jpg"><div class="crown"></div></div><div class="wcap">Nap timer</div></div>
+    <div class="wf" id="wf3"><div class="watch"><img src="img/w-page-log.jpg"><div class="crown"></div></div><div class="wcap">Quick log</div></div>
+    <div class="wf" id="wf4"><div class="watch"><img src="img/w-page-scorelight.jpg"><div class="crown"></div></div><div class="wcap">Last night</div></div>
+    <div id="swb" class="body center"></div>
+  </div>
+
   <!-- 8. Everywhere -->
   <div class="layer" id="s8">
     <div id="s8h" class="headline m center"></div>
-    <div class="watch" id="s8w"><img src="../../docs/screenshots/watch/hires/page-today.jpg"><div class="crown"></div></div>
     <div class="siri" id="s8s"><div class="orb"></div>“Start wind down in Zoon”</div>
     <div class="island" id="s8i"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><span class="t" id="s8it">18:42</span></div>
     <div class="live" id="s8l"><div><div class="l1"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9e8ff2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Winding down</div><div class="l2">Guided breathing</div><div class="l3">Lights out at 10:45 PM</div></div><div class="timer" id="s8lt">18:42</div></div>
-    <div id="s8b" class="body abs"></div>
+    <div id="s8b" class="body center"></div>
   </div>
 
   <!-- 9. Privacy -->
@@ -189,9 +210,16 @@
     <div id="s9c" class="soon center" style="letter-spacing:0.22em"></div>
   </div>
 
+  <!-- M. Morning -->
+  <div class="layer" id="sm">
+    <div class="abs" id="smc"><div class="kicker" style="color:#ffc58a">Morning</div><div id="smh" class="headline" style="margin-top:22px"></div><div id="smb" class="body" style="margin-top:22px"></div></div>
+    <div class="phone" id="smp"><img src="img/today-morning.jpg"></div>
+    <div class="notif" id="smn"><img src="img/icon.png"><div style="flex:1"><div class="nt"><span>ZOON</span><span>now</span></div><div class="nh">Good morning</div><div class="nb">Solid night — 7h 32m at 92% efficiency.</div></div></div>
+  </div>
+
   <!-- 10. End card -->
   <div class="layer" id="s10">
-    <img id="s10i" src="../../Zoon/Assets.xcassets/AppIcon.appiconset/icon-1024.png" style="position:absolute;width:240px;height:240px;border-radius:54px;box-shadow:0 30px 90px rgba(0,0,0,0.6),0 0 160px rgba(123,97,255,0.35)">
+    <img id="s10i" src="img/icon.png" style="position:absolute;width:240px;height:240px;border-radius:54px;box-shadow:0 30px 90px rgba(0,0,0,0.6),0 0 160px rgba(123,97,255,0.35)">
     <div id="s10w" class="wordmark center"></div>
     <div id="s10t" class="tagline center"></div>
     <div id="s10s" class="soon center"></div>
@@ -217,8 +245,11 @@ const hm = m => `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2,
 
 // Scene windows [start, end].
 const S = { 1: [0, 5.6], 2: [5.4, 11.4], 3: [11.2, 17.4], 4: [17.2, 23.2], 5: [23.0, 29.4],
-            6: [29.2, 35.2], 7: [35.0, 40.8], 8: [40.6, 46.4], 9: [46.2, 51.0], 10: [50.8, 57.0] };
-const DUR = 56.5;
+            6: [29.2, 35.2], 7: [35.0, 40.8], w: [40.6, 46.8], 8: [46.6, 52.2], 9: [52.0, 56.8],
+            m: [56.6, 63.0], 10: [62.8, 69.0] };
+const DUR = 68.5;
+// Night turns to morning from the morning scene on.
+const dawnAt = t => easeIO(prog(t, 56.4, 60.4));
 
 // ---------- layout: [x, y, width] per orientation ----------
 const Lh = {
@@ -230,7 +261,9 @@ const Lh = {
   s5c: [180, 110, 800], chat: [180, 440, 900], s5p: [1300, 101, null],
   s6c: [180, 300, 640], breath: [1260, 470, 150], s6s: [910, 890],
   s7c: [180, 300, 620], dial: [1300, 540, 300],
-  s8h: [null, 110], s8w: [300, 380], s8s: [900, 300], s8i: [900, 450], s8l: [900, 565], s8b: [900, 790, 760],
+  wf: [[95, 300, 0.92], [445, 272, 1.0], [795, 250, 1.1], [1145, 272, 1.0], [1495, 300, 0.92]], swh: [null, 100], swb: [null, 930],
+  s8h: [null, 120], s8s: [680, 300], s8i: [750, 460], s8l: [580, 575], s8b: [null, 820],
+  smc: [180, 330, 720], smp: [1300, 140, null], smn: [1210, 70, 600], sun: [0.52, 0.9],
   shield: [960, 360, 170], cloud: [1500, 360], s9h: [null, 640], s9b: [null, 800], s9c: [null, 890],
   s10i: [840, 170], s10w: [null, 480], s10t: [null, 672], s10s: [null, 800]
 };
@@ -243,7 +276,9 @@ const Lv = {
   s5c: [90, 150, 900], chat: [90, 640, 900], s5p: [338, 1290, null],
   s6c: [90, 150, 900], breath: [540, 960, 170], s6s: [190, 1470],
   s7c: [90, 150, 900], dial: [540, 1100, 330],
-  s8h: [null, 170], s8w: [375, 480], s8s: [150, 980], s8i: [330, 1130], s8l: [160, 1250], s8b: [160, 1480, 760],
+  wf: [[115, 400, 0.95], [635, 400, 0.95], [115, 890, 0.95], [635, 890, 0.95], [375, 1380, 0.95]], swh: [null, 160], swb: [null, 1770],
+  s8h: [null, 200], s8s: [260, 560], s8i: [330, 740], s8l: [160, 860], s8b: [null, 1120],
+  smc: [90, 150, 900], smp: [338, 820, null], smn: [90, 560, 900], sun: [0.5, 0.93],
   shield: [540, 700, 200], cloud: [540, 1160], s9h: [null, 1320], s9b: [null, 1520], s9c: [null, 1610],
   s10i: [420, 560], s10w: [null, 880], s10t: [null, 1070], s10s: [null, 1190]
 };
@@ -255,13 +290,15 @@ function place(id, p) {
   el.style.top = p[1] + 'px';
   if (p[2]) el.style.width = p[2] + 'px';
 }
-['s1t','s1g','s2a','s2b','s3c','s4c','s4p','s5c','s5p','s6c','s6s','s7c','s8h','s8w','s8s','s8i','s8l','s8b','s9h','s9b','s9c','s10i','s10w','s10t','s10s']
+['s1t','s1g','s2a','s2b','s3c','s4c','s4p','s5c','s5p','s6c','s6s','s7c','swh','swb','s8h','s8s','s8i','s8l','s8b','smc','smp','smn','s9h','s9b','s9c','s10i','s10w','s10t','s10s']
   .forEach(id => place(id, L[id]));
 place('s3n', L.s3n);
 L.chips.forEach((p, i) => place('c' + i, p));
 L.plans.forEach((p, i) => place('p' + i, p));
+L.wf.forEach((p, i) => place('wf' + i, [p[0], p[1]]));  // p[2] is a scale, not a width
 if (VERTICAL) $('s3n').style.textAlign = 'left';
-if (VERTICAL) ['s2a','s2b','s8h','s9b'].forEach(id => $(id).style.padding = '0 80px');
+if (VERTICAL) ['s2a','s2b','s8h','s8b','s9b','swh','swb'].forEach(id => $(id).style.padding = '0 80px');
+else ['swb', 's8b'].forEach(id => $(id).style.padding = '0 360px');
 
 // ---------- word reveals ----------
 function words(el, text, accentFrom = -1) {
@@ -292,8 +329,12 @@ const T = {
   s6b: words($('s6b'), 'Guided 4-7-8 breathing and your sound scene, fading out at lights-out.'),
   s7h: words($('s7h'), 'Your body clock, mapped.'),
   s7b: words($('s7b'), 'When focus peaks, when the dip comes, when to wind down.'),
-  s8h: words($('s8h'), VERTICAL ? 'On your wrist. | On your Lock Screen.' : 'On your wrist. On your Lock Screen.'),
-  s8b: words($('s8b'), 'Start wind down from Siri, a widget or Control Center.'),
+  swh: words($('swh'), 'Your night, on your wrist.', 3),
+  swb: words($('swb'), 'Recovery, tonight’s plan, a nap timer and one-tap logging on Apple Watch.'),
+  s8h: words($('s8h'), 'Wind down from anywhere.'),
+  s8b: words($('s8b'), 'Ask Siri, tap a widget or Control Center, and watch the countdown on your Lock Screen.'),
+  smh: words($('smh'), 'Wake up to answers.'),
+  smb: words($('smb'), 'How you slept, and what today holds, before you are out of bed.'),
   s9h: words($('s9h'), 'No account. No server.'),
   s9b: words($('s9b'), 'Your sleep stays on your iPhone and Apple Watch.'),
   s9c: words($('s9c'), 'Reads Apple Health · Never writes to it'),
@@ -321,10 +362,20 @@ function quietZones() {
   });
   return zones;
 }
+function mix(a, b, k) {
+  const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16));
+  return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * k)).join(',')})`;
+}
 function drawSky(t, zones) {
+  const d = dawnAt(t);
   const bg = g.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#0e1128'); bg.addColorStop(0.55, '#0a0c1d'); bg.addColorStop(1, '#05060d');
+  bg.addColorStop(0, mix('0e1128', '1b2352', d)); bg.addColorStop(0.55, mix('0a0c1d', '3a2d5a', d)); bg.addColorStop(1, mix('05060d', 'c9765a', d));
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (d > 0) {
+    const [sx, sy] = L.sun, hg = g.createRadialGradient(W * sx, H * 1.05, 0, W * sx, H * 1.05, H * 0.95);
+    hg.addColorStop(0, `rgba(255,178,120,${0.55 * d})`); hg.addColorStop(0.5, `rgba(240,120,110,${0.18 * d})`); hg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = hg; g.fillRect(0, 0, W, H);
+  }
   for (const [x, y, r, col] of [[W * 0.27 + Math.sin(t * 0.07) * 120, H * 0.28, 700, 'rgba(123,97,255,0.13)'],
                                 [W * 0.78 + Math.cos(t * 0.05) * 140, H * 0.76, 800, 'rgba(63,120,214,0.10)']]) {
     const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
@@ -333,7 +384,7 @@ function drawSky(t, zones) {
   for (const s of stars) {
     const y = ((s.y - t * 6 * s.depth) % (H + 220) + (H + 220)) % (H + 220) - 110;
     if (zones.some(z => s.x > z[0] && s.x < z[2] && y > z[1] && y < z[3])) continue;
-    g.globalAlpha = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph))) * (0.4 + 0.6 * s.depth);
+    g.globalAlpha = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph))) * (0.4 + 0.6 * s.depth) * (1 - 0.8 * d) * (1 - 0.7 * d * y / H);
     g.fillStyle = '#e8ecff'; g.beginPath(); g.arc(s.x, y, s.r, 0, 6.283); g.fill();
   }
   g.globalAlpha = 1;
@@ -579,8 +630,17 @@ function phoneIn(el, t, start, fromX = 0, fromY = 180, rot = 0, base = 1) {
 const countdown = t => { const s = Math.max(0, 18 * 60 + 42 - Math.floor(t)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 const ANSWER = 'You woke 3 times, all after 2 AM. Nights like that were more common after caffeine late in the day. A pattern in your own nights, not proof.';
 
+function sun(t) {
+  const d = dawnAt(t); if (d <= 0) return;
+  const [sx, sy] = L.sun, x = W * sx, y = lerp(H + 90, H * sy, easeIO(prog(t, 56.8, 62.5)));
+  glow(x, y, 360, `rgba(255,190,130,${0.45 * d})`);
+  const sg = c.createRadialGradient(x, y - 20, 10, x, y, 80); sg.addColorStop(0, '#fff6e0'); sg.addColorStop(1, '#ffb877');
+  c.globalAlpha = d; c.fillStyle = sg; c.beginPath(); c.arc(x, y, 80, 0, 6.283); c.fill(); c.globalAlpha = 1;
+}
+
 window.render = function (t) {
   c.clearRect(0, 0, W, H);
+  sun(t);
   const o = {}; for (const k in S) o[k] = vis(t, S[k][0], S[k][1], k == 1 ? 0.9 : 0.5, k == 10 ? 0.1 : 0.6);
   for (const k in S) layer('s' + k, o[k]);
 
@@ -682,11 +742,22 @@ window.render = function (t) {
     reveal(T.s7h, t, S[7][0] + 0.2, 0.08); reveal(T.s7b, t, S[7][0] + 0.8, 0.035, 0.6, 14);
   }
 
-  // 8. Wrist, Siri, Dynamic Island, Lock Screen
+  // W. Watch faces
+  if (o.w > 0) {
+    const l = t - S.w[0];
+    reveal(T.swh, t, S.w[0] + 0.2, 0.08, 0.8); reveal(T.swb, t, S.w[0] + 1.6, 0.035, 0.6, 14);
+    L.wf.forEach((p, i) => {
+      const el = $('wf' + i); if (el.dataset.off) return;
+      const k = back(prog(l, 0.3 + i * 0.16, 1.2 + i * 0.16));
+      el.style.opacity = clamp(k);
+      el.style.transform = `translateY(${(1 - k) * 160 + Math.sin(t * 0.9 + i * 1.3) * 8}px) scale(${p[2] * (0.8 + 0.2 * clamp(k))})`;
+    });
+  }
+
+  // 8. Siri, Dynamic Island, Lock Screen
   if (o[8] > 0) {
     const l = t - S[8][0];
     reveal(T.s8h, t, S[8][0] + 0.2, 0.08, 0.8);
-    const w = ease(prog(l, 0.3, 1.5)); $('s8w').style.opacity = w; $('s8w').style.transform = `translateY(${(1 - w) * 120 + Math.sin(t * 0.9) * 8}px)`;
     const s = back(prog(l, 0.7, 1.5)); $('s8s').style.opacity = clamp(s); $('s8s').style.transform = `scale(${0.7 + 0.3 * s})`;
     $('s8s').querySelector('.orb').style.transform = `rotate(${t * 120}deg)`;
     const i = ease(prog(l, 1.5, 2.4)); $('s8i').style.opacity = i; $('s8i').style.transform = `scaleX(${0.4 + 0.6 * i})`;
@@ -700,6 +771,14 @@ window.render = function (t) {
     const l = t - S[9][0], [px, py, pr] = L.shield;
     privacy(px, py, pr, L.cloud, t, prog(l, 1.3, 2.3), o[9] * ease(prog(l, 0, 0.8)));
     reveal(T.s9h, t, S[9][0] + 0.6, 0.12, 0.8, 30); reveal(T.s9b, t, S[9][0] + 1.4, 0.05, 0.6, 14); reveal(T.s9c, t, S[9][0] + 2.2, 0.06, 0.6, 10);
+  }
+
+  // M. Morning
+  if (o.m > 0) {
+    const l = t - S.m[0];
+    reveal(T.smh, t, S.m[0] + 0.4, 0.08); reveal(T.smb, t, S.m[0] + 1.0, 0.035, 0.6, 14);
+    phoneIn($('smp'), t, S.m[0] + 0.6, 0, 220, 0, VERTICAL ? 1 : 0.92);
+    const k = back(prog(l, 2.0, 2.8)); $('smn').style.opacity = clamp(k); $('smn').style.transform = `translateY(${(1 - k) * -90}px)`;
   }
 
   // 10. End card
