@@ -128,7 +128,9 @@ enum CoachToolCatalog {
         }
         // Age questions before anything about sleep, heart or bedtime:
         // "how much sleep do I need at my age" is not last night's score.
-        if matches(q, [
+        // "Tonight" wants tonight's target, which carries the shortfall
+        // repayment; that is the Tonight tool's answer, not a range.
+        if !q.contains("tonight"), matches(q, [
             "for my age", "at my age", "for someone my age", "people my age",
             "how much sleep do i need", "how much sleep should i get", "how much sleep should i",
             "how many hours of sleep do i need", "my sleep need"
