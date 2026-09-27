@@ -79,7 +79,9 @@ struct TonightPlanCardView: View {
     @ViewBuilder
     private var quickControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+            // Wraps at large text sizes rather than pushing the second chip
+            // off the card.
+            ZoonFlowLayout(spacing: 10, lineSpacing: 10, alignment: .leading) {
                 controlChip(
                     title: preferences.bedtimeRemindersEnabled ? "Reminders on" : "Remind me",
                     symbol: preferences.bedtimeRemindersEnabled ? "bell.fill" : "bell",
@@ -121,7 +123,6 @@ struct TonightPlanCardView: View {
                 Image(systemName: symbol)
                     .symbolEffect(.bounce, value: isOn)
                 Text(title)
-                    .lineLimit(1)
             }
             .font(Theme.label(13, weight: .semibold))
             .foregroundStyle(isOn ? Theme.ink : Theme.inkSecondary)
