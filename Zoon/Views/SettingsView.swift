@@ -28,10 +28,10 @@ struct SettingsView: View {
                 Toggle("Score-light mode", isOn: $setup.value.scoreLight)
                     .accessibilityIdentifier("scoreLightToggle")
                 Text("Show sleep and timing first. Scores remain available when you choose to open details.").font(.caption)
-                NavigationLink("Tonight routine") { TonightRoutineView() }
+                // Only what configures the app. Tonight routine, Repair sleep
+                // data and Custom behaviours were here too, one tap from the
+                // same rows in More, which is where Settings is opened from.
                 NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
-                NavigationLink("Repair sleep data") { DataRepairView() }
-                NavigationLink("Custom behaviours") { CustomBehaviorsView() }
                 NavigationLink("Work roster") { ShiftRosterView() }
             }
             goalSection

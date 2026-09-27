@@ -76,4 +76,21 @@ final class AdaptiveZoonBriefTests: XCTestCase {
         )
         XCTAssertTrue(brief.confidence.lowercased().contains("locally corrected"))
     }
+
+    /// The evening brief states the shortfall Today's ring shows, not the
+    /// debt carried into last night: the two differ by last night itself.
+    func testEveningShortfallIsTheOneTheRingShows() {
+        let night = Fixture.night(daysAgo: 1, timeAsleepMinutes: 452, sleepDebtMinutes: 95)
+        let brief = AdaptiveZoonBrief.make(
+            phase: .evening,
+            night: night,
+            recoveryPercent: nil,
+            energy: nil,
+            load: nil,
+            tonightBedtime: nil,
+            shortfallMinutes: 117
+        )
+        XCTAssertTrue(brief.headline.contains("1h 57m"), brief.headline)
+        XCTAssertFalse(brief.headline.contains("1h 35m"), brief.headline)
+    }
 }

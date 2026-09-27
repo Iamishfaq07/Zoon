@@ -190,7 +190,9 @@ enum Theme {
     /// looks like over the page, with nothing showing through.
     static var solidSurface: Color { cardTint(dark: (0.10, 0.11, 0.20, 1), light: (0.97, 0.97, 0.99, 1)) }
 
-    static var tabBarWash: Color { cardTint(dark: (0.05, 0.06, 0.13, 0.72), light: (0.97, 0.97, 0.99, 0.72)) }
+    /// Opaque enough that the bar's labels read against the wash, not
+    /// against whatever glow scrolls underneath the glass (was 0.72).
+    static var tabBarWash: Color { cardTint(dark: (0.05, 0.06, 0.13, 0.86), light: (0.97, 0.97, 0.99, 0.86)) }
 
     static var cardFill: Color { cardTint(dark: (1, 1, 1, 0.05), light: (1, 1, 1, 0.65)) }
 

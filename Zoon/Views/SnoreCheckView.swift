@@ -25,6 +25,8 @@ struct SnoreCheckView: View {
                 runningCard
             } else if let last = session.lastSummary {
                 lastNightCard(last)
+            } else if session.recoveredCheckpoint == nil && session.storedEvents.isEmpty {
+                firstNightCard
             }
 
             if !session.monitoringGaps.isEmpty || !session.fusedIntervals.isEmpty {
@@ -95,6 +97,40 @@ struct SnoreCheckView: View {
         }
         .glassCard()
     }
+
+    /// Before the first session the screen was one explainer above an empty
+    /// half-page. What helps then is how to set the phone up, since that is
+    /// what decides how much of the night is covered. Gone after one night.
+    private var firstNightCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Before your first night", systemImage: "bed.double.fill")
+            ForEach(Self.setupTips, id: \.text) { tip in
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: tip.symbol)
+                        .font(Theme.text(13, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                        .frame(width: 18)
+                        .accessibilityHidden(true)
+                    Text(tip.text)
+                        .font(Theme.text(13))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Text("The result appears here in the morning: minutes flagged, how much of the night was covered, and when.")
+                .font(.caption)
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
+    private static let setupTips: [(symbol: String, text: String)] = [
+        ("iphone", "Leave the phone on the nightstand, within about a metre of your head, microphone facing you."),
+        ("bolt.fill", "Plug it in. Listening all night uses more battery than an idle phone."),
+        ("moon.fill", "Turn on Sleep Focus so a notification doesn't end the session."),
+        ("speaker.slash.fill", "Sleep Sounds on this phone stop while it listens. For sound as well, play it from another speaker.")
+    ]
 
     private func recoveredCard(_ checkpoint: SnoreCheckpoint) -> some View {
         VStack(alignment: .leading, spacing: 10) {

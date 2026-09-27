@@ -94,22 +94,26 @@ struct FloatingTabBar<Tab: Hashable>: View {
             // the title is still announced -- `accessibilityLabel` below
             // carries it, so VoiceOver is unaffected either way.
             VStack(spacing: isAccessibility ? 0 : 4) {
+                // The accent is on the symbol; the words are ink. Purple
+                // 10 pt text on a purple-washed pill measured about 2.7:1,
+                // under the 4.5:1 small text needs, on every screen.
                 Image(systemName: item.symbol)
                     .font(Theme.text(isAccessibility ? 22 : 16, weight: .semibold))
                     .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                    .foregroundStyle(isSelected ? Theme.Family.sleep : Theme.inkSecondary)
                 if !isAccessibility {
                     Text(item.title)
                         .font(Theme.label(10, weight: .semibold))
                         .dynamicTypeSize(...DynamicTypeSize.large)
+                        .foregroundStyle(isSelected ? Theme.ink : Theme.inkSecondary)
                 }
             }
-            .foregroundStyle(isSelected ? Theme.Family.sleep : Theme.inkSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, isAccessibility ? 11 : 7)
             .background {
                 if isSelected {
                     Capsule()
-                        .fill(Theme.Family.sleep.opacity(0.16))
+                        .fill(Theme.Family.sleep.opacity(0.24))
                         // One shape that moves between tabs rather than four
                         // that fade in and out, so the selection reads as
                         // travelling to where you tapped.
