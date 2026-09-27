@@ -17,6 +17,14 @@ struct SleepDebtView: View {
     private var currentDebtMinutes: Double? { coordinator.state.context?.shortfallNowMinutes }
     private var currentDebt: Double { currentDebtMinutes ?? 0 }
 
+    /// The shortfall as of the morning after `night`, which is what a row
+    /// dated that night means and what the hero above measures for today.
+    /// These rows and the chart used the figure carried *into* each night,
+    /// so the newest row read 1h 35m under a 1h 57m hero.
+    private static func shortfall(after night: SleepNightFeatures) -> Double? {
+        night.shortfallThroughNightMinutes ?? night.sleepDebtMinutes
+    }
+
     private var band: (label: String, tint: Color) {
         switch currentDebt {
         case ..<30: ("Minimal", Theme.Metric.recoveryHigh)
@@ -84,7 +92,7 @@ struct SleepDebtView: View {
         guard let latest = nights.last,
               let target = Calendar.current.date(byAdding: .day, value: -7, to: latest.date)
         else { return nil }
-        return nights.nearest(toDay: target)?.sleepDebtMinutes
+        return nights.nearest(toDay: target).flatMap(Self.shortfall(after:))
     }
 
     private var recentNightsCard: some View {
@@ -97,7 +105,7 @@ struct SleepDebtView: View {
                         .font(Theme.label(12))
                         .foregroundStyle(Theme.inkSecondary)
                     Spacer()
-                    Text(night.sleepDebtMinutes.map { SleepNightFeatures.formatMinutes($0) + " short" } ?? "Not estimated")
+                    Text(Self.shortfall(after: night).map { SleepNightFeatures.formatMinutes($0) + " short" } ?? "Not estimated")
                         .font(Theme.label(12, weight: .semibold))
                         .monospacedDigit()
                 }
@@ -112,7 +120,7 @@ struct SleepDebtView: View {
     private var trendChart: some View {
         // Nights without an estimate are left out rather than plotted as 0,
         // which would draw a fake recovery into the line.
-        let nights = coordinator.recentNights.suffix(30).filter { $0.sleepDebtMinutes != nil }
+        let nights = coordinator.recentNights.suffix(30).filter { Self.shortfall(after: $0) != nil }
         if nights.count >= 3 {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(title: "Running balance, last 30 nights", systemImage: "chart.xyaxis.line")
@@ -120,14 +128,14 @@ struct SleepDebtView: View {
                     ForEach(nights, id: \.date) { night in
                         AreaMark(
                             x: .value("Date", night.date, unit: .day),
-                            y: .value("Debt", (night.sleepDebtMinutes ?? 0) / 60)
+                            y: .value("Debt", (Self.shortfall(after: night) ?? 0) / 60)
                         )
                         .foregroundStyle(
                             .linearGradient(colors: [band.tint.opacity(0.4), band.tint.opacity(0.05)], startPoint: .top, endPoint: .bottom)
                         )
                         LineMark(
                             x: .value("Date", night.date, unit: .day),
-                            y: .value("Debt", (night.sleepDebtMinutes ?? 0) / 60)
+                            y: .value("Debt", (Self.shortfall(after: night) ?? 0) / 60)
                         )
                         .foregroundStyle(band.tint)
                     }
@@ -143,7 +151,7 @@ struct SleepDebtView: View {
                                     title: night.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
                                     lines: [(
                                         "Shortfall",
-                                        SleepNightFeatures.formatMinutes(night.sleepDebtMinutes ?? 0),
+                                        SleepNightFeatures.formatMinutes(Self.shortfall(after: night) ?? 0),
                                         band.tint
                                     )]
                                 )
@@ -160,7 +168,7 @@ struct SleepDebtView: View {
                     "Estimated sleep shortfall over the last \(nights.count) nights",
                     "Now \(SleepNightFeatures.formatMinutes(currentDebt)) short. "
                         + ChartTrend.describe(
-                            nights.map { ($0.sleepDebtMinutes ?? 0) / 60 },
+                            nights.map { (Self.shortfall(after: $0) ?? 0) / 60 },
                             higherIsBetter: false
                         ) + "."
                 )
