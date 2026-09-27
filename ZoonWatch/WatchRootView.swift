@@ -336,6 +336,10 @@ private struct TonightPage: View {
     private var need: Double { max(snapshot.goalMinutes, 1) }
     private var covered: Double { min(1, max(0, snapshot.timeAsleepMinutes / need)) }
 
+    private var shortfallText: String {
+        snapshot.sleepDebtMinutes < 15 ? "None" : SleepNightFeatures.formatMinutes(snapshot.sleepDebtMinutes)
+    }
+
     private var debtTint: Color {
         snapshot.sleepDebtMinutes <= 0 ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
     }
@@ -398,13 +402,19 @@ private struct TonightPage: View {
             }
 
             HStack(spacing: 10) {
+                // "goal", because that is what this is: the Settings goal.
+                // Labelled "need" it disagreed with the phone, which shows
+                // the learned need (often longer) under that word.
                 WatchMiniStat(
                     value: SleepNightFeatures.formatMinutes(snapshot.goalMinutes),
-                    label: "need",
+                    label: "goal",
                     tint: Theme.Metric.sleep
                 )
+                // Hours and minutes, as the phone writes the same figure --
+                // "1h 36m", not "−1.6h". The compact decimal stays on the
+                // complications and widgets, where the room is.
                 WatchMiniStat(
-                    value: snapshot.balanceLabel,
+                    value: shortfallText,
                     label: "shortfall",
                     tint: debtTint
                 )
@@ -425,8 +435,8 @@ private struct TonightPage: View {
         .accessibilityLabel(
             "Tonight. \(snapshot.tonightTargetLabel). \(snapshot.tonightTargetNote) "
             + (snapshot.wakeStatusLine.isEmpty ? "" : "\(snapshot.wakeStatusLine). ")
-            + "Need \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes)), "
-            + "shortfall \(snapshot.balanceLabel)."
+            + "Goal \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes)), "
+            + "shortfall \(shortfallText)."
         )
     }
 }
