@@ -58,6 +58,10 @@ struct OnboardingView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             goalHours = preferences.sleepGoalMinutes / 60
+            // A goal other than the untouched default was chosen before --
+            // a replayed onboarding -- and is not the recommendation's to
+            // move.
+            goalTouched = abs(preferences.sleepGoalMinutes - UserPreferences.defaultSleepGoalMinutes) > 0.5
         }
         .onChange(of: preferences.age) { _, _ in followRecommendation() }
     }
