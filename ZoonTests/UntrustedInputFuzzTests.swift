@@ -61,7 +61,8 @@ final class UntrustedInputFuzzTests: XCTestCase {
             inputs.append(Data(bytes))
         }
         // Dates and zones at the edges of what JSON can carry.
-        for seconds in [-1e12, -1, 0, 1e12, 9e15] {
+        let edges: [Double] = [-1e12, -1, 0, 1e12, 9e15]
+        for seconds in edges {
             let text = """
             {"id":"\(UUID().uuidString)","occurredAt":\(seconds),"timeZoneIdentifier":"Mars/Olympus",\
             "targetDate":\(-seconds),"action":{"midnightAwakening":{}}}

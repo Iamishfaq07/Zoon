@@ -6,20 +6,13 @@ import SwiftData
 /// The Evidence screen shows what Zoon believes now. This shows how it got
 /// there -- and, when it happens, that it once believed something else.
 ///
-/// ## Why the recording happens here
+/// ## Where the history comes from
 ///
-/// `EvidenceLedgerStore.record` is idempotent by design: it writes only when
-/// the belief has materially changed (see `EvidenceLedger.Revision`), so it
-/// is safe to call on every appearance and that is exactly how it is called.
-/// A rule that only applies when someone remembers to apply it is not a rule.
-///
-/// Doing it from the screen that displays beliefs, rather than from the
-/// refresh pipeline, keeps the whole feature to one file and one dependency
-/// -- the view's own `modelContext`. The cost is that a belief is recorded
-/// when someone looks rather than the moment it forms, so a revision's
-/// timestamp is "when Zoon first showed you this", not "when the data first
-/// supported it". That is a real limitation and the copy does not pretend
-/// otherwise.
+/// This screen only reads. Revisions are recorded by the refresh pipeline
+/// (`SleepDataCoordinator.recordAssociations`), which writes one only when a
+/// belief has materially changed (see `EvidenceLedger.Revision`), so the
+/// history grows whether or not anyone opens this screen. It is reached
+/// from the bottom of "What Zoon knows".
 /// `@MainActor` on the view itself, not only on `body`: the helpers below
 /// construct and call `EvidenceLedgerStore`, which is MainActor-isolated like
 /// every other store here, and a private helper on a View does not inherit

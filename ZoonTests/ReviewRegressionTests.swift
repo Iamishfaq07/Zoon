@@ -34,7 +34,8 @@ final class ReviewRegressionTests: XCTestCase {
         let lastNight = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now,
                                             snapshotDate: now.addingTimeInterval(-9 * 3600))
         XCTAssertTrue(receipts.accepts(lastNight, now: now))
-        for offset in [-15.0 * 86_400, 2 * 86_400, 400 * 86_400] {
+        let offsets: [TimeInterval] = [-15 * 86_400, 2 * 86_400, 400 * 86_400]
+        for offset in offsets {
             let stray = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now,
                                             snapshotDate: now.addingTimeInterval(offset))
             XCTAssertFalse(receipts.accepts(stray, now: now), "target \(offset / 86_400) days away")
