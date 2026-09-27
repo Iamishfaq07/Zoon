@@ -56,7 +56,7 @@ struct JournalCorrelator {
 
     /// One night's outcomes joined to its tags, plus the confounders used to
     /// find a comparable match.
-    struct Observation {
+    struct Observation: Equatable {
         let date: Date
         let tags: Set<BehaviorTag>
         /// The explicit per-behaviour answers recorded for this night.
@@ -422,6 +422,53 @@ struct JournalCorrelator {
     func findings(
         from observations: [Observation],
         catalog: BehaviorCatalog = .builtInOnly
+    ) -> [Finding] {
+        // The same inputs always give the same findings (the bootstrap is
+        // seeded), and a run is 2,000 resamples per behaviour and metric.
+        // Screens asked for it inside `body` -- Patterns twice per render --
+        // so a tap on a disclosure re-ran it on the main thread. Remembered
+        // per input instead; a new night or a new answer is a new input.
+        Self.memo.findings(observations: observations, catalog: catalog) {
+            computeFindings(from: observations, catalog: catalog)
+        }
+    }
+
+    private static let memo = FindingsMemo()
+
+    /// The last few `findings` results, by their exact inputs.
+    ///
+    /// Compared by value, not hashed: `BehaviorAnswers` is only `Equatable`,
+    /// and with two entries a linear scan is the cheaper lookup anyway.
+    /// Lock-guarded because the correlator is also run off the main actor.
+    private final class FindingsMemo: @unchecked Sendable {
+        private let lock = NSLock()
+        private var entries: [(observations: [Observation], catalog: BehaviorCatalog, findings: [Finding])] = []
+        private let capacity = 2
+
+        func findings(
+            observations: [Observation],
+            catalog: BehaviorCatalog,
+            compute: () -> [Finding]
+        ) -> [Finding] {
+            lock.lock()
+            if let hit = entries.first(where: { $0.catalog == catalog && $0.observations == observations }) {
+                lock.unlock()
+                return hit.findings
+            }
+            lock.unlock()
+            let result = compute()
+            lock.lock()
+            entries.removeAll { $0.catalog == catalog && $0.observations == observations }
+            entries.insert((observations, catalog, result), at: 0)
+            if entries.count > capacity { entries.removeLast(entries.count - capacity) }
+            lock.unlock()
+            return result
+        }
+    }
+
+    private func computeFindings(
+        from observations: [Observation],
+        catalog: BehaviorCatalog
     ) -> [Finding] {
         var results: [Finding] = []
 

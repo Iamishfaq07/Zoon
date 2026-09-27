@@ -517,7 +517,8 @@ jobs:
           # repository grows by a handful of files rather than every screen.
           mkdir -p docs/screenshots/hires
           for name in today today-night today-morning today-light sleepDetail coach trends soundscapes \
-                      bodyClock tomorrow evidence patterns breathing nap journal onboarding splash nightHistory; do
+                      bodyClock tomorrow evidence patterns breathing nap journal onboarding splash nightHistory \
+                      snoreCheck sleepDetail; do
             [ -f "screenshots/$name.png" ] || continue
             sips -Z 2000 -s format jpeg -s formatOptions 88 \
               "screenshots/$name.png" --out "docs/screenshots/hires/$name.jpg" > /dev/null

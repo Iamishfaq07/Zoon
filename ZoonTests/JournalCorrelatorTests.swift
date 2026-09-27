@@ -166,6 +166,38 @@ final class JournalCorrelatorTests: XCTestCase {
         )
     }
 
+    /// `findings` is remembered by input. Alternating between two histories,
+    /// then changing one night, must always answer for the history asked
+    /// about -- never a remembered answer for a different one.
+    func testRememberedFindingsFollowTheirInput() {
+        let quiet = matchedHistory(
+            tagged: { observation(daysAgo: $0, tags: [.alcohol], wakeCount: 2, isWeekend: $0 % 2 == 0) },
+            control: { observation(daysAgo: $0, tags: [], wakeCount: 2, isWeekend: $0 % 2 == 0) }
+        )
+        let restless = matchedHistory(
+            tagged: { observation(daysAgo: $0, tags: [.alcohol], wakeCount: 4, isWeekend: $0 % 2 == 0) },
+            control: { observation(daysAgo: $0, tags: [], wakeCount: 2, isWeekend: $0 % 2 == 0) }
+        )
+        let hasWakeFinding = { (history: [JournalCorrelator.Observation]) in
+            JournalCorrelator().findings(from: history).contains { $0.tag == .alcohol && $0.metric == .wakeCount }
+        }
+        for _ in 0..<2 {
+            XCTAssertFalse(hasWakeFinding(quiet))
+            XCTAssertTrue(hasWakeFinding(restless))
+        }
+        XCTAssertEqual(JournalCorrelator().findings(from: restless), JournalCorrelator().findings(from: restless))
+
+        // One more restless tagged night swapped in: a new input, a fresh run.
+        var edited = quiet
+        edited[0] = observation(daysAgo: 0, tags: [.alcohol], wakeCount: 9, isWeekend: true)
+        XCTAssertNotEqual(edited, quiet)
+        XCTAssertEqual(
+            JournalCorrelator().findings(from: edited).count,
+            JournalCorrelator().findings(from: edited).count
+        )
+        XCTAssertFalse(hasWakeFinding(quiet), "the edit must not leak into the unedited history")
+    }
+
     /// Six metrics per tag, and the largest mover among six is the noisiest
     /// estimate on the list. The headline row is the pre-specified metric
     /// whenever it cleared the bar; `findings` still carries both.

@@ -140,19 +140,34 @@ final class SleepHistoryStore {
         var priorNewestFirst: [SleepNightRecord] = []
         var features: [SleepNightFeatures] = []
 
+        // Each night's naps and secondary episodes, read once for this pass.
+        // Every night's baseline sums debt over up to sixty nights before it,
+        // and each of those sums used to re-read that night's episodes -- two
+        // store fetches, so nights x 60 x 2 on every publish: about 11,000 at
+        // 90 nights, over 40,000 after a year, all on the main actor. Scoped
+        // to this call, so nothing written later can be served from it.
+        var secondaryByRecord: [PersistentIdentifier: Double] = [:]
+        func secondary(_ record: SleepNightRecord) -> Double {
+            if let known = secondaryByRecord[record.persistentModelID] { return known }
+            let minutes = secondaryEpisodeAsleepMinutes(
+                forNightKey: record.nightKey ?? "", wakeDate: record.date,
+                timeZone: record.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current,
+                manualNaps: manualNaps
+            )
+            secondaryByRecord[record.persistentModelID] = minutes
+            return minutes
+        }
+
         for record in chronological {
             let rolling = makeBaseline(
                 priorNightsNewestFirst: priorNewestFirst,
                 goalMinutes: goalMinutes,
-                manualNaps: manualNaps
+                manualNaps: manualNaps,
+                secondaryMinutes: secondary
             )
             features.append(record.features(
                 baseline: rolling,
-                secondaryAsleepMinutes: secondaryEpisodeAsleepMinutes(
-                    forNightKey: record.nightKey ?? "", wakeDate: record.date,
-                    timeZone: record.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current,
-                    manualNaps: manualNaps
-                )
+                secondaryAsleepMinutes: secondary(record)
             ))
 
             if !excludedNightKeys.contains(record.features().nightKey) { priorNewestFirst.insert(record, at: 0) }
@@ -576,7 +591,8 @@ final class SleepHistoryStore {
     private func makeBaseline(
         priorNightsNewestFirst priorNights: [SleepNightRecord],
         goalMinutes: Double,
-        manualNaps: [NapStore.Nap] = []
+        manualNaps: [NapStore.Nap] = [],
+        secondaryMinutes: ((SleepNightRecord) -> Double)? = nil
     ) -> RollingBaseline {
 
         let last7 = Array(priorNights.prefix(7))
@@ -591,7 +607,9 @@ final class SleepHistoryStore {
 
         return RollingBaseline(
             hrv7DayAvg: gatedMean(last7.compactMap(\.avgHRV)),
-            sleepDebtMinutes: sleepDebt(nights: debtWindow, goalMinutes: goalMinutes, manualNaps: manualNaps),
+            sleepDebtMinutes: sleepDebt(
+                nights: debtWindow, goalMinutes: goalMinutes, manualNaps: manualNaps, secondaryMinutes: secondaryMinutes
+            ),
             deep7DayAvg: mean(last7.filter { $0.deepMinutes > 0 }.map(\.deepMinutes)),
             duration7DayAvg: mean(last7.map(\.timeAsleepMinutes)),
             efficiency7DayAvg: mean(last7.map(\.sleepEfficiencyPercent)),
@@ -639,15 +657,16 @@ final class SleepHistoryStore {
     /// night: an unworn fortnight fades the debt by fourteen nights, not by
     /// the one record boundary it used to.
     private func sleepDebt(
-        nights: [SleepNightRecord], goalMinutes: Double, manualNaps: [NapStore.Nap] = []
+        nights: [SleepNightRecord], goalMinutes: Double, manualNaps: [NapStore.Nap] = [],
+        secondaryMinutes: ((SleepNightRecord) -> Double)? = nil
     ) -> Double? {
         RecentSleepShortfall.debt(
             timeAsleepMinutesNewestFirst: nights.map {
-                $0.timeAsleepMinutes + secondaryEpisodeAsleepMinutes(
+                $0.timeAsleepMinutes + (secondaryMinutes?($0) ?? secondaryEpisodeAsleepMinutes(
                     forNightKey: $0.nightKey ?? "", wakeDate: $0.date,
                     timeZone: $0.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current,
                     manualNaps: manualNaps
-                )
+                ))
             },
             goalMinutesNewestFirst: nights.map { $0.sleepNeedBaselineMinutesAtProcessing ?? goalMinutes },
             nightDatesNewestFirst: nights.map(\.date)

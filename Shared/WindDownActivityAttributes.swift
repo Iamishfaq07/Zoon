@@ -21,5 +21,16 @@ struct WindDownActivityAttributes: ActivityAttributes {
         /// "Arrive", "Guided breathing", "Quiet", "Settling".
         let stageLabel: String
     }
+
+    /// The range the Lock Screen and Dynamic Island timers count over.
+    ///
+    /// `startedAt...endsAt` traps when the end is earlier than the start, and
+    /// the stored end can be: a routine resumed with no time left, or the
+    /// clock moved back while it ran. A crash here takes down the widget
+    /// extension's rendering of the activity, so the end is floored at the
+    /// start and the timer simply reads zero.
+    func timerRange(_ state: ContentState) -> ClosedRange<Date> {
+        startedAt...max(startedAt, state.endsAt)
+    }
 }
 #endif
