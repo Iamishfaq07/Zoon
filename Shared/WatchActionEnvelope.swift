@@ -68,6 +68,12 @@ struct WatchActionReceiptStore {
     func accepts(_ event: WatchActionEnvelope, now: Date = .now) -> Bool {
         guard event.occurredAt <= now.addingTimeInterval(300),
               event.occurredAt > now.addingTimeInterval(-90 * 86_400),
+              // The night a log is filed against is the tap itself or the
+              // night the watch last showed, so it sits just before the tap.
+              // Anything further out is a malformed packet, and filing it
+              // would write to a night the person never touched.
+              event.targetDate <= event.occurredAt.addingTimeInterval(86_400),
+              event.targetDate >= event.occurredAt.addingTimeInterval(-14 * 86_400),
               TimeZone(identifier: event.timeZoneIdentifier) != nil else { return false }
         if let erased = defaults.object(forKey: erasedKey) as? Date,
            event.occurredAt <= erased || event.targetDate <= erased { return false }
@@ -85,6 +91,12 @@ struct WatchActionReceiptStore {
     func record(_ event: WatchActionEnvelope) {
         var receipts = defaults.stringArray(forKey: key) ?? []
         receipts.append(event.id.uuidString)
+        // Bounded. An envelope older than 90 days is refused on its date
+        // before its receipt is consulted, so only recent IDs ever matter;
+        // unbounded, this list grew by one entry per watch tap forever.
+        if receipts.count > Self.receiptLimit { receipts.removeFirst(receipts.count - Self.receiptLimit) }
         defaults.set(receipts, forKey: key)
     }
+
+    static let receiptLimit = 5_000
 }

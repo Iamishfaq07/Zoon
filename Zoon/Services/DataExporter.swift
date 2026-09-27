@@ -346,9 +346,22 @@ enum DataExporter {
 
     /// RFC 4180 escaping. Source names come from device names, which users set
     /// to things like `Ali's iPhone, work` more often than you'd hope.
-    private static func escape(_ text: String) -> String {
-        guard text.contains(",") || text.contains("\"") || text.contains("\n") else { return text }
-        return "\"\(text.replacingOccurrences(of: "\"", with: "\"\""))\""
+    /// A text cell, safe to open in a spreadsheet.
+    ///
+    /// `source` is the name an app or device gave itself when it wrote to
+    /// Health, so it is outside Zoon's control, and Excel, Numbers and Sheets
+    /// run a cell that starts with `=`, `+`, `-`, `@`, tab or carriage return
+    /// as a formula -- `=HYPERLINK(...)` in a source name would become a live
+    /// link or worse in the person's own spreadsheet. Such cells get a
+    /// leading apostrophe (OWASP's CSV-injection guidance), which the
+    /// spreadsheet shows as plain text.
+    static func escape(_ text: String) -> String {
+        var cell = text
+        if let first = cell.unicodeScalars.first, "=+-@\t\r".unicodeScalars.contains(first) {
+            cell = "'" + cell
+        }
+        guard cell.contains(",") || cell.contains("\"") || cell.contains("\n") || cell.contains("\r") else { return cell }
+        return "\"\(cell.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
 
     // MARK: - Files

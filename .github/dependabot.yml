@@ -1,0 +1,13 @@
+# The app has no third-party packages: every import is an Apple framework,
+# and the Tools/ scripts use only the Python standard library. The one
+# external supply chain is the GitHub Actions the workflows run, which are
+# pinned to commit SHAs -- this keeps those pins current, as reviewable PRs.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

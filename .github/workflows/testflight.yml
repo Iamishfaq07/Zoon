@@ -58,6 +58,11 @@ on:
         type: boolean
         default: false
 
+# Read-only token. Nothing here pushes, comments or calls the API; a job
+# that is ever compromised gets no write access to the repository.
+permissions:
+  contents: read
+
 concurrency:
   group: testflight-${{ github.ref }}
   # A TestFlight upload should never be cancelled mid-flight by a newer
@@ -78,9 +83,14 @@ jobs:
     # itself don't each have to redeclare it.
     env:
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+      # Identifiers, not credentials, but still read as variables below so
+      # no secret is ever substituted into a script's text.
+      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
         run: Tools/select-xcode.sh
@@ -93,18 +103,26 @@ jobs:
         # IOS_P12_PASSWORD is deliberately not checked here -- it's optional
         # (see the file header), and its absence should never block a run
         # that would otherwise work.
+        # Secrets arrive as environment variables, never pasted into the
+        # script text: an expression is substituted before the shell parses
+        # it, so a value containing a quote would become shell syntax.
+        env:
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           missing=""
-          [ -z "${{ secrets.APPSTORE_ISSUER_ID }}" ] && missing="$missing APPSTORE_ISSUER_ID"
-          [ -z "${{ secrets.APPSTORE_KEY_ID }}" ] && missing="$missing APPSTORE_KEY_ID"
-          [ -z "${{ secrets.APPSTORE_PRIVATE_KEY }}" ] && missing="$missing APPSTORE_PRIVATE_KEY"
-          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && missing="$missing APPLE_TEAM_ID"
+          [ -z "$APPSTORE_ISSUER_ID" ] && missing="$missing APPSTORE_ISSUER_ID"
+          [ -z "$APPSTORE_KEY_ID" ] && missing="$missing APPSTORE_KEY_ID"
+          [ -z "$APPSTORE_PRIVATE_KEY" ] && missing="$missing APPSTORE_PRIVATE_KEY"
+          [ -z "$APPLE_TEAM_ID" ] && missing="$missing APPLE_TEAM_ID"
           if [ -n "$missing" ]; then
             echo "::error::Missing repo secret(s):$missing"
             echo "See BUILDING-WITHOUT-A-MAC.md → 'TestFlight from CI' for how to create each one."
             exit 1
           fi
-          if [ -z "${{ secrets.IOS_P12_PASSWORD }}" ]; then
+          if [ -z "$IOS_P12_PASSWORD" ]; then
             echo "::notice::IOS_P12_PASSWORD is not set -- this run will mint a fresh signing certificate rather than reusing a cached one. See BUILDING-WITHOUT-A-MAC.md → 'TestFlight from CI' if you want to stop that from eventually filling up your account's certificate limit."
           fi
 
@@ -112,16 +130,35 @@ jobs:
         # xcodebuild looks for the key in this exact location. The key
         # content itself never touches disk in the log or in a temp file
         # outside this directory.
+        # Owner-only from creation (umask), and removed by the cleanup step
+        # at the end of the job whatever happens. The key ID names a file,
+        # so it is checked to be the ten-character ID Apple issues.
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         run: |
+          if ! printf '%s' "$APPSTORE_KEY_ID" | grep -Eq '^[A-Z0-9]{10}$'; then
+            echo "::error::APPSTORE_KEY_ID should be the 10-character key ID from App Store Connect."
+            exit 1
+          fi
+          umask 077
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "${{ secrets.APPSTORE_PRIVATE_KEY }}" > \
-            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8
+          printf '%s\n' "$APPSTORE_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_"$APPSTORE_KEY_ID".p8
 
       - name: Set the build number
         id: version
+        # The input is typed by hand in the dispatch form, so it is read from
+        # the environment and must be a version number -- digits and dots --
+        # before it reaches xcodebuild or the step output.
+        env:
+          REQUESTED: ${{ inputs.build_number }}
         run: |
-          NUMBER="${{ inputs.build_number }}"
+          NUMBER="$REQUESTED"
           if [ -z "$NUMBER" ]; then NUMBER="${{ github.run_number }}"; fi
+          if ! printf '%s' "$NUMBER" | grep -Eq '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "::error::build_number must be digits, optionally with up to two dots (e.g. 42 or 1.0.42)."
+            exit 1
+          fi
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           echo "Build number: $NUMBER"
 
@@ -160,7 +197,7 @@ jobs:
         # from the repo's Actions settings.
         id: signing-cache
         if: env.IOS_P12_PASSWORD != ''
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: build/signing/identity.p12
           key: ios-signing-identity-v1
@@ -260,9 +297,11 @@ jobs:
         # running it "too often" costs one API call and a few log lines, not
         # a certificate.
         if: steps.signing-cache.outcome != 'success' || steps.signing-cache.outputs.cache-hit != 'true'
+        env:
+          FREE_SLOT: ${{ inputs.free_certificate_slot }}
         run: |
           REVOKE=""
-          if [ "${{ inputs.free_certificate_slot }}" = "true" ]; then
+          if [ "$FREE_SLOT" = "true" ]; then
             REVOKE="--revoke"
             echo "::warning::free_certificate_slot was requested -- the oldest distribution certificate(s) needed to free one slot WILL be revoked."
           else
@@ -283,9 +322,9 @@ jobs:
             --type distribution \
             --type development \
             --max-per-type 2 \
-            --key-id "${{ secrets.APPSTORE_KEY_ID }}" \
-            --issuer-id "${{ secrets.APPSTORE_ISSUER_ID }}" \
-            --key-path "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8"
+            --key-id "$APPSTORE_KEY_ID" \
+            --issuer-id "$APPSTORE_ISSUER_ID" \
+            --key-path "$HOME/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8"
 
       - name: Archive
         # Signing here is deliberately left to automatic signing, which
@@ -308,10 +347,10 @@ jobs:
             -archivePath build/Zoon.xcarchive \
             -destination 'generic/platform=iOS' \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" \
-            -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CURRENT_PROJECT_VERSION="${{ steps.version.outputs.number }}" \
             CODE_SIGN_STYLE=Automatic \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
@@ -334,7 +373,7 @@ jobs:
               <key>destination</key>
               <string>upload</string>
               <key>teamID</key>
-              <string>${{ secrets.APPLE_TEAM_ID }}</string>
+              <string>${APPLE_TEAM_ID}</string>
               <key>signingStyle</key>
               <string>automatic</string>
           </dict>
@@ -349,9 +388,9 @@ jobs:
             -exportOptionsPlist build/ExportOptions.plist \
             -exportPath build/export \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_KEY_ID }}.p8" \
-            -authenticationKeyID "${{ secrets.APPSTORE_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}" \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
             2>&1 | tee export.log
 
       - name: Cache the signing identity for future runs
@@ -466,7 +505,7 @@ jobs:
         # explains why is the one worth having, and a missing archive.log
         # from a failed archive step is a dead end on its own.
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: testflight-logs
           path: |
@@ -476,3 +515,12 @@ jobs:
             build/export
           retention-days: 14
           if-no-files-found: ignore
+
+      - name: Remove the signing material
+        # Last, and whatever happened before it. GitHub's macOS runners are
+        # discarded after the job, so this is defence in depth: nothing that
+        # can sign or upload as this team outlives the steps that needed it.
+        # The password-encrypted identity in build/signing is left: the
+        # cache step saves it in its post phase, which runs after this.
+        if: always()
+        run: rm -rf ~/.appstoreconnect/private_keys

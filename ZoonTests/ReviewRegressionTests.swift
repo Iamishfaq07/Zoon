@@ -22,6 +22,32 @@ final class ReviewRegressionTests: XCTestCase {
         XCTAssertFalse(receipts.accepts(restored, now: delivery))
     }
 
+    /// A packet whose target night is far from its own tap is refused, and
+    /// the receipt list stays bounded however many taps arrive.
+    func testWatchEnvelopeTargetOutsideItsWindowIsRefusedAndReceiptsAreBounded() throws {
+        let now = Date(timeIntervalSince1970: 1_780_000_000)
+        let name = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let receipts = WatchActionReceiptStore(defaults: defaults)
+
+        let lastNight = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now,
+                                            snapshotDate: now.addingTimeInterval(-9 * 3600))
+        XCTAssertTrue(receipts.accepts(lastNight, now: now))
+        let offsets: [TimeInterval] = [-15 * 86_400, 2 * 86_400, 400 * 86_400]
+        for offset in offsets {
+            let stray = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now,
+                                            snapshotDate: now.addingTimeInterval(offset))
+            XCTAssertFalse(receipts.accepts(stray, now: now), "target \(offset / 86_400) days away")
+        }
+
+        for _ in 0..<(WatchActionReceiptStore.receiptLimit + 50) {
+            receipts.record(WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now))
+        }
+        XCTAssertEqual(defaults.stringArray(forKey: "zoon.watch.actionReceipts.v1")?.count,
+                       WatchActionReceiptStore.receiptLimit)
+    }
+
     func testAfterMidnightContextIncludesPreviousEvening() {
         let parse = ISO8601DateFormatter()
         let bedtime = parse.date(from: "2026-09-06T00:30:00Z")!

@@ -434,7 +434,7 @@ final class CoachChat {
             } else if let value = evidence?.catalog[grounding] {
                 cited = value
             } else {
-                logger.notice("Chat cited unknown evidence ID \(grounding, privacy: .public); using the local reply")
+                logger.notice("Chat cited an unknown evidence ID (\(grounding.count) characters); using the local reply")
                 appendLocalAnswer(trimmed)
                 return
             }

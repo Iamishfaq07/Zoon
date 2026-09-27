@@ -16,7 +16,10 @@ struct MoreView: View {
     @State private var setup = PersonalSetupStore.shared
     @State private var exportURL: URL?
     @State private var isImporting = false
-    @State private var encryptBackup = false
+    /// On by default: a full backup carries every night, journal note and
+    /// check-in, and it leaves the phone the moment it is shared. Turning it
+    /// off is one tap for someone who wants plain JSON.
+    @State private var encryptBackup = true
     @State private var archivePassphrase = ""
     @State private var pendingArchive: DataExporter.Archive?
     @State private var showingRestorePreview = false
@@ -31,7 +34,12 @@ struct MoreView: View {
                         StreakCard(nights: coordinator.recentNights, goalMinutes: preferences.sleepGoalMinutes).entrance(0)
                     }
 
-                    sectionLabel("This week")
+                    // Grouped by what someone came here to do. "This week"
+                    // used to hold Settings and Badges, and "Later" held a
+                    // data repair tool beside the reading list; Repair now
+                    // sits with Data quality, the screen that sends people
+                    // to it.
+                    sectionLabel("Plan")
                     navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
                     navRow("Tomorrow", "Protect a morning start time", "sunrise.fill", Theme.Metric.battery) {
                         ZoonTomorrowView()
@@ -39,35 +47,37 @@ struct MoreView: View {
                     navRow("Travel plan", "Active trip sits on Tonight", "airplane", Theme.Metric.strain) {
                         TravelPlanView()
                     }
-                    navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
-                        AchievementsView()
-                    }
+
+                    sectionLabel("Review")
                     navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
                         ReportView()
                     }
-                    navRow("Settings", "Goal, engine, privacy, replay first night", "gearshape.fill", .secondary) {
-                        SettingsView()
+                    navRow("Clinician Report", "7/30/90-day PDF summary to share", "doc.text.fill", Theme.Metric.hrv) {
+                        ClinicianReportView()
+                    }
+                    navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
+                        AchievementsView()
                     }
 
-                    sectionLabel("Trust")
+                    sectionLabel("Your data")
                     navRow("How well Zoon knows you", "Maturity by domain, not a score", "circle.hexagongrid.fill", Theme.Metric.hrv) {
                         ModelHealthView()
                     }
                     navRow("Data quality", "What actually arrived this month", "waveform.path.ecg", Theme.Metric.recoveryMid) {
                         DataQualityView()
                     }
-
-                    sectionLabel("Later")
                     navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
-                    navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
-                        ArticlesView()
-                    }
                     navRow("Custom behaviours", "Track signals unique to your routine",
                             "plus.circle.fill", Theme.Family.sleep) {
                         CustomBehaviorsView()
                     }
-                    navRow("Clinician Report", "7/30/90-day PDF summary to share", "doc.text.fill", Theme.Metric.hrv) {
-                        ClinicianReportView()
+
+                    sectionLabel("Learn and settings")
+                    navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
+                        ArticlesView()
+                    }
+                    navRow("Settings", "Goal, engine, privacy, replay first night", "gearshape.fill", .secondary) {
+                        SettingsView()
                     }
 
                     dataCard.entrance(5)

@@ -20,6 +20,11 @@ on:
 # A new push supersedes an in-flight build of the same branch. macOS runner
 # minutes are billed at 10x on private repos, so queued-up stale builds are
 # expensive in a way Linux ones aren't.
+# Read-only token. Nothing here pushes, comments or calls the API; a job
+# that is ever compromised gets no write access to the repository.
+permissions:
+  contents: read
+
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
@@ -31,7 +36,7 @@ jobs:
     name: Validate project file
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Verify generated project is current
         run: |
           python3 Tools/generate-pbxproj.py
@@ -59,7 +64,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
         run: Tools/select-xcode.sh
@@ -111,7 +116,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
         run: Tools/select-xcode.sh
@@ -188,7 +193,7 @@ jobs:
             fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ !cancelled() }}
         with:
           name: watch-build-log
@@ -205,7 +210,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
         run: Tools/select-xcode.sh
@@ -329,7 +334,7 @@ jobs:
 
       - name: Upload test log and crash reports
         if: always() && steps.build.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-log-and-crash-reports
           path: |
@@ -470,7 +475,7 @@ jobs:
         # Only when something failed: the bundles are large, and on a green
         # run the logs above say everything.
         if: failure() && steps.build.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-result-bundles
           path: |
@@ -613,7 +618,7 @@ jobs:
 
       - name: Upload full log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: build-log
           # The UI-test logs ride along here rather than with `test.log`,
@@ -637,7 +642,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Select Xcode
         run: Tools/select-xcode.sh
@@ -745,7 +750,7 @@ jobs:
           echo "--- swift 6 diagnostics ---"
           sed -E 's#^/Users/runner/work/Zoon/Zoon/##' swift6-diagnostics.txt | head -200
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: release-build-log

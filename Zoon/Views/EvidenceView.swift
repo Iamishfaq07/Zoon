@@ -59,6 +59,11 @@ struct EvidenceView: View {
                             .entrance(index + 1)
                     }
                 }
+
+                // The belief history had a finished screen and no way in.
+                // It belongs after the beliefs themselves: what Zoon thinks
+                // now, then how it came to think it.
+                historyLink.entrance(2)
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
@@ -285,6 +290,31 @@ struct EvidenceView: View {
                         sensorTruthChevron
                     }
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard()
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var historyLink: some View {
+        NavigationLink {
+            EvidenceHistoryView()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(Theme.text(14))
+                    .foregroundStyle(Theme.Family.sleep)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("How this changed")
+                        .font(Theme.label(14, weight: .semibold))
+                    Text("Every earlier reading, kept rather than overwritten")
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                sensorTruthChevron
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()
