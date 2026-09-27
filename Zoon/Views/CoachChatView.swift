@@ -22,6 +22,7 @@ struct CoachChatView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
+    @Environment(GlobalPresentation.self) private var presentation
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var chat = CoachChat()
     @State private var evidence: CoachEvidence?
@@ -47,14 +48,9 @@ struct CoachChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(chat.conversationEngine == .appleIntelligence ? "Apple Intelligence" : "Rules")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Theme.inkSecondary)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            engineBanner
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             if chat.appleIntelligenceBecameReady {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Apple Intelligence is ready. Start a new enhanced conversation?")
@@ -73,9 +69,6 @@ struct CoachChatView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 4)
-            } else if chat.unavailabilityReason != nil {
-                Text("Local answers · sleep, timing, HRV and heart rate")
-                    .font(.caption).foregroundStyle(Theme.inkSecondary).padding(8)
             }
             transcript
             if let pending = chat.pendingAction {
@@ -86,6 +79,9 @@ struct CoachChatView: View {
         .nightBackground()
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
+        // The composer owns the bottom edge; the floating tab bar sat on it.
+        .onAppear { presentation.hidesTabBar = true }
+        .onDisappear { presentation.hidesTabBar = false }
         .task {
             let frozen = CoachEvidence(night: night, history: coordinator.recentNights)
             evidence = frozen
@@ -137,21 +133,18 @@ struct CoachChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 CascadeStack(alignment: .leading, spacing: 12) {
-                    if chat.messages.isEmpty {
-                        Text("Ask anything about last night — \"why was my HRV low?\", \"should I train today?\"")
-                            .font(Theme.text(13))
-                            .foregroundStyle(Theme.inkSecondary)
-                            .padding(.top, 8)
+                    if chat.messages.isEmpty && !chat.isResponding {
+                        starter
                     }
                     ForEach(Array(chat.messages.enumerated()), id: \.element.id) { index, message in
                         bubble(message, question: precedingQuestion(before: index))
                             .id(message.id)
                     }
                     if chat.isResponding {
-                        HStack(spacing: 6) {
-                            ProgressView().tint(.secondary)
-                            Text("Thinking…").font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
-                        }
+                        ThinkingDots(reduceMotion: reduceMotion)
+                            .id("thinking")
+                    } else if chat.messages.last?.role == .assistant, chat.pendingAction == nil {
+                        followUps
                     }
                 }
                 .padding()
@@ -193,7 +186,8 @@ struct CoachChatView: View {
         case .assistant:
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 6) {
-                    Label("Zoon", systemImage: "sparkles")
+                    Label(message.source == .appleIntelligence ? "Zoon · Apple Intelligence" : "Zoon",
+                          systemImage: message.source == .appleIntelligence ? "apple.intelligence" : "sparkles")
                         .font(Theme.label(11, weight: .bold))
                         .foregroundStyle(Theme.Metric.sleep)
                     // Confidence, the third of the redesign spec's four
@@ -347,19 +341,23 @@ struct CoachChatView: View {
     }
 
     private var composer: some View {
-        HStack(spacing: 10) {
-            TextField("Ask a question…", text: $input, axis: .vertical)
+        HStack(alignment: .bottom, spacing: 10) {
+            TextField("Ask about your sleep…", text: $input, axis: .vertical)
+                .lineLimit(1...5)
                 .textFieldStyle(.plain)
                 .focused($inputFocused)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Theme.neutral(0.06), in: Capsule())
+                .submitLabel(.send)
+                .onSubmit { submit() }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .background(Theme.neutral(0.08), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(inputFocused ? Theme.Metric.sleep.opacity(0.6) : Theme.cardStroke, lineWidth: 1)
+                )
 
             Button {
-                let text = input
-                input = ""
-                Haptics.tap()
-                Task { await chat.send(text) }
+                submit()
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 28))
@@ -373,7 +371,136 @@ struct CoachChatView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
     }
+
+    private func submit() {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !chat.isResponding else { return }
+        input = ""
+        Haptics.tap()
+        Task { await chat.send(text) }
+    }
+
+    private func ask(_ question: String) {
+        guard !chat.isResponding else { return }
+        Haptics.select()
+        Task { await chat.send(question) }
+    }
+
+    // MARK: - Engine, starters, follow-ups
+
+    /// Which engine is answering, stated up front -- and when it is not
+    /// Apple Intelligence, why not and what would change it.
+    @ViewBuilder
+    private var engineBanner: some View {
+        let onModel = chat.conversationEngine == .appleIntelligence
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: onModel ? "apple.intelligence" : "cpu")
+                .font(Theme.text(15, weight: .semibold))
+                .foregroundStyle(onModel ? Theme.Metric.sleep : Theme.inkSecondary)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(onModel ? "Apple Intelligence · on this iPhone" : "Zoon's local answers")
+                    .font(Theme.label(13, weight: .semibold))
+                Text(engineDetail(onModel: onModel))
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private func engineDetail(onModel: Bool) -> String {
+        if onModel {
+            return "Written from your own numbers. Nothing leaves the phone."
+        }
+        if preferences.preferredEngine == .ruleBased {
+            return "You chose Rules in Settings. Choose Apple Intelligence there for conversational answers."
+        }
+        return chat.unavailabilityReason.map { "\($0) Answers come from Zoon's rules until then." }
+            ?? "Answers come from Zoon's rules."
+    }
+
+    /// Questions to start from, so an empty chat is an invitation rather
+    /// than a blank field.
+    private var starter: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Ask anything about your sleep")
+                .font(Theme.label(18, weight: .bold))
+            Text("Zoon answers from your own nights and tonight's plan.")
+                .font(Theme.text(13))
+                .foregroundStyle(Theme.inkSecondary)
+            FlowLayout(spacing: 8) {
+                ForEach(Self.starterQuestions, id: \.self) { question in
+                    suggestionChip(question)
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    /// Three questions not yet asked, after each answer.
+    private var followUps: some View {
+        let asked = Set(chat.messages.filter { $0.role == .user }.map { $0.text.lowercased() })
+        let pool = Self.followUpQuestions.filter { !asked.contains($0.lowercased()) }
+        let offset = pool.isEmpty ? 0 : chat.messages.count % pool.count
+        let picks = Array((pool[offset...] + pool[..<offset]).prefix(3))
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Ask next")
+                .font(Theme.label(11, weight: .semibold))
+                .foregroundStyle(Theme.inkSecondary)
+            FlowLayout(spacing: 8) {
+                ForEach(picks, id: \.self) { question in
+                    suggestionChip(question)
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func suggestionChip(_ question: String) -> some View {
+        Button {
+            ask(question)
+        } label: {
+            Text(question)
+                .font(Theme.text(13, weight: .medium))
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Theme.Metric.sleep.opacity(0.16), in: Capsule())
+                .overlay(Capsule().stroke(Theme.Metric.sleep.opacity(0.35), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(chat.isResponding)
+    }
+
+    static let starterQuestions = [
+        "How did I sleep last night?",
+        "Am I behind on sleep?",
+        "When should I go to bed tonight?",
+        "Why was my HRV lower?",
+        "Should I train hard today?"
+    ]
+
+    static let followUpQuestions = [
+        "What should I do differently tonight?",
+        "How does this compare with my usual?",
+        "What changed this week?",
+        "Is a nap a good idea today?",
+        "Which habits seem to affect my sleep?",
+        "How much deep sleep did I get?",
+        "Am I behind on sleep?",
+        "When should I go to bed tonight?",
+        "How is my recovery?",
+        "Why do I wake up at night?"
+    ]
 
     private func unavailable(_ reason: String) -> some View {
         VStack(spacing: 14) {
@@ -426,6 +553,37 @@ struct CoachChatView: View {
             }
             Spacer()
         }
+    }
+}
+
+/// Three dots that pulse while an answer is being written. Still when
+/// Reduce Motion is on; the words say the same thing.
+private struct ThinkingDots: View {
+    let reduceMotion: Bool
+    @State private var phase = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Theme.Metric.sleep)
+                        .frame(width: 6, height: 6)
+                        .opacity(reduceMotion ? 0.8 : (phase ? 1 : 0.3))
+                        .animation(
+                            reduceMotion ? nil : .easeInOut(duration: 0.6).repeatForever().delay(Double(index) * 0.2),
+                            value: phase
+                        )
+                }
+            }
+            Text("Zoon is thinking")
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.inkSecondary)
+        }
+        .padding(.vertical, 6)
+        .onAppear { phase = true }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Zoon is writing an answer")
     }
 }
 

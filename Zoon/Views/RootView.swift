@@ -15,6 +15,9 @@ struct RootView: View {
     /// down".
     @Environment(SoundscapeEngine.self) private var soundscape
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Whether the software keyboard is up. See the tab bar's bottom inset.
+    @State private var keyboardVisible = false
 
     @State private var selection: Tab = Tab(launchArgument: LaunchOptions.initialScreen?.tab
                                             ?? LaunchOptions.initialTab) ?? .today
@@ -91,15 +94,29 @@ struct RootView: View {
         // than in each tab: a floating bar sits over content, and a tab that
         // forgot the inset would hide its own last row.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            FloatingTabBar(
-                items: [
-                    .init(tab: Tab.today, title: "Today", symbol: "moon.fill"),
-                    .init(tab: Tab.sleep, title: "Sleep", symbol: "moon.stars.fill"),
-                    .init(tab: Tab.trends, title: "Insights", symbol: "chart.xyaxis.line"),
-                    .init(tab: Tab.coach, title: "Coach", symbol: "sparkles")
-                ],
-                selection: $selection
-            )
+            // Out of the way while typing and on screens that own the bottom
+            // edge. A bottom inset rides up with the keyboard, so the bar
+            // used to sit on top of the Coach composer as soon as it was
+            // tapped.
+            if !keyboardVisible && !presentation.hidesTabBar {
+                FloatingTabBar(
+                    items: [
+                        .init(tab: Tab.today, title: "Today", symbol: "moon.fill"),
+                        .init(tab: Tab.sleep, title: "Sleep", symbol: "moon.stars.fill"),
+                        .init(tab: Tab.trends, title: "Insights", symbol: "chart.xyaxis.line"),
+                        .init(tab: Tab.coach, title: "Coach", symbol: "sparkles")
+                    ],
+                    selection: $selection
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(Motion.respecting(reduceMotion, Motion.standard), value: keyboardVisible || presentation.hidesTabBar)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardVisible = false
         }
         .tint(Theme.Metric.sleep)
         // System/Dark/Light, from Settings — `nil` for System lets SwiftUI

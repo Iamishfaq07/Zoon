@@ -58,13 +58,26 @@ final class CoachChat {
             return (groundedIn?.isEmpty == false) ? .grounded : .general
         }
 
-        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil, bestAction: String? = nil, timeframe: String? = nil) {
+        /// Who wrote the words: Apple Intelligence, or Zoon's own local
+        /// replies. Shown on the answer so the engine is never a guess.
+        enum Source { case appleIntelligence, local }
+        var source: Source
+
+        init(id: UUID = UUID(), role: Role, text: String, groundedIn: String? = nil, bestAction: String? = nil, timeframe: String? = nil, source: Source = .local) {
             self.id = id
             self.role = role
             self.text = text
             self.groundedIn = groundedIn
             self.bestAction = bestAction
             self.timeframe = timeframe
+            self.source = source
+        }
+
+        /// This answer, citing `evidence` when it did not cite anything itself.
+        func citing(_ evidence: String?) -> Message {
+            var copy = self
+            if copy.groundedIn?.isEmpty ?? true { copy.groundedIn = evidence }
+            return copy
         }
     }
 
@@ -130,7 +143,7 @@ final class CoachChat {
     @available(iOS 26.0, *)
     @Generable
     struct ChatAnswer {
-        @Guide(description: "Two short sentences explaining the supplied data. Do not state any quantities, numbers, dates, durations or percentages; the app renders those from its evidence catalog.")
+        @Guide(description: "A direct, conversational answer to the question in two to four sentences, written for this person. Use numbers only when they appear in the supplied facts, copied exactly as written; never estimate, round or invent one.")
         var answer: String
 
         @Guide(description: "Return exactly one evidence ID from the supplied catalog (sleep, timing, hrv, heart, debt). Never write a value or invent an ID. Empty if no evidence applies.")
@@ -380,18 +393,26 @@ final class CoachChat {
                 messages.append(Message(role: .assistant, text: action.prompt))
                 return
             }
-            if let answer = await runTool?(call) {
+            isResponding = true
+            defer { isResponding = false }
+            // The engine computes; the model, when there is one, answers the
+            // question that was asked from what the engine computed. This
+            // path used to return the tool's fixed text even with Apple
+            // Intelligence on, so every question that touched a known topic
+            // -- most of them -- got the same reply however it was put.
+            guard let facts = await runTool?(call) else {
                 messages.append(Message(
                     role: .assistant,
-                    text: answer,
-                    groundedIn: evidenceID(for: call.kind)
+                    text: "I do not have that yet. \(call.kind.summary)"
                 ))
                 return
             }
-            messages.append(Message(
-                role: .assistant,
-                text: "I do not have that yet. \(call.kind.summary)"
-            ))
+            let grounded = evidenceID(for: call.kind)
+            if let generated = await generate(for: trimmed, facts: facts) {
+                messages.append(generated.citing(grounded))
+            } else {
+                messages.append(Message(role: .assistant, text: facts, groundedIn: grounded))
+            }
             return
         case .unknown:
             pendingAction = nil
@@ -400,57 +421,76 @@ final class CoachChat {
         isResponding = true
         defer { isResponding = false }
 
+        if let generated = await generate(for: trimmed, facts: nil) {
+            messages.append(generated)
+        } else {
+            appendLocalAnswer(trimmed)
+        }
+    }
+
+    /// An Apple Intelligence answer to `question`, or `nil` when there is
+    /// no model for this conversation or the answer fails a check -- the
+    /// caller then gives the local reply.
+    ///
+    /// - Parameter facts: what an engine computed for this question, handed
+    ///   to the model as the facts to answer from. Every number the answer
+    ///   contains must appear in these, in the conversation's facts, or in
+    ///   the evidence catalog; anything else is a figure the model made up
+    ///   and the whole answer is refused.
+    private func generate(for question: String, facts: String?) async -> Message? {
         #if canImport(FoundationModels)
-        guard conversationEngine == .appleIntelligence else {
-            appendLocalAnswer(trimmed)
-            return
+        guard conversationEngine == .appleIntelligence, isAvailable, #available(iOS 26.0, *),
+              let session = session as? LanguageModelSession else { return nil }
+        let catalogKeys = evidence?.catalog.keys.sorted().joined(separator: ", ") ?? "sleep, timing, hrv, heart, debt"
+        let catalog = evidence?.promptCatalog ?? "None"
+        var prompt = question
+        if let facts {
+            prompt += "\n\nFACTS ZOON COMPUTED FOR THIS QUESTION (answer from these; quote numbers exactly as written):\n\(facts)"
         }
-
-        guard isAvailable, #available(iOS 26.0, *), let session = session as? LanguageModelSession else {
-            appendLocalAnswer(trimmed)
-            return
-        }
-
+        prompt += "\n\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n\(catalog)"
         do {
-            let catalogKeys = evidence?.catalog.keys.sorted().joined(separator: ", ") ?? "sleep, timing, hrv, heart, debt"
             let response = try await session.respond(
-                to: trimmed + "\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n" + (evidence?.promptCatalog ?? "None"),
+                to: prompt,
                 generating: ChatAnswer.self,
-                options: GenerationOptions(temperature: 0)
+                // A little range, so two questions about the same night are
+                // not answered in the same words. The facts, not the
+                // sampling, decide what is said.
+                options: GenerationOptions(temperature: 0.5)
             )
             let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
             let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
             let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
+            let known = [pendingContext?.nightSummary, pendingContext?.contextDigest,
+                         pendingContext?.chartContext, facts, catalog]
+                .compactMap { $0 }.joined(separator: "\n")
 
-            guard !answer.isEmpty, CoachEvidence.allowsGeneratedProse(answer + " " + bestAction), !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
-                logger.notice("Chat response was empty or failed the diagnostic-language check; using the local reply")
-                appendLocalAnswer(trimmed)
-                return
+            guard !answer.isEmpty,
+                  CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known),
+                  !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
+                logger.notice("Chat answer was empty, used an unsupplied number, or failed the diagnostic-language check")
+                return nil
             }
-
             let cited: String?
             if grounding.isEmpty || grounding.lowercased() == "null" {
                 cited = nil
-            } else if let value = evidence?.catalog[grounding] {
-                cited = value
             } else {
-                logger.notice("Chat cited an unknown evidence ID (\(grounding.count) characters); using the local reply")
-                appendLocalAnswer(trimmed)
-                return
+                // An unknown ID is dropped rather than failing a good answer:
+                // the chip is supporting material, the answer stands alone.
+                cited = evidence?.catalog[grounding]
             }
-
-            messages.append(Message(
+            return Message(
                 role: .assistant,
                 text: answer,
                 groundedIn: cited,
-                bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction
-            ))
+                bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction,
+                source: .appleIntelligence
+            )
         } catch {
             logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
-            appendLocalAnswer(trimmed)
+            return nil
         }
         #else
-        appendLocalAnswer(trimmed)
+        return nil
         #endif
     }
 
@@ -531,7 +571,10 @@ final class CoachChat {
 
         Never diagnose a medical condition. Never mention sleep apnea, insomnia, or any other diagnosis by name.
         Do not make a single metric prescribe the whole day.
-        Keep answers to two or three sentences.
+        Answer the question that was actually asked, in your own words, as a knowledgeable coach would -- not a summary of every number. Explain what the figure means for this person and why, compared with their own baseline where the facts give one.
+        Build on earlier turns in this conversation instead of repeating them; do not reuse an earlier answer's wording.
+        When FACTS ZOON COMPUTED FOR THIS QUESTION are supplied, they are the authority for that answer. Quote their numbers exactly; never round, convert or estimate.
+        Keep answers to two to four sentences.
         Use one clear action only when the data actually supports one.
 
         CURRENT NIGHT FACTS:

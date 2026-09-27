@@ -170,4 +170,18 @@ final class CoachEvidenceTests: XCTestCase {
         XCTAssertTrue(reply.text.contains("asleep"))
         XCTAssertNotNil(reply.evidence)
     }
+
+    /// Generated answers may quote the numbers Zoon supplied, never others.
+    /// Refusing every digit made nearly every model answer fall back to the
+    /// same few local replies.
+    func testGeneratedNumbersMustComeFromTheFacts() {
+        let facts = "Asleep 7h 32m. HRV 64 ms against a usual 58 ms. Respiratory rate 14.2. Bed 10:38 PM."
+        XCTAssertTrue(CoachEvidence.numbersAreGrounded("You slept 7h 32m, and HRV sat at 64 ms, above your usual 58.", in: facts))
+        XCTAssertTrue(CoachEvidence.numbersAreGrounded("Breathing held at 14.2 and bed is 10:38.", in: facts))
+        XCTAssertTrue(CoachEvidence.numbersAreGrounded("No numbers here at all.", in: facts))
+        XCTAssertFalse(CoachEvidence.numbersAreGrounded("You slept about 8 hours.", in: facts), "a rounded figure is a new figure")
+        XCTAssertFalse(CoachEvidence.numbersAreGrounded("HRV was 6 ms.", in: facts), "6 must not pass on the strength of 64")
+        XCTAssertFalse(CoachEvidence.numbersAreGrounded("Breathing was 14.", in: facts), "14 is not 14.2")
+        XCTAssertEqual(CoachEvidence.numberTokens(in: "7h 32m, 14.2, 10:38."), ["7", "32", "14.2", "10", "38"])
+    }
 }

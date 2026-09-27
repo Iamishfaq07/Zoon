@@ -792,9 +792,14 @@ final class UserPreferences {
         ) ?? .unspecified
         let storedBMI = defaults.double(forKey: Key.bodyMassIndex)
         self.bodyMassIndex = storedBMI > 0 ? storedBMI : nil
+        // Apple Intelligence unless the person chose otherwise. Every
+        // consumer falls back to Rules on its own when the model is not
+        // available, so this only decides what an eligible device gets. The
+        // default was Rules, which meant the Coach never used the model on a
+        // phone that had it unless someone found the setting.
         self.preferredEngine = EngineChoice(
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
-        ) ?? .ruleBased
+        ) ?? .appleIntelligence
         self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
         self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
@@ -856,7 +861,7 @@ final class UserPreferences {
         age = nil
         biologicalSex = .unspecified
         bodyMassIndex = nil
-        preferredEngine = .ruleBased
+        preferredEngine = .appleIntelligence
         recoveryModeDate = nil
         activeExperimentTag = nil
         experimentStartDate = nil
