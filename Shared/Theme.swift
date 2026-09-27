@@ -1167,14 +1167,20 @@ struct SectionHeader: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Decoration: the title beside it says what the section is. Visible to
+    /// VoiceOver it read out symbol names ("chart.xyaxis.line"), which the
+    /// accessibility audit fails as a label that is not human-readable.
     @ViewBuilder private var mark: some View {
-        if let icon {
-            icon
-                .frame(width: 13, height: 13)
-        } else if let systemImage {
-            Image(systemName: systemImage)
-                .font(Theme.text(12, weight: .semibold))
-                .foregroundStyle(Theme.inkSecondary)
+        Group {
+            if let icon {
+                icon
+                    .frame(width: 13, height: 13)
+            } else if let systemImage {
+                Image(systemName: systemImage)
+                    .font(Theme.text(12, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
         }
+        .accessibilityHidden(true)
     }
 }

@@ -120,6 +120,10 @@ struct SleepStoryMoments: View {
                         }
                         .font(Theme.text(12, weight: .semibold))
                         .foregroundStyle(Theme.Family.sleep)
+                        // The words are 14 pt tall; the tap target is the
+                        // 44 pt minimum around them, which the audit enforces.
+                        .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
