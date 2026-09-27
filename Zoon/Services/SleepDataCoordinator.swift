@@ -2745,9 +2745,11 @@ final class SleepDataCoordinator {
         // Sample mode shows sample habits, as it shows sample nights. Patterns,
         // Evidence and Coach used to read the empty real journal here, so the
         // demo said "Zoon is learning, 0 nights" beside a full sample history.
-        // Only while nothing real has been logged, and never recorded: the
-        // ledger is written only after a live night is published.
-        if state.isMock && entries.isEmpty {
+        // Whenever sample nights are showing: a real journal cannot be joined
+        // to them (they are not in the store), and merely opening the Journal
+        // writes a row, so "while the journal is empty" never held. Never
+        // recorded: the ledger is written only after a live night is published.
+        if state.isMock {
             return AppMockData.journalObservations
         }
         let answersByNightKey = behaviors.allAnswersByNightKey()
