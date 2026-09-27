@@ -10,23 +10,33 @@ struct ZoonTomorrowView: View {
     /// stored record with expiry semantics is the model, and a second store
     /// keyed by day would be a second thing that can go stale.
     @State private var horizonCommitments: [Date: Date] = [:]
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 if let plan {
-                    // At accessibility sizes the lead clause alone. The
-                    // full sentence is three facts, and `HorizonStrip`
-                    // directly below states two of them as a row of times --
-                    // at AX5 the paragraph fills the screen and pushes that
-                    // strip past the fold, so the times end up further away
-                    // in the form that is harder to read. The clause that
-                    // stays is the one the strip cannot show.
-                    Text(dynamicTypeSize.isAccessibilitySize ? plan.leadClause : plan.sentence)
-                        .font(Theme.text(22, weight: .semibold))
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(plan.sentence)
+                    // The three times first, as numbers, then the one fact
+                    // they cannot show: whether the window reaches the need.
+                    // The screen used to open on a four-line sentence
+                    // carrying all of it -- the shortfall, the window, the
+                    // wake margin -- which had to be read twice to find the
+                    // bedtime in it.
+                    VStack(alignment: .leading, spacing: 12) {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .top, spacing: 12) { planTimes(plan) }
+                            VStack(alignment: .leading, spacing: 10) { planTimes(plan) }
+                        }
+                        if let event = plan.event {
+                            Text("For your \(event.start.formatted(date: .omitted, time: .shortened)) start")
+                                .font(Theme.label(14, weight: .semibold))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        Text(plan.leadClause)
+                            .font(Theme.text(17, weight: .semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(plan.sentence)
 
                     HorizonStrip(
                         nodes: plan.nodes,
@@ -133,6 +143,29 @@ struct ZoonTomorrowView: View {
                 preferences.forgetCalendarCommitment()
             }
         }
+    }
+
+    /// Wind-down, bed and wake as three big times.
+    @ViewBuilder
+    private func planTimes(_ plan: ZoonTomorrow.Plan) -> some View {
+        timeColumn("Wind down", plan.windDown, tint: Theme.Family.bodySignals)
+        timeColumn("Bed", plan.bedtime, tint: Theme.Family.sleep)
+        timeColumn("Wake", plan.wake, tint: Theme.Family.circadian)
+    }
+
+    private func timeColumn(_ title: String, _ time: Date, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(Theme.label(13, weight: .semibold))
+                .foregroundStyle(Theme.inkSecondary)
+            Text(time.formatted(date: .omitted, time: .shortened))
+                .font(Theme.heading(24))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var commitment: CommitmentResolver.Outcome { preferences.commitment() }
