@@ -21,7 +21,7 @@ struct SleepDebtView: View {
     /// dated that night means and what the hero above measures for today.
     /// These rows and the chart used the figure carried *into* each night,
     /// so the newest row read 1h 35m under a 1h 57m hero.
-    private static func shortfall(after night: SleepNightFeatures) -> Double? {
+    nonisolated private static func shortfall(after night: SleepNightFeatures) -> Double? {
         night.shortfallThroughNightMinutes ?? night.sleepDebtMinutes
     }
 
