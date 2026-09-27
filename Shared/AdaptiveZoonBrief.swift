@@ -23,15 +23,21 @@ enum AdaptiveZoonBrief {
         energy: Int?,
         load: Double?,
         tonightBedtime: Date?,
+        shortfallMinutes: Double? = nil,
         now: Date = .now
     ) -> Result {
+        // The shortfall Today's ring shows, when the caller has it. The
+        // night's own `sleepDebtMinutes` is the debt carried *into* that
+        // night, so on its own the brief said "1h 35m" under a ring reading
+        // "1h 57m" on the same screen.
+        let shortfall = shortfallMinutes ?? night.sleepDebtMinutes
         switch phase {
         case .morning, .night:
             return morning(night: night, recoveryPercent: recoveryPercent)
         case .day:
             return day(night: night, energy: energy, load: load)
         case .evening:
-            return evening(night: night, tonightBedtime: tonightBedtime, now: now)
+            return evening(night: night, shortfall: shortfall, tonightBedtime: tonightBedtime, now: now)
         }
     }
 
@@ -110,12 +116,12 @@ enum AdaptiveZoonBrief {
         )
     }
 
-    private static func evening(night: SleepNightFeatures, tonightBedtime: Date?, now: Date) -> Result {
+    private static func evening(night: SleepNightFeatures, shortfall: Double?, tonightBedtime: Date?, now: Date) -> Result {
         if let bed = tonightBedtime {
             let minutes = bed.timeIntervalSince(now) / 60
             if minutes > 0 && minutes < 180 {
                 let window = bed.formatted(date: .omitted, time: .shortened)
-                let debt = night.sleepDebtMinutes ?? 0
+                let debt = shortfall ?? 0
                 let extra = debt >= 45
                     ? " There is still a shortfall to protect."
                     : ""
@@ -123,12 +129,12 @@ enum AdaptiveZoonBrief {
                     headline: "Protecting the \(window) window is today's highest-value action.\(extra)",
                     why: "Tonight's plan is computed independently of last night's clocks. A local correction on last night does not rewrite tonight.",
                     confidence: tonightConfidence(night),
-                    dataUsed: ["Tonight plan"] + ((night.sleepDebtMinutes ?? 0) >= 45 ? ["shortfall"] : []),
+                    dataUsed: ["Tonight plan"] + ((shortfall ?? 0) >= 45 ? ["shortfall"] : []),
                     phase: .evening
                 )
             }
         }
-        if let debt = night.sleepDebtMinutes, debt >= 45 {
+        if let debt = shortfall, debt >= 45 {
             return Result(
                 headline: "Recent shortfall is \(SleepNightFeatures.formatMinutes(debt)). An earlier wind-down is the usual first move.",
                 why: "Shortfall is unpaid sleep against your own need, not a medical claim about fatigue.",

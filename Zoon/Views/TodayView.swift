@@ -403,7 +403,8 @@ struct TodayView: View {
             recoveryPercent: context.recovery.percent,
             energy: context.bodyBattery.current,
             load: context.strain.value,
-            tonightBedtime: plannedBedtime(context)
+            tonightBedtime: plannedBedtime(context),
+            shortfallMinutes: context.shortfallNowMinutes
         )
     }
 
