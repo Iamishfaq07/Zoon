@@ -86,6 +86,7 @@ struct TrendsView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 // V8: *how am I changing?* Sleep Health leads, then what
                 // changed as a story stream, then the sleep system as four
@@ -123,6 +124,7 @@ struct TrendsView: View {
                     // Directly under the personal baselines: first "am I
                     // changing?", then "is this usual for someone like me?"
                     ForYourAgeCard()
+                        .id(Self.forYourAgeAnchor)
                         .entrance(2)
                     if let selectedNight {
                         NavigationLink {
@@ -245,11 +247,27 @@ struct TrendsView: View {
                 }
                 .padding()
             }
+            .onAppear {
+                // `-zoonScrollTo forYourAge`: the capture photographs the
+                // card below the fold. Same pattern as Sensor Truth's.
+                guard LaunchOptions.scrollTarget == Self.forYourAgeAnchor else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        proxy.scrollTo(Self.forYourAgeAnchor, anchor: .top)
+                    }
+                }
+            }
+            }
             .nightBackground()
             .navigationTitle("Insights")
             .zoonGlobalToolbar()
         }
     }
+
+    /// The scroll anchor `-zoonScrollTo` names for the age card.
+    static let forYourAgeAnchor = "forYourAge"
 
     private struct FingerprintSummaryCard: View {
         let fingerprint: SleepFingerprint

@@ -21,7 +21,11 @@ struct SleepDetailView: View {
         )
     }
 
+    /// The scroll anchor `-zoonScrollTo` names for the heart card.
+    static let heartAnchor = "heart"
+
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             // V8 order: the night itself first (headline, hypnogram, story),
             // then what it was made of. Sleep Need and Chronotype no longer
@@ -42,6 +46,7 @@ struct SleepDetailView: View {
                     restingHeartRate: context.night.restingHeartRate
                 ) {
                     HeartDuringSleepCard(summary: heart, clock: context.night.clockString)
+                        .id(Self.heartAnchor)
                 }
                 AwakeningInspectorCard(
                     night: context.night,
@@ -61,6 +66,17 @@ struct SleepDetailView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
+        }
+        .onAppear {
+            guard LaunchOptions.scrollTarget == Self.heartAnchor else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(Self.heartAnchor, anchor: .top)
+                }
+            }
+        }
         }
         .nightBackground()
         .navigationTitle("Sleep")
