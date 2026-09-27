@@ -270,6 +270,9 @@ struct PopulationRangeBar: View {
             .frame(width: width, height: 16)
         }
         .frame(height: 16)
+        // A number line reads low to high left to right in every language;
+        // the offsets above assume it.
+        .environment(\.layoutDirection, .leftToRight)
         .onAppear {
             guard !appeared else { return }
             withAnimation(Motion.respecting(reduceMotion, Motion.hero)) {

@@ -114,6 +114,9 @@ struct HeartDuringSleepCard: View {
             .font(Theme.text(11))
             .foregroundStyle(Theme.inkTertiary)
         }
+        // Time runs left to right here in every language, as on the
+        // hypnogram above it.
+        .environment(\.layoutDirection, .leftToRight)
         .accessibilityHidden(true)
         .onAppear {
             guard !reduceMotion else { return }
