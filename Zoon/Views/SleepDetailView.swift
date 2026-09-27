@@ -33,6 +33,16 @@ struct SleepDetailView: View {
             VStack(spacing: Theme.stackSpacing) {
                 headline
                 hypnogramCard
+                if let heart = OvernightHeartSummary.make(
+                    samples: context.overnightHeartRate,
+                    night: DateInterval(
+                        start: context.night.bedtime,
+                        end: max(context.night.bedtime, context.night.wakeTime)
+                    ),
+                    restingHeartRate: context.night.restingHeartRate
+                ) {
+                    HeartDuringSleepCard(summary: heart, clock: context.night.clockString)
+                }
                 AwakeningInspectorCard(
                     night: context.night,
                     sounds: soundEventStore.recentEvents,
@@ -250,7 +260,7 @@ struct SleepDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(title: "Stage Breakdown", systemImage: "square.stack.3d.up")
                 StageProportionBar(features: context.night)
-                StageLegend(features: context.night)
+                StageLegend(features: context.night, demographic: coordinator.demographic)
 
                 // What wrote these stages, under the figures they qualify.
                 //

@@ -52,15 +52,28 @@ struct AwakeningInspectorCard: View {
                 series: series
             )
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    SectionHeader(title: "Awakening inspector", systemImage: "waveform.path.ecg")
+                // "Awakening inspector" named the tool, not what it shows.
+                // The subtitle says where in the night's wake-ups this is.
+                HStack(alignment: .top) {
+                    SectionHeader(
+                        title: "Wake-ups",
+                        subtitle: intervals.count > 1
+                            ? "\(min(index, intervals.count - 1) + 1) of \(intervals.count) last night"
+                            : "The one time you woke last night",
+                        systemImage: "eye"
+                    )
                     Spacer()
                     if intervals.count > 1 {
-                        Button("Next") {
+                        Button {
                             Haptics.select()
                             index = (index + 1) % intervals.count
+                        } label: {
+                            Label("Next", systemImage: "chevron.right")
+                                .labelStyle(.titleAndIcon)
+                                .font(Theme.label(13, weight: .semibold))
+                                .frame(minWidth: 44, minHeight: 44)
                         }
-                        .font(Theme.label(12, weight: .semibold))
+                        .accessibilityLabel("Next wake-up")
                     }
                 }
                 Text("\(interval.start.formatted(date: .omitted, time: .shortened)) · \(SleepNightFeatures.formatMinutes(sequence.awakeningMinutes)) awake")

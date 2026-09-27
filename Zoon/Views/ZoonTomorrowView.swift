@@ -80,6 +80,16 @@ struct ZoonTomorrowView: View {
 
                 if let runway {
                     SleepRunwayCard(plan: runway)
+                    // What to do about the short day the runway just found:
+                    // the least change that makes room, never a later wake.
+                    if let fix = SleepRunwayOptimizer.optimize(
+                        runway: runway,
+                        shiftOccurrences: preferences.shiftRoster.occurrences(
+                            in: ShiftRoster.horizon(days: SleepRunway.horizonDays)
+                        )
+                    ) {
+                        RunwayFixCard(plan: fix)
+                    }
                 }
 
                 // Above the runway would put one shift ahead of the week it

@@ -28,6 +28,9 @@ struct SleepDebtArcView: View {
     var lineWidth: CGFloat = 18
 
     @State private var animatedFraction: Double = 0
+    /// What the centre number shows. Counts up from zero with the arc on
+    /// first appearance, then follows `debtMinutes`.
+    @State private var displayedMinutes: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// 240° of sweep, centred on 12 o'clock, leaving 120° open at the bottom.
@@ -114,10 +117,10 @@ struct SleepDebtArcView: View {
                 .tracking(1.6)
                 .foregroundStyle(Theme.inkSecondary)
 
-            Text(SleepNightFeatures.formatMinutes(debtMinutes))
+            Text(SleepNightFeatures.formatMinutes(displayedMinutes))
                 .font(.system(size: 38, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .contentTransition(.numericText())
+                .contentTransition(.numericText(value: displayedMinutes))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -139,7 +142,9 @@ struct SleepDebtArcView: View {
             if let repaymentMinutes, repaymentMinutes >= 1 {
                 Text("•")
                     .foregroundStyle(Theme.inkTertiary)
-                Text("−\(Int(repaymentMinutes.rounded()))m tonight")
+                // "−29m tonight" read as a loss. It is what tonight's plan
+                // pays back.
+                Text("\(Int(repaymentMinutes.rounded()))m back tonight")
             }
         }
         .font(Theme.label(11, weight: .semibold))
@@ -192,9 +197,13 @@ struct SleepDebtArcView: View {
     private func animate(to target: Double) {
         guard !reduceMotion else {
             animatedFraction = target
+            displayedMinutes = debtMinutes
             return
         }
-        withAnimation(Motion.hero) { animatedFraction = target }
+        withAnimation(Motion.hero) {
+            animatedFraction = target
+            displayedMinutes = debtMinutes
+        }
     }
 }
 

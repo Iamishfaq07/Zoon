@@ -109,7 +109,8 @@ extension SleepDataCoordinator {
                 associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
             )?.tag.label,
-            tonightTarget: context?.tonight.autopilot?.sentence
+            tonightTarget: context?.tonight.autopilot?.sentence,
+            forYourAge: forYourAgeDigest()
         )
 
         let encoder = JSONEncoder()
@@ -119,6 +120,23 @@ extension SleepDataCoordinator {
             return "{}"
         }
         return json
+    }
+
+    /// The age context, built on its own: inline, the payload initialiser
+    /// above is one closure away from the type checker's time limit.
+    private func forYourAgeDigest() -> CoachContextDigest.ForYourAge? {
+        guard let profile = demographic else { return nil }
+        let guideline = SleepNeedGuideline.forAge(profile.ageYears)
+        let resting = HeartContext.usualRestingRange
+        return CoachContextDigest.ForYourAge(
+            ageYears: profile.ageYears,
+            sex: profile.sex == .unspecified ? nil : profile.sex.rawValue,
+            recommendedSleepHoursMin: guideline.map { $0.recommendedMinutes.lowerBound / 60 },
+            recommendedSleepHoursMax: guideline.map { $0.recommendedMinutes.upperBound / 60 },
+            typicalHrvMsForAge: HeartContext.typicalHRV(age: profile.ageYears).rounded(to: 0),
+            usualAdultRestingHeartRateBpm: "\(Int(resting.lowerBound))-\(Int(resting.upperBound))",
+            typicalVo2MaxForAgeAndSex: HeartContext.typicalVO2Max(age: profile.ageYears, sex: profile.sex)
+        )
     }
 
     /// Flat DTO mirroring `SleepNightFeatures.LLMPayload` -- `nil` fields
@@ -155,6 +173,21 @@ extension SleepDataCoordinator {
         let suggestedNextTest: String?
         /// Tonight's `SleepAutopilot` target, already phrased.
         let tonightTarget: String?
+        /// The expert sleep range for the person's age and the population
+        /// context for their heart numbers (`SleepNeedGuideline`,
+        /// `HeartContext`), so "how much sleep do I need at my age?" and "is
+        /// my HRV normal for my age?" have facts behind them.
+        let forYourAge: ForYourAge?
+
+        struct ForYourAge: Encodable {
+            let ageYears: Int
+            let sex: String?
+            let recommendedSleepHoursMin: Double?
+            let recommendedSleepHoursMax: Double?
+            let typicalHrvMsForAge: Double
+            let usualAdultRestingHeartRateBpm: String
+            let typicalVo2MaxForAgeAndSex: Double?
+        }
 
         struct CorrelatorFinding: Encodable {
             let behavior: String

@@ -26,6 +26,10 @@ struct FloatingTabBar<Tab: Hashable>: View {
     /// see `button(_:)`.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Namespace private var indicator
+    /// Per-tab counters that make a symbol bounce once when its tab is
+    /// chosen. A counter rather than `isSelected`, which would bounce the
+    /// tab being left as well.
+    @State private var bounces: [String: Int] = [:]
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -74,6 +78,9 @@ struct FloatingTabBar<Tab: Hashable>: View {
         return Button {
             guard !isSelected else { return }
             Haptics.select()
+            if !reduceMotion {
+                bounces[item.title, default: 0] += 1
+            }
             withAnimation(Motion.respecting(reduceMotion, Motion.standard)) {
                 selection = item.tab
             }
@@ -101,6 +108,7 @@ struct FloatingTabBar<Tab: Hashable>: View {
                     .font(Theme.text(isAccessibility ? 22 : 16, weight: .semibold))
                     .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                     .foregroundStyle(isSelected ? Theme.Family.sleep : Theme.inkSecondary)
+                    .symbolEffect(.bounce, value: bounces[item.title, default: 0])
                 if !isAccessibility {
                     Text(item.title)
                         .font(Theme.label(10, weight: .semibold))

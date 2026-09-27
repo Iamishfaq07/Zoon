@@ -142,7 +142,9 @@ final class WakeAlarm {
                 textColor: .white,
                 systemImageName: "stop.fill"
             )
-            let title: LocalizedStringResource = slot == .nap ? "Nap over" : "Wake window"
+            // "Time to wake up" rather than "Wake window": the alarm is its
+            // own switch now, and rings whether or not the window is on.
+            let title: LocalizedStringResource = slot == .nap ? "Nap over" : "Time to wake up"
             let alert = AlarmPresentation.Alert(
                 title: title,
                 stopButton: stopButton

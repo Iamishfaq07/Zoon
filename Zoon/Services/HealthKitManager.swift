@@ -84,7 +84,24 @@ final class HealthKitManager {
         if let apnea = Self.sleepApneaEventType {
             types.insert(apnea)
         }
+        // Age, sex, height and weight: what fits the sleep-need range, the
+        // heart-rate zones and the "typical for your age" context to this
+        // person, instead of asking them to type what Health already knows.
+        types.formUnion(Self.profileReadTypes)
         return types
+    }
+
+    /// The profile half of `enhancementReadTypes`, also requested on its
+    /// own from Settings, because anyone who finished onboarding before
+    /// these were added was never asked.
+    static var profileReadTypes: Set<HKObjectType> {
+        [
+            HKCharacteristicType(.dateOfBirth),
+            HKCharacteristicType(.biologicalSex),
+            HKQuantityType(.height),
+            HKQuantityType(.bodyMass),
+            HKQuantityType(.bodyMassIndex)
+        ]
     }
 
     /// Apple's `HKCategoryTypeIdentifierSleepApneaEvent`, if this SDK/OS
@@ -130,6 +147,66 @@ final class HealthKitManager {
         // next one is requested.
         try? await Task.sleep(nanoseconds: 500_000_000)
         try await store.requestAuthorization(toShare: [], read: enhancementReadTypes)
+    }
+
+    /// Asks only for the profile types. Returns once the sheet is answered;
+    /// a type answered before is not asked again.
+    func requestProfileAuthorization() async throws {
+        guard Self.isHealthDataAvailable else {
+            throw HealthKitError.unavailable
+        }
+        try await store.requestAuthorization(toShare: [], read: Self.profileReadTypes)
+    }
+
+    /// Age, sex and BMI as Health knows them. Every field is optional:
+    /// Health may not have it, or the person may have declined to share it,
+    /// and those two cannot be told apart (see the note at the top).
+    func readProfile(now: Date = .now) async -> HealthProfile {
+        var profile = HealthProfile()
+        let calendar = Calendar(identifier: .gregorian)
+        // An empty `DateComponents` still makes a date (year 1), which would
+        // read as a two-thousand-year-old. The year is required.
+        if let components = try? store.dateOfBirthComponents(),
+           components.year != nil,
+           let birth = calendar.date(from: components),
+           let years = calendar.dateComponents([.year], from: birth, to: now).year,
+           (5...120).contains(years) {
+            profile.age = years
+        }
+        if let sex = try? store.biologicalSex().biologicalSex {
+            switch sex {
+            case .female: profile.sex = .female
+            case .male: profile.sex = .male
+            // `.other` and `.notSet` are not a sex the demographic tables
+            // split on, so they leave the field for the person to set.
+            default: break
+            }
+        }
+        let everything = DateInterval(start: .distantPast, end: now)
+        let storedBMI = (try? await mostRecentSample(.bodyMassIndex, unit: .count(), in: everything))?.value
+        if let storedBMI, Self.plausibleBMI.contains(storedBMI) {
+            profile.bodyMassIndex = storedBMI
+        } else if let height = (try? await mostRecentSample(.height, unit: .meter(), in: everything))?.value,
+                  let mass = (try? await mostRecentSample(.bodyMass, unit: .gramUnit(with: .kilo), in: everything))?.value,
+                  height > 0.5 {
+            let bmi = mass / (height * height)
+            if Self.plausibleBMI.contains(bmi) {
+                profile.bodyMassIndex = bmi
+            }
+        }
+        return profile
+    }
+
+    private static let plausibleBMI: ClosedRange<Double> = 10...80
+
+    /// The latest cardio fitness estimate Apple Watch wrote, if any.
+    func latestVO2Max(now: Date = .now) async -> Double? {
+        let unit = HKUnit.literUnit(with: .milli)
+            .unitDivided(by: HKUnit.gramUnit(with: .kilo).unitMultiplied(by: .minute()))
+        let lastYear = DateInterval(start: now.addingTimeInterval(-365 * 86_400), end: now)
+        guard let value = (try? await mostRecentSample(.vo2Max, unit: unit, in: lastYear))?.value,
+              (10...90).contains(value) else { return nil }
+        return value
     }
 
     /// Requests menstrual flow separately from the main authorization pass.
@@ -1129,4 +1206,13 @@ extension AnchorStore {
         }
         UserDefaults.standard.set(data, forKey: key)
     }
+}
+
+/// What Health knows about the person that fits Zoon's ranges to them.
+struct HealthProfile: Sendable, Equatable {
+    var age: Int?
+    var sex: DemographicBaseline.Sex?
+    var bodyMassIndex: Double?
+
+    var isEmpty: Bool { age == nil && sex == nil && bodyMassIndex == nil }
 }

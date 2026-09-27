@@ -786,7 +786,8 @@ emit("PBXProject",
 # Insights: `menstrualFlow`, caffeine, alcohol, time in daylight, mindful
 # minutes, State of Mind), which the first did not name.
 HEALTH_DESC = ("Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist "
-               "temperature, activity and workouts to explain how you slept and recovered. "
+               "temperature, activity and workouts to explain how you slept and recovered, "
+               "and your age, sex, height and weight to fit your sleep and heart ranges to you. "
                "If you turn them on, it also reads cycle data, caffeine, alcohol, time in "
                "daylight, mindful minutes and logged mood. "
                "It is processed on your iPhone and Apple Watch and is never sent to Zoon "

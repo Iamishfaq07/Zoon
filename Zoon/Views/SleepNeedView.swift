@@ -5,6 +5,7 @@ import Charts
 struct SleepNeedView: View {
 
     @Environment(SleepDataCoordinator.self) private var coordinator
+    @Environment(UserPreferences.self) private var preferences
 
     /// Set only when pushed from `CoreIntelligenceGrid`'s tile, so the push
     /// animation zooms outward from the tile instead of the generic
@@ -33,6 +34,7 @@ struct SleepNeedView: View {
             CascadeStack(spacing: Theme.stackSpacing) {
                 if let need {
                     hero(need)
+                    ageCard
                     breakdownCard(need)
                     trendChart
                     explanationCard
@@ -123,6 +125,71 @@ struct SleepNeedView: View {
         return learned.showsRange
             ? "\(basis) — the range is where the middle of those nights sat, not a margin of error. Tonight's target adds today's adjustments below."
             : "\(basis), still blended with your stated goal. Tonight's target adds today's adjustments below."
+    }
+
+    /// The expert recommendation for the person's age, drawn on the same
+    /// hours scale as their own baseline, so "is my need normal?" has an
+    /// answer on the screen that shows the need.
+    private var age: Int? { coordinator.demographic?.ageYears }
+
+    @ViewBuilder
+    private var ageCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "For your age", systemImage: "person.crop.circle")
+            if let age, let guideline = SleepNeedGuideline.forAge(age) {
+                let baseline = learned?.learnedMinutes ?? learned?.minutes ?? preferences.sleepGoalMinutes
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Recommended at \(age)")
+                        .font(Theme.label(14, weight: .semibold))
+                    Spacer()
+                    Text(guideline.recommendedText)
+                        .font(Theme.label(16, weight: .bold))
+                        .foregroundStyle(Theme.Metric.sleep)
+                }
+                PopulationRangeBar(
+                    scale: 300...660,
+                    band: guideline.recommendedMinutes,
+                    value: baseline,
+                    tint: Theme.Metric.sleep
+                )
+                HStack {
+                    Text("5h")
+                    Spacer()
+                    Text("8h")
+                    Spacer()
+                    Text("11h")
+                }
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .accessibilityHidden(true)
+                Text(ageSentence(guideline: guideline, baseline: baseline))
+                    .font(Theme.text(14))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("National Sleep Foundation recommendation. The dot is your baseline.")
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+            } else {
+                Text("Add your age in Settings, under Profile, to see how much sleep experts recommend at your age.")
+                    .font(Theme.text(14))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .glassCard()
+        .accessibilityElement(children: .combine)
+    }
+
+    private func ageSentence(guideline: SleepNeedGuideline, baseline: Double) -> String {
+        let yours = SleepNightFeatures.formatMinutes(baseline)
+        switch guideline.fit(baseline) {
+        case .withinRecommended:
+            return "Your baseline of \(yours) sits inside the range for \(guideline.groupName)."
+        case .belowRecommended, .wellBelow:
+            return "Your baseline of \(yours) is under the range for \(guideline.groupName). If you often feel sleepy in the day, you may need more than you have been getting."
+        case .aboveRecommended, .wellAbove:
+            return "Your baseline of \(yours) is over the range for \(guideline.groupName). Some people simply need more; if you still wake unrefreshed, it is worth mentioning to a doctor."
+        }
     }
 
     private func breakdownCard(_ need: SleepNeed) -> some View {

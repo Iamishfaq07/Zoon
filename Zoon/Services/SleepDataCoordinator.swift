@@ -1999,7 +1999,7 @@ final class SleepDataCoordinator {
             maxHeartRate: 185,
             napMinutes: 0,
             bedtimeConsistencyMinutes: 38,
-            age: preferences.age ?? 34,
+            age: preferences.age ?? AppMockData.sampleAge,
             sex: preferences.biologicalSex,
             bodyMassIndex: preferences.bodyMassIndex,
             obligationWeekdays: preferences.obligationWeekdays,
@@ -2075,6 +2075,80 @@ final class SleepDataCoordinator {
         engine = Self.makeEngine(for: choice)
         preferences.preferredEngine = choice
         Task { await recomputeDerivedValues() }
+    }
+
+    /// Fills age, sex and BMI from Health.
+    ///
+    /// - Parameters:
+    ///   - requestingAccess: shows the Health sheet for the profile types
+    ///     first. Onboarding has just asked for them, so it passes `false`;
+    ///     the Settings button, for people onboarded before these types were
+    ///     requested, passes `true`.
+    ///   - onlyMissing: fill blanks only. Onboarding must not overwrite a
+    ///     choice made a moment ago on the same page; the Settings button is
+    ///     an explicit "use Health's", so it replaces.
+    /// - Returns: what Health supplied, so the caller can say which fields
+    ///   were filled. Empty when Health has nothing or shared nothing, which
+    ///   cannot be told apart.
+    @discardableResult
+    func fillProfileFromHealth(requestingAccess: Bool, onlyMissing: Bool) async -> HealthProfile {
+        guard DataEnvironment.current.isLive, HealthKitManager.isHealthDataAvailable else {
+            return HealthProfile()
+        }
+        if requestingAccess {
+            do {
+                try await Deadline.race(seconds: 20) { [healthKit] in
+                    try await healthKit.requestProfileAuthorization()
+                }
+            } catch {
+                logger.error("Profile authorization did not complete: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        let profile = await healthKit.readProfile()
+        var changed = false
+        if let age = profile.age, !onlyMissing || preferences.age == nil, preferences.age != age {
+            preferences.age = age
+            changed = true
+        }
+        if let sex = profile.sex, !onlyMissing || preferences.biologicalSex == .unspecified,
+           preferences.biologicalSex != sex {
+            preferences.biologicalSex = sex
+            changed = true
+        }
+        if let bmi = profile.bodyMassIndex, !onlyMissing || preferences.bodyMassIndex == nil {
+            let rounded = bmi.rounded()
+            if preferences.bodyMassIndex != rounded {
+                preferences.bodyMassIndex = rounded
+                changed = true
+            }
+        }
+        if changed {
+            await recomputeDerivedValues()
+        }
+        return profile
+    }
+
+    /// The person's age, sex and BMI as one demographic, when an age is
+    /// known. While sample nights are showing, blanks take the sample
+    /// person's values so the demo shows the age-fitted ranges it describes.
+    var demographic: DemographicBaseline? {
+        let isSample = state.isMock
+        guard let age = preferences.age ?? (isSample ? AppMockData.sampleAge : nil) else { return nil }
+        let sex: DemographicBaseline.Sex = preferences.biologicalSex != .unspecified
+            ? preferences.biologicalSex
+            : (isSample ? AppMockData.sampleSex : .unspecified)
+        return DemographicBaseline(ageYears: age, sex: sex, bodyMassIndex: preferences.bodyMassIndex)
+    }
+
+    /// The latest cardio fitness (VO2 max) estimate, for the "for your age"
+    /// context. A sample value while sample nights are showing, so the demo
+    /// shows the row it describes.
+    func latestVO2Max() async -> Double? {
+        if state.isMock || DataEnvironment.current.isSample {
+            return AppMockData.vo2Max
+        }
+        guard DataEnvironment.current.isLive else { return nil }
+        return await healthKit.latestVO2Max()
     }
 
     /// Recomputes everything after a settings change that affects derived

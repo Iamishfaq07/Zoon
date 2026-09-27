@@ -97,11 +97,21 @@ struct TrendsView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
                         .entrance(0)
-                    WeekMoonStrip(
-                        nights: Array(coordinator.recentNights.suffix(7)),
-                        goalMinutes: preferences.sleepGoalMinutes,
-                        selected: $selectedNight
-                    )
+                    VStack(spacing: 6) {
+                        WeekMoonStrip(
+                            nights: Array(coordinator.recentNights.suffix(7)),
+                            goalMinutes: preferences.sleepGoalMinutes,
+                            selected: $selectedNight
+                        )
+                        // The moons had no key: a full moon is a night that
+                        // reached the goal, and nothing on screen said so.
+                        Text("Each moon fills with how much of your \(preferences.sleepGoalDisplay) goal you slept. Tap one to open that night.")
+                            .font(Theme.evidence)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     .entrance(1)
                     SleepResilienceCard(nights: coordinator.recentNights)
                         .entrance(2)
@@ -110,6 +120,10 @@ struct TrendsView: View {
                         window: $baselineWindow
                     )
                     .entrance(2)
+                    // Directly under the personal baselines: first "am I
+                    // changing?", then "is this usual for someone like me?"
+                    ForYourAgeCard()
+                        .entrance(2)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)

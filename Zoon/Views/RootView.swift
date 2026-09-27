@@ -280,7 +280,12 @@ struct RootView: View {
         // every activation; an app left closed past that wake has no alarm
         // for the morning after, and Settings shows the date it is set for
         // rather than implying it repeats.
-        let alarmWanted = preferences.smartWakeEnabled && preferences.wakeAlarmEnabled
+        //
+        // Its own switch, not a property of the wake window. Tied to it, a
+        // Coach "set an alarm" turned the alarm on, scheduled it, said so --
+        // and this line cancelled it a moment later for anyone without the
+        // window notification on.
+        let alarmWanted = preferences.wakeAlarmEnabled
         await reconcile(
             .wakeAlarm,
             wanted: alarmWanted,

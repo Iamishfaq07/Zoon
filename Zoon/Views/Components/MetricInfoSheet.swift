@@ -54,6 +54,9 @@ struct MetricInfoButton: View {
     /// Confidence, personal baseline and next action, when the caller knows
     /// them. Defaults to empty so every existing call site is unchanged.
     var facets = MetricFacets()
+    /// Words beside the icon, for places where a bare "i" would be missed:
+    /// under a hero number, "What does this mean?" reads as an invitation.
+    var label: String? = nil
 
     @State private var isPresented = false
 
@@ -62,9 +65,16 @@ struct MetricInfoButton: View {
             isPresented = true
             Haptics.tap()
         } label: {
-            Image(systemName: "info.circle")
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.inkTertiary)
+            if let label {
+                Label(label, systemImage: "info.circle")
+                    .font(Theme.label(13, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(minHeight: 44)
+            } else {
+                Image(systemName: "info.circle")
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
         }
         .buttonStyle(.plain)
         // This button is repeated beside most metrics in the app, so an

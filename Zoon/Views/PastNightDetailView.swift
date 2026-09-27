@@ -9,6 +9,8 @@ struct PastNightDetailView: View {
 
     let night: SleepNightFeatures
 
+    @Environment(SleepDataCoordinator.self) private var coordinator
+
     var body: some View {
         ScrollView {
             CascadeStack(spacing: Theme.stackSpacing) {
@@ -60,7 +62,7 @@ struct PastNightDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(title: "Stage Breakdown", systemImage: "square.stack.3d.up")
                 StageProportionBar(features: night)
-                StageLegend(features: night)
+                StageLegend(features: night, demographic: coordinator.demographic)
             }
             .glassCard()
         }
@@ -140,5 +142,6 @@ struct PastNightDetailView: View {
     NavigationStack {
         PastNightDetailView(night: AppMockData.dayContext().night)
     }
+    .zoonPreviewEnvironment()
     .preferredColorScheme(.dark)
 }

@@ -19,6 +19,8 @@ struct SettingsView: View {
 
     @State private var showingDeleteConfirmation = false
     @State private var showingDeleteFailure = false
+    @State private var isFillingProfile = false
+    @State private var profileFillMessage: String?
 
     var body: some View {
         // Bindings are built by hand rather than with @Bindable because each
@@ -103,11 +105,32 @@ struct SettingsView: View {
                     in: 360...600,
                     step: 15
                 )
+                if let guideline = SleepNeedGuideline.forAge(preferences.age) {
+                    // Where the goal sits against the recommendation for
+                    // this age, and a one-tap way to the middle of it.
+                    Text(guideline.goalSentence(goalMinutes: preferences.sleepGoalMinutes))
+                        .font(Theme.text(13))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if guideline.fit(preferences.sleepGoalMinutes) != .withinRecommended {
+                        Button("Use \(SleepNightFeatures.formatMinutes(guideline.suggestedGoalMinutes)), the middle of that range") {
+                            preferences.sleepGoalMinutes = guideline.suggestedGoalMinutes
+                            Haptics.select()
+                            Task { await coordinator.recomputeDerivedValues() }
+                        }
+                        .font(Theme.label(13, weight: .semibold))
+                    }
+                } else {
+                    Text("Add your age under Profile to see how much sleep experts recommend at your age.")
+                        .font(Theme.text(13))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         } header: {
             Text("Sleep Goal")
         } footer: {
-            Text("Your recovery score, sleep need, and debt are all measured against this — not a population average.")
+            Text("Your sleep score, sleep need and shortfall are measured against this. Zoon then learns your real need from your best-rested nights.")
         }
     }
 
@@ -138,7 +161,7 @@ struct SettingsView: View {
     /// The toggle requests permission on the way *on*, which is the only
     /// moment the request has context — an app that asks at launch, before
     /// showing what the notification is for, mostly gets denied permanently.
-    /// What to say under the "Ring an alarm" toggle -- the actual next
+    /// What to say under the "Wake alarm" toggle -- the actual next
     /// scheduled time when there is one, not just a generic description of
     /// what the feature does regardless of whether anything is currently
     /// armed. `wakeAlarm.scheduledWakeTime` reflects the wake time
@@ -158,7 +181,7 @@ struct SettingsView: View {
             return "Set for \(scheduledWakeTime.formatted(.dateTime.weekday(.abbreviated).hour().minute())), "
                 + "through Silent mode and Sleep Focus. Opening Zoon sets the next one."
         }
-        return "Sounds at the end of the window, through Silent mode and Sleep Focus."
+        return "Rings at your planned wake time, through Silent mode and Sleep Focus."
     }
 
     private var remindersSection: some View {
@@ -256,36 +279,36 @@ struct SettingsView: View {
                 }
             }
 
-            // Nested under the wake window because it's a property *of* it --
-            // the alarm rings at the end of the same window the notification
-            // opens -- and hidden entirely when the window is off, where it
-            // would have nothing to attach to.
-            if preferences.smartWakeEnabled {
-                Toggle(isOn: Binding(
-                    get: { preferences.wakeAlarmEnabled },
-                    set: { wantsOn in
-                        Task {
-                            if wantsOn {
-                                preferences.wakeAlarmEnabled = await wakeAlarm.requestAuthorization()
-                            } else {
-                                // Off only if the cancel took. A failed cancel
-                                // leaves a real alarm set, and a switch
-                                // showing off above it would be the one
-                                // place the app claims otherwise.
-                                preferences.wakeAlarmEnabled = !wakeAlarm.cancel()
-                            }
+            // Its own switch. It used to sit under the wake window and only
+            // exist while the window was on, and the scheduler matched: an
+            // alarm asked for anywhere else (the Coach's "set an alarm") was
+            // cancelled for anyone without the window notification. The alarm
+            // rings at the planned wake either way; the window is an optional
+            // gentler nudge before it.
+            Toggle(isOn: Binding(
+                get: { preferences.wakeAlarmEnabled },
+                set: { wantsOn in
+                    Task {
+                        if wantsOn {
+                            preferences.wakeAlarmEnabled = await wakeAlarm.requestAuthorization()
+                        } else {
+                            // Off only if the cancel took. A failed cancel
+                            // leaves a real alarm set, and a switch
+                            // showing off above it would be the one
+                            // place the app claims otherwise.
+                            preferences.wakeAlarmEnabled = !wakeAlarm.cancel()
                         }
                     }
-                )) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Ring an alarm")
-                        Text(alarmStatusDescription)
-                            .font(.caption)
-                            .foregroundStyle(Theme.inkSecondary)
-                    }
                 }
-                .disabled(!wakeAlarm.isAvailable)
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Wake alarm")
+                    Text(alarmStatusDescription)
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
             }
+            .disabled(!wakeAlarm.isAvailable)
 
             Toggle(isOn: Binding(
                 get: { preferences.morningBriefEnabled },
@@ -540,16 +563,56 @@ struct SettingsView: View {
                     Text("\(bmi)").tag(bmi)
                 }
             }
+            if DataEnvironment.current.isLive && HealthKitManager.isHealthDataAvailable {
+                Button {
+                    Task {
+                        isFillingProfile = true
+                        let profile = await coordinator.fillProfileFromHealth(
+                            requestingAccess: true, onlyMissing: false
+                        )
+                        profileFillMessage = ForYourAgeCard.fillSummary(profile)
+                        isFillingProfile = false
+                    }
+                } label: {
+                    HStack {
+                        Label("Fill from Health", systemImage: "heart.text.square")
+                        if isFillingProfile {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(isFillingProfile)
+            }
+            if let profileFillMessage {
+                Text(profileFillMessage)
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+            }
         } header: {
             Text("Profile")
         } footer: {
-            Text("""
-                Age estimates maximum heart rate for Daily Load and Energy Reserve. \
-                Age, sex, and BMI also pick a demographic deep-sleep prior so a typical \
-                older night is not marked down against a young-adult target. Nothing \
-                else reads these, and they never leave the device.
-                """)
+            Text(profileFooter)
         }
+    }
+
+    /// What each field changes, with this person's own numbers where they
+    /// are set, so "optional" does not read as "pointless".
+    private var profileFooter: String {
+        var lines: [String] = []
+        if let age = preferences.age {
+            let maximum = Int(HeartRateZoneIntegrator.maximumHeartRate(age: age).bpm.rounded())
+            if let guideline = SleepNeedGuideline.forAge(age) {
+                lines.append("At \(age): \(guideline.recommendedText) of sleep recommended, and a maximum heart rate near \(maximum) bpm for Daily Load and Energy Reserve.")
+            } else {
+                lines.append("At \(age): a maximum heart rate near \(maximum) bpm for Daily Load and Energy Reserve.")
+            }
+        } else {
+            lines.append("Age sets the sleep range experts recommend for you and your maximum heart rate.")
+        }
+        lines.append("Age and sex also set what counts as typical deep sleep, heart rate, HRV and cardio fitness for someone like you, on Insights. BMI adjusts the deep-sleep expectation slightly.")
+        lines.append("All optional. They never leave this iPhone.")
+        return lines.joined(separator: " ")
     }
 
     private var engineSection: some View {

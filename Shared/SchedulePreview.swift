@@ -58,8 +58,8 @@ enum SchedulePreview {
         notification("Bedtime", at: bed, enabled: settings.bedtimeReminders)
         notification("Wake window", at: wake.addingTimeInterval(-Double(wakeWindowLeadMinutes) * 60), enabled: settings.wakeWindow)
 
-        // The alarm rides on the wake window, as in the scheduler.
-        if settings.wakeWindow && settings.wakeAlarm {
+        // The alarm is its own switch, as in the scheduler.
+        if settings.wakeAlarm {
             if settings.alarmBlocked {
                 lines.append("Alarm: not set, Zoon does not have permission to set alarms.")
             } else if wake <= now {
@@ -72,7 +72,7 @@ enum SchedulePreview {
         notification("Morning brief", at: wake.addingTimeInterval(Double(morningBriefDelayMinutes) * 60), enabled: settings.morningBrief)
 
         if lines.isEmpty {
-            return ["Nothing will be scheduled: bedtime reminders, the wake window and the morning brief are all off in Settings."]
+            return ["Nothing will be scheduled: bedtime reminders, the wake window, the wake alarm and the morning brief are all off in Settings."]
         }
         return lines
     }

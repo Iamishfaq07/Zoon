@@ -49,6 +49,11 @@ struct TonightPlanCardView: View {
     /// When the first step is still ahead, how long until it.
     var bedIn: TimeInterval?
 
+    @Environment(UserPreferences.self) private var preferences
+    @Environment(BedtimeReminder.self) private var reminders
+    @State private var wakeAlarm = WakeAlarm()
+    @State private var controlMessage: String?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
@@ -58,8 +63,108 @@ struct TonightPlanCardView: View {
                     row(step, isLast: index == steps.count - 1)
                 }
             }
+
+            quickControls
         }
         .glassCard()
+    }
+
+    // MARK: - Reminders and alarm, where the times are
+
+    /// The plan showed a wind-down, a bedtime and a wake time, and nothing
+    /// on it could act on them: reminders and the alarm were two screens
+    /// deep in Settings. One tap each here, asking permission the first time,
+    /// exactly as the Settings switches do. `RootView` schedules on the
+    /// change, against the same resolved night these rows show.
+    @ViewBuilder
+    private var quickControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                controlChip(
+                    title: preferences.bedtimeRemindersEnabled ? "Reminders on" : "Remind me",
+                    symbol: preferences.bedtimeRemindersEnabled ? "bell.fill" : "bell",
+                    isOn: preferences.bedtimeRemindersEnabled,
+                    hint: "Wind-down and bedtime notifications",
+                    action: toggleReminders
+                )
+                if wakeAlarm.isAvailable {
+                    controlChip(
+                        title: preferences.wakeAlarmEnabled ? "Alarm on" : "Set alarm",
+                        symbol: preferences.wakeAlarmEnabled ? "alarm.fill" : "alarm",
+                        isOn: preferences.wakeAlarmEnabled,
+                        hint: "Rings at the wake time, through Silent mode",
+                        action: toggleAlarm
+                    )
+                }
+            }
+            if let controlMessage {
+                Text(controlMessage)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.Family.attention)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func controlChip(
+        title: String,
+        symbol: String,
+        isOn: Bool,
+        hint: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            Haptics.select()
+            action()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .symbolEffect(.bounce, value: isOn)
+                Text(title)
+                    .lineLimit(1)
+            }
+            .font(Theme.label(13, weight: .semibold))
+            .foregroundStyle(isOn ? Theme.ink : Theme.inkSecondary)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(
+                Capsule().fill(isOn ? Theme.Family.sleep.opacity(0.30) : Theme.neutral(0.08))
+            )
+            .overlay {
+                Capsule().stroke(isOn ? Theme.Family.sleep.opacity(0.6) : Theme.neutral(0.16), lineWidth: 1)
+            }
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityHint(hint)
+    }
+
+    private func toggleReminders() {
+        Task {
+            if preferences.bedtimeRemindersEnabled {
+                preferences.bedtimeRemindersEnabled = false
+                reminders.cancel()
+                controlMessage = nil
+            } else {
+                let granted = await reminders.requestAuthorization()
+                preferences.bedtimeRemindersEnabled = granted
+                controlMessage = granted ? nil : "Notifications are off for Zoon. Turn them on in iOS Settings, then tap again."
+            }
+        }
+    }
+
+    private func toggleAlarm() {
+        Task {
+            if preferences.wakeAlarmEnabled {
+                // Off only if the cancel took, as in Settings.
+                preferences.wakeAlarmEnabled = !wakeAlarm.cancel()
+                controlMessage = nil
+            } else {
+                let granted = await wakeAlarm.requestAuthorization()
+                preferences.wakeAlarmEnabled = granted
+                controlMessage = granted ? nil : "Zoon is not allowed to set alarms. Allow it in iOS Settings, then tap again."
+            }
+        }
     }
 
     private var header: some View {
