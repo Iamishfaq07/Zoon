@@ -74,6 +74,17 @@ enum AppMockData {
             if index % 2 == 0 { tags.insert(.readBeforeBed) }
 
             let penalty = drank ? 0.78 : 1.0
+            // Every sample habit carries a plausible effect of its own. Only
+            // alcohol used to, so the other findings were noise and the demo
+            // could claim late caffeine made sleep better. The sizes are
+            // large enough to show through the fixed tag cycles, where
+            // reading nights overlap alcohol nights and caffeine nights never do.
+            let caffeine = tags.contains(.caffeineLate)
+            let trained = tags.contains(.hardTraining)
+            let read = tags.contains(.readBeforeBed)
+            let sufficiency = penalty * (caffeine ? 0.8 : 1.0) * (trained ? 1.08 : 1.0) * (read ? 1.12 : 1.0)
+            let continuity = (drank ? 0.94 : 1.0) * (caffeine ? 0.95 : 1.0) * (read ? 1.02 : 1.0)
+            let wakes = (drank ? 1.6 : 1.0) * (caffeine ? 1.5 : 1.0) * (read ? 0.55 : 1.0)
             let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
@@ -86,11 +97,11 @@ enum AppMockData {
                 // no matched pairs at all.
                 answers: .fullyAnswered(tags: tags),
                 recoveryPercent: (night.avgHRV ?? 55) * penalty,
-                sleepPerformance: min(100, night.timeAsleepMinutes / 480 * 100) * penalty,
-                deepMinutes: night.deepMinutes * penalty,
+                sleepPerformance: min(100, night.timeAsleepMinutes / 480 * 100 * sufficiency),
+                deepMinutes: night.deepMinutes * penalty * (trained ? 1.12 : 1.0),
                 remMinutes: night.remMinutes * penalty,
-                efficiency: night.sleepEfficiencyPercent * (drank ? 0.94 : 1.0),
-                wakeCount: Double(night.wakeCount) * (drank ? 1.6 : 1.0),
+                efficiency: min(100, night.sleepEfficiencyPercent * continuity),
+                wakeCount: Double(night.wakeCount) * wakes,
                 isWeekend: weekday == 1 || weekday == 7,
                 sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime),
@@ -150,9 +161,14 @@ enum AppMockData {
         var cursor = night.bedtime.addingTimeInterval(
             (night.sleepLatencyMinutes ?? 10) * 60
         )
+        // Stretched to end at the night's own wake. The pattern is 6h 24m,
+        // so unscaled the sample chart stopped at 5:38 under a 7:10 wake.
+        let total = pattern.reduce(0) { $0 + $1.1 }
+        let span = night.wakeTime.timeIntervalSince(cursor) / 60
+        let scale = span > 0 ? span / total : 1
         return pattern.map { stage, minutes in
             let start = cursor
-            cursor = cursor.addingTimeInterval(minutes * 60)
+            cursor = cursor.addingTimeInterval(minutes * scale * 60)
             return StageSegment(stage: stage, start: start, end: cursor)
         }
     }

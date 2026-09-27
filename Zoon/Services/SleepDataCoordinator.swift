@@ -2742,6 +2742,16 @@ final class SleepDataCoordinator {
 
     func journalObservations() -> [JournalCorrelator.Observation] {
         let entries = journal.allEntries()
+        // Sample mode shows sample habits, as it shows sample nights. Patterns,
+        // Evidence and Coach used to read the empty real journal here, so the
+        // demo said "Zoon is learning, 0 nights" beside a full sample history.
+        // Whenever sample nights are showing: a real journal cannot be joined
+        // to them (they are not in the store), and merely opening the Journal
+        // writes a row, so "while the journal is empty" never held. Never
+        // recorded: the ledger is written only after a live night is published.
+        if state.isMock {
+            return AppMockData.journalObservations
+        }
         let answersByNightKey = behaviors.allAnswersByNightKey()
         let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
         // Entries that carry a `nightKey` (see `JournalEntry.nightKey`) join

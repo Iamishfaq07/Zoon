@@ -27,6 +27,17 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
             }
         }
 
+        /// For the four-way segmented control, where the full labels do not
+        /// fit on a phone and the first one truncated to "Natural voi...".
+        var shortLabel: String {
+            switch self {
+            case .natural: "Voice"
+            case .minimal: "Minimal"
+            case .hapticsOnly: "Haptics"
+            case .silent: "Silent"
+            }
+        }
+
         var usesVoice: Bool {
             self == .natural || self == .minimal
         }

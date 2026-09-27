@@ -64,22 +64,28 @@ struct RootView: View {
             TodayView()
                 .tabItem { Label("Today", systemImage: "moon.fill") }
                 .tag(Tab.today)
+                .toolbar(.hidden, for: .tabBar)
 
             SleepTabView(path: $sleepPath)
                 .tabItem { Label("Sleep", systemImage: "moon.stars.fill") }
                 .tag(Tab.sleep)
+                .toolbar(.hidden, for: .tabBar)
 
             TrendsView()
                 .tabItem { Label("Insights", systemImage: "chart.xyaxis.line") }
                 .tag(Tab.trends)
+                .toolbar(.hidden, for: .tabBar)
 
             CoachTabView()
                 .tabItem { Label("Coach", systemImage: "sparkles") }
                 .tag(Tab.coach)
+                .toolbar(.hidden, for: .tabBar)
         }
         // The system bar is hidden and replaced by a floating capsule. The
         // `TabView` still owns selection, paging and state restoration --
-        // only its chrome is ours.
+        // only its chrome is ours. Hidden per tab above: applied here, to
+        // the TabView, current iOS kept drawing the system bar under the
+        // capsule, a second faint row of tab labels on every screen.
         .toolbar(.hidden, for: .tabBar)
         // Every tab's scroll view gets the same bottom room, here rather
         // than in each tab: a floating bar sits over content, and a tab that

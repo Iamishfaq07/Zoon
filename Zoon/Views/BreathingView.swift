@@ -37,7 +37,9 @@ struct BreathingView: View {
 
             Picker("Cues", selection: $coach.voiceMode) {
                 ForEach(WindDownGuidanceConfiguration.VoiceMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
+                    Text(mode.shortLabel)
+                        .accessibilityLabel(mode.label)
+                        .tag(mode)
                 }
             }
             .pickerStyle(.segmented)
