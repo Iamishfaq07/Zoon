@@ -301,8 +301,14 @@ struct JournalView: View {
             dictationControls
 
             if naturalProposals.isEmpty {
-                Button("Find observations") { parseNaturalJournal() }
-                    .buttonStyle(.bordered)
+                // The step this card exists for, so it is the prominent one;
+                // Speak above is the tinted secondary. They were two
+                // unrelated greys before.
+                Button { parseNaturalJournal() } label: {
+                    Label("Find observations", systemImage: "sparkles")
+                }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Theme.Metric.sleep)
                     .disabled(naturalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } else {
                 Text("Confirm what Zoon understood")

@@ -60,7 +60,7 @@ struct NightHistoryView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(night.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                     .font(Theme.label(14, weight: .semibold))
-                Text("\(Int(night.sleepEfficiencyPercent))% efficiency · \(night.wakeCount) awakenings")
+                Text("\(Int(night.sleepEfficiencyPercent))% efficiency · \(night.wakeCount.pluralized("awakening"))")
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkSecondary)
             }

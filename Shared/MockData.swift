@@ -60,9 +60,13 @@ enum MockData {
     /// Deterministically generated from a seeded generator so previews and
     /// snapshot comparisons are stable across runs — random previews that shift
     /// every rebuild make chart regressions impossible to spot.
+    ///
+    /// The newest entry is `goodNight` itself, the night Today and Sleep
+    /// show. It used to be one more random night, so the sample said 7h 32m
+    /// on Sleep and 8h 7m for the same date in Past Nights.
     static let history: [SleepNightFeatures] = {
         var rng = SeededGenerator(seed: 20_260_807)
-        return (0..<30).reversed().map { daysAgo -> SleepNightFeatures in
+        let generated = (0..<30).reversed().map { daysAgo -> SleepNightFeatures in
             // Weekends drift later and longer.
             let date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
             let isWeekend = Calendar.current.isDateInWeekend(date)
@@ -94,6 +98,7 @@ enum MockData {
                 exercise: rng.nextDouble(in: 0...95)
             )
         }
+        return Array(generated.dropLast()) + [goodNight]
     }()
 
     /// Last 7 nights of `history`.

@@ -150,9 +150,14 @@ enum AppMockData {
         var cursor = night.bedtime.addingTimeInterval(
             (night.sleepLatencyMinutes ?? 10) * 60
         )
+        // Stretched to end at the night's own wake. The pattern is 6h 24m,
+        // so unscaled the sample chart stopped at 5:38 under a 7:10 wake.
+        let total = pattern.reduce(0) { $0 + $1.1 }
+        let span = night.wakeTime.timeIntervalSince(cursor) / 60
+        let scale = span > 0 ? span / total : 1
         return pattern.map { stage, minutes in
             let start = cursor
-            cursor = cursor.addingTimeInterval(minutes * 60)
+            cursor = cursor.addingTimeInterval(minutes * scale * 60)
             return StageSegment(stage: stage, start: start, end: cursor)
         }
     }

@@ -128,9 +128,9 @@ final class SoundscapeEngine {
 
         var detail: String {
             switch self {
-            case .brownNoise: "Deep, low rumble. Generated so it never seams."
-            case .pinkNoise: "Balanced hiss. Generated so it never seams."
-            case .whiteNoise: "Bright and flat. Generated so it never seams."
+            case .brownNoise: "Deep, low rumble. Never loops."
+            case .pinkNoise: "Balanced hiss. Never loops."
+            case .whiteNoise: "Bright and flat. Never loops."
             case .rain: "Gentle overnight rain."
             case .rainfall: "Soft rainfall."
             case .window: "Drops on glass."

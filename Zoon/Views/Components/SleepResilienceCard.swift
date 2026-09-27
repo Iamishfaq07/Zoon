@@ -118,7 +118,7 @@ struct SleepResilienceCard: View {
     /// measured across three disruptions and one measured across twenty are
     /// not the same claim, and the number alone does not say which.
     private func typeValue(_ typed: SleepResilience.TypedResult) -> some View {
-        Text("\(typed.sentence) · \(typed.result.eventCount) episodes")
+        Text("\(typed.sentence) · \(typed.result.eventCount.pluralized("episode"))")
             .font(Theme.text(11))
             .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)

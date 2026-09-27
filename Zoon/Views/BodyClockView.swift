@@ -242,7 +242,12 @@ struct BodyClockView: View {
                         Text(BodyClock.formatted(hour: moment.hour))
                             .font(Theme.label(13, weight: .semibold))
                             .monospacedDigit()
-                            .frame(width: 58, alignment: .leading)
+                            // One line, at least the old column width so the
+                            // rows still align. 58 pt fixed broke "10:27 AM"
+                            // into "10:27 A / M" at the default text size.
+                            .lineLimit(1)
+                            .fixedSize()
+                            .frame(minWidth: 64, alignment: .leading)
                         Image(systemName: moment.symbol)
                             .font(Theme.text(11))
                             .foregroundStyle(Theme.Family.circadian)
