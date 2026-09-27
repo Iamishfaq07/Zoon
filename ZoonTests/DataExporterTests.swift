@@ -105,6 +105,19 @@ final class DataExporterTests: XCTestCase {
 
     // MARK: - Round trip
 
+    /// A source name is chosen by whichever app wrote to Health. One that
+    /// starts like a formula must reach the spreadsheet as text.
+    func testCSVCellsThatLookLikeFormulasAreNeutralised() {
+        XCTAssertEqual(DataExporter.escape("=HYPERLINK(\"http://x\")"), "\"'=HYPERLINK(\"\"http://x\"\")\"")
+        XCTAssertEqual(DataExporter.escape("+1"), "'+1")
+        XCTAssertEqual(DataExporter.escape("-2+3"), "'-2+3")
+        XCTAssertEqual(DataExporter.escape("@SUM(A1)"), "'@SUM(A1)")
+        XCTAssertEqual(DataExporter.escape("\tcmd"), "'\tcmd")
+        XCTAssertEqual(DataExporter.escape("Apple Watch"), "Apple Watch")
+        XCTAssertEqual(DataExporter.escape("Etc/GMT-5"), "Etc/GMT-5")
+        XCTAssertEqual(DataExporter.escape("a,b"), "\"a,b\"")
+    }
+
     func testCurrentFormatRoundTripsEveryNewField() throws {
         let original = makeArchive()
         let data = try DataExporter.jsonData(original)
@@ -399,5 +412,55 @@ final class DataExporterTests: XCTestCase {
         XCTAssertTrue(header.hasSuffix(",timezone"), String(header))
         XCTAssertTrue(row.hasPrefix("2024-03-11,"), String(row))
         XCTAssertTrue(row.hasSuffix(",Asia/Tokyo"), String(row))
+    }
+}
+
+// MARK: - Fuzzing the import path
+
+/// A backup is a file from anywhere: a share sheet, a download, someone
+/// else's phone. Whatever bytes arrive, `decode` must either refuse them or
+/// return an archive that passes every validation rule -- never trap, and
+/// never hand the importer something the rules would have rejected.
+///
+/// Seeded, so a failure reproduces exactly; the iteration counts keep the
+/// whole test well under a second.
+extension DataExporterTests {
+
+    func testFuzzedArchiveBytesAreRefusedOrFullyValid() throws {
+        let seed = try DataExporter.jsonData(makeArchive())
+        var rng = SeededGenerator(seed: 0xF0_22_AC_E5)
+        let extremes = ["1e308", "-1e308", "-0", "99999999999999999999", "-1", "0.0000001", "\"\"", "null", "[]", "{}", "true"]
+
+        func check(_ data: Data, _ label: String) {
+            guard let archive = try? DataExporter.decode(data) else { return }
+            XCTAssertNil(DataExporter.validationFailure(archive), "decode accepted an invalid archive (\(label))")
+        }
+
+        for i in 0..<600 {
+            var bytes = [UInt8](seed)
+            switch i % 5 {
+            case 0: // flip a few bytes
+                for _ in 0..<Int.random(in: 1...4, using: &rng) {
+                    let at = Int.random(in: 0..<bytes.count, using: &rng)
+                    bytes[at] ^= UInt8.random(in: 1...255, using: &rng)
+                }
+            case 1: // truncate
+                bytes = Array(bytes.prefix(Int.random(in: 0..<bytes.count, using: &rng)))
+            case 2: // splice a slice of itself in somewhere else
+                let a = Int.random(in: 0..<bytes.count, using: &rng)
+                let b = min(bytes.count, a + Int.random(in: 1...64, using: &rng))
+                bytes.insert(contentsOf: bytes[a..<b], at: Int.random(in: 0...bytes.count, using: &rng))
+            case 3: // swap one number for an extreme or a wrong type
+                var text = String(decoding: bytes, as: UTF8.self)
+                let numbers = text.ranges(of: try! Regex("-?[0-9]+(\\.[0-9]+)?"))
+                if let pick = numbers.randomElement(using: &rng) {
+                    text.replaceSubrange(pick, with: extremes.randomElement(using: &rng)!)
+                }
+                bytes = Array(text.utf8)
+            default: // noise
+                bytes = (0..<Int.random(in: 0...512, using: &rng)).map { _ in UInt8.random(in: 0...255, using: &rng) }
+            }
+            check(Data(bytes), "iteration \(i)")
+        }
     }
 }

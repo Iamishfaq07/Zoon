@@ -21,13 +21,20 @@ enum ArchiveCipher {
             }
         }
     }
+    /// PBKDF2-HMAC-SHA256 iterations for new archives: OWASP's current
+    /// figure for this PRF. Was 210,000 (its figure for SHA-512). Opening
+    /// still accepts 210,000 up, so every archive made before this opens,
+    /// and 600,000 is inside the range older builds accept, so a new archive
+    /// still opens on them.
+    static let sealingRounds: UInt32 = 600_000
+
     static func isEncrypted(_ data: Data) -> Bool {
         (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["cipherVersion"] != nil
     }
     static func seal(_ data: Data, passphrase: String) throws -> Data {
         guard passphrase.count >= 10 else { throw Failure.passphrase }
         let salt = SymmetricKey(size: .bits128).withUnsafeBytes { Data($0) }
-        let rounds: UInt32 = 210_000
+        let rounds = sealingRounds
         let key = try derive(passphrase, salt: salt, rounds: rounds)
         let sealed = try AES.GCM.seal(data, using: key)
         guard let combined = sealed.combined else { throw Failure.invalid }

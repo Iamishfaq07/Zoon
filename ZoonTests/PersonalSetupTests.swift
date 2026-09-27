@@ -62,6 +62,26 @@ final class PersonalSetupTests: XCTestCase {
         XCTAssertNotEqual(try ArchiveCipher.seal(original, passphrase: passphrase), sealed)
     }
 
+    /// New archives use the current iteration count, and an archive whose
+    /// header was edited to a cheaper count is refused rather than opened --
+    /// below the floor as invalid, inside it by the authentication tag, since
+    /// the key no longer matches.
+    func testEncryptedArchiveUsesCurrentRoundsAndRejectsWeakenedHeaders() throws {
+        let passphrase = "a long moon phrase 🌙"
+        let sealed = try ArchiveCipher.seal(Data("night".utf8), passphrase: passphrase)
+        let envelope = try JSONDecoder().decode(ArchiveCipher.Envelope.self, from: sealed)
+        XCTAssertEqual(envelope.rounds, ArchiveCipher.sealingRounds)
+        XCTAssertGreaterThanOrEqual(ArchiveCipher.sealingRounds, 600_000)
+
+        for rounds: UInt32 in [1, 1_000, 209_999, 210_000] {
+            let weakened = ArchiveCipher.Envelope(salt: envelope.salt, rounds: rounds, sealed: envelope.sealed)
+            XCTAssertThrowsError(
+                try ArchiveCipher.open(JSONEncoder().encode(weakened), passphrase: passphrase),
+                "rounds \(rounds) must not open"
+            )
+        }
+    }
+
     func testCoachHistoricalEvidenceExcludesFutureNight() {
         let selected = Fixture.night(daysAgo: 4)
         let past = Fixture.night(daysAgo: 5)

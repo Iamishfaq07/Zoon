@@ -16,7 +16,10 @@ struct MoreView: View {
     @State private var setup = PersonalSetupStore.shared
     @State private var exportURL: URL?
     @State private var isImporting = false
-    @State private var encryptBackup = false
+    /// On by default: a full backup carries every night, journal note and
+    /// check-in, and it leaves the phone the moment it is shared. Turning it
+    /// off is one tap for someone who wants plain JSON.
+    @State private var encryptBackup = true
     @State private var archivePassphrase = ""
     @State private var pendingArchive: DataExporter.Archive?
     @State private var showingRestorePreview = false

@@ -15,6 +15,9 @@ import SwiftData
 struct GetRecoveryIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Recovery"
     static let description = IntentDescription("Your latest recovery score from Zoon.")
+    /// Health data read aloud, so never from a locked phone: without this,
+    /// anyone holding it could ask Siri and hear it. Unlocking is required.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
@@ -38,6 +41,9 @@ struct GetRecoveryIntent: AppIntent {
 struct GetSleepSummaryIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Last Night's Sleep"
     static let description = IntentDescription("How long you slept and your Sleep Intelligence result for last night.")
+    /// Health data read aloud, so never from a locked phone: without this,
+    /// anyone holding it could ask Siri and hear it. Unlocking is required.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
@@ -51,6 +57,9 @@ struct GetSleepSummaryIntent: AppIntent {
 struct LogSleepTagIntent: AppIntent {
     static let title: LocalizedStringResource = "Log a Sleep Habit"
     static let description = IntentDescription("Log something that might affect tonight's sleep in Zoon's journal.")
+    /// Writes to the journal, so not from a locked phone: without this,
+    /// anyone holding it could add entries through Siri.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
     @Parameter(title: "Habit")
     var tag: BehaviorTag
@@ -132,6 +141,9 @@ struct StartWindDownIntent: AppIntent {
 struct GetBedtimeIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Tonight's Bedtime"
     static let description = IntentDescription("Tonight's bed and wake target from Zoon.")
+    /// Health data read aloud, so never from a locked phone: without this,
+    /// anyone holding it could ask Siri and hear it. Unlocking is required.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let snapshot = SnapshotStore.read(), !snapshot.tonightTargetLabel.isEmpty else {
