@@ -76,13 +76,15 @@ enum AppMockData {
             let penalty = drank ? 0.78 : 1.0
             // Every sample habit carries a plausible effect of its own. Only
             // alcohol used to, so the other findings were noise and the demo
-            // could claim late caffeine made sleep better.
+            // could claim late caffeine made sleep better. The sizes are
+            // large enough to show through the fixed tag cycles, where
+            // reading nights overlap alcohol nights and caffeine nights never do.
             let caffeine = tags.contains(.caffeineLate)
             let trained = tags.contains(.hardTraining)
             let read = tags.contains(.readBeforeBed)
-            let sufficiency = penalty * (caffeine ? 0.88 : 1.0) * (trained ? 1.04 : 1.0) * (read ? 1.03 : 1.0)
+            let sufficiency = penalty * (caffeine ? 0.8 : 1.0) * (trained ? 1.08 : 1.0) * (read ? 1.12 : 1.0)
             let continuity = (drank ? 0.94 : 1.0) * (caffeine ? 0.95 : 1.0) * (read ? 1.02 : 1.0)
-            let wakes = (drank ? 1.6 : 1.0) * (caffeine ? 1.35 : 1.0) * (read ? 0.75 : 1.0)
+            let wakes = (drank ? 1.6 : 1.0) * (caffeine ? 1.5 : 1.0) * (read ? 0.55 : 1.0)
             let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
