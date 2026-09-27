@@ -170,7 +170,7 @@ enum SleepVocabulary {
 
     static let energyReserve = Term(
         plain: "Energy reserve",
-        technical: "Body battery",
+        technical: nil,
         meaning: "An estimate of how much energy you have left right now. Sleep refills it, and activity and stress through the day drain it.",
         symbol: "battery.75percent"
     )
