@@ -29,6 +29,7 @@ struct CoachToolRunner {
         case .getCurrentPriority: currentPriority()
         case .getPhysiologicalLoad: physiologicalLoad()
         case .getDailyLoad: dailyLoad()
+        case .getForYourAge: await forYourAge()
         case .logCaffeine: logCaffeine(minutes: call.proposedMinutes, servings: call.proposedServings)
         case .startNap: await startNap(minutes: call.proposedMinutes)
         case .prepareTomorrow: prepareTomorrow(minutes: call.proposedMinutes)
@@ -136,6 +137,39 @@ struct CoachToolRunner {
         guard let context else { return nil }
         let note = context.strain.isEstimate ? " It is an estimate from the heart-rate coverage available so far." : ""
         return "Today's Load is \(String(format: "%.1f", context.strain.value)) on a 0–21 scale.\(note) Load is cardiovascular work today, not a verdict on how recovered you are."
+    }
+
+    /// The age range and the heart context, in sentences, from the same
+    /// engines the Sleep Need screen and the "For your age" card use -- so
+    /// the Coach answers "how much sleep do I need at my age?" on every
+    /// iPhone, not only where Apple Intelligence can phrase it.
+    private func forYourAge() async -> String? {
+        guard let profile = coordinator.demographic else {
+            return "Add your age in Settings, under Profile, or fill it from Health, and I can tell you how much sleep is recommended at your age and how your heart numbers compare."
+        }
+        var parts: [String] = []
+        if let guideline = SleepNeedGuideline.forAge(profile.ageYears) {
+            parts.append(guideline.sentence)
+            parts.append(guideline.goalSentence(goalMinutes: preferences.sleepGoalMinutes))
+        }
+        if let learned = context?.learnedSleepNeed.learnedMinutes {
+            parts.append("From your own best-rested nights, your need looks like about \(SleepNightFeatures.formatMinutes(learned)).")
+        }
+        let recent = coordinator.recentNights.suffix(14)
+        let resting = recent.compactMap(\.restingHeartRate)
+        if resting.count >= 3, let median = Statistics.median(resting) {
+            parts.append("Resting heart rate: " + HeartContext.restingHeartRate(median, sex: profile.sex).sentence)
+        }
+        let hrv = recent.compactMap(\.avgHRV)
+        if hrv.count >= 3, let median = Statistics.median(hrv) {
+            parts.append("HRV: " + HeartContext.heartRateVariability(median, age: profile.ageYears).sentence)
+        }
+        if let vo2 = await coordinator.latestVO2Max(),
+           let reading = HeartContext.cardioFitness(vo2, age: profile.ageYears, sex: profile.sex) {
+            parts.append("Cardio fitness: " + reading.sentence)
+        }
+        parts.append("These are population figures; your own trend matters more.")
+        return parts.joined(separator: " ")
     }
 
     private func physiologicalLoad() -> String? {

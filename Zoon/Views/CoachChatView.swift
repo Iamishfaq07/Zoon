@@ -499,7 +499,10 @@ struct CoachChatView: View {
         "Am I behind on sleep?",
         "When should I go to bed tonight?",
         "How is my recovery?",
-        "Why do I wake up at night?"
+        "Why do I wake up at night?",
+        // Answered from the age range and heart context in the digest.
+        "How much sleep do I need at my age?",
+        "Is my resting heart rate normal for my age?"
     ]
 
     private func unavailable(_ reason: String) -> some View {
