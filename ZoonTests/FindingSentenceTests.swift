@@ -67,4 +67,17 @@ final class FindingSentenceTests: XCTestCase {
         let result = FindingSentence.support(matchedPairCount: 0, confidence: "Low confidence")
         XCTAssertTrue(result.hasPrefix("0 matched nights"), result)
     }
+
+    /// Awakenings is plural and a count: the sentence says how often, not
+    /// "your awakenings tends to be worse".
+    func testAwakeningsReadsAsHowOftenYouWake() {
+        XCTAssertEqual(
+            FindingSentence.association(behaviour: "Read before bed", outcome: "awakenings", isImprovement: false),
+            "On nights you logged read before bed, you tend to wake more often."
+        )
+        XCTAssertEqual(
+            FindingSentence.association(behaviour: "Alcohol", outcome: "awakenings", isImprovement: true),
+            "On nights you logged alcohol, you tend to wake less often."
+        )
+    }
 }

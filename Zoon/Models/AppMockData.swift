@@ -74,6 +74,15 @@ enum AppMockData {
             if index % 2 == 0 { tags.insert(.readBeforeBed) }
 
             let penalty = drank ? 0.78 : 1.0
+            // Every sample habit carries a plausible effect of its own. Only
+            // alcohol used to, so the other findings were noise and the demo
+            // could claim late caffeine made sleep better.
+            let caffeine = tags.contains(.caffeineLate)
+            let trained = tags.contains(.hardTraining)
+            let read = tags.contains(.readBeforeBed)
+            let sufficiency = penalty * (caffeine ? 0.88 : 1.0) * (trained ? 1.04 : 1.0) * (read ? 1.03 : 1.0)
+            let continuity = (drank ? 0.94 : 1.0) * (caffeine ? 0.95 : 1.0) * (read ? 1.02 : 1.0)
+            let wakes = (drank ? 1.6 : 1.0) * (caffeine ? 1.35 : 1.0) * (read ? 0.75 : 1.0)
             let weekday = calendar.component(.weekday, from: night.date)
             return JournalCorrelator.Observation(
                 date: night.date,
@@ -86,11 +95,11 @@ enum AppMockData {
                 // no matched pairs at all.
                 answers: .fullyAnswered(tags: tags),
                 recoveryPercent: (night.avgHRV ?? 55) * penalty,
-                sleepPerformance: min(100, night.timeAsleepMinutes / 480 * 100) * penalty,
-                deepMinutes: night.deepMinutes * penalty,
+                sleepPerformance: min(100, night.timeAsleepMinutes / 480 * 100 * sufficiency),
+                deepMinutes: night.deepMinutes * penalty * (trained ? 1.12 : 1.0),
                 remMinutes: night.remMinutes * penalty,
-                efficiency: night.sleepEfficiencyPercent * (drank ? 0.94 : 1.0),
-                wakeCount: Double(night.wakeCount) * (drank ? 1.6 : 1.0),
+                efficiency: min(100, night.sleepEfficiencyPercent * continuity),
+                wakeCount: Double(night.wakeCount) * wakes,
                 isWeekend: weekday == 1 || weekday == 7,
                 sleepDebtMinutes: night.sleepDebtMinutes,
                 bedtimeHour: DayContextBuilder.shiftedBedtimeHour(night.bedtime),

@@ -36,6 +36,12 @@ enum FindingSentence {
         // a bare causal verb. A matched-pair comparison over someone's own
         // history supports an association and a direction. It does not
         // support "caused", and the difference is four words wide.
+        // Awakenings is a count, so "better" and "worse" say less than the
+        // plain fact -- and "your awakenings tends to be worse" did not agree.
+        if outcome.lowercased() == "awakenings" {
+            let often = isImprovement ? "less often" : "more often"
+            return "On nights you logged \(behaviour.lowercased()), you tend to wake \(often)."
+        }
         let direction = isImprovement ? "better" : "worse"
         return "On nights you logged \(behaviour.lowercased()), your \(outcome.lowercased()) tends to be \(direction)."
     }
