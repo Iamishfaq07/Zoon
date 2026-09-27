@@ -172,6 +172,23 @@ struct TrendsView: View {
                             symbol: "chart.xyaxis.line",
                             tint: Theme.Family.bodySignals
                         ) { ChartBuilderView() }
+
+                        // Reviewing the week belongs where the week is
+                        // reviewed; it was only in More.
+                        ExploreTile(
+                            title: "Weekly report",
+                            subtitle: "This week against last, in one page",
+                            symbol: "calendar.badge.clock",
+                            tint: Theme.Family.recovery
+                        ) { ReportView() }
+
+                        // This tab carries most of the app's vocabulary.
+                        ExploreTile(
+                            title: "What the words mean",
+                            subtitle: "Every term here, said plainly",
+                            symbol: "character.book.closed.fill",
+                            tint: Theme.Family.circadian
+                        ) { GlossaryView() }
                     }
                     .entrance(2)
 
