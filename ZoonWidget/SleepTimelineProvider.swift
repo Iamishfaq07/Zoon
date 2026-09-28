@@ -12,6 +12,14 @@ struct SleepEntry: TimelineEntry {
     /// Which widget this entry is for. Relevance is per-surface, so the entry
     /// has to know which surface it belongs to -- see `WidgetRelevance`.
     var kind: SurfaceRelevance.Kind = .lastNight
+    /// `false` when no snapshot could be read at all: a new install, Health
+    /// access denied, no sleep source yet, or the moment after Delete
+    /// Everything. Every family then draws `WidgetNoDataView` and no figure
+    /// of any kind. `snapshot` still holds the sample night so layout code
+    /// has something to measure, but nothing may show it: it used to be
+    /// shown as "84 · Good · 7h 32m" on the Lock Screen with no marker, and
+    /// after Delete Everything read as data that survived the deletion.
+    var hasSnapshot = true
 
     /// How much iOS should favour this entry when picking what to surface in
     /// the Smart Stack.
@@ -89,7 +97,8 @@ struct SleepTimelineProvider: TimelineProvider {
            napEnd > entry.date {
             let after = SleepEntry(
                 date: napEnd, snapshot: entry.snapshot,
-                isPlaceholder: entry.isPlaceholder, kind: kind
+                isPlaceholder: entry.isPlaceholder, kind: kind,
+                hasSnapshot: entry.hasSnapshot
             )
             completion(Timeline(entries: [entry, after], policy: .after(napEnd)))
             return
@@ -114,9 +123,12 @@ struct SleepTimelineProvider: TimelineProvider {
                 date: .now, snapshot: snapshot, isPlaceholder: snapshot.isMock, kind: kind
             )
         }
-        // No snapshot readable. Two causes: the app has never completed a
-        // refresh, or no App Group is configured so the extension can't see the
-        // app's container. Either way, show sample data clearly marked as such.
-        return SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind)
+        // No snapshot readable: the app has never completed a refresh (new
+        // install, Health access denied, no sleep source), everything was just
+        // deleted, or no App Group is configured so the extension can't see
+        // the app's container. None of those has a night to show, so the
+        // entry says so and every family draws its empty state -- never the
+        // sample night, which only the widget gallery may show.
+        return SleepEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind, hasSnapshot: false)
     }
 }

@@ -37,7 +37,13 @@ struct SleepDebtWidgetView: View {
     let entry: SleepEntry
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "Sleep Shortfall", systemImage: "hourglass",
+                message: "Open Zoon to see your sleep shortfall here.",
+                inlineText: "Open Zoon for your shortfall"
+            )
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {

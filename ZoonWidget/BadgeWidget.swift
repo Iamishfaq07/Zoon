@@ -10,7 +10,7 @@ struct BadgeWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "ZoonBadges", provider: SleepTimelineProvider(kind: .bodySignals)) { entry in
-            BadgeWidgetView(snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder)
+            BadgeWidgetView(snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder, hasSnapshot: entry.hasSnapshot)
                 // Matches the other widgets: the system material, not the
                 // app's gradient. A widget that paints its own dark background
                 // fights the home screen's tinting rather than sitting in it.
@@ -36,6 +36,8 @@ struct BadgeWidgetView: View {
     /// present an invented health number as a measured one, and the badge count
     /// is exactly the kind of number someone would otherwise believe.
     var isPlaceholder = false
+    /// `false` when no snapshot could be read; see `SleepEntry.hasSnapshot`.
+    var hasSnapshot = true
 
     @Environment(\.widgetFamily) private var family
 
@@ -50,7 +52,13 @@ struct BadgeWidgetView: View {
     private var hasBadge: Bool { !snapshot.badgeTitle.isEmpty }
 
     var body: some View {
-        if snapshot.scoreLightMode {
+        if !hasSnapshot {
+            WidgetNoDataView(
+                title: "Badges", systemImage: "rosette",
+                message: "Open Zoon to see your badges here.",
+                inlineText: "Open Zoon for badges"
+            )
+        } else if snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: snapshot)
         } else {
         switch family {

@@ -11,10 +11,12 @@ import WidgetKit
 ///
 /// ## Where the data comes from
 ///
-/// Not HealthKit, and not a shared container. The watch app receives a snapshot
-/// over WatchConnectivity and writes it to its own `UserDefaults`; this
-/// extension reads that. It is the only channel available: an extension cannot
-/// hold a `WCSession`, and the watch app is not running when the face is drawn.
+/// Not HealthKit. The watch app receives a snapshot over WatchConnectivity and
+/// writes it to the watch's App Group defaults suite (`WatchSnapshotStore`);
+/// this extension reads that, which is why both watch privacy manifests declare
+/// the App Group UserDefaults reason (1C8F.1). It is the only channel
+/// available: an extension cannot hold a `WCSession`, and the watch app is not
+/// running when the face is drawn.
 ///
 /// The consequence is worth being honest about — **a complication shows what
 /// the watch last heard from the phone.** If you have not opened Zoon on your
@@ -55,6 +57,12 @@ struct WatchComplicationEntry: TimelineEntry {
     /// Which complication this entry is for. Relevance is per-surface, so
     /// the entry has to know which surface it belongs to.
     var kind: SurfaceRelevance.Kind = .lastNight
+    /// `false` when the watch holds no snapshot at all: the phone has not
+    /// synced yet, or everything was just deleted. Every complication then
+    /// draws `ComplicationNoDataView` and no figure. `snapshot` holds the
+    /// sample night only so layout has something to measure; it used to be
+    /// drawn -- "84", "Recovery 72%", "Slept 7h 32m" -- as if it were measured.
+    var hasSnapshot = true
 
     /// What the Smart Stack ranks this by.
     ///
@@ -102,7 +110,13 @@ struct WatchComplicationProvider: TimelineProvider {
         in context: Context,
         completion: @escaping (WatchComplicationEntry) -> Void
     ) {
-        completion(currentEntry())
+        // The face gallery may show the sample night, like the phone's widget
+        // gallery; a face someone has actually chosen never does.
+        if context.isPreview {
+            completion(WatchComplicationEntry(date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind))
+        } else {
+            completion(currentEntry())
+        }
     }
 
     func getTimeline(
@@ -122,7 +136,8 @@ struct WatchComplicationProvider: TimelineProvider {
            entry.snapshot.isNapRunning(at: entry.date),
            napEnd > entry.date {
             let after = WatchComplicationEntry(
-                date: napEnd, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder, kind: kind
+                date: napEnd, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder, kind: kind,
+                hasSnapshot: entry.hasSnapshot
             )
             completion(Timeline(entries: [entry, after], policy: .after(napEnd)))
             return
@@ -145,9 +160,51 @@ struct WatchComplicationProvider: TimelineProvider {
                 date: .now, snapshot: snapshot, isPlaceholder: snapshot.isMock, kind: kind
             )
         }
+        // Nothing stored: a new pairing, a decode failure, or the moment after
+        // Delete Everything. Say so rather than draw the sample night.
         return WatchComplicationEntry(
-            date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind
+            date: .now, snapshot: MockData.snapshot, isPlaceholder: true, kind: kind, hasSnapshot: false
         )
+    }
+}
+
+/// What a complication draws when the watch holds no snapshot: its name and a
+/// dash, never a figure. The slot keeps its shape and claims nothing.
+struct ComplicationNoDataView: View {
+    let title: String
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Text("\(title): open Zoon on iPhone")
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .widgetAccentable()
+                Text("Nothing yet")
+                    .font(.headline)
+                Text("Open Zoon on iPhone")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                Text("—")
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(title): nothing to show yet. Open Zoon on iPhone.")
+        default:
+            Text("—")
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .accessibilityLabel("\(title): nothing to show yet. Open Zoon on iPhone.")
+        }
     }
 }
 
@@ -194,7 +251,9 @@ struct SleepIntelligenceComplicationView: View {
     private var scoreText: String { entry.snapshot.flagshipScoreText }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Last Night")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -274,7 +333,9 @@ struct BodySignalsComplicationView: View {
     private var summary: String { signals.shortLabel }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Body Signals")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -353,7 +414,9 @@ struct RecoveryComplicationView: View {
     private var canState: Bool { entry.snapshot.canStateRecovery }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Recovery")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -431,7 +494,9 @@ struct SleepBankComplicationView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Sleep Shortfall")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -511,7 +576,9 @@ struct TonightComplicationView: View {
     private var hasPlan: Bool { !entry.snapshot.tonightTargetLabel.isEmpty }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Tonight")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -607,7 +674,9 @@ struct NapTimerComplicationView: View {
     }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Nap Timer")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
             switch family {
@@ -699,7 +768,9 @@ struct BadgeComplicationView: View {
     private var hasBadge: Bool { !entry.snapshot.badgeTitle.isEmpty }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Badges")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -777,7 +848,9 @@ struct CircadianPhaseComplicationView: View {
     }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            ComplicationNoDataView(title: "Circadian Phase")
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
             switch family {

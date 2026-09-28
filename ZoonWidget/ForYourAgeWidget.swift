@@ -39,10 +39,18 @@ struct ForYourAgeWidgetView: View {
     }
 
     var body: some View {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "For Your Age", systemImage: "person.crop.circle",
+                message: "Open Zoon to see how last night compares for your age.",
+                inlineText: "Open Zoon for your range"
+            )
+        } else {
         switch family {
         case .accessoryRectangular: rectangular
         case .systemMedium: medium
         default: small
+        }
         }
     }
 

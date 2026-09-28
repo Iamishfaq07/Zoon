@@ -40,12 +40,20 @@ struct TonightWidgetView: View {
     let entry: SleepEntry
 
     var body: some View {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "Tonight", systemImage: "bed.double",
+                message: "Open Zoon to see tonight's plan here.",
+                inlineText: "Open Zoon for tonight"
+            )
+        } else {
         switch family {
         case .accessoryInline: inline
         case .accessoryRectangular: rectangular
         case .accessoryCircular: circular
         case .systemMedium: medium
         default: small
+        }
         }
     }
 

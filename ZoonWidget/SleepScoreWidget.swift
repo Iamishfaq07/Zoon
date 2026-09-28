@@ -41,7 +41,13 @@ struct SleepScoreWidgetView: View {
     }
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "Last Night", systemImage: "moon.zzz",
+                message: "Open Zoon to see last night here.",
+                inlineText: "Open Zoon for last night"
+            )
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
