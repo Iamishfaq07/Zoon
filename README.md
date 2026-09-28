@@ -12,14 +12,14 @@ H.264 High, BT.709, 30 fps constant, fast start. The poster is baked in as frame
 
 ## Showreel (1:40)
 
-- `Zoon-Showreel-1080p-16x9.mp4`: the 100-second motion-graphics showreel, 1920x1080, 30 fps, H.264 + AAC. Designed sound only: no instruments, no music.
+- `Zoon-Showreel-1080p-16x9.mp4`: the 100-second motion-graphics showreel, 1920x1080, 30 fps, H.264 + AAC. Designed sound only: no instruments, no music. Includes the Zoon Intelligence scene, "All the premium features. Free." and a "Free on the App Store · Coming soon" end card.
 - `Poster-Showreel-16x9.jpg`: the poster frame, which is also frame 0 of the film.
 
 Built from `Tools/launch-video/showreel.html`, `score100.py` and `render100.js` on the main branch.
 
 ## Showreel for mobile (1:30, 9:16)
 
-- `Zoon-Showreel-90s-1080p-9x16.mp4`: 1080x1920, about 7.4 Mbps. Every scene is laid out for a phone screen, not cropped. For Reels, TikTok and Shorts.
-- `Zoon-Showreel-90s-WhatsApp-720p.mp4`: 720x1280, 15.7 MB, fits WhatsApp's 90-second Status and sends in a chat.
+- `Zoon-Showreel-90s-1080p-9x16.mp4`: 1080x1920, rendered clean (no grain or star twinkle) so it survives re-compression. Every scene is laid out for a phone screen, not cropped. For Reels, TikTok and Shorts.
+- `Zoon-Showreel-90s-WhatsApp-720p.mp4`: 720x1280, 15.6 MB, fits WhatsApp's 90-second Status and sends in a chat. For the best result, send with HD on, or as a Document.
 
 The 1:30 cut drops the holds after each beat and the recap montage (`Tools/launch-video/cuts90.json`). The sound was rebuilt on that cut, so every hit still lands.
