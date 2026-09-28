@@ -18,6 +18,10 @@ struct CoachTabView: View {
     /// `@Observable`-tracked, so without this the banner could keep saying
     /// "the on-device model is still downloading" long after it finished.
     @State private var availabilityPollTick = 0
+    /// Capture only: the `-zoonAsk` question, pushed as a chat once a night
+    /// has loaded. See `LaunchOptions.coachQuestion`.
+    @State private var launchQuestion: String?
+    @State private var askedAtLaunch = false
 
     var body: some View {
         NavigationStack {
@@ -43,6 +47,16 @@ struct CoachTabView: View {
                 try? await Task.sleep(nanoseconds: 4_000_000_000)
                 guard !Task.isCancelled else { return }
                 availabilityPollTick += 1
+            }
+            .onChange(of: coordinator.state.context != nil, initial: true) { _, hasNight in
+                guard hasNight, !askedAtLaunch, let question = LaunchOptions.coachQuestion else { return }
+                askedAtLaunch = true
+                launchQuestion = question
+            }
+            .navigationDestination(item: $launchQuestion) { question in
+                if let night = coordinator.state.context?.night {
+                    CoachChatView(night: night, initialPrompt: question)
+                }
             }
         }
     }

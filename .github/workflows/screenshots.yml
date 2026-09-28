@@ -231,6 +231,13 @@ jobs:
                 output="sleepDetail-heart"
                 appearance_args=(-zoonScrollTo heart)
                 ;;
+              breakdown)
+                # Today's morning hero with "Explore why" open: the Sleep
+                # Intelligence score's own component ring and legend, which
+                # otherwise only appears after a tap.
+                output="today-breakdown"
+                appearance_args=(-zoonMoment morning -zoonScrollTo breakdown)
+                ;;
               accessibilityMedium)
                 output="${tab}-accessibilityMedium"
                 ;;
@@ -248,6 +255,16 @@ jobs:
                 # about the layout it was raised to test.
                 output="today-largeText"
                 appearance_args=(-zoonMoment day)
+                ;;
+              askTired|askNight|askTonight)
+                # A Coach chat opened with a question, so the app's own
+                # answer from the demo nights can be photographed (the
+                # launch film shows it). See LaunchOptions.coachQuestion.
+                case "$variant" in
+                  askTired) output="coach-ask-tired"; appearance_args=(-zoonAsk "Why am I tired?") ;;
+                  askNight) output="coach-ask-night"; appearance_args=(-zoonAsk "What happened last night?") ;;
+                  askTonight) output="coach-ask-tonight"; appearance_args=(-zoonAsk "When should I go to bed tonight?") ;;
+                esac
                 ;;
               splash)
                 # -zoonSplash YES both enables the launch splash under
@@ -351,7 +368,7 @@ jobs:
           # own labels; only a render shows it.
           FAILED=0
           for tab in onboarding today sleep trends coach journal more \
-                     sleepDetail nightHistory bodyClock soundscapes nap breathing snoreCheck \
+                     sleepDetail nightHistory bodyClock soundscapes nap breathing snoreCheck windDown \
                      report settings badges evidence patterns sensorTruth tomorrow; do
             shoot "$tab" || FAILED=1
           done
@@ -361,6 +378,11 @@ jobs:
           # The age and heart context, below the fold on their screens.
           shoot trends forYourAge || FAILED=1
           shoot sleepDetail heart || FAILED=1
+          shoot today breakdown || FAILED=1
+          # The Coach's own answers to three questions, for the launch film.
+          shoot coach askTired || FAILED=1
+          shoot coach askNight || FAILED=1
+          shoot coach askTonight || FAILED=1
           # The app is dark-first, but Light is a real preference. Keep
           # representative screens in the visual regression set so neutral
           # strokes and secondary text cannot silently disappear on pale
