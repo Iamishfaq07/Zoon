@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Guided wind-down breathing — 4-7-8, narrated on-device.
 ///
@@ -26,6 +27,11 @@ struct BreathingView: View {
                     Text("Cycle \(min(coach.cyclesCompleted + 1, coach.totalCycles)) of \(coach.totalCycles)")
                         .font(Theme.text(13))
                         .foregroundStyle(Theme.inkSecondary)
+                    Text("The screen stays on while you breathe. Locking it pauses the guide.")
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
                 }
             }
 
@@ -76,7 +82,18 @@ struct BreathingView: View {
         .navigationTitle("Wind Down")
         .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
-        .onDisappear { coach.stop() }
+        // Nothing plays between cues here -- no sound scene, unlike the
+        // Tonight routine -- so once Auto-Lock fired, iOS suspended the app,
+        // the coach's timer stopped, and the first "Slowly breathe in" never
+        // came. The screen stays on for the session instead, rather than a
+        // silent track keeping the app alive in the background.
+        .onChange(of: isRunning) { _, running in
+            UIApplication.shared.isIdleTimerDisabled = running
+        }
+        .onDisappear {
+            coach.stop()
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
     }
 
     private var instruction: String {
