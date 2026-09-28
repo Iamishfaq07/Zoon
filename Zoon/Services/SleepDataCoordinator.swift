@@ -953,7 +953,9 @@ final class SleepDataCoordinator {
         // session duration already applies to main sleep candidates.
         let minimumMeaningfulMinutes = 10.0
 
-        let mainByWakeDate = Dictionary(uniqueKeysWithValues: mainSleepPerDate.map { ($0.wakeDate, $0) })
+        // Keeps the first on a repeated key rather than trapping: a crash-loop
+        // is never the right answer to data that breaks an assumption.
+        let mainByWakeDate = Dictionary(mainSleepPerDate.map { ($0.wakeDate, $0) }, uniquingKeysWith: { first, _ in first })
         var writtenIDs: Set<String> = []
 
         for (wakeDate, group) in groupedByWakeDate {
@@ -2501,10 +2503,15 @@ final class SleepDataCoordinator {
         // claim ID matched nothing, the `guard` below skipped it, and its
         // last "Association detected" would have stood in the ledger for
         // good -- the precise failure the retraction pass exists to prevent.
+        // `uniquingKeysWith`: a backup that once restored one custom
+        // identity twice made this trap on every refresh -- the store now
+        // refuses repeats (`CustomBehaviorStore`), and this no longer depends
+        // on it.
         let behaviorByClaimID = Dictionary(
-            uniqueKeysWithValues: behaviorCatalog.analysable.map {
+            behaviorCatalog.analysable.map {
                 (EvidenceLedger.Claim.behaviour(tag: $0.identifier).id, $0)
-            }
+            },
+            uniquingKeysWith: { first, _ in first }
         )
         let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.behavior.identifier).id })
         for latest in EvidenceLedger.associationsToRetract(
@@ -2867,7 +2874,7 @@ final class SleepDataCoordinator {
             return AppMockData.journalObservations
         }
         let answersByNightKey = behaviors.allAnswersByNightKey()
-        let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
+        let tagsByDate = Dictionary(entries.map { ($0.date, Set($0.tags)) }, uniquingKeysWith: { first, _ in first })
         // Entries that carry a `nightKey` (see `JournalEntry.nightKey`) join
         // against a night's own `nightKey` instead of its `date` -- safe
         // across a timezone change between the night itself and whenever

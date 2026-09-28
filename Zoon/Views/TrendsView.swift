@@ -62,7 +62,7 @@ struct TrendsView: View {
     /// per the spec, kept lightweight: no icons crowding the chart itself,
     /// just context on the selection that's already there.
     private var tagsByDate: [Date: Set<BehaviorTag>] {
-        Dictionary(uniqueKeysWithValues: coordinator.journal.allEntries().map { ($0.date, Set($0.tags)) })
+        Dictionary(coordinator.journal.allEntries().map { ($0.date, Set($0.tags)) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// `nil` unless cycle tracking is on and there's at least one logged

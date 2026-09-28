@@ -94,8 +94,25 @@ final class CustomBehaviorStore {
         self.defaults = defaults
         if let data = defaults.data(forKey: Self.key),
            let decoded = try? JSONDecoder().decode([CustomBehavior].self, from: data) {
-            behaviors = decoded
+            let unique = Self.firstOfEachIdentity(decoded)
+            behaviors = unique
+            // A list saved before importing checked for repeats can hold one
+            // identity twice, and the analysis keys a dictionary on identity:
+            // it trapped on every refresh, so the app crashed on every launch
+            // until it was deleted. Writing the repaired list back means the
+            // store heals once rather than being repaired in memory forever.
+            if unique.count != decoded.count { save() }
         } else { behaviors = [] }
+    }
+
+    /// The first definition of each identity, in the original order.
+    ///
+    /// The first rather than the last because every writer here appends: the
+    /// earliest definition is the one the person's answers were logged
+    /// against first.
+    nonisolated static func firstOfEachIdentity(_ behaviors: [CustomBehavior]) -> [CustomBehavior] {
+        var seen = Set<UUID>()
+        return behaviors.filter { seen.insert($0.id).inserted }
     }
 
     private let defaults: UserDefaults
@@ -137,14 +154,29 @@ final class CustomBehaviorStore {
     /// existing definition wins, the same rule every other importer follows —
     /// what is on this device is more trustworthy than what is in an older
     /// archive.
+    ///
+    /// Each accepted definition joins the sets it is checked against, so a
+    /// file that lists one identity (or one name) twice adds it once. The
+    /// version this replaced checked only against what was on the device
+    /// before the import, and a backup with a repeated identity -- hand-edited,
+    /// merged or damaged -- restored both copies, which then crashed every
+    /// refresh (see `init`). An entry with no name is skipped: nothing on
+    /// this device can create one, and a signal with no name cannot be asked
+    /// about.
     /// - Returns: how many definitions were added.
     @discardableResult
     func importBehaviors(_ imported: [CustomBehavior]) -> Int {
-        let existing = Set(behaviors.map(\.id))
-        let existingNames = Set(behaviors.map { $0.name.lowercased() })
+        var knownIDs = Set(behaviors.map(\.id))
+        var knownNames = Set(behaviors.map { $0.name.lowercased() })
         var added = 0
-        for behavior in imported
-        where !existing.contains(behavior.id) && !existingNames.contains(behavior.name.lowercased()) {
+        for behavior in imported {
+            let name = behavior.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty,
+                  !knownIDs.contains(behavior.id),
+                  !knownNames.contains(behavior.name.lowercased())
+            else { continue }
+            knownIDs.insert(behavior.id)
+            knownNames.insert(behavior.name.lowercased())
             behaviors.append(behavior)
             added += 1
         }
