@@ -12,6 +12,9 @@ import os
 final class SleepHistoryStore {
 
     var excludedNightKeys: Set<String> = []
+    /// Where `RestoredNightLedger` is kept. A property so tests can give each
+    /// store its own.
+    var restoredNightDefaults: UserDefaults = .standard
     private let context: ModelContext
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "HistoryStore")
 
@@ -336,7 +339,13 @@ final class SleepHistoryStore {
     /// `window` was never re-checked by this pass and must not be touched,
     /// or an old record could vanish just because the rolling sync window
     /// has since moved past it.
+    ///
+    /// A night restored from a backup and never seen in HealthKit on this
+    /// device is kept (`RestoredNightLedger`); one HealthKit has now returned
+    /// leaves that list here, so a later deletion in Health still removes it.
     func prune(window: DateInterval, keeping validDates: Set<Date>) {
+        RestoredNightLedger.forget(validDates, in: restoredNightDefaults)
+        let restored = RestoredNightLedger.dates(in: restoredNightDefaults)
         let start = window.start
         let end = window.end
         let descriptor = FetchDescriptor<SleepNightRecord>(
@@ -344,7 +353,7 @@ final class SleepHistoryStore {
         )
         // Unreadable: prune nothing. Never delete because a read failed.
         guard let inWindow = context.readAll(descriptor, operation: "history.prune") else { return }
-        let stale = inWindow.filter { !validDates.contains($0.date) }
+        let stale = inWindow.filter { !validDates.contains($0.date) && !restored.contains($0.date) }
         guard !stale.isEmpty else { return }
         for night in stale { context.delete(night) }
         save()
@@ -541,6 +550,7 @@ final class SleepHistoryStore {
             try context.delete(model: EvidenceRevisionRecord.self)
             try context.save()
             AnchorStore.clear()
+            RestoredNightLedger.clear(in: restoredNightDefaults)
             return true
         } catch {
             logger.error("Delete-all failed: \(error.localizedDescription, privacy: .public)")
@@ -566,6 +576,7 @@ final class SleepHistoryStore {
         absoluteTemperatures: [Date: Double] = [:]
     ) -> Int {
         var written = 0
+        var restored: [Date] = []
         for night in nights.sorted(by: { $0.date < $1.date }) {
             beginTrackingWrites()
             upsert(
@@ -576,8 +587,14 @@ final class SleepHistoryStore {
             // Counted only once the save reached disk. `save()` swallows its
             // error by design, so without this a failed restore reported
             // "Restored 212 nights".
-            if writesSucceeded { written += 1 }
+            if writesSucceeded {
+                written += 1
+                restored.append(night.date)
+            }
         }
+        // Protected from the next full sync until HealthKit on this device
+        // returns each night itself; see `RestoredNightLedger`.
+        RestoredNightLedger.record(restored, in: restoredNightDefaults)
         return written
     }
 
