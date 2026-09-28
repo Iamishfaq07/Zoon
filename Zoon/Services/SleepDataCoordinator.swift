@@ -1469,7 +1469,9 @@ final class SleepDataCoordinator {
             sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
             isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
             // The same shortfall Today's arc shows, last night included.
-            currentShortfallMinutes: context.shortfallNowMinutes
+            // Less today's naps, as Today's arc shows it, so the widget and
+            // the watch do not quote a figure the phone already lowered.
+            currentShortfallMinutes: context.shortfallNowMinutes.map { max(0, $0 - napMinutesToday()) }
         )
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).
@@ -2008,6 +2010,12 @@ final class SleepDataCoordinator {
 
         state = .mock(context)
         recentNights = MockData.history
+        // The same sample heart rate the hypnogram and "Heart during sleep"
+        // draw. Left empty, the wake-ups card under them said no heart rate
+        // was recorded for a night the card above had just charted.
+        awakeningSeries = AwakeningInspector.Series(
+            heartRate: context.overnightHeartRate.map { AwakeningInspector.Sample(date: $0.date, value: $0.bpm) }
+        )
         rebuildRecoveryHistory(goal: goal)
         todayStress = AppMockData.stress
         lastRefresh = .now
