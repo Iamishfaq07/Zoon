@@ -259,12 +259,22 @@ struct SleepSessionBuilder {
         let bySource = Dictionary(grouping: group, by: \.sourceBundleIdentifier)
         guard bySource.count > 1 else { return group }
 
-        // An explicit user choice is not a heuristic input -- it wins outright.
-        if let preferredSourceBundleIdentifier, let match = bySource[preferredSourceBundleIdentifier] {
+        // An explicit user choice is not a heuristic input -- it wins outright,
+        // on every night where the chosen source actually recorded sleep.
+        // Choosing a writer that records only time in bed (an iPhone sleep
+        // schedule, some bedside apps) used to win every overlap with no
+        // asleep time at all: the night was dropped for having none, the next
+        // full sync pruned it, and up to ninety nights of Watch-recorded
+        // sleep disappeared. Where the chosen source has no asleep sample,
+        // the automatic pick below decides as if nothing were chosen.
+        let recordedSleep = bySource.filter { entry in
+            entry.value.contains { candidate in candidate.samples.contains(where: \.isAsleep) }
+        }
+        if let preferredSourceBundleIdentifier, let match = recordedSleep[preferredSourceBundleIdentifier] {
             return match
         }
         if preferredSourceBundleIdentifier == nil, let preferredSourceName,
-           let match = bySource.values.first(where: {
+           let match = recordedSleep.values.first(where: {
                $0.first?.samples.first?.sourceRevision.source.name == preferredSourceName
            }) {
             return match
@@ -713,6 +723,14 @@ extension SleepStage {
 }
 
 private extension HKCategorySample {
+    /// True for any asleep value, staged or not (`SleepStage.asleepStages`
+    /// includes unspecified): a source that writes plain "asleep" did record
+    /// sleep, which an in-bed-only writer did not.
+    var isAsleep: Bool {
+        guard let stage = SleepStage(sampleValue: value) else { return false }
+        return SleepStage.asleepStages.contains(stage)
+    }
+
     /// True for the three staged asleep values — used to rank sources by how
     /// much detail they provide.
     var isStagedAsleep: Bool {
