@@ -856,6 +856,15 @@ final class SleepDataCoordinator {
             .sorted { $0.date < $1.date }
             .map { $0.features() }
         var thisBatchFeaturesOldestFirst: [SleepNightFeatures] = []
+        // The history the frozen sleep need is learned from, which is the
+        // one the displayed need uses (`needHistory`), not the raw rows
+        // above: those carry no debt, so every recovery night looked
+        // unconstrained. The raw list stays for `previousWake`, which sets
+        // the extractor's waking window and must not move.
+        let repairs = PersonalSetupStore.shared.value.repairs
+        let needHistoryBeforeBatch = store.needHistory(goalMinutes: goal, manualNaps: naps.naps, repairs: repairs)
+            .filter { !batchDates.contains($0.date) }
+        var needBatchOldestFirst: [SleepNightFeatures] = []
 
         // Oldest first: each night's baseline is drawn from the nights before
         // it, so they must land in the store in chronological order. This
@@ -876,10 +885,10 @@ final class SleepDataCoordinator {
             // Frozen at first insert only (see SleepNightRecord.update's doc
             // comment) -- computed here regardless, since store.upsert below
             // simply ignores it on the re-sync path.
-            let priorBeforeThisNight = priorFeaturesBeforeBatch.filter { $0.date < nightDate } + thisBatchFeaturesOldestFirst
+            let needBeforeThisNight = needHistoryBeforeBatch.filter { $0.date < nightDate } + needBatchOldestFirst
             features.sleepNeedBaselineMinutes = LearnedSleepNeed.compute(
                 goalMinutes: goal,
-                history: priorBeforeThisNight,
+                history: needBeforeThisNight,
                 ageGuideline: SleepNeedGuideline.forAge(preferences.age)
             ).minutes
 
@@ -890,6 +899,11 @@ final class SleepDataCoordinator {
                 nightKey: session.nightKey
             )
             thisBatchFeaturesOldestFirst.append(features)
+            // Its debt already comes from `store.baseline(for:)`; exclusions
+            // and repairs are applied as `needHistory` applies them.
+            if !store.excludedNightKeys.contains(features.nightKey) {
+                needBatchOldestFirst.append(LocalSleepCorrection.apply(features, repairs: repairs))
+            }
         }
 
         let validEpisodeIDs = persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)
@@ -1061,11 +1075,8 @@ final class SleepDataCoordinator {
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
-        let history = LocalSleepCorrection.apply(
-            store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
-                .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) },
-            repairs: repairs
-        )
+        let history = store.needHistory(goalMinutes: goal, manualNaps: naps.naps, repairs: repairs)
+            .filter { $0.date < night.date }
 
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)

@@ -230,6 +230,28 @@ final class SleepHistoryStore {
         return features
     }
 
+    /// The history a learned sleep need is computed from: every stored
+    /// night with the debt it was slept under, excluded nights left out, and
+    /// the person's boundary repairs applied.
+    ///
+    /// One definition for both readers. The need Today and Sleep Need show
+    /// was learned from this; the need frozen onto a night at ingest -- the
+    /// one the shortfall ledger charges against -- was learned from the raw
+    /// rows, with no debt, so recovery nights slept in debt counted as
+    /// unconstrained and a person sleeping their displayed need every night
+    /// still built a shortfall against a longer, invisible one.
+    func needHistory(
+        goalMinutes: Double,
+        manualNaps: [NapStore.Nap] = [],
+        repairs: [PersonalSetup.Repair]
+    ) -> [SleepNightFeatures] {
+        LocalSleepCorrection.apply(
+            historicalFeatures(goalMinutes: goalMinutes, manualNaps: manualNaps)
+                .filter { !excludedNightKeys.contains($0.nightKey) },
+            repairs: repairs
+        )
+    }
+
     // MARK: - Writes
 
     /// Inserts or updates the night, keyed on date.
