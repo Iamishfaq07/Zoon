@@ -633,19 +633,11 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
 
-            // Not a third picker option -- see `EngineChoice.shippingCases`.
-            // `LocalLLMInsightEngine` always falls back to rules today, so
-            // letting it sit in the same list as two real choices would read
-            // as a real one. This row says plainly what it is instead of
-            // hiding it entirely.
-            HStack {
-                Label("Bundled on-device model", systemImage: "flask")
-                Spacer()
-                Text("Labs").font(.caption).foregroundStyle(Theme.inkSecondary)
-            }
-            .foregroundStyle(Theme.inkSecondary)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Bundled on-device model, in Labs, not yet available")
+            // No row for the bundled on-device model (`LocalLLMInsightEngine`):
+            // no model ships, so a "Labs / not yet available" row was a
+            // placeholder for a feature that does not exist -- exactly what
+            // App Review guideline 2.1 rejects. It returns here when a model
+            // does, alongside a place in `EngineChoice.shippingCases`.
 
             NavigationLink("How your Sleep Intelligence score works") {
                 AlgorithmTransparencyView()
@@ -653,8 +645,6 @@ struct SettingsView: View {
             .font(.caption)
         } header: {
             Text("Insights")
-        } footer: {
-            Text("A bundled on-device model is still in Labs -- no model ships yet, so it isn't offered as a selectable engine.")
         }
     }
 

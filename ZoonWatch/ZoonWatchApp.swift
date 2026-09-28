@@ -21,11 +21,12 @@ struct ZoonWatchApp: App {
                 .environment(link)
                 .task {
                     link.activate()
-                    // Keep-alive only. The watch does not read HealthKit;
-                    // this exists so Double Tap can still fire after the
-                    // screen blanks. See OvernightRuntimeSession.
-                    OvernightRuntimeSession.shared.start()
                 }
+                // No extended-runtime "keep-alive". A self-care session was
+                // started on every launch so Double Tap could fire after the
+                // screen blanked; self-care sessions last minutes, not a night,
+                // and exist for guided self-care, so it neither did the job nor
+                // matched its declared purpose (an App Review risk).
         }
     }
 }
