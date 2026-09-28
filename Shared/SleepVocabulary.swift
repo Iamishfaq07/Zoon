@@ -223,7 +223,7 @@ enum SleepVocabulary {
     static let breathingDisturbances = Term(
         plain: "Breathing disturbances",
         technical: nil,
-        meaning: "Apple Watch's count of moments when your breathing was interrupted during sleep. It is the signal behind Apple's sleep apnea notifications, not a diagnosis.",
+        meaning: "How often Apple Watch noticed your breathing briefly disturbed during sleep, as events per hour of sleep. It is the signal behind Apple's sleep apnea notifications, not a diagnosis.",
         symbol: "waveform.path.ecg"
     )
 
