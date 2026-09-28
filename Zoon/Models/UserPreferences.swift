@@ -19,6 +19,7 @@ final class UserPreferences {
         static let bodyMassIndex = "zoon.pref.bodyMassIndex"
         static let bedtimeRemindersEnabled = "zoon.pref.bedtimeRemindersEnabled"
         static let focusSilencesBedtimeNudges = "zoon.pref.focusSilencesBedtimeNudges"
+        static let focusSilencedAt = "zoon.pref.focusSilencedAt"
         static let cycleTrackingEnabled = "zoon.pref.cycleTrackingEnabled"
         static let lifestyleInsightsEnabled = "zoon.pref.lifestyleInsightsEnabled"
         static let smartWakeEnabled = "zoon.pref.smartWakeEnabled"
@@ -179,6 +180,45 @@ final class UserPreferences {
         didSet { defaults.set(focusSilencesBedtimeNudges, forKey: Key.focusSilencesBedtimeNudges) }
     }
 
+    /// Records a silence from `SleepFocusFilter`, with when it began.
+    ///
+    /// A silence lasts until the next `focusSilenceEndsHour` at the latest
+    /// (`focusSilenceIsActive`). When a Focus turns off, iOS calls the filter
+    /// again with its parameter at the default -- "silence" -- or not at all,
+    /// so nothing ever wrote the flag back to false: after the first Sleep
+    /// Focus, wind-down and bedtime reminders never fired again. Tying the
+    /// silence to the night it began makes it end in the morning whatever the
+    /// system does.
+    func setFocusSilence(_ silenced: Bool, at date: Date = .now) {
+        if silenced {
+            defaults.set(date, forKey: Key.focusSilencedAt)
+        } else {
+            defaults.removeObject(forKey: Key.focusSilencedAt)
+        }
+        focusSilencesBedtimeNudges = silenced
+    }
+
+    /// The hour a Focus silence recorded the night before stops applying.
+    static let focusSilenceEndsHour = 10
+
+    /// Whether a silence recorded at `silencedAt` still applies at `now`: only
+    /// until the next `focusSilenceEndsHour` after it began. A flag with no
+    /// start time -- written by a build before this -- has lapsed.
+    static func focusSilenceIsActive(
+        silenced: Bool,
+        silencedAt: Date?,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard silenced, let silencedAt, silencedAt <= now.addingTimeInterval(60) else { return false }
+        guard let ends = calendar.nextDate(
+            after: silencedAt,
+            matching: DateComponents(hour: focusSilenceEndsHour, minute: 0),
+            matchingPolicy: .nextTime
+        ) else { return false }
+        return now < ends
+    }
+
     /// Off by default. Turning it on triggers a *separate* HealthKit
     /// authorization request — see `HealthKitManager.requestCycleTrackingAuthorization`
     /// — rather than reading reproductive health data for everyone by default.
@@ -270,10 +310,23 @@ final class UserPreferences {
     /// missed, so the next foreground re-armed the bedtime nudges the Focus
     /// had just cancelled; one that ended left them silenced until relaunch.
     /// Scoped to this key for the same reason as `reloadTomorrowSettings`.
-    func reloadFocusState() {
+    ///
+    /// A silence that has lapsed (see `focusSilenceIsActive`) is cleared here,
+    /// which is also what heals a phone left permanently silenced by the
+    /// earlier behaviour.
+    func reloadFocusState(now: Date = .now) {
         let stored = defaults.bool(forKey: Key.focusSilencesBedtimeNudges)
-        if stored != focusSilencesBedtimeNudges {
-            focusSilencesBedtimeNudges = stored
+        let active = Self.focusSilenceIsActive(
+            silenced: stored,
+            silencedAt: defaults.object(forKey: Key.focusSilencedAt) as? Date,
+            now: now
+        )
+        if stored, !active {
+            defaults.removeObject(forKey: Key.focusSilencedAt)
+            defaults.set(false, forKey: Key.focusSilencesBedtimeNudges)
+        }
+        if active != focusSilencesBedtimeNudges {
+            focusSilencesBedtimeNudges = active
         }
     }
 
@@ -774,7 +827,11 @@ final class UserPreferences {
         self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : Self.defaultSleepGoalMinutes
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
-        self.focusSilencesBedtimeNudges = defaults.bool(forKey: Key.focusSilencesBedtimeNudges)
+        self.focusSilencesBedtimeNudges = Self.focusSilenceIsActive(
+            silenced: defaults.bool(forKey: Key.focusSilencesBedtimeNudges),
+            silencedAt: defaults.object(forKey: Key.focusSilencedAt) as? Date,
+            now: .now
+        )
         self.cycleTrackingEnabled = defaults.bool(forKey: Key.cycleTrackingEnabled)
         self.lifestyleInsightsEnabled = defaults.bool(forKey: Key.lifestyleInsightsEnabled)
         self.smartWakeEnabled = defaults.bool(forKey: Key.smartWakeEnabled)
@@ -903,6 +960,7 @@ final class UserPreferences {
             Key.bodyMassIndex,
             Key.bedtimeRemindersEnabled,
             Key.focusSilencesBedtimeNudges,
+            Key.focusSilencedAt,
             Key.cycleTrackingEnabled,
             Key.lifestyleInsightsEnabled,
             Key.smartWakeEnabled,

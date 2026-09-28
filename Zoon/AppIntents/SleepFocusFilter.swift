@@ -61,7 +61,10 @@ struct SleepFocusFilter: SetFocusFilterIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         let preferences = UserPreferences()
-        preferences.focusSilencesBedtimeNudges = silencesBedtimeNudges
+        // Timestamped: the silence ends the next morning even if iOS never
+        // calls back when the Focus turns off, or calls back with the
+        // parameter at its default. See `UserPreferences.setFocusSilence`.
+        preferences.setFocusSilence(silencesBedtimeNudges)
 
         if silencesBedtimeNudges {
             BedtimeReminder().cancel()

@@ -2268,7 +2268,10 @@ final class SleepDataCoordinator {
             preferences.lifestyleInsightsEnabled = restored.lifestyleInsightsEnabled ?? false
             preferences.smartWakeEnabled = restored.smartWakeEnabled
             preferences.wakeAlarmEnabled = restored.wakeAlarmEnabled ?? false
-            preferences.focusSilencesBedtimeNudges = restored.focusSilencesBedtimeNudges ?? false
+            // A Focus silence is a temporary system state, not a preference: a
+            // backup made during a Focus used to restore it for good on a new
+            // phone. The Focus filter records a fresh one when a Focus starts.
+            preferences.setFocusSilence(false)
             preferences.preferredSleepSourceName = restored.preferredSleepSourceName
             preferences.preferredEngine = UserPreferences.EngineChoice(
                 rawValue: restored.preferredEngine
