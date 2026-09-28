@@ -36,8 +36,10 @@ struct SleepScoreWidgetView: View {
     /// Today/Settings views make on `isShiftWorkModeEnabled` -- carried on
     /// the snapshot itself since the widget process never reads
     /// `UserPreferences` directly (see `SleepSnapshot`'s doc comment).
+    /// Evaluated at the entry's date, so an old night stops being called
+    /// last night.
     private var lastNightLabel: String {
-        snapshot.isShiftWorkModeEnabled ? "Last Sleep" : "Last Night"
+        SnapshotFreshness.nightLabel(for: snapshot, now: entry.date)
     }
 
     var body: some View {

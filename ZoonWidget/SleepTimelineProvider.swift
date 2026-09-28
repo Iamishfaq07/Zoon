@@ -114,7 +114,23 @@ struct SleepTimelineProvider: TimelineProvider {
             matchingPolicy: .nextTime
         ) ?? Date.now.addingTimeInterval(6 * 3600)
 
-        completion(Timeline(entries: [entry], policy: .after(tomorrowMorning)))
+        // The night label turns from "Last Night" to the night's date at the
+        // settled hour (`SnapshotFreshness.nightLabel`). An entry there
+        // changes it without waiting for the app; entries cost no refresh.
+        let settled = calendar.nextDate(
+            after: .now,
+            matching: DateComponents(hour: SnapshotFreshness.settledHour, minute: 0),
+            matchingPolicy: .nextTime
+        )
+        let later = [0, 1].compactMap { offset -> SleepEntry? in
+            guard let first = settled, let date = calendar.date(byAdding: .day, value: offset, to: first) else { return nil }
+            return SleepEntry(
+                date: date, snapshot: entry.snapshot,
+                isPlaceholder: entry.isPlaceholder, kind: kind,
+                hasSnapshot: entry.hasSnapshot
+            )
+        }
+        completion(Timeline(entries: [entry] + later, policy: .after(tomorrowMorning)))
     }
 
     private func currentEntry() -> SleepEntry {

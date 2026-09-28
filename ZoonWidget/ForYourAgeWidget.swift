@@ -56,7 +56,7 @@ struct ForYourAgeWidgetView: View {
 
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("LAST NIGHT")
+            Text(SnapshotFreshness.nightLabel(for: snapshot, now: entry.date).uppercased())
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.6))
             Text(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))

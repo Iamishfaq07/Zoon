@@ -263,7 +263,10 @@ struct SleepIntelligenceComplicationView: View {
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                Label("Last Night", systemImage: "moonphase.waxing.crescent")
+                Label(
+                    SnapshotFreshness.nightLabel(for: entry.snapshot, now: entry.date),
+                    systemImage: "moonphase.waxing.crescent"
+                )
                     .font(Theme.text(13, weight: .semibold))
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(scoreText)
@@ -506,10 +509,9 @@ struct SleepBankComplicationView: View {
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 1) {
-                // Mirrors the same "Last Night"/"Last Sleep" switch
-                // SleepScoreWidget makes on isShiftWorkModeEnabled.
+                // The shared night label, evaluated at the entry's date.
                 Label(
-                    entry.snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night",
+                    SnapshotFreshness.nightLabel(for: entry.snapshot, now: entry.date),
                     systemImage: "moonphase.waxing.crescent"
                 )
                     .font(Theme.text(13, weight: .semibold))

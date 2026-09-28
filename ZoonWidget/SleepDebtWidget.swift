@@ -58,10 +58,14 @@ struct SleepDebtWidgetView: View {
 
     private var snapshot: SleepSnapshot { entry.snapshot }
 
-    /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
-    /// makes on `snapshot.isShiftWorkModeEnabled`.
+    /// `SnapshotFreshness.nightLabel` at the entry's date, in this widget's
+    /// sentence case.
     private var lastNightLabel: String {
-        snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night"
+        switch SnapshotFreshness.nightLabel(for: snapshot, now: entry.date) {
+        case "Last Night": "Last night"
+        case "Last Sleep": "Last sleep"
+        case let date: date
+        }
     }
 
     // MARK: - Home screen

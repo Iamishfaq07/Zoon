@@ -104,6 +104,25 @@ enum SnapshotFreshness {
         }
     }
 
+    /// What to call the snapshot's night as of `now`: "Last Night" ("Last
+    /// Sleep" in shift-work mode) while it is current, and the day it was
+    /// woken on once it is behind.
+    ///
+    /// Widgets and complications said "Last Night" about a night of any age:
+    /// three unworn nights later the Home Screen still read "Last Night 84".
+    /// Shift-work mode keeps its label -- a daytime sleeper's last sleep can
+    /// end after the settled hour on its own day, and the calendar rule
+    /// would call it old every afternoon.
+    static func nightLabel(
+        for snapshot: SleepSnapshot,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> String {
+        if snapshot.isShiftWorkModeEnabled { return "Last Sleep" }
+        guard case .behind = state(of: snapshot, now: now, calendar: calendar) else { return "Last Night" }
+        return snapshot.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+    }
+
     /// A short form, for a complication that has one line.
     static func shortNote(for state: State) -> String? {
         switch state {
