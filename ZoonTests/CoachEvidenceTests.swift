@@ -69,10 +69,12 @@ final class CoachEvidenceTests: XCTestCase {
         XCTAssertFalse(DiagnosticLanguageGuard.rejects(reply.text), reply.text)
     }
 
-    func testCatalogLastNightSummaryDoesNotSwallowHRV() {
+    /// HRV has its own tool now; it used to share the last-night summary,
+    /// whose runner answer was duration and efficiency.
+    func testHRVQuestionIsAnsweredAboutHRV() {
         let night = Fixture.night(avgHRV: 42)
         let reply = CoachEvidence(night: night, history: []).reply(to: "Why was my HRV low last night?")
-        XCTAssertEqual(CoachToolCatalog.interpret("Why was my HRV low last night?")?.kind, .getLastNightSummary)
+        XCTAssertEqual(CoachToolCatalog.interpret("Why was my HRV low last night?")?.kind, .getHRV)
         XCTAssertTrue(reply.text.contains("42"), reply.text)
         XCTAssertTrue(reply.text.lowercased().contains("close to"), reply.text)
         XCTAssertFalse(reply.text.lowercased().contains("efficiency"), reply.text)
