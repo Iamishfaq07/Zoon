@@ -120,7 +120,7 @@ struct CoreIntelligenceGrid: View {
             }
             .frame(height: 20)
         } stat: {
-            bodyClock.map { $0.stability.label } ?? "Building"
+            bodyClock?.confidentStability?.label ?? "Building"
         }
     }
 

@@ -211,7 +211,7 @@ struct PatternsView: View {
                                     .font(Theme.text(13))
                                     .foregroundStyle(Theme.inkSecondary)
                                 Spacer(minLength: 12)
-                                Text("\(forecast.metric.formattedMagnitude(forecast.lower))–\(forecast.metric.formattedMagnitude(forecast.upper))")
+                                Text("\(forecast.metric.formattedValue(forecast.lower))–\(forecast.metric.formattedValue(forecast.upper))")
                                     .font(Theme.text(13, weight: .semibold))
                                     .monospacedDigit()
                                     .foregroundStyle(tint(for: forecast.metric))

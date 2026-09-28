@@ -251,6 +251,13 @@ extension SleepRegularity {
 
     var hasEnoughData: Bool { nightCount >= Self.minimumNights && (validPairCount ?? 0) >= Self.minimumNights - 1 }
 
+    /// The index when there is enough to state one. Below that `index` is a
+    /// placeholder 0 (or a figure from two or three pairs), which Today drew
+    /// as "Rhythm 0" in the erratic colour, the Coach digest reported as a
+    /// real 0/100, and the badge count on the widget and watch unlocked
+    /// against.
+    var reportableIndex: Double? { hasEnoughData ? index : nil }
+
     var detail: String {
         guard hasEnoughData else {
             return "Zoon needs about a week of nights before it can measure how regular your schedule is."

@@ -69,6 +69,18 @@ struct BodyClock: Codable, Hashable, Sendable {
         }
     }
 
+    /// Stability only once there are enough nights to have one. From a
+    /// single night the spread is zero, so `stability` reads "Tight" --
+    /// "running to a schedule" -- on a new user's first morning.
+    var confidentStability: Stability? { isEstimate ? nil : stability }
+
+    /// What a surface says in place of the stability while it is `nil`.
+    static let earlyStabilityLabel = "Too early to tell"
+
+    var earlyStabilityDetail: String {
+        "Early estimate from \(nightCount) of \(Self.minimumNights) nights. Stability needs two weeks of nights before it means anything."
+    }
+
     var stability: Stability {
         // Thresholds in hours of standard deviation around the midpoint.
         // Under 30 minutes is genuinely regular; beyond 90 the "window" is

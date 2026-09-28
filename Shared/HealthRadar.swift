@@ -17,8 +17,13 @@ struct HealthRadar: Codable, Hashable, Sendable {
     let signals: [Signal]
     /// Nights the detection ran across.
     let nightCount: Int
-    /// How many physiological domains had a usable baseline (at least eight
-    /// values) when detection ran.
+    /// How many physiological domains were actually evaluated: a usable
+    /// baseline (at least eight values) *and* a complete recent window.
+    ///
+    /// A baseline alone is not coverage either. With the watch on its
+    /// charger for the last three nights, every domain had thirty nights of
+    /// history and nothing recent to compare, and the radar said "Nothing
+    /// unusual" about nights it never saw.
     ///
     /// Nights alone are not coverage: a fortnight of sleep recorded by a
     /// phone carries no HRV, no resting heart rate and no respiratory rate,
@@ -133,13 +138,13 @@ struct HealthRadar: Codable, Hashable, Sendable {
 
         for kind in VitalsStatus.Kind.allCases {
             let baselineValues = baselineWindow.compactMap { value(kind, in: $0) }
-            if baselineValues.count >= 8, Self.physiologicalKinds.contains(kind) {
-                domainsWithBaseline += 1
-            }
             let recentValues = recentWindow.compactMap { value(kind, in: $0) }
 
             guard baselineValues.count >= 8,
                   recentValues.count == recentWindow.count else { continue }
+            if Self.physiologicalKinds.contains(kind) {
+                domainsWithBaseline += 1
+            }
 
             let baseMedian = Statistics.median(baselineValues) ?? mean(baselineValues)
             // MAD scaled by 0.6745 lands on the same scale as a standard
@@ -158,7 +163,14 @@ struct HealthRadar: Codable, Hashable, Sendable {
             // one big night surrounded by normal ones is not a drift.
             let allElevated = recentValues.allSatisfy { $0 > baseMedian + tolerance }
             let allSuppressed = recentValues.allSatisfy { $0 < baseMedian - tolerance }
-            guard allElevated || allSuppressed else { continue }
+            // Only the unfavourable direction is a drift worth flagging.
+            // HRV up, resting heart rate down and more sleep after a restful
+            // week all moved "outside the band", and three of them together
+            // read as the illness-onset pattern this card exists to catch.
+            let movedTheWrongWay = SleepResilience.Direction.forVital(kind) == .belowIsDisruption
+                ? allSuppressed
+                : allElevated
+            guard movedTheWrongWay else { continue }
 
             detected.append(Signal(
                 kind: kind,
@@ -323,9 +335,9 @@ extension HealthRadar {
         case .insufficientSignals(let domains, let required):
             return domains == 0
                 ? "No overnight body signals are being recorded, so there is nothing here to watch yet. An Apple Watch worn overnight is what fills this in."
-                : "Only \(domains) of the \(required) body signals Zoon watches has enough history. That is not enough to say whether anything is drifting."
+                : "Only \(domains) of the \(required) body signals Zoon watches has enough recent readings. That is not enough to say whether anything is drifting."
         case .typical:
-            return "Nothing has been drifting from your baseline for three nights or more."
+            return "Nothing has moved the wrong way from your baseline for three nights or more."
         case .watch(let signals), .notable(let signals):
             let base = "\(signals.count == 1 ? "This signal has" : "These signals have") been outside your usual range for \(Self.minimumConsecutiveNights) nights running."
             // The interpretation is only offered when several signals move

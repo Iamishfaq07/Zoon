@@ -183,7 +183,9 @@ struct HealthPulseStrip: View {
 
     private var regularityTile: some View {
         let regularity = context.regularity
+        let reportable = regularity.reportableIndex
         let tint: Color = {
+            guard reportable != nil else { return Theme.inkSecondary }
             switch regularity.band {
             case .exemplary: Theme.Metric.recoveryHigh
             case .consistent: Theme.Metric.battery
@@ -198,21 +200,23 @@ struct HealthPulseStrip: View {
             VStack(spacing: 4) {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.neutral(0.10)).frame(height: 4)
-                    GeometryReader { geo in
-                        Capsule()
-                            .fill(tint)
-                            .frame(width: geo.size.width * max(0.04, min(1, regularity.index / 100)), height: 4)
+                    if let reportable {
+                        GeometryReader { geo in
+                            Capsule()
+                                .fill(tint)
+                                .frame(width: geo.size.width * max(0.04, min(1, reportable / 100)), height: 4)
+                        }
+                        .frame(height: 4)
                     }
-                    .frame(height: 4)
                 }
                 .frame(width: 30, height: 22)
-                pulseLabel("Rhythm", value: "\(Int(regularity.index))")
+                pulseLabel("Rhythm", value: reportable.map { "\(Int($0))" } ?? "—")
             }
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Regularity")
-        .accessibilityValue("\(Int(regularity.index)), \(regularity.band.label)")
+        .accessibilityValue(reportable.map { "\(Int($0)), \(regularity.band.label)" } ?? "Not enough nights yet")
         .accessibilityHint("View sleep regularity")
     }
 

@@ -101,9 +101,9 @@ struct ZoonUncertaintyBand: View {
                     .opacity(progress > 0.15 ? 1 : 0)
 
                 // End labels, clamped inside the frame.
-                endLabel(forecast.metric.formattedMagnitude(forecast.lower), at: x(forecast.lower, width: width), width: width, alignment: .trailing)
+                endLabel(forecast.metric.formattedValue(forecast.lower), at: x(forecast.lower, width: width), width: width, alignment: .trailing)
                     .offset(y: curveHeight + 6)
-                endLabel(forecast.metric.formattedMagnitude(forecast.upper), at: x(forecast.upper, width: width), width: width, alignment: .leading)
+                endLabel(forecast.metric.formattedValue(forecast.upper), at: x(forecast.upper, width: width), width: width, alignment: .leading)
                     .offset(y: curveHeight + 6)
             }
             .animation(Motion.respecting(reduceMotion, .easeOut(duration: 0.3)), value: progress > 0.15)
@@ -161,7 +161,7 @@ struct ZoonUncertaintyBand: View {
                         .tracking(1.0)
                         .textCase(.uppercase)
                         .foregroundStyle(Theme.inkSecondary)
-                    Text("\(forecast.metric.formattedMagnitude(forecast.lower))–\(forecast.metric.formattedMagnitude(forecast.upper))")
+                    Text("\(forecast.metric.formattedValue(forecast.lower))–\(forecast.metric.formattedValue(forecast.upper))")
                         .font(Theme.supportingValue)
                         .monospacedDigit()
                         .foregroundStyle(tint)

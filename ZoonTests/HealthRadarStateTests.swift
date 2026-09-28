@@ -55,6 +55,56 @@ final class HealthRadarStateTests: XCTestCase {
         XCTAssertEqual(radar.stateShortLabel, "Typical")
     }
 
+    /// Thirty ordinary nights, then three that differ as given.
+    private func history(recent: (Int) -> SleepNightFeatures) -> [SleepNightFeatures] {
+        (0..<33).map { daysAgo in
+            daysAgo < 3
+                ? recent(daysAgo)
+                : Fixture.night(daysAgo: daysAgo, timeAsleepMinutes: 420, avgHRV: 45, restingHeartRate: 58)
+        }
+    }
+
+    /// A restful week: HRV up, resting heart rate down, more sleep. All three
+    /// sat outside the band, and together they read as the illness-onset
+    /// pattern ("Worth easing off and watching").
+    func testImprovingSignalsAreNotADrift() {
+        let radar = HealthRadar.detect(nights: history {
+            Fixture.night(daysAgo: $0, timeAsleepMinutes: 490, avgHRV: 58, restingHeartRate: 53)
+        })
+        XCTAssertTrue(radar.signals.isEmpty, "\(radar.signals)")
+        XCTAssertEqual(radar.state, HealthRadar.State.typical)
+    }
+
+    /// The same distance the unfavourable way is still caught.
+    func testWorseningSignalsAreStillADrift() {
+        let radar = HealthRadar.detect(nights: history {
+            Fixture.night(daysAgo: $0, timeAsleepMinutes: 420, avgHRV: 33, restingHeartRate: 64)
+        })
+        XCTAssertEqual(Set(radar.signals.map(\.kind)), [.hrv, .restingHeartRate])
+        guard case .watch = radar.state else {
+            return XCTFail("Expected watch, got \(radar.state)")
+        }
+    }
+
+    /// The watch on its charger for three nights while the phone records
+    /// sleep: a month of baseline, nothing recent. That is not "Nothing
+    /// unusual".
+    func testMissingRecentBodySignalsDoNotReassure() {
+        let radar = HealthRadar.detect(nights: history {
+            Fixture.night(
+                daysAgo: $0,
+                avgHRV: nil, restingHeartRate: nil, minHeartRate: nil,
+                avgRespiratoryRate: nil, wristTempDeltaC: nil, avgSpO2: nil,
+                breathingDisturbances: nil
+            )
+        })
+        guard case .insufficientSignals = radar.state else {
+            return XCTFail("Expected insufficientSignals, got \(radar.state)")
+        }
+        XCTAssertFalse(radar.state.isReassurance)
+        XCTAssertEqual(radar.stateShortLabel, "No data")
+    }
+
     /// Coverage is counted, and a stable history has domains behind it.
     func testDomainsWithBaselineAreCounted() {
         let radar = HealthRadar.detect(

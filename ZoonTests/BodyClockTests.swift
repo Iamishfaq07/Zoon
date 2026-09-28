@@ -139,4 +139,17 @@ final class BodyClockTests: XCTestCase {
         let drift = try XCTUnwrap(nightOwl.drift(of: bedtime))
         XCTAssertEqual(drift, 60, accuracy: 1)
     }
+
+    /// One night has zero spread, which `stability` reads as "Tight".
+    /// Until the clock is more than an estimate there is no stability to state.
+    func testStabilityIsWithheldWhileTheClockIsAnEstimate() throws {
+        let one = try XCTUnwrap(BodyClock.compute(nights: [Fixture.night(daysAgo: 1)]))
+        XCTAssertTrue(one.isEstimate)
+        XCTAssertNil(one.confidentStability)
+        XCTAssertTrue(one.earlyStabilityDetail.contains("1 of \(BodyClock.minimumNights)"), one.earlyStabilityDetail)
+
+        let enough = try XCTUnwrap(BodyClock.compute(nights: (1...BodyClock.minimumNights).map { Fixture.night(daysAgo: $0) }))
+        XCTAssertFalse(enough.isEstimate)
+        XCTAssertEqual(enough.confidentStability, enough.stability)
+    }
 }

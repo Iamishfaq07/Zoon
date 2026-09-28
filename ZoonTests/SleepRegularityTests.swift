@@ -18,6 +18,14 @@ final class SleepRegularityTests: XCTestCase {
         XCTAssertEqual(regularity.nightCount, 5)
     }
 
+    /// The placeholder never leaves this type as a number: Today's pulse
+    /// strip, the Coach digest and the badge count all read this.
+    func testReportableIndexIsNilUntilThereIsEnoughData() {
+        XCTAssertNil(SleepRegularity.compute(nights: Fixture.consecutiveNights(5)).reportableIndex)
+        let enough = SleepRegularity.compute(nights: Fixture.consecutiveNights(SleepRegularity.minimumNights))
+        XCTAssertEqual(enough.reportableIndex, enough.index)
+    }
+
     func testAtMinimumNightsHasEnoughData() {
         let nights = Fixture.consecutiveNights(SleepRegularity.minimumNights)
         let regularity = SleepRegularity.compute(nights: nights)
