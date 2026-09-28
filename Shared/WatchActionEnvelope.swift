@@ -14,11 +14,24 @@ struct WatchActionEnvelope: Codable, Sendable {
         self.action = action
         self.occurredAt = occurredAt
         self.timeZoneIdentifier = timeZone.identifier
-        if case .morningFeeling = action {
-            self.targetDate = snapshotDate ?? occurredAt
+        // A morning feeling is about the night just slept. It is filed on the
+        // night the watch showed only when that night ended this same local
+        // day; a snapshot from an older night (the phone has not synced)
+        // used to receive this morning's feeling, overwriting what was said
+        // about that night. Otherwise it goes on this morning, and joins last
+        // night when it arrives.
+        if case .morningFeeling = action, let snapshotDate,
+           Self.sameLocalDay(snapshotDate, occurredAt, in: timeZone) {
+            self.targetDate = snapshotDate
         } else {
             self.targetDate = occurredAt
         }
+    }
+
+    private static func sameLocalDay(_ a: Date, _ b: Date, in timeZone: TimeZone) -> Bool {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.isDate(a, inSameDayAs: b)
     }
 
     var calendar: Calendar {

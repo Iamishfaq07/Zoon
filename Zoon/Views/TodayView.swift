@@ -160,6 +160,10 @@ struct TodayView: View {
         // used it five times.
         let napMinutesToday = self.napMinutesToday
         return VStack(alignment: .leading, spacing: 28) {
+            if moment == .morning || moment == .day {
+                staleNightNotice(context)
+            }
+
             if moment == .evening || moment == .night {
                 tonightCircleHero(context)
                     .entrance(0)
@@ -312,27 +316,33 @@ struct TodayView: View {
             }
 
             if moment == .morning {
-                MorningCheckInCard(
-                selected: checkInFeeling,
-                details: checkInDetails,
-                onSelectFeeling: { feeling in
-                    Haptics.select()
-                    checkInFeeling = feeling
-                    coordinator.journal.setFeeling(feeling, on: context.night.date, nightKey: context.night.nightKey)
-                },
-                onSelectDetail: { dimension, value in
-                    checkInDetails[dimension] = value
-                    coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date, nightKey: context.night.nightKey)
-                }
-            )
-                .entrance(7)
-                .task(id: context.night.date) {
-                let entry = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)
-                checkInFeeling = entry?.feeling
-                checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
-                    result[dimension] = entry?.value(for: dimension)
-                }
-                await askForReviewIfDue(after: context.night)
+                // Only about last night. When the newest stored night is older
+                // (the watch has not synced, or no night was recorded), "How do
+                // you feel this morning?" was saved onto that older night,
+                // overwriting what the person said about it at the time.
+                if nightIsCurrent(context) {
+                    MorningCheckInCard(
+                    selected: checkInFeeling,
+                    details: checkInDetails,
+                    onSelectFeeling: { feeling in
+                        Haptics.select()
+                        checkInFeeling = feeling
+                        coordinator.journal.setFeeling(feeling, on: context.night.date, nightKey: context.night.nightKey)
+                    },
+                    onSelectDetail: { dimension, value in
+                        checkInDetails[dimension] = value
+                        coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date, nightKey: context.night.nightKey)
+                    }
+                )
+                    .entrance(7)
+                    .task(id: context.night.date) {
+                    let entry = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)
+                    checkInFeeling = entry?.feeling
+                    checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
+                        result[dimension] = entry?.value(for: dimension)
+                    }
+                    await askForReviewIfDue(after: context.night)
+                    }
                 }
 
                 // The optional reaction check, one tap from the check-in it
@@ -417,6 +427,32 @@ struct TodayView: View {
             plannedBedtime: plannedBedtime(context),
             napMinutesToday: napMinutesToday
         )
+    }
+
+    /// Whether the newest stored night is last night, by the rule every
+    /// surface shares (`SnapshotFreshness`: yesterday's night still counts
+    /// until the morning has had time to sync).
+    private func nightIsCurrent(_ context: DayContext) -> Bool {
+        SnapshotFreshness.state(nightDate: context.night.date).isCurrent
+    }
+
+    /// Says when the night on screen is not last night. Without it a phone
+    /// that had not synced presented a night days old as last night -- its
+    /// duration, Recovery and Energy -- with nothing to say otherwise.
+    @ViewBuilder
+    private func staleNightNotice(_ context: DayContext) -> some View {
+        if !nightIsCurrent(context) {
+            Label {
+                Text("No night recorded for last night yet. Showing your latest, from \(context.night.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))).")
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
+            .font(Theme.text(13, weight: .semibold))
+            .foregroundStyle(Theme.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
     }
 
     /// Tonight's target bedtime as a `Date`, which is what `NapCoach` needs
