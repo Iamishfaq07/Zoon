@@ -187,10 +187,11 @@ struct TodayView: View {
                 // them is what the hero above is counting, so `TodayNeedTracks`
                 // -- which draws a Debt bar of its own -- would be saying it
                 // twice on this moment's screen.
+                // Last night's main sleep against last night's need, which
+                // already credits yesterday's naps; today's belong to tonight.
                 SleepMetricsView(
-                    actualMinutes: context.night.total24hAsleepMinutes + napMinutesToday,
+                    actualMinutes: context.sleepNeed.achievedMinutes,
                     needMinutes: context.sleepNeed.totalNeedMinutes,
-                    napMinutes: napMinutesToday,
                     needLabel: "Last night's need"
                 )
                 .entrance(2)

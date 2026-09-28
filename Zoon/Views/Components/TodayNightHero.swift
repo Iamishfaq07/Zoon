@@ -138,14 +138,12 @@ struct TodayNeedTracks: View {
     /// `NapsTodayCard` for why they have to be read live.
     var napMinutesToday: Double = 0
 
-    /// Last night's main sleep plus every nap already credited to it.
+    /// Last night's main sleep, the figure the hero above and Sleep Need use.
     ///
-    /// This track showed `timeAsleepMinutes` — main sleep alone — while debt
-    /// and need are both computed from `total24hAsleepMinutes`, which counts
-    /// naps. So a nap could shrink the shortfall on the Debt line while the
-    /// Sleep line above it never moved, and the two tracks disagreed about
-    /// the same night.
-    private var slept: Double { context.night.total24hAsleepMinutes }
+    /// Drawn against `need`, which already takes yesterday's naps off. The
+    /// track used the 24-hour total, naps included, so a nap was counted
+    /// twice: "8h" with a full bar under a hero reading "7h 15m of 7h 15m".
+    private var slept: Double { context.sleepNeed.achievedMinutes }
 
     /// The ledger's figure. Today's naps used to come off it here, which the
     /// one-sided ledger does not do, so the balance "rebounded" the next
