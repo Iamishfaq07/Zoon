@@ -257,7 +257,7 @@ struct TodayView: View {
                 context: context,
                 stress: coordinator.todayStress,
                 recoveryMode: RecoveryMode.evaluate(
-                    band: context.recovery.band,
+                    recovery: context.recovery.presentation,
                     manuallyEnabledToday: preferences.isRecoveryModeManuallyEnabledToday
                 ),
                 lightGuidance: LightCoach.guidance(
@@ -410,7 +410,7 @@ struct TodayView: View {
         AdaptiveZoonBrief.make(
             phase: phase,
             night: context.night,
-            recoveryPercent: context.recovery.percent,
+            recovery: context.recovery.presentation,
             energy: context.bodyBattery.current,
             load: context.strain.value,
             tonightBedtime: plannedBedtime(context),
@@ -822,7 +822,7 @@ struct TodayView: View {
             // top of the screen. It's a rarely-used override, so it lives
             // with the other provenance lines at the bottom -- still one tap.
             if RecoveryMode.evaluate(
-                band: context.recovery.band,
+                recovery: context.recovery.presentation,
                 manuallyEnabledToday: preferences.isRecoveryModeManuallyEnabledToday
             ) == nil {
                 RecoveryModeEnableLink { preferences.setRecoveryModeEnabledToday(true) }

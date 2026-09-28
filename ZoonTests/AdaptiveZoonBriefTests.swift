@@ -93,4 +93,84 @@ final class AdaptiveZoonBriefTests: XCTestCase {
         XCTAssertTrue(brief.headline.contains("1h 57m"), brief.headline)
         XCTAssertFalse(brief.headline.contains("1h 35m"), brief.headline)
     }
+
+    // MARK: - Recovery arrives gated
+
+    /// First week: the engine still computes a number (sleep performance
+    /// re-normalised), but there is no baseline to be "close to".
+    func testBuildingBaselineMakesNoPhysiologyClaim() {
+        let night = Fixture.night(daysAgo: 1, timeAsleepMinutes: 432)
+        let brief = AdaptiveZoonBrief.make(
+            phase: .night,
+            night: night,
+            recovery: .buildingBaseline(nights: 3, required: 7),
+            energy: nil,
+            load: nil,
+            tonightBedtime: nil
+        )
+        XCTAssertTrue(brief.headline.contains("not ready"), brief.headline)
+        XCTAssertFalse(brief.headline.contains("physiology stayed"), brief.headline)
+        XCTAssertEqual(brief.dataUsed, ["sleep duration"])
+    }
+
+    /// No HRV or resting heart rate: say what is missing instead of "not
+    /// ready yet", which would never become true for this person.
+    func testLimitedRecoveryNamesTheMissingHeartData() {
+        let night = Fixture.night(daysAgo: 1, timeAsleepMinutes: 432)
+        let brief = AdaptiveZoonBrief.make(
+            phase: .morning,
+            night: night,
+            recovery: .limited(reason: "No HRV last night."),
+            energy: nil,
+            load: nil,
+            tonightBedtime: nil
+        )
+        XCTAssertTrue(brief.headline.contains("heart data"), brief.headline)
+        XCTAssertFalse(brief.headline.contains("baseline"), brief.headline)
+        XCTAssertEqual(brief.dataUsed, ["sleep duration"])
+    }
+
+    func testAvailableRecoveryStillReadsTheNight() {
+        let night = Fixture.night(daysAgo: 1, timeAsleepMinutes: 450)
+        let brief = AdaptiveZoonBrief.make(
+            phase: .morning,
+            night: night,
+            recovery: .available(score: 81, confidence: .high),
+            energy: nil,
+            load: nil,
+            tonightBedtime: nil
+        )
+        XCTAssertTrue(brief.headline.contains("close to your baseline"), brief.headline)
+        XCTAssertTrue(brief.dataUsed.contains("Morning Recovery"))
+    }
+
+    /// The brief and the ring share one set of cutoffs: 60 is "Moderate" on
+    /// the ring, so it cannot be "close to your baseline" here.
+    func testBriefUsesTheRingsBands() {
+        let night = Fixture.night(daysAgo: 1, timeAsleepMinutes: 450)
+        let brief = AdaptiveZoonBrief.make(
+            phase: .morning,
+            night: night,
+            recovery: .available(score: 60, confidence: .high),
+            energy: nil,
+            load: nil,
+            tonightBedtime: nil
+        )
+        XCTAssertTrue(brief.headline.contains("mixed"), brief.headline)
+    }
+
+    func testRecoveryModeIsOnlySuggestedByAShowableScore() {
+        XCTAssertNil(RecoveryMode.evaluate(recovery: .limited(reason: "No HRV."), manuallyEnabledToday: false))
+        XCTAssertNil(RecoveryMode.evaluate(recovery: .buildingBaseline(nights: 2, required: 7), manuallyEnabledToday: false))
+        XCTAssertNil(RecoveryMode.evaluate(recovery: .unavailable, manuallyEnabledToday: false))
+        XCTAssertNil(RecoveryMode.evaluate(recovery: .available(score: 70, confidence: .high), manuallyEnabledToday: false))
+        XCTAssertEqual(
+            RecoveryMode.evaluate(recovery: .available(score: 20, confidence: .moderate), manuallyEnabledToday: false)?.source,
+            .autoSuggested
+        )
+        XCTAssertEqual(
+            RecoveryMode.evaluate(recovery: .limited(reason: "No HRV."), manuallyEnabledToday: true)?.source,
+            .manuallyEnabled
+        )
+    }
 }
