@@ -1,0 +1,4 @@
+{
+  "about": "The 1:30 cut: story-time ranges left out, in order. Holds after each beat has landed, and the recap montage. Used by render100.js (CUTS=cuts90.json) and score100.py (python3 score100.py cuts90.json score90.wav).",
+  "cuts": [[31.2, 32.15], [51.75, 52.85], [70.35, 72.25], [79.6, 80.9], [87.25, 88.6], [89.6, 93.0]]
+}
