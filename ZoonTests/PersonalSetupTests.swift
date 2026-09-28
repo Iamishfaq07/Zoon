@@ -92,4 +92,19 @@ final class PersonalSetupTests: XCTestCase {
         XCTAssertFalse(CoachEvidence.allowsGeneratedProse("Your HRV was 99 ms"))
         XCTAssertNil(evidence.catalog["invented-source"])
     }
+
+    /// A trip saved before the origin was stored still decodes -- a failed
+    /// decode resets the whole setup -- and a new one keeps its origin.
+    func testSavedTripOriginIsOptionalAndKept() throws {
+        let old = #"{"destination":"Asia/Tokyo","departure":0,"arrival":3600}"#
+        let decoded = try JSONDecoder().decode(PersonalSetup.SavedTrip.self, from: Data(old.utf8))
+        XCTAssertNil(decoded.origin)
+        XCTAssertEqual(decoded.destination, "Asia/Tokyo")
+
+        let trip = PersonalSetup.SavedTrip(
+            destination: "Asia/Tokyo", departure: .now, arrival: .now, origin: "Europe/London"
+        )
+        let roundTrip = try JSONDecoder().decode(PersonalSetup.SavedTrip.self, from: JSONEncoder().encode(trip))
+        XCTAssertEqual(roundTrip.origin, "Europe/London")
+    }
 }

@@ -17,6 +17,12 @@ struct PersonalSetup: Codable, Equatable, Sendable {
         var destination: String
         var departure: Date
         var arrival: Date
+        /// Where the trip starts. Optional, so trips saved before it existed
+        /// still decode (a failed decode resets the whole setup). The
+        /// phone's current zone used to stand in for it, and after landing
+        /// that is the destination: the plan read "nothing to shift" on the
+        /// nights it was for.
+        var origin: String? = nil
     }
     struct SleepPlan: Codable, Equatable, Identifiable, Sendable {
         var id = UUID()
