@@ -177,6 +177,18 @@ final class ForYourAgeTests: XCTestCase {
         XCTAssertTrue(summary.restingSentence?.contains("below your daytime resting rate of 70 bpm") == true)
     }
 
+    /// Apple's resting rate is not a sleeping rate, so a small gap is ordinary
+    /// and must not read as strain.
+    func testASmallGapFromTheRestingRateIsOrdinary() throws {
+        let data = night(lowAt: 0.4)
+        let summary = try XCTUnwrap(OvernightHeartSummary.make(
+            samples: data.samples, night: data.interval, restingHeartRate: 53
+        ))
+        let sentence = try XCTUnwrap(summary.restingSentence)
+        XCTAssertTrue(sentence.contains("ordinary"), sentence)
+        XCTAssertFalse(sentence.contains("strain"), sentence)
+    }
+
     func testTooFewReadingsGiveNoSummary() {
         let interval = DateInterval(start: start, duration: 8 * 3600)
         let samples: [(date: Date, bpm: Double)] = (0..<4).map {

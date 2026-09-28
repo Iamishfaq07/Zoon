@@ -96,16 +96,23 @@ struct OvernightHeartSummary: Hashable, Sendable {
     }
 
     /// The comparison with the daytime resting rate, or `nil` without one.
+    ///
+    /// Apple's resting rate comes from calm moments across the day, not from
+    /// sleep, so a few percent either way is ordinary. Only a gap past
+    /// `notableGapPercent` is called out, and never as a verdict.
     var restingSentence: String? {
         guard let belowRestingPercent, let restingBPM else { return nil }
         let percent = Int(abs(belowRestingPercent).rounded())
         let resting = Int(restingBPM.rounded())
-        if belowRestingPercent >= 1 {
-            return "Asleep, it averaged \(percent)% below your daytime resting rate of \(resting) bpm."
+        if belowRestingPercent >= Self.notableGapPercent {
+            return "Asleep, it averaged \(percent)% below your daytime resting rate of \(resting) bpm: a well-rested heart."
         }
-        if belowRestingPercent <= -1 {
-            return "Asleep, it averaged \(percent)% above your daytime resting rate of \(resting) bpm, which is unusual and often a sign the body was under strain."
+        if belowRestingPercent <= -Self.notableGapPercent {
+            return "Asleep, it averaged \(percent)% above your daytime resting rate of \(resting) bpm. That is higher than usual; a late meal, alcohol or illness can do it. Worth watching if it repeats."
         }
-        return "Asleep, it averaged about the same as your daytime resting rate of \(resting) bpm."
+        return "Asleep, it averaged close to your daytime resting rate of \(resting) bpm, which is ordinary."
     }
+
+    /// Gap from the daytime resting rate worth a sentence of its own.
+    static let notableGapPercent = 10.0
 }
