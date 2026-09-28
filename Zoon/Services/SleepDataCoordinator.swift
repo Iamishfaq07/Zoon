@@ -847,8 +847,18 @@ final class SleepDataCoordinator {
         // group used to be discarded entirely -- `persistSecondaryEpisodes`
         // below is what keeps a same-day nap alive instead of losing it here.
         let groupedByWakeDate = Dictionary(grouping: sessions) { $0.wakeDate }
+        // A nap is never a night. The only session on a wake date used to
+        // become that date's main sleep, so a forgotten ring and a 40-minute
+        // afternoon nap made a "night" of 40 minutes -- seven hours of
+        // phantom shortfall that decayed over weeks, and a 13:10 bedtime in
+        // the body clock. A day with only nap-shaped sessions (under three
+        // hours and classified as a nap for this person's schedule) has no
+        // night; its naps are kept as nap episodes and credited to the next
+        // night's 24-hour total by when they happened.
         let mainSleepPerDate = groupedByWakeDate
-            .compactMapValues { SleepSessionBuilder.preferredMainSleep(in: $0) }
+            .compactMapValues { group in
+                SleepSessionBuilder.preferredMainSleep(in: group.filter { !isNapShaped($0) })
+            }
             .values
             .sorted { $0.start < $1.start }
 
@@ -1009,7 +1019,27 @@ final class SleepDataCoordinator {
         var writtenIDs: Set<String> = []
 
         for (wakeDate, group) in groupedByWakeDate {
-            guard let main = mainByWakeDate[wakeDate] else { continue }
+            guard let main = mainByWakeDate[wakeDate] else {
+                // A nap-only day: no night to hang these on, so each keeps
+                // its own night key. Naps are credited by when they happened
+                // (`autoDetectedNaps`), not by key.
+                for session in group where session.totalAsleepMinutes >= minimumMeaningfulMinutes && isNapShaped(session) {
+                    let id = "\(session.nightKey)@\(Int(session.start.timeIntervalSince1970))"
+                    store.upsertEpisode(
+                        id: id,
+                        nightKey: session.nightKey,
+                        startDate: session.start,
+                        endDate: session.end,
+                        timezoneIdentifier: session.timeZoneIdentifier,
+                        episodeType: .nap,
+                        asleepMinutes: session.totalAsleepMinutes,
+                        timeInBedMinutes: session.timeInBed / 60,
+                        sourceName: session.sourceName
+                    )
+                    writtenIDs.insert(id)
+                }
+                continue
+            }
             let secondary = group.filter { $0.start != main.start || $0.end != main.end }
 
             for session in secondary where session.totalAsleepMinutes >= minimumMeaningfulMinutes {
@@ -1065,6 +1095,14 @@ final class SleepDataCoordinator {
         let isDaytime = (9..<18).contains(hour)
         let isNap = mode.treatsDaytimeAsNap ? isDaytime : !isDaytime
         return isNap ? .nap : .secondarySleep
+    }
+
+    /// Short enough, and at the right time of day for this person's schedule,
+    /// to be a nap rather than a night -- the gate on a session becoming a
+    /// night's row. The duration bound keeps a daytime main sleep (05:00-
+    /// 14:00) and a night-shift worker's off-day night their nights.
+    private func isNapShaped(_ session: SleepSession) -> Bool {
+        session.end.timeIntervalSince(session.start) < Self.napDurationCeiling && classify(session) == .nap
     }
 
     /// Above this, a non-primary episode is secondary sleep rather than a nap.
