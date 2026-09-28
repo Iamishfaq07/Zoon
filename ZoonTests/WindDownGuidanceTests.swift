@@ -2,19 +2,22 @@ import XCTest
 
 final class WindDownGuidanceTests: XCTestCase {
 
-    func testFiveMinutesOfGuidanceIsMoreThanFourCycles() {
+    /// Five minutes of guided breathing is still five minutes, but 4-7-8 is
+    /// capped at its own guidance (eight cycles at most) and the rest is slow
+    /// paced breathing. It used to be fourteen 4-7-8 cycles in a row.
+    func testFourSevenEightIsCappedAndTheRestOfTheMinutesIsPacedBreathing() {
         let config = WindDownGuidanceConfiguration(routineDurationMinutes: 30, guidedBreathingMinutes: 5)
-        XCTAssertGreaterThan(config.guidedCycles, 4)
-        XCTAssertEqual(config.guidedCycles, Int(5 * 60 / WindDownGuidanceConfiguration.cycleSeconds))
-        XCTAssertLessThanOrEqual(
-            Double(config.guidedCycles) * WindDownGuidanceConfiguration.cycleSeconds,
-            5 * 60
-        )
+        XCTAssertEqual(config.guidedCycles, WindDownGuidanceConfiguration.maximumGuidedCycles)
+        XCTAssertEqual(config.actualGuidedSeconds + config.pacedBreathingSeconds, 5 * 60, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(config.actualGuidedSeconds, 5 * 60)
     }
 
-    func testTenMinuteGuidanceScalesCycles() {
+    func testTenMinutesOfGuidanceDoesNotMeanTwentyCyclesOfFourSevenEight() {
         let config = WindDownGuidanceConfiguration(routineDurationMinutes: 30, guidedBreathingMinutes: 10)
-        XCTAssertGreaterThanOrEqual(config.guidedCycles, 20)
+        XCTAssertEqual(config.guidedCycles, WindDownGuidanceConfiguration.maximumGuidedCycles)
+        XCTAssertEqual(config.pacedBreathingSeconds, 10 * 60 - config.actualGuidedSeconds, accuracy: 0.001)
+        XCTAssertEqual(config.stage(elapsed: WindDownGuidanceConfiguration.arriveSeconds + 9 * 60), .guided,
+                       "the paced minutes are still the guided stage")
     }
 
     func testAThirtyMinuteRoutineHasAQuietPhaseAfterGuidance() {
@@ -29,10 +32,16 @@ final class WindDownGuidanceTests: XCTestCase {
         XCTAssertFalse(WindDownGuidanceConfiguration.closeLine.lowercased().contains("well done"))
     }
 
-    func testLaterCyclesGoQuietInNaturalMode() {
-        let config = WindDownGuidanceConfiguration(voiceMode: .natural)
-        XCTAssertFalse(config.voiceMode.cue(phase: "inhale", cycleIndex: 0).isEmpty)
-        XCTAssertEqual(config.voiceMode.cue(phase: "inhale", cycleIndex: 4), "")
+    /// Cues used to stop after the second cycle, leaving the rest of the
+    /// breathing unpaced on a locked screen.
+    func testEveryCycleIsPacedWithVoice() {
+        for mode in [WindDownGuidanceConfiguration.VoiceMode.natural, .minimal] {
+            for cycle in 0..<WindDownGuidanceConfiguration.maximumGuidedCycles {
+                for phase in ["inhale", "hold", "exhale"] {
+                    XCTAssertFalse(mode.cue(phase: phase, cycleIndex: cycle).isEmpty, "\(mode) \(phase) \(cycle)")
+                }
+            }
+        }
     }
 
     func testHapticsOnlyNeverSpeaks() {

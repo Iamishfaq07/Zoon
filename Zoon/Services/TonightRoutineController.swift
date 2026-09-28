@@ -17,6 +17,10 @@ final class TonightRoutineController {
     /// True when pause kept the breathing instance in place so Resume can
     /// continue the same cycle rather than reconstructing from elapsed.
     private var breathingPausedInPlace = false
+    /// The spoken guidance around the breathing (`WindDownScript`), and the
+    /// next line still to come.
+    private var scriptCues: [WindDownScript.Cue] = []
+    private var nextCueIndex = 0
 
     enum RunState: Equatable {
         case idle
@@ -70,6 +74,9 @@ final class TonightRoutineController {
             voiceMode: config.voiceMode
         )
         stage = guidance.stage(elapsed: elapsed)
+        // Lines already past on a resume are not replayed.
+        scriptCues = WindDownScript.cues(for: guidance, breathingEnabled: config.breathing)
+        nextCueIndex = scriptCues.firstIndex { $0.at >= elapsed } ?? scriptCues.count
         if let scene = store.value.scenes.first(where: { $0.id == config.sceneID }) { audio.playScene(scene) }
         else { audio.play(.rain, toggle: false) }
         audio.setTimer(minutes: max(1, Int(ceil(remaining / 60))))
@@ -97,6 +104,7 @@ final class TonightRoutineController {
         task = nil
         breathing.pause()
         breathingPausedInPlace = breathing.runtimeState == .pausedByUser
+        OnDeviceNarrator.shared.stop()
         audio?.stop()
         audio = nil
         active = false
@@ -133,6 +141,12 @@ final class TonightRoutineController {
             breathing.resume()
             return
         }
+        // Resumed after the 4-7-8 cycles, in the paced part of the guided
+        // stage: the script speaks that part, and the coach has nothing left.
+        if position.phaseName == "quiet" {
+            breathing.stop()
+            return
+        }
         switch stage {
         case .arrive, .guided:
             breathing.includeArrive = position.phaseName == "arrive"
@@ -161,7 +175,8 @@ final class TonightRoutineController {
                 guard let self, let session = store.value.session else { return }
                 if session.remaining(at: .now) <= 0 { self.finish(); return }
                 if let start = self.startedAt {
-                    let next = self.guidance.stage(elapsed: Date.now.timeIntervalSince(start))
+                    let elapsed = Date.now.timeIntervalSince(start)
+                    let next = self.guidance.stage(elapsed: elapsed)
                     if next != self.stage {
                         self.stage = next
                         self.updateLiveActivity(endsAt: session.deadline)
@@ -169,6 +184,7 @@ final class TonightRoutineController {
                             self.breathing.stop()
                         }
                     }
+                    self.speakDueCues(elapsed: elapsed)
                 }
                 if let message = audio?.interruptionMessage, audio?.playing == nil {
                     self.runState = .failed(message)
@@ -178,9 +194,24 @@ final class TonightRoutineController {
         }
     }
 
+    /// Speaks the script lines that have come due. A line more than a few
+    /// seconds late -- the process was suspended, or the routine resumed past
+    /// it -- is skipped rather than read out of place.
+    private func speakDueCues(elapsed: TimeInterval) {
+        while nextCueIndex < scriptCues.count, scriptCues[nextCueIndex].at <= elapsed {
+            let cue = scriptCues[nextCueIndex]
+            nextCueIndex += 1
+            guard elapsed - cue.at < 8 else { continue }
+            OnDeviceNarrator.shared.say(cue.text, profile: .windDown)
+        }
+    }
+
     private func stopResources() {
         endLiveActivity()
         task?.cancel(); task = nil
+        scriptCues = []
+        nextCueIndex = 0
+        OnDeviceNarrator.shared.stop()
         breathing.stop()
         audio?.stop(); audio = nil
         active = false

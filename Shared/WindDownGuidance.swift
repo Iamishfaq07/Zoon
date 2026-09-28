@@ -46,12 +46,19 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
             self == .hapticsOnly || self == .natural || self == .minimal
         }
 
+        /// The spoken cue for one phase of one cycle.
+        ///
+        /// Every cycle is paced. Cues used to stop after the second cycle,
+        /// leaving the rest of the breathing in silence with only a circle on
+        /// a screen that is usually locked at bedtime -- part of why Wind
+        /// Down felt too short and unguided. There are at most
+        /// `maximumGuidedCycles` cycles, so this is never more than a few
+        /// minutes of cues.
         func cue(phase: String, cycleIndex: Int) -> String {
             switch self {
             case .silent, .hapticsOnly:
                 return ""
             case .minimal:
-                if cycleIndex >= 2 { return "" }
                 switch phase {
                 case "inhale": return "In."
                 case "hold": return "Hold."
@@ -61,21 +68,21 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
             case .natural:
                 if cycleIndex == 0 {
                     switch phase {
-                    case "inhale": return "Slowly breathe in."
+                    case "inhale": return "Slowly breathe in through your nose."
                     case "hold": return "Hold gently."
-                    case "exhale": return "Now breathe out."
+                    case "exhale": return "Now breathe out slowly, all the way."
                     default: return ""
                     }
                 }
-                if cycleIndex < 2 {
-                    switch phase {
-                    case "inhale": return "Breathe in."
-                    case "hold": return "Hold."
-                    case "exhale": return "Breathe out."
-                    default: return ""
-                    }
+                // Alternate the wording so eight cycles do not sound like one
+                // recording played eight times.
+                let even = cycleIndex % 2 == 0
+                switch phase {
+                case "inhale": return even ? "Breathe in." : "In, slowly."
+                case "hold": return even ? "Hold." : "And hold."
+                case "exhale": return even ? "Breathe out." : "Let it all go."
+                default: return ""
                 }
-                return ""
             }
         }
     }
@@ -129,24 +136,38 @@ struct WindDownGuidanceConfiguration: Equatable, Sendable, Codable {
     var usesHaptics: Bool { voiceMode.usesHaptics }
     var usesVoice: Bool { voiceMode.usesVoice }
 
+    /// 4-7-8's own guidance is about four cycles, and no more than eight.
+    /// Filling ten minutes with it meant 28 cycles in a row, which the
+    /// technique does not recommend and which feels like a drill; the minutes
+    /// after the cycles are slow paced breathing instead
+    /// (`pacedBreathingSeconds`, spoken by `WindDownScript`).
+    static let maximumGuidedCycles = 8
+
     var guidedCycles: Int {
         let budget = actualGuidedBudget
-        return max(1, Int(budget / Self.cycleSeconds))
+        return max(1, min(Self.maximumGuidedCycles, Int(budget / Self.cycleSeconds)))
     }
 
-    /// Whole cycles that actually fit the guided window. Display this, not
-    /// a rounded-up count that overruns the stage.
+    /// The guided-breathing minutes the person chose, in seconds.
     var actualGuidedBudget: TimeInterval {
         Double(guidedBreathingMinutes) * 60
     }
 
+    /// The 4-7-8 part: whole cycles only. Display this, not a rounded-up
+    /// count that overruns the stage.
     var actualGuidedSeconds: TimeInterval {
         Double(guidedCycles) * Self.cycleSeconds
     }
 
+    /// The rest of the chosen guided minutes after the 4-7-8 cycles: slow
+    /// breathing at the person's own pace, with spoken reminders.
+    var pacedBreathingSeconds: TimeInterval {
+        max(0, actualGuidedBudget - actualGuidedSeconds)
+    }
+
     func stage(elapsed: TimeInterval) -> Stage {
         if elapsed < Self.arriveSeconds { return .arrive }
-        let guidedEnd = Self.arriveSeconds + actualGuidedSeconds
+        let guidedEnd = Self.arriveSeconds + actualGuidedSeconds + pacedBreathingSeconds
         if elapsed < guidedEnd { return .guided }
         if elapsed < max(guidedEnd, routineSeconds - Self.closeSeconds) { return .quiet }
         return .close

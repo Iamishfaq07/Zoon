@@ -23,12 +23,14 @@ final class OnDeviceNarrator: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     /// `voiceIdentifier` overrides the Wind Down voice (for a preview).
-    func say(_ text: String, voiceIdentifier: String? = nil) {
+    /// `profile` is the pacing: a night read back, or Wind Down's slower
+    /// guidance (`WindDownScript`).
+    func say(_ text: String, voiceIdentifier: String? = nil, profile: SleepSpeech.Profile = .narration) {
         stop()
         let preferred = voiceIdentifier ?? PersonalSetupStore.shared.value.routine.voiceIdentifier
         let utterances = SpeechVoices.utterances(
             for: text,
-            profile: .narration,
+            profile: profile,
             voice: SpeechVoices.resolve(preferredIdentifier: preferred)
         )
         guard let last = utterances.last else { return }
