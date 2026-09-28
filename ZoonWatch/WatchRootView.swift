@@ -468,7 +468,7 @@ struct QuickLogView: View {
             List {
                 Section("Log") {
                     logRow(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
-                        link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                        link.sendQuickAction(.alcohol)
                     }
                     logRow(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
                         link.sendQuickAction(.caffeine())
@@ -912,7 +912,7 @@ struct QuickLogActions: View {
                     sent["caffeine"] = link.sendQuickAction(.caffeine())
                 }
                 action(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
-                    sent["alcohol"] = link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                    sent["alcohol"] = link.sendQuickAction(.alcohol)
                 }
             }
             HStack(spacing: 5) {
@@ -1137,10 +1137,17 @@ extension WatchQuickAction {
     /// The Log buttons just say "Caffeine", but the journal keeps two tags:
     /// `caffeine` and `caffeineLate` ("Caffeine after 4pm"). Pick by the hour
     /// of the tap so a morning coffee is not logged as a late one.
+    ///
+    /// "It happened", not a toggle: `.behaviorTag` flips the tag on the
+    /// phone, so a second coffee two hours later removed the first and
+    /// recorded an explicit No, while the tile said Saved.
     static func caffeine(at date: Date = .now) -> WatchQuickAction {
         let hour = Calendar.current.component(.hour, from: date)
-        return .behaviorTag(rawValue: hour >= 16 ? "caffeineLate" : "caffeine")
+        return .behaviorAnswer(rawValue: hour >= 16 ? "caffeineLate" : "caffeine", happened: true)
     }
+
+    /// The same, for alcohol.
+    static var alcohol: WatchQuickAction { .behaviorAnswer(rawValue: "alcohol", happened: true) }
 }
 
 #Preview("Last night") {
