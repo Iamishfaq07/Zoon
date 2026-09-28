@@ -108,6 +108,11 @@ final class CoachChat {
     private(set) var appleIntelligenceBecameReady = false
 
     var evidence: CoachEvidence?
+    /// What this conversation is about: today, one recorded night, or a
+    /// chart point. Decides who answers a question about one night.
+    private(set) var contextMode: CoachContextMode = .today
+    /// The chart point the conversation was opened from, when it was.
+    private(set) var chartQuestion: ChartQuestion?
     private(set) var messages: [Message] = []
     private(set) var isResponding = false
     private(set) var pendingAction: PendingAction?
@@ -229,21 +234,24 @@ final class CoachChat {
     /// standing-pattern summary -- as context the model already has, so the
     /// first question doesn't have to restate them.
     /// - Parameter engine: the user's picker. Frozen for this transcript.
-    /// - Parameter chartContext: `ChartQuestion.context` when the
-    ///   conversation was opened from a point on a chart. Typed facts, never
+    /// - Parameter chartQuestion: the point on a chart the conversation was
+    ///   opened from. Its `context` goes to the model as typed facts, never
     ///   an image of the chart: everything a model would have to guess from
     ///   a picture -- what the axis means, where the baseline sits, how many
-    ///   nights it rests on -- is already computed and is handed over.
+    ///   nights it rests on -- is already computed and is handed over. Its
+    ///   own question is answered from it, not routed like typed text.
     func start(
         nightSummary: String,
         contextDigest: String? = nil,
-        chartContext: String? = nil,
+        chartQuestion: ChartQuestion? = nil,
         engine: UserPreferences.EngineChoice = .ruleBased,
         contextMode: CoachContextMode = .today
     ) {
         messages = []
         pendingAction = nil
         appleIntelligenceBecameReady = false
+        self.contextMode = contextMode
+        self.chartQuestion = chartQuestion
         preferredEngine = engine
         conversationEngine = Self.frozenEngine(preferred: engine)
         let framed: String
@@ -258,7 +266,7 @@ final class CoachChat {
         pendingContext = Context(
             nightSummary: framed,
             contextDigest: contextDigest,
-            chartContext: chartContext
+            chartContext: chartQuestion?.context
         )
     }
 
@@ -331,6 +339,15 @@ final class CoachChat {
             return
         }
 
+        // The chart's own question is about that point. Routed like typed
+        // text, "Why was my recovery signal lower on September 12?" matched
+        // "recovery" and was answered with this morning's Recovery score.
+        if let chart = chartQuestion, trimmed == chart.question {
+            pendingAction = nil
+            await answer(chart, asked: trimmed)
+            return
+        }
+
         switch CoachIntentRouter.classify(trimmed) {
         case .greeting:
             pendingAction = nil
@@ -366,6 +383,25 @@ final class CoachChat {
             }
             isResponding = true
             defer { isResponding = false }
+            // A conversation about one recorded night answers questions about
+            // one night from that night. The runner reads today's context,
+            // so "why did I wake up?" asked from 12 September was answered
+            // with this morning's night.
+            if contextMode != .today, call.kind.readsOneNight, let reply = evidence?.reply(to: trimmed) {
+                if var generated = await generate(for: trimmed, facts: reply.text) {
+                    generated.timeframe = reply.timeframe
+                    messages.append(generated.citing(reply.evidence))
+                } else {
+                    messages.append(Message(
+                        role: .assistant,
+                        text: reply.text,
+                        groundedIn: reply.evidence,
+                        bestAction: reply.action,
+                        timeframe: reply.timeframe
+                    ))
+                }
+                return
+            }
             // The engine computes; the model, when there is one, answers the
             // question that was asked from what the engine computed. This
             // path used to return the tool's fixed text even with Apple
@@ -396,6 +432,25 @@ final class CoachChat {
             messages.append(generated)
         } else {
             appendLocalAnswer(trimmed)
+        }
+    }
+
+    /// The chart point's own question: the model answers from the point's
+    /// facts when there is one, and otherwise the point's own reply stands.
+    private func answer(_ chart: ChartQuestion, asked question: String) async {
+        isResponding = true
+        defer { isResponding = false }
+        let local = chart.localAnswer
+        if var generated = await generate(for: question, facts: chart.context + "\n" + local.text) {
+            generated.timeframe = local.timeframe
+            messages.append(generated.citing(local.evidence))
+        } else {
+            messages.append(Message(
+                role: .assistant,
+                text: local.text,
+                groundedIn: local.evidence,
+                timeframe: local.timeframe
+            ))
         }
     }
 
@@ -544,7 +599,7 @@ final class CoachChat {
         case .getRecovery, .getEnergy, .getMovement, .getFatigueContext, .getTrainingContext,
              .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
              .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
-             .getForYourAge, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+             .getForYourAge, .getNapAdvice, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
             nil
         }
     }

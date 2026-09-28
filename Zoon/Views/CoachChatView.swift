@@ -96,7 +96,7 @@ struct CoachChatView: View {
             chat.start(
                 nightSummary: night.summaryForLLM,
                 contextDigest: coordinator.coachContextDigest(),
-                chartContext: chartQuestion?.context,
+                chartQuestion: chartQuestion,
                 engine: preferences.preferredEngine,
                 contextMode: chartQuestion == nil ? contextMode : .trend
             )
@@ -479,29 +479,8 @@ struct CoachChatView: View {
         .disabled(chat.isResponding)
     }
 
-    static let starterQuestions = [
-        "How did I sleep last night?",
-        "Am I behind on sleep?",
-        "When should I go to bed tonight?",
-        "Why was my HRV lower?",
-        "Should I train hard today?"
-    ]
-
-    static let followUpQuestions = [
-        "What should I do differently tonight?",
-        "How does this compare with my usual?",
-        "What changed this week?",
-        "Is a nap a good idea today?",
-        "Which habits seem to affect my sleep?",
-        "How much deep sleep did I get?",
-        "Am I behind on sleep?",
-        "When should I go to bed tonight?",
-        "How is my recovery?",
-        "Why do I wake up at night?",
-        // Answered from the age range and heart context in the digest.
-        "How much sleep do I need at my age?",
-        "Is my resting heart rate normal for my age?"
-    ]
+    static let starterQuestions = CoachSuggestionProvider.chatStarters
+    static let followUpQuestions = CoachSuggestionProvider.chatFollowUps
 
     private func unavailable(_ reason: String) -> some View {
         VStack(spacing: 14) {

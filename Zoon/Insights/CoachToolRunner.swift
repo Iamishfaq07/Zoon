@@ -31,6 +31,7 @@ struct CoachToolRunner {
         case .getPhysiologicalLoad: physiologicalLoad()
         case .getDailyLoad: dailyLoad()
         case .getForYourAge: await forYourAge()
+        case .getNapAdvice: napAdvice()
         case .logCaffeine: logCaffeine(minutes: call.proposedMinutes, servings: call.proposedServings)
         case .startNap: await startNap(minutes: call.proposedMinutes)
         case .prepareTomorrow: prepareTomorrow(minutes: call.proposedMinutes)
@@ -46,11 +47,32 @@ struct CoachToolRunner {
         return "Last night's Sleep Intelligence was \(score.percent) — \(score.band.label.lowercased()). \(score.confidence.label)."
     }
 
+    /// Duration, efficiency and wakes, then the stages and the night against
+    /// the usual one when there is enough to say it. The chat's own chips --
+    /// "How much deep sleep did I get?", "Why do I wake up at night?", "How
+    /// did last night compare with my usual?" -- route here, and each of
+    /// them used to get the same three numbers, none of which answered it.
     private func lastNightSummary() -> String? {
         guard let context else { return nil }
         let night = context.night
-        let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        return "Last night you were asleep \(asleep), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s"). That's the recorded night — not a medical claim."
+        let format = SleepNightFeatures.formatMinutes
+        var parts = ["Last night you were asleep \(format(night.timeAsleepMinutes)), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s")."]
+        if night.deepMinutes + night.remMinutes > 0 {
+            parts.append("Deep sleep \(format(night.deepMinutes)), REM \(format(night.remMinutes)).")
+        }
+        let prior = Array(coordinator.recentNights
+            .filter { $0.date < night.date }
+            .sorted { $0.date < $1.date }
+            .suffix(14).map(\.timeAsleepMinutes))
+        if prior.count >= 5, let usual = Statistics.median(prior) {
+            let gap = night.timeAsleepMinutes - usual
+            let span = "your usual \(format(usual)) across the previous \(prior.count) nights"
+            parts.append(abs(gap) < 10
+                ? "That's about \(span)."
+                : "That's \(format(abs(gap))) \(gap > 0 ? "more" : "less") than \(span).")
+        }
+        parts.append("That's the recorded night — not a medical claim.")
+        return parts.joined(separator: " ")
     }
 
     private func sleepDuration() -> String? {
@@ -312,6 +334,25 @@ struct CoachToolRunner {
             return "\(selection.candidate.action) \(selection.candidate.reason) That is the one action worth the attention, not a bedtime plan by default."
         }
         return "Nothing is urgent enough to be the one focus right now. Keep tonight's window if you have one, and use how you feel with Recovery, Energy, and Load."
+    }
+
+    /// The nap card's own advice, from the inputs Today hands it, so the
+    /// chat and the card cannot disagree.
+    private func napAdvice() -> String? {
+        guard let context else { return nil }
+        let advice = NapCoach.recommend(
+            now: .now,
+            debtMinutes: context.tonightPlanning.currentShortfallMinutes,
+            plannedBedtime: context.tonight.bedtime(),
+            napMinutesToday: naps.minutes(on: .now)
+        )
+        let verdict: String
+        switch advice.advice {
+        case .recommended(let minutes): verdict = "A nap of about \(minutes) minutes fits today."
+        case .optional: verdict = "A nap is optional right now."
+        case .avoid: verdict = "Better to skip a nap right now."
+        }
+        return "\(verdict) \(advice.reason)"
     }
 
     private func tomorrowPlan() -> ZoonTomorrow.Plan? {

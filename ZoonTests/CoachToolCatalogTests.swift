@@ -143,7 +143,7 @@ final class CoachToolCatalogTests: XCTestCase {
             "Is late caffeine actually affecting me?", "How should I catch up on sleep this week?",
             "What should I focus on?", "What's my Load?", "Is my physiological load high?",
             "What's my sleep trend?", "How much sleep do I need at my age?",
-            "Why was my HRV low last night?"
+            "Why was my HRV low last night?", "Is a nap a good idea today?"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
         for kind in CoachToolCatalog.Kind.allCases {

@@ -139,6 +139,8 @@ struct CoachEvidence: Sendable {
                 return learningReply()
             case .getWeeklyPlan:
                 return weeklyReply().within("Recent nights")
+            case .getNapAdvice:
+                return napLocalReply()
             default:
                 break
             }
@@ -503,6 +505,14 @@ struct CoachEvidence: Sendable {
             text: "Morning Recovery is scored on Today from last night's physiology — this local record does not invent that number. You were asleep \(asleep). Recovery describes the night, not live afternoon capacity.",
             evidence: catalog["sleep"],
             action: "Open Today for Morning Recovery."
+        )
+    }
+
+    private func napLocalReply() -> Reply {
+        Reply(
+            text: "Whether a nap fits depends on today's shortfall, any nap you've already had, and how far away bedtime is. A recorded night can't settle that; Today's nap card works it out from the live numbers.",
+            evidence: nil,
+            action: "Open Today for the nap card."
         )
     }
 

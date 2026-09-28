@@ -343,3 +343,85 @@ extension ChartQuestion {
         return question
     }
 }
+
+// MARK: - Answering it without a model
+
+extension ChartQuestion {
+
+    /// The chart's own question, answered from the point itself.
+    ///
+    /// The seeded question used to go through the Coach's router like
+    /// anything typed. "Why was my recovery signal lower on September 12?"
+    /// contains "recovery", so it was answered with this morning's Recovery
+    /// score: the wrong metric about the wrong day. This is what the point
+    /// says -- its value, the baseline and how many nights that rests on,
+    /// the neighbours and what was logged -- and it says plainly that a
+    /// chart cannot show why. Used as the whole answer in Rules, and as the
+    /// facts the model answers from otherwise.
+    struct LocalAnswer: Equatable, Sendable {
+        let text: String
+        /// The one figure the answer rests on, for the evidence chip.
+        let evidence: String
+        /// Which night it is about, shown above the answer.
+        let timeframe: String
+    }
+
+    var localAnswer: LocalAnswer {
+        let day = selected.date.formatted(.dateTime.month(.wide).day())
+        let value = formatted(selected.value)
+        var sentences = ["On \(day), your \(subject.label) was \(value)."]
+
+        if let baseline, baselineNightCount > 0 {
+            let delta = selected.value - baseline
+            let nights = "\(baselineNightCount) night\(baselineNightCount == 1 ? "" : "s")"
+            let usual = "your usual \(formatted(baseline)) across \(nights)"
+            switch deviation {
+            case .above, .below:
+                sentences.append("That's \(formattedMagnitude(abs(delta))) \(directionWord(delta)) than \(usual), outside your typical range.")
+            case .typical:
+                sentences.append("That's within your typical range: \(usual).")
+            case .unknown:
+                sentences.append("Compared with \(usual), there isn't enough history yet to say whether that gap is unusual.")
+            }
+        } else {
+            sentences.append("There's no established baseline for this yet, so Zoon can't say whether it was unusual.")
+        }
+
+        if !nearby.isEmpty {
+            let listed = nearby
+                .sorted { $0.date < $1.date }
+                .map { "\($0.date.formatted(.dateTime.month(.abbreviated).day())) \(formatted($0.value))" }
+                .joined(separator: ", ")
+            sentences.append("Nearby nights: \(listed).")
+        }
+
+        // `sleep` is already a phrase ("6h 40m asleep").
+        var around: [String] = []
+        if let sleep { around.append(sleep) }
+        if !journal.isEmpty { around.append("you logged \(journal.joined(separator: ", "))") }
+        if !workouts.isEmpty { around.append("activity: \(workouts.joined(separator: ", "))") }
+        if !bodySignals.isEmpty { around.append("body signals: \(bodySignals.joined(separator: ", "))") }
+        if !around.isEmpty {
+            sentences.append("That night: \(around.joined(separator: "; ")).")
+        }
+
+        sentences.append("A single point can't show why it moved. What's listed here was recorded around that night; it isn't proof of a cause.")
+
+        let short = selected.date.formatted(.dateTime.month(.abbreviated).day())
+        var evidence = "\(subject.label.prefix(1).uppercased() + subject.label.dropFirst()) \(value) on \(short)"
+        if let baseline, baselineNightCount > 0 { evidence += " · usual \(formatted(baseline))" }
+
+        return LocalAnswer(
+            text: sentences.joined(separator: " "),
+            evidence: evidence,
+            timeframe: "Night of \(selected.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))"
+        )
+    }
+
+    /// "Later" and "earlier" for a clock time, "higher" and "lower" for
+    /// everything else. A bedtime is not higher.
+    private func directionWord(_ delta: Double) -> String {
+        if case .trend(.bedtime) = subject { return delta > 0 ? "later" : "earlier" }
+        return delta > 0 ? "higher" : "lower"
+    }
+}
