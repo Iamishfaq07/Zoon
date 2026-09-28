@@ -65,7 +65,13 @@ range happens to look familiar.
 - **Hypnogram** — the full stage timeline, drawn in `Canvas` with connective
   risers so the night reads as one continuous trace.
 - **Sleep Need** — baseline + debt payback + yesterday's strain −
-  nap credit, as a stacked bar against what you actually slept.
+  nap credit, as a stacked bar against what you actually slept. Drawn
+  against the National Sleep Foundation range for your age (8–10 h for
+  teenagers, 7–9 h for adults, 7–8 h over 65), which is also where a new
+  goal starts.
+- **Heart during sleep** — average and lowest heart rate, when the low came
+  and what that timing usually means, and how far below your daytime resting
+  rate the night sat.
 - **Sleep sounds** — brown, pink and white **generated** so they never seam;
   weather, night and room as **bundled recorded loops** (rain, ocean, fire,
   purr, and the rest). Nothing is streamed. Sleep timer fades over the final
@@ -93,6 +99,12 @@ range happens to look familiar.
   tab.
 - **Weekly report** — averages, week-over-week trends,
   narrative highlights, best and worst night.
+- **For your age** — resting heart rate, HRV and cardio fitness (VO2 max)
+  placed against people of the same age and sex, from published population
+  studies. Context beside your own baselines, never an input to a score.
+  Age, sex and BMI can be filled from Health.
+- **What the words mean** — a searchable glossary of every term the app
+  uses, plain name first, with what is usual.
 
 ### What Zoon knows
 The rest of the app is organised by subject. This part is organised by **how

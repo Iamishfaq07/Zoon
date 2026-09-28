@@ -404,7 +404,10 @@ struct TodayView: View {
             energy: context.bodyBattery.current,
             load: context.strain.value,
             tonightBedtime: plannedBedtime(context),
-            shortfallMinutes: context.shortfallNowMinutes
+            // The same figure the hero arc shows, naps taken off. Handed the
+            // raw shortfall, the brief said "1h 35m" under an arc that had
+            // already counted this afternoon's nap.
+            shortfallMinutes: context.shortfallNowMinutes.map { max(0, $0 - napMinutesToday) }
         )
     }
 
@@ -620,6 +623,20 @@ struct TodayView: View {
                 debtMinutes: max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday),
                 weekChangeMinutes: weekChange(context),
                 repaymentMinutes: plan?.debtRepaymentMinutes
+            )
+
+            // The biggest number on the screen, and nothing said what it
+            // was. One tap, in words.
+            MetricInfoButton(
+                title: "Sleep shortfall",
+                symbol: SleepVocabulary.sleepDebt.symbol,
+                tint: Theme.Family.attention,
+                explanation: [
+                    SleepVocabulary.sleepDebt.meaning,
+                    "Each night you sleep less than you need adds to it; recent nights count most and older ones fade. A longer night or a nap pays some back, a little at a time, which is why Tonight's plan moves your bedtime earlier by minutes rather than hours.",
+                    "It is an estimate from your own sleep and need, not a medical measure."
+                ],
+                label: "What does this mean?"
             )
         }
         .frame(maxWidth: .infinity)

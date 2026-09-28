@@ -8,6 +8,16 @@ import Foundation
 /// what stops a preview convenience from breaking the extension build.
 enum AppMockData {
 
+    /// A cardio fitness estimate for the sample person, near the middle for
+    /// a man in his thirties, so the "for your age" rows have something to
+    /// describe in the demo.
+    static let vo2Max = 41.2
+
+    /// The sample person's age and sex, used wherever sample nights are
+    /// showing and the real profile is blank.
+    static let sampleAge = 34
+    static let sampleSex: DemographicBaseline.Sex = .male
+
     /// Rolling baseline matching `MockData.goodNight`.
     static let baseline = RollingBaseline(
         hrv7DayAvg: 61, sleepDebtMinutes: 95, deep7DayAvg: 74,

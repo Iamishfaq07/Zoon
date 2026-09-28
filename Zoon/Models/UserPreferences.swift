@@ -59,6 +59,10 @@ final class UserPreferences {
         didSet { defaults.set(sleepGoalMinutes, forKey: Key.sleepGoalMinutes) }
     }
 
+    /// The goal before anyone sets one. Onboarding moves it to the middle of
+    /// the recommended range for the person's age (`SleepNeedGuideline`).
+    static let defaultSleepGoalMinutes: Double = 480
+
     var hasCompletedOnboarding: Bool {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
     }
@@ -758,7 +762,7 @@ final class UserPreferences {
         self.defaults = defaults
         // 8 hours is the default target, overridable in Settings.
         let storedGoal = defaults.double(forKey: Key.sleepGoalMinutes)
-        self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : 480
+        self.sleepGoalMinutes = storedGoal > 0 ? storedGoal : Self.defaultSleepGoalMinutes
         self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
         self.bedtimeRemindersEnabled = defaults.bool(forKey: Key.bedtimeRemindersEnabled)
         self.focusSilencesBedtimeNudges = defaults.bool(forKey: Key.focusSilencesBedtimeNudges)
@@ -792,9 +796,14 @@ final class UserPreferences {
         ) ?? .unspecified
         let storedBMI = defaults.double(forKey: Key.bodyMassIndex)
         self.bodyMassIndex = storedBMI > 0 ? storedBMI : nil
+        // Apple Intelligence unless the person chose otherwise. Every
+        // consumer falls back to Rules on its own when the model is not
+        // available, so this only decides what an eligible device gets. The
+        // default was Rules, which meant the Coach never used the model on a
+        // phone that had it unless someone found the setting.
         self.preferredEngine = EngineChoice(
             rawValue: defaults.string(forKey: Key.preferredEngine) ?? ""
-        ) ?? .ruleBased
+        ) ?? .appleIntelligence
         self.recoveryModeDate = defaults.object(forKey: Key.recoveryModeDate) as? Date
         self.activeExperimentTag = (defaults.string(forKey: Key.experimentTag)).flatMap(BehaviorTag.init(rawValue:))
         self.experimentStartDate = defaults.object(forKey: Key.experimentStartDate) as? Date
@@ -834,7 +843,7 @@ final class UserPreferences {
     /// state; removing afterwards ensures the erase operation leaves no age,
     /// cycle choice, engine choice, schedule, or onboarding marker on disk.
     func resetForDataErasure() {
-        sleepGoalMinutes = 480
+        sleepGoalMinutes = Self.defaultSleepGoalMinutes
         hasCompletedOnboarding = false
         bedtimeRemindersEnabled = false
         focusSilencesBedtimeNudges = false
@@ -856,7 +865,7 @@ final class UserPreferences {
         age = nil
         biologicalSex = .unspecified
         bodyMassIndex = nil
-        preferredEngine = .ruleBased
+        preferredEngine = .appleIntelligence
         recoveryModeDate = nil
         activeExperimentTag = nil
         experimentStartDate = nil

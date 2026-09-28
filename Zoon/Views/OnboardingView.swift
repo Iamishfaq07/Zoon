@@ -24,6 +24,9 @@ struct OnboardingView: View {
 
     @State private var page = 0
     @State private var goalHours: Double = 8
+    /// Set once the person moves the slider. Until then the goal follows
+    /// the recommendation for their age, as soon as an age is known.
+    @State private var goalTouched = false
     @State private var isRequestingHealth = false
     @State private var hasRequestedHealth = false
 
@@ -55,7 +58,12 @@ struct OnboardingView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             goalHours = preferences.sleepGoalMinutes / 60
+            // A goal other than the untouched default was chosen before --
+            // a replayed onboarding -- and is not the recommendation's to
+            // move.
+            goalTouched = abs(preferences.sleepGoalMinutes - UserPreferences.defaultSleepGoalMinutes) > 0.5
         }
+        .onChange(of: preferences.age) { _, _ in followRecommendation() }
     }
 
     // MARK: - The Health gate
@@ -120,11 +128,30 @@ struct OnboardingView: View {
                 Zoon reads from Health and never writes to it. Everything is computed here.
 
                 Next, iOS will ask twice: first for Sleep, which Zoon cannot \
-                function without, then for heart rate, HRV, breathing and the rest, \
-                which sharpen Recovery and Body Signals. Leave everything on if you can \
+                function without, then for heart rate, HRV, breathing, your age and \
+                sex and the rest, which fit Recovery, Body Signals and your sleep \
+                range to you. Leave everything on if you can \
                 — Zoon cannot tell afterward if a switch got turned off.
                 """
         )
+    }
+
+    /// The recommendation for the person's age once one is known, and the
+    /// old promise until then.
+    private var recommendationLine: String {
+        guard let guideline = SleepNeedGuideline.forAge(preferences.age) else {
+            return "Every comparison uses this number, not a crowd average."
+        }
+        return "\(guideline.recommendedText) is recommended at \(preferences.age ?? 0). Zoon then learns your own need."
+    }
+
+    /// Moves the goal to the middle of the recommended range for the
+    /// person's age, unless they have already chosen one.
+    private func followRecommendation() {
+        guard !goalTouched, let guideline = SleepNeedGuideline.forAge(preferences.age) else { return }
+        withAnimation(Motion.respecting(reduceMotion, .snappy)) {
+            goalHours = guideline.suggestedGoalMinutes / 60
+        }
     }
 
     private var goal: some View {
@@ -139,22 +166,27 @@ struct OnboardingView: View {
                 Text("How long do you want to sleep?")
                     .font(Theme.heading(31))
                     .multilineTextAlignment(.center)
-                Text("Every comparison uses this number, not a crowd average.")
+                Text(recommendationLine)
                     .font(Theme.label(14, weight: .medium))
                     .foregroundStyle(Theme.Metric.sleep)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .contentTransition(.opacity)
+                    .animation(Motion.respecting(reduceMotion, Motion.tap), value: recommendationLine)
             }
             profilePickers
             Spacer(minLength: 8)
         }
     }
 
-    /// Age / sex / BMI belong here rather than a fourth lecture: they now
-    /// change the deep-sleep prior, and burying them in Settings means most
-    /// people never set them. All three stay optional.
+    /// Age / sex / BMI belong here rather than a fourth lecture: they set
+    /// the recommended sleep range, the deep-sleep prior and the "for your
+    /// age" context, and burying them in Settings means most people never
+    /// set them. Health fills them after the permission sheet when it can.
+    /// All three stay optional.
     private var profilePickers: some View {
         VStack(spacing: 10) {
-            Text("Optional — used only to pick a demographic deep-sleep prior, so a typical older night is not marked down against a young-adult target.")
+            Text("Optional. Sets the sleep range experts recommend for you, and what counts as typical deep sleep and heart rate for someone like you. Stays on this iPhone.")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
@@ -270,7 +302,14 @@ struct OnboardingView: View {
             // or what it now said. The ring above states the same value; it
             // is a separate element, and a slider is adjusted without
             // leaving it.
-            Slider(value: $goalHours, in: 5...11, step: 0.25)
+            Slider(
+                value: Binding(
+                    get: { goalHours },
+                    set: { goalHours = $0; goalTouched = true }
+                ),
+                in: 5...11,
+                step: 0.25
+            )
                 .tint(Theme.Metric.sleep)
                 .padding(.horizontal, 40)
                 .accessibilityLabel("Sleep goal")
@@ -364,6 +403,11 @@ struct OnboardingView: View {
             isRequestingHealth = true
             Task {
                 await coordinator.requestHealthAccess()
+                // Age, sex and BMI were on the sheet just answered. Blanks
+                // only: nothing on this screen has been chosen yet, but a
+                // replayed onboarding keeps what the person set before.
+                await coordinator.fillProfileFromHealth(requestingAccess: false, onlyMissing: true)
+                followRecommendation()
                 isRequestingHealth = false
                 // Set before the page changes: the gate reads this, so
                 // advancing first would be clamped straight back to 1.

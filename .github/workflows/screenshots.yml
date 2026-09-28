@@ -220,6 +220,17 @@ jobs:
                 output="sensorTruth-provenance"
                 appearance_args=(-zoonScrollTo tonight)
                 ;;
+              forYourAge)
+                # Insights scrolled to the age and sex context card, which
+                # sits below the fold.
+                output="trends-forYourAge"
+                appearance_args=(-zoonScrollTo forYourAge)
+                ;;
+              heart)
+                # The night scrolled to "Heart during sleep".
+                output="sleepDetail-heart"
+                appearance_args=(-zoonScrollTo heart)
+                ;;
               accessibilityMedium)
                 output="${tab}-accessibilityMedium"
                 ;;
@@ -347,6 +358,9 @@ jobs:
           # Below the fold on the provenance screen. See the `provenance`
           # case above.
           shoot sensorTruth provenance || FAILED=1
+          # The age and heart context, below the fold on their screens.
+          shoot trends forYourAge || FAILED=1
+          shoot sleepDetail heart || FAILED=1
           # The app is dark-first, but Light is a real preference. Keep
           # representative screens in the visual regression set so neutral
           # strokes and secondary text cannot silently disappear on pale
@@ -518,7 +532,7 @@ jobs:
           mkdir -p docs/screenshots/hires
           for name in today today-night today-morning today-light sleepDetail coach trends soundscapes \
                       bodyClock tomorrow evidence patterns breathing nap journal onboarding splash nightHistory \
-                      snoreCheck sleepDetail; do
+                      snoreCheck sleepDetail trends-forYourAge sleepDetail-heart; do
             [ -f "screenshots/$name.png" ] || continue
             sips -Z 2000 -s format jpeg -s formatOptions 88 \
               "screenshots/$name.png" --out "docs/screenshots/hires/$name.jpg" > /dev/null

@@ -33,6 +33,9 @@ enum CoachToolCatalog {
         case getCurrentPriority
         case getPhysiologicalLoad
         case getDailyLoad
+        /// The sleep range experts recommend at this age, and where resting
+        /// heart rate, HRV and cardio fitness sit for this age and sex.
+        case getForYourAge
         case logCaffeine
         case startNap
         case prepareTomorrow
@@ -51,7 +54,8 @@ enum CoachToolCatalog {
             case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getShortfall, .getEnergy,
                  .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext,
                  .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
-                 .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad:
+                 .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
+                 .getForYourAge:
                 false
             }
         }
@@ -79,6 +83,7 @@ enum CoachToolCatalog {
             case .getCurrentPriority: "Read the one action worth focusing on now."
             case .getPhysiologicalLoad: "Read physiological load so far today."
             case .getDailyLoad: "Read today's Load."
+            case .getForYourAge: "Read the sleep range and heart context for your age."
             case .logCaffeine: "Log caffeine after you confirm."
             case .startNap: "Start a nap after you confirm."
             case .prepareTomorrow: "Open Tomorrow after you confirm the time."
@@ -120,6 +125,17 @@ enum CoachToolCatalog {
             "sleep duration", "time asleep"
         ]) {
             return Call(kind: .getSleepDuration, proposedMinutes: nil, confirmationPrompt: nil)
+        }
+        // Age questions before anything about sleep, heart or bedtime:
+        // "how much sleep do I need at my age" is not last night's score.
+        // "Tonight" wants tonight's target, which carries the shortfall
+        // repayment; that is the Tonight tool's answer, not a range.
+        if !q.contains("tonight"), matches(q, [
+            "for my age", "at my age", "for someone my age", "people my age",
+            "how much sleep do i need", "how much sleep should i get", "how much sleep should i",
+            "how many hours of sleep do i need", "my sleep need"
+        ]) {
+            return Call(kind: .getForYourAge)
         }
         if matches(q, [
             "sleep score", "sleep intelligence", "how did i sleep"

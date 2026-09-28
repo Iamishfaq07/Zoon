@@ -35,6 +35,9 @@ struct HypnogramView: View {
     /// a gesture rather than `chartXSelection` because this view is a `Canvas`,
     /// not a Swift Charts mark — the touch-to-time math has to be done by hand.
     @State private var selectedFraction: CGFloat?
+    /// 0 → 1 as the night draws in from bedtime to wake, once per night
+    /// shown. See `DrawOnce`.
+    @State private var reveal: Double = 0
 
     private var span: DateInterval? { segments.span }
 
@@ -63,6 +66,7 @@ struct HypnogramView: View {
                 chart
             }
             if showsAxis { axis }
+            if showsAxis { legend }
             // The chart has always supported drag-to-inspect -- the gesture
             // above is unconditional -- but nothing on screen said so, on
             // any of its three call sites, so the feature was invisible.
@@ -228,6 +232,13 @@ struct HypnogramView: View {
                     }
                 }
                 .frame(width: geo.size.width, height: height)
+                // The night draws in left to right, bedtime to wake, the
+                // first time it is shown. Instant under Reduce Motion.
+                .mask(alignment: .leading) {
+                    Rectangle()
+                        .frame(width: geo.size.width * reveal)
+                }
+                .drawOnce(id: span?.start, progress: $reveal)
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
@@ -248,6 +259,40 @@ struct HypnogramView: View {
             }
         }
         .frame(height: height)
+    }
+
+    /// What the overlays are. The heart-rate line was drawn in red over the
+    /// stages with nothing saying what it was.
+    @ViewBuilder
+    private var legend: some View {
+        if let span {
+            let heart = OvernightSeries.clipped(heartRateSamples, to: span)
+            let hasSounds = soundEvents.contains { span.contains($0.date) }
+            if heart.count >= 2 || hasSounds {
+                HStack(spacing: 14) {
+                    if heart.count >= 2, let low = heart.map(\.bpm).min(), let high = heart.map(\.bpm).max() {
+                        HStack(spacing: 5) {
+                            Capsule()
+                                .fill(Theme.Metric.heart.opacity(0.8))
+                                .frame(width: 14, height: 2.5)
+                            Text("Heart rate \(Int(low.rounded()))–\(Int(high.rounded())) bpm")
+                        }
+                    }
+                    if hasSounds {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Theme.Metric.respiratory.opacity(0.85))
+                                .frame(width: 6, height: 6)
+                            Text("Sounds heard")
+                        }
+                    }
+                }
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkSecondary)
+                .padding(.leading, 42)
+                .accessibilityHidden(true)
+            }
+        }
     }
 
     private var axis: some View {
@@ -372,6 +417,9 @@ struct StageProportionBar: View {
 /// Legend row with minutes and percentage per stage.
 struct StageLegend: View {
     let features: SleepNightFeatures
+    /// When set, the "Typical" column is fitted to this age and sex
+    /// (`DemographicBaseline`); without it, the general adult ranges.
+    var demographic: DemographicBaseline? = nil
 
     /// Reference ranges only where the stages were measured. On a night a
     /// schedule or a phone "staged", or with most of it unstaged, "Deep
@@ -387,8 +435,8 @@ struct StageLegend: View {
     private var rows: [(stage: SleepStage, minutes: Double, reference: String)] {
         let shown = showsReferences
         var result: [(stage: SleepStage, minutes: Double, reference: String)] = [
-            (.deep, features.deepMinutes, shown ? "13–23%" : "—"),
-            (.rem, features.remMinutes, shown ? "20–25%" : "—"),
+            (.deep, features.deepMinutes, shown ? deepReference : "—"),
+            (.rem, features.remMinutes, shown ? remReference : "—"),
             (.core, features.coreMinutes, shown ? "45–60%" : "—")
         ]
         if features.unspecifiedAsleepMinutes > 0 {
@@ -398,8 +446,59 @@ struct StageLegend: View {
         return result
     }
 
+    /// Deep sleep falls with age and runs slightly higher in women, so a
+    /// fixed 13–23% marks a typical 65-year-old down. Three points either
+    /// side of the demographic expectation, when there is one.
+    private var deepReference: String {
+        guard let demographic else { return "13–23%" }
+        return Self.band(around: demographic.expectedDeepFraction)
+    }
+
+    private var remReference: String {
+        guard let demographic else { return "20–25%" }
+        return Self.band(around: demographic.expectedRemFraction)
+    }
+
+    static func band(around fraction: Double) -> String {
+        let low = Int(((fraction - 0.03) * 100).rounded())
+        let high = Int(((fraction + 0.03) * 100).rounded())
+        return "\(low)–\(high)%"
+    }
+
+    /// What the "Typical" column is typical of.
+    private var referenceCaption: String? {
+        guard showsReferences else { return nil }
+        guard let demographic else {
+            return "Typical: the usual adult range. Add your age in Settings to fit it to you."
+        }
+        let who: String = switch demographic.sex {
+        case .female: "women"
+        case .male: "men"
+        case .unspecified: "adults"
+        }
+        return "Typical: the usual share for \(who) around \(demographic.ageYears)."
+    }
+
     var body: some View {
         VStack(spacing: 9) {
+            if showsReferences {
+                // Column names. Without them "13–23%" beside a stage was a
+                // number nobody had been told how to read.
+                HStack(spacing: 10) {
+                    Text("Stage")
+                    Spacer()
+                    Text("Share")
+                    Text("Time")
+                        .frame(width: 56, alignment: .trailing)
+                    Text("Typical")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(width: 48, alignment: .trailing)
+                }
+                .font(Theme.text(11, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+                .accessibilityHidden(true)
+            }
             ForEach(rows, id: \.stage) { row in
                 HStack(spacing: 10) {
                     Circle()
@@ -434,6 +533,13 @@ struct StageLegend: View {
                         .minimumScaleFactor(0.6)
                         .frame(width: 48, alignment: .trailing)
                 }
+            }
+            if let referenceCaption {
+                Text(referenceCaption)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

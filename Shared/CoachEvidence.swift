@@ -215,6 +215,42 @@ struct CoachEvidence: Sendable {
         !text.unicodeScalars.contains { CharacterSet.decimalDigits.contains($0) }
     }
 
+    /// Whether every number in generated text is one Zoon supplied.
+    ///
+    /// `allowsGeneratedProse` refused any digit at all, which in practice
+    /// refused nearly every answer -- a model asked about sleep says "7h 32m"
+    /// -- and the chat fell back to the same handful of local replies for
+    /// every question. This keeps the rule that matters (the model may not
+    /// produce a figure of its own) and drops the one that did not: a figure
+    /// copied from the facts it was given is fine.
+    ///
+    /// Compared as number tokens, not substrings, so "4" is not excused by
+    /// a "42" somewhere in the facts. "7h 32m" contributes 7 and 32; "14.2"
+    /// stays 14.2; "10:38" contributes 10 and 38.
+    static func numbersAreGrounded(_ text: String, in facts: String) -> Bool {
+        let allowed = Set(numberTokens(in: facts))
+        return numberTokens(in: text).allSatisfy { allowed.contains($0) }
+    }
+
+    static func numberTokens(in text: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        let scalars = Array(text.unicodeScalars)
+        for (index, scalar) in scalars.enumerated() {
+            if CharacterSet.decimalDigits.contains(scalar) {
+                current.unicodeScalars.append(scalar)
+            } else if scalar == ".", !current.isEmpty, index + 1 < scalars.count,
+                      CharacterSet.decimalDigits.contains(scalars[index + 1]) {
+                current.unicodeScalars.append(scalar)
+            } else if !current.isEmpty {
+                tokens.append(current)
+                current = ""
+            }
+        }
+        if !current.isEmpty { tokens.append(current) }
+        return tokens
+    }
+
     // MARK: - Intents
 
     /// Below this, a night's own gap is not reported as "adding" to the

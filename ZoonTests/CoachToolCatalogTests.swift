@@ -142,7 +142,7 @@ final class CoachToolCatalogTests: XCTestCase {
             "What changed this month?", "What's Zoon learning about my sleep so far?",
             "Is late caffeine actually affecting me?", "How should I catch up on sleep this week?",
             "What should I focus on?", "What's my Load?", "Is my physiological load high?",
-            "What's my sleep trend?"
+            "What's my sleep trend?", "How much sleep do I need at my age?"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
         for kind in CoachToolCatalog.Kind.allCases {
@@ -214,5 +214,19 @@ final class CoachToolCatalogTests: XCTestCase {
                                     "5 in a sleep app is the afternoon")
         let prompt = try XCTUnwrap(call.confirmationPrompt)
         XCTAssertTrue(prompt.contains(CoachToolCatalog.clock(minutes: minutes)), prompt)
+    }
+
+    /// Age questions reach the age tool, not last night's score or tonight's
+    /// bedtime, which is where "how much sleep" and "heart" used to send them.
+    func testAgeQuestionsReachTheAgeTool() {
+        for question in [
+            "How much sleep do I need at my age?",
+            "Is my resting heart rate normal for my age?",
+            "How much sleep should I get?",
+            "Is my HRV okay for someone my age?"
+        ] {
+            XCTAssertEqual(CoachToolCatalog.interpret(question)?.kind, .getForYourAge, question)
+        }
+        XCTAssertFalse(CoachToolCatalog.Kind.getForYourAge.changesState)
     }
 }

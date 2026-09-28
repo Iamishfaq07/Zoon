@@ -86,6 +86,7 @@ struct TrendsView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 // V8: *how am I changing?* Sleep Health leads, then what
                 // changed as a story stream, then the sleep system as four
@@ -97,11 +98,21 @@ struct TrendsView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     InsightsHero(goalMinutes: preferences.sleepGoalMinutes)
                         .entrance(0)
-                    WeekMoonStrip(
-                        nights: Array(coordinator.recentNights.suffix(7)),
-                        goalMinutes: preferences.sleepGoalMinutes,
-                        selected: $selectedNight
-                    )
+                    VStack(spacing: 6) {
+                        WeekMoonStrip(
+                            nights: Array(coordinator.recentNights.suffix(7)),
+                            goalMinutes: preferences.sleepGoalMinutes,
+                            selected: $selectedNight
+                        )
+                        // The moons had no key: a full moon is a night that
+                        // reached the goal, and nothing on screen said so.
+                        Text("Each moon fills with how much of your \(preferences.sleepGoalDisplay) goal you slept. Tap one to open that night.")
+                            .font(Theme.evidence)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     .entrance(1)
                     SleepResilienceCard(nights: coordinator.recentNights)
                         .entrance(2)
@@ -110,6 +121,11 @@ struct TrendsView: View {
                         window: $baselineWindow
                     )
                     .entrance(2)
+                    // Directly under the personal baselines: first "am I
+                    // changing?", then "is this usual for someone like me?"
+                    ForYourAgeCard()
+                        .id(Self.forYourAgeAnchor)
+                        .entrance(2)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)
@@ -158,6 +174,23 @@ struct TrendsView: View {
                             symbol: "chart.xyaxis.line",
                             tint: Theme.Family.bodySignals
                         ) { ChartBuilderView() }
+
+                        // Reviewing the week belongs where the week is
+                        // reviewed; it was only in More.
+                        ExploreTile(
+                            title: "Weekly report",
+                            subtitle: "This week against last, in one page",
+                            symbol: "calendar.badge.clock",
+                            tint: Theme.Family.recovery
+                        ) { ReportView() }
+
+                        // This tab carries most of the app's vocabulary.
+                        ExploreTile(
+                            title: "What the words mean",
+                            subtitle: "Every term here, said plainly",
+                            symbol: "character.book.closed.fill",
+                            tint: Theme.Family.circadian
+                        ) { GlossaryView() }
                     }
                     .entrance(2)
 
@@ -214,11 +247,27 @@ struct TrendsView: View {
                 }
                 .padding()
             }
+            .onAppear {
+                // `-zoonScrollTo forYourAge`: the capture photographs the
+                // card below the fold. Same pattern as Sensor Truth's.
+                guard LaunchOptions.scrollTarget == Self.forYourAgeAnchor else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        proxy.scrollTo(Self.forYourAgeAnchor, anchor: .top)
+                    }
+                }
+            }
+            }
             .nightBackground()
             .navigationTitle("Insights")
             .zoonGlobalToolbar()
         }
     }
+
+    /// The scroll anchor `-zoonScrollTo` names for the age card.
+    static let forYourAgeAnchor = "forYourAge"
 
     private struct FingerprintSummaryCard: View {
         let fingerprint: SleepFingerprint

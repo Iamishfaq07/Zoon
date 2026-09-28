@@ -58,7 +58,8 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Inputs:** user goal or qualified learned need, recent weighted shortfall, prior strain, naps, achieved minutes.
 - **Rules:** learned need is conservative and history-gated; `SleepNeed` applies bounded adjustments and reports each contribution.
 - **Missing behavior:** absent strain contributes nothing; absent learned history uses the explicit user goal, not a hidden demographic value.
-- **Tests:** `SleepNeedTests`, `LearnedSleepNeedTests`, `SleepSufficiencyEngineTests`, `SleepAutopilotTests`.
+- **Age range (`SleepNeedGuideline`):** the National Sleep Foundation recommendation for the person's age (teenagers 8–10 h, 18–64 7–9 h, 65+ 7–8 h; "may be appropriate" bands beside them). It only sets where a new goal *starts* in onboarding (the middle of the range, until the person moves the slider) and says where the goal and learned baseline sit against it. It never replaces the goal inside `SleepNeed`.
+- **Tests:** `SleepNeedTests`, `LearnedSleepNeedTests`, `SleepSufficiencyEngineTests`, `SleepAutopilotTests`, `ForYourAgeTests`.
 - **Allowed:** “estimated need/target.” **Disallowed:** a clinical prescription.
 
 ## Recent Sleep Shortfall (`RecentSleepShortfall`)
@@ -133,6 +134,18 @@ These specifications describe shipping code on `codex/deep-audit-release`. Code 
 - **Baseline:** robust personal history, per-signal availability and repeated-night rules. HRV status compares the most recent seven nights (including tonight) against a baseline of up to 90 nights that excludes that comparison week; the balanced range is at least ±5% of the baseline mean. Health Radar activates on multi-signal or sustained change rather than a single noisy value.
 - **Missing behavior:** each signal remains unavailable independently. Raw breathing percentage does not invent a clinical threshold.
 - **Tests:** `HRVStatusTests`, `VitalsStatusTests`, `HealthRadarTests`, `BreathingHealthTests`.
+
+## Age and sex context (`HeartContext`, `DemographicBaseline`)
+
+- **Question:** is this number unusual for someone of my age and sex? Shown beside the personal baselines, never an input to any score.
+- **Resting heart rate:** the usual adult range, 60–100 bpm (American Heart Association), with the sex difference stated (Quer et al., *PLOS ONE* 2020, 92,457 adults).
+- **HRV (SDNN):** typical value for the age interpolated from Voss et al., *PLOS ONE* 2015 (about 50 ms to age 30, about 30 ms at 70, flat beyond the studied range); ±35% counts as typical. The copy says Apple Watch's shorter windows read lower.
+- **Cardio fitness (VO2 max):** the FRIEND registry treadmill median for the decade and sex (Kaminsky et al., *Mayo Clin Proc* 2015); ±10% counts as typical. No comparison without a sex, or outside 20–79.
+- **Stage "Typical" column:** `DemographicBaseline` deep and REM expectation ±3 points; the general adult ranges without an age.
+- **Heart during sleep (`OvernightHeartSummary`):** average and lowest 15-minute mean of the 5-minute overnight bins; the low's position in the night (first half, to three quarters, later); the sleeping average against the daytime resting rate.
+- **Missing behavior:** no age, no age comparison; fewer than three of the last 14 nights with a value, no row; fewer than six overnight bins, no heart summary.
+- **Tests:** `ForYourAgeTests`.
+- **Allowed:** "typical for", "above/below the middle for". **Disallowed:** a "heart age", a grade, a diagnosis.
 
 ## Breathing disturbance and apnea summaries
 

@@ -39,15 +39,29 @@ struct LastNightHero: View {
                 tint: .primary
             )
 
-            HStack(spacing: 10) {
-                Text(context.night.clockString(context.night.bedtime))
-                    .monospacedDigit()
+            // Named ends. Unlabelled, "11:02 PM" here sat above a chart
+            // starting at "11:14 PM" (the first sleep) with nothing saying
+            // one was bed and the other falling asleep.
+            HStack(alignment: .bottom, spacing: 10) {
+                VStack(spacing: 2) {
+                    Text("In bed")
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(context.night.clockString(context.night.bedtime))
+                        .monospacedDigit()
+                }
                 Rectangle()
                     .fill(Theme.Family.sleep.opacity(0.5))
                     .frame(height: 1.5)
                     .frame(maxWidth: 120)
-                Text(context.night.clockString(context.night.wakeTime))
-                    .monospacedDigit()
+                    .padding(.bottom, 8)
+                VStack(spacing: 2) {
+                    Text("Up")
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text(context.night.clockString(context.night.wakeTime))
+                        .monospacedDigit()
+                }
             }
             .font(Theme.label(14, weight: .medium))
             .foregroundStyle(Theme.inkSecondary)

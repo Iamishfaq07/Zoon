@@ -21,7 +21,11 @@ struct SleepDetailView: View {
         )
     }
 
+    /// The scroll anchor `-zoonScrollTo` names for the heart card.
+    static let heartAnchor = "heart"
+
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             // V8 order: the night itself first (headline, hypnogram, story),
             // then what it was made of. Sleep Need and Chronotype no longer
@@ -33,6 +37,17 @@ struct SleepDetailView: View {
             VStack(spacing: Theme.stackSpacing) {
                 headline
                 hypnogramCard
+                if let heart = OvernightHeartSummary.make(
+                    samples: context.overnightHeartRate,
+                    night: DateInterval(
+                        start: context.night.bedtime,
+                        end: max(context.night.bedtime, context.night.wakeTime)
+                    ),
+                    restingHeartRate: context.night.restingHeartRate
+                ) {
+                    HeartDuringSleepCard(summary: heart, clock: context.night.clockString)
+                        .id(Self.heartAnchor)
+                }
                 AwakeningInspectorCard(
                     night: context.night,
                     sounds: soundEventStore.recentEvents,
@@ -51,6 +66,17 @@ struct SleepDetailView: View {
             }
             .padding(.horizontal)
             .padding(.bottom, 28)
+        }
+        .onAppear {
+            guard LaunchOptions.scrollTarget == Self.heartAnchor else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    proxy.scrollTo(Self.heartAnchor, anchor: .top)
+                }
+            }
+        }
         }
         .nightBackground()
         .navigationTitle("Sleep")
@@ -250,7 +276,7 @@ struct SleepDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SectionHeader(title: "Stage Breakdown", systemImage: "square.stack.3d.up")
                 StageProportionBar(features: context.night)
-                StageLegend(features: context.night)
+                StageLegend(features: context.night, demographic: coordinator.demographic)
 
                 // What wrote these stages, under the figures they qualify.
                 //

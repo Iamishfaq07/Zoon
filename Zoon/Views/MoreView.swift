@@ -76,6 +76,9 @@ struct MoreView: View {
                     navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
                         ArticlesView()
                     }
+                    navRow("What the words mean", "Every term in the app, said plainly", "character.book.closed.fill", Theme.Family.bodySignals) {
+                        GlossaryView()
+                    }
                     navRow("Settings", "Goal, engine, privacy, replay first night", "gearshape.fill", .secondary) {
                         SettingsView()
                     }

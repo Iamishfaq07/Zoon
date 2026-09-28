@@ -225,7 +225,32 @@ struct JournalView: View {
     /// today's numbers as that day's.
     @ViewBuilder
     private var lifestyleInsightsCard: some View {
-        if preferences.lifestyleInsightsEnabled,
+        if !preferences.lifestyleInsightsEnabled,
+           Calendar.current.isDateInToday(selectedDate),
+           DataEnvironment.current.isLive {
+            // The one place these numbers appear, so the one place to offer
+            // them. Off, the feature was reachable only from a Settings
+            // switch nobody had a reason to look for.
+            VStack(alignment: .leading, spacing: 10) {
+                SectionHeader(
+                    title: "Let Health fill some of this in",
+                    subtitle: "Caffeine, alcohol, time in daylight and mindful minutes, read from Health beside your tags. Asks its own permission; stays on this iPhone.",
+                    systemImage: "heart.text.square"
+                )
+                Button {
+                    preferences.lifestyleInsightsEnabled = true
+                    Haptics.select()
+                    Task { await coordinator.enableLifestyleInsights() }
+                } label: {
+                    Text("Turn on")
+                        .font(Theme.label(14, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.Metric.sleep)
+            }
+            .glassCard()
+        } else if preferences.lifestyleInsightsEnabled,
            Calendar.current.isDateInToday(selectedDate),
            let insights = coordinator.todayLifestyleInsights,
            !insights.isEmpty {

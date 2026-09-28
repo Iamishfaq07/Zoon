@@ -12,6 +12,9 @@ import SwiftUI
 @Observable
 final class GlobalPresentation {
     var showingJournal = false
+    /// Set by a screen that needs the bottom edge for itself -- the Coach
+    /// chat, whose composer the floating tab bar sat on top of.
+    var hidesTabBar = false
     var showingMore = false
     /// Owned here rather than by `MoreView` so a Control Center or Shortcuts
     /// deep link (Report, Settings, Badges) can push directly onto it the

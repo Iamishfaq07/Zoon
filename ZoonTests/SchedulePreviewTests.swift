@@ -42,15 +42,25 @@ final class SchedulePreviewTests: XCTestCase {
         XCTAssertTrue(result.contains("Alarm: not set, Zoon does not have permission to set alarms."))
     }
 
-    func testTheAlarmNeedsTheWakeWindowAsInTheScheduler() {
+    /// The alarm is its own switch. It used to ride on the wake window, so a
+    /// Coach "set an alarm" was cancelled by the scheduler for anyone who had
+    /// not also turned the window notification on.
+    func testTheAlarmStandsOnItsOwnAsInTheScheduler() {
         var settings = everything
         settings.wakeWindow = false
-        XCTAssertFalse(lines(settings).contains { $0.hasPrefix("Alarm") })
+        XCTAssertTrue(lines(settings).contains("Alarm rings at T+660, even in Silent mode."))
+        XCTAssertFalse(lines(settings).contains { $0.hasPrefix("Wake window") })
+
+        let alarmOnly = SchedulePreview.Settings(
+            bedtimeReminders: false, wakeWindow: false, wakeAlarm: true, morningBrief: false,
+            notificationsBlocked: false, alarmBlocked: false
+        )
+        XCTAssertEqual(lines(alarmOnly), ["Alarm rings at T+660, even in Silent mode."])
     }
 
     func testAllOffAndSkippedSaySoInsteadOfBeingBlank() {
         let off = SchedulePreview.Settings(
-            bedtimeReminders: false, wakeWindow: false, wakeAlarm: true, morningBrief: false,
+            bedtimeReminders: false, wakeWindow: false, wakeAlarm: false, morningBrief: false,
             notificationsBlocked: false, alarmBlocked: false
         )
         XCTAssertEqual(lines(off).count, 1)
