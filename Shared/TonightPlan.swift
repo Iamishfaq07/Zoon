@@ -66,7 +66,7 @@ struct TonightPlan: Hashable, Sendable {
         }
         if planning.tonightStrainAdjustmentMinutes >= 1 {
             rows.append(Driver(
-                label: "Yesterday's strain",
+                label: "Today's strain",
                 minutes: planning.tonightStrainAdjustmentMinutes,
                 detail: "Tonight only. Future nights do not inherit this."
             ))

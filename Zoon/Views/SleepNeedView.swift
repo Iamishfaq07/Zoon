@@ -14,6 +14,13 @@ struct SleepNeedView: View {
     var zoomID: String? = nil
 
     private var need: SleepNeed? { coordinator.state.context?.sleepNeed }
+    /// Tonight's plan: the shortfall through last night, today's strain and
+    /// today's naps.
+    private var tonight: TonightPlan? { coordinator.state.context?.tonight }
+
+    private func tonightTarget(_ need: SleepNeed) -> Double {
+        tonight?.suggestedSleepTargetMinutes ?? need.totalNeedMinutes
+    }
     private var learned: LearnedSleepNeed? { coordinator.state.context?.learnedSleepNeed }
 
     var body: some View {
@@ -81,9 +88,19 @@ struct SleepNeedView: View {
                 Text("Tonight's suggested target")
                     .font(Theme.label(13))
                     .foregroundStyle(Theme.inkSecondary)
-                Text(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))
+                // Tonight's plan's own target -- the one Tonight, the Coach
+                // and the plan card use. `need.totalNeedMinutes` is last
+                // night's, built from the debt carried *into* it; after a
+                // 3-hour night the two were half an hour apart under the
+                // same label.
+                Text(SleepNightFeatures.formatMinutes(tonightTarget(need)))
                     .font(Theme.numeral(46))
                     .monospacedDigit()
+                if tonight != nil, abs(need.totalNeedMinutes - tonightTarget(need)) >= 1 {
+                    Text("Last night's target was \(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))")
+                        .font(Theme.text(11))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
             }
 
             StatusPill(text: learned?.confidence.label ?? "Low confidence", tint: Theme.Metric.sleep)
@@ -198,27 +215,43 @@ struct SleepNeedView: View {
         }
     }
 
+    /// Tonight's drivers when there is a plan, so the rows explain the
+    /// target above them. The total is shown as its own figure rather than
+    /// summed: Autopilot holds the target to what one night's bedtime shift
+    /// allows, so the rows can differ from it.
     private func breakdownCard(_ need: SleepNeed) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let rows: [(label: String, minutes: Double)] = tonight.map { plan in
+            plan.drivers.map { (label: $0.label, minutes: $0.minutes) }
+        } ?? need.contributions.map { (label: $0.label, minutes: $0.minutes) }
+        let total = tonightTarget(need)
+        let rowSum = rows.reduce(0) { $0 + $1.minutes }
+        return VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "What it's built from", systemImage: "list.bullet.rectangle")
-            ForEach(need.contributions) { contribution in
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack {
-                    Text(contribution.label)
+                    Text(row.label)
                         .font(Theme.label(12))
                     Spacer()
-                    Text((contribution.minutes >= 0 ? "+" : "−") + SleepNightFeatures.formatMinutes(abs(contribution.minutes)))
+                    // The first row is the baseline itself, not an addition.
+                    Text((index == 0 ? "" : row.minutes >= 0 ? "+" : "−") + SleepNightFeatures.formatMinutes(abs(row.minutes)))
                         .font(Theme.label(13, weight: .semibold))
                         .monospacedDigit()
                 }
             }
             Divider().overlay(Theme.cardStroke)
             HStack {
-                Text("Total estimated need")
+                Text(tonight == nil ? "Total estimated need" : "Tonight's target")
                     .font(Theme.label(12, weight: .bold))
                 Spacer()
-                Text(SleepNightFeatures.formatMinutes(need.totalNeedMinutes))
+                Text(SleepNightFeatures.formatMinutes(total))
                     .font(Theme.label(13, weight: .bold))
                     .monospacedDigit()
+            }
+            if abs(rowSum - total) >= 5 {
+                Text("Tonight's plan moves bedtime by a bounded amount each night, so its target can differ from the sum above.")
+                    .font(Theme.text(10))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .glassCard()
@@ -326,11 +359,11 @@ struct SleepNeedView: View {
                 """
         }
         return base + """
-             Then it adjusts up for outstanding sleep debt and yesterday's exertion, and down \
-            for any naps -- so a harder day or a short night genuinely raises tonight's target \
-            instead of treating every night the same. Sleep debt itself is tracked separately, \
-            as a running shortfall against your Settings goal rather than this learned baseline \
-            -- see Sleep Debt for how that number is built.
+             Tonight's target then adds a slice of the shortfall through last night and \
+            today's exertion, and takes off today's naps -- so a harder day or a short night \
+            genuinely raises it instead of treating every night the same. The shortfall itself \
+            is tracked separately, each night against the need Zoon had learned by then -- see \
+            Sleep Debt for how that number is built.
             """
     }
 }

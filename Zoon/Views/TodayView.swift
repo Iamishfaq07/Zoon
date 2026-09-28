@@ -188,7 +188,8 @@ struct TodayView: View {
                 SleepMetricsView(
                     actualMinutes: context.night.total24hAsleepMinutes + napMinutesToday,
                     needMinutes: context.sleepNeed.totalNeedMinutes,
-                    napMinutes: napMinutesToday
+                    napMinutes: napMinutesToday,
+                    needLabel: "Last night's need"
                 )
                 .entrance(2)
 
