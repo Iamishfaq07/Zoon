@@ -175,6 +175,13 @@ struct TrendsView: View {
                             tint: Theme.Family.bodySignals
                         ) { ChartBuilderView() }
 
+                        ExploreTile(
+                            title: "Your month",
+                            subtitle: "A calendar of moons, and a card to share",
+                            symbol: "moon.stars.fill",
+                            tint: Theme.Family.sleep
+                        ) { MonthRecapView() }
+
                         // Reviewing the week belongs where the week is
                         // reviewed; it was only in More.
                         ExploreTile(
