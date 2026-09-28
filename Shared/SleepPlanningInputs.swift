@@ -81,6 +81,18 @@ struct SleepPlanningInputs: Hashable, Sendable {
         return max(floor, composed)
     }
 
+    /// What today's naps actually take off tonight's target, after the night
+    /// floor. This is all a nap does to the plan: the shortfall ledger is
+    /// one-sided, so a nap lowers tonight's target and counts towards the
+    /// next night's total, but never lowers the shortfall itself.
+    var tonightNapEffectMinutes: Double {
+        let floor = max(baselineNeedMinutes * 0.75, baselineNeedMinutes - 120)
+        let withoutNaps = baselineNeedMinutes
+            + Self.repayment(for: currentShortfallMinutes)
+            + tonightStrainAdjustmentMinutes
+        return max(0, max(floor, withoutNaps) - tonightNeedMinutes)
+    }
+
     /// Tonight's need *before* any repayment: baseline plus today's modifiers.
     ///
     /// For an engine that applies the repayment itself — `SleepAutopilot` owns

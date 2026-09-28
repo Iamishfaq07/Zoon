@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Naps taken today, and what they are doing to today's shortfall.
+/// Naps taken today, and what they do to tonight's plan.
 ///
 /// **The gap this closes.** Nap credit is attributed to the calendar day
 /// *before* a night's wake — `SleepContextWindow.napDay(before:)` returns
@@ -19,13 +19,10 @@ import SwiftUI
 struct NapsTodayCard: View {
 
     let napMinutesToday: Double
-    /// Shortfall before today's naps are taken off it.
-    let debtMinutes: Double
+    /// What today's naps take off tonight's target
+    /// (`SleepPlanningInputs.tonightNapEffectMinutes`).
+    let targetReductionMinutes: Double
     let recommendation: NapCoach.Recommendation
-
-    /// A nap cannot take the shortfall below zero.
-    private var repaid: Double { min(napMinutesToday, max(debtMinutes, 0)) }
-    private var remaining: Double { max(0, debtMinutes - napMinutesToday) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -86,15 +83,15 @@ struct NapsTodayCard: View {
         .glassCard()
     }
 
-    /// Says what the nap did, in the same units the shortfall is shown in.
+    /// Says what the nap did. Not "that takes X off today's shortfall": the
+    /// shortfall only records nights below target, so the figure the card
+    /// promised came back the next morning even when tonight's (lowered)
+    /// target was met. What a nap changes is tonight's target.
     private var effectLine: String {
-        guard debtMinutes > 1 else {
-            return "You had no shortfall to repay, so this is sleep in hand rather than sleep owed."
+        guard targetReductionMinutes >= 1 else {
+            return "Tonight's target is already as low as Zoon sets it, so this nap doesn't lower it further."
         }
-        if remaining <= 1 {
-            return "That clears today's shortfall of \(SleepNightFeatures.formatMinutes(debtMinutes))."
-        }
-        return "That takes \(SleepNightFeatures.formatMinutes(repaid)) off today's shortfall, leaving \(SleepNightFeatures.formatMinutes(remaining))."
+        return "That lowers tonight's target by \(SleepNightFeatures.formatMinutes(targetReductionMinutes))."
     }
 
     private var adviceTitle: String {

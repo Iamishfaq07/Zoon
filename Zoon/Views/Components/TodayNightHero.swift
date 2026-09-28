@@ -129,10 +129,11 @@ struct TodayNeedTracks: View {
     /// the same night.
     private var slept: Double { context.night.total24hAsleepMinutes }
 
-    /// Today's naps come off today's shortfall, and cannot take it below
-    /// zero.
+    /// The ledger's figure. Today's naps used to come off it here, which the
+    /// one-sided ledger does not do, so the balance "rebounded" the next
+    /// morning; a nap lowers tonight's target instead.
     private var debt: Double {
-        max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday)
+        max(0, context.shortfallNowMinutes ?? 0)
     }
     private var need: Double { max(context.sleepNeed.totalNeedMinutes, 1) }
 

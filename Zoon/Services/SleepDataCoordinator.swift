@@ -1510,9 +1510,8 @@ final class SleepDataCoordinator {
             sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
             isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
             // The same shortfall Today's arc shows, last night included.
-            // Less today's naps, as Today's arc shows it, so the widget and
-            // the watch do not quote a figure the phone already lowered.
-            currentShortfallMinutes: context.shortfallNowMinutes.map { max(0, $0 - napMinutesToday()) }
+            // Naps are not taken off (they lower tonight's target instead).
+            currentShortfallMinutes: context.shortfallNowMinutes
         )
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).

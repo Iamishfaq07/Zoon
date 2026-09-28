@@ -135,9 +135,10 @@ struct CoachToolRunner {
     /// The shortfall Today's hero shows: through last night, less today's
     /// naps. `night.sleepDebtMinutes` is the shortfall *entering* last night,
     /// so the Coach answered "1h 35m" beside a Today screen saying "1h 57m".
+    /// The figure Today shows. Naps lower tonight's target, not this.
     private var shortfallNow: Double? {
         guard let context, let now = context.shortfallNowMinutes else { return nil }
-        return max(0, now - coordinator.napMinutesToday())
+        return max(0, now)
     }
 
     private func shortfall() -> String? {
