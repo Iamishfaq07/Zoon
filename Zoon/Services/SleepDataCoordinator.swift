@@ -66,7 +66,8 @@ final class SleepDataCoordinator {
                 Zoon couldn't find any sleep in your Health data for the last few nights.
 
                 Two things to check: wear your Apple Watch to bed with Sleep Focus on, \
-                and make sure you allowed Zoon to read Sleep in Health → Sharing → Apps.
+                and make sure Zoon may read Sleep: in the Health app, tap your picture, \
+                then Apps under Privacy, then Zoon, and turn on Sleep.
                 """
             }
         }
@@ -680,7 +681,16 @@ final class SleepDataCoordinator {
         // night before it until the next refresh. The night is published
         // first, so the screen fills while these are still reading.
 
-        if case .idle = state { state = .loading }
+        // Loading, not the empty or error card, while a sync that could
+        // change the answer is running: before the first sync has finished,
+        // and after a failure. New users used to see "No sleep data yet --
+        // check permissions" for the whole first import, because a profile
+        // recompute during onboarding published the empty store as empty.
+        switch state {
+        case .idle, .failed: state = .loading
+        case .empty where lastRefresh == nil: state = .loading
+        default: break
+        }
 
         do {
             let window = DateInterval(
@@ -754,7 +764,7 @@ final class SleepDataCoordinator {
                 logger.error("Persistence failed; keeping the previous HealthKit anchor so this delta is retried")
             }
 
-            await publishLatest()
+            await publishLatest(afterSync: true)
             lastRefresh = .now
         } catch {
             logger.error("Refresh failed: \(error.localizedDescription, privacy: .public)")
@@ -1066,14 +1076,20 @@ final class SleepDataCoordinator {
 
     /// Reads the newest stored night back out, derives everything, updates state
     /// and hands a snapshot to the widget.
-    private func publishLatest() async {
+    /// - Parameter afterSync: whether HealthKit has just been read. Before
+    ///   the first sync finishes, only a sync may say there is nothing to
+    ///   show; anything else publishing an empty store leaves the loading
+    ///   state as it is.
+    private func publishLatest(afterSync: Bool = false) async {
         applyLocalRepairs()
         guard !isErasing else { return }
         let generation = storeGeneration
         let goal = preferences.sleepGoalMinutes
 
         guard let record = store.latestNight else {
-            state = .empty(reason: .noSleepData)
+            if afterSync || lastRefresh != nil || state.context != nil {
+                state = .empty(reason: .noSleepData)
+            }
             recentNights = []
             return
         }

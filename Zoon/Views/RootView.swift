@@ -598,8 +598,10 @@ struct SleepTabView: View {
                     ]
                 ),
                 primaryAction: reason == .noSleepData
-                    ? ("Open Health Access", {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                    ? ("Open the Health App", {
+                        // Health read access is set in the Health app; Zoon's own Settings
+                        // page has no Health switches.
+                        if let url = URL(string: "x-apple-health://") {
                             UIApplication.shared.open(url)
                         }
                     })

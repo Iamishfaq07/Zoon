@@ -30,7 +30,7 @@ enum FetchIssue: String, Codable, Sendable, CaseIterable {
     var explanation: String {
         switch self {
         case .notRecorded: "Nothing recorded."
-        case .accessDenied: "Zoon can't read this. Check Health access in Settings > Health > Data Access & Devices > Zoon."
+        case .accessDenied: "Zoon can't read this. In the Health app, tap your picture, then Apps under Privacy, then Zoon, and turn it on."
         case .temporarilyUnavailable: "Couldn't read this just now, usually because the phone was locked. Zoon will try again."
         case .unsupported: "This device doesn't provide this data."
         case .queryFailed: "Reading this failed. Zoon will try again on the next refresh."

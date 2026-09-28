@@ -89,14 +89,32 @@ struct TodayNightHero: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// The stages, when the source records them. From a tracker that writes
+    /// one undifferentiated "asleep" block this read "0m Deep, 0m Core, 0m
+    /// REM" after seven hours of sleep -- a measurement of nothing, shown as
+    /// a finding. A night that is only partly staged gets an Unstaged chip,
+    /// so the chips add up to the time asleep above them.
+    @ViewBuilder
     private var stageRow: some View {
-        HStack(spacing: 10) {
-            stageChip("Deep", minutes: context.night.deepMinutes, tint: Theme.Stage.deep)
-            stageChip("Core", minutes: context.night.coreMinutes, tint: Theme.Stage.core)
-            stageChip("REM", minutes: context.night.remMinutes, tint: Theme.Stage.rem)
-            stageChip("Wake", minutes: context.night.awakeMinutes, tint: Theme.Stage.awake)
+        let night = context.night
+        if night.hasStageBreakdown {
+            HStack(spacing: 10) {
+                stageChip("Deep", minutes: night.deepMinutes, tint: Theme.Stage.deep)
+                stageChip(SleepVocabulary.core.plain, minutes: night.coreMinutes, tint: Theme.Stage.core)
+                stageChip("REM", minutes: night.remMinutes, tint: Theme.Stage.rem)
+                if night.unspecifiedAsleepMinutes >= 1 {
+                    stageChip("Unstaged", minutes: night.unspecifiedAsleepMinutes, tint: Theme.inkSecondary)
+                }
+                stageChip("Wake", minutes: night.awakeMinutes, tint: Theme.Stage.awake)
+            }
+            .font(Theme.text(11, weight: .medium))
+        } else {
+            Text("\(night.sourceName ?? "This source") doesn't record sleep stages. Asleep \(SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)), awake \(SleepNightFeatures.formatMinutes(night.awakeMinutes)).")
+                .font(Theme.text(11, weight: .medium))
+                .foregroundStyle(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(Theme.text(11, weight: .medium))
     }
 
     private func stageChip(_ label: String, minutes: Double, tint: Color) -> some View {
