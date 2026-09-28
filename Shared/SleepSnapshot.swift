@@ -231,6 +231,18 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
     /// least likely to be recovered by the reader.
     var headlineFindingStrength: String = ""
 
+    /// The National Sleep Foundation range for the person's age, minutes,
+    /// and its label ("7–9 h at 34"). Zero and empty when no age is set.
+    var ageRangeLowMinutes: Double = 0
+    var ageRangeHighMinutes: Double = 0
+    var ageRangeLabel: String = ""
+
+    /// Last night's heart: average and lowest 15-minute mean, and when the
+    /// low came (`OvernightHeartSummary`). Zero and nil without a series.
+    var heartAverageBPM: Double = 0
+    var heartLowBPM: Double = 0
+    var heartLowAt: Date? = nil
+
     /// Whether this payload carries a real Sleep Intelligence score.
     ///
     /// Both halves are needed. The version alone would accept a score whose
@@ -504,6 +516,15 @@ extension SleepSnapshot {
         // both mean "no nap to show".
         napStartedAt = try container.decodeIfPresent(Date.self, forKey: .napStartedAt)
         napTargetEnd = try container.decodeIfPresent(Date.self, forKey: .napTargetEnd)
+
+        // The age range and last night's heart, for the "For your age"
+        // widget. Absent on anything written before they existed.
+        ageRangeLowMinutes = try container.decodeIfPresent(Double.self, forKey: .ageRangeLowMinutes) ?? 0
+        ageRangeHighMinutes = try container.decodeIfPresent(Double.self, forKey: .ageRangeHighMinutes) ?? 0
+        ageRangeLabel = try container.decodeIfPresent(String.self, forKey: .ageRangeLabel) ?? ""
+        heartAverageBPM = try container.decodeIfPresent(Double.self, forKey: .heartAverageBPM) ?? 0
+        heartLowBPM = try container.decodeIfPresent(Double.self, forKey: .heartLowBPM) ?? 0
+        heartLowAt = try container.decodeIfPresent(Date.self, forKey: .heartLowAt)
     }
 
     init(

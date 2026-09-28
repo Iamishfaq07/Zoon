@@ -1487,6 +1487,7 @@
 		F5DBED31BF40FC4B08D4D390 /* NapLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C5CCACD956D78CAB0486CDB /* NapLiveActivity.swift */; };
 		F60616FD58E75981B626DE1D /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
 		F60C9D12E6B768F3CB1F1C06 /* ChartInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0056BFA9411ACE233F7DC0D1 /* ChartInteraction.swift */; };
+		F62826A649FB47C3F7CC0FA0 /* ForYourAgeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7E13F63069AA25B9ACF4C1 /* ForYourAgeWidget.swift */; };
 		F65E22808E61488801622EE1 /* CoachToolCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79C50895CF2915CDBF60299 /* CoachToolCatalog.swift */; };
 		F6656C6A1C78EE10A582BC7F /* ReviewPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963739655CC4005CF46AE9C0 /* ReviewPrompt.swift */; };
 		F68C3570AC3D44F910D339A1 /* LearningUnlockMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44AF1B02776ED51BC0C1C971 /* LearningUnlockMapTests.swift */; };
@@ -2213,6 +2214,7 @@
 		CA1A4C98D8556DDAF0DBEFF6 /* SleepScoreWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepScoreWidget.swift"; sourceTree = "<group>"; };
 		CA2313A4FDE3B0D1E1A6AEEC /* ZoonTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonTimeline.swift"; sourceTree = "<group>"; };
 		CA38318DC633A000B1205564 /* StageTrust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StageTrust.swift"; sourceTree = "<group>"; };
+		CA7E13F63069AA25B9ACF4C1 /* ForYourAgeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ForYourAgeWidget.swift"; sourceTree = "<group>"; };
 		CB0716483B53D50F81083840 /* SleepDayKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SleepDayKey.swift"; sourceTree = "<group>"; };
 		CB962A089F8577F76EF3D512 /* NapLearning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapLearning.swift"; sourceTree = "<group>"; };
 		CC432720166E6624FE4B4078 /* BreathingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BreathingView.swift"; sourceTree = "<group>"; };
@@ -2654,6 +2656,7 @@
 			isa = PBXGroup;
 			children = (
 				C18237AF80A96726E915E09D,
+				CA7E13F63069AA25B9ACF4C1,
 				1C5CCACD956D78CAB0486CDB,
 				0C7F6F54B2365B0030755EB2,
 				CA1A4C98D8556DDAF0DBEFF6,
@@ -4155,6 +4158,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				559FB43055B1776B1C924B21,
+				F62826A649FB47C3F7CC0FA0,
 				F5DBED31BF40FC4B08D4D390,
 				A6A9D3E2060799C1C6F5FE2C,
 				DC2C58193F5F943D820FC820,

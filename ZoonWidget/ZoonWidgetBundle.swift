@@ -18,6 +18,9 @@ struct ZoonWidgetBundle: WidgetBundle {
         // own doc comment for why that earns a slot rather than making it a
         // fourth view of last night.
         TonightWidget()
+        // Last night against the sleep range for the person's age, and the
+        // heart's overnight low.
+        ForYourAgeWidget()
 
         // Live Activities and Control Center controls are both newer than the
         // app's iOS 18 floor in places, so each is gated rather than assumed.

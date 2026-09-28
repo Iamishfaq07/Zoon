@@ -1558,6 +1558,23 @@ final class SleepDataCoordinator {
             snapshot.headlineFindingStrength = headline.strength.label
         }
 
+        // The age range and last night's heart, for the "For your age"
+        // widget: the same engines the Sleep Need and night screens use.
+        if let profile = demographic, let guideline = SleepNeedGuideline.forAge(profile.ageYears) {
+            snapshot.ageRangeLowMinutes = guideline.recommendedMinutes.lowerBound
+            snapshot.ageRangeHighMinutes = guideline.recommendedMinutes.upperBound
+            snapshot.ageRangeLabel = "\(guideline.recommendedText.replacingOccurrences(of: " hours", with: " h")) at \(profile.ageYears)"
+        }
+        if let heart = OvernightHeartSummary.make(
+            samples: context.overnightHeartRate,
+            night: DateInterval(start: context.night.bedtime, end: max(context.night.bedtime, context.night.wakeTime)),
+            restingHeartRate: context.night.restingHeartRate
+        ) {
+            snapshot.heartAverageBPM = heart.averageBPM
+            snapshot.heartLowBPM = heart.lowestBPM
+            snapshot.heartLowAt = heart.lowestAt
+        }
+
         // A nap in flight, so the watch's Smart Stack can raise the nap
         // surface while it matters and stop when it does not. The relevance
         // engine has always handled this case and been tested for it; the

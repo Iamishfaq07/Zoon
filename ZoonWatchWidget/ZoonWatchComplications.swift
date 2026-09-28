@@ -495,7 +495,7 @@ struct TonightComplication: Widget {
                 .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Tonight")
-        .description("Tonight's bed and wake target.")
+        .description("Tonight's bed and wake target, and your shortfall.")
         .supportedFamilies([.accessoryInline, .accessoryRectangular])
     }
 }
@@ -536,9 +536,14 @@ struct TonightComplicationView: View {
                     // sentence explains a shift the person can read on the
                     // phone. Whether tonight is a change at all is the part
                     // that fits.
+                    // The shortfall when there is one worth naming: it is
+                    // why tonight's bedtime is where it is, and it saves a
+                    // second complication for the number behind it.
                     Text(entry.isPlaceholder
                          ? "Sample data"
-                         : (entry.snapshot.isTonightTargetHolding ? "Your usual night" : "A small shift"))
+                         : (entry.snapshot.sleepDebtMinutes >= 15
+                            ? "Shortfall \(SleepNightFeatures.formatMinutes(entry.snapshot.sleepDebtMinutes))"
+                            : (entry.snapshot.isTonightTargetHolding ? "Your usual night" : "A small shift")))
                         .font(Theme.text(11))
                         .foregroundStyle(.secondary)
                         .privacySensitive()

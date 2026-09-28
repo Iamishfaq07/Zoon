@@ -141,6 +141,14 @@ enum MockData {
         result.recoveryPercent = 72
         result.hasRecovery = true
         result.recoveryConfidence = MetricConfidence.moderate.rawValue
+        // The age range and heart line, so the "For your age" widget's
+        // gallery preview shows what it is for.
+        result.ageRangeLowMinutes = 420
+        result.ageRangeHighMinutes = 540
+        result.ageRangeLabel = "7–9 h at 34"
+        result.heartAverageBPM = 59
+        result.heartLowBPM = 51
+        result.heartLowAt = goodNight.bedtime.addingTimeInterval(2.5 * 3600)
         return result
     }
 
