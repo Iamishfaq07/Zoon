@@ -425,7 +425,8 @@ struct TodayView: View {
         NapCoach.recommend(
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: plannedBedtime(context),
-            napMinutesToday: napMinutesToday
+            napMinutesToday: napMinutesToday,
+            lastWake: context.night.wakeTime
         )
     }
 

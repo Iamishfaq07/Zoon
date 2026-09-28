@@ -24,7 +24,8 @@ struct NapView: View {
             now: now,
             debtMinutes: coordinator.state.context?.tonightPlanning.currentShortfallMinutes ?? 0,
             plannedBedtime: coordinator.tonightEpisode(now: now)?.bed,
-            napMinutesToday: coordinator.napMinutesToday(now: now)
+            napMinutesToday: coordinator.napMinutesToday(now: now),
+            lastWake: coordinator.state.context?.night.wakeTime
         )
     }
 

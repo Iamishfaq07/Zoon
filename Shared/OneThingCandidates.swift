@@ -44,7 +44,10 @@ enum OneThingCandidates {
                 consequence: 0.55
             ))
         case .avoid:
-            if let bed = tonight.bedtime(now: now), bed.timeIntervalSince(now) / 3600 < 8 {
+            // Only a bedtime still ahead. One already behind now is last
+            // night's window running on, and "bedtime is too close" at 06:50
+            // is about a bedtime eight hours gone.
+            if let bed = tonight.bedtime(now: now), bed > now, bed.timeIntervalSince(now) / 3600 < 8 {
                 candidates.append(.init(
                     kind: .skipLateNap,
                     action: "Skip a nap — bedtime is too close.",

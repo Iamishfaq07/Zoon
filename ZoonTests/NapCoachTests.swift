@@ -67,4 +67,52 @@ final class NapCoachTests: XCTestCase {
         let result = NapCoach.recommend(now: now, debtMinutes: 25, plannedBedtime: nil, napMinutesToday: 0)
         XCTAssertTrue(result.reason.contains("ease"))
     }
+
+    // MARK: - Where the day is
+
+    /// 06:50, planned wake 07:30: the bed is last night's, eight hours ago.
+    /// That read as "Bedtime is under 6 hours away".
+    func testAnOverdueBedIsNotTooCloseToBedtime() {
+        let result = NapCoach.recommend(
+            now: now, debtMinutes: 100,
+            plannedBedtime: now.addingTimeInterval(-8 * 3600), napMinutesToday: 0
+        )
+        XCTAssertEqual(result.advice, .optional)
+        XCTAssertFalse(result.reason.contains("under 6 hours"), result.reason)
+    }
+
+    /// Half an hour out of bed, a nap is not the advice, however large the
+    /// shortfall; the card used to offer the 90-minute one.
+    func testStraightAfterWakingANapIsNotRecommended() {
+        let result = NapCoach.recommend(
+            now: now, debtMinutes: 120,
+            plannedBedtime: now.addingTimeInterval(15 * 3600), napMinutesToday: 0,
+            lastWake: now.addingTimeInterval(-30 * 60)
+        )
+        XCTAssertEqual(result.advice, .optional)
+    }
+
+    func testTheLongNapWaitsUntilWellIntoTheDay() {
+        let bed = now.addingTimeInterval(10 * 3600)
+        let early = NapCoach.recommend(
+            now: now, debtMinutes: 120, plannedBedtime: bed, napMinutesToday: 0,
+            lastWake: now.addingTimeInterval(-4.5 * 3600)
+        )
+        XCTAssertEqual(early.advice, .recommended(durationMinutes: 20))
+        let later = NapCoach.recommend(
+            now: now, debtMinutes: 120, plannedBedtime: bed, napMinutesToday: 0,
+            lastWake: now.addingTimeInterval(-6 * 3600)
+        )
+        XCTAssertEqual(later.advice, .recommended(durationMinutes: 90))
+    }
+
+    /// A wake from yesterday says nothing about today.
+    func testAStaleWakeIsIgnored() {
+        let result = NapCoach.recommend(
+            now: now, debtMinutes: 120,
+            plannedBedtime: now.addingTimeInterval(10 * 3600), napMinutesToday: 0,
+            lastWake: now.addingTimeInterval(-26 * 3600)
+        )
+        XCTAssertEqual(result.advice, .recommended(durationMinutes: 90))
+    }
 }

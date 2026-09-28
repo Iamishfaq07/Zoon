@@ -276,6 +276,22 @@ final class SleepDataCoordinator {
         tonightHorizon(nights: 1, for: context, now: now, calendar: calendar).first
     }
 
+    /// The wakes a wake alarm is armed for, soonest first: the resolved
+    /// horizon, without nights the person switched reminders off for, and
+    /// only wakes still ahead -- what `RootView.refreshReminders` arms.
+    ///
+    /// The Coach's "set an alarm" reads the first of these. It used to arm
+    /// the plan's own bed + target (07:25 against a weekday plan's 06:00),
+    /// under the scheduler's alarm ID, and the next reconcile saw its own
+    /// record unchanged and left the wrong time ringing.
+    func upcomingAlarmWakes(now: Date = .now) -> [Date] {
+        let setup = PersonalSetupStore.shared.value
+        return tonightHorizon(nights: ReminderSchedule.horizonNights, now: now)
+            .filter { !setup.isSkipped(wake: $0.wake) }
+            .map(\.wake)
+            .filter { $0 > now }
+    }
+
     /// Tonight and the nights after it, for scheduling ahead.
     func tonightHorizon(
         nights: Int,
@@ -1633,7 +1649,7 @@ final class SleepDataCoordinator {
             goalMinutes: goal,
             journalTaggedNights: journal.taggedNightCount(),
             napCount: naps.naps.count,
-            regularityIndex: context.regularity.index
+            regularityIndex: context.regularity.reportableIndex
         )
         snapshot.badgesUnlocked = achievements.filter(\.isUnlocked).count
         snapshot.badgesTotal = achievements.count

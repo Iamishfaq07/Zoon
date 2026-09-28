@@ -30,11 +30,14 @@ enum NapCoach {
     ///     never negative.
     ///   - plannedBedtime: Tonight's target bedtime, when known.
     ///   - napMinutesToday: Nap time already banked today.
+    ///   - lastWake: when the person last woke, if known. A wake more than
+    ///     `staleWakeHours` old is from a previous day and is ignored.
     static func recommend(
         now: Date = .now,
         debtMinutes: Double,
         plannedBedtime: Date?,
-        napMinutesToday: Double
+        napMinutesToday: Double,
+        lastWake: Date? = nil
     ) -> Recommendation {
         if napMinutesToday >= 30 {
             return Recommendation(
@@ -45,10 +48,33 @@ enum NapCoach {
 
         let hoursUntilBedtime = plannedBedtime.map { $0.timeIntervalSince(now) / 3600 }
 
+        // A bedtime behind now is last night's window, still running until
+        // its planned wake. At 06:50 that read as "Bedtime is under 6 hours
+        // away" about a bedtime eight hours ago.
+        if let hours = hoursUntilBedtime, hours <= 0 {
+            return Recommendation(
+                advice: .optional,
+                reason: "Your planned sleep window hasn't ended yet, so there's no nap to plan. Check again once you're up for the day."
+            )
+        }
+
         if let hours = hoursUntilBedtime, hours < 6 {
             return Recommendation(
                 advice: .avoid,
                 reason: "Bedtime is under 6 hours away. A nap this close is more likely to reduce tonight's sleep pressure than add to today."
+            )
+        }
+
+        let hoursAwake = lastWake
+            .map { now.timeIntervalSince($0) / 3600 }
+            .flatMap { $0 >= 0 && $0 < staleWakeHours ? $0 : nil }
+
+        // Straight out of bed a nap has little sleep pressure to work with,
+        // and the card used to offer "A 90-minute nap" at 07:45.
+        if let hoursAwake, hoursAwake < earliestNapHoursAfterWake {
+            return Recommendation(
+                advice: .optional,
+                reason: "You woke less than \(Int(earliestNapHoursAfterWake)) hours ago. A nap this early rarely adds much; if you're still flagging after midday, a short one does more."
             )
         }
 
@@ -59,7 +85,8 @@ enum NapCoach {
             )
         }
 
-        if debtMinutes >= 90, let hours = hoursUntilBedtime, hours >= 8 {
+        if debtMinutes >= 90, let hours = hoursUntilBedtime, hours >= 9,
+           (hoursAwake ?? earliestLongNapHoursAfterWake) >= earliestLongNapHoursAfterWake {
             return Recommendation(
                 advice: .recommended(durationMinutes: 90),
                 reason: "Debt is high enough, and bedtime is far enough away, that a longer ~90 minute nap may allow more complete sleep-stage progression, though cycle length varies. Based on your schedule, it is less likely to interfere with tonight."
@@ -74,4 +101,11 @@ enum NapCoach {
             reason: "Based on your schedule, a short 15–25 minute nap now is less likely to interfere with tonight's sleep\(debtNote)."
         )
     }
+
+    /// Hours after waking before a nap is worth suggesting.
+    static let earliestNapHoursAfterWake = 4.0
+    /// Hours after waking before the long nap is.
+    static let earliestLongNapHoursAfterWake = 5.0
+    /// A wake older than this is from a previous day.
+    static let staleWakeHours = 20.0
 }

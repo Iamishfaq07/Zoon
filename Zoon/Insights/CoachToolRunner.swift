@@ -156,10 +156,23 @@ struct CoachToolRunner {
         return "Energy now is \(battery.current) out of 100.\(note)"
     }
 
+    /// The resolved episode every other surface shows -- Tonight, the
+    /// widget, the watch, reminders and the alarm. The autopilot's own
+    /// bedtime and bed + target ignored a plan the person set, so with a
+    /// 22:30-06:00 weekday plan the Coach said 11:10 PM and 7:25 AM.
     private func tonight() -> String? {
-        guard let plan = context?.tonight else { return nil }
-        guard let bed = plan.bedtime(), let wake = plan.wakeTime() else { return nil }
-        return "Tonight's plan is to be in bed around \(clock(bed)) for a wake at \(clock(wake)), targeting \(SleepNightFeatures.formatMinutes(plan.suggestedSleepTargetMinutes))."
+        guard let episode = coordinator.tonightEpisode() else { return nil }
+        let target = SleepNightFeatures.formatMinutes(episode.targetSleepMinutes)
+        var text: String
+        if episode.source == .manualPlan, let name = episode.planName {
+            text = "Tonight follows your \(name) plan: in bed around \(clock(episode.bed)) for a wake at \(clock(episode.wake)), against a \(target) target."
+        } else {
+            text = "Tonight's plan is to be in bed around \(clock(episode.bed)) for a wake at \(clock(episode.wake)), targeting \(target)."
+        }
+        if !episode.isFeasible {
+            text += " That window leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short of the target for another night."
+        }
+        return text
     }
 
     private func tomorrow() -> String? {
@@ -315,13 +328,16 @@ struct CoachToolRunner {
 
     private func currentPriority() -> String? {
         guard let context else { return nil }
-        let bed = context.tonight.bedtime()
+        // The resolved episode's bed, as Today uses: it honours a plan the
+        // person set, which the plan's own bedtime does not.
+        let bed = coordinator.tonightEpisode()?.bed ?? context.tonight.bedtime()
         let nap = NapCoach.recommend(
             now: .now,
             // What Today's nap card is handed, so the two cannot disagree.
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: bed,
-            napMinutesToday: naps.minutes(on: .now)
+            napMinutesToday: naps.minutes(on: .now),
+            lastWake: context.night.wakeTime
         )
         let candidates = OneThingCandidates.gather(
             tonight: context.tonight,
@@ -343,8 +359,9 @@ struct CoachToolRunner {
         let advice = NapCoach.recommend(
             now: .now,
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
-            plannedBedtime: context.tonight.bedtime(),
-            napMinutesToday: naps.minutes(on: .now)
+            plannedBedtime: coordinator.tonightEpisode()?.bed ?? context.tonight.bedtime(),
+            napMinutesToday: naps.minutes(on: .now),
+            lastWake: context.night.wakeTime
         )
         let verdict: String
         switch advice.advice {
@@ -411,7 +428,8 @@ struct CoachToolRunner {
     }
 
     private func setAlarm() async -> String? {
-        guard let wake = context?.tonight.wakeTime() ?? tomorrowPlan()?.wake else {
+        // The wake the scheduler arms, so the alarm it reconciles is this one.
+        guard let wake = coordinator.upcomingAlarmWakes().first else {
             return "There is no wake time to set an alarm from yet."
         }
         let alarm = WakeAlarm()

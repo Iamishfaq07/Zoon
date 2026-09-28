@@ -1,5 +1,6 @@
 import CoreSpotlight
 import SwiftUI
+import UIKit
 
 /// Tab shell.
 struct RootView: View {
@@ -510,7 +511,7 @@ struct SleepTabView: View {
                             if let clock = context.bodyClock {
                                 BodyClockCard(
                                     bodyClock: clock,
-                                    plannedBedtime: context.targetBedtime(),
+                                    plannedBedtime: coordinator.tonightEpisode(for: context)?.bed ?? context.targetBedtime(),
                                     actualBedtime: context.night.bedtime,
                                     actualWakeTime: context.night.wakeTime
                                 )
@@ -526,6 +527,15 @@ struct SleepTabView: View {
                             .buttonStyle(.plain)
                         }
                         .entrance(7)
+                    } else {
+                        // No night to show: loading, no Health data yet, or a
+                        // read that failed. This tab used to go blank -- just
+                        // the stars and the title -- which read as broken, and
+                        // hid the sounds, nap and Snore Check, none of which
+                        // need Health data at all.
+                        noNightState
+                        SleepSoundsHero()
+                        healthFreeTools
                     }
 
                 }
@@ -569,6 +579,70 @@ struct SleepTabView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var noNightState: some View {
+        switch coordinator.state {
+        case .idle, .loading:
+            ZoonLoadingState(title: "Reading last night")
+        case let .empty(reason):
+            ZoonEmptyState(
+                kind: .noData(
+                    title: reason.title,
+                    message: reason.message,
+                    unlocks: [
+                        "Last night's stages and story",
+                        "Past nights and your body clock",
+                        "Tonight's plan against your own sleep"
+                    ]
+                ),
+                primaryAction: reason == .noSleepData
+                    ? ("Open Health Access", {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    })
+                    : nil,
+                secondaryAction: ("Check again", { Task { await coordinator.refresh() } })
+            )
+        case let .failed(message):
+            ZoonEmptyState(
+                kind: .failed(title: "Couldn't read your sleep", message: message),
+                primaryAction: ("Try Again", { Task { await coordinator.refresh() } })
+            )
+        case .loaded, .mock:
+            EmptyView()
+        }
+    }
+
+    /// What works without a recorded night.
+    private var healthFreeTools: some View {
+        VStack(spacing: 10) {
+            toolLink("Nap timer", systemImage: "powersleep", to: .nap)
+            toolLink("Snore Check", systemImage: "waveform", to: .snoreCheck)
+            toolLink("Wind Down", systemImage: "moon.stars", to: .windDown)
+        }
+    }
+
+    private func toolLink(_ title: String, systemImage: String, to destination: DeepLink.Destination) -> some View {
+        NavigationLink(value: destination) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(Theme.Family.sleep)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(Theme.label(14, weight: .semibold))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(11, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(PressableStyle())
     }
 
     /// Same construction `SleepDetailView` uses, so the three moments shown
