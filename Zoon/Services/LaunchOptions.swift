@@ -95,6 +95,21 @@ enum LaunchOptions {
         UserDefaults.standard.bool(forKey: "zoonSplash")
     }
 
+    /// A question to put to the Coach on launch, or `nil`.
+    ///
+    /// Capture opens the Coach tab with this as a chat's first question, so
+    /// the app's own answer -- computed from the demo nights, by the same
+    /// tools a person's question reaches -- can be photographed. Demo
+    /// launches only: on a real launch it is ignored.
+    ///
+    /// ```
+    /// xcrun simctl launch booted com.zoon.sleep -zoonDemo YES -zoonTab coach -zoonAsk "Why am I tired?"
+    /// ```
+    static var coachQuestion: String? {
+        guard isDemo else { return nil }
+        return UserDefaults.standard.string(forKey: "zoonAsk")
+    }
+
     /// Whether the launch splash plays at all.
     ///
     /// Demo launches skip it for the same reason they skip onboarding: a
