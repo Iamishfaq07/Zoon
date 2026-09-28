@@ -175,6 +175,7 @@
 		1808479A30A37BE186115C17 /* AwakeningInspectorSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD9B956F82E92BC29D959B2 /* AwakeningInspectorSeriesTests.swift */; };
 		185D49F8F16071C038BEC0FB /* NightSkyField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 670B0306EED366AB0C047B43 /* NightSkyField.swift */; };
 		187EF645DA2D1783FAC7DE84 /* SleepPlanningInputs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B5CA77286DF1844C019343 /* SleepPlanningInputs.swift */; };
+		18B8FBEFC6A1BE0CEC45F10B /* BehaviorNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F53D3E66CAE3B5C7C76354 /* BehaviorNight.swift */; };
 		18D3485E13EA612B4BC510CF /* StageTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA38318DC633A000B1205564 /* StageTrust.swift */; };
 		18EDFF1FB2B8773118D410AC /* ScoreDrivers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B330742BC93A341EC2474419 /* ScoreDrivers.swift */; };
 		19179B9A86F9C61D1C00A701 /* SleepSourceList.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1ED67DA887C47654B3B6644 /* SleepSourceList.swift */; };
@@ -282,6 +283,7 @@
 		264A052A910C66BCEAA005B9 /* ArchiveIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86A1128988A8BDE9022C6B78 /* ArchiveIntegrityTests.swift */; };
 		267A21093E1C627DB6E74928 /* BreathingCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = C306D669251A84B1C8762BF5 /* BreathingCoach.swift */; };
 		271DE062D46481958EDF063A /* NightKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428FBEDA15967526E0AD1710 /* NightKey.swift */; };
+		2748D52310EBE1DB4B310EDA /* BehaviorNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F53D3E66CAE3B5C7C76354 /* BehaviorNight.swift */; };
 		27B1442D2ED595C794392958 /* ShiftPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = A08C0FC759927724DB5C51C9 /* ShiftPlan.swift */; };
 		27E2054A0061749B9C0CB573 /* SleepHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF614D35BFFE603C238A0E5 /* SleepHealth.swift */; };
 		27E251F79607139A467AB5E7 /* HeartRateZoneIntegrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97E17D0936C40C77BBEC63C2 /* HeartRateZoneIntegrator.swift */; };
@@ -724,6 +726,7 @@
 		7AAA866530623097D3883E02 /* SleepDataCoordinator+CoachContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329D63A5AC64B8FF21ED8DD9 /* SleepDataCoordinator+CoachContext.swift */; };
 		7AC3D5E553B2D4086E7BCCAA /* VitalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = E366E59E9147223C8227B3A5 /* VitalMetric.swift */; };
 		7AD42F3601D4FDAA1FED993D /* EnergyForecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E8412807D761D3BAC2CBF0 /* EnergyForecast.swift */; };
+		7AD78071536A9A515171208B /* BehaviorNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F53D3E66CAE3B5C7C76354 /* BehaviorNight.swift */; };
 		7AD7DBAEC0C3A8AEABE60C2A /* EvidenceClaims.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF227D05982E42FE973BE69D /* EvidenceClaims.swift */; };
 		7AF1579D18B7897BAF402EA0 /* MetricConfidence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682B9DBD08683E35565C7A61 /* MetricConfidence.swift */; };
 		7AF347ECDD029CF5922AF82C /* SleepInertiaProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8119881B62BA5689C58E2191 /* SleepInertiaProfileTests.swift */; };
@@ -931,6 +934,7 @@
 		9AF0BED3ABBFA716660083A8 /* SleepRegularity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C70198E5864BE78E07D8D1 /* SleepRegularity.swift */; };
 		9B163C013A660B61A5942338 /* InsightDriverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1220D1D6FC8DE3E60D3B85 /* InsightDriverTests.swift */; };
 		9B21FE864ED3DBD75AEE4F7F /* NaturalJournalParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ED68DAD097FACDD4F450C05 /* NaturalJournalParser.swift */; };
+		9B680F9E668B6F899C911151 /* BehaviorNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F53D3E66CAE3B5C7C76354 /* BehaviorNight.swift */; };
 		9B6826830B9F218C2ED18E48 /* SleepSourceList.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1ED67DA887C47654B3B6644 /* SleepSourceList.swift */; };
 		9B8A5A0D683EBB5A7082E12C /* SleepAutopilot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D3C0C43E308D15F89442C2 /* SleepAutopilot.swift */; };
 		9B8EF0181C7DB7214CB74CB8 /* SleepHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9AD348AE1F4F51BE719271 /* SleepHealthView.swift */; };
@@ -1517,6 +1521,7 @@
 		FAC03DB6DB75BCB5293F549B /* DataQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D958A9FD3398B01D9DC02A /* DataQuality.swift */; };
 		FAE188C7B43487B0C1C3E909 /* MovementContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A240BFE3763939A33E61F11A /* MovementContext.swift */; };
 		FAE6A235B1033EAF2CD2DFD5 /* SleepDayKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB0716483B53D50F81083840 /* SleepDayKey.swift */; };
+		FB2849CF507C9025859B79C2 /* BehaviorNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58F53D3E66CAE3B5C7C76354 /* BehaviorNight.swift */; };
 		FB30B37FCD53870A2B8E5230 /* NapCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4980E3BEBDBC7753D6697D62 /* NapCoach.swift */; };
 		FB4BF49F96A033A7529FB23F /* SchedulePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAE068B04F9BF2E263F614F3 /* SchedulePreview.swift */; };
 		FB653BDD763662866376DE9F /* RecoveryScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBBDF3B33AE740C4B071FD90 /* RecoveryScore.swift */; };
@@ -1866,6 +1871,7 @@
 		5898B654730918383EDD4109 /* AlertnessCheckStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AlertnessCheckStore.swift"; sourceTree = "<group>"; };
 		58CD5E812FA0AEA96478E500 /* RestorativeWindowsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RestorativeWindowsCard.swift"; sourceTree = "<group>"; };
 		58E8B4D93DD23601661ABF27 /* ZoonIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonIcons.swift"; sourceTree = "<group>"; };
+		58F53D3E66CAE3B5C7C76354 /* BehaviorNight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BehaviorNight.swift"; sourceTree = "<group>"; };
 		5915B0A5070019691B3F923F /* CoachEvidence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoachEvidence.swift"; sourceTree = "<group>"; };
 		5916908C5ABDE5191F03FFF2 /* JournalCorrelatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JournalCorrelatorTests.swift"; sourceTree = "<group>"; };
 		597724864AD5B340EECCB91E /* LocalLLMInsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LocalLLMInsightEngine.swift"; sourceTree = "<group>"; };
@@ -2996,6 +3002,7 @@
 				EB72A930577755A74CFA9AED,
 				989913A05E83BD608848BE11,
 				2635A3D35E4CFF48DE1D28C1,
+				58F53D3E66CAE3B5C7C76354,
 				63B144AF3807FA6DAA668EFE,
 				B5988981A0B2312A8B53FB4B,
 				0ACECF2891CE7CA2C7990B49,
@@ -3534,6 +3541,7 @@
 				16E1DFA39CF2BA3A8D2830E2,
 				666D13C957A5411B30E7F566,
 				EE5D01554570F33EF4BCB425,
+				7AD78071536A9A515171208B,
 				64E9256D78C078DFDEA7A33C,
 				67D283517A490EDC14D62A17,
 				BA1F64F194528E2F790F643E,
@@ -3970,6 +3978,7 @@
 				0591A7F70BE41E8519CB2D6A,
 				B64AD14628DA012B0168AEC1,
 				B6F1D2474486EF5E74817394,
+				18B8FBEFC6A1BE0CEC45F10B,
 				E2DF80B10EB5CB60C63DEEC1,
 				17755EC22CE9C72898EB8579,
 				BD89F5547806B5104B10F81A,
@@ -4175,6 +4184,7 @@
 				1CBA4BC4BBC386D69C483A20,
 				F34B720ECBAAD65819ACF460,
 				CF3AEA3A041F6F2CF1EA235F,
+				FB2849CF507C9025859B79C2,
 				49D17492D853157D162DD3F2,
 				EB60139530CEC5A1DEFA3F2B,
 				59940773E263C4D9B116B3DA,
@@ -4622,6 +4632,7 @@
 				0DE5B66FBE7174F2DC27E2BA,
 				E8822FA7431F0CEEC3F8D7EF,
 				D76775539B5D2EE4B45CFEF2,
+				9B680F9E668B6F899C911151,
 				E4383511D0B87CB1BBE51C0F,
 				BE2649BD4969F8C0BD8DC7C5,
 				EFB5BD739BBC8D2723BF3091,
@@ -4867,6 +4878,7 @@
 				8A28EC12D629D4B552FE6CE3,
 				D18A6E1470525DE8407EEC9A,
 				B82D5F0F8B9361D70C9A1E0B,
+				2748D52310EBE1DB4B310EDA,
 				E467FBD2E214C053F7A6BEFD,
 				2C836742A29F8FE394E70415,
 				04668A4C2F5F642401979739,
@@ -5152,28 +5164,25 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Zoon/Zoon.entitlements;
+				// Both at once, as Xcode sets it up when a capability needs a
+				// real plist: Zoon/Info.plist holds the keys no INFOPLIST_KEY_*
+				// setting can produce (background audio, the AlarmKit purpose
+				// string, the launch-screen colour), and generation stays on so
+				// every key below is still written and merged on top of it.
+				// Nothing is copied as a resource: the file is read only by the
+				// Info.plist step, and the Resources phase lists files explicitly.
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Zoon/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist temperature, activity and workouts to explain how you slept and recovered, and your age, sex, height and weight to fit your sleep and heart ranges to you. If you turn them on, it also reads cycle data, caffeine, alcohol, time in daylight, mindful minutes and logged mood. It is processed on your iPhone and Apple Watch and is never sent to Zoon or anyone else; it leaves only in a backup you choose to export.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only when you start Snore Check or Voice Journal. Snore Check processes short audio bursts and Voice Journal transcribes speech on this device; audio is never saved or sent anywhere.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
-				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
-				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				// The system launch screen is a flat sheet of one colour shown
-				// while the process starts, before any SwiftUI exists. Left at
-				// the default it is the system background -- pure black in Dark,
-				// pure white in Light -- and neither matches ZoonNightGround, so
-				// every cold launch flashed one ground before painting another.
-				// LaunchBackground is the top stop of that gradient in both
-				// appearances, which makes the hand-off into ZoonSplash seamless.
-				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = LaunchBackground;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5364,28 +5373,25 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Zoon/Zoon.entitlements;
+				// Both at once, as Xcode sets it up when a capability needs a
+				// real plist: Zoon/Info.plist holds the keys no INFOPLIST_KEY_*
+				// setting can produce (background audio, the AlarmKit purpose
+				// string, the launch-screen colour), and generation stays on so
+				// every key below is still written and merged on top of it.
+				// Nothing is copied as a resource: the file is read only by the
+				// Info.plist step, and the Resources phase lists files explicitly.
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Zoon/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Zoon reads your sleep, heart rate, HRV, breathing, blood oxygen, wrist temperature, activity and workouts to explain how you slept and recovered, and your age, sex, height and weight to fit your sleep and heart ranges to you. If you turn them on, it also reads cycle data, caffeine, alcohol, time in daylight, mindful minutes and logged mood. It is processed on your iPhone and Apple Watch and is never sent to Zoon or anyone else; it leaves only in a backup you choose to export.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only when you start Snore Check or Voice Journal. Snore Check processes short audio bursts and Voice Journal transcribes speech on this device; audio is never saved or sent anywhere.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
-				INFOPLIST_KEY_NSAlarmKitUsageDescription = "Used only if you turn on the wake alarm, so Zoon can ring at the end of your wake window even in Silent mode or a Sleep Focus. Scheduled on this device; nothing about your sleep leaves the phone.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
-				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				// The system launch screen is a flat sheet of one colour shown
-				// while the process starts, before any SwiftUI exists. Left at
-				// the default it is the system background -- pure black in Dark,
-				// pure white in Light -- and neither matches ZoonNightGround, so
-				// every cold launch flashed one ground before painting another.
-				// LaunchBackground is the top stop of that gradient in both
-				// appearances, which makes the hand-off into ZoonSplash seamless.
-				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = LaunchBackground;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

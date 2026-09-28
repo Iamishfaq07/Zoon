@@ -118,7 +118,8 @@ enum SnoreEpisodeAggregator: Sendable {
         classifierSeconds: Double,
         sessionEnded: Bool = false,
         interruptionDuration: TimeInterval = 0,
-        intendedWindowSeconds: TimeInterval = SnoreCoverage.defaultIntendedWindowSeconds
+        intendedWindowSeconds: TimeInterval = SnoreCoverage.defaultIntendedWindowSeconds,
+        classifierActiveShare: Double = 1
     ) -> SnoreConfidenceBreakdown {
         let detector = detectorConfidence(
             classifierAvailable: classifierAvailable,
@@ -127,7 +128,8 @@ enum SnoreEpisodeAggregator: Sendable {
             lastBufferAge: lastBufferAge,
             heuristicSeconds: heuristicSeconds,
             classifierSeconds: classifierSeconds,
-            sessionEnded: sessionEnded
+            sessionEnded: sessionEnded,
+            classifierActiveShare: classifierActiveShare
         )
         let coverage = SnoreCoverage(
             monitoredSeconds: monitoredSeconds,
@@ -144,6 +146,14 @@ enum SnoreEpisodeAggregator: Sendable {
     /// Agreement is two-sided. Both finding snoring agrees; both finding
     /// none agrees too -- a quiet night is not a weaker detector. One firing
     /// while the other stays silent is the disagreement.
+    ///
+    /// - Parameter classifierActiveShare: the share of monitored time the
+    ///   classifier was actually running (it can fail mid-session, for example
+    ///   once the phone locks). Silence from a classifier that was not
+    ///   listening is not agreement: `.high` needs it to have heard at least
+    ///   `strongClassifierShare` of the night, and below
+    ///   `usableClassifierShare` the night is judged as if there were no
+    ///   classifier at all.
     static func detectorConfidence(
         classifierAvailable: Bool,
         classifierSupportsSnoring: Bool,
@@ -151,7 +161,8 @@ enum SnoreEpisodeAggregator: Sendable {
         lastBufferAge: TimeInterval?,
         heuristicSeconds: Double,
         classifierSeconds: Double,
-        sessionEnded: Bool = false
+        sessionEnded: Bool = false,
+        classifierActiveShare: Double = 1
     ) -> SnoreMonitoringConfidence {
         // After stop, lastBufferAge grows forever. Do not let a strong
         // completed night read as Limited because the mic is now quiet.
@@ -159,14 +170,19 @@ enum SnoreEpisodeAggregator: Sendable {
         let classifierHeard = classifierSeconds >= 1
         let heuristicHeard = heuristicSeconds >= 1
         let agree = classifierHeard == heuristicHeard
-        if classifierAvailable, classifierSupportsSnoring, buffersFlowing, agree, monitoredSeconds >= 10 * 60 {
+        let classifierListened = classifierAvailable && classifierActiveShare >= usableClassifierShare
+        if classifierListened, classifierActiveShare >= strongClassifierShare,
+           classifierSupportsSnoring, buffersFlowing, agree, monitoredSeconds >= 10 * 60 {
             return .high
         }
-        if buffersFlowing, monitoredSeconds >= 10 * 60, classifierAvailable || heuristicHeard {
+        if buffersFlowing, monitoredSeconds >= 10 * 60, classifierListened || heuristicHeard {
             return .moderate
         }
         return .limited
     }
+
+    static let strongClassifierShare = 0.9
+    static let usableClassifierShare = 0.5
 }
 
 /// How much of the night a Snore Check session actually heard.

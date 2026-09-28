@@ -49,6 +49,8 @@ final class SnoreSessionController {
     var lastBufferAt: Date? { detector.lastBufferAt }
     var isAudioArriving: Bool { detector.isAudioArriving }
     var classifierAvailable: Bool { detector.classifierAvailable }
+    /// When sound classification stopped in the running session, if it has.
+    var classifierPausedSince: Date? { detector.classifierFailedAt }
     var classifierSupportsSnoring: Bool { detector.classifierSupportsSnoring }
     var confidence: SnoreMonitoringConfidence { detector.sessionConfidence }
     var lastSummary: SnoreStore.NightSummary? { store.mostRecent }
@@ -75,12 +77,17 @@ final class SnoreSessionController {
         let zone = checkpoint.timezoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? TimeZone.current
         var calendar = Calendar.current
         calendar.timeZone = zone
-        let wake = checkpoint.lastCheckpoint
+        // The night the session belongs to, from when it started: an evening
+        // start is the night ending the next morning, an after-midnight start
+        // the night ending that morning. Neither the evening nor the moment
+        // the app died is the night's day. The stored key is not trusted:
+        // builds before this one wrote the evening's date into it.
+        let night = SnoreNight.date(forSessionStartedAt: checkpoint.startedAt, in: zone)
         return SnoreStore.NightSummary(
-            date: calendar.startOfDay(for: wake),
+            date: calendar.startOfDay(for: night),
             monitoredMinutes: checkpoint.monitoredSeconds / 60,
             snoreMinutes: checkpoint.snoreSeconds / 60,
-            nightKey: checkpoint.nightKey ?? NightKey.make(wakeInstant: wake, in: zone),
+            nightKey: NightKey.make(wakeInstant: night, in: zone),
             timezoneIdentifier: zone.identifier,
             isPartial: true,
             endedUnexpectedly: true,
@@ -95,6 +102,9 @@ final class SnoreSessionController {
         case .background, .inactive:
             if state == .listening { state = .background }
         case .active:
+            // A classifier that failed while the phone was locked can run
+            // again in the foreground; the microphone never stopped.
+            detector.restartClassifierIfNeeded()
             if state == .background {
                 state = detector.isAudioArriving ? .listening : .interrupted
             }

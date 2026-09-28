@@ -800,13 +800,13 @@ HEALTH_UPDATE_DESC = ("Zoon uses HealthKit to build sleep insights from data you
 MIC_DESC = ("Used only when you start Snore Check or Voice Journal. Snore Check "
             "processes short audio bursts and Voice Journal transcribes speech on "
             "this device; audio is never saved or sent anywhere.")
-# AlarmKit (iOS 26+) refuses to schedule without this string. Only requested
-# when the wake alarm is switched on -- see WakeAlarm and UserPreferences
-# .wakeAlarmEnabled, which is off by default precisely because an alarm rings
-# through Silent mode.
-ALARM_DESC = ("Used only if you turn on the wake alarm, so Zoon can ring at the end of "
-              "your wake window even in Silent mode or a Sleep Focus. Scheduled on this "
-              "device; nothing about your sleep leaves the phone.")
+# The AlarmKit purpose string, the audio background mode and the launch-screen
+# colour are NOT here, and must not come back as INFOPLIST_KEY_* settings.
+# Xcode's Info.plist generator reads a fixed list of INFOPLIST_KEY_* names and
+# silently drops any other, and those three are not on it: as build settings
+# they never reached a single built app. They live in Zoon/Info.plist, which
+# APP_SETTINGS points INFOPLIST_FILE at, and Tools/check-build-settings.py
+# fails on any INFOPLIST_KEY_* name the generator would ignore.
 
 PROJ_COMMON = """				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -834,8 +834,10 @@ PROJ_COMMON = """				ALWAYS_SEARCH_USER_PATHS = NO;
 				TARGETED_DEVICE_FAMILY = 1;
 """
 
-# GENERATE_INFOPLIST_FILE is deliberately *not* here: the app generates its
-# Info.plist and the extension ships an explicit one. See EXT_SETTINGS.
+# GENERATE_INFOPLIST_FILE is deliberately *not* here. The app generates its
+# Info.plist from INFOPLIST_KEY_* settings and merges Zoon/Info.plist into it
+# (see APP_SETTINGS); the extensions and the watch app ship explicit plists
+# with generation off (see EXT_SETTINGS).
 TARGET_COMMON = """				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
@@ -869,28 +871,25 @@ configs = {
 APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Zoon/Zoon.entitlements;
+				// Both at once, as Xcode sets it up when a capability needs a
+				// real plist: Zoon/Info.plist holds the keys no INFOPLIST_KEY_*
+				// setting can produce (background audio, the AlarmKit purpose
+				// string, the launch-screen colour), and generation stays on so
+				// every key below is still written and merged on top of it.
+				// Nothing is copied as a resource: the file is read only by the
+				// Info.plist step, and the Resources phase lists files explicitly.
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Zoon/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Zoon;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "{HEALTH_DESC}";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "{HEALTH_UPDATE_DESC}";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "{MIC_DESC}";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
-				INFOPLIST_KEY_NSAlarmKitUsageDescription = "{ALARM_DESC}";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
-				INFOPLIST_KEY_UIBackgroundModes = audio;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				// The system launch screen is a flat sheet of one colour shown
-				// while the process starts, before any SwiftUI exists. Left at
-				// the default it is the system background -- pure black in Dark,
-				// pure white in Light -- and neither matches ZoonNightGround, so
-				// every cold launch flashed one ground before painting another.
-				// LaunchBackground is the top stop of that gradient in both
-				// appearances, which makes the hand-off into ZoonSplash seamless.
-				INFOPLIST_KEY_UILaunchScreen_BackgroundColor = LaunchBackground;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

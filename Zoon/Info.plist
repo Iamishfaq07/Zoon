@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Only the keys Xcode's Info.plist generator cannot write.
+
+	  The app target keeps GENERATE_INFOPLIST_FILE = YES, so everything that
+	  can be a build setting still is one (Tools/generate-pbxproj.py,
+	  APP_SETTINGS): bundle identity and versions, the display name, the
+	  HealthKit, microphone, speech and calendar purpose strings, the scene
+	  manifest and Live Activities. Xcode generates those and merges them on
+	  top of this file at build time. It is the same arrangement Xcode itself
+	  makes when a capability such as Background Modes is added to a target
+	  that generates its plist.
+
+	  The three keys below used to be INFOPLIST_KEY_* build settings as well.
+	  The generator reads a fixed list of INFOPLIST_KEY_* names and drops any
+	  other one without a warning, and none of these three is on that list:
+	  every build shipped without them (the bundle dump in Screenshots run
+	  36353047082 shows no background mode, no AlarmKit string and an empty
+	  launch screen). Two checks now stand in the way of that happening again:
+	  Tools/check-build-settings.py rejects any INFOPLIST_KEY_* name Xcode
+	  would ignore, and Tools/app_bundle_contract.py inspects the Info.plist of
+	  the app every workflow actually builds, and fails the run if one of these
+	  keys, or a purpose string the app needs, is missing from it.
+
+	  A key must be written in one place only: nothing below may also be set
+	  as an INFOPLIST_KEY_* build setting (Tools/validate-pbxproj.py enforces
+	  it), because the generated value would silently replace this one.
+	-->
+
+	<!--
+	  Keeps Sleep Sounds, the Wind Down narration and Snore Check running when
+	  the screen locks or someone switches apps. Without it iOS suspends the
+	  process a few seconds after lock and the audio engine stops with it.
+	  Audio only, and only while one of those is actually playing or
+	  listening: Zoon declares no other background mode and never plays
+	  silence to stay awake.
+	-->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+
+	<!--
+	  AlarmKit (iOS 26 and later) refuses to schedule anything when this is
+	  missing or empty. It is asked for only when someone turns on the wake
+	  alarm, asks Coach to set one, or starts a nap with an alarm (see
+	  WakeAlarm and NapWake), never at launch.
+	-->
+	<key>NSAlarmKitUsageDescription</key>
+	<string>Used only for alarms you ask for: the wake alarm at the end of your wake window, and the alarm at the end of a nap. Both ring even in Silent mode or a Sleep Focus. They are scheduled on this device; nothing about your sleep leaves the phone.</string>
+
+	<!--
+	  The system launch screen is a flat sheet of one colour shown while the
+	  process starts, before any SwiftUI exists. Left at the default it is the
+	  system background, pure black in Dark and pure white in Light, and
+	  neither matches ZoonNightGround, so every cold launch flashed one ground
+	  before painting another. LaunchBackground (Zoon/Assets.xcassets) is the
+	  top stop of that gradient in both appearances, which makes the hand-off
+	  into ZoonSplash seamless.
+	-->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+</dict>
+</plist>

@@ -349,11 +349,21 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    /// Whether Apple's sound classifier is actually listening. It can stop
+    /// mid-session (on some iOS versions once the phone locks) while the
+    /// microphone and the loudness pattern carry on, and saying "Active" then
+    /// would vouch for a detector that is not running.
+    private var soundAnalysisStatus: String {
+        guard session.classifierAvailable else { return "Unavailable" }
+        guard let paused = session.classifierPausedSince else { return "Active" }
+        return "Paused since \(paused.formatted(date: .omitted, time: .shortened)), loudness pattern only"
+    }
+
     private var sessionDetails: some View {
         NavigationStack {
             List {
                 LabeledContent("Microphone", value: session.isAudioArriving ? "Active" : "Quiet")
-                LabeledContent("Sound analysis", value: session.classifierAvailable ? "Active" : "Unavailable")
+                LabeledContent("Sound analysis", value: soundAnalysisStatus)
                 LabeledContent("Last audio", value: session.lastBufferAt.map { "\(Int(Date.now.timeIntervalSince($0)))s ago" } ?? "—")
                 LabeledContent("Interruptions", value: "\(session.interruptionGaps)")
                 if session.monitoringGaps.isEmpty {

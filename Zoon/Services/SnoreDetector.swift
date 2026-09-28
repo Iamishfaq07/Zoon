@@ -27,6 +27,14 @@ final class SnoreDetector {
     private(set) var sessionID = UUID()
     private(set) var fusedIntervals: [SnoreEvidenceFusion.Interval] = []
     private(set) var frozenQuality: SnoreMonitoringConfidence?
+    /// When Apple's classifier stopped producing results in this session, if
+    /// it has. The heuristic keeps listening; the classifier is rebuilt on the
+    /// next chance (see `restartClassifierIfNeeded`).
+    private(set) var classifierFailedAt: Date?
+    /// Monitored seconds the classifier did not hear because it had failed.
+    /// Quality is judged against the share of the night it did hear, so a
+    /// night the primary detector missed cannot read "Strong".
+    private(set) var classifierOutageSeconds: Double = 0
 
     private var engine = AVAudioEngine()
     private let soundClassifier = SoundEventClassifier()
@@ -81,8 +89,15 @@ final class SnoreDetector {
             classifierSeconds: classifierSnoreSeconds,
             sessionEnded: !isRunning && monitoredSeconds > 0,
             interruptionDuration: monitoringGaps.reduce(0) { $0 + $1.duration },
-            intendedWindowSeconds: intendedWindowSeconds
+            intendedWindowSeconds: intendedWindowSeconds,
+            classifierActiveShare: classifierActiveShare
         )
+    }
+
+    /// Share of the monitored time Apple's classifier was actually running.
+    var classifierActiveShare: Double {
+        guard monitoredSeconds > 0 else { return 1 }
+        return min(1, max(0, 1 - classifierOutageSeconds / monitoredSeconds))
     }
 
     private var erasureObserver: NSObjectProtocol?
@@ -139,6 +154,9 @@ final class SnoreDetector {
         openGapStartedAt = nil
         fusedIntervals = []
         frozenQuality = nil
+        classifierFailedAt = nil
+        classifierOutageSeconds = 0
+        lastClassifierRestartAttempt = 0
         sessionTimeZoneIdentifier = TimeZone.current.identifier
         pendingGapClose = false
         SnoreCheckpoint.clear()
@@ -236,15 +254,15 @@ final class SnoreDetector {
         SnoreCheckpoint.clear()
 
         guard monitoredSeconds > 0 else { return nil }
-        let wakeInstant = Date()
         let zone = TimeZone(identifier: sessionTimeZoneIdentifier) ?? .current
+        let night = SnoreNight.date(forSessionStartedAt: sessionStartedAt ?? .now, in: zone)
         var calendar = Calendar.current
         calendar.timeZone = zone
         return SnoreStore.NightSummary(
-            date: calendar.startOfDay(for: wakeInstant),
+            date: calendar.startOfDay(for: night),
             monitoredMinutes: monitoredSeconds / 60,
             snoreMinutes: snoreSeconds / 60,
-            nightKey: NightKey.make(wakeInstant: wakeInstant, in: zone),
+            nightKey: NightKey.make(wakeInstant: night, in: zone),
             timezoneIdentifier: zone.identifier,
             isPartial: false,
             endedUnexpectedly: false,
@@ -281,16 +299,58 @@ final class SnoreDetector {
         openGapStartedAt = nil
     }
 
+    /// Builds a fresh classifier request for `format`. A new analyzer's clock
+    /// starts at zero, so the epoch that maps its results starts now too.
+    private func startClassifier(format: AVAudioFormat) {
+        soundClassifier.start(
+            format: format,
+            onEvent: { [weak self] identifier, confidence, start, duration in
+                Task { @MainActor [weak self] in
+                    self?.recordEvent(identifier: identifier, confidence: confidence, start: start, duration: duration)
+                }
+            },
+            onFailure: { [weak self] in
+                Task { @MainActor [weak self] in self?.classifierDidFail() }
+            }
+        )
+    }
+
+    private func classifierDidFail() {
+        guard isRunning, classifierFailedAt == nil else { return }
+        classifierFailedAt = .now
+        logger.error("Sound classification stopped; continuing with the loudness pattern until it can restart")
+    }
+
+    /// Rebuilds a failed classifier while the microphone keeps running.
+    ///
+    /// Called when Zoon comes back to the foreground (where a classifier that
+    /// failed at lock can run again) and, as a fallback, every
+    /// `classifierRestartInterval` of monitoring. The engine and tap are left
+    /// alone: only the SoundAnalysis request is replaced.
+    ///
+    /// `classifierAvailable` is deliberately left as it was: turning it off
+    /// mid-session would switch fusion to the heuristic alone and discard the
+    /// snoring the classifier did hear before it failed.
+    func restartClassifierIfNeeded() {
+        guard isRunning, classifierFailedAt != nil, tapInstalled else { return }
+        lastClassifierRestartAttempt = monitoredSeconds
+        startClassifier(format: engine.inputNode.outputFormat(forBus: 0))
+        guard soundClassifier.isAvailable else { return }
+        beginEpoch()
+        classifierFailedAt = nil
+        logger.info("Sound classification restarted")
+    }
+
+    private let classifierRestartInterval: TimeInterval = 15 * 60
+    private var lastClassifierRestartAttempt: TimeInterval = 0
+
     private func installTapAndStartEngine(releaseOwnerOnFailure: Bool = true) throws {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
-        soundClassifier.start(format: format) { [weak self] identifier, confidence, start, duration in
-            Task { @MainActor [weak self] in
-                self?.recordEvent(identifier: identifier, confidence: confidence, start: start, duration: duration)
-            }
-        }
+        startClassifier(format: format)
         classifierAvailable = soundClassifier.isAvailable
         classifierSupportsSnoring = soundClassifier.supportsSnoring
+        classifierFailedAt = nil
 
         if tapInstalled {
             input.removeTap(onBus: 0)
@@ -359,6 +419,12 @@ final class SnoreDetector {
         monitoredSeconds += elapsed
         tickAccumulator += elapsed
         lastBufferAt = .now
+        if classifierFailedAt != nil {
+            classifierOutageSeconds += elapsed
+            if monitoredSeconds - lastClassifierRestartAttempt >= classifierRestartInterval {
+                restartClassifierIfNeeded()
+            }
+        }
 
         let qualifiesAsLowBurst = energy.broadbandRMS >= burstThresholdRMS
             && energy.lowFrequencyRatio >= minimumLowFrequencyRatio
@@ -443,7 +509,6 @@ final class SnoreDetector {
             gaps.append(SnoreMonitoringGap(startedAt: open, endedAt: nil))
         }
         let zone = TimeZone(identifier: sessionTimeZoneIdentifier) ?? .current
-        let wakeGuess = sessionStartedAt ?? .now
         let checkpoint = SnoreCheckpoint(
             sessionID: sessionID,
             startedAt: started,
@@ -458,7 +523,7 @@ final class SnoreDetector {
             windows: compressed,
             unexpectedEnd: unexpectedEnd,
             timezoneIdentifier: zone.identifier,
-            nightKey: NightKey.make(wakeInstant: wakeGuess, in: zone),
+            nightKey: SnoreNight.key(forSessionStartedAt: started, in: zone),
             monitoringQuality: unexpectedEnd ? liveQuality : frozenQuality ?? liveQuality
         )
         checkpoint.save()
