@@ -118,12 +118,8 @@ struct ShareLastNightButton: View {
         renderer.scale = 2
         renderer.proposedSize = ProposedViewSize(width: 1080, height: 1350)
         guard let image = renderer.uiImage, let data = image.pngData() else { return nil }
-        let url = FileManager.default.temporaryDirectory.appending(path: "zoon-last-night.png")
-        do {
-            try data.write(to: url, options: .atomic)
-            return url
-        } catch {
-            return nil
-        }
+        // Through the exporter so the image gets the same file protection as
+        // every other share artefact.
+        return try? DataExporter.writeTemporary(data, filename: "zoon-last-night.png")
     }
 }

@@ -387,12 +387,20 @@ enum DataExporter {
 
     /// Every filename prefix Zoon writes into the temporary directory: the
     /// archive/CSV exports here, the clinician PDFs named by
-    /// `ClinicianReportGenerator.filename`, the Weekly Wrapped image and the
-    /// last-night share card. `clearTemporaryExports` removes all of them,
-    /// not just the first.
+    /// `ClinicianReportGenerator.filename`, the Weekly Wrapped image, the
+    /// Month Recap image and the last-night share card.
+    /// `clearTemporaryExports` removes all of them, not just the first.
     private static let temporaryExportPrefixes = [
-        "zoon-export-", "Sleep_Report_", "zoon-week-", "zoon-last-night"
+        "zoon-export-", "Sleep_Report_", "zoon-week-", "zoon-month-", "zoon-last-night"
     ]
+
+    /// Whether `filename` is one of Zoon's own share artefacts. Also matches
+    /// `zoon-YYYY-MM.png`, the Month Recap name before it had a prefix, so an
+    /// image left behind by an earlier version is still erased.
+    static func isTemporaryExport(_ filename: String) -> Bool {
+        if temporaryExportPrefixes.contains(where: { filename.hasPrefix($0) }) { return true }
+        return filename.range(of: #"^zoon-\d{4}-\d{2}\.png$"#, options: .regularExpression) != nil
+    }
 
     /// Removes health-data export artefacts still owned by Zoon. Copies the
     /// user deliberately saved through the share sheet live outside this
@@ -406,7 +414,7 @@ enum DataExporter {
         ) else { return false }
 
         var succeeded = true
-        for url in urls where temporaryExportPrefixes.contains(where: { url.lastPathComponent.hasPrefix($0) }) {
+        for url in urls where isTemporaryExport(url.lastPathComponent) {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
