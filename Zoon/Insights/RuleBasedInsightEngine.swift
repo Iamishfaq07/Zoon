@@ -366,7 +366,7 @@ struct RuleBasedInsightEngine: SleepInsightEngine {
         return Finding(
             priority: 50,
             observed: String(
-                format: "You're carrying about %@ of sleep debt over the last two weeks.",
+                format: "You're carrying about %@ of sleep debt from recent nights.",
                 SleepNightFeatures.formatMinutes(debt)
             ),
             general: "Debt builds quietly: 40 minutes short a night adds up faster than one bad night does.",

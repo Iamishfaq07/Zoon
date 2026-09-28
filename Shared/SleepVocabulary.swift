@@ -83,7 +83,7 @@ enum SleepVocabulary {
     static let sleepDebt = Term(
         plain: "Estimated sleep shortfall",
         technical: "Sleep debt",
-        meaning: "How far behind your own sleep need you have fallen over the last two weeks. An estimate, and one you cannot bank credit against by sleeping in.",
+        meaning: "How far behind your own sleep need you have fallen lately, with recent nights counting most and older ones fading. An estimate, and one you cannot bank credit against by sleeping in.",
         symbol: "hourglass.bottomhalf.filled"
     )
 

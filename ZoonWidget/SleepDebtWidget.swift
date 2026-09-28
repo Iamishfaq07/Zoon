@@ -21,7 +21,7 @@ struct SleepDebtWidget: Widget {
                 .containerBackground(for: .widget) { WidgetNightGround() }
         }
         .configurationDisplayName("Sleep Shortfall")
-        .description("Your estimated sleep shortfall over the last two weeks.")
+        .description("Your estimated sleep shortfall, recent nights counting most.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
@@ -197,7 +197,7 @@ struct SleepDebtWidgetView: View {
         if snapshot.sleepDebtMinutes < 15 {
             return "No recent shortfall"
         }
-        return "vs \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes))/night, 14 days"
+        return "vs \(SleepNightFeatures.formatMinutes(snapshot.goalMinutes))/night, recent nights"
     }
 
     private var placeholderBadge: some View {
