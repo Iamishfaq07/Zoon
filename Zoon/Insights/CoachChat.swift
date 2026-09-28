@@ -539,6 +539,7 @@ final class CoachChat {
         switch kind {
         case .getSleepScore, .getLastNightSummary, .getSleepDuration: evidence?.catalog["sleep"]
         case .getShortfall: evidence?.catalog["debt"] ?? evidence?.catalog["sleep"]
+        case .getHRV: evidence?.catalog["hrv"]
         case .getTonight, .getTomorrow: evidence?.catalog["timing"]
         case .getRecovery, .getEnergy, .getMovement, .getFatigueContext, .getTrainingContext,
              .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,

@@ -18,6 +18,8 @@ enum CoachToolCatalog {
         case getLastNightSummary
         case getSleepDuration
         case getRecovery
+        /// Last night's overnight HRV against the person's own baseline.
+        case getHRV
         case getShortfall
         case getEnergy
         case getMovement
@@ -51,7 +53,7 @@ enum CoachToolCatalog {
             switch self {
             case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
                 true
-            case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getShortfall, .getEnergy,
+            case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getHRV, .getShortfall, .getEnergy,
                  .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext,
                  .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
                  .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
@@ -68,6 +70,7 @@ enum CoachToolCatalog {
             case .getLastNightSummary: "Read a short last-night summary."
             case .getSleepDuration: "Read last night's sleep duration."
             case .getRecovery: "Read morning Recovery."
+            case .getHRV: "Read last night's HRV against your own average."
             case .getShortfall: "Read sleep shortfall."
             case .getEnergy: "Read Energy now."
             case .getMovement: "Read today's movement against your usual day."
@@ -120,6 +123,16 @@ enum CoachToolCatalog {
         // "tomorrow" was matched ahead of every read branch, so "what does my
         // recovery look like tomorrow" opened the Tomorrow planner and
         // `.getTomorrow` was declared but returned by nothing.
+        //
+        // Questions about the week, before anything about one night: "How did
+        // I sleep this week?" was answered with last night's score, and "What
+        // changed this week?" with a month-long comparison.
+        if q.contains("week"), !q.contains("catch up"), !q.contains("plan"), matches(q, [
+            "what changed", "how did i sleep", "how was my sleep", "how's my sleep", "hows my sleep",
+            "compared", "last week", "this week", "week over week", "past week"
+        ]) {
+            return Call(kind: .getTrendSummary)
+        }
         if matches(q, [
             "how much did i sleep", "how long did i sleep", "how long was i asleep",
             "sleep duration", "time asleep"
@@ -195,7 +208,13 @@ enum CoachToolCatalog {
         ]) {
             return Call(kind: .getWeeklyPlan)
         }
-        if matches(q, ["why was my hrv", "hrv low", "hrv higher", "why did i wake"]) {
+        // HRV has its own tool. These questions -- including the Coach tab's
+        // own suggestion "Why was my HRV low last night?" -- were sent to the
+        // last-night summary and answered with sleep duration and efficiency.
+        if matches(q, ["hrv", "heart rate variability"]) {
+            return Call(kind: .getHRV)
+        }
+        if matches(q, ["why did i wake"]) {
             return Call(kind: .getLastNightSummary)
         }
         if matches(q, ["prepare for tomorrow"]) {

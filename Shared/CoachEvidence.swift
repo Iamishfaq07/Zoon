@@ -125,6 +125,8 @@ struct CoachEvidence: Sendable {
                 return trendReply().within(trendTimeframe)
             case .getRecovery:
                 return recoveryLocalReply().within(nightTimeframe)
+            case .getHRV:
+                return hrvReply().within(nightTimeframe)
             case .getEnergy:
                 return energyLocalReply()
             case .getDailyLoad, .getPhysiologicalLoad:
