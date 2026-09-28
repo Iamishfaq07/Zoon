@@ -800,13 +800,19 @@ struct TodayView: View {
         let nights = coordinator.recentNights
         guard nights.count >= 8 else { return nil }
         let series = RecentSleepShortfall.debtSeries(
-            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: nights.map {
-                $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes
-            }
+            nightsOldestFirst: nights,
+            fallbackGoalMinutes: preferences.sleepGoalMinutes
         )
-        guard let latest = series.last, series.count >= 8 else { return nil }
-        let change = latest - series[series.count - 8]
+        guard let latest = series.last, let last = nights.last, series.count == nights.count else { return nil }
+        // A calendar week back, as Sleep Shortfall compares: eight records
+        // back spanned weeks after any unworn night.
+        guard let target = Calendar.current.date(byAdding: .day, value: -7, to: last.date),
+              let weekAgoIndex = nights.indices.min(by: {
+                  abs(nights[$0].date.timeIntervalSince(target)) < abs(nights[$1].date.timeIntervalSince(target))
+              }),
+              abs(nights[weekAgoIndex].date.timeIntervalSince(target)) <= 2 * 86_400
+        else { return nil }
+        let change = latest - series[weekAgoIndex]
         return (context.shortfallNowMinutes ?? 0) - change
     }
 

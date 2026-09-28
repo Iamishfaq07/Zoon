@@ -1422,9 +1422,15 @@ final class SleepDataCoordinator {
 
         guard let result = await healthRead("strain.zones", source: "heartRate", {
             try await healthKit.heartRateZones(in: interval, restingHeartRate: restingHR, maxHeartRate: maxHR)
-        }), !result.zones.isEmpty, result.coverage >= 0.4 else {
+        }), result.coverage >= 0.4 else {
             // Thin heart-rate coverage — fall back to the energy estimate and
             // let the UI say so rather than presenting a confident wrong number.
+            //
+            // Coverage only. Zones are recorded from 50% of heart-rate reserve,
+            // so a fully watched restful day has none, and treating that as thin
+            // coverage gave an office day with a long walk a 'Moderate'
+            // estimate -- which fell to 'Light' once five minutes on the
+            // stairs produced a zone. Empty zones with coverage compute to 0.
             return .estimate(activeEnergyKcal: energy ?? 0, exerciseMinutes: exercise ?? 0)
         }
 

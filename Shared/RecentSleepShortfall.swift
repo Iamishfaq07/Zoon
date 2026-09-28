@@ -192,6 +192,27 @@ enum RecentSleepShortfall {
         )
     }
 
+    /// The series for recorded nights exactly as the ledger keeps it: each
+    /// night's 24-hour total against the need frozen onto it (else
+    /// `fallbackGoalMinutes`), decayed per calendar night between records.
+    ///
+    /// The entry point for anything drawn beside the headline shortfall.
+    /// The Trends chart, What Changed, Today's week-ago line and Sleep Health
+    /// used the undated overload, which decays once per *record*: after ten
+    /// unworn nights the chart read 4h 40m under a headline of 2h 20m.
+    static func debtSeries(
+        nightsOldestFirst nights: [SleepNightFeatures],
+        fallbackGoalMinutes: Double,
+        calendar: Calendar = .current
+    ) -> [Double] {
+        debtSeries(
+            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
+            goalMinutesOldestFirst: nights.map { $0.sleepNeedBaselineMinutes ?? fallbackGoalMinutes },
+            nightDatesOldestFirst: nights.map(\.date),
+            calendar: calendar
+        )
+    }
+
     /// The one loop every overload above resolves to. `gapDaysOldestFirst`
     /// is how many calendar nights of decay precede each record; a record
     /// with no entry decays by exactly one.

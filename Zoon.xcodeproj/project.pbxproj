@@ -605,6 +605,7 @@
 		5FD7E940C881946CF2A5EF92 /* BodyClockCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B202E4810C0F1C50E34E2DC3 /* BodyClockCard.swift */; };
 		5FE36731FC84026A129405B4 /* PhaseBoundaryRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCE3A21F7F965D722577B136 /* PhaseBoundaryRefresh.swift */; };
 		600D8ED30CD76213F7EC0200 /* SnoreNight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0888433C25F6EF840FD3D2F8 /* SnoreNight.swift */; };
+		605F3B644A415C268F43DB6E /* DatedShortfallSeriesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE6265522FB0106AC7CD9D4 /* DatedShortfallSeriesTests.swift */; };
 		608C1D54B134BF6C62DF29B9 /* rainfall.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 570DA1C409196B9D0914EDAF /* rainfall.mp3 */; };
 		6098DC278D97605174B04846 /* NapActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A941681C0FF29010F444059 /* NapActivityAttributes.swift */; };
 		60AEE6F07D47E217A0BC343F /* SleepApneaEventSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87B28A8A75CC1E3786389CB3 /* SleepApneaEventSummary.swift */; };
@@ -1786,6 +1787,7 @@
 		2D8F6B0DA34DAFB54A499597 /* ZoonWhatIfLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWhatIfLab.swift"; sourceTree = "<group>"; };
 		2DA455F8F484404F9AA932A6 /* ReminderSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReminderSchedule.swift"; sourceTree = "<group>"; };
 		2E03AFA4718620CC22B5D2C0 /* forest.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "forest.mp3"; sourceTree = "<group>"; };
+		2EE6265522FB0106AC7CD9D4 /* DatedShortfallSeriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DatedShortfallSeriesTests.swift"; sourceTree = "<group>"; };
 		2F1D3D8C86204A5AA8EE1BF2 /* EnergyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyForecastTests.swift"; sourceTree = "<group>"; };
 		2F570256523073B284F2E689 /* PersonalLearning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PersonalLearning.swift"; sourceTree = "<group>"; };
 		2F5DD7E52B2623F0A7D68849 /* LightCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LightCoachTests.swift"; sourceTree = "<group>"; };
@@ -2797,6 +2799,7 @@
 				EE9B5F417E53291DB0A4770F,
 				946EC8BD6FCE36FDD451672B,
 				DAF5336844834D65C567626A,
+				2EE6265522FB0106AC7CD9D4,
 				D27747FA8BCC9004AF852E9B,
 				C4F2634736E0964BEE805A37,
 				8ECB3F1B01ECC29CD72C440C,
@@ -4502,6 +4505,7 @@
 				EC31392EB0C37EB00F820C17,
 				43539E277ED04917F3EADA7A,
 				1EC991B072B615C1E9084D97,
+				605F3B644A415C268F43DB6E,
 				8C4806DD51C38DF66417F5B7,
 				C17C20F6D09CA901AA7BB33C,
 				2AD8AC34747114F008C895EA,
