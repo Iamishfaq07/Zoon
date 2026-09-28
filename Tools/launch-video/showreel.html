@@ -22,6 +22,9 @@
 'use strict';
 // ?v=1 lays every scene out for a 9:16 phone screen instead.
 const V = /[?&]v=1/.test(location.search);
+// ?clean=1 drops the film grain and the star twinkle: detail that costs
+// bits, for copies that a messaging app will re-compress (WhatsApp).
+const CLEAN = /[?&]clean=1/.test(location.search);
 const W = V ? 1080 : 1920, H = V ? 1920 : 1080, DUR = 100;
 const vh = (land, vert) => V ? vert : land;
 const cv = document.getElementById('c'), DPR = window.devicePixelRatio || 1;
@@ -241,7 +244,7 @@ function stars(t, a = 1, drift = 1) {
   g.save();
   for (const s of STARS) {
     const x = ((s.x - t * 9 * s.z * drift) % W + W) % W;
-    const tw = 0.55 + 0.45 * Math.sin(t * 1.7 + s.tw);
+    const tw = CLEAN ? 0.8 : 0.55 + 0.45 * Math.sin(t * 1.7 + s.tw);
     g.globalAlpha = a * s.z * tw * 0.85; g.fillStyle = '#dfe2ff';
     g.beginPath(); g.arc(x, s.y, s.r * s.z, 0, 7); g.fill();
   }
@@ -1105,6 +1108,7 @@ function post(t) {
   if (fl > 0.01) { g.fillStyle = `rgba(236,232,255,${fl})`; g.fillRect(0, 0, W, H); }
   const vg = g.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 1.05);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  if (CLEAN) return;
   g.save(); g.globalCompositeOperation = 'overlay'; g.globalAlpha = 0.07;
   const fr = Math.floor(t * 30); const pat = g.createPattern(GRAIN[fr % 3], 'repeat');
   g.translate((fr * 37) % 256, (fr * 91) % 256); g.fillStyle = pat; g.fillRect(-256, -256, W + 512, H + 512); g.restore();

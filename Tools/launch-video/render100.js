@@ -6,6 +6,7 @@
 //   node render100.js stills out/ 6.6 23.6 writes single frames (1x) for review
 //   FFMPEG=... node render100.js zoon-showreel.mp4
 //   VERTICAL=1 for the 1080x1920 phone layout (same clock, same sound)
+//   CLEAN=1 without grain or star twinkle, for copies WhatsApp re-compresses
 //   CUTS=cuts90.json SCORE=score90.wav for the 1:30 cut (story ranges left out)
 const { chromium } = require(process.env.PLAYWRIGHT || 'playwright');
 const { spawn } = require('child_process');
@@ -20,7 +21,7 @@ const story = T => { let t = T; for (const [a, b] of CUTS) if (t >= a) t += b - 
   const dsf = mode === 'stills' || mode === 'cues' ? 1 : 2;
   const p = await b.newPage({ viewport: V ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 }, deviceScaleFactor: dsf });
   p.on('pageerror', e => { console.error('page error:', e.message); process.exitCode = 1; });
-  await p.goto('file://' + __dirname + '/showreel.html' + (V ? '?v=1' : '')); await p.evaluate(() => window.ready);
+  await p.goto('file://' + __dirname + '/showreel.html?' + [V && 'v=1', process.env.CLEAN === '1' && 'clean=1'].filter(Boolean).join('&')); await p.evaluate(() => window.ready);
   if (mode === 'cues') {
     const cues = await p.evaluate(() => window.CUES);
     fs.writeFileSync(__dirname + '/cues100.json', JSON.stringify({ duration: await p.evaluate(() => window.DURATION), cues }, null, 0));
