@@ -2196,8 +2196,11 @@ final class SleepDataCoordinator {
     ///
     /// - Returns: a human-readable summary of what landed.
     func importArchive(_ archive: DataExporter.Archive) async -> String {
+        // Backups up to format 6 were exported from a store holding breathing
+        // disturbances a hundred times too large; converted on the way in so
+        // a restore cannot bring the wrong unit back.
         let nights = store.importNights(
-            archive.nights,
+            BreathingDisturbanceUnits.nightsFromArchive(archive.nights, formatVersion: archive.formatVersion),
             absoluteTemperatures: archive.wristTemperaturesByDate
         )
         let entries = journal.importEntries(

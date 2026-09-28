@@ -19,6 +19,54 @@ final class SleepHistoryStore {
         self.context = context
     }
 
+    // MARK: - One-time migrations
+
+    static let breathingUnitsMigratedKey = "zoon.migration.breathingDisturbancesPerHour.done"
+    static let breathingUnitsSnapshotKey = "zoon.migration.breathingDisturbancesPerHour.snapshot"
+
+    /// Converts breathing disturbances stored by builds that read them as a
+    /// percent and multiplied by 100 into events per hour, once.
+    ///
+    /// Must run before anything new is extracted, which is why the app calls
+    /// it right after the store opens and before the coordinator exists: at
+    /// that point every stored value is an old one. It is safe to interrupt
+    /// anywhere. The values it found are recorded before anything is changed,
+    /// and a retry converts only rows still holding exactly those values
+    /// (`BreathingDisturbanceUnits.rowsNeedingConversion`), so a row is never
+    /// divided twice. An unreadable store is left alone and tried again next
+    /// launch.
+    func migrateBreathingDisturbanceUnitsIfNeeded(defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: Self.breathingUnitsMigratedKey) else { return }
+        guard let records = context.readAll(
+            FetchDescriptor<SleepNightRecord>(), operation: "migration.breathingUnits"
+        ) else { return }
+
+        var stored: [String: Double] = [:]
+        for record in records {
+            guard let value = record.breathingDisturbances else { continue }
+            stored[BreathingDisturbanceUnits.rowKey(for: record.date)] = value
+        }
+        let snapshot = defaults.dictionary(forKey: Self.breathingUnitsSnapshotKey) as? [String: Double]
+        if snapshot == nil, !stored.isEmpty {
+            defaults.set(stored, forKey: Self.breathingUnitsSnapshotKey)
+        }
+        let pending = BreathingDisturbanceUnits.rowsNeedingConversion(stored: stored, pendingSnapshot: snapshot)
+        for record in records {
+            guard let value = record.breathingDisturbances,
+                  pending.contains(BreathingDisturbanceUnits.rowKey(for: record.date)) else { continue }
+            record.breathingDisturbances = BreathingDisturbanceUnits.eventsPerHour(fromLegacy: value)
+        }
+        do {
+            if context.hasChanges { try context.save() }
+            defaults.set(true, forKey: Self.breathingUnitsMigratedKey)
+            defaults.removeObject(forKey: Self.breathingUnitsSnapshotKey)
+            logger.info("Converted \(pending.count) stored breathing-disturbance values to events per hour")
+        } catch {
+            context.rollback()
+            logger.error("Breathing-disturbance unit migration failed; will retry next launch: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     func evidenceHistory() -> [EvidenceLedger.Revision] {
         readableEvidenceHistory() ?? []
     }

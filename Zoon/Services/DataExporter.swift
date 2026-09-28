@@ -38,7 +38,11 @@ enum DataExporter {
     /// 6 adds behaviour detail (quantity, unit, event time, intensity) to
     /// each observation, and alertness-check sessions. Both are optional,
     /// so a 5 or older archive decodes and imports them as absent.
-    static let formatVersion = 6
+    /// 7 changes no field, only a unit: breathing disturbances are exported
+    /// as events per hour. Earlier archives carry them a hundred times too
+    /// large, and the version number is the only way an importer can tell,
+    /// so import converts 6 and older (`BreathingDisturbanceUnits`).
+    static let formatVersion = 7
 
     struct Archive: Codable {
         let formatVersion: Int

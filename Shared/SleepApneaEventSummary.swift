@@ -3,8 +3,9 @@ import Foundation
 /// Overnight count of Apple's sleep-apnea *category* events, if any.
 ///
 /// Breathing disturbances (the quantity `FeatureExtractor` already reads as
-/// `appleSleepingBreathingDisturbances`) are a 0...1 fraction plus Apple's
-/// own elevated/not-elevated classifier. Sleep apnea *events* are a separate
+/// `appleSleepingBreathingDisturbances`) are a rate -- events per hour of
+/// sleep, a `count` quantity -- plus Apple's own elevated/not-elevated
+/// classifier. Sleep apnea *events* are a separate
 /// `HKCategoryTypeIdentifier.sleepApneaEvent` stream, written only on
 /// hardware that has the feature enabled (Series 9 / Ultra 2 and later,
 /// iOS 18+). Most nights this is `nil`, and `nil` is not zero — it means

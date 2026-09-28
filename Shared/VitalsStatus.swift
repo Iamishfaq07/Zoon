@@ -60,6 +60,18 @@ struct VitalsStatus: Codable, Hashable, Sendable {
             guard let baseline, let tolerance else { return nil }
             return "\(kind.format(baseline - tolerance))–\(kind.format(baseline + tolerance))"
         }
+
+        /// `formattedValue` for VoiceOver -- units in words.
+        var spokenValue: String {
+            guard let value else { return "no reading" }
+            return kind.spokenFormat(value)
+        }
+
+        /// `formattedRange` for VoiceOver.
+        var spokenRange: String? {
+            guard let baseline, let tolerance else { return nil }
+            return "\(kind.spokenFormat(baseline - tolerance)) to \(kind.spokenFormat(baseline + tolerance))"
+        }
     }
 
     enum State: String, Codable, Hashable, Sendable {
@@ -122,15 +134,35 @@ struct VitalsStatus: Codable, Hashable, Sendable {
             }
         }
 
+        /// The value with its unit, compact enough for a lane or a chart
+        /// badge.
+        ///
+        /// Every kind carries a unit. Respiratory rate used to print as a
+        /// bare "14.2" and wrist temperature as "+0.6°" -- which a reader
+        /// used to Fahrenheit takes for a Fahrenheit figure, when it is a
+        /// Celsius *difference* from their own baseline. Breathing
+        /// disturbances printed as a percent, which they never were: Apple
+        /// reports them as events per hour.
         func format(_ value: Double) -> String {
             switch self {
             case .restingHeartRate: "\(Int(value.rounded())) bpm"
             case .hrv: "\(Int(value.rounded())) ms"
-            case .respiratoryRate: String(format: "%.1f", value)
+            case .respiratoryRate: String(format: "%.1f br/min", value)
             case .oxygenSaturation: String(format: "%.0f%%", value)
-            case .wristTemperature: String(format: "%+.1f°", value)
+            case .wristTemperature: String(format: "%+.1f°C", value)
             case .sleepDuration: SleepNightFeatures.formatMinutes(value)
-            case .breathingDisturbances: String(format: "%.1f%%", value)
+            case .breathingDisturbances: String(format: "%.1f/h", value)
+            }
+        }
+
+        /// The same value worded for VoiceOver, where "br/min" and "/h" would
+        /// be read out character by character.
+        func spokenFormat(_ value: Double) -> String {
+            switch self {
+            case .respiratoryRate: String(format: "%.1f breaths per minute", value)
+            case .breathingDisturbances: String(format: "%.1f events per hour", value)
+            case .restingHeartRate, .hrv, .oxygenSaturation, .wristTemperature, .sleepDuration:
+                format(value)
             }
         }
     }
@@ -223,6 +255,12 @@ struct VitalsStatus: Codable, Hashable, Sendable {
 
 extension VitalsStatus.Kind {
     /// Floor on the typical-range half-width, in each metric's own units.
+    ///
+    /// Breathing disturbances are events per hour. The 0.6 floor was set
+    /// while stored values were a hundred times too large (see
+    /// `BreathingDisturbanceUnits`), where it never bound; on the real scale
+    /// it is the smallest night-to-night change worth calling a move, and it
+    /// is what `HealthRadar` uses too.
     var minimumTolerance: Double {
         switch self {
         case .restingHeartRate: 2.0

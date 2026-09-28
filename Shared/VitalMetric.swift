@@ -48,9 +48,35 @@ enum MeasurementOutcome: Hashable, Sendable {
     var confirmsAbsence: Bool { self == .noData }
 
     /// Applies a transform to a measured value, preserving the distinction
-    /// for the other two cases. Used for the 0–1 → percent conversions.
+    /// for the other two cases. Used for the reading-to-stored conversions
+    /// in `VitalMetric.storedValue(fromReading:)`.
     func map(_ transform: (Double) -> Double) -> MeasurementOutcome {
         if case .measured(let value) = self { return .measured(transform(value)) }
         return self
+    }
+}
+
+extension VitalMetric {
+
+    /// The number Zoon stores for a reading taken in the unit
+    /// `FeatureExtractor` queries this metric in.
+    ///
+    /// Only blood oxygen changes scale: HealthKit's `percent()` unit is a
+    /// 0–1 fraction, and the app stores and shows 0–100. Everything else is
+    /// stored exactly as read -- including breathing disturbances, which
+    /// HealthKit declares as a `count` quantity (events per hour). That one
+    /// used to be read as a percent and multiplied by 100 on the belief that
+    /// it was a fraction of the night, which turned 3.2 events an hour into
+    /// "320%" on every surface and on the clinician PDF. Kept here, in
+    /// `Shared/`, so the mapping is pinned by tests rather than living as an
+    /// inline multiplication nobody can exercise without a health store.
+    func storedValue(fromReading reading: Double) -> Double {
+        switch self {
+        case .oxygenSaturation:
+            reading * 100
+        case .averageHeartRate, .minimumHeartRate, .restingHeartRate, .hrv,
+             .respiratoryRate, .wristTemperature, .breathingDisturbances:
+            reading
+        }
     }
 }

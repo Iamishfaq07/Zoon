@@ -1,20 +1,22 @@
 import Foundation
 import HealthKit
 
-/// Synthetic HealthKit samples for the Simulator and for unit tests.
+/// Synthetic HealthKit samples for unit tests.
 ///
 /// The real `HKHealthStore` has nothing to say on a Simulator and is not
 /// constructible in a way that lets tests inject samples with a custom
 /// `sourceRevision`. This type generates the *streams* the rest of the
 /// pipeline already knows how to read -- sleep analysis, HR, HRV, SpO2,
 /// wrist temperature, respiratory rate, breathing disturbances, and (when
-/// the SDK knows the type) sleep-apnea events -- so CI and the Simulator
-/// exercise the same join logic a real night does.
+/// the SDK knows the type) sleep-apnea events -- each in the unit HealthKit
+/// declares for it, so CI exercises the same join logic a real night does.
 ///
 /// It is a factory, not a store: nothing is persisted, and nothing here
 /// replaces `MockData`, which is the feature-struct shortcut the UI uses
-/// when HealthKit is unavailable. Tests that need `HKCategorySample`
-/// values (session building, fusion) come here.
+/// when HealthKit is unavailable (the Simulator and demo paths go through
+/// `MockData`, not this). Tests that need `HKCategorySample` values (session
+/// building, fusion) come here. No app code calls it; it lives under
+/// `Zoon/` only because the test target picks it up from there.
 enum MockHealthKitStore: Sendable {
 
     struct NightSpec: Sendable {
@@ -146,13 +148,20 @@ enum MockHealthKitStore: Sendable {
         )
     }
 
-    static func breathingDisturbanceSamples(in interval: DateInterval, fraction: Double = 0.04) -> [HKQuantitySample] {
+    /// One night-level breathing-disturbances sample, in the unit HealthKit
+    /// declares for the type: a `count` -- events per hour of sleep.
+    ///
+    /// This used to write a 0.04 "fraction" under `percent()`, repeating the
+    /// extractor's own mistake: HealthKit converts the two units one-for-one,
+    /// so the fixtures could never catch a pipeline that read the count as a
+    /// percent and multiplied it by 100.
+    static func breathingDisturbanceSamples(in interval: DateInterval, eventsPerHour: Double = 2.5) -> [HKQuantitySample] {
         quantitySamples(
             .appleSleepingBreathingDisturbances,
-            unit: .percent(),
+            unit: .count(),
             in: interval,
             every: interval.duration,
-            value: { _ in fraction }
+            value: { _ in eventsPerHour }
         )
     }
 
