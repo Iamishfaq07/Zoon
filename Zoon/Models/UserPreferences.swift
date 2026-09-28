@@ -781,7 +781,12 @@ final class UserPreferences {
         self.wakeAlarmEnabled = defaults.bool(forKey: Key.wakeAlarmEnabled)
         self.morningBriefEnabled = defaults.bool(forKey: Key.morningBriefEnabled)
         self.calendarAccessEnabled = defaults.bool(forKey: Key.calendarAccessEnabled)
-        self.tomorrowEventEnabled = defaults.object(forKey: Key.tomorrowEventEnabled) as? Bool ?? true
+        // Off until the person sets a morning start (Tomorrow's Protect toggle,
+        // Prepare Tomorrow, or the Coach). Defaulting to on gave every new
+        // user an 08:30 "time you asked Zoon to protect" they never set,
+        // which moved their wake, their bedtime plan and the runway. The
+        // 08:30 below is only the picker's starting value.
+        self.tomorrowEventEnabled = defaults.object(forKey: Key.tomorrowEventEnabled) as? Bool ?? false
         let storedHour = defaults.object(forKey: Key.tomorrowHour) as? Int
         self.tomorrowHour = storedHour ?? 8
         let storedMinute = defaults.object(forKey: Key.tomorrowMinute) as? Int
@@ -862,7 +867,7 @@ final class UserPreferences {
         wakeAlarmEnabled = false
         morningBriefEnabled = false
         calendarAccessEnabled = false
-        tomorrowEventEnabled = true
+        tomorrowEventEnabled = false
         tomorrowHour = 8
         tomorrowMinute = 30
         morningReadyBufferMinutes = ZoonTomorrow.readyBufferMinutes
