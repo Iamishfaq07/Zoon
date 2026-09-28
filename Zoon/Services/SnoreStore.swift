@@ -133,16 +133,43 @@ final class SnoreStore {
         // against by overwriting.
         let earlier = nights.filter { Self.isSameNight($0, summary) }
         nights.removeAll { Self.isSameNight($0, summary) }
-        nights.append(earlier.reduce(summary) { merged, previous in
-            NightSummary(
-                date: max(merged.date, previous.date),
-                monitoredMinutes: merged.monitoredMinutes + previous.monitoredMinutes,
-                snoreMinutes: merged.snoreMinutes + previous.snoreMinutes,
-                nightKey: merged.nightKey ?? previous.nightKey,
-                timezoneIdentifier: merged.timezoneIdentifier ?? previous.timezoneIdentifier
-            )
-        })
+        nights.append(earlier.reduce(summary, Self.merging))
         persist()
+    }
+
+    /// Two sessions of one night as one summary.
+    ///
+    /// Every field, not just the minutes. The merge used to keep only
+    /// those, and a nil quality reads as conclusive: two short, interrupted
+    /// sessions heard 41% of the night between them and the card said
+    /// "None flagged" with no coverage line and no "Partial session".
+    /// Quality takes the weaker of the two: the stored value is already the
+    /// detector's and the coverage's minimum, the detector's own half is not
+    /// kept, so anything higher would be a guess in the reassuring direction.
+    nonisolated static func merging(_ a: NightSummary, _ b: NightSummary) -> NightSummary {
+        func either(_ x: Bool?, _ y: Bool?) -> Bool? {
+            (x == nil && y == nil) ? nil : (x ?? false) || (y ?? false)
+        }
+        let interruption: Double? = (a.interruptionDurationMinutes == nil && b.interruptionDurationMinutes == nil)
+            ? nil
+            : (a.interruptionDurationMinutes ?? 0) + (b.interruptionDurationMinutes ?? 0)
+        // Both are shares of the same night's window. One unknown half makes
+        // the sum unknown.
+        let coverage: Int? = a.coveragePercent.flatMap { x in b.coveragePercent.map { min(100, x + $0) } }
+        let qualities = [a.monitoringQuality, b.monitoringQuality]
+            .compactMap { $0.flatMap(SnoreMonitoringConfidence.init(rawValue:)) }
+        return NightSummary(
+            date: max(a.date, b.date),
+            monitoredMinutes: a.monitoredMinutes + b.monitoredMinutes,
+            snoreMinutes: a.snoreMinutes + b.snoreMinutes,
+            nightKey: a.nightKey ?? b.nightKey,
+            timezoneIdentifier: a.timezoneIdentifier ?? b.timezoneIdentifier,
+            isPartial: either(a.isPartial, b.isPartial),
+            endedUnexpectedly: either(a.endedUnexpectedly, b.endedUnexpectedly),
+            monitoringQuality: qualities.min()?.rawValue,
+            interruptionDurationMinutes: interruption,
+            coveragePercent: coverage
+        )
     }
 
     var mostRecent: NightSummary? { nights.last }

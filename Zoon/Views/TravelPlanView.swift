@@ -25,6 +25,7 @@ struct TravelPlanView: View {
     /// that still says how many days, rather than truncated.
     @State private var setup = PersonalSetupStore.shared
     @State private var detailed = false
+    @State private var origin = TimeZone.current
     @State private var destination = TimeZone.current
     @State private var departure = Calendar.current.date(byAdding: .day, value: 5, to: .now) ?? .now
     @State private var arrival = Calendar.current.date(byAdding: .day, value: 5, to: .now) ?? .now
@@ -33,7 +34,7 @@ struct TravelPlanView: View {
 
     private var trip: TravelPlan.Trip {
         TravelPlan.Trip(
-            origin: .current,
+            origin: origin,
             destination: destination,
             departure: departure,
             arrival: arrival
@@ -49,7 +50,14 @@ struct TravelPlanView: View {
         ScrollView {
             CascadeStack(alignment: .leading, spacing: Theme.stackSpacing) {
                 tripCard
-                Button("Save this trip") { setup.value.trip = .init(destination: destination.identifier, departure: departure, arrival: arrival) }
+                // The picked origin, not the phone's zone: saved again after
+                // landing, that would be the destination.
+                Button("Save this trip") {
+                    setup.value.trip = .init(
+                        destination: destination.identifier, departure: departure, arrival: arrival,
+                        origin: origin.identifier
+                    )
+                }
                 NavigationLink("Choose sleep times for this trip") { SavedSleepPlansView() }
                 if let bodyClock {
                     planSection(bodyClock: bodyClock)
@@ -68,6 +76,7 @@ struct TravelPlanView: View {
         .nightBackground()
         .onAppear {
             if let trip = setup.value.trip {
+                origin = trip.origin.flatMap(TimeZone.init(identifier:)) ?? .current
                 destination = TimeZone(identifier: trip.destination) ?? .current
                 departure = trip.departure; arrival = trip.arrival
             }
@@ -87,6 +96,14 @@ struct TravelPlanView: View {
     private var tripCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Your trip", systemImage: "airplane")
+
+            Picker("From", selection: $origin) {
+                ForEach(zones, id: \.identifier) { zone in
+                    Text(zone.identifier.replacingOccurrences(of: "_", with: " "))
+                        .tag(zone)
+                }
+            }
+            .pickerStyle(.navigationLink)
 
             Picker("Destination", selection: $destination) {
                 ForEach(zones, id: \.identifier) { zone in

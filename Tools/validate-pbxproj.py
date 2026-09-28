@@ -12,6 +12,12 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
+# The app's Info.plist contract lives beside this script so the Linux check
+# here and the check on the built bundle (build.yml, screenshots.yml,
+# testflight.yml) read one list.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import app_bundle_contract  # noqa: E402
+
 UNQUOTED = re.compile(r'[A-Za-z0-9_$./:-]+')
 
 
@@ -289,32 +295,99 @@ PLACEHOLDER_REQUIRED = [
 ]
 
 
+# With GENERATE_INFOPLIST_FILE = YES, Xcode writes each placeholder key from
+# a build setting and merges it over the INFOPLIST_FILE, so for those
+# configurations the file need not carry them -- but the settings must exist.
+# EXECUTABLE_NAME and PRODUCT_BUNDLE_PACKAGE_TYPE always have Xcode defaults.
+GENERATED_PLACEHOLDER_SETTINGS = {
+    'CFBundleIdentifier': 'PRODUCT_BUNDLE_IDENTIFIER',
+    'CFBundleName': 'PRODUCT_NAME',
+    'CFBundleShortVersionString': 'MARKETING_VERSION',
+    'CFBundleVersion': 'CURRENT_PROJECT_VERSION',
+}
+
+
+def _unquote(value):
+    return value.strip('"') if isinstance(value, str) else value
+
+
+def _configurations(objects, owner):
+    """The XCBuildConfiguration objects of a target or project object."""
+    lst = objects.get(owner.get('buildConfigurationList'), {})
+    return [objects[c] for c in lst.get('buildConfigurations', []) if c in objects]
+
+
+def _infoplist_key_settings(settings):
+    """The Info.plist keys a configuration sets through INFOPLIST_KEY_*.
+
+    Maps Xcode's macro spelling back to the key it writes: `_iPhone` and
+    `_iPad` suffixes stand for the `~iphone` and `~ipad` variants.
+    """
+    keys = set()
+    for name in settings:
+        if name.startswith('INFOPLIST_KEY_'):
+            key = name[len('INFOPLIST_KEY_'):]
+            keys.add(key.replace('_iPhone', '~iphone').replace('_iPad', '~ipad'))
+    return keys
+
+
 def check_infoplists(objects, root):
     """Validate every Info.plist referenced by an INFOPLIST_FILE setting.
 
     Returns an error string, or None when everything checks out.
     """
-    paths = set()
-    for obj in objects.values():
+    project = next((o for o in objects.values()
+                    if isinstance(o, dict) and o.get('isa') == 'PBXProject'), {})
+    project_settings = {c.get('name'): c.get('buildSettings') or {}
+                        for c in _configurations(objects, project)}
+
+    loaded = {}
+
+    def load(rel):
+        if rel not in loaded:
+            full = os.path.join(root, rel)
+            if not os.path.exists(full):
+                return None, f"INFOPLIST_FILE points at a missing file: {rel}"
+            try:
+                with open(full, 'rb') as handle:
+                    loaded[rel] = plistlib.load(handle)
+            except Exception as exc:
+                return None, f"{rel} is not a readable plist: {exc}"
+        return loaded[rel], None
+
+    for oid in sorted(objects):
+        obj = objects[oid]
         if not isinstance(obj, dict) or obj.get('isa') != 'XCBuildConfiguration':
             continue
-        value = (obj.get('buildSettings') or {}).get('INFOPLIST_FILE')
-        if value:
-            paths.add(value.strip('"'))
+        settings = obj.get('buildSettings') or {}
+        rel = _unquote(settings.get('INFOPLIST_FILE'))
+        if not rel:
+            continue
+        data, error = load(rel)
+        if error:
+            return error
+        if not isinstance(data, dict):
+            return f"{rel} is not a dictionary"
 
-    for rel in sorted(paths):
-        full = os.path.join(root, rel)
-        if not os.path.exists(full):
-            return f"INFOPLIST_FILE points at a missing file: {rel}"
-        try:
-            with open(full, 'rb') as handle:
-                data = plistlib.load(handle)
-        except Exception as exc:
-            return f"{rel} is not a readable plist: {exc}"
-
-        missing = [k for k in PLACEHOLDER_REQUIRED if not data.get(k)]
-        if missing:
-            return f"{rel} is missing required key(s): {', '.join(missing)}"
+        generated = _unquote(settings.get('GENERATE_INFOPLIST_FILE')) == 'YES'
+        if generated:
+            effective = {**project_settings.get(obj.get('name'), {}), **settings}
+            unset = [f"{key} (from {setting})"
+                     for key, setting in GENERATED_PLACEHOLDER_SETTINGS.items()
+                     if not data.get(key) and not _unquote(effective.get(setting))]
+            if unset:
+                return (f"{rel} ({obj.get('name')}) relies on GENERATE_INFOPLIST_FILE for "
+                        f"{', '.join(unset)}, but the build setting is not set")
+            # One definition per key. A generated scalar silently replaces the
+            # file's, so the file would say one thing and the bundle another.
+            twice = sorted(_infoplist_key_settings(settings) & set(data))
+            if twice:
+                return (f"{rel} and INFOPLIST_KEY_* settings ({obj.get('name')}) both define "
+                        f"{', '.join(twice)}; keep each key in one place")
+        else:
+            missing = [k for k in PLACEHOLDER_REQUIRED if not data.get(k)]
+            if missing:
+                return f"{rel} is missing required key(s): {', '.join(missing)}"
 
         # App extensions specifically.
         if data.get('CFBundlePackageType') == 'XPC!':
@@ -325,6 +398,67 @@ def check_infoplists(objects, root):
             if not extension.get('NSExtensionPointIdentifier'):
                 return f"{rel} has NSExtension without NSExtensionPointIdentifier"
 
+    return check_app_infoplist(objects, root, load)
+
+
+def check_app_infoplist(objects, root, load):
+    """The iOS app's own Info.plist: present in every configuration, generated
+    keys still on, and carrying what only the file can say.
+
+    Every build before this check shipped without background audio or the
+    AlarmKit purpose string, because they were INFOPLIST_KEY_* settings Xcode
+    ignores. This makes the file that replaced them impossible to unhook
+    quietly: dropping INFOPLIST_FILE from one configuration, or a key from
+    the file, fails here in milliseconds on Linux.
+    """
+    apps = []
+    for obj in objects.values():
+        if not isinstance(obj, dict) or obj.get('isa') != 'PBXNativeTarget':
+            continue
+        if _unquote(obj.get('productType')) != 'com.apple.product-type.application':
+            continue
+        configs = _configurations(objects, obj)
+        if any(_unquote((c.get('buildSettings') or {}).get('SDKROOT')) == 'watchos'
+               for c in configs):
+            continue
+        apps.append((obj, configs))
+    if len(apps) != 1:
+        return f"expected exactly one iOS application target, found {len(apps)}"
+    target, configs = apps[0]
+    name = target.get('name')
+
+    for config in configs:
+        settings = config.get('buildSettings') or {}
+        label = f"{name} ({config.get('name')})"
+        rel = _unquote(settings.get('INFOPLIST_FILE'))
+        if not rel:
+            return (f"{label} has no INFOPLIST_FILE, so the built app loses background "
+                    "audio, the AlarmKit purpose string and the launch-screen colour")
+        if _unquote(settings.get('GENERATE_INFOPLIST_FILE')) != 'YES':
+            return (f"{label} turned GENERATE_INFOPLIST_FILE off, so none of its "
+                    "INFOPLIST_KEY_* purpose strings would be written")
+        data, error = load(rel)
+        if error:
+            return error
+        problems = app_bundle_contract.check_source_plist(data)
+        if problems:
+            return f"{rel} ({label}): " + "; ".join(problems)
+        colour = data['UILaunchScreen']['UIColorName']
+        colourset = os.path.join(os.path.dirname(rel), 'Assets.xcassets',
+                                 f"{colour}.colorset", 'Contents.json')
+        if not os.path.exists(os.path.join(root, colourset)):
+            return f"{rel} names launch colour {colour!r}, but {colourset} does not exist"
+
+    # Copied as a resource as well as processed, the plist makes the build
+    # fail with "Multiple commands produce .../Info.plist".
+    for phase_id in target.get('buildPhases', []):
+        phase = objects.get(phase_id, {})
+        if phase.get('isa') != 'PBXResourcesBuildPhase':
+            continue
+        for build_file in phase.get('files', []):
+            ref = objects.get(objects.get(build_file, {}).get('fileRef'), {})
+            if os.path.basename(_unquote(ref.get('path') or '')) == 'Info.plist':
+                return f"{name} copies an Info.plist in Copy Bundle Resources"
     return None
 
 

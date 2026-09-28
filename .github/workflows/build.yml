@@ -38,14 +38,26 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Verify generated project is current
+        # Everything the generator writes, both schemes included: a stale or
+        # hand-edited ZoonWatch.xcscheme used to pass because only the
+        # project file and the app scheme were compared. A file it writes
+        # that was never committed is caught too -- `git diff` cannot see it.
         run: |
+          set -eo pipefail
           python3 Tools/generate-pbxproj.py
-          git diff --exit-code -- Zoon.xcodeproj/project.pbxproj Zoon.xcodeproj/xcshareddata/xcschemes/Zoon.xcscheme
-      - name: Check deployment targets and Swift version
+          git diff --exit-code -- Zoon.xcodeproj/
+          UNTRACKED=$(git ls-files --others --exclude-standard -- Zoon.xcodeproj/)
+          if [ -n "$UNTRACKED" ]; then
+            echo "::error::The generator wrote files that are not committed: $UNTRACKED"
+            exit 1
+          fi
+      - name: Check deployment targets, Swift version and Info.plist settings
         run: python3 Tools/check-build-settings.py Zoon.xcodeproj/project.pbxproj
 
       - name: Parse project.pbxproj
         run: python3 Tools/validate-pbxproj.py Zoon.xcodeproj/project.pbxproj
+      - name: Check the app bundle contract checker
+        run: python3 Tools/app_bundle_contract.py --self-test
       - name: Check App Store Connect cert-slot helper
         run: python3 Tools/asc_free_certificate_slot.py --self-test
       - name: Enforce release trust gates
@@ -247,6 +259,29 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
             2>&1 | tee build.log
+
+      # The compiler never sees Info.plist. Background audio, the AlarmKit
+      # purpose string and the launch-screen colour were asked for as
+      # INFOPLIST_KEY_* settings Xcode does not know, were dropped from every
+      # build without a warning, and every build still passed -- Sleep Sounds
+      # and Snore Check stopping at lock was the first sign. So this reads the
+      # Info.plist Xcode actually wrote and fails when the app's contract
+      # (Tools/app_bundle_contract.py) is broken. A glob rather than `find |
+      # head`, which SIGPIPEs under pipefail when there is a second match.
+      - name: Check the built app's Info.plist
+        if: steps.build.outcome == 'success'
+        run: |
+          set -eo pipefail
+          shopt -s nullglob
+          APPS=("$HOME"/Library/Developer/Xcode/DerivedData/*/Build/Products/Debug-iphonesimulator/Zoon.app)
+          if [ "${#APPS[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one Debug-iphonesimulator/Zoon.app in DerivedData, found ${#APPS[@]}."
+            exit 1
+          fi
+          APP="${APPS[0]}"
+          plutil -lint "$APP/Info.plist"
+          plutil -p "$APP/Info.plist"
+          python3 Tools/app_bundle_contract.py "$APP"
 
       - name: Run ZoonTests
         id: test
@@ -648,6 +683,7 @@ jobs:
         run: Tools/select-xcode.sh
 
       - name: Build app, widgets and watch app in Release
+        id: release
         run: |
           set -o pipefail
           xcodebuild build \
@@ -668,6 +704,22 @@ jobs:
             grep -E "error:" release-build.log | sort -u | head -40 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # The configuration that ships. Its Info.plist is produced from the
+      # Release build settings, so the Debug check in the build job does not
+      # vouch for it. Same contract, same reasons.
+      - name: Check the Release app's Info.plist
+        if: steps.release.outcome == 'success'
+        run: |
+          set -eo pipefail
+          shopt -s nullglob
+          APPS=("$HOME"/Library/Developer/Xcode/DerivedData/*/Build/Products/Release-iphonesimulator/Zoon.app)
+          if [ "${#APPS[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one Release-iphonesimulator/Zoon.app in DerivedData, found ${#APPS[@]}."
+            exit 1
+          fi
+          plutil -lint "${APPS[0]}/Info.plist"
+          python3 Tools/app_bundle_contract.py "${APPS[0]}"
 
       # Audit §12, stage 2 of the Swift 6 migration: the same app built with
       # complete concurrency checking, still in Swift 5 mode. It started at

@@ -69,8 +69,8 @@ enum UncertaintyForecast {
         /// interval.
         var rangeLabel: String {
             "\(metric.label.capitalizedFirst): "
-                + "\(metric.formattedMagnitude(lower))"
-                + " to \(metric.formattedMagnitude(upper))"
+                + "\(metric.formattedValue(lower))"
+                + " to \(metric.formattedValue(upper))"
         }
 
         /// Plain-language forecast. Leads with the range, not the midpoint.
@@ -84,9 +84,9 @@ enum UncertaintyForecast {
         /// happened next. Until there is a model that has been backtested,
         /// the honest headline is the range itself.
         var sentence: String {
-            "Your recent nights ranged between \(metric.formattedMagnitude(lower)) and "
-                + "\(metric.formattedMagnitude(upper)) for \(metric.label), "
-                + "typically around \(metric.formattedMagnitude(typical))."
+            "Your recent nights ranged between \(metric.formattedValue(lower)) and "
+                + "\(metric.formattedValue(upper)) for \(metric.label), "
+                + "typically around \(metric.formattedValue(typical))."
         }
 
         /// The caveat that must travel with this range. Built purely from

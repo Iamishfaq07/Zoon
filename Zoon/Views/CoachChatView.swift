@@ -22,7 +22,6 @@ struct CoachChatView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
-    @Environment(GlobalPresentation.self) private var presentation
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var chat = CoachChat()
     @State private var evidence: CoachEvidence?
@@ -80,8 +79,7 @@ struct CoachChatView: View {
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
         // The composer owns the bottom edge; the floating tab bar sat on it.
-        .onAppear { presentation.hidesTabBar = true }
-        .onDisappear { presentation.hidesTabBar = false }
+        .hidesFloatingTabBar()
         .task {
             let frozen = CoachEvidence(night: night, history: coordinator.recentNights)
             evidence = frozen
@@ -96,7 +94,7 @@ struct CoachChatView: View {
             chat.start(
                 nightSummary: night.summaryForLLM,
                 contextDigest: coordinator.coachContextDigest(),
-                chartContext: chartQuestion?.context,
+                chartQuestion: chartQuestion,
                 engine: preferences.preferredEngine,
                 contextMode: chartQuestion == nil ? contextMode : .trend
             )
@@ -118,10 +116,8 @@ struct CoachChatView: View {
         // re-arming once the state resolves to something else or to
         // available.
         .task(id: availabilityPollTick) {
+            // No session to open here: `CoachChat` builds one per question.
             chat.noteAvailabilityChange()
-            if chat.conversationEngine == .appleIntelligence {
-                chat.ensureSession()
-            }
             guard chat.unavailabilityReason != nil, chat.isTransientlyUnavailable else { return }
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }
@@ -481,29 +477,8 @@ struct CoachChatView: View {
         .disabled(chat.isResponding)
     }
 
-    static let starterQuestions = [
-        "How did I sleep last night?",
-        "Am I behind on sleep?",
-        "When should I go to bed tonight?",
-        "Why was my HRV lower?",
-        "Should I train hard today?"
-    ]
-
-    static let followUpQuestions = [
-        "What should I do differently tonight?",
-        "How does this compare with my usual?",
-        "What changed this week?",
-        "Is a nap a good idea today?",
-        "Which habits seem to affect my sleep?",
-        "How much deep sleep did I get?",
-        "Am I behind on sleep?",
-        "When should I go to bed tonight?",
-        "How is my recovery?",
-        "Why do I wake up at night?",
-        // Answered from the age range and heart context in the digest.
-        "How much sleep do I need at my age?",
-        "Is my resting heart rate normal for my age?"
-    ]
+    static let starterQuestions = CoachSuggestionProvider.chatStarters
+    static let followUpQuestions = CoachSuggestionProvider.chatFollowUps
 
     private func unavailable(_ reason: String) -> some View {
         VStack(spacing: 14) {

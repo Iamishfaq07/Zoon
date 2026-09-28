@@ -3,9 +3,14 @@ import XCTest
 final class ReviewRegressionTests: XCTestCase {
     func testDelayedWatchEventKeepsItsOccurrenceAndTargetNight() throws {
         let occurrence = Date(timeIntervalSince1970: 1_780_000_000)
-        let night = occurrence.addingTimeInterval(-8 * 3600)
+        let kolkata = TimeZone(identifier: "Asia/Kolkata")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = kolkata
+        // A snapshot's date is the start of the day its night was woken on;
+        // the same local day as the tap, so the feeling is filed on it.
+        let night = calendar.startOfDay(for: occurrence)
         let event = WatchActionEnvelope(action: .morningFeeling(rawValue: 4), occurredAt: occurrence,
-            timeZone: TimeZone(identifier: "Asia/Kolkata")!, snapshotDate: night)
+            timeZone: kolkata, snapshotDate: night)
         let restored = try JSONDecoder().decode(WatchActionEnvelope.self, from: JSONEncoder().encode(event))
         XCTAssertEqual(restored.targetDate, night)
         XCTAssertEqual(restored.occurredAt, occurrence)
@@ -34,10 +39,12 @@ final class ReviewRegressionTests: XCTestCase {
         let lastNight = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now,
                                             snapshotDate: now.addingTimeInterval(-9 * 3600))
         XCTAssertTrue(receipts.accepts(lastNight, now: now))
+        // The initialiser can no longer aim a feeling at a night far from the
+        // tap (an older snapshot's night is replaced by the tap itself), so
+        // strays are built the way a malformed packet would arrive: decoded.
         let offsets: [TimeInterval] = [-15 * 86_400, 2 * 86_400, 400 * 86_400]
         for offset in offsets {
-            let stray = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: now,
-                                            snapshotDate: now.addingTimeInterval(offset))
+            let stray = try envelope(targeting: now.addingTimeInterval(offset), occurredAt: now)
             XCTAssertFalse(receipts.accepts(stray, now: now), "target \(offset / 86_400) days away")
         }
 
@@ -70,5 +77,13 @@ final class ReviewRegressionTests: XCTestCase {
         let result = SleepRegularity.compute(nights: nights)
         XCTAssertEqual(result.validPairCount, 0)
         XCTAssertFalse(result.hasEnoughData)
+    }
+
+    /// An envelope as it would arrive over WatchConnectivity, with any target.
+    private func envelope(targeting target: Date, occurredAt: Date) throws -> WatchActionEnvelope {
+        let base = WatchActionEnvelope(action: .morningFeeling(rawValue: 3), occurredAt: occurredAt)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(base)) as? [String: Any])
+        object["targetDate"] = target.timeIntervalSinceReferenceDate
+        return try JSONDecoder().decode(WatchActionEnvelope.self, from: JSONSerialization.data(withJSONObject: object))
     }
 }

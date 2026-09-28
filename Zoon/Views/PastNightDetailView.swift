@@ -120,7 +120,10 @@ struct PastNightDetailView: View {
             rows.append(("Wrist temperature", String(format: "%@%.1f°C vs usual", sign, temp)))
         }
         if let disturbances = night.breathingDisturbances {
-            rows.append(("Breathing disturbances", "\(Int(disturbances.rounded()))% of night"))
+            // Events per hour of sleep -- Apple's unit. This read "% of
+            // night", which the measure never was; see
+            // `BreathingDisturbanceUnits`.
+            rows.append(("Breathing disturbances", String(format: "%.1f per hour", disturbances)))
         }
         return rows
     }

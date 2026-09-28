@@ -84,7 +84,7 @@ struct BreathingHealthView: View {
             HStack {
                 SectionHeader(
                     title: "Breathing Disturbances",
-                    subtitle: "Apple's overnight measure, as % of the night.",
+                    subtitle: "Apple's overnight measure, in events per hour of sleep.",
                     systemImage: "waveform.path.ecg"
                 )
                 Spacer()
@@ -100,7 +100,7 @@ struct BreathingHealthView: View {
                     ForEach(health.disturbanceTrend) { point in
                         BarMark(
                             x: .value("Date", point.date, unit: .day),
-                            y: .value("Percent", point.value)
+                            y: .value("Events per hour", point.value)
                         )
                         .foregroundStyle(point.isElevated ? Theme.Metric.recoveryMid : Theme.Metric.sleep)
                         .cornerRadius(2)
@@ -117,7 +117,7 @@ struct BreathingHealthView: View {
                             ) {
                                 ChartSelectionBadge(
                                     title: point.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()),
-                                    lines: [("Disturbances", "\(Int(point.value))%", Theme.Metric.sleep)]
+                                    lines: [("Disturbances", String(format: "%.1f/h", point.value), Theme.Metric.sleep)]
                                 )
                             }
                     }
@@ -130,7 +130,7 @@ struct BreathingHealthView: View {
                 .chartSummary(
                     "Breathing disturbances, last \(health.disturbanceTrend.count) nights",
                     (health.disturbanceTrend.last.map {
-                        "Last night \(Int($0.value))%. "
+                        "Last night \(String(format: "%.1f", $0.value)) events per hour. "
                     } ?? "")
                         + ChartTrend.describe(
                             health.disturbanceTrend.map(\.value), higherIsBetter: false

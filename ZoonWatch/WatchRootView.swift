@@ -213,10 +213,15 @@ struct ZoonWatchDial: View {
                     Text(displayText ?? "\(value)")
                         .font(.system(size: diameter * 0.25, weight: .semibold, design: .rounded))
                         .monospacedDigit()
-                    Text(label)
-                        .font(.system(size: max(8, diameter * 0.075), weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    // Omitted rather than truncated on a small dial: "SL..." is
+                    // worse than no label, and VoiceOver reads the whole of it.
+                    if diameter >= 70 {
+                        Text(label)
+                            .font(.system(size: max(8, diameter * 0.075), weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
                 }
                 .frame(width: diameter * 0.70, height: diameter * 0.48)
             }
@@ -463,7 +468,7 @@ struct QuickLogView: View {
             List {
                 Section("Log") {
                     logRow(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
-                        link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                        link.sendQuickAction(.alcohol)
                     }
                     logRow(id: "caffeine", label: "Caffeine", symbol: "cup.and.saucer") {
                         link.sendQuickAction(.caffeine())
@@ -593,7 +598,7 @@ struct LastNightPage: View {
     /// process with no `UserPreferences` access, which is exactly why that
     /// flag rides along on the snapshot itself.
     private var title: String {
-        snapshot.isShiftWorkModeEnabled ? "LAST SLEEP" : "LAST NIGHT"
+        SnapshotFreshness.nightLabel(for: snapshot).uppercased()
     }
 
     var body: some View {
@@ -602,19 +607,22 @@ struct LastNightPage: View {
                 .font(Theme.label(9, weight: .semibold))
                 .foregroundStyle(.secondary)
 
+            // The dial is the answer to "how did I sleep", so it is given
+            // the space first and a floor. It was the page's only flexible
+            // child, absorbed every point the text below needed, and shrank
+            // to about 40pt with its label cut to "SL...". The band rides
+            // inside it rather than as a separate line.
             ZoonWatchDial(
                 value: snapshot.flagshipScore,
-                label: "SLEEP",
+                label: snapshot.canStateFlagshipScore ? snapshot.flagshipBand : "Limited data",
                 tint: tint,
                 accessibilityDescription: snapshot.canStateFlagshipScore
                     ? "Sleep Intelligence, \(snapshot.flagshipScore), \(snapshot.flagshipBand)"
                     : "Sleep Intelligence, not enough data from last night to score.",
                 displayText: snapshot.canStateFlagshipScore ? nil : "—"
             )
-
-            Text(snapshot.canStateFlagshipScore ? snapshot.flagshipBand : "Limited data")
-                .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(.secondary)
+            .frame(minHeight: 84)
+            .layoutPriority(1)
 
             if snapshot.hasRecovery {
                 Text("Recovery \(snapshot.recoveryPercent)")
@@ -626,7 +634,8 @@ struct LastNightPage: View {
             Text(morning.today.headline)
                 .font(Theme.label(12, weight: .semibold))
                 .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
                 .padding(.horizontal, 4)
 
             WatchFreshnessNote(snapshot: snapshot)
@@ -903,7 +912,7 @@ struct QuickLogActions: View {
                     sent["caffeine"] = link.sendQuickAction(.caffeine())
                 }
                 action(id: "alcohol", label: "Alcohol", symbol: "wineglass") {
-                    sent["alcohol"] = link.sendQuickAction(.behaviorTag(rawValue: "alcohol"))
+                    sent["alcohol"] = link.sendQuickAction(.alcohol)
                 }
             }
             HStack(spacing: 5) {
@@ -1128,10 +1137,17 @@ extension WatchQuickAction {
     /// The Log buttons just say "Caffeine", but the journal keeps two tags:
     /// `caffeine` and `caffeineLate` ("Caffeine after 4pm"). Pick by the hour
     /// of the tap so a morning coffee is not logged as a late one.
+    ///
+    /// "It happened", not a toggle: `.behaviorTag` flips the tag on the
+    /// phone, so a second coffee two hours later removed the first and
+    /// recorded an explicit No, while the tile said Saved.
     static func caffeine(at date: Date = .now) -> WatchQuickAction {
         let hour = Calendar.current.component(.hour, from: date)
-        return .behaviorTag(rawValue: hour >= 16 ? "caffeineLate" : "caffeine")
+        return .behaviorAnswer(rawValue: hour >= 16 ? "caffeineLate" : "caffeine", happened: true)
     }
+
+    /// The same, for alcohol.
+    static var alcohol: WatchQuickAction { .behaviorAnswer(rawValue: "alcohol", happened: true) }
 }
 
 #Preview("Last night") {

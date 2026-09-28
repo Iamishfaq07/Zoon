@@ -15,6 +15,9 @@ struct SleepMetricsView: View {
     /// Naps already counted into `actualMinutes`, shown so the total is
     /// explicable when it does not match last night alone.
     var napMinutes: Double = 0
+    /// Which need this is. Beside tonight's plan it is last night's, and
+    /// an unqualified "Sleep need" read as the target Tonight shows.
+    var needLabel: String = "Sleep need"
 
     private var scale: Double { max(actualMinutes, needMinutes, 1) }
 
@@ -29,7 +32,7 @@ struct SleepMetricsView: View {
                     : nil
             )
             bar(
-                label: "Sleep need",
+                label: needLabel,
                 minutes: needMinutes,
                 tint: Theme.Family.attention,
                 footnote: nil

@@ -14,7 +14,7 @@ struct ForYourAgeWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .lastNight)) { entry in
             ForYourAgeWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("For Your Age")
         .description("Last night against the sleep range for your age, and your heart's overnight low.")
@@ -39,16 +39,24 @@ struct ForYourAgeWidgetView: View {
     }
 
     var body: some View {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "For Your Age", systemImage: "person.crop.circle",
+                message: "Open Zoon to see how last night compares for your age.",
+                inlineText: "Open Zoon for your range"
+            )
+        } else {
         switch family {
         case .accessoryRectangular: rectangular
         case .systemMedium: medium
         default: small
         }
+        }
     }
 
     private var small: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("LAST NIGHT")
+            Text(SnapshotFreshness.nightLabel(for: snapshot, now: entry.date).uppercased())
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.6))
             Text(SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes))

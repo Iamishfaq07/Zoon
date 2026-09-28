@@ -29,12 +29,20 @@ struct GetRecoveryIntent: AppIntent {
         guard snapshot.canStateRecovery else {
             return .result(dialog: "Recovery isn't available yet — Zoon needs a few nights of heart-rate data first.")
         }
+        if case .behind = SnapshotFreshness.state(of: snapshot) {
+            return .result(dialog: "Zoon's latest night is from \(Self.day(of: snapshot)), so there's no recovery for last night. Open Zoon to update it.")
+        }
         let band: String = switch snapshot.recoveryPercent {
         case 67...: "high"
         case 34..<67: "moderate"
         default: "low"
         }
         return .result(dialog: "Your recovery is \(snapshot.recoveryPercent) percent — \(band).")
+    }
+
+    /// The day an old night is named by when spoken: "Thursday, September 24".
+    static func day(of snapshot: SleepSnapshot) -> String {
+        snapshot.date.formatted(.dateTime.weekday(.wide).month(.wide).day())
     }
 }
 
@@ -49,8 +57,24 @@ struct GetSleepSummaryIntent: AppIntent {
         guard let snapshot = SnapshotStore.read(), !snapshot.isMock else {
             return .result(dialog: "I don't have last night's data yet — open Zoon once to get started.")
         }
-        let duration = SleepNightFeatures.formatMinutes(snapshot.timeAsleepMinutes)
-        return .result(dialog: "You slept \(duration) last night. Your Sleep Intelligence was \(snapshot.flagshipScore).")
+        // Spoken, so words rather than "7h 40m", which is read letter by letter.
+        let duration = Self.spokenDuration(minutes: snapshot.timeAsleepMinutes)
+        // The same gates every glance surface uses: a score the app withholds
+        // is not read aloud, and an old night is not "last night".
+        let score = snapshot.canStateFlagshipScore
+            ? "Your Sleep Intelligence was \(snapshot.flagshipScore)."
+            : "There wasn't enough data that night for a Sleep Intelligence score."
+        if case .behind = SnapshotFreshness.state(of: snapshot) {
+            return .result(dialog: "Zoon's latest night is from \(GetRecoveryIntent.day(of: snapshot)): you slept \(duration). \(score) Open Zoon to update it.")
+        }
+        return .result(dialog: "You slept \(duration) last night. \(score)")
+    }
+
+    static func spokenDuration(minutes: Double) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute]
+        formatter.unitsStyle = .full
+        return formatter.string(from: max(0, minutes) * 60) ?? SleepNightFeatures.formatMinutes(minutes)
     }
 }
 
@@ -74,10 +98,14 @@ struct LogSleepTagIntent: AppIntent {
         let store = JournalStore(context: container.mainContext)
         // A behaviour logged today belongs to the night ahead, whose entry is
         // keyed by the morning it ends on -- see `JournalEntry.date`.
-        let calendar = Calendar.current
-        let nightAhead = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now)) ?? .now
-        store.toggle(tag, on: nightAhead)
-        return .result(dialog: "Logged \(tag.label) for today.")
+        //
+        // The same 04:00 boundary the watch uses (`BehaviorNight`): a coffee
+        // logged at 01:00 belongs to the night in progress, not tomorrow's.
+        // And an add, not a toggle: a second "log coffee" removed the first.
+        let now = Date.now
+        let night = Calendar.current.startOfDay(for: BehaviorNight.nightDate(forLogAt: now))
+        store.add(tag, on: night, nightKey: BehaviorNight.nightKey(forLogAt: now))
+        return .result(dialog: "Logged \(tag.label).")
     }
 }
 

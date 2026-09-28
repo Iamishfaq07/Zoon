@@ -16,6 +16,45 @@ enum AdaptiveZoonBrief {
         let phase: ZoonAmbientBackground.Band
     }
 
+    /// The entry point for a screen: Recovery arrives as the gated
+    /// presentation, never as a raw percent. A first-week or no-vitals night
+    /// still computes a number -- sleep performance, re-normalised -- and
+    /// the brief used to read that as "overnight physiology stayed close to
+    /// your baseline" when there was no physiology and no baseline.
+    static func make(
+        phase: ZoonAmbientBackground.Band,
+        night: SleepNightFeatures,
+        recovery: RecoveryPresentationState,
+        energy: Int?,
+        load: Double?,
+        tonightBedtime: Date?,
+        shortfallMinutes: Double? = nil,
+        now: Date = .now
+    ) -> Result {
+        if case .limited = recovery, phase == .morning || phase == .night {
+            let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
+            return Result(
+                headline: "You were asleep \(asleep). There wasn't enough overnight heart data to add a physiology read.",
+                why: "Recovery needs heart-rate variability or resting heart rate from the night. Without them, a score would only restate how long you slept.",
+                confidence: "Duration only",
+                dataUsed: ["sleep duration"],
+                phase: .morning
+            )
+        }
+        return make(
+            phase: phase,
+            night: night,
+            recoveryPercent: recovery.score,
+            energy: energy,
+            load: load,
+            tonightBedtime: tonightBedtime,
+            shortfallMinutes: shortfallMinutes,
+            now: now
+        )
+    }
+
+    /// `recoveryPercent` must already be a showable score
+    /// (`RecoveryPresentationState.score`); screens use the overload above.
     static func make(
         phase: ZoonAmbientBackground.Band,
         night: SleepNightFeatures,
@@ -46,12 +85,15 @@ enum AdaptiveZoonBrief {
         var data = ["sleep duration"]
         if let recoveryPercent {
             data.append("Morning Recovery")
+            // The same cutoffs as the Recovery ring's band, so the brief
+            // cannot call a "Moderate" night "close to your baseline".
             let physiology: String
-            if recoveryPercent >= 70 {
+            switch RecoveryScore.Band.forPercent(recoveryPercent) {
+            case .high:
                 physiology = "overnight physiology stayed close to your baseline"
-            } else if recoveryPercent >= 50 {
+            case .moderate:
                 physiology = "overnight physiology was mixed against your baseline"
-            } else {
+            case .low:
                 physiology = "overnight physiology was quieter than your baseline"
             }
             let short = night.timeAsleepMinutes < 390

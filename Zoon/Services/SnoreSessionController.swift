@@ -26,6 +26,16 @@ final class SnoreSessionController {
     private let detector = SnoreDetector()
     private let store = SnoreStore()
     private let eventStore = SoundEventStore()
+    /// Watches a resume until audio actually arrives; see `noteResumed`.
+    private var resumeWatch: Task<Void, Never>?
+    private var erasureObserver: NSObjectProtocol?
+
+    /// What `start` returns when the microphone itself is refused, as opposed
+    /// to a conflict with Zoon's own audio. Screens compare against this,
+    /// never against the word "microphone": the conflict message contains it
+    /// too, and matching the word sent people to Settings to fix a permission
+    /// they had already granted.
+    static let microphoneAccessNeeded = "Microphone access needed"
 
     init() {
         detector.onPaused = { [weak self] in self?.noteInterrupted() }
@@ -33,6 +43,22 @@ final class SnoreSessionController {
         if let checkpoint = SnoreCheckpoint.load(), checkpoint.unexpectedEnd, checkpoint.monitoredSeconds > 30 {
             recoveredCheckpoint = checkpoint
             detector.restore(from: checkpoint)
+        }
+        // Delete Everything: the detector stops the microphone and forgets its
+        // session; this forgets the recovered one too. Kept in memory, it was
+        // written back by the next Start or by the card's Save button -- data
+        // restored from before the erase.
+        erasureObserver = NotificationCenter.default.addObserver(
+            forName: DataErasure.didErase, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.resumeWatch?.cancel()
+                self.recoveredCheckpoint = nil
+                self.conflictMessage = nil
+                self.state = .idle
+                SnoreCheckpoint.clear()
+            }
         }
     }
 
@@ -49,6 +75,8 @@ final class SnoreSessionController {
     var lastBufferAt: Date? { detector.lastBufferAt }
     var isAudioArriving: Bool { detector.isAudioArriving }
     var classifierAvailable: Bool { detector.classifierAvailable }
+    /// When sound classification stopped in the running session, if it has.
+    var classifierPausedSince: Date? { detector.classifierFailedAt }
     var classifierSupportsSnoring: Bool { detector.classifierSupportsSnoring }
     var confidence: SnoreMonitoringConfidence { detector.sessionConfidence }
     var lastSummary: SnoreStore.NightSummary? { store.mostRecent }
@@ -75,12 +103,17 @@ final class SnoreSessionController {
         let zone = checkpoint.timezoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? TimeZone.current
         var calendar = Calendar.current
         calendar.timeZone = zone
-        let wake = checkpoint.lastCheckpoint
+        // The night the session belongs to, from when it started: an evening
+        // start is the night ending the next morning, an after-midnight start
+        // the night ending that morning. Neither the evening nor the moment
+        // the app died is the night's day. The stored key is not trusted:
+        // builds before this one wrote the evening's date into it.
+        let night = SnoreNight.date(forSessionStartedAt: checkpoint.startedAt, in: zone)
         return SnoreStore.NightSummary(
-            date: calendar.startOfDay(for: wake),
+            date: calendar.startOfDay(for: night),
             monitoredMinutes: checkpoint.monitoredSeconds / 60,
             snoreMinutes: checkpoint.snoreSeconds / 60,
-            nightKey: checkpoint.nightKey ?? NightKey.make(wakeInstant: wake, in: zone),
+            nightKey: NightKey.make(wakeInstant: night, in: zone),
             timezoneIdentifier: zone.identifier,
             isPartial: true,
             endedUnexpectedly: true,
@@ -95,8 +128,18 @@ final class SnoreSessionController {
         case .background, .inactive:
             if state == .listening { state = .background }
         case .active:
+            // A classifier that failed while the phone was locked can run
+            // again in the foreground; the microphone never stopped.
+            detector.restartClassifierIfNeeded()
             if state == .background {
                 state = detector.isAudioArriving ? .listening : .interrupted
+            }
+            // An interruption that ended while Zoon was in the background can
+            // fail to take the microphone back; the foreground is where it
+            // can. Quietly: a failure here leaves the Resume button, not an
+            // alert.
+            if state == .interrupted {
+                resume(userInitiated: false)
             }
         @unknown default:
             break
@@ -123,16 +166,16 @@ final class SnoreSessionController {
             return message
         }
         guard detector.isAvailable else {
-            state = .failed("Microphone access needed")
-            return "Microphone access needed"
+            state = .failed(Self.microphoneAccessNeeded)
+            return Self.microphoneAccessNeeded
         }
         state = .preparing
         if recoveredCheckpoint != nil {
             saveRecoveredCheckpoint()
         }
         guard await detector.requestPermission() else {
-            state = .failed("Microphone access needed")
-            return "Microphone access needed"
+            state = .failed(Self.microphoneAccessNeeded)
+            return Self.microphoneAccessNeeded
         }
         do {
             try detector.start()
@@ -140,12 +183,42 @@ final class SnoreSessionController {
             state = .listening
             return nil
         } catch {
+            // Permission was granted a moment ago, so a failure here is the
+            // audio system (another app holding the microphone, a route that
+            // will not open), not a setting the person needs to change.
             let message = (error as NSError).domain == "ZoonAudio"
                 ? error.localizedDescription
-                : "Microphone access needed"
+                : "Snore Check couldn't start the microphone. Close any app that may be using it, then try again."
             conflictMessage = message
             state = .failed(message)
             return message
+        }
+    }
+
+    /// Starts listening again after an interruption that did not resume by
+    /// itself: from the Resume button, or on returning to the foreground.
+    ///
+    /// Nothing used to do this. A call or Siri in the night that iOS did not
+    /// hand back left the session paused until morning, reading "Listening
+    /// interrupted" with no way on.
+    @discardableResult
+    func resume(userInitiated: Bool = true) -> Bool {
+        guard state == .interrupted || state == .resuming else { return false }
+        do {
+            if detector.isRunning {
+                // Running but silent: rebuild rather than stack a second tap.
+                try detector.rebuildEngineAndRestart()
+            } else {
+                try detector.resumeListening()
+            }
+            noteResumed()
+            return true
+        } catch {
+            state = .interrupted
+            if userInitiated {
+                conflictMessage = "Snore Check couldn't get the microphone back. Close any app that may be using it, then tap Resume."
+            }
+            return false
         }
     }
 
@@ -158,6 +231,7 @@ final class SnoreSessionController {
     }
 
     func stop() {
+        resumeWatch?.cancel()
         let events = detector.recentEvents
         if let summary = detector.stop() {
             store.record(summary)
@@ -167,10 +241,35 @@ final class SnoreSessionController {
     }
 
     func noteInterrupted() {
+        resumeWatch?.cancel()
         if isRunning { state = .interrupted }
     }
 
+    /// The engine is back; audio may take a moment to arrive.
+    ///
+    /// Shows "resuming" until the first buffers do, then "listening". It
+    /// used to set "resuming" once and never look again, so every successful
+    /// resume read "Trying to resume…" for the rest of the night. If audio
+    /// never arrives the session is shown as interrupted, with Resume.
     func noteResumed() {
-        if isRunning { state = detector.isAudioArriving ? .listening : .resuming }
+        guard isRunning else { return }
+        resumeWatch?.cancel()
+        guard !detector.isAudioArriving else {
+            state = .listening
+            return
+        }
+        state = .resuming
+        resumeWatch = Task { [weak self] in
+            for _ in 0..<10 {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, !Task.isCancelled, self.state == .resuming else { return }
+                if self.detector.isAudioArriving {
+                    self.state = .listening
+                    return
+                }
+            }
+            guard let self, !Task.isCancelled, self.state == .resuming else { return }
+            self.state = .interrupted
+        }
     }
 }

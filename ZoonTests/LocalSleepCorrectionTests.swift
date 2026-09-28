@@ -321,6 +321,33 @@ final class LocalSleepCorrectionTests: XCTestCase {
         assertInvariants(applied)
     }
 
+    /// A Watch-shaped night: 30-second flickers, one real 5-minute wake, and
+    /// a final 6-minute wake before getting up. Stored, that is one
+    /// awakening. The correction counted every awake segment from onset, so
+    /// moving the wake by five minutes made it seven.
+    func testACorrectionCountsAwakeningsByTheBuildersRule() {
+        var night = stagedNight(core: 240, deep: 90, rem: 90, trailingWakeMinutes: 6)
+        let bed = night.bedtime
+        func at(_ minutes: Double) -> Date { bed.addingTimeInterval(minutes * 60) }
+        night.stageSegments = [
+            StageSegment(stage: .core, start: at(0), end: at(60)),
+            StageSegment(stage: .awake, start: at(60), end: at(60.5)),
+            StageSegment(stage: .core, start: at(60.5), end: at(120)),
+            StageSegment(stage: .awake, start: at(120), end: at(125)),
+            StageSegment(stage: .deep, start: at(125), end: at(215)),
+            StageSegment(stage: .awake, start: at(215), end: at(215.5)),
+            StageSegment(stage: .core, start: at(215.5), end: at(335)),
+            StageSegment(stage: .rem, start: at(335), end: at(420)),
+            StageSegment(stage: .awake, start: at(420), end: at(426))
+        ]
+        let stored = AwakeningPolicy.episodes(in: night.stageSegments).count
+        XCTAssertEqual(stored, 1)
+
+        let applied = night.shiftingBounds(bedtimeShiftMinutes: 0, wakeShiftMinutes: -2)
+        XCTAssertEqual(applied.wakeCount, AwakeningPolicy.episodes(in: applied.stageSegments).count)
+        XCTAssertEqual(applied.wakeCount, 1, "flickers and the final wake are not awakenings")
+    }
+
     // MARK: - Helpers
 
     private func stagedNight(

@@ -173,6 +173,28 @@ struct ResolvedSleepEpisode: Hashable, Sendable {
             calendar: calendar
         )
 
+        // A plan's night that overlapped the derived one and has already
+        // ended supersedes it. `nextWindow(after: now)` skips a window whose
+        // wake has passed, so at 05:40, after a 22:30-05:30 plan night, the
+        // derived 23:15-06:30 night came back as tonight: the Tonight card
+        // showed an overdue bedtime and the alarm was re-armed for 06:30, an
+        // hour after the person got up. The next derived bed comes after
+        // this derived wake, so one step forward is enough.
+        if let derived, plans.contains(where: { plan in
+            plan.nextWindow(after: derived.bed).map { $0.end <= now } ?? false
+        }) {
+            return resolve(
+                plans: plans,
+                autopilot: autopilot,
+                usualWakeMinute: usualWakeMinute,
+                needMinutes: needMinutes,
+                hardWakeMinute: hardWakeMinute,
+                windDownLeadMinutes: windDownLeadMinutes,
+                now: derived.wake.addingTimeInterval(1),
+                calendar: calendar
+            )
+        }
+
         let manual = plans
             .compactMap { plan in plan.nextWindow(after: now).map { (plan, $0) } }
             .min { $0.1.start < $1.1.start }

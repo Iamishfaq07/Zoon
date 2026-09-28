@@ -27,9 +27,16 @@ struct RecoveryMode: Sendable, Hashable {
     /// `nil` when neither condition holds -- there is no "inactive"
     /// `RecoveryMode` value on purpose, so a caller can't forget to check
     /// before showing the card.
-    static func evaluate(band: RecoveryScore.Band, manuallyEnabledToday: Bool) -> RecoveryMode? {
+    ///
+    /// Only a score Zoon is prepared to show can suggest the mode. A low
+    /// number on a night with no HRV or resting heart rate, or before there
+    /// is a baseline, is a short night re-normalised -- "your vitals suggest"
+    /// would describe vitals that were never measured.
+    static func evaluate(recovery: RecoveryPresentationState, manuallyEnabledToday: Bool) -> RecoveryMode? {
         if manuallyEnabledToday { return RecoveryMode(source: .manuallyEnabled) }
-        if band == .low { return RecoveryMode(source: .autoSuggested) }
+        if let score = recovery.score, RecoveryScore.Band.forPercent(score) == .low {
+            return RecoveryMode(source: .autoSuggested)
+        }
         return nil
     }
 

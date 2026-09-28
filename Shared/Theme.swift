@@ -838,6 +838,11 @@ struct ZoonNightGround: View {
         Color(red: 0.957, green: 0.961, blue: 0.973),
         Color(red: 0.929, green: 0.937, blue: 0.957)
     ]
+
+    /// The ground's bottom colour, for chrome that has to blend into it.
+    static func bottom(for scheme: ColorScheme) -> Color {
+        (scheme == .light ? light : dark).last ?? .black
+    }
 }
 
 /// Picks the ground from `Theme.morningBackground`/`dayBackground`/

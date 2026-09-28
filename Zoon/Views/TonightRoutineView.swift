@@ -83,6 +83,7 @@ struct TonightRoutineView: View {
         }
         .navigationTitle("Tonight")
         .scrollContentBackground(.hidden).nightBackground()
+        .hidesFloatingTabBar()
         .onAppear { controller.reconcile() }
         .sheet(isPresented: $showingVoiceStudio) {
             WindDownVoiceStudio(selection: $store.value.routine.voiceIdentifier)

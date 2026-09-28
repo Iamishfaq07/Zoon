@@ -117,4 +117,25 @@ final class SnapshotFreshnessTests: XCTestCase {
         XCTAssertEqual(short, "3d old")
         XCTAssertLessThanOrEqual(short.count, 8)
     }
+
+    // MARK: - The night label
+
+    /// Widgets and complications said "Last Night" about a night of any age.
+    func testTheLabelIsLastNightOnlyWhileCurrent() throws {
+        let fresh = snapshot(nightsAgo: 0)
+        XCTAssertEqual(SnapshotFreshness.nightLabel(for: fresh, now: try today(at: 12), calendar: calendar), "Last Night")
+
+        let old = snapshot(nightsAgo: 3)
+        let label = SnapshotFreshness.nightLabel(for: old, now: try today(at: 12), calendar: calendar)
+        XCTAssertNotEqual(label, "Last Night")
+        XCTAssertEqual(label, old.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+    }
+
+    /// Shift work keeps its label: a daytime sleeper's last sleep can end
+    /// after the settled hour on its own day.
+    func testShiftWorkKeepsItsLabel() throws {
+        var old = snapshot(nightsAgo: 3)
+        old.isShiftWorkModeEnabled = true
+        XCTAssertEqual(SnapshotFreshness.nightLabel(for: old, now: try today(at: 12), calendar: calendar), "Last Sleep")
+    }
 }

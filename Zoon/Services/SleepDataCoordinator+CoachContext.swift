@@ -53,7 +53,7 @@ extension SleepDataCoordinator {
             sleepTrendPct: report?.sleepTrend?.rounded(to: 0),
             hrvTrendPct: report?.hrvTrend?.rounded(to: 0),
             goalHitNightsThisWeek: report?.goalHitCount,
-            currentRegularityIndex: context?.regularity.index.rounded(to: 0),
+            currentRegularityIndex: context?.regularity.reportableIndex?.rounded(to: 0),
             currentRegularityBand: context?.regularity.hasEnoughData == true ? context?.regularity.band.label : nil,
             learnedSleepNeedMinutes: context?.learnedSleepNeed.minutes.rounded(to: 0),
             // The shortfall itself. This was `sleepNeed.debtMinutes`, which is
@@ -109,7 +109,7 @@ extension SleepDataCoordinator {
                 associatedTags: Set(findings.compactMap(\.tag)),
                 settledTags: Set(experiments.outcomes.map(\.tag))
             )?.tag.label,
-            tonightTarget: context?.tonight.autopilot?.sentence,
+            tonightTarget: tonightDigestLine(context),
             forYourAge: forYourAgeDigest()
         )
 
@@ -120,6 +120,25 @@ extension SleepDataCoordinator {
             return "{}"
         }
         return json
+    }
+
+    /// Tonight as every other surface shows it: the resolved episode's
+    /// times, and where they come from. The autopilot's sentence alone
+    /// described a bedtime that a plan the person set had replaced.
+    private func tonightDigestLine(_ context: DayContext?) -> String? {
+        guard let context, let episode = tonightEpisode(for: context) else {
+            return context?.tonight.autopilot?.sentence
+        }
+        switch episode.source {
+        case .manualPlan:
+            let plan = episode.planName.map { "the \u{201C}\($0)\u{201D} plan" } ?? "a plan the person set"
+            return "Tonight: \(episode.rangeLabel), from \(plan)."
+        case .autopilot:
+            return ["Tonight: \(episode.rangeLabel).", context.tonight.autopilot?.sentence]
+                .compactMap { $0 }.joined(separator: " ")
+        case .usualWake:
+            return "Tonight: \(episode.rangeLabel), from the usual wake time and tonight's need."
+        }
     }
 
     /// The age context, built on its own: inline, the payload initialiser

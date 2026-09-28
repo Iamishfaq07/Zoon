@@ -18,6 +18,8 @@ enum CoachToolCatalog {
         case getLastNightSummary
         case getSleepDuration
         case getRecovery
+        /// Last night's overnight HRV against the person's own baseline.
+        case getHRV
         case getShortfall
         case getEnergy
         case getMovement
@@ -36,6 +38,10 @@ enum CoachToolCatalog {
         /// The sleep range experts recommend at this age, and where resting
         /// heart rate, HRV and cardio fitness sit for this age and sex.
         case getForYourAge
+        /// Whether a nap fits today: `NapCoach` on today's shortfall, the
+        /// nap already taken and how far away tonight's bedtime is. A read;
+        /// starting one is `startNap`, which confirms.
+        case getNapAdvice
         case logCaffeine
         case startNap
         case prepareTomorrow
@@ -51,11 +57,33 @@ enum CoachToolCatalog {
             switch self {
             case .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
                 true
-            case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getShortfall, .getEnergy,
+            case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getHRV, .getShortfall, .getEnergy,
                  .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext,
                  .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
                  .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
-                 .getForYourAge:
+                 .getForYourAge, .getNapAdvice:
+                false
+            }
+        }
+
+        /// Whether the answer is about one recorded night rather than today
+        /// or a live reading.
+        ///
+        /// A conversation opened from a past night or a chart point is about
+        /// that night, and these are answered from it (`CoachEvidence`). The
+        /// tool runner reads today's context, so asking "why did I wake up?"
+        /// from 12 September answered with this morning's night. Live kinds
+        /// -- Energy, Load, tonight's plan, the nap question -- stay live in
+        /// every conversation; they are about now wherever they are asked.
+        var readsOneNight: Bool {
+            switch self {
+            case .getSleepScore, .getLastNightSummary, .getSleepDuration, .getRecovery, .getHRV:
+                true
+            case .getShortfall, .getEnergy, .getMovement, .getTonight, .getTomorrow,
+                 .getFatigueContext, .getTrainingContext, .getTrendSummary, .getMonthlyChange,
+                 .getBehaviorEvidence, .getLearningStatus, .getWeeklyPlan, .getCurrentPriority,
+                 .getPhysiologicalLoad, .getDailyLoad, .getForYourAge, .getNapAdvice,
+                 .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
                 false
             }
         }
@@ -68,6 +96,7 @@ enum CoachToolCatalog {
             case .getLastNightSummary: "Read a short last-night summary."
             case .getSleepDuration: "Read last night's sleep duration."
             case .getRecovery: "Read morning Recovery."
+            case .getHRV: "Read last night's HRV against your own average."
             case .getShortfall: "Read sleep shortfall."
             case .getEnergy: "Read Energy now."
             case .getMovement: "Read today's movement against your usual day."
@@ -84,6 +113,7 @@ enum CoachToolCatalog {
             case .getPhysiologicalLoad: "Read physiological load so far today."
             case .getDailyLoad: "Read today's Load."
             case .getForYourAge: "Read the sleep range and heart context for your age."
+            case .getNapAdvice: "Read whether a nap fits today."
             case .logCaffeine: "Log caffeine after you confirm."
             case .startNap: "Start a nap after you confirm."
             case .prepareTomorrow: "Open Tomorrow after you confirm the time."
@@ -120,6 +150,16 @@ enum CoachToolCatalog {
         // "tomorrow" was matched ahead of every read branch, so "what does my
         // recovery look like tomorrow" opened the Tomorrow planner and
         // `.getTomorrow` was declared but returned by nothing.
+        //
+        // Questions about the week, before anything about one night: "How did
+        // I sleep this week?" was answered with last night's score, and "What
+        // changed this week?" with a month-long comparison.
+        if q.contains("week"), !q.contains("catch up"), !q.contains("plan"), matches(q, [
+            "what changed", "how did i sleep", "how was my sleep", "how's my sleep", "hows my sleep",
+            "compared", "last week", "this week", "week over week", "past week"
+        ]) {
+            return Call(kind: .getTrendSummary)
+        }
         if matches(q, [
             "how much did i sleep", "how long did i sleep", "how long was i asleep",
             "sleep duration", "time asleep"
@@ -145,7 +185,14 @@ enum CoachToolCatalog {
         if matches(q, [
             "last night summary", "summarise last night", "summarize last night",
             "what happened last night", "how was last night",
-            "what stands out about this night", "explain the awakenings"
+            "what stands out about this night", "explain the awakenings",
+            // The chat's own suggestions. The summary carries the stages, the
+            // wakes and the night against the usual one, so each of these
+            // has its answer in it.
+            "deep sleep", "rem sleep", "how much deep", "how much rem",
+            "why do i wake", "wake up at night", "keep waking",
+            "compare with my usual", "compared with my usual", "compare to my usual",
+            "compared to my usual", "compare with usual", "than my usual"
         ]) {
             return Call(kind: .getLastNightSummary, proposedMinutes: nil, confirmationPrompt: nil)
         }
@@ -184,6 +231,7 @@ enum CoachToolCatalog {
         }
         if matches(q, [
             "actually affecting", "habits might be affecting", "hurt my sleep",
+            "which habits", "habits seem to affect", "habits affect",
             "cool room", "still lengthen", "still shorten", "affecting me",
             "late caffeine", "is caffeine"
         ]) {
@@ -195,7 +243,15 @@ enum CoachToolCatalog {
         ]) {
             return Call(kind: .getWeeklyPlan)
         }
-        if matches(q, ["why was my hrv", "hrv low", "hrv higher", "why did i wake"]) {
+        // HRV has its own tool. These questions -- including the Coach tab's
+        // own suggestion "Why was my HRV low last night?" -- were sent to the
+        // last-night summary and answered with sleep duration and efficiency.
+        // "Recovery signal" is HRV's plain name on every chart; it has to
+        // be read here, ahead of the bare "recovery" below.
+        if matches(q, ["hrv", "heart rate variability", "recovery signal"]) {
+            return Call(kind: .getHRV)
+        }
+        if matches(q, ["why did i wake"]) {
             return Call(kind: .getLastNightSummary)
         }
         if matches(q, ["prepare for tomorrow"]) {
@@ -217,9 +273,21 @@ enum CoachToolCatalog {
         if matches(q, ["steps", "how much have i moved", "moved today", "movement today", "active today"]) {
             return Call(kind: .getMovement, proposedMinutes: nil, confirmationPrompt: nil)
         }
+        // A question about a nap, before `isNapRequest` below: "should I
+        // take a nap?" contains "take", and was proposing to start one.
+        if wholeWord("nap", in: q), matches(q, [
+            "good idea", "should i", "worth", "is a nap", "can i nap", "is it ok", "okay to nap"
+        ]) {
+            return Call(kind: .getNapAdvice)
+        }
+        // Question-shaped only. A bare "bed tonight" or "earlier tonight"
+        // is in "I had coffee before bed tonight", which is a caffeine log
+        // this branch would swallow.
         if matches(q, [
             "sleep window", "tonight's plan", "tonights plan", "when should i sleep",
-            "bedtime", "what should i do tonight"
+            "bedtime", "what should i do tonight",
+            "when should i go to bed", "what time should i go to bed", "time to go to bed",
+            "should i go to bed", "do differently tonight"
         ]) {
             return Call(kind: .getTonight, proposedMinutes: nil, confirmationPrompt: nil)
         }

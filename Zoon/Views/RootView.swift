@@ -1,5 +1,6 @@
 import CoreSpotlight
 import SwiftUI
+import UIKit
 
 /// Tab shell.
 struct RootView: View {
@@ -57,6 +58,9 @@ struct RootView: View {
         }
     }
 
+    /// The floating bar's height plus its gap above the home indicator.
+    static let tabBarClearance: CGFloat = 76
+
     var body: some View {
         @Bindable var bindablePresentation = presentation
 
@@ -108,9 +112,20 @@ struct RootView: View {
                     ],
                     selection: $selection
                 )
+                .background(alignment: .bottom) { TabBarScrim() }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // The inset above does not reach content inside a tab's
+        // NavigationStack (the screenshots showed Snore Check's Start button
+        // and the Sleep tab's last link under the bar), so every scroll view
+        // also gets end margin for the bar while it is shown. Harmless where
+        // the inset does apply: a little more room at the end of the scroll.
+        .contentMargins(
+            .bottom,
+            keyboardVisible || presentation.hidesTabBar ? 0 : Self.tabBarClearance,
+            for: .scrollContent
+        )
         .animation(Motion.respecting(reduceMotion, Motion.standard), value: keyboardVisible || presentation.hidesTabBar)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardVisible = true
@@ -510,7 +525,7 @@ struct SleepTabView: View {
                             if let clock = context.bodyClock {
                                 BodyClockCard(
                                     bodyClock: clock,
-                                    plannedBedtime: context.targetBedtime(),
+                                    plannedBedtime: coordinator.tonightEpisode(for: context)?.bed ?? context.targetBedtime(),
                                     actualBedtime: context.night.bedtime,
                                     actualWakeTime: context.night.wakeTime
                                 )
@@ -526,6 +541,15 @@ struct SleepTabView: View {
                             .buttonStyle(.plain)
                         }
                         .entrance(7)
+                    } else {
+                        // No night to show: loading, no Health data yet, or a
+                        // read that failed. This tab used to go blank -- just
+                        // the stars and the title -- which read as broken, and
+                        // hid the sounds, nap and Snore Check, none of which
+                        // need Health data at all.
+                        noNightState
+                        SleepSoundsHero()
+                        healthFreeTools
                     }
 
                 }
@@ -569,6 +593,72 @@ struct SleepTabView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var noNightState: some View {
+        switch coordinator.state {
+        case .idle, .loading:
+            ZoonLoadingState(title: "Reading last night")
+        case let .empty(reason):
+            ZoonEmptyState(
+                kind: .noData(
+                    title: reason.title,
+                    message: reason.message,
+                    unlocks: [
+                        "Last night's stages and story",
+                        "Past nights and your body clock",
+                        "Tonight's plan against your own sleep"
+                    ]
+                ),
+                primaryAction: reason == .noSleepData
+                    ? ("Open the Health App", {
+                        // Health read access is set in the Health app; Zoon's own Settings
+                        // page has no Health switches.
+                        if let url = URL(string: "x-apple-health://") {
+                            UIApplication.shared.open(url)
+                        }
+                    })
+                    : nil,
+                secondaryAction: ("Check again", { Task { await coordinator.refresh() } })
+            )
+        case let .failed(message):
+            ZoonEmptyState(
+                kind: .failed(title: "Couldn't read your sleep", message: message),
+                primaryAction: ("Try Again", { Task { await coordinator.refresh() } })
+            )
+        case .loaded, .mock:
+            EmptyView()
+        }
+    }
+
+    /// What works without a recorded night.
+    private var healthFreeTools: some View {
+        VStack(spacing: 10) {
+            toolLink("Nap timer", systemImage: "powersleep", to: .nap)
+            toolLink("Snore Check", systemImage: "waveform", to: .snoreCheck)
+            toolLink("Wind Down", systemImage: "moon.stars", to: .windDown)
+        }
+    }
+
+    private func toolLink(_ title: String, systemImage: String, to destination: DeepLink.Destination) -> some View {
+        NavigationLink(value: destination) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(Theme.Family.sleep)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(Theme.label(14, weight: .semibold))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(11, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(PressableStyle())
     }
 
     /// Same construction `SleepDetailView` uses, so the three moments shown
@@ -672,5 +762,35 @@ private struct ScheduleSyncTriggers: ViewModifier {
                     coordinator.republishGlanceSurfaces()
                 }
             }
+    }
+}
+
+/// Fades the scroll content out behind the floating tab bar.
+///
+/// Without it, text scrolled under the bar showed around its edges and
+/// below it -- "ZOON BRIEF" beside it, "7h 32m" beneath -- legible but
+/// unreachable, which the accessibility audit reports as text outside the
+/// accessibility tree. Decorative only: hidden from VoiceOver and passes
+/// touches through.
+private struct TabBarScrim: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let ground = ZoonNightGround.bottom(for: colorScheme)
+        LinearGradient(
+            stops: [
+                .init(color: ground.opacity(0), location: 0),
+                .init(color: ground.opacity(0.92), location: 0.35),
+                .init(color: ground, location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .padding(.top, -28)
+        // Past the bar's own gutters, where "ZO" and "Er" showed either side.
+        .padding(.horizontal, -60)
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

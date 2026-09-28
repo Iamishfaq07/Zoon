@@ -11,9 +11,44 @@ enum CoachContextMode: Equatable, Sendable {
 /// through to `.unknown`.
 enum CoachSuggestionProvider: Sendable {
 
+    /// The chat's first questions, on an empty conversation.
+    ///
+    /// Here rather than in the view so the coverage tests read the chips
+    /// people actually tap. They used to check a hand-copied list that had
+    /// drifted, and five of the real chips got a generic or wrong answer.
+    static let chatStarters: [String] = [
+        "How did I sleep last night?",
+        "Am I behind on sleep?",
+        "When should I go to bed tonight?",
+        "Why was my HRV lower?",
+        "Should I train hard today?"
+    ]
+
+    /// Offered three at a time after each answer.
+    static let chatFollowUps: [String] = [
+        "What should I do differently tonight?",
+        "How did last night compare with my usual?",
+        "What changed this week?",
+        "Is a nap a good idea today?",
+        "Which habits seem to affect my sleep?",
+        "How much deep sleep did I get?",
+        "Am I behind on sleep?",
+        "When should I go to bed tonight?",
+        "How is my recovery?",
+        "Why do I wake up at night?",
+        // Answered from the age range and heart context in the digest.
+        "How much sleep do I need at my age?",
+        "Is my resting heart rate normal for my age?"
+    ]
+
+    /// Every first-party question: the chat's chips and the Coach tab's.
+    static var allFixtureQuestions: [String] {
+        chatStarters + chatFollowUps + tabFixtureQuestions
+    }
+
     /// Static fixtures covering every category the Coach tab can emit,
     /// including dynamic templates with a sample behaviour name.
-    static let allFixtureQuestions: [String] = [
+    static let tabFixtureQuestions: [String] = [
         "How did I sleep last night?",
         "What happened last night?",
         "How much did I sleep?",
@@ -41,8 +76,4 @@ enum CoachSuggestionProvider: Sendable {
         "What stands out about this night, what may have mattered, and how certain are you?",
         "Explain the awakenings and marked events in this night. Separate measurements from possible explanations."
     ]
-
-    static func isRoutable(_ question: String) -> Bool {
-        CoachIntentRouter.classify(question) != .unknown
-    }
 }

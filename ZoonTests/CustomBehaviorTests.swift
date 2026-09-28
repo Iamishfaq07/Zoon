@@ -296,4 +296,64 @@ final class CustomBehaviorTests: XCTestCase {
         XCTAssertEqual(device.importBehaviors(source.behaviors), 0)
         XCTAssertEqual(device.behaviors.count, 1)
     }
+
+    // MARK: - Repeated identities
+
+    /// A backup that lists one identity twice restored both copies, and the
+    /// analysis -- which keys a dictionary on identity -- trapped on every
+    /// refresh after that.
+    func testOneIdentityListedTwiceInABackupIsAddedOnce() throws {
+        let id = try XCTUnwrap(UUID(uuidString: "6F1C0A52-2B51-4D1E-9A57-0C3C2C1B7A11"))
+        let store = CustomBehaviorStore(defaults: makeDefaults())
+
+        let added = store.importBehaviors([
+            CustomBehavior(id: id, name: "Magnesium"),
+            CustomBehavior(id: id, name: "Magnesium glycinate")
+        ])
+
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(store.behaviors.map(\.id), [id])
+        XCTAssertEqual(store.behaviors.map(\.name), ["Magnesium"], "the first definition wins")
+    }
+
+    func testOneNameListedTwiceInABackupIsAddedOnce() {
+        let store = CustomBehaviorStore(defaults: makeDefaults())
+        let added = store.importBehaviors([
+            CustomBehavior(name: "Prayer"),
+            CustomBehavior(name: "prayer")
+        ])
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(store.behaviors.count, 1)
+    }
+
+    func testANamelessDefinitionIsNotRestored() {
+        let store = CustomBehaviorStore(defaults: makeDefaults())
+        XCTAssertEqual(store.importBehaviors([CustomBehavior(name: "   ")]), 0)
+        XCTAssertTrue(store.behaviors.isEmpty)
+    }
+
+    /// A list already damaged by the old importer heals on the next launch,
+    /// and the repair is written back rather than redone every time.
+    func testADamagedStoredListHealsOnLaunch() throws {
+        let defaults = makeDefaults()
+        let id = try XCTUnwrap(UUID(uuidString: "0D9E4F7A-6C1B-4C44-8B2E-5A6F7E8D9C10"))
+        let other = CustomBehavior(name: "Evening walk")
+        let damaged = [
+            CustomBehavior(id: id, name: "Magnesium"),
+            other,
+            CustomBehavior(id: id, name: "Magnesium again")
+        ]
+        defaults.set(try JSONEncoder().encode(damaged), forKey: "zoon.customBehaviors.v1")
+
+        let store = CustomBehaviorStore(defaults: defaults)
+        XCTAssertEqual(store.behaviors.map(\.id), [id, other.id])
+        XCTAssertEqual(store.behaviors.first?.name, "Magnesium")
+
+        let data = try XCTUnwrap(defaults.data(forKey: "zoon.customBehaviors.v1"))
+        let rewritten = try JSONDecoder().decode([CustomBehavior].self, from: data)
+        XCTAssertEqual(rewritten.map(\.id), [id, other.id])
+        // With unique identities the catalogue can be keyed without a trap.
+        let keyed = Dictionary(uniqueKeysWithValues: store.catalog.analysable.map { ($0.identifier, $0) })
+        XCTAssertEqual(keyed.count, BehaviorTag.allCases.count + 2)
+    }
 }

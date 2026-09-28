@@ -57,7 +57,23 @@ enum SnapshotFreshness {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> State {
-        let nightDay = calendar.startOfDay(for: snapshot.date)
+        state(nightDate: snapshot.date, now: now, calendar: calendar)
+    }
+
+    /// The same rule for any night identified by the day it was woken on
+    /// (`SleepNightFeatures.date`, `SleepSnapshot.date`).
+    ///
+    /// This is the one definition of "last night" in Zoon. Today, the Sleep
+    /// tab, widgets, complications, Siri and the Coach all ask it before
+    /// calling the newest stored night "last night", so a phone that has not
+    /// synced cannot show a days-old night as if it were current on one
+    /// surface while another says it is old.
+    static func state(
+        nightDate: Date,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> State {
+        let nightDay = calendar.startOfDay(for: nightDate)
         let today = calendar.startOfDay(for: now)
         let days = calendar.dateComponents([.day], from: nightDay, to: today).day ?? 0
 
@@ -86,6 +102,25 @@ enum SnapshotFreshness {
             let night = nights == 1 ? "night" : "nights"
             return "From \(nights) \(night) ago. Open Zoon on your phone to update."
         }
+    }
+
+    /// What to call the snapshot's night as of `now`: "Last Night" ("Last
+    /// Sleep" in shift-work mode) while it is current, and the day it was
+    /// woken on once it is behind.
+    ///
+    /// Widgets and complications said "Last Night" about a night of any age:
+    /// three unworn nights later the Home Screen still read "Last Night 84".
+    /// Shift-work mode keeps its label -- a daytime sleeper's last sleep can
+    /// end after the settled hour on its own day, and the calendar rule
+    /// would call it old every afternoon.
+    static func nightLabel(
+        for snapshot: SleepSnapshot,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> String {
+        if snapshot.isShiftWorkModeEnabled { return "Last Sleep" }
+        guard case .behind = state(of: snapshot, now: now, calendar: calendar) else { return "Last Night" }
+        return snapshot.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
     }
 
     /// A short form, for a complication that has one line.

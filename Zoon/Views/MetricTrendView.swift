@@ -55,10 +55,14 @@ struct MetricTrendView: View {
         )
     }
 
-    /// The night the coach is otherwise grounded in. A chart question narrows
-    /// that ground rather than replacing it, so the most recent night is the
-    /// right one even when an older point is selected.
-    private var askedNight: SleepNightFeatures? { coordinator.recentNights.last }
+    /// The night that was tapped, as Trends grounds its own chart questions.
+    /// Grounding in the latest night meant a follow-up about the 3 September
+    /// point ("why did I wake up?") was answered about last night.
+    private var askedNight: SleepNightFeatures? {
+        guard let asking else { return coordinator.recentNights.last }
+        return coordinator.recentNights.first { Calendar.current.isDate($0.date, inSameDayAs: asking.selected.date) }
+            ?? coordinator.recentNights.last
+    }
 
     var body: some View {
         let points = makePoints()

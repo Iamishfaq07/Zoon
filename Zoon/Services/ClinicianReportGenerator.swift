@@ -234,7 +234,10 @@ enum ClinicianReportGenerator {
                 drawRow("Breathing disturbances", "Not available on this device/range")
             } else {
                 let values = measuredNights.compactMap(\.breathingDisturbances)
-                drawRow("Median, % of night", measure(values) { String(format: "%.1f%%", $0) })
+                // Events per hour of sleep, Apple's unit. This printed a
+                // "% of night" figure a hundred times too large; see
+                // `BreathingDisturbanceUnits`.
+                drawRow("Median, events per hour", measure(values) { String(format: "%.1f", $0) })
                 drawRow("Nights with data", "\(values.count) of \(nights.count)")
 
                 // Only Apple's classification is reported, and only against

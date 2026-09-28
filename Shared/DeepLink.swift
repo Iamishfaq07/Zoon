@@ -54,6 +54,17 @@ enum DeepLink {
     private static let napMinutesKey = "zoon.deeplink.napMinutes"
     private static let soundKey = "zoon.deeplink.sound"
     private static let startWindDownKey = "zoon.deeplink.startWindDown"
+    private static let pendingAtKey = "zoon.deeplink.pendingAt"
+
+    /// Posted in the app process when a link is left for `RootView`, which
+    /// consumes it at once rather than waiting for the next activation: an
+    /// intent's `perform()` can run after the app is already active.
+    static let postedNotification = Notification.Name("zoon.notificationRouter.deepLinkPosted")
+
+    /// How long a link stays good. One that was never consumed -- a launch
+    /// that did not happen -- used to wait indefinitely, so a bedtime tap on
+    /// "Wind Down" started the routine's audio the next morning.
+    static let maximumAgeSeconds: TimeInterval = 10 * 60
 
     private static var defaults: UserDefaults {
         AppGroup.containerURL != nil
@@ -65,13 +76,22 @@ enum DeepLink {
     static var pending: Destination? {
         get {
             guard let raw = defaults.string(forKey: key) else { return nil }
+            // A link from before its time stamp existed has none, and is
+            // honoured once, as before.
+            if let at = defaults.object(forKey: pendingAtKey) as? Date,
+               Date.now.timeIntervalSince(at) > maximumAgeSeconds {
+                clear()
+                return nil
+            }
             return Destination(rawValue: raw)
         }
         set {
             if let newValue {
                 defaults.set(newValue.rawValue, forKey: key)
+                defaults.set(Date.now, forKey: pendingAtKey)
             } else {
                 defaults.removeObject(forKey: key)
+                defaults.removeObject(forKey: pendingAtKey)
             }
         }
     }
@@ -155,6 +175,8 @@ enum DeepLink {
         UserDefaults.standard.removeObject(forKey: napMinutesKey)
         UserDefaults.standard.removeObject(forKey: soundKey)
         UserDefaults.standard.removeObject(forKey: startWindDownKey)
+        UserDefaults.standard.removeObject(forKey: pendingAtKey)
+        UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: pendingAtKey)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: key)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: napMinutesKey)
         UserDefaults(suiteName: AppGroup.identifier)?.removeObject(forKey: soundKey)

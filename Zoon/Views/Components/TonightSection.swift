@@ -90,7 +90,9 @@ struct TonightSection: View {
                 ? "Your usual time works tonight"
                 : autopilot.sentence
         }
-        return "For \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) of sleep"
+        // Tonight's own target, the one the fallback bedtime was built from;
+        // `sleepNeed` is last night's.
+        return "For \(SleepNightFeatures.formatMinutes(context.tonight.suggestedSleepTargetMinutes)) of sleep"
     }
 
     var body: some View {

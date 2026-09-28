@@ -78,6 +78,62 @@ final class ResolvedSleepEpisodeTests: XCTestCase {
         XCTAssertEqual(episode?.phase(at: now), .upcoming)
     }
 
+    // MARK: - A plan night that ended early
+
+    private func weekdayPlan(_ cal: Calendar) -> PersonalSetup.SleepPlan {
+        PersonalSetup.SleepPlan(
+            name: "Work", timeZoneIdentifier: "Europe/London",
+            bedtimeMinute: 22 * 60 + 30, wakeMinute: 5 * 60 + 30,
+            weekdays: [2, 3, 4, 5, 6], firstDate: date(cal, 2026, 9, 1, 0, 0)
+        )
+    }
+
+    /// 05:40 on Tuesday, after Monday's 22:30-05:30 plan night. The derived
+    /// 23:15-06:30 night it replaced came back as tonight, and the alarm was
+    /// re-armed for 06:30 -- an hour after the person got up.
+    func testAnEndedPlanNightSupersedesTheDerivedNightItReplaced() {
+        let cal = calendar("Europe/London")
+        let now = date(cal, 2026, 9, 22, 5, 40)
+        let episode = ResolvedSleepEpisode.resolve(
+            plans: [weekdayPlan(cal)], autopilot: autopilot(bed: -45), usualWakeMinute: 6 * 60 + 30,
+            needMinutes: 480, windDownLeadMinutes: 30, now: now, calendar: cal
+        )
+        XCTAssertEqual(episode?.source, .manualPlan)
+        XCTAssertEqual(episode?.bed, date(cal, 2026, 9, 22, 22, 30))
+        XCTAssertEqual(episode?.wake, date(cal, 2026, 9, 23, 5, 30))
+
+        let wakes = ResolvedSleepEpisode.horizon(
+            nights: 3, plans: [weekdayPlan(cal)], autopilot: autopilot(bed: -45),
+            usualWakeMinute: 6 * 60 + 30, needMinutes: 480, windDownLeadMinutes: 30,
+            now: now, calendar: cal
+        ).map(\.wake)
+        XCTAssertFalse(wakes.contains(date(cal, 2026, 9, 22, 6, 30)), "\(wakes)")
+    }
+
+    /// Inside the plan night nothing changes: it is still tonight.
+    func testThePlanNightInProgressIsStillTonight() {
+        let cal = calendar("Europe/London")
+        let episode = ResolvedSleepEpisode.resolve(
+            plans: [weekdayPlan(cal)], autopilot: autopilot(bed: -45), usualWakeMinute: 6 * 60 + 30,
+            needMinutes: 480, windDownLeadMinutes: 30, now: date(cal, 2026, 9, 22, 5, 0), calendar: cal
+        )
+        XCTAssertEqual(episode?.source, .manualPlan)
+        XCTAssertEqual(episode?.bed, date(cal, 2026, 9, 21, 22, 30))
+        XCTAssertEqual(episode?.wake, date(cal, 2026, 9, 22, 5, 30))
+    }
+
+    /// Saturday morning after Friday's plan night: the weekend has no plan,
+    /// so tonight is the derived Saturday night.
+    func testAfterTheLastPlanNightTheDerivedNightReturns() {
+        let cal = calendar("Europe/London")
+        let episode = ResolvedSleepEpisode.resolve(
+            plans: [weekdayPlan(cal)], autopilot: autopilot(bed: -45), usualWakeMinute: 6 * 60 + 30,
+            needMinutes: 480, windDownLeadMinutes: 30, now: date(cal, 2026, 9, 26, 5, 40), calendar: cal
+        )
+        XCTAssertNotEqual(episode?.source, .manualPlan)
+        XCTAssertEqual(episode?.bed, date(cal, 2026, 9, 26, 23, 15))
+    }
+
     func testPhasesInOrder() {
         let cal = calendar("Europe/London")
         let episode = ResolvedSleepEpisode.resolve(

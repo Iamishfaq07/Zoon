@@ -137,9 +137,13 @@ enum WeekOverWeek {
             )
         )
 
+        // Dated, as the ledger decays. The week-ago point is still seven
+        // records back; within the fortnight this compares, that is a week
+        // unless nights are missing, and then both ends decay by the days
+        // that passed.
         let series = RecentSleepShortfall.debtSeries(
-            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: nights.map { $0.sleepNeedBaselineMinutes ?? goalMinutes }
+            nightsOldestFirst: nights,
+            fallbackGoalMinutes: goalMinutes
         )
         if series.count >= weekLength * 2,
            let now = series.last,

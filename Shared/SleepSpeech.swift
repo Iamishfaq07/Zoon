@@ -30,6 +30,11 @@ enum SleepSpeech {
         /// Reading a night back: slower than conversation and a clear pause
         /// between events, so each one lands.
         static let narration = Profile(rateScale: 0.9, pitch: 0.95, leadIn: 0.1, sentencePause: 0.45)
+
+        /// Wind Down guidance between the breathing cycles: the slowest and
+        /// lowest Zoon speaks, with a long rest after each sentence so a line
+        /// of a body scan is followed by room to do what it says.
+        static let windDown = Profile(rateScale: 0.78, pitch: 0.9, leadIn: 0.3, sentencePause: 1.4)
     }
 
     /// An installed voice, reduced to what choosing one needs.
@@ -39,6 +44,18 @@ enum SleepSpeech {
         /// BCP-47, as the system reports it ("en-US").
         let language: String
         let quality: Quality
+        /// A novelty voice ("Albert", "Bubbles", "Zarvox"), as the system
+        /// flags it. Never chosen automatically.
+        var isNovelty = false
+
+        /// The Eloquence voices ("Eddy", "Flo", "Grandma", "Reed", ...) are a
+        /// compact formant synthesiser: clear, and unmistakably robotic.
+        /// The system does not flag them as novelty, so they are recognised
+        /// by identifier.
+        var isEloquence: Bool { identifier.contains(".eloquence.") }
+
+        /// Whether this voice may be picked on the person's behalf.
+        var isSuitableForBedtime: Bool { !isNovelty && !isEloquence }
     }
 
     enum Quality: Int, Comparable, Sendable {
@@ -56,14 +73,24 @@ enum SleepSpeech {
     }
 
     /// Voices for the user's language, best first: premium, then enhanced,
-    /// then default; within a quality, the user's own region first; then by
-    /// name, so the list does not reshuffle between launches.
-    static func ranked(_ voices: [Voice], localeIdentifier: String) -> [Voice] {
+    /// then default; within a quality, the system's own default voice for the
+    /// language (the one set in Settings > Accessibility > Spoken Content),
+    /// then the user's own region; then by name, so the list does not
+    /// reshuffle between launches.
+    ///
+    /// Novelty and Eloquence voices are left out. With no Enhanced or Premium
+    /// voice installed, "by name" used to pick the alphabetically first
+    /// standard voice, which for English is a novelty or Eloquence voice
+    /// ("Albert", "Eddy") -- the robotic Wind Down people heard.
+    static func ranked(_ voices: [Voice], localeIdentifier: String, systemDefaultIdentifier: String? = nil) -> [Voice] {
         let wanted = LanguageTag(localeIdentifier)
         return voices
-            .filter { LanguageTag($0.language).language == wanted.language }
+            .filter { LanguageTag($0.language).language == wanted.language && $0.isSuitableForBedtime }
             .sorted { lhs, rhs in
                 if lhs.quality != rhs.quality { return lhs.quality > rhs.quality }
+                let lhsDefault = lhs.identifier == systemDefaultIdentifier
+                let rhsDefault = rhs.identifier == systemDefaultIdentifier
+                if lhsDefault != rhsDefault { return lhsDefault }
                 let lhsRegion = LanguageTag(lhs.language).region == wanted.region
                 let rhsRegion = LanguageTag(rhs.language).region == wanted.region
                 if lhsRegion != rhsRegion { return lhsRegion }
@@ -72,13 +99,27 @@ enum SleepSpeech {
     }
 
     /// The voice to speak with: the one the user picked if it is still
-    /// installed, otherwise the best installed voice for their language.
-    /// `nil` leaves the choice to the system.
-    static func choose(_ voices: [Voice], preferredIdentifier: String?, localeIdentifier: String) -> Voice? {
+    /// installed (even a novelty voice -- that was their choice), otherwise
+    /// the best installed voice for their language. `nil` leaves the choice
+    /// to the system.
+    static func choose(
+        _ voices: [Voice],
+        preferredIdentifier: String?,
+        localeIdentifier: String,
+        systemDefaultIdentifier: String? = nil
+    ) -> Voice? {
         if let preferredIdentifier, let picked = voices.first(where: { $0.identifier == preferredIdentifier }) {
             return picked
         }
-        return ranked(voices, localeIdentifier: localeIdentifier).first
+        return ranked(voices, localeIdentifier: localeIdentifier, systemDefaultIdentifier: systemDefaultIdentifier).first
+    }
+
+    /// Whether to suggest downloading a better voice: nothing better than a
+    /// standard-quality voice is installed for the language. The download
+    /// itself is in iOS Settings > Accessibility > Spoken Content > Voices;
+    /// Zoon can only point there.
+    static func shouldSuggestBetterVoice(_ voices: [Voice], localeIdentifier: String) -> Bool {
+        (ranked(voices, localeIdentifier: localeIdentifier).first?.quality ?? .standard) == .standard
     }
 
     /// Splits text into sentences to be spoken with a pause after each.

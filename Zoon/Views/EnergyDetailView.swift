@@ -20,7 +20,8 @@ struct EnergyDetailView: View {
                 EnergyHorizon(
                     forecast: forecast,
                     battery: context.bodyBattery,
-                    targetBedtime: context.targetBedtime()
+                    // The resolved bed Tonight shows, which honours a plan.
+                    targetBedtime: coordinator.tonightEpisode(for: context)?.bed ?? context.targetBedtime()
                 )
                 .padding(.bottom, 8)
                 .entrance(0)

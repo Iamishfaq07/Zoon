@@ -521,12 +521,21 @@ extension SleepNightFeatures {
     var summaryForLLM: String {
         let payload = LLMPayload(
             date: ISO8601DateFormatter.dayString(for: date, timeZone: timeZone),
-            sleepEfficiencyPct: sleepEfficiencyPercent.rounded(to: 1),
+            // Whole percent, and durations also written the way a person
+            // says them. The Coach refuses any answer quoting a number not
+            // in its facts, so with 91.3 and 425 min here, "91% efficiency"
+            // and "7h 5m asleep" were refused and the canned reply shown.
+            sleepEfficiencyPct: sleepEfficiencyPercent.rounded(to: 0),
             timeAsleepMin: Int(timeAsleepMinutes.rounded()),
+            timeAsleep: Self.formatMinutes(timeAsleepMinutes),
             timeInBedMin: Int(timeInBedMinutes.rounded()),
+            timeInBed: Self.formatMinutes(timeInBedMinutes),
             deepMin: hasStageBreakdown ? Int(deepMinutes.rounded()) : nil,
             remMin: hasStageBreakdown ? Int(remMinutes.rounded()) : nil,
             coreMin: hasStageBreakdown ? Int(coreMinutes.rounded()) : nil,
+            deep: hasStageBreakdown ? Self.formatMinutes(deepMinutes) : nil,
+            rem: hasStageBreakdown ? Self.formatMinutes(remMinutes) : nil,
+            core: hasStageBreakdown ? Self.formatMinutes(coreMinutes) : nil,
             wakeCount: wakeCount,
             sleepLatencyMin: sleepLatencyMinutes?.rounded(to: 0),
             avgHrvMs: avgHRV?.rounded(to: 0),
@@ -536,7 +545,7 @@ extension SleepNightFeatures {
             avgRespiratoryRate: avgRespiratoryRate?.rounded(to: 1),
             avgSpo2Pct: avgSpO2?.rounded(to: 1),
             wristTempDeltaC: wristTempDeltaC?.rounded(to: 2),
-            sleepDebtMin14day: sleepDebtMinutes?.rounded(to: 0),
+            shortfallEnteringNightMin: sleepDebtMinutes?.rounded(to: 0),
             lastWorkoutHoursBeforeBed: lastWorkoutHoursBeforeBed?.rounded(to: 1),
             exerciseMinPreviousDay: exerciseMinutesPreviousDay?.rounded(to: 0),
             timingProvenance: timingProvenance.rawValue
@@ -559,10 +568,15 @@ extension SleepNightFeatures {
         let date: String
         let sleepEfficiencyPct: Double
         let timeAsleepMin: Int
+        let timeAsleep: String
         let timeInBedMin: Int
+        let timeInBed: String
         let deepMin: Int?
         let remMin: Int?
         let coreMin: Int?
+        let deep: String?
+        let rem: String?
+        let core: String?
         let wakeCount: Int
         let sleepLatencyMin: Double?
         let avgHrvMs: Double?
@@ -572,7 +586,7 @@ extension SleepNightFeatures {
         let avgRespiratoryRate: Double?
         let avgSpo2Pct: Double?
         let wristTempDeltaC: Double?
-        let sleepDebtMin14day: Double?
+        let shortfallEnteringNightMin: Double?
         let lastWorkoutHoursBeforeBed: Double?
         let exerciseMinPreviousDay: Double?
         let timingProvenance: String
@@ -581,10 +595,13 @@ extension SleepNightFeatures {
             case date
             case sleepEfficiencyPct = "sleep_efficiency_pct"
             case timeAsleepMin = "time_asleep_min"
+            case timeAsleep = "time_asleep"
             case timeInBedMin = "time_in_bed_min"
+            case timeInBed = "time_in_bed"
             case deepMin = "deep_min"
             case remMin = "rem_min"
             case coreMin = "core_min"
+            case deep, rem, core
             case wakeCount = "wake_count"
             case sleepLatencyMin = "sleep_latency_min"
             case avgHrvMs = "avg_hrv_ms"
@@ -594,7 +611,10 @@ extension SleepNightFeatures {
             case avgRespiratoryRate = "avg_respiratory_rate"
             case avgSpo2Pct = "avg_spo2_pct"
             case wristTempDeltaC = "wrist_temp_delta_c"
-            case sleepDebtMin14day = "sleep_debt_min_14day"
+            // Not a 14-day figure: the decaying shortfall carried into the
+            // night. The old key's "14day" also let a model's invented "14"
+            // pass the number check.
+            case shortfallEnteringNightMin = "shortfall_entering_night_min"
             case lastWorkoutHoursBeforeBed = "last_workout_hours_before_bed"
             case exerciseMinPreviousDay = "exercise_min_previous_day"
             case timingProvenance = "timing_provenance"

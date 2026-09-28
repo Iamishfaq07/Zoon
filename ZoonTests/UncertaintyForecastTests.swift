@@ -215,4 +215,26 @@ final class UncertaintyForecastTests: XCTestCase {
             forecast.rangeLabel
         )
     }
+
+    /// Bedtimes are signed minutes from midnight. Formatted as durations,
+    /// a range of 23:15 to 00:30 read "Bedtime: 0m to 30m" on Patterns, the
+    /// widget and the watch.
+    func testBedtimeRangeIsClockTimes() {
+        let forecast = UncertaintyForecast.Forecast(
+            metric: .bedtime, typical: -10, lower: -45, upper: 30,
+            nightsUsed: 21, confidence: .moderate
+        )
+        XCTAssertEqual(
+            forecast.rangeLabel,
+            "Bedtime: \(BodyClock.formatted(hour: -45.0 / 60)) to \(BodyClock.formatted(hour: 30.0 / 60))"
+        )
+        XCTAssertFalse(forecast.rangeLabel.contains("0m"), forecast.rangeLabel)
+        XCTAssertTrue(forecast.sentence.contains(BodyClock.formatted(hour: -10.0 / 60)), forecast.sentence)
+    }
+
+    /// A bedtime *difference* is a duration, and stays one.
+    func testBedtimeDifferenceIsStillADuration() {
+        XCTAssertEqual(TrendEngine.Metric.bedtime.formattedMagnitude(40), SleepNightFeatures.formatMinutes(40))
+        XCTAssertEqual(TrendEngine.Metric.duration.formattedValue(420), TrendEngine.Metric.duration.formattedMagnitude(420))
+    }
 }

@@ -17,10 +17,12 @@ enum BreathingDisturbanceClassification: String, Codable, Sendable {
 ///
 /// The third case is the point. `BreathingHealth.isElevated` used to return a
 /// plain `Bool` and, when Apple's classification was absent, substituted an
-/// in-app cutoff of `value >= 5.0` percent of the night. That number was
-/// Zoon's own invention. It read as a clinical threshold, it was surfaced to
-/// users and printed on the clinician report as "nights classified elevated",
-/// and nothing in this app ever calibrated it against anything.
+/// in-app cutoff of `value >= 5.0` -- applied to a value the app was then
+/// mis-reading as a percentage of the night (it is events per hour; see
+/// `BreathingDisturbanceUnits`). That number was Zoon's own invention. It
+/// read as a clinical threshold, it was surfaced to users and printed on the
+/// clinician report as "nights classified elevated", and nothing in this app
+/// ever calibrated it against anything.
 ///
 /// The same `Bool` also conflated two different unknowns: a night with no
 /// breathing data at all returned `false`, which is indistinguishable from a
@@ -61,6 +63,7 @@ struct BreathingHealth: Codable, Hashable, Sendable {
     let respiratoryDeviationPercent: Double?
 
     /// Last 14 nights with a breathing-disturbances reading, oldest first.
+    /// Values are events per hour of sleep, Apple's unit.
     let disturbanceTrend: [TrendPoint]
     /// Last 14 nights with an SpO2 reading, oldest first.
     let oxygenTrend: [TrendPoint]

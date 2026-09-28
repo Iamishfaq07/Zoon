@@ -19,8 +19,11 @@ import MediaPlayer
 /// Generated noise is synthesised off the main actor (`NoiseRenderer`); only
 /// the finished buffer is scheduled from here.
 ///
-/// Sleep onset still drops volume (and, for generated noise, high harmonics)
-/// as overnight heart rate falls below resting.
+/// Volume does not follow heart rate. A `followHeartRate` hook existed and
+/// the screen advertised it, but nothing ever called it: overnight heart rate
+/// reaches the phone's Health store in delayed batches, not live, so there is
+/// no reliable signal to follow. The claim and the hook were removed rather
+/// than left as a feature that does nothing.
 @MainActor
 @Observable
 final class SoundscapeEngine {
@@ -240,7 +243,9 @@ final class SoundscapeEngine {
     private var wasInterrupted = false
     private var pausedByUser = false
     private var watchdogTask: Task<Void, Never>?
-    private var watchdogRecoveredGeneration: UUID?
+    /// When the watchdog last restarted the current playback; see
+    /// `WatchdogRecoveryPolicy`.
+    private var watchdogLastRecoveryAt: Date?
     private var lastSuccessfulPlayback: Date = .distantPast
     private var remoteCommandsInstalled = false
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "Soundscape")
@@ -380,7 +385,7 @@ final class SoundscapeEngine {
         self.player = player
         self.playing = sound
         lastSuccessfulPlayback = .now
-        watchdogRecoveredGeneration = nil
+        watchdogLastRecoveryAt = nil
 
         armWatchdog()
         publishNowPlaying()
@@ -593,25 +598,6 @@ final class SoundscapeEngine {
         canResumeOnSpeaker = true
     }
 
-    /// Sleep-onset cue: as overnight HR falls below resting, turn the
-    /// soundscape down and strip high harmonics so it recedes with the
-    /// body rather than staying a constant presence.
-    ///
-    /// A larger dip is a healthier overnight recovery signal; the
-    /// attenuation is bounded so a noisy reading cannot mute the engine.
-    func followHeartRate(currentBPM: Double, restingBPM: Double) {
-        guard restingBPM > 0, isPlaying else { return }
-        let dip = max(0, restingBPM - currentBPM)
-        let progress = min(1, dip / 12)
-        biometricAttenuation = Float(1 - 0.55 * progress)
-        harmonicPresence = Float(1 - 0.7 * progress)
-        applyOutputVolume()
-        for (index, player) in scenePlayers.enumerated() where index + 1 < sceneLevels.count {
-            player.volume = Float(sceneLevels[index + 1].level) / 3 * fadeMultiplier * biometricAttenuation
-            player.harmonicPresence = harmonicPresence
-        }
-    }
-
     /// Auto-stop after `minutes`, with a fade over the final 60 seconds.
     ///
     /// The fade matters more than it sounds: an abrupt cut at the end of a sleep
@@ -696,11 +682,13 @@ final class SoundscapeEngine {
             lastSuccessfulPlayback = .now
             return
         }
-        if watchdogRecoveredGeneration == playbackGeneration {
+        guard WatchdogRecoveryPolicy.mayRecover(
+            lastRecoveryAt: watchdogLastRecoveryAt, lastHealthyAt: lastSuccessfulPlayback
+        ) else {
             markPlaybackFailed()
             return
         }
-        watchdogRecoveredGeneration = playbackGeneration
+        watchdogLastRecoveryAt = .now
         if restartEnginesIfNeeded(), let player {
             requeueAfterStop()
             player.play()

@@ -126,8 +126,10 @@ struct TodayView: View {
                 ]
             ),
             primaryAction: reason == .noSleepData
-                ? ("Open Health Access", {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                ? ("Open the Health App", {
+                    // Health read access is set in the Health app; Zoon's own Settings
+                    // page has no Health switches.
+                    if let url = URL(string: "x-apple-health://") {
                         UIApplication.shared.open(url)
                     }
                 })
@@ -160,6 +162,10 @@ struct TodayView: View {
         // used it five times.
         let napMinutesToday = self.napMinutesToday
         return VStack(alignment: .leading, spacing: 28) {
+            if moment == .morning || moment == .day {
+                staleNightNotice(context)
+            }
+
             if moment == .evening || moment == .night {
                 tonightCircleHero(context)
                     .entrance(0)
@@ -181,10 +187,12 @@ struct TodayView: View {
                 // them is what the hero above is counting, so `TodayNeedTracks`
                 // -- which draws a Debt bar of its own -- would be saying it
                 // twice on this moment's screen.
+                // Last night's main sleep against last night's need, which
+                // already credits yesterday's naps; today's belong to tonight.
                 SleepMetricsView(
-                    actualMinutes: context.night.total24hAsleepMinutes + napMinutesToday,
+                    actualMinutes: context.sleepNeed.achievedMinutes,
                     needMinutes: context.sleepNeed.totalNeedMinutes,
-                    napMinutes: napMinutesToday
+                    needLabel: "Last night's need"
                 )
                 .entrance(2)
 
@@ -253,7 +261,7 @@ struct TodayView: View {
                 context: context,
                 stress: coordinator.todayStress,
                 recoveryMode: RecoveryMode.evaluate(
-                    band: context.recovery.band,
+                    recovery: context.recovery.presentation,
                     manuallyEnabledToday: preferences.isRecoveryModeManuallyEnabledToday
                 ),
                 lightGuidance: LightCoach.guidance(
@@ -312,27 +320,33 @@ struct TodayView: View {
             }
 
             if moment == .morning {
-                MorningCheckInCard(
-                selected: checkInFeeling,
-                details: checkInDetails,
-                onSelectFeeling: { feeling in
-                    Haptics.select()
-                    checkInFeeling = feeling
-                    coordinator.journal.setFeeling(feeling, on: context.night.date, nightKey: context.night.nightKey)
-                },
-                onSelectDetail: { dimension, value in
-                    checkInDetails[dimension] = value
-                    coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date, nightKey: context.night.nightKey)
-                }
-            )
-                .entrance(7)
-                .task(id: context.night.date) {
-                let entry = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)
-                checkInFeeling = entry?.feeling
-                checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
-                    result[dimension] = entry?.value(for: dimension)
-                }
-                await askForReviewIfDue(after: context.night)
+                // Only about last night. When the newest stored night is older
+                // (the watch has not synced, or no night was recorded), "How do
+                // you feel this morning?" was saved onto that older night,
+                // overwriting what the person said about it at the time.
+                if nightIsCurrent(context) {
+                    MorningCheckInCard(
+                    selected: checkInFeeling,
+                    details: checkInDetails,
+                    onSelectFeeling: { feeling in
+                        Haptics.select()
+                        checkInFeeling = feeling
+                        coordinator.journal.setFeeling(feeling, on: context.night.date, nightKey: context.night.nightKey)
+                    },
+                    onSelectDetail: { dimension, value in
+                        checkInDetails[dimension] = value
+                        coordinator.journal.setCheckIn(dimension, value: value, on: context.night.date, nightKey: context.night.nightKey)
+                    }
+                )
+                    .entrance(7)
+                    .task(id: context.night.date) {
+                    let entry = coordinator.journal.entry(forNightKey: context.night.nightKey, fallbackDate: context.night.date)
+                    checkInFeeling = entry?.feeling
+                    checkInDetails = CheckInDimension.allCases.reduce(into: [:]) { result, dimension in
+                        result[dimension] = entry?.value(for: dimension)
+                    }
+                    await askForReviewIfDue(after: context.night)
+                    }
                 }
 
                 // The optional reaction check, one tap from the check-in it
@@ -360,7 +374,7 @@ struct TodayView: View {
             if moment == .morning || moment == .day {
                 NapsTodayCard(
                     napMinutesToday: napMinutesToday,
-                    debtMinutes: context.shortfallNowMinutes ?? 0,
+                    targetReductionMinutes: context.tonightPlanning.tonightNapEffectMinutes,
                     recommendation: napRecommendation(context, napMinutesToday: napMinutesToday)
                 )
                 .entrance(8)
@@ -400,14 +414,14 @@ struct TodayView: View {
         AdaptiveZoonBrief.make(
             phase: phase,
             night: context.night,
-            recoveryPercent: context.recovery.percent,
+            recovery: context.recovery.presentation,
             energy: context.bodyBattery.current,
             load: context.strain.value,
             tonightBedtime: plannedBedtime(context),
-            // The same figure the hero arc shows, naps taken off. Handed the
-            // raw shortfall, the brief said "1h 35m" under an arc that had
-            // already counted this afternoon's nap.
-            shortfallMinutes: context.shortfallNowMinutes.map { max(0, $0 - napMinutesToday) }
+            // The same figure the hero arc shows. Naps are not taken off it:
+            // the ledger is one-sided, and a nap lowers tonight's target
+            // instead (see `SleepPlanningInputs.tonightNapEffectMinutes`).
+            shortfallMinutes: context.shortfallNowMinutes
         )
     }
 
@@ -415,8 +429,35 @@ struct TodayView: View {
         NapCoach.recommend(
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: plannedBedtime(context),
-            napMinutesToday: napMinutesToday
+            napMinutesToday: napMinutesToday,
+            lastWake: context.night.wakeTime
         )
+    }
+
+    /// Whether the newest stored night is last night, by the rule every
+    /// surface shares (`SnapshotFreshness`: yesterday's night still counts
+    /// until the morning has had time to sync).
+    private func nightIsCurrent(_ context: DayContext) -> Bool {
+        SnapshotFreshness.state(nightDate: context.night.date).isCurrent
+    }
+
+    /// Says when the night on screen is not last night. Without it a phone
+    /// that had not synced presented a night days old as last night -- its
+    /// duration, Recovery and Energy -- with nothing to say otherwise.
+    @ViewBuilder
+    private func staleNightNotice(_ context: DayContext) -> some View {
+        if !nightIsCurrent(context) {
+            Label {
+                Text("No night recorded for last night yet. Showing your latest, from \(context.night.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))).")
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
+            .font(Theme.text(13, weight: .semibold))
+            .foregroundStyle(Theme.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        }
     }
 
     /// Tonight's target bedtime as a `Date`, which is what `NapCoach` needs
@@ -620,7 +661,7 @@ struct TodayView: View {
                 .foregroundStyle(Theme.inkSecondary)
 
             SleepDebtArcView(
-                debtMinutes: max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday),
+                debtMinutes: context.shortfallNowMinutes ?? 0,
                 weekChangeMinutes: weekChange(context),
                 repaymentMinutes: plan?.debtRepaymentMinutes
             )
@@ -633,7 +674,7 @@ struct TodayView: View {
                 tint: Theme.Family.attention,
                 explanation: [
                     SleepVocabulary.sleepDebt.meaning,
-                    "Each night you sleep less than you need adds to it; recent nights count most and older ones fade. A longer night or a nap pays some back, a little at a time, which is why Tonight's plan moves your bedtime earlier by minutes rather than hours.",
+                    "Each night you sleep less than you need adds to it; recent nights count most, and older ones fade a little every night. A long night doesn't wipe it out at once, which is why Tonight's plan moves your bedtime earlier by minutes rather than hours. A nap lowers tonight's target rather than this figure.",
                     "It is an estimate from your own sleep and need, not a medical measure."
                 ],
                 label: "What does this mean?"
@@ -762,13 +803,19 @@ struct TodayView: View {
         let nights = coordinator.recentNights
         guard nights.count >= 8 else { return nil }
         let series = RecentSleepShortfall.debtSeries(
-            timeAsleepMinutesOldestFirst: nights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: nights.map {
-                $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes
-            }
+            nightsOldestFirst: nights,
+            fallbackGoalMinutes: preferences.sleepGoalMinutes
         )
-        guard let latest = series.last, series.count >= 8 else { return nil }
-        let change = latest - series[series.count - 8]
+        guard let latest = series.last, let last = nights.last, series.count == nights.count else { return nil }
+        // A calendar week back, as Sleep Shortfall compares: eight records
+        // back spanned weeks after any unworn night.
+        guard let target = Calendar.current.date(byAdding: .day, value: -7, to: last.date),
+              let weekAgoIndex = nights.indices.min(by: {
+                  abs(nights[$0].date.timeIntervalSince(target)) < abs(nights[$1].date.timeIntervalSince(target))
+              }),
+              abs(nights[weekAgoIndex].date.timeIntervalSince(target)) <= 2 * 86_400
+        else { return nil }
+        let change = latest - series[weekAgoIndex]
         return (context.shortfallNowMinutes ?? 0) - change
     }
 
@@ -786,7 +833,7 @@ struct TodayView: View {
             // top of the screen. It's a rarely-used override, so it lives
             // with the other provenance lines at the bottom -- still one tap.
             if RecoveryMode.evaluate(
-                band: context.recovery.band,
+                recovery: context.recovery.presentation,
                 manuallyEnabledToday: preferences.isRecoveryModeManuallyEnabledToday
             ) == nil {
                 RecoveryModeEnableLink { preferences.setRecoveryModeEnabledToday(true) }

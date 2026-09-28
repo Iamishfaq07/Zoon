@@ -21,7 +21,7 @@ struct TonightWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .tonight)) { entry in
             TonightWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("Tonight")
         .description("Tonight's bed and wake target, and where tomorrow is likely to land.")
@@ -40,12 +40,20 @@ struct TonightWidgetView: View {
     let entry: SleepEntry
 
     var body: some View {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "Tonight", systemImage: "bed.double",
+                message: "Open Zoon to see tonight's plan here.",
+                inlineText: "Open Zoon for tonight"
+            )
+        } else {
         switch family {
         case .accessoryInline: inline
         case .accessoryRectangular: rectangular
         case .accessoryCircular: circular
         case .systemMedium: medium
         default: small
+        }
         }
     }
 

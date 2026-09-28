@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Overnight snore estimate.
 ///
@@ -9,47 +10,69 @@ struct SnoreCheckView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(SoundscapeEngine.self) private var soundscape
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @State private var permissionDenied = false
+    /// Zoon's own audio is playing; the alert offers to stop it and start.
     @State private var conflictMessage: String?
+    /// Any other failure: said plainly, with nothing that would reset the
+    /// session.
+    @State private var errorMessage: String?
     @State private var showingDetails = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            explainer
+        // Scrolls, with the button pinned to the bottom edge. A fixed stack
+        // pushed Start/Stop off the screen once the timeline or a larger text
+        // size made it taller than the phone. The floating tab bar is hidden
+        // here: it does not inset pushed screens, and sat on the button.
+        ScrollView {
+            VStack(spacing: 20) {
+                explainer
 
-            if let recovered = session.recoveredCheckpoint {
-                recoveredCard(recovered)
+                if let recovered = session.recoveredCheckpoint {
+                    recoveredCard(recovered)
+                }
+
+                if session.isRunning {
+                    runningCard
+                } else if let last = session.lastSummary {
+                    lastNightCard(last)
+                } else if session.recoveredCheckpoint == nil && session.storedEvents.isEmpty {
+                    firstNightCard
+                }
+
+                if !session.monitoringGaps.isEmpty || !session.fusedIntervals.isEmpty {
+                    coverageCard
+                }
+
+                if !session.isRunning && !session.storedEvents.isEmpty {
+                    timelineCard
+                }
             }
-
-            if session.isRunning {
-                runningCard
-            } else if let last = session.lastSummary {
-                lastNightCard(last)
-            } else if session.recoveredCheckpoint == nil && session.storedEvents.isEmpty {
-                firstNightCard
-            }
-
-            if !session.monitoringGaps.isEmpty || !session.fusedIntervals.isEmpty {
-                coverageCard
-            }
-
-            if !session.isRunning && !session.storedEvents.isEmpty {
-                timelineCard
-            }
-
-            Spacer(minLength: 0)
-
-            actionButton
+            .padding()
         }
-        .padding()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 10) {
+                if session.state == .interrupted {
+                    resumeButton
+                }
+                actionButton
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+        }
         .nightBackground()
         .navigationTitle("Snore Check")
+        // Start/Stop sits on the bottom edge, where the tab bar was drawn.
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: scenePhase) { _, phase in
             session.handleScenePhase(phase)
         }
         .alert("Microphone access needed", isPresented: $permissionDenied) {
-            Button("OK") {}
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            }
+            Button("Not Now", role: .cancel) {}
         } message: {
             Text("Turn on microphone access for Zoon in iOS Settings to use Snore Check.")
         }
@@ -63,18 +86,56 @@ struct SnoreCheckView: View {
             Button("Stop & Start") {
                 Task {
                     conflictMessage = nil
-                    if let message = await session.stopAudioAndStart(soundscape: soundscape),
-                       message.lowercased().contains("microphone") {
-                        permissionDenied = true
-                    }
+                    handle(await session.stopAudioAndStart(soundscape: soundscape))
                 }
             }
             Button("Cancel", role: .cancel) { conflictMessage = nil }
         } message: {
             Text(conflictMessage ?? "")
         }
+        .alert(
+            "Snore Check",
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
         .sheet(isPresented: $showingDetails) {
             sessionDetails
+        }
+    }
+
+    private var resumeButton: some View {
+        Button {
+            Haptics.tap()
+            if !session.resume() {
+                errorMessage = session.conflictMessage
+                    ?? "Snore Check couldn't get the microphone back. Close any app that may be using it, then try again."
+            }
+        } label: {
+            Label("Resume listening", systemImage: "mic.fill")
+                .font(Theme.label(16, weight: .bold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(Theme.neutral(0.12), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        }
+        .accessibilityHint("Starts listening again after the interruption.")
+    }
+
+    /// Routes what `start` returned: the microphone permission, a conflict
+    /// with Zoon's own audio, or anything else.
+    private func handle(_ message: String?) {
+        guard let message else { return }
+        if message == SnoreSessionController.microphoneAccessNeeded {
+            permissionDenied = true
+        } else if soundscape.playing != nil || TonightRoutineController.shared.active {
+            conflictMessage = message
+        } else {
+            errorMessage = message
         }
     }
 
@@ -349,11 +410,21 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    /// Whether Apple's sound classifier is actually listening. It can stop
+    /// mid-session (on some iOS versions once the phone locks) while the
+    /// microphone and the loudness pattern carry on, and saying "Active" then
+    /// would vouch for a detector that is not running.
+    private var soundAnalysisStatus: String {
+        guard session.classifierAvailable else { return "Unavailable" }
+        guard let paused = session.classifierPausedSince else { return "Active" }
+        return "Paused since \(paused.formatted(date: .omitted, time: .shortened)), loudness pattern only"
+    }
+
     private var sessionDetails: some View {
         NavigationStack {
             List {
                 LabeledContent("Microphone", value: session.isAudioArriving ? "Active" : "Quiet")
-                LabeledContent("Sound analysis", value: session.classifierAvailable ? "Active" : "Unavailable")
+                LabeledContent("Sound analysis", value: soundAnalysisStatus)
                 LabeledContent("Last audio", value: session.lastBufferAt.map { "\(Int(Date.now.timeIntervalSince($0)))s ago" } ?? "—")
                 LabeledContent("Interruptions", value: "\(session.interruptionGaps)")
                 if session.monitoringGaps.isEmpty {
@@ -411,17 +482,19 @@ struct SnoreCheckView: View {
             // episode the reminders and the alarm use.
             intendedWindowSeconds: coordinator.tonightEpisode().map { $0.opportunityMinutes * 60 }
         ) {
-            if message.lowercased().contains("microphone") {
-                permissionDenied = true
-            } else {
-                conflictMessage = message
-            }
+            handle(message)
         }
     }
 
+    /// "4:12" under an hour, "7:17:12" over one. A seven-hour session used
+    /// to read "437:12".
     private func formattedDuration(_ seconds: Double) -> String {
-        let total = Int(seconds)
-        return String(format: "%d:%02d", total / 60, total % 60)
+        let total = max(0, Int(seconds))
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, minutes, total % 60)
+            : String(format: "%d:%02d", minutes, total % 60)
     }
 }
 

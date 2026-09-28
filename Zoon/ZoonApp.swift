@@ -79,10 +79,14 @@ struct ZoonApp: App {
         // *both* containers failed; this also skips it for the in-memory
         // recovery container, which exists only as a diagnostic.
         if openedDisk, let container {
+            let history = SleepHistoryStore(context: container.mainContext)
+            // Before the coordinator exists, so before anything new can be
+            // extracted and written: see `BreathingDisturbanceUnits`.
+            history.migrateBreathingDisturbanceUnitsIfNeeded()
             _coordinator = State(
                 initialValue: SleepDataCoordinator(
                     healthKit: HealthKitManager(),
-                    store: SleepHistoryStore(context: container.mainContext),
+                    store: history,
                     journal: JournalStore(context: container.mainContext),
                     behaviors: BehaviorObservationStore(context: container.mainContext),
                     naps: naps,

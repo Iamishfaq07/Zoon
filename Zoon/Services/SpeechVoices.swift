@@ -8,16 +8,30 @@ enum SpeechVoices {
     static func installed(localeIdentifier: String = Locale.current.identifier) -> [AVSpeechSynthesisVoice] {
         let all = AVSpeechSynthesisVoice.speechVoices()
         let byIdentifier = Dictionary(all.map { ($0.identifier, $0) }, uniquingKeysWith: { first, _ in first })
-        return SleepSpeech.ranked(all.map(describe), localeIdentifier: localeIdentifier)
-            .compactMap { byIdentifier[$0.identifier] }
+        return SleepSpeech.ranked(
+            all.map(describe), localeIdentifier: localeIdentifier,
+            systemDefaultIdentifier: systemDefaultIdentifier(localeIdentifier)
+        )
+        .compactMap { byIdentifier[$0.identifier] }
     }
 
     static func resolve(preferredIdentifier: String?, localeIdentifier: String = Locale.current.identifier) -> AVSpeechSynthesisVoice? {
         let all = AVSpeechSynthesisVoice.speechVoices()
-        guard let chosen = SleepSpeech.choose(all.map(describe), preferredIdentifier: preferredIdentifier, localeIdentifier: localeIdentifier) else {
-            return AVSpeechSynthesisVoice(language: localeIdentifier.replacingOccurrences(of: "_", with: "-"))
+        guard let chosen = SleepSpeech.choose(
+            all.map(describe), preferredIdentifier: preferredIdentifier, localeIdentifier: localeIdentifier,
+            systemDefaultIdentifier: systemDefaultIdentifier(localeIdentifier)
+        ) else {
+            return AVSpeechSynthesisVoice(language: languageTag(localeIdentifier))
         }
         return all.first { $0.identifier == chosen.identifier }
+    }
+
+    /// Whether only standard-quality voices are installed for the language,
+    /// so the Wind Down screen should say how to get a natural-sounding one.
+    static func shouldSuggestBetterVoice(localeIdentifier: String = Locale.current.identifier) -> Bool {
+        SleepSpeech.shouldSuggestBetterVoice(
+            AVSpeechSynthesisVoice.speechVoices().map(describe), localeIdentifier: localeIdentifier
+        )
     }
 
     static func qualityLabel(_ voice: AVSpeechSynthesisVoice) -> String {
@@ -38,12 +52,25 @@ enum SpeechVoices {
         }
     }
 
+    /// The voice iOS itself uses for the language: the one chosen in
+    /// Settings > Accessibility > Spoken Content.
+    private static func systemDefaultIdentifier(_ localeIdentifier: String) -> String? {
+        AVSpeechSynthesisVoice(language: languageTag(localeIdentifier))?.identifier
+    }
+
+    private static func languageTag(_ localeIdentifier: String) -> String {
+        localeIdentifier.replacingOccurrences(of: "_", with: "-")
+    }
+
     private static func describe(_ voice: AVSpeechSynthesisVoice) -> SleepSpeech.Voice {
         let quality: SleepSpeech.Quality = switch voice.quality {
         case .premium: .premium
         case .enhanced: .enhanced
         default: .standard
         }
-        return SleepSpeech.Voice(identifier: voice.identifier, name: voice.name, language: voice.language, quality: quality)
+        return SleepSpeech.Voice(
+            identifier: voice.identifier, name: voice.name, language: voice.language, quality: quality,
+            isNovelty: voice.voiceTraits.contains(.isNoveltyVoice)
+        )
     }
 }

@@ -125,6 +125,8 @@ struct CoachEvidence: Sendable {
                 return trendReply().within(trendTimeframe)
             case .getRecovery:
                 return recoveryLocalReply().within(nightTimeframe)
+            case .getHRV:
+                return hrvReply().within(nightTimeframe)
             case .getEnergy:
                 return energyLocalReply()
             case .getDailyLoad, .getPhysiologicalLoad:
@@ -137,6 +139,8 @@ struct CoachEvidence: Sendable {
                 return learningReply()
             case .getWeeklyPlan:
                 return weeklyReply().within("Recent nights")
+            case .getNapAdvice:
+                return napLocalReply()
             default:
                 break
             }
@@ -228,26 +232,35 @@ struct CoachEvidence: Sendable {
     /// a "42" somewhere in the facts. "7h 32m" contributes 7 and 32; "14.2"
     /// stays 14.2; "10:38" contributes 10 and 38.
     static func numbersAreGrounded(_ text: String, in facts: String) -> Bool {
-        let allowed = Set(numberTokens(in: facts))
+        let allowed = Set(numberTokens(in: facts, skippingIdentifiers: true))
         return numberTokens(in: text).allSatisfy { allowed.contains($0) }
     }
 
-    static func numberTokens(in text: String) -> [String] {
+    /// - Parameter skippingIdentifiers: leave out digits that are part of a
+    ///   name -- `hrv_7day_avg_ms`, `avg_spo2_pct` -- rather than a value.
+    ///   For the facts only: counted there, a key let an invented "7 hours"
+    ///   or "14" through as if it had been supplied.
+    static func numberTokens(in text: String, skippingIdentifiers: Bool = false) -> [String] {
         var tokens: [String] = []
         var current = ""
+        var currentIsIdentifier = false
         let scalars = Array(text.unicodeScalars)
         for (index, scalar) in scalars.enumerated() {
             if CharacterSet.decimalDigits.contains(scalar) {
+                if current.isEmpty {
+                    let previous = index > 0 ? scalars[index - 1] : nil
+                    currentIsIdentifier = previous.map { $0 == "_" || CharacterSet.letters.contains($0) } ?? false
+                }
                 current.unicodeScalars.append(scalar)
             } else if scalar == ".", !current.isEmpty, index + 1 < scalars.count,
                       CharacterSet.decimalDigits.contains(scalars[index + 1]) {
                 current.unicodeScalars.append(scalar)
             } else if !current.isEmpty {
-                tokens.append(current)
+                if !(skippingIdentifiers && currentIsIdentifier) { tokens.append(current) }
                 current = ""
             }
         }
-        if !current.isEmpty { tokens.append(current) }
+        if !current.isEmpty, !(skippingIdentifiers && currentIsIdentifier) { tokens.append(current) }
         return tokens
     }
 
@@ -501,6 +514,14 @@ struct CoachEvidence: Sendable {
             text: "Morning Recovery is scored on Today from last night's physiology — this local record does not invent that number. You were asleep \(asleep). Recovery describes the night, not live afternoon capacity.",
             evidence: catalog["sleep"],
             action: "Open Today for Morning Recovery."
+        )
+    }
+
+    private func napLocalReply() -> Reply {
+        Reply(
+            text: "Whether a nap fits depends on today's shortfall, any nap you've already had, and how far away bedtime is. A recorded night can't settle that; Today's nap card works it out from the live numbers.",
+            evidence: nil,
+            action: "Open Today for the nap card."
         )
     }
 

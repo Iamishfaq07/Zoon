@@ -14,6 +14,7 @@ struct CoachToolRunner {
         case .getLastNightSummary: lastNightSummary()
         case .getSleepDuration: sleepDuration()
         case .getRecovery: recovery()
+        case .getHRV: hrv()
         case .getShortfall: shortfall()
         case .getEnergy: energy()
         case .getMovement: movement()
@@ -30,6 +31,7 @@ struct CoachToolRunner {
         case .getPhysiologicalLoad: physiologicalLoad()
         case .getDailyLoad: dailyLoad()
         case .getForYourAge: await forYourAge()
+        case .getNapAdvice: napAdvice()
         case .logCaffeine: logCaffeine(minutes: call.proposedMinutes, servings: call.proposedServings)
         case .startNap: await startNap(minutes: call.proposedMinutes)
         case .prepareTomorrow: prepareTomorrow(minutes: call.proposedMinutes)
@@ -45,11 +47,32 @@ struct CoachToolRunner {
         return "Last night's Sleep Intelligence was \(score.percent) — \(score.band.label.lowercased()). \(score.confidence.label)."
     }
 
+    /// Duration, efficiency and wakes, then the stages and the night against
+    /// the usual one when there is enough to say it. The chat's own chips --
+    /// "How much deep sleep did I get?", "Why do I wake up at night?", "How
+    /// did last night compare with my usual?" -- route here, and each of
+    /// them used to get the same three numbers, none of which answered it.
     private func lastNightSummary() -> String? {
         guard let context else { return nil }
         let night = context.night
-        let asleep = SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)
-        return "Last night you were asleep \(asleep), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s"). That's the recorded night — not a medical claim."
+        let format = SleepNightFeatures.formatMinutes
+        var parts = ["Last night you were asleep \(format(night.timeAsleepMinutes)), at \(Int(night.sleepEfficiencyPercent.rounded()))% efficiency, with \(night.wakeCount) wake\(night.wakeCount == 1 ? "" : "s")."]
+        if night.deepMinutes + night.remMinutes > 0 {
+            parts.append("Deep sleep \(format(night.deepMinutes)), REM \(format(night.remMinutes)).")
+        }
+        let prior = Array(coordinator.recentNights
+            .filter { $0.date < night.date }
+            .sorted { $0.date < $1.date }
+            .suffix(14).map(\.timeAsleepMinutes))
+        if prior.count >= 5, let usual = Statistics.median(prior) {
+            let gap = night.timeAsleepMinutes - usual
+            let span = "your usual \(format(usual)) across the previous \(prior.count) nights"
+            parts.append(abs(gap) < 10
+                ? "That's about \(span)."
+                : "That's \(format(abs(gap))) \(gap > 0 ? "more" : "less") than \(span).")
+        }
+        parts.append("That's the recorded night — not a medical claim.")
+        return parts.joined(separator: " ")
     }
 
     private func sleepDuration() -> String? {
@@ -57,10 +80,49 @@ struct CoachToolRunner {
         return "You were asleep \(SleepNightFeatures.formatMinutes(context.night.timeAsleepMinutes)) last night."
     }
 
+    /// Recovery only when the rest of the app would state it: through the
+    /// same presentation gate Today and the watch use. The Coach used to
+    /// state the raw number for nights Today shows as "Limited" -- a figure
+    /// that, with no HRV or resting heart rate, is really sleep duration.
     private func recovery() -> String? {
         guard let context else { return nil }
         let recovery = context.recovery
-        return "This morning's Recovery was \(recovery.percent) out of 100, \(recovery.band.label.lowercased()). \(recovery.confidence.label). It describes the night you had, not how you are right now."
+        switch recovery.presentation {
+        case .available(let score, _):
+            return "This morning's Recovery was \(score) out of 100, \(recovery.band.label.lowercased()). \(recovery.confidence.label). It describes the night you had, not how you are right now."
+        case .limited(let reason):
+            return "Zoon isn't stating a Recovery number for last night. \(reason)"
+        case .buildingBaseline(let nights, let required):
+            return "Recovery compares a night with your own recent nights, and needs \(required) of them; Zoon has \(nights) so far."
+        case .unavailable:
+            return "There's no Recovery for last night."
+        }
+    }
+
+    /// Recovery as a clause for the combined answers, gated the same way.
+    private func recoveryClause(_ recovery: RecoveryScore) -> String {
+        switch recovery.presentation {
+        case .available(let score, _): "Morning Recovery \(score) (\(recovery.band.label.lowercased()))"
+        case .limited: "Morning Recovery not stated (too little overnight data)"
+        case .buildingBaseline: "Morning Recovery not stated yet (still learning your baseline)"
+        case .unavailable: "Morning Recovery not available"
+        }
+    }
+
+    /// Last night's overnight HRV against the person's own recent average --
+    /// the question the Coach tab itself suggests. It used to be answered
+    /// with sleep duration and efficiency.
+    private func hrv() -> String? {
+        guard let night = context?.night else { return nil }
+        guard let hrv = night.avgHRV else {
+            return "HRV wasn't recorded for last night, so there's nothing to compare. It comes from an Apple Watch worn overnight."
+        }
+        guard let baseline = night.hrv7DayAvg, baseline > 0 else {
+            return "Overnight HRV was \(Int(hrv.rounded())) ms. There isn't a personal average to compare it with yet; that takes about a week of nights."
+        }
+        let change = (hrv - baseline) / baseline
+        let direction = change < -0.08 ? "lower than" : change > 0.08 ? "higher than" : "close to"
+        return "Overnight HRV was \(Int(hrv.rounded())) ms, \(direction) your recent \(Int(baseline.rounded())) ms average. It shifts with sleep, alcohol, late exercise, illness and stress, so one night on its own says little. It's a recovery signal, not a medical measure."
     }
 
     private func movement() -> String? {
@@ -73,9 +135,10 @@ struct CoachToolRunner {
     /// The shortfall Today's hero shows: through last night, less today's
     /// naps. `night.sleepDebtMinutes` is the shortfall *entering* last night,
     /// so the Coach answered "1h 35m" beside a Today screen saying "1h 57m".
+    /// The figure Today shows. Naps lower tonight's target, not this.
     private var shortfallNow: Double? {
         guard let context, let now = context.shortfallNowMinutes else { return nil }
-        return max(0, now - coordinator.napMinutesToday())
+        return max(0, now)
     }
 
     private func shortfall() -> String? {
@@ -94,10 +157,23 @@ struct CoachToolRunner {
         return "Energy now is \(battery.current) out of 100.\(note)"
     }
 
+    /// The resolved episode every other surface shows -- Tonight, the
+    /// widget, the watch, reminders and the alarm. The autopilot's own
+    /// bedtime and bed + target ignored a plan the person set, so with a
+    /// 22:30-06:00 weekday plan the Coach said 11:10 PM and 7:25 AM.
     private func tonight() -> String? {
-        guard let plan = context?.tonight else { return nil }
-        guard let bed = plan.bedtime(), let wake = plan.wakeTime() else { return nil }
-        return "Tonight's plan is to be in bed around \(clock(bed)) for a wake at \(clock(wake)), targeting \(SleepNightFeatures.formatMinutes(plan.suggestedSleepTargetMinutes))."
+        guard let episode = coordinator.tonightEpisode() else { return nil }
+        let target = SleepNightFeatures.formatMinutes(episode.targetSleepMinutes)
+        var text: String
+        if episode.source == .manualPlan, let name = episode.planName {
+            text = "Tonight follows your \(name) plan: in bed around \(clock(episode.bed)) for a wake at \(clock(episode.wake)), against a \(target) target."
+        } else {
+            text = "Tonight's plan is to be in bed around \(clock(episode.bed)) for a wake at \(clock(episode.wake)), targeting \(target)."
+        }
+        if !episode.isFeasible {
+            text += " That window leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) short of the target for another night."
+        }
+        return text
     }
 
     private func tomorrow() -> String? {
@@ -111,7 +187,7 @@ struct CoachToolRunner {
         let debt = shortfallNow.map { SleepNightFeatures.formatMinutes($0) } ?? "unknown"
         var parts = [
             "Zoon can't know exactly why you feel tired.",
-            "Signals that may be relevant: last night you were asleep \(SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)); Morning Recovery \(context.recovery.percent); Energy now \(context.bodyBattery.current); Load \(String(format: "%.1f", context.strain.value)); shortfall \(debt)."
+            "Signals that may be relevant: last night you were asleep \(SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)); \(recoveryClause(context.recovery)); Energy now \(context.bodyBattery.current); Load \(String(format: "%.1f", context.strain.value)); shortfall \(debt)."
         ]
         if let stress = coordinator.todayStress {
             parts.append("Physiological load is \(stress.percent) (\(stress.band.label.lowercased())).")
@@ -125,7 +201,7 @@ struct CoachToolRunner {
         let recovery = context.recovery
         let energy = context.bodyBattery
         let load = context.strain.value
-        var text = "Morning Recovery was \(recovery.percent) (\(recovery.band.label.lowercased())), Energy is \(energy.current), and today's Load is \(String(format: "%.1f", load))."
+        var text = "\(recoveryClause(recovery)), Energy is \(energy.current), and today's Load is \(String(format: "%.1f", load))."
         if let stress = coordinator.todayStress {
             text += " Physiological load is \(stress.percent) (\(stress.band.label.lowercased()))."
         }
@@ -179,32 +255,42 @@ struct CoachToolRunner {
         return "Physiological load so far today is \(stress.percent) out of 100, \(stress.band.label.lowercased()). \(stress.band.detail) This is a daytime autonomic read, not Morning Recovery."
     }
 
+    /// This week against last: the latest seven recorded nights against the
+    /// seven before them. It used to be the fourteen-night comparison, so
+    /// "What changed this week?" was answered about a month.
     private func trendSummary() -> String? {
-        monthlyChange()
+        Self.comparison(coordinator.recentNights, window: 7, minimumEach: 4, span: "week")
     }
 
     private func monthlyChange() -> String? {
-        let nights = coordinator.recentNights.sorted { $0.date < $1.date }
-        guard nights.count >= 8 else {
-            return "There are not enough recent nights yet to describe a monthly change. Zoon needs about two weeks on each side of a comparison."
-        }
-        let recent = nights.suffix(14)
-        let earlier = nights.dropLast(recent.count).suffix(14)
-        guard !earlier.isEmpty else {
-            return "There is a recent stretch of nights, but not an earlier one to compare it with yet."
+        Self.comparison(coordinator.recentNights, window: 14, minimumEach: 7, span: "fortnight")
+    }
+
+    /// Recorded sleep over the latest `window` nights against the `window`
+    /// before them.
+    ///
+    /// Refuses rather than compare against too few nights: fourteen nights
+    /// set against a single earlier one used to be reported as a change,
+    /// worded "the 1 nights before that".
+    private static func comparison(_ nights: [SleepNightFeatures], window: Int, minimumEach: Int, span: String) -> String {
+        let sorted = nights.sorted { $0.date < $1.date }
+        let recent = sorted.suffix(window)
+        let earlier = sorted.dropLast(recent.count).suffix(window)
+        guard recent.count >= minimumEach, earlier.count >= minimumEach else {
+            return "There aren't enough recorded nights yet to compare. Zoon needs at least \(minimumEach) nights in each \(span) it compares; it has \(recent.count) recent and \(earlier.count) before that."
         }
         let recentSleep = recent.map(\.timeAsleepMinutes).reduce(0, +) / Double(recent.count)
         let earlierSleep = earlier.map(\.timeAsleepMinutes).reduce(0, +) / Double(earlier.count)
         let delta = recentSleep - earlierSleep
         let direction: String
         if abs(delta) < 10 {
-            direction = "about the same length as"
+            direction = "about the same as"
         } else if delta > 0 {
-            direction = "about \(SleepNightFeatures.formatMinutes(delta)) longer than"
+            direction = "about \(SleepNightFeatures.formatMinutes(delta)) more than"
         } else {
-            direction = "about \(SleepNightFeatures.formatMinutes(-delta)) shorter than"
+            direction = "about \(SleepNightFeatures.formatMinutes(-delta)) less than"
         }
-        return "Over the last \(recent.count) nights you were asleep \(SleepNightFeatures.formatMinutes(recentSleep)) on average, \(direction) the \(earlier.count) nights before that. That's a comparison of recorded duration, not a cause."
+        return "Over your last \(recent.count) recorded nights you slept \(SleepNightFeatures.formatMinutes(recentSleep)) on average, \(direction) the \(earlier.count) nights before that. That compares recorded sleep; it doesn't say what caused any difference."
     }
 
     private func behaviorEvidence() -> String? {
@@ -243,13 +329,16 @@ struct CoachToolRunner {
 
     private func currentPriority() -> String? {
         guard let context else { return nil }
-        let bed = context.tonight.bedtime()
+        // The resolved episode's bed, as Today uses: it honours a plan the
+        // person set, which the plan's own bedtime does not.
+        let bed = coordinator.tonightEpisode()?.bed ?? context.tonight.bedtime()
         let nap = NapCoach.recommend(
             now: .now,
             // What Today's nap card is handed, so the two cannot disagree.
             debtMinutes: context.tonightPlanning.currentShortfallMinutes,
             plannedBedtime: bed,
-            napMinutesToday: naps.minutes(on: .now)
+            napMinutesToday: naps.minutes(on: .now),
+            lastWake: context.night.wakeTime
         )
         let candidates = OneThingCandidates.gather(
             tonight: context.tonight,
@@ -262,6 +351,26 @@ struct CoachToolRunner {
             return "\(selection.candidate.action) \(selection.candidate.reason) That is the one action worth the attention, not a bedtime plan by default."
         }
         return "Nothing is urgent enough to be the one focus right now. Keep tonight's window if you have one, and use how you feel with Recovery, Energy, and Load."
+    }
+
+    /// The nap card's own advice, from the inputs Today hands it, so the
+    /// chat and the card cannot disagree.
+    private func napAdvice() -> String? {
+        guard let context else { return nil }
+        let advice = NapCoach.recommend(
+            now: .now,
+            debtMinutes: context.tonightPlanning.currentShortfallMinutes,
+            plannedBedtime: coordinator.tonightEpisode()?.bed ?? context.tonight.bedtime(),
+            napMinutesToday: naps.minutes(on: .now),
+            lastWake: context.night.wakeTime
+        )
+        let verdict: String
+        switch advice.advice {
+        case .recommended(let minutes): verdict = "A nap of about \(minutes) minutes fits today."
+        case .optional: verdict = "A nap is optional right now."
+        case .avoid: verdict = "Better to skip a nap right now."
+        }
+        return "\(verdict) \(advice.reason)"
     }
 
     private func tomorrowPlan() -> ZoonTomorrow.Plan? {
@@ -320,7 +429,8 @@ struct CoachToolRunner {
     }
 
     private func setAlarm() async -> String? {
-        guard let wake = context?.tonight.wakeTime() ?? tomorrowPlan()?.wake else {
+        // The wake the scheduler arms, so the alarm it reconciles is this one.
+        guard let wake = coordinator.upcomingAlarmWakes().first else {
             return "There is no wake time to set an alarm from yet."
         }
         let alarm = WakeAlarm()

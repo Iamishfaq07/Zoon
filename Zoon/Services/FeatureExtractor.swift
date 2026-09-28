@@ -75,7 +75,14 @@ struct FeatureExtractor {
         async let respiratoryTask = attributedAverage(.respiratoryRate, unit: .breathsPerMinute, in: intervals)
         async let spo2Task = attributedAverage(.oxygenSaturation, unit: .percent(), in: intervals)
         async let wristTempTask = attributedAverage(.appleSleepingWristTemperature, unit: .degreeCelsius(), in: intervals)
-        async let breathingTask = attributedAverage(.appleSleepingBreathingDisturbances, unit: .percent(), in: intervals)
+        // A `count` quantity: Apple reports breathing disturbances as events
+        // per hour of sleep (HealthKit declares the type "count, Discrete
+        // (Arithmetic)"). It was read as `percent()` -- which HealthKit
+        // converts from a count one-for-one, so nothing failed -- and then
+        // multiplied by 100, which is how 3.2 events an hour reached every
+        // screen and the clinician PDF as "320%". Rows stored that way are
+        // converted once by `BreathingDisturbanceUnitMigration`.
+        async let breathingTask = attributedAverage(.appleSleepingBreathingDisturbances, unit: .count(), in: intervals)
         async let apneaTask = apneaEvents(in: intervals)
 
         let avgHRMeasurement = await avgHRTask
@@ -90,11 +97,15 @@ struct FeatureExtractor {
         // HKUnit.percent() yields a 0–1 fraction, NOT 0–100. Forgetting this is
         // how you end up displaying "0.97% blood oxygen".
         let spo2Measurement = await spo2Task
-        let spo2Outcome = spo2Measurement.outcome.map { $0 * 100 }
+        let spo2Outcome = spo2Measurement.outcome.map { VitalMetric.oxygenSaturation.storedValue(fromReading: $0) }
         let wristTempMeasurement = await wristTempTask
         let wristTempOutcome = wristTempMeasurement.outcome
         let breathingMeasurement = await breathingTask
-        let breathingRaw = breathingMeasurement.outcome
+        // Events per hour, stored as read. Through the same tested mapping as
+        // SpO2, so the unit rule lives in one place.
+        let breathingOutcome = breathingMeasurement.outcome.map {
+            VitalMetric.breathingDisturbances.storedValue(fromReading: $0)
+        }
         let apneaSummary = await apneaTask
 
         // Who wrote each measurement, recorded only where HealthKit actually
@@ -134,20 +145,15 @@ struct FeatureExtractor {
             ]
         }
         let measurementSources = NightMeasurementSources(writers)
-        // Breathing disturbances also arrive as a 0-1 fraction under
-        // HKUnit.percent(), same trap as SpO2.
-        let breathingOutcome = breathingRaw.map { $0 * 100 }
-        // Apple's own elevated/not-elevated call on the same measured
-        // fraction (pre-percent-conversion -- the classifier expects the
-        // same 0-1 HKQuantity HealthKit itself reports), rather than this
-        // app inventing its own cutoff. `nil` when there was no measured
-        // value, or when HealthKit's own classifier declines to classify
-        // it -- `BreathingHealth.isElevated` falls back to an in-app
-        // threshold either way, so this never blocks the feature. The
-        // Swift-refined label is `classifying:`, not `for:` -- confirmed
-        // against the real SDK by CI after an initial guess was wrong.
-        let breathingClassification: BreathingDisturbanceClassification? = breathingRaw.value.flatMap { fraction in
-            let quantity = HKQuantity(unit: .percent(), doubleValue: fraction)
+        // Apple's own elevated/not-elevated call on the same measured value,
+        // built as the `count` quantity HealthKit itself reports, rather
+        // than this app inventing its own cutoff. `nil` when there was no
+        // measured value, or when HealthKit's own classifier declines to
+        // classify it. The Swift-refined label is `classifying:`, not `for:`
+        // -- confirmed against the real SDK by CI after an initial guess was
+        // wrong.
+        let breathingClassification: BreathingDisturbanceClassification? = breathingOutcome.value.flatMap { eventsPerHour in
+            let quantity = HKQuantity(unit: .count(), doubleValue: eventsPerHour)
             guard let raw = HKAppleSleepingBreathingDisturbancesClassification(classifying: quantity) else { return nil }
             switch raw {
             case .notElevated: return .notElevated

@@ -37,6 +37,12 @@ struct BodyClockView: View {
         ScrollView {
             CascadeStack(spacing: Theme.stackSpacing) {
                 if let bodyClock, let night {
+                    if bodyClock.isEstimate {
+                        Text("Early estimate · \(bodyClock.nightCount) of \(BodyClock.minimumNights) nights")
+                            .font(Theme.text(12, weight: .medium))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     ring(bodyClock: bodyClock, night: night)
                     agendaCard(bodyClock: bodyClock, night: night)
                     stabilityCard(bodyClock)
@@ -175,9 +181,13 @@ struct BodyClockView: View {
             HStack {
                 SectionHeader(title: "Rhythm Stability", systemImage: "waveform.path")
                 Spacer()
-                StatusPill(text: bodyClock.stability.label, tint: stabilityTint(bodyClock.stability))
+                if let stability = bodyClock.confidentStability {
+                    StatusPill(text: stability.label, tint: stabilityTint(stability))
+                } else {
+                    StatusPill(text: BodyClock.earlyStabilityLabel, tint: Theme.inkSecondary)
+                }
             }
-            Text(bodyClock.stability.detail)
+            Text(bodyClock.confidentStability?.detail ?? bodyClock.earlyStabilityDetail)
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
         }

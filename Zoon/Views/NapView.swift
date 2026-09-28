@@ -24,7 +24,8 @@ struct NapView: View {
             now: now,
             debtMinutes: coordinator.state.context?.tonightPlanning.currentShortfallMinutes ?? 0,
             plannedBedtime: coordinator.tonightEpisode(now: now)?.bed,
-            napMinutesToday: coordinator.napMinutesToday(now: now)
+            napMinutesToday: coordinator.napMinutesToday(now: now),
+            lastWake: coordinator.state.context?.night.wakeTime
         )
     }
 
@@ -67,6 +68,7 @@ struct NapView: View {
         }
         .nightBackground()
         .navigationTitle("Nap")
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         // A one-second tick rather than a Timer publisher: this view only exists
         // while it's on screen, and TimelineView would redraw the whole card.

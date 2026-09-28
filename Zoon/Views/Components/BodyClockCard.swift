@@ -67,7 +67,7 @@ struct BodyClockCard: View {
         .accessibilityValue(
             "Usual sleep window \(BodyClock.formatted(hour: bodyClock.onsetHour)) "
             + "to \(BodyClock.formatted(hour: bodyClock.wakeHour)). "
-            + "Stability \(bodyClock.stability.label)."
+            + "Stability \(bodyClock.confidentStability?.label ?? BodyClock.earlyStabilityLabel)."
         )
     }
 
@@ -210,12 +210,12 @@ struct BodyClockCard: View {
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkSecondary)
                 StatusPill(
-                    text: bodyClock.stability.label,
+                    text: bodyClock.confidentStability?.label ?? BodyClock.earlyStabilityLabel,
                     systemImage: stabilitySymbol,
                     tint: stabilityTint
                 )
             }
-            Text(bodyClock.stability.detail)
+            Text(bodyClock.confidentStability?.detail ?? bodyClock.earlyStabilityDetail)
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -237,7 +237,8 @@ struct BodyClockCard: View {
     }
 
     private var stabilitySymbol: String {
-        switch bodyClock.stability {
+        guard let stability = bodyClock.confidentStability else { return "hourglass" }
+        return switch stability {
         case .tight: "target"
         case .typical: "circle.dashed"
         case .scattered: "scribble"
@@ -245,7 +246,8 @@ struct BodyClockCard: View {
     }
 
     private var stabilityTint: Color {
-        switch bodyClock.stability {
+        guard let stability = bodyClock.confidentStability else { return Theme.inkSecondary }
+        return switch stability {
         case .tight: Theme.Metric.recoveryHigh
         case .typical: Theme.Metric.sleep
         case .scattered: Theme.Metric.recoveryMid

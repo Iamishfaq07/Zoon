@@ -108,6 +108,11 @@ final class CoachChat {
     private(set) var appleIntelligenceBecameReady = false
 
     var evidence: CoachEvidence?
+    /// What this conversation is about: today, one recorded night, or a
+    /// chart point. Decides who answers a question about one night.
+    private(set) var contextMode: CoachContextMode = .today
+    /// The chart point the conversation was opened from, when it was.
+    private(set) var chartQuestion: ChartQuestion?
     private(set) var messages: [Message] = []
     private(set) var isResponding = false
     private(set) var pendingAction: PendingAction?
@@ -127,15 +132,6 @@ final class CoachChat {
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "CoachChat")
 
     #if canImport(FoundationModels)
-    // `@Observable`'s macro synthesises accessors for every stored property,
-    // and it cannot do that for one individually marked `@available` — the
-    // synthesized code would need to be conditionally available while the
-    // class itself isn't, which the compiler rejects outright. Boxing the
-    // iOS-26-only type behind `Any?` sidesteps the property needing its own
-    // availability annotation; the cast at each use site is where the real
-    // `#available` check still lives.
-    private var session: Any?
-
     /// The shape a chat answer is constrained to produce -- see
     /// `FoundationModelInsightEngine.GeneratedInsight` for the same pattern
     /// applied to the nightly insight. `@Guide` descriptions carry real
@@ -238,21 +234,24 @@ final class CoachChat {
     /// standing-pattern summary -- as context the model already has, so the
     /// first question doesn't have to restate them.
     /// - Parameter engine: the user's picker. Frozen for this transcript.
-    /// - Parameter chartContext: `ChartQuestion.context` when the
-    ///   conversation was opened from a point on a chart. Typed facts, never
+    /// - Parameter chartQuestion: the point on a chart the conversation was
+    ///   opened from. Its `context` goes to the model as typed facts, never
     ///   an image of the chart: everything a model would have to guess from
     ///   a picture -- what the axis means, where the baseline sits, how many
-    ///   nights it rests on -- is already computed and is handed over.
+    ///   nights it rests on -- is already computed and is handed over. Its
+    ///   own question is answered from it, not routed like typed text.
     func start(
         nightSummary: String,
         contextDigest: String? = nil,
-        chartContext: String? = nil,
+        chartQuestion: ChartQuestion? = nil,
         engine: UserPreferences.EngineChoice = .ruleBased,
         contextMode: CoachContextMode = .today
     ) {
         messages = []
         pendingAction = nil
         appleIntelligenceBecameReady = false
+        self.contextMode = contextMode
+        self.chartQuestion = chartQuestion
         preferredEngine = engine
         conversationEngine = Self.frozenEngine(preferred: engine)
         let framed: String
@@ -267,14 +266,8 @@ final class CoachChat {
         pendingContext = Context(
             nightSummary: framed,
             contextDigest: contextDigest,
-            chartContext: chartContext
+            chartContext: chartQuestion?.context
         )
-        #if canImport(FoundationModels)
-        session = nil
-        if conversationEngine == .appleIntelligence {
-            ensureSession()
-        }
-        #endif
     }
 
     /// Rules never opens a model. Apple Intelligence opens one only if it is
@@ -303,25 +296,6 @@ final class CoachChat {
 
     private var pendingContext: Context?
 
-    /// Opens a model session if this conversation froze on Apple Intelligence
-    /// and one is not already open. Never called for Rules. Never called to
-    /// upgrade a Rules transcript after the model finishes downloading.
-    func ensureSession() {
-        #if canImport(FoundationModels)
-        guard conversationEngine == .appleIntelligence else { return }
-        guard session == nil, isAvailable, #available(iOS 26.0, *),
-              let context = pendingContext else { return }
-        session = LanguageModelSession(
-            instructions: Self.instructions(
-                nightSummary: context.nightSummary,
-                contextDigest: context.contextDigest,
-                chartContext: context.chartContext
-            )
-        )
-        logger.notice("Opened a language model session")
-        #endif
-    }
-
     /// Poll from the view. If this chat is Rules because the model was not
     /// ready, surface a prompt to start a *new* conversation — do not switch.
     func noteAvailabilityChange() {
@@ -339,10 +313,6 @@ final class CoachChat {
         conversationEngine = .appleIntelligence
         messages = []
         pendingAction = nil
-        #if canImport(FoundationModels)
-        session = nil
-        ensureSession()
-        #endif
         messages.append(Message(
             role: .assistant,
             text: "New conversation on Apple Intelligence. Ask about last night, Recovery, Energy, or tonight's plan."
@@ -360,10 +330,28 @@ final class CoachChat {
         messages.append(Message(role: .user, text: trimmed))
         trimTranscriptIfNeeded()
 
+        // Before routing, tools or any model: a crisis, an urgent symptom, a
+        // medical-condition or dosing question always gets the same safe,
+        // referring answer, whichever tool keyword it also contains.
+        if let safety = CoachSafety.reply(to: trimmed) {
+            pendingAction = nil
+            messages.append(Message(role: .assistant, text: safety))
+            return
+        }
+
+        // The chart's own question is about that point. Routed like typed
+        // text, "Why was my recovery signal lower on September 12?" matched
+        // "recovery" and was answered with this morning's Recovery score.
+        if let chart = chartQuestion, trimmed == chart.question {
+            pendingAction = nil
+            await answer(chart, asked: trimmed)
+            return
+        }
+
         switch CoachIntentRouter.classify(trimmed) {
         case .greeting:
             pendingAction = nil
-            messages.append(Message(role: .assistant, text: CoachIntentRouter.greetingReply()))
+            messages.append(Message(role: .assistant, text: CoachIntentRouter.greetingReply(to: trimmed)))
             return
         case .capabilities:
             pendingAction = nil
@@ -395,6 +383,25 @@ final class CoachChat {
             }
             isResponding = true
             defer { isResponding = false }
+            // A conversation about one recorded night answers questions about
+            // one night from that night. The runner reads today's context,
+            // so "why did I wake up?" asked from 12 September was answered
+            // with this morning's night.
+            if contextMode != .today, call.kind.readsOneNight, let reply = evidence?.reply(to: trimmed) {
+                if var generated = await generate(for: trimmed, facts: reply.text) {
+                    generated.timeframe = reply.timeframe
+                    messages.append(generated.citing(reply.evidence))
+                } else {
+                    messages.append(Message(
+                        role: .assistant,
+                        text: reply.text,
+                        groundedIn: reply.evidence,
+                        bestAction: reply.action,
+                        timeframe: reply.timeframe
+                    ))
+                }
+                return
+            }
             // The engine computes; the model, when there is one, answers the
             // question that was asked from what the engine computed. This
             // path used to return the tool's fixed text even with Apple
@@ -428,6 +435,25 @@ final class CoachChat {
         }
     }
 
+    /// The chart point's own question: the model answers from the point's
+    /// facts when there is one, and otherwise the point's own reply stands.
+    private func answer(_ chart: ChartQuestion, asked question: String) async {
+        isResponding = true
+        defer { isResponding = false }
+        let local = chart.localAnswer
+        if var generated = await generate(for: question, facts: chart.context + "\n" + local.text) {
+            generated.timeframe = local.timeframe
+            messages.append(generated.citing(local.evidence))
+        } else {
+            messages.append(Message(
+                role: .assistant,
+                text: local.text,
+                groundedIn: local.evidence,
+                timeframe: local.timeframe
+            ))
+        }
+    }
+
     /// An Apple Intelligence answer to `question`, or `nil` when there is
     /// no model for this conversation or the answer fails a check -- the
     /// caller then gives the local reply.
@@ -437,61 +463,134 @@ final class CoachChat {
     ///   contains must appear in these, in the conversation's facts, or in
     ///   the evidence catalog; anything else is a figure the model made up
     ///   and the whole answer is refused.
+    ///
+    /// **A fresh session for every question.** The on-device model has a
+    /// context window of a few thousand tokens, and a session keeps every
+    /// prompt and answer in its transcript. With one session for the whole
+    /// conversation -- each prompt carrying the facts and the evidence
+    /// catalog -- the window filled after a handful of turns; from then on
+    /// every `respond` threw, the error was only logged, and every answer
+    /// silently became the rules reply. Now each question gets its own
+    /// session built from the conversation's instructions, plus a short recap
+    /// of the latest turns so a follow-up like "why?" still has its referent.
+    /// If even that exceeds the window, it is retried once without the recap
+    /// and the longitudinal digest.
     private func generate(for question: String, facts: String?) async -> Message? {
         #if canImport(FoundationModels)
         guard conversationEngine == .appleIntelligence, isAvailable, #available(iOS 26.0, *),
-              let session = session as? LanguageModelSession else { return nil }
+              let context = pendingContext else { return nil }
         let catalogKeys = evidence?.catalog.keys.sorted().joined(separator: ", ") ?? "sleep, timing, hrv, heart, debt"
         let catalog = evidence?.promptCatalog ?? "None"
-        var prompt = question
-        if let facts {
-            prompt += "\n\nFACTS ZOON COMPUTED FOR THIS QUESTION (answer from these; quote numbers exactly as written):\n\(facts)"
-        }
-        prompt += "\n\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n\(catalog)"
-        do {
-            let response = try await session.respond(
-                to: prompt,
-                generating: ChatAnswer.self,
-                // A little range, so two questions about the same night are
-                // not answered in the same words. The facts, not the
-                // sampling, decide what is said.
-                options: GenerationOptions(temperature: 0.5)
-            )
-            let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
-            let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
-            let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
-            let known = [pendingContext?.nightSummary, pendingContext?.contextDigest,
-                         pendingContext?.chartContext, facts, catalog]
-                .compactMap { $0 }.joined(separator: "\n")
+        let recap = recentConversation()
 
-            guard !answer.isEmpty,
-                  CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known),
-                  !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
-                logger.notice("Chat answer was empty, used an unsupplied number, or failed the diagnostic-language check")
+        // Three passes at most: the answer, one retry told why the answer was
+        // refused, and one retry without the recap and digest if the window
+        // overflows. A refused answer used to fall straight back to the local
+        // reply, so on Apple Intelligence devices most answers were canned.
+        var compact = false
+        var correction: String?
+        for _ in 0..<3 {
+            let session = LanguageModelSession(
+                instructions: Self.instructions(
+                    nightSummary: context.nightSummary,
+                    contextDigest: compact ? nil : context.contextDigest,
+                    chartContext: context.chartContext
+                )
+            )
+            var prompt = ""
+            if !compact, let recap {
+                prompt += "RECENT CONVERSATION (so follow-ups make sense; facts still come only from the supplied sections):\n\(recap)\n\n"
+            }
+            prompt += "QUESTION: \(question)"
+            if let facts {
+                prompt += "\n\nFACTS ZOON COMPUTED FOR THIS QUESTION (answer from these; quote numbers exactly as written):\n\(facts)"
+            }
+            prompt += "\n\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n\(catalog)"
+            if let correction {
+                prompt += "\n\nYOUR PREVIOUS ANSWER COULD NOT BE SHOWN: \(correction) Answer the question again."
+            }
+            do {
+                let response = try await session.respond(
+                    to: prompt,
+                    generating: ChatAnswer.self,
+                    // A little range, so two questions about the same night are
+                    // not answered in the same words. The facts, not the
+                    // sampling, decide what is said.
+                    options: GenerationOptions(temperature: 0.5)
+                )
+                let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+                let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
+                let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
+                // The recap and the question count as known: a number the
+                // person typed ("is 6 hours enough?"), or an earlier answer
+                // already checked against its own facts, is not one the model
+                // invented.
+                let known = [context.nightSummary, context.contextDigest, context.chartContext,
+                             facts, catalog, question, compact ? nil : recap]
+                    .compactMap { $0 }.joined(separator: "\n")
+
+                let refusal: String?
+                if answer.isEmpty {
+                    refusal = "It was empty."
+                } else if !CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known) {
+                    refusal = "It used a number that is not in the facts. Use numbers only exactly as they are written in the facts, or none."
+                } else if DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") {
+                    refusal = "It stated a cause or named a condition. Describe what the data shows; say \"may be associated with\" instead of \"due to\" or \"caused\"."
+                } else {
+                    refusal = nil
+                }
+                if let refusal {
+                    logger.notice("Chat answer refused: \(refusal, privacy: .public)")
+                    guard correction == nil else { return nil }
+                    correction = refusal
+                    continue
+                }
+                let cited: String?
+                if grounding.isEmpty || grounding.lowercased() == "null" {
+                    cited = nil
+                } else {
+                    // An unknown ID is dropped rather than failing a good answer:
+                    // the chip is supporting material, the answer stands alone.
+                    cited = evidence?.catalog[grounding]
+                }
+                return Message(
+                    role: .assistant,
+                    text: answer,
+                    groundedIn: cited,
+                    bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction,
+                    source: .appleIntelligence
+                )
+            } catch let error as LanguageModelSession.GenerationError {
+                if case .exceededContextWindowSize = error, !compact {
+                    logger.notice("Chat prompt exceeded the context window; retrying without the recap and digest")
+                    compact = true
+                    continue
+                }
+                logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
+                return nil
+            } catch {
+                logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
                 return nil
             }
-            let cited: String?
-            if grounding.isEmpty || grounding.lowercased() == "null" {
-                cited = nil
-            } else {
-                // An unknown ID is dropped rather than failing a good answer:
-                // the chip is supporting material, the answer stands alone.
-                cited = evidence?.catalog[grounding]
-            }
-            return Message(
-                role: .assistant,
-                text: answer,
-                groundedIn: cited,
-                bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction,
-                source: .appleIntelligence
-            )
-        } catch {
-            logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
-            return nil
         }
+        return nil
         #else
         return nil
         #endif
+    }
+
+    /// The latest few turns before the question being asked, each cut short,
+    /// for the model's recap. `nil` at the start of a conversation.
+    private func recentConversation() -> String? {
+        var turns = messages
+        if turns.last?.role == .user { turns.removeLast() }
+        let recent = turns.suffix(4)
+        guard !recent.isEmpty else { return nil }
+        return recent.map { message in
+            let speaker = message.role == .user ? "Person" : "Zoon"
+            let text = message.text.count > 280 ? String(message.text.prefix(280)) + "…" : message.text
+            return "\(speaker): \(text)"
+        }.joined(separator: "\n")
     }
 
     /// Drops older turns when the transcript would crowd current facts out
@@ -516,11 +615,12 @@ final class CoachChat {
         switch kind {
         case .getSleepScore, .getLastNightSummary, .getSleepDuration: evidence?.catalog["sleep"]
         case .getShortfall: evidence?.catalog["debt"] ?? evidence?.catalog["sleep"]
+        case .getHRV: evidence?.catalog["hrv"]
         case .getTonight, .getTomorrow: evidence?.catalog["timing"]
         case .getRecovery, .getEnergy, .getMovement, .getFatigueContext, .getTrainingContext,
              .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
              .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
-             .getForYourAge, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+             .getForYourAge, .getNapAdvice, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
             nil
         }
     }
@@ -570,6 +670,8 @@ final class CoachChat {
         Distinguish last night's facts from longer-term patterns. The CURRENT NIGHT FACTS section is the only source for last night. LONGITUDINAL PATTERNS are for "lately" / "usually" / trends.
 
         Never diagnose a medical condition. Never mention sleep apnea, insomnia, or any other diagnosis by name.
+        Do not state causes. Never write "due to", "because of", "caused", "led to", "results in", "is the reason" or "explains why"; say "may be associated with" or "often goes with" instead.
+        Write durations the way the facts write them (for example 7h 5m), and never convert or round a number.
         Do not make a single metric prescribe the whole day.
         Answer the question that was actually asked, in your own words, as a knowledgeable coach would -- not a summary of every number. Explain what the figure means for this person and why, compared with their own baseline where the facts give one.
         Build on earlier turns in this conversation instead of repeating them; do not reuse an earlier answer's wording.

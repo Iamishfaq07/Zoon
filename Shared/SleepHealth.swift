@@ -179,7 +179,8 @@ struct SleepHealth: Sendable {
         // that, more debt doesn't make the underlying pattern any clearer.
         let debtSeries = RecentSleepShortfall.debtSeries(
             timeAsleepMinutesOldestFirst: windowNights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: personalNeeds
+            goalMinutesOldestFirst: personalNeeds,
+            nightDatesOldestFirst: windowNights.map(\.date)
         )
         if let finalDebt = debtSeries.last {
             let ceiling = max(averageNeed * 3, 1)

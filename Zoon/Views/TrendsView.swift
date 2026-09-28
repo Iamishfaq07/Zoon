@@ -50,9 +50,10 @@ struct TrendsView: View {
         // Settings goal uniformly -- both so this matches the exact
         // accounting SleepHistoryStore uses to compute the live
         // sleepDebtMinutes shown elsewhere. See that property's doc comment.
+        // Dated, as the ledger decays: per calendar night, not per record.
         let fullSeries = RecentSleepShortfall.debtSeries(
-            timeAsleepMinutesOldestFirst: coordinator.recentNights.map(\.total24hAsleepMinutes),
-            goalMinutesOldestFirst: coordinator.recentNights.map { $0.sleepNeedBaselineMinutes ?? preferences.sleepGoalMinutes }
+            nightsOldestFirst: coordinator.recentNights,
+            fallbackGoalMinutes: preferences.sleepGoalMinutes
         )
         return Array(fullSeries.suffix(window.days))
     }
@@ -62,7 +63,7 @@ struct TrendsView: View {
     /// per the spec, kept lightweight: no icons crowding the chart itself,
     /// just context on the selection that's already there.
     private var tagsByDate: [Date: Set<BehaviorTag>] {
-        Dictionary(uniqueKeysWithValues: coordinator.journal.allEntries().map { ($0.date, Set($0.tags)) })
+        Dictionary(coordinator.journal.allEntries().map { ($0.date, Set($0.tags)) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// `nil` unless cycle tracking is on and there's at least one logged

@@ -18,7 +18,7 @@ struct SleepDebtWidget: Widget {
                 // Required from iOS 17: widgets no longer draw their own
                 // background, the system does, and omitting this makes the
                 // widget render with a broken-looking transparent panel.
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("Sleep Shortfall")
         .description("Your estimated sleep shortfall, recent nights counting most.")
@@ -37,7 +37,13 @@ struct SleepDebtWidgetView: View {
     let entry: SleepEntry
 
     var body: some View {
-        if entry.snapshot.scoreLightMode {
+        if !entry.hasSnapshot {
+            WidgetNoDataView(
+                title: "Sleep Shortfall", systemImage: "hourglass",
+                message: "Open Zoon to see your sleep shortfall here.",
+                inlineText: "Open Zoon for your shortfall"
+            )
+        } else if entry.snapshot.scoreLightMode {
             ScoreLightSnapshotView(snapshot: entry.snapshot)
         } else {
         switch family {
@@ -52,10 +58,14 @@ struct SleepDebtWidgetView: View {
 
     private var snapshot: SleepSnapshot { entry.snapshot }
 
-    /// Mirrors the same "Last Night"/"Last Sleep" switch `SleepScoreWidget`
-    /// makes on `snapshot.isShiftWorkModeEnabled`.
+    /// `SnapshotFreshness.nightLabel` at the entry's date, in this widget's
+    /// sentence case.
     private var lastNightLabel: String {
-        snapshot.isShiftWorkModeEnabled ? "Last sleep" : "Last night"
+        switch SnapshotFreshness.nightLabel(for: snapshot, now: entry.date) {
+        case "Last Night": "Last night"
+        case "Last Sleep": "Last sleep"
+        case let date: date
+        }
     }
 
     // MARK: - Home screen
@@ -118,7 +128,7 @@ struct SleepDebtWidgetView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                ScoreBadge(score: snapshot.flagshipScore, band: snapshot.flagshipBand)
+                ScoreBadge(scoreText: snapshot.flagshipScoreText, band: snapshot.flagshipBandText)
 
                 Text(snapshot.insightSummary)
                     .font(.caption2)
@@ -212,12 +222,15 @@ struct SleepDebtWidgetView: View {
 
 /// Small score pill reused across widget families.
 struct ScoreBadge: View {
-    let score: Int
+    /// `flagshipScoreText`: the number, or a dash when it is not one to
+    /// state. This took the raw score and printed "38 Poor" for a night the
+    /// phone and the watch decline to score.
+    let scoreText: String
     let band: String
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("\(score)")
+            Text(scoreText)
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .monospacedDigit()
             VStack(alignment: .leading, spacing: -1) {

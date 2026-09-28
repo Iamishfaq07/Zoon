@@ -30,11 +30,27 @@ enum PersistentStore {
     @MainActor
     static func open() throws -> ModelContainer {
         let configuration = diskConfiguration()
-        let container = try ModelContainer(
-            for: schema,
-            migrationPlan: ZoonMigrationPlan.self,
-            configurations: configuration
-        )
+        let container: ModelContainer
+        do {
+            container = try ModelContainer(
+                for: schema,
+                migrationPlan: ZoonMigrationPlan.self,
+                configurations: configuration
+            )
+        } catch {
+            // A store written by a build from before the schema was versioned,
+            // with a model shape no version in the plan matches (a TestFlight
+            // build of 18 September wrote SleepNightRecord without
+            // `stageSourcePriorityRaw`). Staged migration refuses an unknown
+            // model version outright, which left the person on "Zoon couldn't
+            // open your data" with no way forward but deleting the app and
+            // everything in it that is not in Health. Opened once without the
+            // plan, SwiftData infers the lightweight migration those builds
+            // always relied on -- the differences are added optional
+            // properties -- and the next launch matches V1.
+            logger.error("Versioned store open failed; retrying with inferred migration: \(error.localizedDescription, privacy: .public)")
+            container = try ModelContainer(for: schema, configurations: configuration)
+        }
         if AppGroup.isConfigured {
             // A failed copy leaves the legacy store in place (the flag is
             // not set and the files are not erased on throw). Failing

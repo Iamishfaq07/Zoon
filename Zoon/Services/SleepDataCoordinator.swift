@@ -66,7 +66,8 @@ final class SleepDataCoordinator {
                 Zoon couldn't find any sleep in your Health data for the last few nights.
 
                 Two things to check: wear your Apple Watch to bed with Sleep Focus on, \
-                and make sure you allowed Zoon to read Sleep in Health → Sharing → Apps.
+                and make sure Zoon may read Sleep: in the Health app, tap your picture, \
+                then Apps under Privacy, then Zoon, and turn on Sleep.
                 """
             }
         }
@@ -274,6 +275,22 @@ final class SleepDataCoordinator {
         calendar: Calendar = .current
     ) -> ResolvedSleepEpisode? {
         tonightHorizon(nights: 1, for: context, now: now, calendar: calendar).first
+    }
+
+    /// The wakes a wake alarm is armed for, soonest first: the resolved
+    /// horizon, without nights the person switched reminders off for, and
+    /// only wakes still ahead -- what `RootView.refreshReminders` arms.
+    ///
+    /// The Coach's "set an alarm" reads the first of these. It used to arm
+    /// the plan's own bed + target (07:25 against a weekday plan's 06:00),
+    /// under the scheduler's alarm ID, and the next reconcile saw its own
+    /// record unchanged and left the wrong time ringing.
+    func upcomingAlarmWakes(now: Date = .now) -> [Date] {
+        let setup = PersonalSetupStore.shared.value
+        return tonightHorizon(nights: ReminderSchedule.horizonNights, now: now)
+            .filter { !setup.isSkipped(wake: $0.wake) }
+            .map(\.wake)
+            .filter { $0 > now }
     }
 
     /// Tonight and the nights after it, for scheduling ahead.
@@ -664,7 +681,16 @@ final class SleepDataCoordinator {
         // night before it until the next refresh. The night is published
         // first, so the screen fills while these are still reading.
 
-        if case .idle = state { state = .loading }
+        // Loading, not the empty or error card, while a sync that could
+        // change the answer is running: before the first sync has finished,
+        // and after a failure. New users used to see "No sleep data yet --
+        // check permissions" for the whole first import, because a profile
+        // recompute during onboarding published the empty store as empty.
+        switch state {
+        case .idle, .failed: state = .loading
+        case .empty where lastRefresh == nil: state = .loading
+        default: break
+        }
 
         do {
             let window = DateInterval(
@@ -738,7 +764,7 @@ final class SleepDataCoordinator {
                 logger.error("Persistence failed; keeping the previous HealthKit anchor so this delta is retried")
             }
 
-            await publishLatest()
+            await publishLatest(afterSync: true)
             lastRefresh = .now
         } catch {
             logger.error("Refresh failed: \(error.localizedDescription, privacy: .public)")
@@ -821,21 +847,41 @@ final class SleepDataCoordinator {
         // group used to be discarded entirely -- `persistSecondaryEpisodes`
         // below is what keeps a same-day nap alive instead of losing it here.
         let groupedByWakeDate = Dictionary(grouping: sessions) { $0.wakeDate }
+        // A nap is never a night. The only session on a wake date used to
+        // become that date's main sleep, so a forgotten ring and a 40-minute
+        // afternoon nap made a "night" of 40 minutes -- seven hours of
+        // phantom shortfall that decayed over weeks, and a 13:10 bedtime in
+        // the body clock. A day with only nap-shaped sessions (under three
+        // hours and classified as a nap for this person's schedule) has no
+        // night; its naps are kept as nap episodes and credited to the next
+        // night's 24-hour total by when they happened.
         let mainSleepPerDate = groupedByWakeDate
-            .compactMapValues { SleepSessionBuilder.preferredMainSleep(in: $0) }
+            .compactMapValues { group in
+                SleepSessionBuilder.preferredMainSleep(in: group.filter { !isNapShaped($0) })
+            }
             .values
             .sorted { $0.start < $1.start }
 
         // The subset actually worth re-extracting. Compared against each
         // session's own interval rather than its wake date, so a night that
         // began inside a range but ended outside it still counts.
+        //
+        // Never the day the fetch window starts on. The fetch drops samples
+        // before `window.start`, so a night straddling it is built from a
+        // fragment: at 03:00, a 23:00-07:00 night ninety days back was
+        // rebuilt from its last four hours and stored as a four-hour night,
+        // then left the window and was never checked again. That day cannot
+        // be re-verified from this fetch, so its row is left as stored. It
+        // stays in `validDates`, so it is not pruned either.
+        let edgeDay = Calendar.current.startOfDay(for: window.start)
+        let verifiable = mainSleepPerDate.filter { $0.wakeDate > edgeDay }
         let sessionsToRebuild: [SleepSession]
         if let ranges {
-            sessionsToRebuild = mainSleepPerDate.filter { session in
+            sessionsToRebuild = verifiable.filter { session in
                 ranges.contains { $0.intersects(DateInterval(start: session.start, end: session.end)) }
             }
         } else {
-            sessionsToRebuild = mainSleepPerDate
+            sessionsToRebuild = verifiable
         }
 
         let extractor = FeatureExtractor(healthKit: healthKit)
@@ -856,6 +902,15 @@ final class SleepDataCoordinator {
             .sorted { $0.date < $1.date }
             .map { $0.features() }
         var thisBatchFeaturesOldestFirst: [SleepNightFeatures] = []
+        // The history the frozen sleep need is learned from, which is the
+        // one the displayed need uses (`needHistory`), not the raw rows
+        // above: those carry no debt, so every recovery night looked
+        // unconstrained. The raw list stays for `previousWake`, which sets
+        // the extractor's waking window and must not move.
+        let repairs = PersonalSetupStore.shared.value.repairs
+        let needHistoryBeforeBatch = store.needHistory(goalMinutes: goal, manualNaps: naps.naps, repairs: repairs)
+            .filter { !batchDates.contains($0.date) }
+        var needBatchOldestFirst: [SleepNightFeatures] = []
 
         // Oldest first: each night's baseline is drawn from the nights before
         // it, so they must land in the store in chronological order. This
@@ -876,10 +931,10 @@ final class SleepDataCoordinator {
             // Frozen at first insert only (see SleepNightRecord.update's doc
             // comment) -- computed here regardless, since store.upsert below
             // simply ignores it on the re-sync path.
-            let priorBeforeThisNight = priorFeaturesBeforeBatch.filter { $0.date < nightDate } + thisBatchFeaturesOldestFirst
+            let needBeforeThisNight = needHistoryBeforeBatch.filter { $0.date < nightDate } + needBatchOldestFirst
             features.sleepNeedBaselineMinutes = LearnedSleepNeed.compute(
                 goalMinutes: goal,
-                history: priorBeforeThisNight,
+                history: needBeforeThisNight,
                 ageGuideline: SleepNeedGuideline.forAge(preferences.age)
             ).minutes
 
@@ -890,6 +945,11 @@ final class SleepDataCoordinator {
                 nightKey: session.nightKey
             )
             thisBatchFeaturesOldestFirst.append(features)
+            // Its debt already comes from `store.baseline(for:)`; exclusions
+            // and repairs are applied as `needHistory` applies them.
+            if !store.excludedNightKeys.contains(features.nightKey) {
+                needBatchOldestFirst.append(LocalSleepCorrection.apply(features, repairs: repairs))
+            }
         }
 
         let validEpisodeIDs = persistSecondaryEpisodes(groupedByWakeDate: groupedByWakeDate, mainSleepPerDate: mainSleepPerDate)
@@ -953,11 +1013,33 @@ final class SleepDataCoordinator {
         // session duration already applies to main sleep candidates.
         let minimumMeaningfulMinutes = 10.0
 
-        let mainByWakeDate = Dictionary(uniqueKeysWithValues: mainSleepPerDate.map { ($0.wakeDate, $0) })
+        // Keeps the first on a repeated key rather than trapping: a crash-loop
+        // is never the right answer to data that breaks an assumption.
+        let mainByWakeDate = Dictionary(mainSleepPerDate.map { ($0.wakeDate, $0) }, uniquingKeysWith: { first, _ in first })
         var writtenIDs: Set<String> = []
 
         for (wakeDate, group) in groupedByWakeDate {
-            guard let main = mainByWakeDate[wakeDate] else { continue }
+            guard let main = mainByWakeDate[wakeDate] else {
+                // A nap-only day: no night to hang these on, so each keeps
+                // its own night key. Naps are credited by when they happened
+                // (`autoDetectedNaps`), not by key.
+                for session in group where session.totalAsleepMinutes >= minimumMeaningfulMinutes && isNapShaped(session) {
+                    let id = "\(session.nightKey)@\(Int(session.start.timeIntervalSince1970))"
+                    store.upsertEpisode(
+                        id: id,
+                        nightKey: session.nightKey,
+                        startDate: session.start,
+                        endDate: session.end,
+                        timezoneIdentifier: session.timeZoneIdentifier,
+                        episodeType: .nap,
+                        asleepMinutes: session.totalAsleepMinutes,
+                        timeInBedMinutes: session.timeInBed / 60,
+                        sourceName: session.sourceName
+                    )
+                    writtenIDs.insert(id)
+                }
+                continue
+            }
             let secondary = group.filter { $0.start != main.start || $0.end != main.end }
 
             for session in secondary where session.totalAsleepMinutes >= minimumMeaningfulMinutes {
@@ -1015,6 +1097,14 @@ final class SleepDataCoordinator {
         return isNap ? .nap : .secondarySleep
     }
 
+    /// Short enough, and at the right time of day for this person's schedule,
+    /// to be a nap rather than a night -- the gate on a session becoming a
+    /// night's row. The duration bound keeps a daytime main sleep (05:00-
+    /// 14:00) and a night-shift worker's off-day night their nights.
+    private func isNapShaped(_ session: SleepSession) -> Bool {
+        session.end.timeIntervalSince(session.start) < Self.napDurationCeiling && classify(session) == .nap
+    }
+
     /// Above this, a non-primary episode is secondary sleep rather than a nap.
     ///
     /// Only consulted for schedules with no usable clock-time window. Three
@@ -1024,14 +1114,20 @@ final class SleepDataCoordinator {
 
     /// Reads the newest stored night back out, derives everything, updates state
     /// and hands a snapshot to the widget.
-    private func publishLatest() async {
+    /// - Parameter afterSync: whether HealthKit has just been read. Before
+    ///   the first sync finishes, only a sync may say there is nothing to
+    ///   show; anything else publishing an empty store leaves the loading
+    ///   state as it is.
+    private func publishLatest(afterSync: Bool = false) async {
         applyLocalRepairs()
         guard !isErasing else { return }
         let generation = storeGeneration
         let goal = preferences.sleepGoalMinutes
 
         guard let record = store.latestNight else {
-            state = .empty(reason: .noSleepData)
+            if afterSync || lastRefresh != nil || state.context != nil {
+                state = .empty(reason: .noSleepData)
+            }
             recentNights = []
             return
         }
@@ -1059,11 +1155,8 @@ final class SleepDataCoordinator {
         // that specific night. Reusing the latest baseline for the whole array
         // makes historical debt flat and can corrupt correlations and
         // achievements that consume `recentNights`.
-        let history = LocalSleepCorrection.apply(
-            store.historicalFeatures(goalMinutes: goal, manualNaps: naps.naps)
-                .filter { $0.date < night.date && !store.excludedNightKeys.contains($0.nightKey) },
-            repairs: repairs
-        )
+        let history = store.needHistory(goalMinutes: goal, manualNaps: naps.naps, repairs: repairs)
+            .filter { $0.date < night.date }
 
 
         let maximum = HeartRateZoneIntegrator.maximumHeartRate(age: preferences.age)
@@ -1393,9 +1486,15 @@ final class SleepDataCoordinator {
 
         guard let result = await healthRead("strain.zones", source: "heartRate", {
             try await healthKit.heartRateZones(in: interval, restingHeartRate: restingHR, maxHeartRate: maxHR)
-        }), !result.zones.isEmpty, result.coverage >= 0.4 else {
+        }), result.coverage >= 0.4 else {
             // Thin heart-rate coverage — fall back to the energy estimate and
             // let the UI say so rather than presenting a confident wrong number.
+            //
+            // Coverage only. Zones are recorded from 50% of heart-rate reserve,
+            // so a fully watched restful day has none, and treating that as thin
+            // coverage gave an office day with a long walk a 'Moderate'
+            // estimate -- which fell to 'Light' once five minutes on the
+            // stairs produced a zone. Empty zones with coverage compute to 0.
             return .estimate(activeEnergyKcal: energy ?? 0, exerciseMinutes: exercise ?? 0)
         }
 
@@ -1442,9 +1541,20 @@ final class SleepDataCoordinator {
             let performance = min(
                 100, night.total24hAsleepMinutes / max(night.sleepNeedBaselineMinutes ?? goal, 1) * 100
             )
-            result[night.date] = RecoveryScore.compute(
+            // Only a score every other surface would also draw. A night with
+            // no HRV, resting HR or respiration (an iPhone-only or third-party
+            // sleep source) re-normalises onto sleep alone and can compute a
+            // confident 90-something that is really sleep duration; Today and
+            // the watch say "Limited" for it. Stored anyway, it reached the
+            // clinician report's Recovery bars, the year heatmap, the weekly
+            // report, the Coach and Cause Finder's correlations as recovery.
+            // Every consumer already treats a missing night as a gap.
+            let score = RecoveryScore.compute(
                 features: night, baseline: baseline, sleepPerformance: performance
-            ).percent
+            )
+            if let shown = score.presentation.score {
+                result[night.date] = shown
+            }
         }
 
         recoveryHistory = result
@@ -1470,9 +1580,8 @@ final class SleepDataCoordinator {
             sleepIntelligenceVersion: context.sleepIntelligence.scoringVersion,
             isShiftWorkModeEnabled: preferences.isShiftWorkModeEnabled,
             // The same shortfall Today's arc shows, last night included.
-            // Less today's naps, as Today's arc shows it, so the widget and
-            // the watch do not quote a figure the phone already lowered.
-            currentShortfallMinutes: context.shortfallNowMinutes.map { max(0, $0 - napMinutesToday()) }
+            // Naps are not taken off (they lower tonight's target instead).
+            currentShortfallMinutes: context.shortfallNowMinutes
         )
         // The watch needs the confidence alongside the number so it can
         // decline to state one it cannot stand behind (V9 item 30).
@@ -1609,7 +1718,7 @@ final class SleepDataCoordinator {
             goalMinutes: goal,
             journalTaggedNights: journal.taggedNightCount(),
             napCount: naps.naps.count,
-            regularityIndex: context.regularity.index
+            regularityIndex: context.regularity.reportableIndex
         )
         snapshot.badgesUnlocked = achievements.filter(\.isUnlocked).count
         snapshot.badgesTotal = achievements.count
@@ -2196,8 +2305,11 @@ final class SleepDataCoordinator {
     ///
     /// - Returns: a human-readable summary of what landed.
     func importArchive(_ archive: DataExporter.Archive) async -> String {
+        // Backups up to format 6 were exported from a store holding breathing
+        // disturbances a hundred times too large; converted on the way in so
+        // a restore cannot bring the wrong unit back.
         let nights = store.importNights(
-            archive.nights,
+            BreathingDisturbanceUnits.nightsFromArchive(archive.nights, formatVersion: archive.formatVersion),
             absoluteTemperatures: archive.wristTemperaturesByDate
         )
         let entries = journal.importEntries(
@@ -2252,7 +2364,10 @@ final class SleepDataCoordinator {
             preferences.lifestyleInsightsEnabled = restored.lifestyleInsightsEnabled ?? false
             preferences.smartWakeEnabled = restored.smartWakeEnabled
             preferences.wakeAlarmEnabled = restored.wakeAlarmEnabled ?? false
-            preferences.focusSilencesBedtimeNudges = restored.focusSilencesBedtimeNudges ?? false
+            // A Focus silence is a temporary system state, not a preference: a
+            // backup made during a Focus used to restore it for good on a new
+            // phone. The Focus filter records a fresh one when a Focus starts.
+            preferences.setFocusSilence(false)
             preferences.preferredSleepSourceName = restored.preferredSleepSourceName
             preferences.preferredEngine = UserPreferences.EngineChoice(
                 rawValue: restored.preferredEngine
@@ -2487,10 +2602,15 @@ final class SleepDataCoordinator {
         // claim ID matched nothing, the `guard` below skipped it, and its
         // last "Association detected" would have stood in the ledger for
         // good -- the precise failure the retraction pass exists to prevent.
+        // `uniquingKeysWith`: a backup that once restored one custom
+        // identity twice made this trap on every refresh -- the store now
+        // refuses repeats (`CustomBehaviorStore`), and this no longer depends
+        // on it.
         let behaviorByClaimID = Dictionary(
-            uniqueKeysWithValues: behaviorCatalog.analysable.map {
+            behaviorCatalog.analysable.map {
                 (EvidenceLedger.Claim.behaviour(tag: $0.identifier).id, $0)
-            }
+            },
+            uniquingKeysWith: { first, _ in first }
         )
         let current = Set(findings.map { EvidenceLedger.Claim.behaviour(tag: $0.behavior.identifier).id })
         for latest in EvidenceLedger.associationsToRetract(
@@ -2511,7 +2631,7 @@ final class SleepDataCoordinator {
     /// The strongest claims the app can make, and the only ones the person
     /// declared in advance.
     private func recordExperiments() {
-        for outcome in experiments.outcomes {
+        for outcome in EvidenceLedger.claimingOutcomes(experiments.outcomes) {
             store.recordBelief(EvidenceLedger.revision(for: outcome))
         }
     }
@@ -2853,7 +2973,7 @@ final class SleepDataCoordinator {
             return AppMockData.journalObservations
         }
         let answersByNightKey = behaviors.allAnswersByNightKey()
-        let tagsByDate = Dictionary(uniqueKeysWithValues: entries.map { ($0.date, Set($0.tags)) })
+        let tagsByDate = Dictionary(entries.map { ($0.date, Set($0.tags)) }, uniquingKeysWith: { first, _ in first })
         // Entries that carry a `nightKey` (see `JournalEntry.nightKey`) join
         // against a night's own `nightKey` instead of its `date` -- safe
         // across a timezone change between the night itself and whenever

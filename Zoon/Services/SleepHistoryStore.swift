@@ -12,11 +12,62 @@ import os
 final class SleepHistoryStore {
 
     var excludedNightKeys: Set<String> = []
+    /// Where `RestoredNightLedger` is kept. A property so tests can give each
+    /// store its own.
+    var restoredNightDefaults: UserDefaults = .standard
     private let context: ModelContext
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "HistoryStore")
 
     init(context: ModelContext) {
         self.context = context
+    }
+
+    // MARK: - One-time migrations
+
+    static let breathingUnitsMigratedKey = "zoon.migration.breathingDisturbancesPerHour.done"
+    static let breathingUnitsSnapshotKey = "zoon.migration.breathingDisturbancesPerHour.snapshot"
+
+    /// Converts breathing disturbances stored by builds that read them as a
+    /// percent and multiplied by 100 into events per hour, once.
+    ///
+    /// Must run before anything new is extracted, which is why the app calls
+    /// it right after the store opens and before the coordinator exists: at
+    /// that point every stored value is an old one. It is safe to interrupt
+    /// anywhere. The values it found are recorded before anything is changed,
+    /// and a retry converts only rows still holding exactly those values
+    /// (`BreathingDisturbanceUnits.rowsNeedingConversion`), so a row is never
+    /// divided twice. An unreadable store is left alone and tried again next
+    /// launch.
+    func migrateBreathingDisturbanceUnitsIfNeeded(defaults: UserDefaults = .standard) {
+        guard !defaults.bool(forKey: Self.breathingUnitsMigratedKey) else { return }
+        guard let records = context.readAll(
+            FetchDescriptor<SleepNightRecord>(), operation: "migration.breathingUnits"
+        ) else { return }
+
+        var stored: [String: Double] = [:]
+        for record in records {
+            guard let value = record.breathingDisturbances else { continue }
+            stored[BreathingDisturbanceUnits.rowKey(for: record.date)] = value
+        }
+        let snapshot = defaults.dictionary(forKey: Self.breathingUnitsSnapshotKey) as? [String: Double]
+        if snapshot == nil, !stored.isEmpty {
+            defaults.set(stored, forKey: Self.breathingUnitsSnapshotKey)
+        }
+        let pending = BreathingDisturbanceUnits.rowsNeedingConversion(stored: stored, pendingSnapshot: snapshot)
+        for record in records {
+            guard let value = record.breathingDisturbances,
+                  pending.contains(BreathingDisturbanceUnits.rowKey(for: record.date)) else { continue }
+            record.breathingDisturbances = BreathingDisturbanceUnits.eventsPerHour(fromLegacy: value)
+        }
+        do {
+            if context.hasChanges { try context.save() }
+            defaults.set(true, forKey: Self.breathingUnitsMigratedKey)
+            defaults.removeObject(forKey: Self.breathingUnitsSnapshotKey)
+            logger.info("Converted \(pending.count) stored breathing-disturbance values to events per hour")
+        } catch {
+            context.rollback()
+            logger.error("Breathing-disturbance unit migration failed; will retry next launch: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     func evidenceHistory() -> [EvidenceLedger.Revision] {
@@ -179,6 +230,28 @@ final class SleepHistoryStore {
         return features
     }
 
+    /// The history a learned sleep need is computed from: every stored
+    /// night with the debt it was slept under, excluded nights left out, and
+    /// the person's boundary repairs applied.
+    ///
+    /// One definition for both readers. The need Today and Sleep Need show
+    /// was learned from this; the need frozen onto a night at ingest -- the
+    /// one the shortfall ledger charges against -- was learned from the raw
+    /// rows, with no debt, so recovery nights slept in debt counted as
+    /// unconstrained and a person sleeping their displayed need every night
+    /// still built a shortfall against a longer, invisible one.
+    func needHistory(
+        goalMinutes: Double,
+        manualNaps: [NapStore.Nap] = [],
+        repairs: [PersonalSetup.Repair]
+    ) -> [SleepNightFeatures] {
+        LocalSleepCorrection.apply(
+            historicalFeatures(goalMinutes: goalMinutes, manualNaps: manualNaps)
+                .filter { !excludedNightKeys.contains($0.nightKey) },
+            repairs: repairs
+        )
+    }
+
     // MARK: - Writes
 
     /// Inserts or updates the night, keyed on date.
@@ -288,7 +361,13 @@ final class SleepHistoryStore {
     /// `window` was never re-checked by this pass and must not be touched,
     /// or an old record could vanish just because the rolling sync window
     /// has since moved past it.
+    ///
+    /// A night restored from a backup and never seen in HealthKit on this
+    /// device is kept (`RestoredNightLedger`); one HealthKit has now returned
+    /// leaves that list here, so a later deletion in Health still removes it.
     func prune(window: DateInterval, keeping validDates: Set<Date>) {
+        RestoredNightLedger.forget(validDates, in: restoredNightDefaults)
+        let restored = RestoredNightLedger.dates(in: restoredNightDefaults)
         let start = window.start
         let end = window.end
         let descriptor = FetchDescriptor<SleepNightRecord>(
@@ -296,7 +375,7 @@ final class SleepHistoryStore {
         )
         // Unreadable: prune nothing. Never delete because a read failed.
         guard let inWindow = context.readAll(descriptor, operation: "history.prune") else { return }
-        let stale = inWindow.filter { !validDates.contains($0.date) }
+        let stale = inWindow.filter { !validDates.contains($0.date) && !restored.contains($0.date) }
         guard !stale.isEmpty else { return }
         for night in stale { context.delete(night) }
         save()
@@ -493,6 +572,7 @@ final class SleepHistoryStore {
             try context.delete(model: EvidenceRevisionRecord.self)
             try context.save()
             AnchorStore.clear()
+            RestoredNightLedger.clear(in: restoredNightDefaults)
             return true
         } catch {
             logger.error("Delete-all failed: \(error.localizedDescription, privacy: .public)")
@@ -518,6 +598,7 @@ final class SleepHistoryStore {
         absoluteTemperatures: [Date: Double] = [:]
     ) -> Int {
         var written = 0
+        var restored: [Date] = []
         for night in nights.sorted(by: { $0.date < $1.date }) {
             beginTrackingWrites()
             upsert(
@@ -528,8 +609,14 @@ final class SleepHistoryStore {
             // Counted only once the save reached disk. `save()` swallows its
             // error by design, so without this a failed restore reported
             // "Restored 212 nights".
-            if writesSucceeded { written += 1 }
+            if writesSucceeded {
+                written += 1
+                restored.append(night.date)
+            }
         }
+        // Protected from the next full sync until HealthKit on this device
+        // returns each night itself; see `RestoredNightLedger`.
+        RestoredNightLedger.record(restored, in: restoredNightDefaults)
         return written
     }
 

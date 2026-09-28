@@ -53,10 +53,18 @@ enum CircadianPhase: String, Codable, Sendable {
         calendar: Calendar = .current
     ) -> CircadianPhase {
         let hoursAwake: Double
-        if let wakeTime, now > wakeTime {
+        if let wakeTime, now > wakeTime, now.timeIntervalSince(wakeTime) < Self.staleWakeHours * 3600 {
             hoursAwake = now.timeIntervalSince(wakeTime) / 3600
         } else {
-            hoursAwake = Double(calendar.component(.hour, from: now))
+            // No usable wake: none known, one in the future, or one from a
+            // day-old snapshot. This used to take the clock hour as hours
+            // awake -- midnight as waking -- so the watch complication, which
+            // never has a wake, said "Peak focus" at 3 am and "Sleep window"
+            // at 4 pm, every day, for everyone. A nominal 07:00 wake is wrong
+            // for some people by an hour or two; midnight was wrong for all.
+            let clock = Self.hoursFromMidnight(now, calendar: calendar)
+            let hour = clock < 0 ? clock + 24 : clock
+            hoursAwake = (hour - Self.nominalWakeHour + 24).truncatingRemainder(dividingBy: 24)
         }
 
         if let onsetHour {
@@ -76,6 +84,11 @@ enum CircadianPhase: String, Codable, Sendable {
         default: return .sleepWindow
         }
     }
+
+    /// The wake assumed when there is no usable one.
+    static let nominalWakeHour = 7.0
+    /// A wake older than this belongs to a previous day.
+    static let staleWakeHours = 20.0
 
     /// Hours from midnight, evening negative (23:30 → −0.5).
     static func hoursFromMidnight(_ date: Date, calendar: Calendar) -> Double {

@@ -33,8 +33,11 @@ struct CoreIntelligenceGrid: View {
     // MARK: - Sleep Need -- a horizontal fill bar, achieved against need.
 
     private var sleepNeedTile: some View {
+        // Main sleep against the need, as Sleep Need itself compares them:
+        // the need already takes yesterday's naps off, so adding them to the
+        // sleep as well read "7h of 7h" after a 6-hour night and a nap.
         let need = max(context.sleepNeed.totalNeedMinutes, 1)
-        let achieved = context.night.total24hAsleepMinutes
+        let achieved = context.sleepNeed.achievedMinutes
         let fraction = min(1, achieved / need)
 
         return module(
@@ -120,7 +123,7 @@ struct CoreIntelligenceGrid: View {
             }
             .frame(height: 20)
         } stat: {
-            bodyClock.map { $0.stability.label } ?? "Building"
+            bodyClock?.confidentStability?.label ?? "Building"
         }
     }
 

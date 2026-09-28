@@ -95,6 +95,16 @@ final class JournalStore {
         save()
     }
 
+    /// Marks `tag` as present, whatever it was before. For a log that says
+    /// "this happened" -- Siri, the watch -- where a toggle turned a second
+    /// "log coffee" into removing the first.
+    func add(_ tag: BehaviorTag, on date: Date, nightKey: String? = nil) {
+        let entry = entryOrCreate(for: date, nightKey: nightKey)
+        guard !entry.contains(tag) else { return }
+        entry.toggle(tag)
+        save()
+    }
+
     func setNote(_ note: String?, on date: Date, nightKey: String? = nil) {
         let entry = entryOrCreate(for: date, nightKey: nightKey)
         entry.note = (note?.isEmpty ?? true) ? nil : note

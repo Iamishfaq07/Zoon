@@ -333,11 +333,12 @@ enum LocalSleepCorrectionMath {
         return (core * scale, deep * scale, rem * scale, unspecified * scale)
     }
 
+    /// The builder's rule (`AwakeningPolicy`), not a fourth one. This counted
+    /// every awake segment from onset -- 30-second flickers and the final
+    /// wake included -- so moving bedtime by 15 minutes turned a stored 2
+    /// awakenings into 7, and the corrected night looked badly broken.
     static func wakeCount(from segments: [StageSegment]) -> Int {
-        guard let onset = segments.first(where: { SleepStage.asleepStages.contains($0.stage) }) else {
-            return 0
-        }
-        return segments.filter { $0.stage == .awake && $0.start >= onset.start }.count
+        AwakeningPolicy.episodes(in: segments).count
     }
 
     private static func finite(_ value: Double) -> Double {

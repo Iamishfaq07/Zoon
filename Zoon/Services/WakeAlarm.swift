@@ -50,8 +50,11 @@ final class WakeAlarm {
         case nap
     }
 
-    /// Stable across schedulings so a re-schedule replaces the previous alarm
-    /// rather than stacking a second one on the same morning.
+    /// Stable across schedulings, so there is only ever one wake alarm to
+    /// find and replace. `schedule(at:slot:)` cancels it before scheduling
+    /// again: AlarmKit does not document that scheduling an existing ID
+    /// replaces it, and if it refuses instead, the old alarm stays armed at
+    /// the old time.
     private static let alarmID = UUID(uuidString: "5F3B9A61-0C4E-4E7A-9E2D-1A7C6B8D4E20") ?? UUID()
     private static let napAlarmID = UUID(uuidString: "A19E4C02-7B11-4F3A-9D44-6C8E21B0F5D7") ?? UUID()
 
@@ -158,7 +161,15 @@ final class WakeAlarm {
                 attributes: attributes
             )
             let id = slot == .nap ? Self.napAlarmID : Self.alarmID
-            _ = try await AlarmManager.shared.schedule(id: id, configuration: configuration)
+            guard removeExisting(id: id) else { return false }
+            do {
+                _ = try await AlarmManager.shared.schedule(id: id, configuration: configuration)
+            } catch {
+                // The old alarm is gone and the new one was refused: nothing
+                // is armed, and Settings must not go on showing a time.
+                if slot == .morning { scheduledWakeTime = nil }
+                throw error
+            }
             logger.info("\(slot == .nap ? "Nap" : "Wake") alarm scheduled for \(wakeTime.formatted(.dateTime.hour().minute()))")
             if slot == .morning { scheduledWakeTime = wakeTime }
             return true
@@ -170,6 +181,35 @@ final class WakeAlarm {
         return false
         #endif
     }
+
+    #if canImport(AlarmKit)
+    /// Removes the alarm under `id`, if there is one. One that rang with
+    /// nobody there to stop it can stay resident and alerting, so it is
+    /// stopped first when a plain cancel is refused.
+    /// - Returns: `false` when an alarm under `id` is still there.
+    @available(iOS 26.0, *)
+    private func removeExisting(id: UUID) -> Bool {
+        do {
+            guard try AlarmManager.shared.alarms.contains(where: { $0.id == id }) else { return true }
+        } catch {
+            logger.error("Could not read alarms: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+        do {
+            try AlarmManager.shared.cancel(id: id)
+            return true
+        } catch {
+            do {
+                try AlarmManager.shared.stop(id: id)
+                try AlarmManager.shared.cancel(id: id)
+                return true
+            } catch {
+                logger.error("Could not replace the existing alarm: \(error.localizedDescription, privacy: .public)")
+                return false
+            }
+        }
+    }
+    #endif
 
     @discardableResult
     func cancel(slot: Slot = .morning) -> Bool {

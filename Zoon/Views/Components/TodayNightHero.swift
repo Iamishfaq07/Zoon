@@ -89,14 +89,32 @@ struct TodayNightHero: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// The stages, when the source records them. From a tracker that writes
+    /// one undifferentiated "asleep" block this read "0m Deep, 0m Core, 0m
+    /// REM" after seven hours of sleep -- a measurement of nothing, shown as
+    /// a finding. A night that is only partly staged gets an Unstaged chip,
+    /// so the chips add up to the time asleep above them.
+    @ViewBuilder
     private var stageRow: some View {
-        HStack(spacing: 10) {
-            stageChip("Deep", minutes: context.night.deepMinutes, tint: Theme.Stage.deep)
-            stageChip("Core", minutes: context.night.coreMinutes, tint: Theme.Stage.core)
-            stageChip("REM", minutes: context.night.remMinutes, tint: Theme.Stage.rem)
-            stageChip("Wake", minutes: context.night.awakeMinutes, tint: Theme.Stage.awake)
+        let night = context.night
+        if night.hasStageBreakdown {
+            HStack(spacing: 10) {
+                stageChip("Deep", minutes: night.deepMinutes, tint: Theme.Stage.deep)
+                stageChip(SleepVocabulary.core.plain, minutes: night.coreMinutes, tint: Theme.Stage.core)
+                stageChip("REM", minutes: night.remMinutes, tint: Theme.Stage.rem)
+                if night.unspecifiedAsleepMinutes >= 1 {
+                    stageChip("Unstaged", minutes: night.unspecifiedAsleepMinutes, tint: Theme.inkSecondary)
+                }
+                stageChip("Wake", minutes: night.awakeMinutes, tint: Theme.Stage.awake)
+            }
+            .font(Theme.text(11, weight: .medium))
+        } else {
+            Text("\(night.sourceName ?? "This source") doesn't record sleep stages. Asleep \(SleepNightFeatures.formatMinutes(night.timeAsleepMinutes)), awake \(SleepNightFeatures.formatMinutes(night.awakeMinutes)).")
+                .font(Theme.text(11, weight: .medium))
+                .foregroundStyle(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(Theme.text(11, weight: .medium))
     }
 
     private func stageChip(_ label: String, minutes: Double, tint: Color) -> some View {
@@ -120,19 +138,18 @@ struct TodayNeedTracks: View {
     /// `NapsTodayCard` for why they have to be read live.
     var napMinutesToday: Double = 0
 
-    /// Last night's main sleep plus every nap already credited to it.
+    /// Last night's main sleep, the figure the hero above and Sleep Need use.
     ///
-    /// This track showed `timeAsleepMinutes` — main sleep alone — while debt
-    /// and need are both computed from `total24hAsleepMinutes`, which counts
-    /// naps. So a nap could shrink the shortfall on the Debt line while the
-    /// Sleep line above it never moved, and the two tracks disagreed about
-    /// the same night.
-    private var slept: Double { context.night.total24hAsleepMinutes }
+    /// Drawn against `need`, which already takes yesterday's naps off. The
+    /// track used the 24-hour total, naps included, so a nap was counted
+    /// twice: "8h" with a full bar under a hero reading "7h 15m of 7h 15m".
+    private var slept: Double { context.sleepNeed.achievedMinutes }
 
-    /// Today's naps come off today's shortfall, and cannot take it below
-    /// zero.
+    /// The ledger's figure. Today's naps used to come off it here, which the
+    /// one-sided ledger does not do, so the balance "rebounded" the next
+    /// morning; a nap lowers tonight's target instead.
     private var debt: Double {
-        max(0, (context.shortfallNowMinutes ?? 0) - napMinutesToday)
+        max(0, context.shortfallNowMinutes ?? 0)
     }
     private var need: Double { max(context.sleepNeed.totalNeedMinutes, 1) }
 

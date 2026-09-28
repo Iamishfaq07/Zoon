@@ -59,7 +59,11 @@ final class SleepHistoryStoreIntegrationTests: XCTestCase {
         // in-memory store with it while the returned SleepHistoryStore still
         // holds its mainContext, and the next fetch traps inside SwiftData.
         self.container = container
-        return SleepHistoryStore(context: container.mainContext)
+        let store = SleepHistoryStore(context: container.mainContext)
+        // Its own restored-night ledger, so one test's restore cannot
+        // protect another test's night from a prune.
+        store.restoredNightDefaults = UserDefaults(suiteName: "zoon.tests.restored.\(UUID().uuidString)")!
+        return store
     }
 
     @discardableResult

@@ -300,7 +300,7 @@ enum MonthRecapExporter {
         let renderer = ImageRenderer(content: MonthRecapShareCard(recap: recap))
         renderer.scale = 3
         guard let image = renderer.uiImage, let data = image.pngData() else { return nil }
-        let name = "zoon-\(recap.month.start.formatted(.iso8601.year().month())).png"
+        let name = "zoon-month-\(recap.month.start.formatted(.iso8601.year().month())).png"
         return try? DataExporter.writeTemporary(data, filename: name)
     }
 }

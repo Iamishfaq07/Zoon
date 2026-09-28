@@ -34,6 +34,7 @@ struct SoundscapeView: View {
         }
         .nightBackground()
         .navigationTitle("Sleep Sounds")
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if let raw = DeepLink.consumeSound(),
@@ -233,7 +234,8 @@ struct SoundscapeView: View {
             Text("""
                 Brown, pink and white are generated so they never seam. Weather, \
                 night and room are recorded loops bundled in the app — nothing is \
-                streamed. Sleep onset still drops volume as overnight heart rate falls.
+                streamed. Sounds keep playing with the screen locked; set a timer \
+                and they fade out over the last minute.
                 """)
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)

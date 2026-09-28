@@ -111,6 +111,46 @@ final class SnoreStoreTests: XCTestCase {
         XCTAssertEqual(store.nights.first?.date, instant(2026, 8, 20, 7, 0))
     }
 
+    /// The merge kept only the minutes. A nil quality reads as conclusive,
+    /// so two short, interrupted sessions became "None flagged" with no
+    /// coverage and no "Partial session".
+    func testMergingKeepsQualityCoverageAndPartialFlags() {
+        let store = SnoreStore(defaults: makeDefaults())
+        let key = "2026-08-20@Asia/Tokyo"
+        store.record(SnoreStore.NightSummary(
+            date: instant(2026, 8, 20, 3, 0), monitoredMinutes: 150, snoreMinutes: 0,
+            nightKey: key, timezoneIdentifier: "Asia/Tokyo",
+            isPartial: true, endedUnexpectedly: false,
+            monitoringQuality: SnoreMonitoringConfidence.limited.rawValue,
+            interruptionDurationMinutes: 12, coveragePercent: 31
+        ))
+        store.record(SnoreStore.NightSummary(
+            date: instant(2026, 8, 20, 4, 0), monitoredMinutes: 50, snoreMinutes: 0,
+            nightKey: key, timezoneIdentifier: "Asia/Tokyo",
+            isPartial: false, endedUnexpectedly: nil,
+            monitoringQuality: SnoreMonitoringConfidence.moderate.rawValue,
+            interruptionDurationMinutes: nil, coveragePercent: 10
+        ))
+
+        let night = store.nights.first
+        XCTAssertEqual(store.nights.count, 1)
+        XCTAssertEqual(night?.monitoredMinutes, 200)
+        XCTAssertEqual(night?.isPartial, true)
+        XCTAssertEqual(night?.endedUnexpectedly, false)
+        XCTAssertEqual(night?.monitoringQuality, SnoreMonitoringConfidence.limited.rawValue)
+        XCTAssertEqual(night?.interruptionDurationMinutes, 12)
+        XCTAssertEqual(night?.coveragePercent, 41)
+    }
+
+    /// An older row without coverage makes the sum unknown, not the other
+    /// half's figure.
+    func testCoverageIsUnknownWhenEitherHalfIsUnknown() {
+        let a = SnoreStore.NightSummary(date: instant(2026, 8, 20, 3, 0), monitoredMinutes: 100, snoreMinutes: 0, coveragePercent: 30)
+        let b = SnoreStore.NightSummary(date: instant(2026, 8, 20, 4, 0), monitoredMinutes: 100, snoreMinutes: 0)
+        XCTAssertNil(SnoreStore.merging(a, b).coveragePercent)
+        XCTAssertNil(SnoreStore.merging(a, b).isPartial)
+    }
+
     /// The travel case, and the reason this change exists. Two genuinely
     /// different nights can land on the same calendar day once the device
     /// moves. Matching on day alone silently discarded one of them; matching

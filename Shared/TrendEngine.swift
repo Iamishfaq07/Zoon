@@ -59,6 +59,16 @@ enum TrendEngine {
         /// across metrics scale these by a fixed hour instead.
         var isClockTime: Bool { self == .bedtime }
 
+        /// A reading as the axis shows it. A bedtime is a clock time -- its
+        /// values are signed minutes from midnight, and as a duration 23:15
+        /// (-45) printed as "0m". Everything else is `formattedMagnitude`.
+        /// A *difference* is still `formattedMagnitude`, where a bedtime gap
+        /// really is a duration.
+        func formattedValue(_ value: Double) -> String {
+            guard isClockTime else { return formattedMagnitude(value) }
+            return BodyClock.formatted(hour: value / 60)
+        }
+
         /// Minimum absolute or relative change before a shift is reported at
         /// all -- see the type doc for why this varies per metric.
         ///

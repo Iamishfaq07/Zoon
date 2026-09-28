@@ -14,11 +14,24 @@ struct WatchActionEnvelope: Codable, Sendable {
         self.action = action
         self.occurredAt = occurredAt
         self.timeZoneIdentifier = timeZone.identifier
-        if case .morningFeeling = action {
-            self.targetDate = snapshotDate ?? occurredAt
+        // A morning feeling is about the night just slept. It is filed on the
+        // night the watch showed only when that night ended this same local
+        // day; a snapshot from an older night (the phone has not synced)
+        // used to receive this morning's feeling, overwriting what was said
+        // about that night. Otherwise it goes on this morning, and joins last
+        // night when it arrives.
+        if case .morningFeeling = action, let snapshotDate,
+           Self.sameLocalDay(snapshotDate, occurredAt, in: timeZone) {
+            self.targetDate = snapshotDate
         } else {
             self.targetDate = occurredAt
         }
+    }
+
+    private static func sameLocalDay(_ a: Date, _ b: Date, in timeZone: TimeZone) -> Bool {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.isDate(a, inSameDayAs: b)
     }
 
     var calendar: Calendar {
@@ -44,13 +57,11 @@ struct WatchActionEnvelope: Codable, Sendable {
     /// wake can pass a better one.
     var behaviorNightDate: Date { behaviorNightDate(morningBoundaryMinute: Self.defaultMorningBoundaryMinute) }
 
-    static let defaultMorningBoundaryMinute = 4 * 60
+    static let defaultMorningBoundaryMinute = BehaviorNight.defaultMorningBoundaryMinute
 
+    /// Shares its rule with every phone surface through `BehaviorNight`.
     func behaviorNightDate(morningBoundaryMinute: Int) -> Date {
-        let components = calendar.dateComponents([.hour, .minute], from: targetDate)
-        let minute = (components.hour ?? 12) * 60 + (components.minute ?? 0)
-        if minute < morningBoundaryMinute { return targetDate }
-        return calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+        BehaviorNight.nightDate(forLogAt: targetDate, calendar: calendar, morningBoundaryMinute: morningBoundaryMinute)
     }
 }
 
