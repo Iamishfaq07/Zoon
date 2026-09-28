@@ -11,62 +11,6 @@ struct HorizonStrip: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// Wide enough for "Wind-down" over a short time, and it grows with the
-    /// text it holds.
-    ///
-    /// These were fixed points while the captions use `Theme.label`, which
-    /// maps onto a Dynamic Type style and therefore scales. Above the default
-    /// setting the text outgrew the box meant to keep it off its neighbour,
-    /// so the declutter pass below — which is correct — was enforcing gaps
-    /// between boxes narrower than the words inside them.
-    ///
-    /// `MetricRing` and `ExploreTiles` bound their text; `ZoonUncertaintyBand`
-    /// adapts its heights. This is the same rule on the surface that was not
-    /// following it.
-    @ScaledMetric(relativeTo: .caption) private var captionWidth: CGFloat = 56
-    /// One caption row. Captions alternate between two of these.
-    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 30
-    /// The closest two captions in the *same* row may sit, centre to centre.
-    /// Below this they are pushed apart.
-    private var minimumCaptionGap: CGFloat { captionWidth + 4 }
-
-    /// Caption centres: ideal time-proportional positions, then separated.
-    ///
-    /// Two passes over each row. Left to right guarantees the minimum gap and
-    /// the left edge; right to left restores the right edge, which the first
-    /// pass can violate when it pushes a run of close nodes rightward. Nodes
-    /// arrive sorted by time, so index order is position order.
-    private func captionLayout(width: CGFloat, t0: TimeInterval, span: TimeInterval) -> [CGFloat] {
-        let half = captionWidth / 2
-        var centres = nodes.map { node -> CGFloat in
-            let x = CGFloat((node.date.timeIntervalSince1970 - t0) / span)
-            return 11 + x * max(0, width - 20)
-        }
-        guard width > captionWidth else { return centres }
-
-        for row in 0..<2 {
-            let indices = centres.indices.filter { $0 % 2 == row }
-            guard indices.count > 1 else { continue }
-            for (position, index) in indices.enumerated() {
-                let floor = position == 0 ? half : centres[indices[position - 1]] + minimumCaptionGap
-                centres[index] = max(centres[index], floor)
-            }
-            for (position, index) in indices.enumerated().reversed() {
-                let ceiling = position == indices.count - 1
-                    ? width - half
-                    : centres[indices[position + 1]] - minimumCaptionGap
-                centres[index] = min(centres[index], ceiling)
-            }
-            // A row too crowded to satisfy both edges: keep everything on
-            // screen rather than letting the first pass win and pushing the
-            // last caption off the right edge.
-            for index in indices {
-                centres[index] = min(max(centres[index], half), width - half)
-            }
-        }
-        return centres
-    }
-
     var body: some View {
         let t0 = nodes.first?.date.timeIntervalSince1970 ?? 0
         let t1 = nodes.last?.date.timeIntervalSince1970 ?? 1
@@ -175,27 +119,35 @@ struct HorizonStrip: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                GeometryReader { geo in
-                    let layout = captionLayout(width: geo.size.width, t0: t0, span: span)
-                    ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
-                        VStack(spacing: 2) {
+                // A key under the strip, two to a row, each with its own
+                // dot. Captions placed under their dots had to be shrunk and
+                // stacked to fit six labels into a phone's width -- on a
+                // real evening "Now", "Sleep window" and "Wind-down" sat on
+                // top of one another. A key cannot collide at any time
+                // spacing; the dot colour ties each entry to its place.
+                LazyVGrid(
+                    columns: [GridItem(.flexible(), spacing: 12, alignment: .leading),
+                              GridItem(.flexible(), spacing: 12, alignment: .leading)],
+                    alignment: .leading,
+                    spacing: 8
+                ) {
+                    ForEach(nodes) { node in
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Circle()
+                                .fill(tint(for: node.kind))
+                                .frame(width: 8, height: 8)
                             Text(node.title)
-                                .font(Theme.label(10, weight: .semibold))
-                                .foregroundStyle(Theme.inkTertiary)
+                                .font(Theme.label(12, weight: .semibold))
+                                .foregroundStyle(Theme.inkSecondary)
+                            Spacer(minLength: 4)
                             Text(ClockText.atomic(node.date))
-                                .font(Theme.label(11, weight: .semibold))
+                                .font(Theme.label(13, weight: .semibold))
                                 .monospacedDigit()
                         }
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(width: captionWidth)
-                        .position(
-                            x: layout[index],
-                            y: index.isMultiple(of: 2) ? rowHeight / 2 : rowHeight * 1.5
-                        )
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .frame(height: rowHeight * 2)
             }
         }
         .accessibilityElement(children: .contain)

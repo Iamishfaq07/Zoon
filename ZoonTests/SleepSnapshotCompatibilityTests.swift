@@ -118,6 +118,10 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         original.recoveryPercent = 72
         original.bodySignalsLabel = "Several signals moving"
         original.badgeTier = 3
+        original.ageRangeLabel = "7–9 h at 34"
+        original.ageRangeLowMinutes = 420
+        original.heartLowBPM = 51
+        original.heartLowAt = Date(timeIntervalSince1970: 1_800_000_000)
 
         let restored = try decoder().decode(
             SleepSnapshot.self, from: encoder().encode(original)
@@ -126,6 +130,8 @@ final class SleepSnapshotCompatibilityTests: XCTestCase {
         XCTAssertEqual(restored.recoveryPercent, 72)
         XCTAssertEqual(restored.bodySignalsLabel, "Several signals moving")
         XCTAssertEqual(restored.badgeTier, 3)
+        XCTAssertEqual(restored.ageRangeLabel, "7–9 h at 34")
+        XCTAssertEqual(restored.heartLowAt, original.heartLowAt)
         XCTAssertEqual(restored, original)
     }
 
