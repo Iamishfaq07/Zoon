@@ -34,6 +34,7 @@ struct SoundscapeView: View {
         }
         .nightBackground()
         .navigationTitle("Sleep Sounds")
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             if let raw = DeepLink.consumeSound(),

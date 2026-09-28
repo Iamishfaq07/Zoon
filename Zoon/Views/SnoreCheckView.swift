@@ -20,9 +20,10 @@ struct SnoreCheckView: View {
     @State private var showingDetails = false
 
     var body: some View {
-        // Scrolls, with the button pinned above the tab bar. A fixed stack
-        // pushed Start/Stop off the screen, under the floating tab bar, once
-        // the timeline or a larger text size made it taller than the phone.
+        // Scrolls, with the button pinned to the bottom edge. A fixed stack
+        // pushed Start/Stop off the screen once the timeline or a larger text
+        // size made it taller than the phone. The floating tab bar is hidden
+        // here: it does not inset pushed screens, and sat on the button.
         ScrollView {
             VStack(spacing: 20) {
                 explainer
@@ -61,6 +62,8 @@ struct SnoreCheckView: View {
         }
         .nightBackground()
         .navigationTitle("Snore Check")
+        // Start/Stop sits on the bottom edge, where the tab bar was drawn.
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: scenePhase) { _, phase in
             session.handleScenePhase(phase)

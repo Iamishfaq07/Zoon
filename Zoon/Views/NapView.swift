@@ -68,6 +68,7 @@ struct NapView: View {
         }
         .nightBackground()
         .navigationTitle("Nap")
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         // A one-second tick rather than a Timer publisher: this view only exists
         // while it's on screen, and TimelineView would redraw the whole card.

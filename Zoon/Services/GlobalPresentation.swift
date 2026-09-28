@@ -36,3 +36,26 @@ final class GlobalPresentation {
         showingMore = true
     }
 }
+
+extension View {
+    /// Hides the floating tab bar while this screen is shown.
+    ///
+    /// The bar is a bottom inset on the `TabView`, and it does not inset
+    /// content pushed inside a tab's `NavigationStack`: it was drawn over
+    /// Snore Check's Start button, so a tap on the middle of the button
+    /// switched tabs and only a sliver at each end started a session. For
+    /// pushed screens whose controls reach the bottom edge.
+    func hidesFloatingTabBar() -> some View {
+        modifier(HidesFloatingTabBar())
+    }
+}
+
+private struct HidesFloatingTabBar: ViewModifier {
+    @Environment(GlobalPresentation.self) private var presentation
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { presentation.hidesTabBar = true }
+            .onDisappear { presentation.hidesTabBar = false }
+    }
+}

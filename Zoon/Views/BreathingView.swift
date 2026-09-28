@@ -74,6 +74,7 @@ struct BreathingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .nightBackground()
         .navigationTitle("Wind Down")
+        .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { coach.stop() }
     }

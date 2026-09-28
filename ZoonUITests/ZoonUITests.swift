@@ -43,6 +43,33 @@ final class ZoonUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Ask Zoon"].waitForExistence(timeout: 15))
     }
 
+    /// The primary button of a pushed tool screen is not under the tab bar.
+    ///
+    /// The floating tab bar does not inset screens pushed inside a tab, and
+    /// sat on Snore Check's "Start listening": a tap on the middle of the
+    /// button switched tabs, and only a sliver at each end started a session.
+    /// Wind Down's "Begin" was covered the same way.
+    func testToolScreenStartButtonsAreNotUnderTheTabBar() {
+        for (screen, label) in [("snoreCheck", "Start listening"), ("breathing", "Begin")] {
+            let app = XCUIApplication()
+            app.launchArguments += ["-zoonDemo", "YES", "-zoonTab", screen]
+            app.launch()
+
+            let start = app.buttons[label]
+            XCTAssertTrue(start.waitForExistence(timeout: 15), "\(screen): no \(label) button")
+            let tabs = ["today", "sleep", "insights", "coach"].map { app.buttons["zoon.tab.\($0)"] }
+            // The bar leaves with an animation; give it time rather than
+            // reading a frame mid-transition.
+            let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: tabs[1])
+            _ = XCTWaiter().wait(for: [gone], timeout: 5)
+            XCTAssertTrue(start.isHittable, "\(screen): \(label) is not hittable")
+            for tab in tabs where tab.exists {
+                XCTAssertFalse(tab.frame.intersects(start.frame), "\(screen): a tab covers \(label)")
+            }
+            app.terminate()
+        }
+    }
+
     /// Audit §15: the app still navigates with every localized string
     /// doubled in length (`NSDoubleLocalizedStrings`, Foundation's
     /// pseudolocalization switch) and with the layout forced right to left.

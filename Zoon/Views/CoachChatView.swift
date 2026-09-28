@@ -22,7 +22,6 @@ struct CoachChatView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(UserPreferences.self) private var preferences
     @Environment(NapStore.self) private var naps
-    @Environment(GlobalPresentation.self) private var presentation
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var chat = CoachChat()
     @State private var evidence: CoachEvidence?
@@ -80,8 +79,7 @@ struct CoachChatView: View {
         .navigationTitle("Ask Zoon")
         .navigationBarTitleDisplayMode(.inline)
         // The composer owns the bottom edge; the floating tab bar sat on it.
-        .onAppear { presentation.hidesTabBar = true }
-        .onDisappear { presentation.hidesTabBar = false }
+        .hidesFloatingTabBar()
         .task {
             let frozen = CoachEvidence(night: night, history: coordinator.recentNights)
             evidence = frozen
