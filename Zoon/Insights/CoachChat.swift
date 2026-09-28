@@ -483,7 +483,13 @@ final class CoachChat {
         let catalog = evidence?.promptCatalog ?? "None"
         let recap = recentConversation()
 
-        for compact in [false, true] {
+        // Three passes at most: the answer, one retry told why the answer was
+        // refused, and one retry without the recap and digest if the window
+        // overflows. A refused answer used to fall straight back to the local
+        // reply, so on Apple Intelligence devices most answers were canned.
+        var compact = false
+        var correction: String?
+        for _ in 0..<3 {
             let session = LanguageModelSession(
                 instructions: Self.instructions(
                     nightSummary: context.nightSummary,
@@ -500,6 +506,9 @@ final class CoachChat {
                 prompt += "\n\nFACTS ZOON COMPUTED FOR THIS QUESTION (answer from these; quote numbers exactly as written):\n\(facts)"
             }
             prompt += "\n\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n\(catalog)"
+            if let correction {
+                prompt += "\n\nYOUR PREVIOUS ANSWER COULD NOT BE SHOWN: \(correction) Answer the question again."
+            }
             do {
                 let response = try await session.respond(
                     to: prompt,
@@ -512,18 +521,29 @@ final class CoachChat {
                 let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
                 let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
                 let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
-                // The recap counts as known: a number the person typed, or an
-                // earlier answer already checked against its own facts, is not
-                // one the model invented.
+                // The recap and the question count as known: a number the
+                // person typed ("is 6 hours enough?"), or an earlier answer
+                // already checked against its own facts, is not one the model
+                // invented.
                 let known = [context.nightSummary, context.contextDigest, context.chartContext,
-                             facts, catalog, compact ? nil : recap]
+                             facts, catalog, question, compact ? nil : recap]
                     .compactMap { $0 }.joined(separator: "\n")
 
-                guard !answer.isEmpty,
-                      CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known),
-                      !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
-                    logger.notice("Chat answer was empty, used an unsupplied number, or failed the diagnostic-language check")
-                    return nil
+                let refusal: String?
+                if answer.isEmpty {
+                    refusal = "It was empty."
+                } else if !CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known) {
+                    refusal = "It used a number that is not in the facts. Use numbers only exactly as they are written in the facts, or none."
+                } else if DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") {
+                    refusal = "It stated a cause or named a condition. Describe what the data shows; say \"may be associated with\" instead of \"due to\" or \"caused\"."
+                } else {
+                    refusal = nil
+                }
+                if let refusal {
+                    logger.notice("Chat answer refused: \(refusal, privacy: .public)")
+                    guard correction == nil else { return nil }
+                    correction = refusal
+                    continue
                 }
                 let cited: String?
                 if grounding.isEmpty || grounding.lowercased() == "null" {
@@ -543,6 +563,7 @@ final class CoachChat {
             } catch let error as LanguageModelSession.GenerationError {
                 if case .exceededContextWindowSize = error, !compact {
                     logger.notice("Chat prompt exceeded the context window; retrying without the recap and digest")
+                    compact = true
                     continue
                 }
                 logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
@@ -649,6 +670,8 @@ final class CoachChat {
         Distinguish last night's facts from longer-term patterns. The CURRENT NIGHT FACTS section is the only source for last night. LONGITUDINAL PATTERNS are for "lately" / "usually" / trends.
 
         Never diagnose a medical condition. Never mention sleep apnea, insomnia, or any other diagnosis by name.
+        Do not state causes. Never write "due to", "because of", "caused", "led to", "results in", "is the reason" or "explains why"; say "may be associated with" or "often goes with" instead.
+        Write durations the way the facts write them (for example 7h 5m), and never convert or round a number.
         Do not make a single metric prescribe the whole day.
         Answer the question that was actually asked, in your own words, as a knowledgeable coach would -- not a summary of every number. Explain what the figure means for this person and why, compared with their own baseline where the facts give one.
         Build on earlier turns in this conversation instead of repeating them; do not reuse an earlier answer's wording.

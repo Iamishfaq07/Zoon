@@ -186,4 +186,14 @@ final class CoachEvidenceTests: XCTestCase {
         XCTAssertFalse(CoachEvidence.numbersAreGrounded("Breathing was 14.", in: facts), "14 is not 14.2")
         XCTAssertEqual(CoachEvidence.numberTokens(in: "7h 32m, 14.2, 10:38."), ["7", "32", "14.2", "10", "38"])
     }
+
+    /// A key's digits are not a supplied value: counted, `hrv_7day_avg_ms`
+    /// let an invented "you need 7 hours" through.
+    func testDigitsInsideKeyNamesAreNotFacts() {
+        let facts = #"{"hrv_7day_avg_ms": 58, "avg_spo2_pct": 96, "time_asleep": "6h 40m"}"#
+        XCTAssertFalse(CoachEvidence.numbersAreGrounded("You probably need 7 hours.", in: facts))
+        XCTAssertFalse(CoachEvidence.numbersAreGrounded("Oxygen stayed near 2.", in: facts))
+        XCTAssertTrue(CoachEvidence.numbersAreGrounded("You slept 6h 40m, HRV around your usual 58.", in: facts))
+        XCTAssertEqual(CoachEvidence.numberTokens(in: facts, skippingIdentifiers: true), ["58", "96", "6", "40"])
+    }
 }
