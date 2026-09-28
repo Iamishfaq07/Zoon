@@ -14,6 +14,27 @@ enum AudioSessionResetOrder: Sendable {
     }
 }
 
+/// When the Sleep Sounds watchdog may restart a graph that has gone silent.
+///
+/// It used to be allowed once per playback. A stall at 01:00 that it fixed
+/// used up the only recovery, so an unrelated one at 04:00 left the rest of
+/// the night silent with the session still held. A recovery followed by a
+/// minute of healthy playback is history, not a loop; only a stall straight
+/// after a recovery -- the graph that will not stay up -- gives up.
+enum WatchdogRecoveryPolicy: Sendable {
+
+    static let healthyIntervalBeforeAnotherRecovery: TimeInterval = 60
+
+    /// - Parameters:
+    ///   - lastRecoveryAt: when the watchdog last restarted this playback, if
+    ///     it has.
+    ///   - lastHealthyAt: the latest moment playback was heard to be audible.
+    static func mayRecover(lastRecoveryAt: Date?, lastHealthyAt: Date) -> Bool {
+        guard let lastRecoveryAt else { return true }
+        return lastHealthyAt.timeIntervalSince(lastRecoveryAt) >= healthyIntervalBeforeAnotherRecovery
+    }
+}
+
 enum SnoreResumePolicy: Sendable {
 
     /// Close an interruption gap only after the engine is running *and*
