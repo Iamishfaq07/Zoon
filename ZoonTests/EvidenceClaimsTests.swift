@@ -309,14 +309,15 @@ final class EvidenceClaimsTests: XCTestCase {
         higherIsBetter: Bool = true,
         baselineNights: Int = 14,
         trialNights: Int = 20,
-        compliant: Int? = 18
+        compliant: Int? = 18,
+        endDaysAfterStart: Double = 20
     ) -> SleepExperimentStore.Outcome {
         SleepExperimentStore.Outcome(
             id: UUID(),
             tag: tag,
             hypothesis: "Skipping alcohol lets me sleep longer",
             startDate: Date(timeIntervalSince1970: 1_700_000_000),
-            endDate: Date(timeIntervalSince1970: 1_700_000_000 + 20 * 86_400),
+            endDate: Date(timeIntervalSince1970: 1_700_000_000 + endDaysAfterStart * 86_400),
             metricLabel: "deep sleep",
             baselineMedian: baseline,
             trialMedian: trial,
@@ -327,6 +328,18 @@ final class EvidenceClaimsTests: XCTestCase {
             direction: .avoid,
             trialCompliantNightCount: compliant
         )
+    }
+
+    /// Two finished experiments on one behaviour are one claim. Offered
+    /// both, the ledger added two alternating rows on every refresh.
+    func testOnlyTheNewestExperimentPerBehaviourSpeaksForItsClaim() {
+        let march = outcome(trial: 402)
+        let may = outcome(trial: 440, endDaysAfterStart: 80)
+        let caffeine = outcome(tag: "caffeineLate")
+        let offered = EvidenceLedger.claimingOutcomes([may, caffeine, march])
+        XCTAssertEqual(offered.count, 2)
+        XCTAssertEqual(offered.first { $0.tag == "alcohol" }?.id, may.id)
+        XCTAssertTrue(offered.contains { $0.id == caffeine.id })
     }
 
     func testAnAdherentExperimentThatWorkedIsSupported() {

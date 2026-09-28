@@ -43,6 +43,22 @@ extension EvidenceLedger {
     /// experiment did not separate the two periods.
     static let experimentMinimumRelativeChange = 0.05
 
+    /// The outcomes that speak for their claims: the newest per behaviour.
+    ///
+    /// An experiment's claim is keyed by its behaviour, so two finished
+    /// experiments on alcohol are one claim. Offered both, the ledger
+    /// compared each with the row the other had just written, found a
+    /// different status every time, and added two rows on every refresh --
+    /// "Inconclusive became Supported", "Supported became Inconclusive" --
+    /// without limit, on the main actor.
+    static func claimingOutcomes(
+        _ outcomes: [SleepExperimentStore.Outcome]
+    ) -> [SleepExperimentStore.Outcome] {
+        Dictionary(grouping: outcomes, by: \.tag)
+            .compactMap { $0.value.max { $0.endDate < $1.endDate } }
+            .sorted { $0.endDate < $1.endDate }
+    }
+
     /// One completed experiment, as a claim.
     static func revision(
         for outcome: SleepExperimentStore.Outcome,

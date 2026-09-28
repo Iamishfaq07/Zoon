@@ -845,13 +845,23 @@ final class SleepDataCoordinator {
         // The subset actually worth re-extracting. Compared against each
         // session's own interval rather than its wake date, so a night that
         // began inside a range but ended outside it still counts.
+        //
+        // Never the day the fetch window starts on. The fetch drops samples
+        // before `window.start`, so a night straddling it is built from a
+        // fragment: at 03:00, a 23:00-07:00 night ninety days back was
+        // rebuilt from its last four hours and stored as a four-hour night,
+        // then left the window and was never checked again. That day cannot
+        // be re-verified from this fetch, so its row is left as stored. It
+        // stays in `validDates`, so it is not pruned either.
+        let edgeDay = Calendar.current.startOfDay(for: window.start)
+        let verifiable = mainSleepPerDate.filter { $0.wakeDate > edgeDay }
         let sessionsToRebuild: [SleepSession]
         if let ranges {
-            sessionsToRebuild = mainSleepPerDate.filter { session in
+            sessionsToRebuild = verifiable.filter { session in
                 ranges.contains { $0.intersects(DateInterval(start: session.start, end: session.end)) }
             }
         } else {
-            sessionsToRebuild = mainSleepPerDate
+            sessionsToRebuild = verifiable
         }
 
         let extractor = FeatureExtractor(healthKit: healthKit)
@@ -2567,7 +2577,7 @@ final class SleepDataCoordinator {
     /// The strongest claims the app can make, and the only ones the person
     /// declared in advance.
     private func recordExperiments() {
-        for outcome in experiments.outcomes {
+        for outcome in EvidenceLedger.claimingOutcomes(experiments.outcomes) {
             store.recordBelief(EvidenceLedger.revision(for: outcome))
         }
     }
