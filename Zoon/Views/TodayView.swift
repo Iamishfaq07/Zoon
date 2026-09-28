@@ -50,24 +50,41 @@ struct TodayView: View {
     /// the greeting, the hero, the cards and the gradient.
     @State private var moment: ZoonAmbientBackground.Band = .current()
 
+    /// `-zoonScrollTo breakdown`: open "Explore why" and scroll to the score's
+    /// component ring, so capture can photograph the breakdown it hides.
+    static let breakdownAnchor = "breakdown"
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                content
-                    .stateTransition(stateKey)
-                    .padding(.horizontal)
-                    .padding(.bottom, 28)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    content
+                        .stateTransition(stateKey)
+                        .padding(.horizontal)
+                        .padding(.bottom, 28)
+                }
+                .zoonTypography()
+                .background { todayBackdrop }
+                .navigationTitle("Today")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(.hidden, for: .navigationBar)
+                .zoonGlobalToolbar()
+                .refreshable { await coordinator.refresh() }
+                // The hero, greeting and card set all key off `moment`. Without
+                // this the screen keeps drawing the band it opened in.
+                .refreshingOnPhaseBoundary($moment)
+                .onAppear {
+                    guard LaunchOptions.scrollTarget == Self.breakdownAnchor else { return }
+                    showsExplanation = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            proxy.scrollTo(Self.breakdownAnchor, anchor: .center)
+                        }
+                    }
+                }
             }
-            .zoonTypography()
-            .background { todayBackdrop }
-            .navigationTitle("Today")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .zoonGlobalToolbar()
-            .refreshable { await coordinator.refresh() }
-            // The hero, greeting and card set all key off `moment`. Without
-            // this the screen keeps drawing the band it opened in.
-            .refreshingOnPhaseBoundary($moment)
         }
     }
 
@@ -251,6 +268,7 @@ struct TodayView: View {
                     showsComponents: true
                 )
                 .entrance(3)
+                .id(Self.breakdownAnchor)
                 LunarOrbitLegend(score: context.sleepIntelligence, selectedID: $selectedComponentID)
                 HealthPulseStrip(context: context, recentNights: coordinator.recentNights)
                     .entrance(3)
