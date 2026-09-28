@@ -78,7 +78,7 @@ struct SleepScoreWidgetView: View {
                     .monospacedDigit()
                     .foregroundStyle(scoreColor)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(snapshot.flagshipBand)
+                    Text(snapshot.flagshipBandText)
                         .font(.subheadline.weight(.semibold))
                     Text(lastNightLabel)
                         .font(.caption2)
@@ -154,7 +154,7 @@ struct SleepScoreWidgetView: View {
                 .monospacedDigit()
                 .foregroundStyle(scoreColor)
 
-            Text(snapshot.flagshipBand)
+            Text(snapshot.flagshipBandText)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -175,7 +175,7 @@ struct SleepScoreWidgetView: View {
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(scoreColor)
-                Text(snapshot.flagshipBand)
+                Text(snapshot.flagshipBandText)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -230,7 +230,7 @@ struct SleepScoreWidgetView: View {
             // opts these two lines into the system's own Lock Screen
             // privacy redaction (Settings > Notifications > Show Previews),
             // the same mechanism first-party widgets use.
-            Text("\(snapshot.flagshipScoreText) · \(snapshot.flagshipBand)")
+            Text("\(snapshot.flagshipScoreText) · \(snapshot.flagshipBandText)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .privacySensitive()
             Text(snapshot.insightSummary)
@@ -291,7 +291,9 @@ struct SleepScoreWidgetView: View {
     /// -- the number is a `SleepScore` instead, and the two tables agree
     /// exactly; `SleepIntelligenceBandTests` fails if either moves.
     private var scoreColor: Color {
-        switch SleepIntelligenceScore.Band.forPercent(snapshot.flagshipScore) {
+        // A withheld score is not coloured by the band it would have had.
+        guard snapshot.canStateFlagshipScore else { return .secondary }
+        return switch SleepIntelligenceScore.Band.forPercent(snapshot.flagshipScore) {
         case .poor: .orange
         case .fair: .yellow
         case .good: .mint

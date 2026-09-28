@@ -240,8 +240,7 @@ struct SleepIntelligenceComplicationView: View {
     /// `flagshipScore`, not `score`: a payload carrying Sleep Intelligence
     /// shows it, and one written before Sleep Intelligence existed falls
     /// back to the older sleep score rather than to a confident-looking 0.
-    private var percent: Int { entry.snapshot.flagshipScore }
-    private var band: String { entry.snapshot.flagshipBand }
+    private var band: String { entry.snapshot.flagshipBandText }
 
     /// The same refusal `RecoveryComplicationView` already makes below.
     /// `SleepIntelligenceScore` returns `.insufficient` for a night that
@@ -284,7 +283,9 @@ struct SleepIntelligenceComplicationView: View {
             }
 
         default:
-            Gauge(value: Double(percent), in: 0...100) {
+            // Empty when the score is withheld: a ring filled to 58% says
+            // "about 58" whether or not the digits are printed.
+            Gauge(value: entry.snapshot.flagshipGaugeValue, in: 0...100) {
                 Image(systemName: "moonphase.waxing.crescent")
             } currentValueLabel: {
                 Text(scoreText).monospacedDigit()

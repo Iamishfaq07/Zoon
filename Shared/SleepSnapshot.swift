@@ -388,6 +388,12 @@ struct SleepSnapshot: Codable, Hashable, Sendable {
         hasSleepIntelligence ? sleepIntelligenceBand : scoreBand
     }
 
+    /// `flagshipBand` as a glance surface should print it. Beside a "—" the
+    /// band still made the claim the dash withheld: "— · Poor".
+    var flagshipBandText: String {
+        canStateFlagshipScore ? flagshipBand : "Limited data"
+    }
+
     /// Sleep debt expressed in hours, which is how the widget phrases it.
     var sleepDebtHours: Double { sleepDebtMinutes / 60 }
 

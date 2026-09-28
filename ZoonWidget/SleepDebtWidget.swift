@@ -128,7 +128,7 @@ struct SleepDebtWidgetView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                ScoreBadge(score: snapshot.flagshipScore, band: snapshot.flagshipBand)
+                ScoreBadge(scoreText: snapshot.flagshipScoreText, band: snapshot.flagshipBandText)
 
                 Text(snapshot.insightSummary)
                     .font(.caption2)
@@ -222,12 +222,15 @@ struct SleepDebtWidgetView: View {
 
 /// Small score pill reused across widget families.
 struct ScoreBadge: View {
-    let score: Int
+    /// `flagshipScoreText`: the number, or a dash when it is not one to
+    /// state. This took the raw score and printed "38 Poor" for a night the
+    /// phone and the watch decline to score.
+    let scoreText: String
     let band: String
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("\(score)")
+            Text(scoreText)
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .monospacedDigit()
             VStack(alignment: .leading, spacing: -1) {
