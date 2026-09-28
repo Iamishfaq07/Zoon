@@ -293,7 +293,7 @@ struct ZoonTomorrowView: View {
                 get: { preferences.calendarAccessEnabled },
                 set: { preferences.calendarAccessEnabled = $0 }
             ))
-            Text("Optional. Zoon only reads the start time of tomorrow's first morning event. Titles, people and locations are not stored.")
+            Text("Optional. Zoon reads only the start time of your first morning event on each of the next 7 days, to plan tonight and the week ahead. Only tomorrow's time is kept, and turning this off deletes it. Titles, people and locations are not stored.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

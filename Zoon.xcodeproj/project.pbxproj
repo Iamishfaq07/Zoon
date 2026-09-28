@@ -5270,8 +5270,8 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only when you start Snore Check or Voice Journal. Snore Check processes short audio bursts and Voice Journal transcribes speech on this device; audio is never saved or sent anywhere.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read the start time of your first morning event on each of the next 7 days, to plan tonight and the week ahead. Titles, people and locations are not stored.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read the start time of your first morning event on each of the next 7 days, to plan tonight and the week ahead. Titles, people and locations are not stored.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -5479,8 +5479,8 @@
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Zoon uses HealthKit to build sleep insights from data you choose to share. Zoon never writes to or changes your Health data.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used only when you start Snore Check or Voice Journal. Snore Check processes short audio bursts and Voice Journal transcribes speech on this device; audio is never saved or sent anywhere.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Zoon transcribes voice journal notes on this device when you ask it to.";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read tomorrow's first event start time to arrange tonight. Titles, people and locations are not stored.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Zoon can optionally read the start time of your first morning event on each of the next 7 days, to plan tonight and the week ahead. Titles, people and locations are not stored.";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Zoon can optionally read the start time of your first morning event on each of the next 7 days, to plan tonight and the week ahead. Titles, people and locations are not stored.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
