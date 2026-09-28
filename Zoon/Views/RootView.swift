@@ -58,6 +58,9 @@ struct RootView: View {
         }
     }
 
+    /// The floating bar's height plus its gap above the home indicator.
+    static let tabBarClearance: CGFloat = 76
+
     var body: some View {
         @Bindable var bindablePresentation = presentation
 
@@ -112,6 +115,16 @@ struct RootView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        // The inset above does not reach content inside a tab's
+        // NavigationStack (the screenshots showed Snore Check's Start button
+        // and the Sleep tab's last link under the bar), so every scroll view
+        // also gets end margin for the bar while it is shown. Harmless where
+        // the inset does apply: a little more room at the end of the scroll.
+        .contentMargins(
+            .bottom,
+            keyboardVisible || presentation.hidesTabBar ? 0 : Self.tabBarClearance,
+            for: .scrollContent
+        )
         .animation(Motion.respecting(reduceMotion, Motion.standard), value: keyboardVisible || presentation.hidesTabBar)
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             keyboardVisible = true
