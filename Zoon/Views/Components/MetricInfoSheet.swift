@@ -66,10 +66,15 @@ struct MetricInfoButton: View {
             Haptics.tap()
         } label: {
             if let label {
+                // Padded and given a shape: a frame alone is not hittable
+                // in a plain button, and the accessibility audit measured
+                // the text's own 17pt, not the 44 the frame promised.
                 Label(label, systemImage: "info.circle")
                     .font(Theme.label(13, weight: .semibold))
                     .foregroundStyle(Theme.inkSecondary)
-                    .frame(minHeight: 44)
+                    .padding(.horizontal, 12)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             } else {
                 Image(systemName: "info.circle")
                     .font(Theme.text(13))
