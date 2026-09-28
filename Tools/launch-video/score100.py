@@ -15,13 +15,27 @@
 #
 # Everything is noise shaped by filters and envelopes, plus short decaying
 # transients; nothing is pitched into notes.
-import json, os, wave
+import json, os, sys, wave
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPEC = json.load(open(os.path.join(HERE, 'cues100.json')))
+# Optional cut list (see cuts90.json): story ranges left out of this mix.
+CUTS = json.load(open(os.path.join(HERE, sys.argv[1])))['cuts'] if len(sys.argv) > 1 else []
+OUT = sys.argv[2] if len(sys.argv) > 2 else 'score100.wav'
+
+
+def O(t):
+    """Story time -> output time; None inside a cut."""
+    out = t
+    for a, b in CUTS:
+        if t >= b: out -= b - a
+        elif t > a: return None
+    return out
+
+
 SR = 48000
-DUR = float(SPEC['duration'])
+DUR = float(SPEC['duration']) - sum(b - a for a, b in CUTS)
 N = int(SR * DUR)
 rng = np.random.default_rng(100)
 L = np.zeros(N); R = np.zeros(N)
@@ -342,7 +356,9 @@ PLAY = {
 missing = sorted({c['kind'] for c in SPEC['cues']} - PLAY.keys())
 assert not missing, missing
 for c in SPEC['cues']:
-    PLAY[c['kind']](c)
+    ot = O(c['t'])
+    if ot is not None:
+        PLAY[c['kind']](dict(c, t=ot))
 
 # A clockwork pulse under the quieter scenes, so the reel keeps moving
 # between its hits: a tick and a softer tock every half second, a low thud on
@@ -352,16 +368,18 @@ for a, b in [(25.9, 32.3), (45.8, 52.9), (65.0, 72.5), (74.2, 81.3), (84.0, 88.7
     while tpos < b:
         ramp = min(1, (tpos - a) / 0.8, (b - tpos) / 0.8)
         hi = noise(0.012, 5000 if k % 2 == 0 else 3200, 11000) * env(0.012, 0.0005, 0.011, 2)
-        add(hi, tpos, 0.35 if k % 2 == 0 else -0.35, 0.16 * ramp)
+        ot = O(tpos)
+        if ot is None: k += 1; tpos += 0.5; continue
+        add(hi, ot, 0.35 if k % 2 == 0 else -0.35, 0.16 * ramp)
         if k % 4 == 0:
-            add(drop(0.25, 75, 45, 0.06), tpos, 0, 0.3 * ramp)
+            add(drop(0.25, 75, 45, 0.06), ot, 0, 0.3 * ramp)
         k += 1; tpos += 0.5
 
 # A low room tone under everything after the cold open, so silence between
 # events has a floor. It dips at the start and swells into the final hit.
 t = np.arange(N) / SR
-room_env = np.clip((t - 2.5) / 3, 0, 1) * (1 - np.clip((t - 98.8) / 1.2, 0, 1))
-room_env *= 1 + 0.8 * np.exp(-((t - 94.5) / 1.5) ** 2)
+room_env = np.clip((t - 2.5) / 3, 0, 1) * (1 - np.clip((t - O(98.8)) / 1.2, 0, 1))
+room_env *= 1 + 0.8 * np.exp(-((t - O(94.5)) / 1.5) ** 2)
 L += noise(DUR, 35, 220) * room_env * 0.035
 R += noise(DUR, 35, 220) * room_env * 0.035
 
@@ -372,7 +390,7 @@ mix *= 10 ** (-1 / 20) / np.abs(mix).max()
 fade = np.ones(N); fade[:int(0.01 * SR)] = np.linspace(0, 1, int(0.01 * SR))
 mix *= fade
 pcm = (mix.T * 32767).astype('<i2')
-with wave.open(os.path.join(HERE, 'score100.wav'), 'wb') as w:
+with wave.open(os.path.join(HERE, OUT), 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm.tobytes())
 rms = np.sqrt((mix ** 2).mean())
-print(f'score100.wav {DUR:.1f}s  {len(SPEC["cues"])} cues  rms {20 * np.log10(rms):.1f} dBFS')
+print(f'{OUT} {DUR:.1f}s  {len(SPEC["cues"])} cues  rms {20 * np.log10(rms):.1f} dBFS')

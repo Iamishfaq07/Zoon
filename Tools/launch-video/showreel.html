@@ -20,9 +20,16 @@
 <canvas id="c"></canvas>
 <script>
 'use strict';
-const W = 1920, H = 1080, DUR = 100;
+// ?v=1 lays every scene out for a 9:16 phone screen instead.
+const V = /[?&]v=1/.test(location.search);
+// ?clean=1 drops the film grain and the star twinkle: detail that costs
+// bits, for copies that a messaging app will re-compress (WhatsApp).
+const CLEAN = /[?&]clean=1/.test(location.search);
+const W = V ? 1080 : 1920, H = V ? 1920 : 1080, DUR = 100;
+const vh = (land, vert) => V ? vert : land;
 const cv = document.getElementById('c'), DPR = window.devicePixelRatio || 1;
 cv.width = W * DPR; cv.height = H * DPR;
+for (const el of [document.documentElement, document.body, cv]) { el.style.width = W + 'px'; el.style.height = H + 'px'; }
 const g = cv.getContext('2d');
 const scratch = document.createElement('canvas'); scratch.width = cv.width; scratch.height = cv.height;
 const sg = scratch.getContext('2d');
@@ -237,7 +244,7 @@ function stars(t, a = 1, drift = 1) {
   g.save();
   for (const s of STARS) {
     const x = ((s.x - t * 9 * s.z * drift) % W + W) % W;
-    const tw = 0.55 + 0.45 * Math.sin(t * 1.7 + s.tw);
+    const tw = CLEAN ? 0.8 : 0.55 + 0.45 * Math.sin(t * 1.7 + s.tw);
     g.globalAlpha = a * s.z * tw * 0.85; g.fillStyle = '#dfe2ff';
     g.beginPath(); g.arc(x, s.y, s.r * s.z, 0, 7); g.fill();
   }
@@ -282,23 +289,23 @@ cue(2.72, 'swipe', 0.6, -0.6); cue(3.1, 'draw', 1, 0, { dur: 1.5 }); cue(3.0, 'r
 cue(4.95, 'snap', 0.5); cue(5.45, 'pop', 0.8); cue(6.3, 'boom', 1.2); cue(6.62, 'tick', 0.5, 0.3); cue(7.35, 'rev', 0.8, 0, { dur: 0.6 });
 function scene0(t) {
   g.fillStyle = '#030409'; g.fillRect(0, 0, W, H);
-  const cx = W / 2, cy = H / 2;
+  const cx = W / 2, cy = H / 2, E0 = vh(170, 90), E1 = vh(1750, 990), TX = vh(cx - 310, cx), TY = vh(cy, cy - 170);
   // everything after the hit is pulled into the dark side of the moon
-  const zk = eIn(seg(t, 7.35, 7.95)), fx = cx - 330 + 0.4 * 150 + 20, fy = cy - 0.22 * 150;
+  const zk = eIn(seg(t, 7.35, 7.95)), fx = TX + 0.4 * 150, fy = TY - 0.22 * 150;
   g.save();
   if (zk > 0) { g.translate(fx, fy); g.scale(1 + zk * 34, 1 + zk * 34); g.translate(-fx, -fy); }
   stars(t, seg(t, 5.8, 6.6) * 0.9);
   if (t < 3.1) {
-    let x = cx; if (t > 2.7) x = lerp(cx, 170, eInOut(seg(t, 2.7, 3.1)));
+    let x = cx; if (t > 2.7) x = lerp(cx, E0, eInOut(seg(t, 2.7, 3.1)));
     let r = 5 * eOut(seg(t, 0.3, 0.9));
     for (const [b, s] of [[1.2, 1], [1.45, 0.55], [2.2, 1], [2.45, 0.55]]) r *= 1 + 1.1 * s * Math.exp(-Math.pow((t - b) / 0.07, 2));
     dot(x, cy, r);
   }
   if (t >= 3.1 && t < 5.6) {
-    const p = eInOut(seg(t, 3.1, 4.6)), head = lerp(170, 1750, p);
+    const p = eInOut(seg(t, 3.1, 4.6)), head = lerp(E0, E1, p);
     const flat = eInOut(seg(t, 4.5, 5.0)), shrink = eInOut(seg(t, 4.95, 5.5));
-    const L = lerp(170, cx, shrink), R = lerp(head, cx, shrink);
-    const yAt = x => cy - ecg((x - 170) / 1580 * 3 + 0.05) * 240 * (1 - flat);
+    const L = lerp(E0, cx, shrink), R = lerp(head, cx, shrink);
+    const yAt = x => cy - ecg((x - E0) / (E1 - E0) * 3 + 0.05) * 240 * (1 - flat);
     g.save();
     const gr = g.createLinearGradient(L, 0, R + 1, 0); gr.addColorStop(0, 'rgba(244,245,251,0.08)'); gr.addColorStop(1, 'rgba(244,245,251,1)');
     g.strokeStyle = gr; g.lineWidth = 3; g.lineJoin = 'round'; g.shadowColor = C.lilac; g.shadowBlur = 16;
@@ -309,11 +316,11 @@ function scene0(t) {
   if (t >= 5.45) {
     const settle = eInOut(seg(t, 6.3, 6.95));
     const r = lerp(lerp(6, 210, eExpo(seg(t, 5.45, 6.05))), 150, settle);
-    const mx = lerp(cx, cx - 330 + 20, settle);
-    crescent(mx, cy, r, eInOut(seg(t, 5.75, 6.3)), 1, 1 + 1.5 * Math.exp(-Math.max(0, t - 6.3) * 4) * (t > 6.3));
+    const mx = lerp(cx, TX, settle), my = lerp(cy, TY, settle);
+    crescent(mx, my, r, eInOut(seg(t, 5.75, 6.3)), 1, 1 + 1.5 * Math.exp(-Math.max(0, t - 6.3) * 4) * (t > 6.3));
     shock(cx, cy, t, 6.3, 210, 1500); burst(cx, cy, t, 6.3, 90, 1100);
-    kline('Zoon', cx - 150 + 20, cy + 72, t, 6.42, { size: 220, weight: 900, ls: -2, stagger: 0.05, dur: 0.8 });
-    kline('KASHMIRI FOR MOON', cx - 142 + 20, cy + 138, t, 6.9, { size: 24, weight: 800, fam: BODY, ls: 10, color: C.lilac, stagger: 0.015 });
+    kline('Zoon', vh(cx - 130, cx), vh(cy + 72, cy + 175), t, 6.42, { align: vh('left', 'center'), size: vh(220, 200), weight: 900, ls: -2, stagger: 0.05, dur: 0.8 });
+    kline('KASHMIRI FOR MOON', vh(cx - 122, cx), vh(cy + 138, cy + 245), t, 6.9, { align: vh('left', 'center'), size: 24, weight: 800, fam: BODY, ls: 10, color: C.lilac, stagger: 0.015 });
   }
   g.restore();
   if (zk > 0) { g.fillStyle = `rgba(3,4,9,${eIn(seg(t, 7.6, 7.95))})`; g.fillRect(0, 0, W, H); }
@@ -335,7 +342,7 @@ function orbit(t, conv = 0, tx = W / 2, ty = H / 2, a = 1) {
   const out = eExpo(seg(t, 14.75, 15.6));
   const items = ORBIT.map((o, i) => {
     const ang = i / ORBIT.length * Math.PI * 2 + (t - 14.75) * 0.38;
-    const rx = 720 * out * (1 - conv), ry = 300 * out * (1 - conv);
+    const rx = vh(720, 360) * out * (1 - conv), ry = vh(300, 720) * out * (1 - conv);
     const z = Math.sin(ang);
     return { o, x: lerp(W / 2 + Math.cos(ang) * rx, tx, conv), y: lerp(H / 2 + z * ry, ty, conv), z, s: (0.78 + 0.26 * (z + 1) / 2) * lerp(1, 0.35, conv) };
   }).sort((p, q) => p.z - q.z);
@@ -344,7 +351,7 @@ function orbit(t, conv = 0, tx = W / 2, ty = H / 2, a = 1) {
 }
 function roll(t) {
   const k = spring(seg(t, 8.25, 9.15), 2.2, 7.5), pos = k * 8;
-  const x = 790, y = 735, size = 520, step = 520;
+  const x = vh(790, W / 2), y = vh(735, 1080), size = 520, step = 520;
   g.save(); g.beginPath(); g.rect(x - 250, y - 400, 500, 470); g.clip();
   setFont(size, 900, HEAD, 0); g.textAlign = 'center';
   const out = eIn(seg(t, 9.55, 9.9));
@@ -361,11 +368,11 @@ function scene1(t) {
   g.fillStyle = bgc; g.fillRect(0, 0, W, H);
   if (t < 9.9) {
     glowAt(W / 2, H / 2, 900, 'rgba(123,97,255,0.10)', seg(t, 8, 8.8));
-    kline('LAST NIGHT YOU SLEPT', W / 2, 250, t, 7.98, { size: 30, weight: 800, fam: BODY, ls: 12, align: 'center', color: C.ink3, out: 9.5 });
+    kline('LAST NIGHT YOU SLEPT', W / 2, vh(250, 600), t, 7.98, { size: 30, weight: 800, fam: BODY, ls: 12, align: 'center', color: C.ink3, out: 9.5 });
     if (t >= 8.2) roll(t);
-    kline('hours.', 1030, 735, t, 8.95, { size: 170, weight: 900, ls: -3, color: gradText('#ffffff', C.lilac), out: 9.55 });
+    kline('hours.', vh(1030, W / 2), vh(735, 1300), t, 8.95, { align: vh('left', 'center'), size: 170, weight: 900, ls: -3, color: gradText('#ffffff', C.lilac), out: 9.55 });
   } else if (t < 11.3) {
-    const W3 = [['SO WHY', 9.9, 330], ['ARE YOU', 10.3, 560], ['STILL', 10.7, 790]];
+    const W3 = [['SO WHY', 9.9, vh(330, 720)], ['ARE YOU', 10.3, vh(560, 950)], ['STILL', 10.7, vh(790, 1180)]];
     for (const [s, t0, y] of W3) {
       if (t < t0) continue;
       const k = eOut5(seg(t, t0, t0 + 0.2)), sc = lerp(1.6, 1, k);
@@ -376,7 +383,7 @@ function scene1(t) {
   } else if (t < 12.72) {
     const push = 1 + 0.07 * seg(t, 11.3, 12.7);
     const glitch = (t < 11.8 ? 1 - seg(t, 11.3, 11.8) : 0) + (t > 11.95 && t < 12.07 ? 0.8 : 0);
-    g.save(); g.translate(W / 2, H / 2 + 20); g.scale(push, push);
+    g.save(); g.translate(W / 2, H / 2 + 20); g.scale(push * vh(1, 0.66), push * vh(1, 0.66));
     const r = rng(Math.floor(t * 30) + 5);
     const dx = glitch * 26;
     if (glitch > 0) {
@@ -393,9 +400,15 @@ function scene1(t) {
     }
     g.restore();
   } else if (t < 14.25) {
+    if (V) {
+      kline('Because', W / 2, 800, t, 12.8, { size: 130, align: 'center', ls: -3, out: 14.05 });
+      kline("sleep isn't", W / 2, 950, t, 13.1, { size: 130, align: 'center', ls: -3, out: 14.08 });
+      kline('one number.', W / 2, 1100, t, 13.35, { size: 130, align: 'center', ls: -3, out: 14.1, color: gradText(C.amber, '#ffc27a') });
+    } else {
     kline('Because sleep', W / 2, 470, t, 12.8, { size: 128, align: 'center', ls: -3, out: 14.05 });
     kline("isn't one number.", W / 2, 625, t, 13.35, { size: 128, align: 'center', ls: -3, out: 14.1, color: (sx, w) => {
       const gr = g.createLinearGradient(sx, 0, sx + w, 0); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.3, '#ffffff'); gr.addColorStop(0.31, C.amber); gr.addColorStop(1, '#ffc27a'); return gr; } });
+    }
   } else {
     // "8h" shatters into everything a night is made of
     const nb = seg(t, 14.75, 15.5);
@@ -419,7 +432,7 @@ function scene1(t) {
     }
     burst(W / 2, H / 2, t, 14.75, 120, 1400, '#ffd9a8', 9);
     shock(W / 2, H / 2, t, 14.75, 120, 1700, '255,200,150');
-    kline('Zoon reads all of it.', W / 2, 570, t, 15.45, { size: 96, align: 'center', ls: -2, out: 16.3 });
+    kline('Zoon reads all of it.', W / 2, vh(570, H / 2 + 30), t, 15.45, { size: vh(96, 80), align: 'center', ls: -2, out: 16.3 });
     ob.front();
   }
 }
@@ -430,11 +443,11 @@ cue(16.7, 'whooshL', 1, 0.5); cue(17.85, 'land', 1); cue(18.0, 'click', 0.5, -0.
 cue(20.55, 'riser', 0.7, 0, { dur: 1.35 }); cue(21.9, 'hit', 0.9); cue(22.2, 'ticks', 0.7, 0, { dur: 0.7, n: 24 });
 cue(22.95, 'pop', 0.7); cue(23.3, 'draw', 0.6, -0.6, { dur: 0.5 }); cue(23.75, 'draw', 0.6, 0.6, { dur: 0.5 });
 cue(24.6, 'whoosh', 0.9, 0); cue(24.75, 'stretch', 0.8, 0, { dur: 0.85 });
-const RING = { cx: W / 2, cy: H / 2 + 10, a0: Math.PI * 0.75, sweep: Math.PI * 1.5, prog: 0.52 };
-function ringPoint(u, r, m, lineY = 800) {
+const RING = { cx: W / 2, cy: vh(H / 2 + 10, 1040), a0: Math.PI * 0.75, sweep: Math.PI * 1.5, prog: 0.52 };
+function ringPoint(u, r, m, lineY = vh(800, 1300)) {
   const th = RING.a0 + u * RING.sweep;
   const ax = RING.cx + Math.cos(th) * r, ay = RING.cy + Math.sin(th) * r;
-  return [lerp(ax, lerp(260, 1660, u), m), lerp(ay, lineY, m)];
+  return [lerp(ax, lerp(vh(260, 150), vh(1660, 990), u), m), lerp(ay, lineY, m)];
 }
 function ringStroke(u0, u1, r, m, style, lw) {
   g.beginPath();
@@ -445,24 +458,24 @@ function scene2(t) {
   bg(t);
   // chips from the manifesto fall into the phone
   const conv = eIn(seg(t, 16.75, 17.55));
-  if (conv < 1) { const ob = orbit(t, conv, 1250, 540, 1 - seg(t, 17.3, 17.6)); ob.back(); ob.front(); }
+  if (conv < 1) { const ob = orbit(t, conv, vh(1250, W / 2), vh(540, 1250), 1 - seg(t, 17.3, 17.6)); ob.back(); ob.front(); }
   const k = seg(t, 16.95, 17.95), push = eInOut(seg(t, 20.55, 21.95));
-  const h = lerp(860, 3200, push);
-  const px = lerp(lerp(2300, 1250, eExpo(k)), W / 2, push), py = lerp(540, 540 + 0.224 * 3200, push);
+  const hEnd = vh(3200, 3000), h = lerp(vh(860, 1060), hEnd, push);
+  const px = lerp(lerp(vh(2300, 1700), vh(1250, W / 2), eExpo(k)), RING.cx, push), py = lerp(vh(540, 1250), RING.cy - 10 + 0.224 * hEnd, push);
   const yaw = lerp(lerp(1.15, -0.22, spring(k, 2.4, 5)), 0, push);
   const phA = 1 - seg(t, 21.75, 22.1);
   if (t >= 16.95) phone('today', px, py, h, { yaw, a: phA, roll: lerp(0.12, 0, eOut(k)) });
   // copy on the left
   const tOut = 20.45;
-  kicker('SLEEP SHORTFALL', 160, 380, t, 18.0, { out: tOut, color: C.amber });
-  kline('Know exactly', 160, 480, t, 18.1, { size: 96, out: tOut });
-  kline('what you owe.', 160, 578, t, 18.22, { size: 96, out: tOut, color: gradText('#ffffff', '#ffc27a') });
-  rise('The sleep you’re missing, counted against', 160, 660, t, 18.8, { out: tOut });
-  rise('a need learned from your own nights.', 160, 704, t, 18.9, { out: tOut });
+  kicker('SLEEP SHORTFALL', vh(160, 80), vh(380, 250), t, 18.0, { out: tOut, color: C.amber });
+  kline('Know exactly', vh(160, 80), vh(480, 350), t, 18.1, { size: 96, out: tOut });
+  kline('what you owe.', vh(160, 80), vh(578, 448), t, 18.22, { size: 96, out: tOut, color: gradText('#ffffff', '#ffc27a') });
+  rise('The sleep you’re missing, counted against', vh(160, 80), vh(660, 530), t, 18.8, { out: tOut });
+  rise('a need learned from your own nights.', vh(160, 80), vh(704, 574), t, 18.9, { out: tOut });
   if (t < 21.75) return;
   // the ring, redrawn as a vector and taken apart
   const va = seg(t, 21.75, 22.1), m = eInOut(seg(t, 24.75, 25.6));
-  const r = lerp(418, 330, eInOut(seg(t, 22.0, 22.9)));
+  const r = lerp(vh(418, 380), vh(330, 300), eInOut(seg(t, 22.0, 22.9)));
   const lw = lerp(46, 4, m);
   g.save(); g.globalAlpha = va;
   ringStroke(0, 1, r, m, 'rgba(255,255,255,0.10)', lw);
@@ -501,8 +514,8 @@ function scene2(t) {
     text(title, tx, ey - 6, { size: 34, weight: 800, align: al, a: k2 });
     text(sub, tx, ey + 30, { size: 22, weight: 600, fam: BODY, align: al, color: C.ink3, a: k2 });
   };
-  call(23.3, 0.06, 540, 880, 'Measured, not guessed', 'From your Apple Watch nights', -1);
-  call(23.75, 0.5, 1570, 300, 'Paid back gently', 'A little earlier each night', 1);
+  call(23.3, 0.06, vh(540, 470), vh(880, 1540), 'Measured, not guessed', 'From your Apple Watch nights', -1);
+  call(23.75, 0.5, vh(1570, 620), vh(300, 560), 'Paid back gently', 'A little earlier each night', 1);
   g.restore();
 }
 
@@ -514,7 +527,7 @@ const NT = NIGHT.reduce((s, x) => s + x[1], 0);
 const LANE = { W: 0, R: 1, L: 2, D: 3 }, LCOL = { W: '#f5a25d', R: '#c4a6ff', L: '#62b3ff', D: '#6a52e0' };
 const MINS = k => NIGHT.filter(x => x[0] === k).reduce((s, x) => s + x[1], 0);
 const ASLEEP = NT - MINS('W');
-const CH = { x0: 260, x1: 1660, y0: 380, y1: 760 };
+const CH = { x0: vh(260, 150), x1: vh(1660, 990), y0: vh(380, 780), y1: vh(760, 1220) };
 const HYP = { t0: 25.95, t1: 29.7 };
 { let acc = 0; for (const [st, m] of NIGHT) { const tt = HYP.t0 + (HYP.t1 - HYP.t0) * acc / NT; cue(tt, 'blip', 0.35, lerp(-0.7, 0.7, acc / NT), { lane: LANE[st] }); acc += m; } }
 cue(25.9, 'scan', 0.6, 0, { dur: 3.8 }); cue(29.85, 'pop', 0.6, 0.2); cue(30.05, 'pop', 0.6, 0.45); cue(30.25, 'pop', 0.6, 0.7);
@@ -522,13 +535,13 @@ cue(32.2, 'rev', 0.7, 0, { dur: 1.0 });
 function scene3(t) {
   bg(t, 0.7);
   const { x0, x1, y0, y1 } = CH, lh = (y1 - y0) / 4, bw = x1 - x0;
-  const lineY = lerp(800, 640, eInOut(seg(t, 32.75, 33.3)));
+  const lineY = lerp(vh(800, 1300), ECG_Y, eInOut(seg(t, 32.75, 33.3)));
   const baseCol = t > 32.75 ? `rgba(255,90,100,${lerp(0.3, 1, seg(t, 32.75, 33.2))})` : 'rgba(255,255,255,0.3)';
   g.strokeStyle = baseCol; g.lineWidth = 4; g.beginPath(); g.moveTo(x0, lineY); g.lineTo(x1, lineY); g.stroke();
   const fade = 1 - seg(t, 32.2, 32.7);
   g.save(); g.globalAlpha = fade;
-  kicker('STAGE BY STAGE', x0, 180, t, 25.75);
-  kline('Every minute, sorted.', x0, 272, t, 25.85, { size: 84 });
+  kicker('STAGE BY STAGE', vh(x0, 80), vh(180, 330), t, 25.75);
+  kline('Every minute, sorted.', vh(x0, 80), vh(272, 420), t, 25.85, { size: vh(84, 80) });
   const labs = [['Awake', 'W'], ['REM', 'R'], ['Core', 'L'], ['Deep', 'D']];
   labs.forEach(([s, k], i) => {
     const a = eOut(seg(t, 25.8 + i * 0.07, 26.3 + i * 0.07));
@@ -536,7 +549,7 @@ function scene3(t) {
     g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, y0 + lh * i); g.lineTo(lerp(x0, x1, a), y0 + lh * i); g.stroke();
   });
   [[0, '11:14 PM'], [106, '1 AM'], [226, '3 AM'], [346, '5 AM'], [NT, clock(23 * 60 + 14 + NT)]].forEach(([m, s], i) => {
-    text(s, x0 + bw * m / NT, 842, { size: 20, weight: 600, fam: BODY, align: i === 0 ? 'left' : i === 4 ? 'right' : 'center', color: C.ink3, a: eOut(seg(t, 26 + i * 0.05, 26.5 + i * 0.05)) });
+    text(s, x0 + bw * m / NT, vh(842, 1342), { size: 20, weight: 600, fam: BODY, align: i === 0 ? 'left' : i === 4 ? 'right' : 'center', color: C.ink3, a: eOut(seg(t, 26 + i * 0.05, 26.5 + i * 0.05)) });
   });
   g.restore();
   const p = seg(t, HYP.t0, HYP.t1), edge = x0 + bw * p;
@@ -574,16 +587,16 @@ function scene3(t) {
   const stats = [[ASLEEP, 'ASLEEP', C.ink], [MINS('R'), 'REM', LCOL.R], [MINS('D'), 'DEEP', '#9d8cff']];
   stats.forEach(([v, l, col], j) => {
     const t0 = 29.85 + j * 0.2, k = eOut(seg(t, t0, t0 + 0.6)); if (k <= 0) return;
-    const x = 1215 + j * 225, cnt = v * eOut(seg(t, t0, t0 + 0.9));
-    text(fmtHM(cnt), x, 250 + (1 - k) * 30, { size: 46, weight: 900, color: col, a: k });
-    text(l, x + 2, 290 + (1 - k) * 30, { size: 18, weight: 800, fam: BODY, ls: 5, color: C.ink3, a: k });
+    const x = vh(1215 + j * 225, 150 + j * 300), cnt = v * eOut(seg(t, t0, t0 + 0.9));
+    text(fmtHM(cnt), x, vh(250, 1520) + (1 - k) * 30, { size: vh(46, 56), weight: 900, color: col, a: k });
+    text(l, x + 2, vh(290, 1562) + (1 - k) * 30, { size: 18, weight: 800, fam: BODY, ls: 5, color: C.ink3, a: k });
   });
   g.restore();
 }
 
 // ---- 4  Heart: the trace settles; then compared with people like you ----
 const S4 = { a: 33.3, b: 44.95 };
-const PEN = 1500, SPEED = 430, ECG_Y = 640;
+const PEN = vh(1500, 880), SPEED = vh(430, 300), ECG_Y = vh(640, 1140);
 const bpmAt = t => lerp(72, 51, eInOut(seg(t, 33.9, 37.3)));
 const PHASE = (() => { const arr = [], dt = 0.002; let ph = 0; for (let tt = 32.0; tt <= 40; tt += dt) { arr.push(ph); ph += bpmAt(tt) / 60 * dt; } return { arr, dt, t0: 32.0 }; })();
 const phaseAt = tt => { const f = (tt - PHASE.t0) / PHASE.dt, i = clamp(Math.floor(f), 0, PHASE.arr.length - 2); return lerp(PHASE.arr[i], PHASE.arr[i + 1], f - i); };
@@ -608,8 +621,8 @@ function scene4(t) {
     g.save(); g.globalAlpha = trA; g.translate(-eIn(seg(t, 38.4, 38.9)) * 300, 0);
     // monitor grid
     g.strokeStyle = 'rgba(255,90,100,0.07)'; g.lineWidth = 1;
-    for (let x = 0; x <= W; x += 40) { g.beginPath(); g.moveTo(x, 440); g.lineTo(x, 840); g.stroke(); }
-    for (let y = 440; y <= 840; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    for (let x = 0; x <= W; x += 40) { g.beginPath(); g.moveTo(x, ECG_Y - 200); g.lineTo(x, ECG_Y + 200); g.stroke(); }
+    for (let y = ECG_Y - 200; y <= ECG_Y + 200; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
     const amp = 190 * eOut(seg(t, 33.3, 33.9));
     g.save(); const gr = g.createLinearGradient(0, 0, PEN, 0); gr.addColorStop(0, 'rgba(255,90,100,0)'); gr.addColorStop(0.3, 'rgba(255,90,100,0.6)'); gr.addColorStop(1, '#ff8a92');
     g.strokeStyle = gr; g.lineWidth = 4; g.lineJoin = 'round'; g.shadowColor = C.heart; g.shadowBlur = 22;
@@ -621,28 +634,29 @@ function scene4(t) {
     if (t >= 37.3) {
       const mx = PEN - (t - 37.3) * SPEED, k = eBack(seg(t, 37.3, 37.7));
       g.strokeStyle = 'rgba(255,255,255,0.5)'; g.setLineDash([6, 8]); g.lineWidth = 2;
-      g.beginPath(); g.moveTo(mx, 450); g.lineTo(mx, 830); g.stroke(); g.setLineDash([]);
+      g.beginPath(); g.moveTo(mx, ECG_Y - 190); g.lineTo(mx, ECG_Y + 190); g.stroke(); g.setLineDash([]);
       shock(mx, ECG_Y, t, 37.3, 10, 260, '255,120,130');
-      g.save(); g.translate(mx, 405); g.scale(k, k);
+      g.save(); g.translate(Math.min(mx, W - 200), ECG_Y - 235); g.scale(k, k);
       const s = 'Lowest  51 bpm  ·  1:47 AM', w = measure(s, 24, 800, BODY) + 40;
       g.fillStyle = '#ff5a64'; g.beginPath(); g.roundRect(-w / 2, -24, w, 48, 24); g.fill();
       text(s, 0, 9, { size: 24, weight: 800, fam: BODY, align: 'center', color: '#fff' });
       g.restore();
     }
-    kicker('YOUR HEART, ALL NIGHT', 160, 180, t, 33.55, { color: '#ff9aa0' });
-    kline('Watch it settle.', 160, 272, t, 33.65, { size: 84 });
+    kicker('YOUR HEART, ALL NIGHT', vh(160, 80), vh(180, 330), t, 33.55, { color: '#ff9aa0' });
+    kline('Watch it settle.', vh(160, 80), vh(272, 420), t, 33.65, { size: 84 });
     const bpm = Math.round(bpmAt(t)), ka = eOut(seg(t, 33.7, 34.3));
-    text(String(bpm), 1760, 300, { size: 180, weight: 900, align: 'right', color: C.heart, a: ka, ls: -4 });
-    text('BPM', 1760, 345, { size: 22, weight: 800, fam: BODY, ls: 8, align: 'right', color: C.ink3, a: ka });
+    text(String(bpm), vh(1760, 1000), vh(300, 740), { size: 180, weight: 900, align: 'right', color: C.heart, a: ka, ls: -4 });
+    text('BPM', vh(1760, 1000), vh(345, 785), { size: 22, weight: 800, fam: BODY, ls: 8, align: 'right', color: C.ink3, a: ka });
     const nightMin = lerp(23 * 60 + 30, 24 * 60 + 107, seg(t, 33.3, 37.3));
-    text(clock(nightMin), PEN, 885, { size: 22, weight: 700, fam: BODY, align: 'center', color: C.ink3, a: ka });
+    text(clock(nightMin), PEN, ECG_Y + 245, { size: 22, weight: 700, fam: BODY, align: 'center', color: C.ink3, a: ka });
     g.restore();
   }
   if (t >= 38.8) {
-    kicker('FOR YOUR AGE', 160, 170, t, 38.85);
-    kline('Measured against people like you.', 160, 262, t, 38.95, { size: 76 });
+    kicker('FOR YOUR AGE', vh(160, 80), vh(170, 300), t, 38.85);
+    if (V) { kline('Measured against', 80, 395, t, 38.95, { size: 80 }); kline('people like you.', 80, 488, t, 39.05, { size: 80 }); }
+    else kline('Measured against people like you.', 160, 262, t, 38.95, { size: 76 });
     AGE_ROWS.forEach((r, i) => {
-      const t0 = 39.6 + i * 0.6, y = 430 + i * 170, x0 = 160, tw = 1000;
+      const t0 = 39.6 + i * 0.6, y = vh(430 + i * 170, 660 + i * 190), x0 = vh(160, 80), tw = vh(1000, 920);
       const k = eOut(seg(t, t0, t0 + 0.5)); if (k <= 0) return;
       const X = v => x0 + tw * clamp((v - r.min) / (r.max - r.min));
       g.save(); g.globalAlpha = k; g.translate(0, (1 - k) * 30);
@@ -664,7 +678,7 @@ function scene4(t) {
     const tags = [['AGE', '34', 42.3], ['SEX', 'Male', 42.7], ['RESTING HR', '55 bpm', 43.1]];
     tags.forEach(([k1, v, t0], i) => {
       const k = eOut5(seg(t, t0, t0 + 0.22)); if (k <= 0) return;
-      const sc = lerp(1.5, 1, k), x = 1470, y = 420 + i * 120;
+      const sc = lerp(1.5, 1, k), x = vh(1470, 80 + i * 40), y = vh(420 + i * 120, 1240 + i * 120);
       g.save(); g.translate(x, y); g.scale(sc, sc); g.globalAlpha = clamp(k * 2); g.rotate(-0.03 + i * 0.03);
       g.fillStyle = 'rgba(255,255,255,0.07)'; g.beginPath(); g.roundRect(-10, -48, 330, 92, 20); g.fill();
       g.strokeStyle = 'rgba(196,184,255,0.45)'; g.lineWidth = 2; g.stroke();
@@ -672,7 +686,7 @@ function scene4(t) {
       text(v, 16, 30, { size: 40, weight: 900 });
       g.restore();
     });
-    kline('It all counts.', 1460, 820, t, 43.55, { size: 60, color: gradText('#ffffff', C.lilac) });
+    kline('It all counts.', vh(1460, 80), vh(820, 1650), t, 43.55, { size: 60, color: gradText('#ffffff', C.lilac) });
   }
   g.restore();
 }
@@ -697,16 +711,16 @@ function scene5(t) {
   const up = eIn(seg(t, 52.95, 53.65));
   g.save(); g.translate(0, -up * 1150);
   const k = seg(t, 44.85, 45.75);
-  phone('coach', lerp(-500, 520, eExpo(k)), 560, 880, { yaw: lerp(1.1, 0.34, spring(k, 2.4, 5)), roll: lerp(-0.1, 0, eOut(k)) });
-  const X = 900;
-  kicker('AI COACH  ·  ON YOUR IPHONE', X, 190, t, 45.05);
-  kline('Ask. Get a straight answer.', X, 282, t, 45.15, { size: 70 });
+  phone('coach', vh(lerp(-500, 520, eExpo(k)), W / 2), vh(560, lerp(2800, 1440, eExpo(k))), vh(880, 1000), { yaw: lerp(1.1, vh(0.34, 0.12), spring(k, 2.4, 5)), roll: lerp(-0.1, 0, eOut(k)) });
+  const X = vh(900, 80), AY = vh(480, 560);
+  kicker('ZOON INTELLIGENCE  ·  AI COACH', X, vh(190, 260), t, 45.05);
+  kline('Ask your sleep anything.', X, vh(282, 350), t, 45.15, { size: vh(70, 64) });
   // my question
   const q = 'Why am I so tired this week?';
   const qk = spring(seg(t, 46.2, 46.75), 2, 6);
   if (qk > 0) {
     const qw = measure(q, 30, 700, BODY) + 60;
-    g.save(); g.translate(1760, 410); g.scale(qk, qk);
+    g.save(); g.translate(vh(1760, 1000), vh(410, 470)); g.scale(qk, qk);
     const gr = g.createLinearGradient(-qw, -40, 0, 40); gr.addColorStop(0, '#8b74ff'); gr.addColorStop(1, '#5a44d8');
     g.fillStyle = gr; g.beginPath(); g.roundRect(-qw, -40, qw, 80, [36, 36, 10, 36]); g.fill();
     text(q, -qw + 30, 11, { size: 30, weight: 700, fam: BODY });
@@ -715,17 +729,17 @@ function scene5(t) {
   // thinking
   if (t > 46.9 && t < 48.2) {
     const a = seg(t, 46.9, 47.1) * (1 - seg(t, 48.05, 48.2));
-    g.save(); g.globalAlpha = a; g.fillStyle = 'rgba(28,30,58,0.95)'; g.beginPath(); g.roundRect(X, 480, 150, 76, [36, 36, 36, 10]); g.fill();
-    for (let i = 0; i < 3; i++) { const b = Math.sin((t - 46.9) * 9 - i * 0.9); g.fillStyle = C.lilac; g.globalAlpha = a * (0.5 + 0.5 * Math.max(0, b)); g.beginPath(); g.arc(X + 45 + i * 30, 518 - Math.max(0, b) * 8, 8, 0, 7); g.fill(); }
+    g.save(); g.globalAlpha = a; g.fillStyle = 'rgba(28,30,58,0.95)'; g.beginPath(); g.roundRect(X, AY, 150, 76, [36, 36, 36, 10]); g.fill();
+    for (let i = 0; i < 3; i++) { const b = Math.sin((t - 46.9) * 9 - i * 0.9); g.fillStyle = C.lilac; g.globalAlpha = a * (0.5 + 0.5 * Math.max(0, b)); g.beginPath(); g.arc(X + 45 + i * 30, AY + 38 - Math.max(0, b) * 8, 8, 0, 7); g.fill(); }
     g.restore();
   }
   // the answer, typed
   if (t >= 48.15) {
-    if (!ANS_LINES.length) ANS_LINES.push(...wrapLines(ANSWER, 32, 600, BODY, 700));
+    if (!ANS_LINES.length) ANS_LINES.push(...wrapLines(ANSWER, 32, 600, BODY, vh(700, 850)));
     const bk = eOut5(seg(t, 48.15, 48.5)), n = Math.floor(ANSWER.length * seg(t, TYPE.t0, TYPE.t1));
     const bh = 56 + ANS_LINES.length * 48;
-    g.save(); g.translate(X, 480); g.scale(lerp(0.85, 1, bk), lerp(0.85, 1, bk)); g.globalAlpha = bk;
-    g.fillStyle = 'rgba(28,30,58,0.95)'; g.beginPath(); g.roundRect(0, 0, 780, bh, [36, 36, 36, 10]); g.fill();
+    g.save(); g.translate(X, AY); g.scale(lerp(0.85, 1, bk), lerp(0.85, 1, bk)); g.globalAlpha = bk;
+    g.fillStyle = 'rgba(28,30,58,0.95)'; g.beginPath(); g.roundRect(0, 0, vh(780, 920), bh, [36, 36, 36, 10]); g.fill();
     g.strokeStyle = 'rgba(255,255,255,0.08)'; g.lineWidth = 1.5; g.stroke();
     let shown = 0;
     ANS_LINES.forEach((ln, i) => {
@@ -742,76 +756,133 @@ function scene5(t) {
     });
     g.restore();
     const ek = eBack(seg(t, 51.2, 51.55));
-    if (ek > 0) pill(X, 480 + bh + 50, '✦  From your last 14 nights', C.lilac, ek, lerp(0.7, 1, ek));
+    if (ek > 0) pill(X, AY + bh + 50, '✦  From your last 14 nights', C.lilac, ek, lerp(0.7, 1, ek));
   }
   g.restore();
 }
 
+// ---- 5b  Zoon Intelligence: the engines behind the answers ----
+const SAI = { a: 53.6, b: 58.5 };
+const ENGINES = [
+  ['AI Coach', '24 tools on your own data', C.lilac],
+  ['Night Detective', 'What was unusual last night', C.sky],
+  ['Change-Point Detector', 'When something shifted', C.amber],
+  ['Experiment Planner', 'What to test next', C.calm],
+  ['Uncertainty Forecast', 'Tomorrow as a range', C.pink],
+  ['Sleep Autopilot', 'Bedtime, 20 minutes at a time', '#9d8cff'],
+  ['Evidence Notebook', 'How much to believe it', C.heart]
+];
+const AIN = { t0: 53.65, node: 54.35, step: 0.3 };
+cue(53.62, 'hit', 1.0); cue(53.66, 'shimmer', 0.7, 0, { dur: 1.6 });
+ENGINES.forEach((_, i) => { const tt = AIN.node + i * AIN.step, pan = Math.cos(-Math.PI / 2 + (i + 0.5) / ENGINES.length * Math.PI * 2) * 0.7;
+  cue(tt, 'pop', 0.6, pan); cue(tt - 0.18, 'data', 0.3, pan, { dur: 0.18 }); });
+cue(56.5, 'click', 0.4); cue(57.75, 'riser', 0.9, 0, { dur: 0.75 });
+function sceneAI(t) {
+  bg(t, 0.7, 'rgba(123,97,255,0.16)');
+  const cx = W / 2, cy = vh(620, 1080), zk = eIn(seg(t, 57.8, 58.5));
+  g.save();
+  if (zk > 0) { g.translate(cx, cy); g.scale(1 + zk * 9, 1 + zk * 9); g.translate(-cx, -cy); }
+  const ha = 1 - seg(t, 57.55, 57.85);
+  g.save(); g.globalAlpha = ha;
+  if (V) {
+    kicker('ZOON INTELLIGENCE', 80, 260, t, 53.75);
+    kline('An AI that reads', 80, 360, t, 53.85, { size: 84 });
+    kline('your nights.', 80, 455, t, 53.97, { size: 84, color: gradText('#ffffff', C.lilac) });
+  } else {
+    kicker('ZOON INTELLIGENCE', W / 2, 150, t, 53.75, { align: 'center' });
+    kline('An AI that reads your nights.', W / 2, 240, t, 53.85, { size: 76, align: 'center', color: gradText('#ffffff', C.lilac) });
+  }
+  g.restore();
+  const n = ENGINES.length, rx = vh(640, 300), ry = vh(290, 520);
+  // On a phone the ring would stack labels on top of each other: two columns instead.
+  const VPOS = [[860, 640], [860, 880], [860, 1300], [540, 1560], [220, 1300], [220, 880], [220, 640]];
+  const pos = ENGINES.map((_, i) => { if (V) return VPOS[i]; const a = -Math.PI / 2 + (i + 0.5) / n * Math.PI * 2 + Math.sin(t * 0.4) * 0.02; return [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]; });
+  // links, with data travelling to the core
+  ENGINES.forEach((e, i) => {
+    const tn = AIN.node + i * AIN.step, lk = eOut(seg(t, tn - 0.2, tn + 0.1)); if (lk <= 0) return;
+    const [x, y] = pos[i];
+    g.save(); g.globalAlpha = 0.45 * ha; g.strokeStyle = e[2]; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(cx, cy); g.lineTo(lerp(cx, x, lk), lerp(cy, y, lk)); g.stroke(); g.restore();
+    if (lk >= 1) for (let k = 0; k < 2; k++) {
+      const p = ((t - tn) * 0.9 + k * 0.5) % 1;
+      g.save(); g.globalAlpha = ha * Math.sin(p * Math.PI); dot(lerp(x, cx, p), lerp(y, cy, p), 3.5, '#fff', e[2] + '88'); g.restore();
+    }
+  });
+  // the core
+  const ck = eBack(seg(t, 53.65, 54.1));
+  if (ck > 0) {
+    const r = 74 * ck * (1 + 0.04 * Math.sin(t * 6));
+    glowAt(cx, cy, r * 4, 'rgba(160,140,255,0.45)', ha);
+    const gr = g.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.45, '#c4b8ff'); gr.addColorStop(1, '#5a44d8');
+    g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+    g.save(); g.strokeStyle = 'rgba(230,224,255,0.75)'; g.lineWidth = 3; g.lineCap = 'round';
+    for (let k = 0; k < 3; k++) { const rr = r * (1.35 + k * 0.28), a0 = t * (1.2 - k * 0.5) + k * 2;
+      g.globalAlpha = ha * (0.7 - k * 0.18); g.beginPath(); g.arc(cx, cy, rr, a0, a0 + Math.PI * (0.9 - k * 0.2)); g.stroke(); }
+    g.restore();
+    g.save(); g.globalAlpha = ha * seg(t, 54.0, 54.4); g.fillStyle = 'rgba(8,9,24,0.85)';
+    g.beginPath(); g.roundRect(cx - 120, cy + r + 38, 240, 62, 14); g.fill(); g.restore();
+    text('APPLE INTELLIGENCE', cx, cy + r + 62, { size: 17, weight: 800, fam: BODY, ls: 5, align: 'center', color: C.lilac, a: ha * seg(t, 54.0, 54.4) });
+    text('on your iPhone', cx, cy + r + 90, { size: 19, weight: 600, fam: BODY, align: 'center', color: C.ink3, a: ha * seg(t, 54.1, 54.5) });
+  }
+  // the engines
+  ENGINES.forEach((e, i) => {
+    const tn = AIN.node + i * AIN.step, k = eBack(seg(t, tn, tn + 0.35)); if (k <= 0) return;
+    let [x, y] = pos[i];
+    const fT = vh(28, 30), fS = vh(18, 19), tw = measure(e[0], fT, 800, HEAD), sw = measure(e[1], fS, 600, BODY), w = Math.max(tw, sw) + 64, h = fT + fS + 44;
+    x = clamp(x, w / 2 + 24, W - w / 2 - 24);
+    g.save(); g.translate(x, y); g.scale(k, k); g.globalAlpha = ha * clamp(k * 2);
+    g.fillStyle = 'rgba(16,18,40,0.92)'; g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, 22); g.fill();
+    g.strokeStyle = e[2]; g.globalAlpha *= 0.55; g.lineWidth = 1.5; g.stroke(); g.globalAlpha /= 0.55;
+    g.fillStyle = e[2]; g.beginPath(); g.arc(-w / 2 + 24, -fT * 0.35, 6, 0, 7); g.fill();
+    text(e[0], -w / 2 + 40, 1, { size: fT, weight: 800 });
+    text(e[1], -w / 2 + 40, fS + 10, { size: fS, weight: 600, fam: BODY, color: C.ink3 });
+    g.restore();
+  });
+  g.save(); g.globalAlpha = ha;
+  rise('Runs on your iPhone. Nothing leaves it.', W / 2, vh(1005, 1760), t, 56.45, { align: 'center', size: vh(28, 30), color: C.ink2 });
+  rise('The AI Coach uses Apple Intelligence on supported iPhones.', W / 2, vh(1042, 1800), t, 56.6, { align: 'center', size: vh(19, 20), color: C.ink3 });
+  g.restore();
+  g.restore();
+}
+
 // ---- 6  Feature blitz: a wall of screens, then twelve cuts on the beat ----
-const S6 = { a: 53.45, b: 64.75 };
+const S6 = { a: 58.5, b: 64.75 };
 const BLITZ = [
   ['bodyClock', 'Body clock', 'When focus peaks, when to wind down', C.amber],
   ['breathing', 'Wind down', 'Guided 4-7-8 breathing', C.lilac],
   ['snoreCheck', 'Snore check', 'Apple’s sound classifier, on device', C.sky],
   ['soundscapes', 'Sleep sounds', 'Generated, so they never loop', C.calm],
-  ['nap', 'Smart naps', 'Timed to protect tonight', C.sky],
   ['journal', 'Journal', 'Caffeine, training, late meals', C.amber],
   ['patterns', 'Patterns', 'What your good nights share', C.violet],
   ['tomorrow', 'Tomorrow', 'Planned around your first event', C.lilac],
-  ['evidence', 'Evidence', 'Measured or estimated, always labelled', C.calm],
-  ['nightHistory', 'Past nights', 'Every night, side by side', C.sky],
   ['sleepDetail-heart', 'Heart at night', 'Your overnight low, and when', C.heart],
   ['today-morning', 'Morning brief', 'Wake up to answers', C.amber]
 ];
-const BL = { t0: 56.7, step: 0.6 };
-cue(53.4, 'whooshL', 0.9, 0.6); cue(54.1, 'hit', 0.8); cue(55.95, 'riser', 0.9, 0, { dur: 0.75 });
+const BL = { t0: 58.5, step: 0.6 };
 BLITZ.forEach((_, i) => { const tt = BL.t0 + i * BL.step; cue(tt, i === 0 ? 'hit' : 'cut', i === 0 ? 1 : 0.85, i % 2 ? 0.5 : -0.5); });
-cue(BL.t0 + 12 * BL.step - 0.05, 'rev', 0.6, 0, { dur: 0.5 }); cue(64.35, 'pop', 0.6);
-const WALL = ['today', 'coach', 'trends', 'sleepDetail', 'patterns', 'bodyClock', 'tomorrow', 'journal', 'nap', 'soundscapes', 'evidence', 'nightHistory', 'trends-forYourAge', 'breathing', 'snoreCheck', 'today-night', 'sleepDetail-heart', 'today-morning'];
+cue(BL.t0 + BLITZ.length * BL.step - 0.05, 'rev', 0.6, 0, { dur: 0.5 }); cue(64.35, 'pop', 0.6);
 function scene6(t) {
   bg(t, 0.5);
-  if (t < BL.t0) {
-    const z = lerp(1.55, 0.95, eOut(seg(t, 53.45, 55.9))) * (1 + eIn(seg(t, 55.95, 56.7)) * 3.2);
-    g.save(); g.translate(W / 2, H / 2); g.rotate(-0.2); g.scale(z, z);
-    for (let row = -1; row <= 1; row++) {
-      const dir = row % 2 === 0 ? 1 : -1, enter = (1 - eExpo(seg(t, 53.45 + (row + 1) * 0.1, 54.4 + (row + 1) * 0.1))) * 2400 * dir;
-      const off = (t - 53.45) * 140 * dir + enter;
-      for (let c = -6; c <= 6; c++) {
-        const idx = ((c + 6) * 3 + row + 1 + 99) % WALL.length;
-        const x = c * 300 + off + (row * 150), y = row * 590;
-        if (Math.abs(x) > 2600) continue;
-        g.drawImage(PH[WALL[idx]], x - 125, y - 264, 250, 528);
-      }
-    }
-    g.restore();
-    const ta = seg(t, 54.0, 54.3) * (1 - seg(t, 55.8, 56.1));
-    if (ta > 0) {
-      g.save(); g.globalAlpha = ta; const gr = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 900);
-      gr.addColorStop(0, 'rgba(4,5,12,0.92)'); gr.addColorStop(1, 'rgba(4,5,12,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.restore();
-    }
-    kline('And a dozen more things,', W / 2, 520, t, 54.1, { size: 104, align: 'center', out: 55.75 });
-    kline('done properly.', W / 2, 640, t, 54.35, { size: 104, align: 'center', out: 55.8, color: gradText(C.lilac, '#ffffff') });
-    return;
-  }
-  const i = Math.min(11, Math.floor((t - BL.t0) / BL.step)), u = t - BL.t0 - i * BL.step;
+  const i = Math.min(BLITZ.length - 1, Math.floor((t - BL.t0) / BL.step)), u = t - BL.t0 - i * BL.step;
   const [name, label, sub, col] = BLITZ[i];
   glowAt(W / 2, H / 2, 1100, col.startsWith('#') ? col + '30' : col, 1);
   const side = i % 2 ? 1 : -1;
   // giant outline word drifting behind
   g.save(); setFont(360, 900, HEAD, -8); g.strokeStyle = 'rgba(255,255,255,0.09)'; g.lineWidth = 2;
   g.textAlign = 'left'; const ww = g.measureText(label.toUpperCase()).width;
-  g.strokeText(label.toUpperCase(), W - (u * 900) - 200 * side - ww * 0.3, 700); g.restore();
+  g.strokeText(label.toUpperCase(), W - (u * 900) - 200 * side - ww * 0.3, vh(700, 1760)); g.restore();
   const k = eExpo(clamp(u / 0.32));
-  const last = i === 11 ? eIn(seg(t, 63.9, 64.55)) : 0;
-  const px = lerp(side < 0 ? 1320 : 600, W / 2, last) + (1 - k) * 700 * -side;
-  const ph = lerp(900, 10, last);
-  phone(name, px, 560 + (1 - k) * 40, ph, { yaw: side * lerp(0.9, 0.22, k) * (1 - last), glowCol: col.startsWith('#') ? col + '44' : col, a: 1 - seg(t, 64.4, 64.6) });
-  if (last > 0.9) dot(W / 2, 560, 6);
-  const lx = side < 0 ? 160 : 1760, al = side < 0 ? 'left' : 'right';
+  const last = i === BLITZ.length - 1 ? eIn(seg(t, 63.9, 64.55)) : 0;
+  const px = lerp(vh(side < 0 ? 1320 : 600, W / 2), W / 2, last) + (1 - k) * 700 * -side;
+  const ph = lerp(vh(900, 1080), 10, last);
+  phone(name, px, vh(560, 1200) + (1 - k) * 40, ph, { yaw: side * lerp(0.9, 0.22, k) * (1 - last), glowCol: col.startsWith('#') ? col + '44' : col, a: 1 - seg(t, 64.4, 64.6) });
+  if (last > 0.9) dot(W / 2, vh(560, 1200), 6);
+  const lx = vh(side < 0 ? 160 : 1760, W / 2), al = vh(side < 0 ? 'left' : 'right', 'center');
   g.save(); g.globalAlpha = 1 - last;
-  text(String(i + 1).padStart(2, '0') + ' / 12', lx, 430, { size: 22, weight: 800, fam: BODY, ls: 6, align: al, color: col, a: eOut(clamp(u / 0.2)) });
-  kline(label, lx, 560, t, BL.t0 + i * BL.step, { size: 120, align: al, stagger: 0.012, dur: 0.4, ls: -3 });
-  rise(sub, lx, 625, t, BL.t0 + i * BL.step + 0.06, { align: al, size: 30 });
+  text(String(i + 1).padStart(2, '0') + ' / ' + String(BLITZ.length).padStart(2, '0'), lx, vh(430, 300), { size: 22, weight: 800, fam: BODY, ls: 6, align: al, color: col, a: eOut(clamp(u / 0.2)) });
+  kline(label, lx, vh(560, 440), t, BL.t0 + i * BL.step, { size: vh(120, 112), align: al, stagger: 0.012, dur: 0.4, ls: -3 });
+  rise(sub, lx, vh(625, 505), t, BL.t0 + i * BL.step + 0.06, { align: al, size: 30 });
   g.restore();
 }
 
@@ -820,7 +891,7 @@ const S7 = { a: 64.35, b: 73.75 };
 const MONTH = [0.93, 1.02, 1.05, 0.88, 1.0, 1.08, 1.01, 0.79, 1.03, 1.04, 1.0, 1.06, 1.02, 1.01, 1.05, 1.03, 1.0, 0.86, 0.91, 1.04, 1.02,
   0.95, 1.07, 1.0, 1.03, 0.84, 1.01, 1.06, 1.02, 0.9];
 const GOALS = MONTH.filter(v => v >= 1).length;
-const MG = { x0: 950, y0: 360, dx: 106, dy: 106, r: 36, offset: 1 };
+const MG = V ? { x0: W / 2 - 3 * 124, y0: 1030, dx: 124, dy: 124, r: 44, offset: 1 } : { x0: 950, y0: 360, dx: 106, dy: 106, r: 36, offset: 1 };
 const cellXY = d => { const c = d + MG.offset; return [MG.x0 + (c % 7) * MG.dx, MG.y0 + Math.floor(c / 7) * MG.dy]; };
 MONTH.forEach((v, d) => { const [cx, cy] = cellXY(d); cue(65.75 + (d % 7) * 0.09 + Math.floor((d + MG.offset) / 7) * 0.13, v >= 1 ? 'chime' : 'blip', v >= 1 ? 0.28 : 0.2, lerp(-0.4, 0.8, (cx - 950) / 640), { lane: 1 }); });
 cue(64.9, 'whoosh', 0.6, 0.5); for (let d = 8; d <= 16; d++) cue(69.3 + (d - 8) * 0.1, 'tick', 0.45, 0.4);
@@ -833,17 +904,17 @@ function scene7(t) {
   if (z > 0) { g.translate(zx, zy); g.scale(1 + z * 30, 1 + z * 30); g.translate(-zx, -zy); }
   const fadeL = 1 - seg(t, 72.3, 72.6);
   g.save(); g.globalAlpha = fadeL;
-  kicker('YOUR MONTH', 160, 300, t, 64.85);
-  kline('Thirty nights,', 160, 400, t, 64.95, { size: 96 });
-  kline('in moons.', 160, 500, t, 65.1, { size: 96, color: gradText('#ffffff', C.lilac) });
+  kicker('YOUR MONTH', vh(160, 80), vh(300, 270), t, 64.85);
+  kline('Thirty nights,', vh(160, 80), vh(400, 370), t, 64.95, { size: 96 });
+  kline('in moons.', vh(160, 80), vh(500, 468), t, 65.1, { size: 96, color: gradText('#ffffff', C.lilac) });
   const st = [[`${GOALS} of 30`, 'nights at goal', C.calm, 68.8], ['9 nights', 'longest run at goal', C.lilac, 69.2], ['11:04 PM', 'usual bedtime', C.amber, 69.6]];
   st.forEach(([v, l, col, t0], i) => {
     const k = eOut(seg(t, t0, t0 + 0.5)); if (k <= 0) return;
-    const y = 640 + i * 78, w = text(v, 160 + (1 - k) * -30, y, { size: 50, weight: 900, color: col, a: k });
-    text(l, 160 + w + 18, y, { size: 28, weight: 600, fam: BODY, color: C.ink2, a: k });
+    const y = vh(640 + i * 78, 590 + i * 70), w = text(v, vh(160, 80) + (1 - k) * -30, y, { size: 50, weight: 900, color: col, a: k });
+    text(l, vh(160, 80) + w + 18, y, { size: 28, weight: 600, fam: BODY, color: C.ink2, a: k });
   });
-  text('SEPTEMBER', MG.x0 + 3 * MG.dx, 200, { size: 26, weight: 800, fam: BODY, ls: 10, align: 'center', color: C.ink2, a: eOut(seg(t, 64.8, 65.3)) });
-  'MTWTFSS'.split('').forEach((d, i) => text(d, MG.x0 + i * MG.dx, 272, { size: 20, weight: 800, fam: BODY, align: 'center', color: C.ink3, a: eOut(seg(t, 64.9 + i * 0.03, 65.4 + i * 0.03)) }));
+  text('SEPTEMBER', MG.x0 + 3 * MG.dx, vh(200, 870), { size: 26, weight: 800, fam: BODY, ls: 10, align: 'center', color: C.ink2, a: eOut(seg(t, 64.8, 65.3)) });
+  'MTWTFSS'.split('').forEach((d, i) => text(d, MG.x0 + i * MG.dx, vh(272, 945), { size: 20, weight: 800, fam: BODY, align: 'center', color: C.ink3, a: eOut(seg(t, 64.9 + i * 0.03, 65.4 + i * 0.03)) }));
   g.restore();
   MONTH.forEach((v, d) => {
     const [cx, cy] = cellXY(d), row = Math.floor((d + MG.offset) / 7), col = (d + MG.offset) % 7;
@@ -938,14 +1009,14 @@ function scene8(t) {
   bg(t, 0.8, 'rgba(63,214,160,0.07)');
   const out = eIn(seg(t, 81.4, 82.3));
   const wk = spring(seg(t, 73.5, 74.4), 2.2, 5.5);
-  watch(W / 2, 610 - out * 60, lerp(0.55, 1, wk) * (1 - out * 0.9), t);
-  kicker('APPLE WATCH  ·  WIDGETS', W / 2, 150, t, 73.8, { align: 'center', color: C.calm, out: 81.2 });
-  kline('Where you actually look.', W / 2, 238, t, 73.9, { size: 76, align: 'center', out: 81.25 });
+  watch(W / 2, vh(610, 930) - out * 60, lerp(0.55, 1, wk) * (1 - out * 0.9) * vh(1, 1.35), t);
+  kicker('APPLE WATCH  ·  WIDGETS', W / 2, vh(150, 300), t, 73.8, { align: 'center', color: C.calm, out: 81.2 });
+  kline('Where you actually look.', W / 2, vh(238, 390), t, 73.9, { size: vh(76, 70), align: 'center', out: 81.25 });
   const fl = (i) => Math.sin(t * 1.3 + i * 2) * 10;
   const pk = t0 => spring(seg(t, t0, t0 + 0.7), 2.2, 5.5);
-  widgetAge(lerp(430, -400, out), 640 + fl(0), pk(75.0), clamp(pk(75.0) * 2));
-  widgetTonight(lerp(1500, 2400, out), 480 + fl(1), pk(75.6), clamp(pk(75.6) * 2));
-  widgetHeart(lerp(1510, 2400, out), 790 + fl(2), pk(76.2), clamp(pk(76.2) * 2));
+  widgetAge(lerp(vh(430, 290), -400, out), vh(640, 1500) + fl(0), pk(75.0) * vh(1, 0.9), clamp(pk(75.0) * 2));
+  widgetTonight(lerp(vh(1500, 780), vh(2400, 1600), out), vh(480, 1390) + fl(1), pk(75.6) * vh(1, 0.8), clamp(pk(75.6) * 2));
+  widgetHeart(lerp(vh(1510, 780), vh(2400, 1600), out), vh(790, 1620) + fl(2), pk(76.2) * vh(1, 0.8), clamp(pk(76.2) * 2));
 }
 
 // ---- 9  Privacy ----
@@ -957,17 +1028,17 @@ function scene9(t) {
   bg(t, 0.6);
   const fade = 1 - seg(t, 89.1, 89.6);
   g.save(); g.globalAlpha = fade;
-  [['No account.', 82.4, 390], ['No server.', 82.95, 545], ['No uploads.', 83.5, 700]].forEach(([s, t0, y]) => {
+  [['No account.', 82.4, vh(390, 420)], ['No server.', 82.95, vh(545, 570)], ['No uploads.', 83.5, vh(700, 720)]].forEach(([s, t0, y]) => {
     const k = eOut5(seg(t, t0, t0 + 0.22)); if (k <= 0) return;
-    g.save(); g.translate(160, y); g.scale(lerp(1.35, 1, k), lerp(1.35, 1, k));
-    text(s, 0, 0, { size: 150, weight: 900, ls: -4, a: clamp(k * 2) }); g.restore();
+    g.save(); g.translate(vh(160, 80), y); g.scale(lerp(1.35, 1, k), lerp(1.35, 1, k));
+    text(s, 0, 0, { size: vh(150, 140), weight: 900, ls: -4, a: clamp(k * 2) }); g.restore();
   });
-  rise('Your nights stay on your iPhone and Apple Watch.', 160, 800, t, 86.1, { size: 32, color: C.ink2 });
-  rise('There is no networking code in the app at all.', 160, 848, t, 86.3, { size: 26, color: C.ink3 });
+  rise('Your nights stay on your iPhone and Apple Watch.', vh(160, 80), vh(800, 830), t, 86.1, { size: 32, color: C.ink2 });
+  rise('There is no networking code in the app at all.', vh(160, 80), vh(848, 878), t, 86.3, { size: 26, color: C.ink3 });
   // the lock
-  const lx = 1440, ly = 600, snapT = 84.65, closeT = 85.55;
+  const lx = vh(1440, W / 2 - 40), ly = vh(600, 1400), snapT = 84.65, closeT = 85.55;
   const cloudA = 1 - seg(t, 84.7, 85.3);
-  const cx2 = 1740, cy2 = 230 + eIn(seg(t, 84.7, 85.3)) * 60;
+  const cx2 = vh(1740, 880), cy2 = vh(230, 1020) + eIn(seg(t, 84.7, 85.3)) * 60;
   // link to the cloud, then cut
   g.save(); g.setLineDash([10, 12]); g.lineDashOffset = -t * 60; g.lineWidth = 3;
   const brk = seg(t, snapT, snapT + 0.4);
@@ -1019,21 +1090,46 @@ function scene9(t) {
 
 // ---- 10  Recap montage, then the lockup ----
 const S10 = { a: 89.6, b: 100 };
-const SNAP = [23.6, 29.95, 37.7, 41.9, 50.4, 57.35, 58.55, 60.95, 70.1, 77.2];
-const MON = { t0: 89.6, step: 0.34 };
-SNAP.forEach((_, i) => cue(MON.t0 + i * MON.step, 'cut', 0.75, i % 2 ? 0.4 : -0.4));
+cue(89.62, 'hit', 1.0); cue(90.15, 'boom', 1.0); cue(90.15, 'shimmer', 0.8, 0, { dur: 2.2 });
+cue(91.0, 'pop', 0.7, -0.4); cue(91.3, 'pop', 0.7, 0); cue(91.6, 'pop', 0.7, 0.4); cue(92.5, 'whoosh', 0.8, 0);
+const NOT = ['No subscription', 'No in-app purchases', 'No ads'];
+// Zoon has no paid tier at all: every feature ships in the free app.
+function freeBeat(t) {
+  g.fillStyle = '#0b0a24'; g.fillRect(0, 0, W, H);
+  glowAt(W / 2, H / 2, vh(950, 1100), 'rgba(123,97,255,0.38)');
+  stars(t, 0.6);
+  const out = eIn(seg(t, 92.5, 93.0));
+  g.save(); g.globalAlpha = 1 - out; g.translate(W / 2, H / 2); g.scale(1 - out * 0.12, 1 - out * 0.12); g.translate(-W / 2, -H / 2);
+  kline('ALL THE PREMIUM FEATURES', W / 2, vh(330, 700), t, 89.7, { size: 30, weight: 800, fam: BODY, ls: 10, align: 'center', color: C.lilac, stagger: 0.012 });
+  const k = eOut5(seg(t, 90.15, 90.4));
+  if (k > 0) {
+    g.save(); g.translate(W / 2, vh(620, 1000)); g.scale(lerp(1.8, 1, k), lerp(1.8, 1, k));
+    const gr = g.createLinearGradient(0, -240, 0, 0); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#c4b8ff');
+    text('Free.', 0, 0, { size: vh(300, 280), weight: 900, align: 'center', color: gr, a: clamp(k * 2), ls: -8 });
+    g.restore();
+  }
+  const ws = NOT.map(s => measure(s, 28, 700, BODY) + 96), gap = 26, tot = ws.reduce((a, b) => a + b, 0) + gap * 2;
+  let x = W / 2 - tot / 2;
+  NOT.forEach((s, i) => {
+    const pk = eBack(seg(t, 91.0 + i * 0.3, 91.35 + i * 0.3)), w = ws[i];
+    const px = V ? W / 2 : x + w / 2, py = V ? 1180 + i * 100 : 790;
+    x += w + gap;
+    if (pk <= 0) return;
+    g.save(); g.translate(px, py); g.scale(pk, pk); g.globalAlpha = clamp(pk * 2);
+    g.fillStyle = 'rgba(63,214,160,0.12)'; g.beginPath(); g.roundRect(-w / 2, -32, w, 64, 32); g.fill();
+    g.strokeStyle = 'rgba(63,214,160,0.6)'; g.lineWidth = 1.5; g.stroke();
+    g.strokeStyle = C.calm; g.lineWidth = 4; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(-w / 2 + 28, 0); g.lineTo(-w / 2 + 38, 10); g.lineTo(-w / 2 + 56, -10); g.stroke();
+    text(s, -w / 2 + 72, 10, { size: 28, weight: 700, fam: BODY });
+    g.restore();
+  });
+  g.restore();
+}
 cue(92.95, 'riser', 1.1, 0, { dur: 1.6 }); cue(93.1, 'draw', 0.7, 0, { dur: 0.6 }); cue(94.05, 'pop', 0.8);
 cue(94.55, 'boom', 1.3); cue(94.55, 'shimmer', 0.8, 0, { dur: 2.5 }); cue(95.35, 'click', 0.4); cue(96.3, 'click', 0.35);
 cue(99.0, 'tail', 0.8, 0, { dur: 1.0 });
 function scene10(t) {
-  if (t < 93.0) {
-    const i = Math.min(SNAP.length - 1, Math.floor((t - MON.t0) / MON.step)), u = t - MON.t0 - i * MON.step;
-    const st = SNAP[i] + u * 0.5;
-    g.save(); const z = lerp(1.12, 1, eOut(clamp(u / MON.step)));
-    g.translate(W / 2, H / 2); g.scale(z, z); g.translate(-W / 2, -H / 2);
-    story(st, true); g.restore();
-    return;
-  }
+  if (t < 93.0) { freeBeat(t); return; }
   g.fillStyle = '#030409'; g.fillRect(0, 0, W, H);
   const cx = W / 2 - 20, cy = H / 2 - 40;
   const push = 1 + 0.035 * seg(t, 94.55, 100);
@@ -1041,19 +1137,26 @@ function scene10(t) {
   stars(t, seg(t, 94.3, 95.2) * 0.9);
   if (t < 94.1) {
     const k = eInOut(seg(t, 93.1, 93.6)), sh = eInOut(seg(t, 93.65, 94.05));
-    const half = lerp(0, 820, k) * (1 - sh);
+    const half = lerp(0, vh(820, 460), k) * (1 - sh);
     g.strokeStyle = '#f4f5fb'; g.lineWidth = 3; g.shadowColor = C.lilac; g.shadowBlur = 16;
     g.beginPath(); g.moveTo(W / 2 - half, H / 2); g.lineTo(W / 2 + half, H / 2); g.stroke(); g.shadowBlur = 0;
     dot(W / 2, H / 2, 4 + 3 * sh);
   } else {
     const settle = eInOut(seg(t, 94.55, 95.2));
     const r = lerp(lerp(7, 240, eExpo(seg(t, 94.05, 94.6))), 170, settle);
-    const mx = lerp(W / 2, cx - 300, settle), my = lerp(H / 2, cy, settle);
+    const mx = lerp(W / 2, vh(cx - 300, W / 2), settle), my = lerp(H / 2, vh(cy, cy - 170), settle);
     crescent(mx, my, r, eInOut(seg(t, 94.2, 94.55)), 1, 1 + 1.6 * Math.exp(-Math.max(0, t - 94.55) * 3.5) * (t > 94.55));
     shock(W / 2, H / 2, t, 94.55, 240, 1700); burst(W / 2, H / 2, t, 94.55, 140, 1300, '#e6e0ff', 17);
-    kline('Zoon', cx - 100, cy + 78, t, 94.65, { size: 240, weight: 900, ls: -3, stagger: 0.06, dur: 0.9 });
-    kline('SLEEP, UNDERSTOOD.', W / 2, cy + 250, t, 95.35, { size: 34, weight: 800, fam: BODY, ls: 16, align: 'center', color: C.ink2, stagger: 0.015 });
-    kline('COMING SOON ON THE APP STORE', W / 2, cy + 318, t, 96.3, { size: 20, weight: 800, fam: BODY, ls: 10, align: 'center', color: C.lilac, stagger: 0.01 });
+    kline('Zoon', vh(cx - 100, W / 2), vh(cy + 78, cy + 185), t, 94.65, { align: vh('left', 'center'), size: vh(240, 210), weight: 900, ls: -3, stagger: 0.06, dur: 0.9 });
+    kline('SLEEP, UNDERSTOOD.', W / 2, vh(cy + 250, cy + 300), t, 95.35, { size: 34, weight: 800, fam: BODY, ls: 16, align: 'center', color: C.ink2, stagger: 0.015 });
+    const fy = vh(cy + 330, cy + 380), fs = 'FREE ON THE APP STORE  ·  COMING SOON';
+    const pa = eOut(seg(t, 96.5, 97.1));
+    if (pa > 0) {
+      const pw = (measure(fs, 22, 800, BODY, 8) + 64) * lerp(0.9, 1, pa);
+      g.save(); g.globalAlpha = pa; g.fillStyle = 'rgba(123,97,255,0.22)'; g.strokeStyle = 'rgba(196,184,255,0.7)'; g.lineWidth = 1.5;
+      g.beginPath(); g.roundRect(W / 2 - pw / 2, fy - 38, pw, 58, 29); g.fill(); g.stroke(); g.restore();
+    }
+    kline(fs, W / 2, fy, t, 96.3, { size: 22, weight: 800, fam: BODY, ls: 8, align: 'center', color: '#ffffff', stagger: 0.01 });
   }
   g.restore();
   const end = seg(t, 98.9, 99.9);
@@ -1061,7 +1164,7 @@ function scene10(t) {
 }
 
 // =====================================================================
-const SCENES = [[S0, scene0], [S1, scene1], [S2, scene2], [S3, scene3], [S4, scene4], [S5, scene5], [S6, scene6], [S7, scene7], [S8, scene8], [S9, scene9], [S10, scene10]];
+const SCENES = [[S0, scene0], [S1, scene1], [S2, scene2], [S3, scene3], [S4, scene4], [S5, scene5], [SAI, sceneAI], [S6, scene6], [S7, scene7], [S8, scene8], [S9, scene9], [S10, scene10]];
 function story(t, nested = false) {
   for (const [s, fn] of SCENES) if (t >= s.a && t < s.b) { if (nested && fn === scene10) continue; fn(t); return; }
   g.fillStyle = '#030409'; g.fillRect(0, 0, W, H);
@@ -1091,6 +1194,7 @@ function post(t) {
   if (fl > 0.01) { g.fillStyle = `rgba(236,232,255,${fl})`; g.fillRect(0, 0, W, H); }
   const vg = g.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 1.05);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  if (CLEAN) return;
   g.save(); g.globalCompositeOperation = 'overlay'; g.globalAlpha = 0.07;
   const fr = Math.floor(t * 30); const pat = g.createPattern(GRAIN[fr % 3], 'repeat');
   g.translate((fr * 37) % 256, (fr * 91) % 256); g.fillStyle = pat; g.fillRect(-256, -256, W + 512, H + 512); g.restore();
