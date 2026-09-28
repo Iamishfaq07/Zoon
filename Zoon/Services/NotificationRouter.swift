@@ -26,7 +26,7 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate, Send
 
     static let shared = NotificationRouter()
 
-    static let deepLinkPosted = Notification.Name("zoon.notificationRouter.deepLinkPosted")
+    static let deepLinkPosted = DeepLink.postedNotification
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
