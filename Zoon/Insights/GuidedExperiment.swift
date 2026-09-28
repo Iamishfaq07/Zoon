@@ -264,10 +264,20 @@ enum GuidedExperiment {
             observations.map { (calendar.startOfDay(for: $0.date), $0) },
             uniquingKeysWith: { first, _ in first }
         )
+        // An assignment is for an evening ("Tonight: without"); what it is
+        // scored against is the night that evening leads into, which the
+        // journal files under the next day (see `BehaviorNight`). Joined on
+        // the assignment's own day, every block was read one night early: a
+        // perfectly followed trial lost a night at each arm change, no block
+        // reached its seven adherent nights, and ending it saved nothing.
+        func night(after evening: Date) -> Date {
+            let day = calendar.startOfDay(for: evening)
+            return calendar.date(byAdding: .day, value: 1, to: day) ?? day
+        }
         let analysed = ExperimentDesign.analyse(
             schedule: schedule,
-            value: { byDay[calendar.startOfDay(for: $0)].flatMap(primaryMetric.value(from:)) },
-            exposure: { byDay[calendar.startOfDay(for: $0)]?.exposureState(for: tag) ?? .unknown },
+            value: { byDay[night(after: $0)].flatMap(primaryMetric.value(from:)) },
+            exposure: { byDay[night(after: $0)]?.exposureState(for: tag) ?? .unknown },
             calendar: calendar
         )
         guard case .analysed(let analysis) = analysed else { return nil }
@@ -288,7 +298,7 @@ enum GuidedExperiment {
         var trialDates: [Date] = []
         var baselineDates: [Date] = []
         for assignment in schedule {
-            let day = calendar.startOfDay(for: assignment.date)
+            let day = night(after: assignment.date)
             guard let observation = byDay[day],
                   let value = primaryMetric.value(from: observation) else { continue }
             let followed = switch (observation.exposureState(for: tag), assignment.arm) {

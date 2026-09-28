@@ -291,9 +291,11 @@ final class GuidedExperimentTests: XCTestCase {
         let schedule = ExperimentDesign.abba.schedule(
             startingOn: startDate, blockNights: 7, seed: 1, calendar: calendar
         )
+        // As the journal files them: the evening of an assignment on the
+        // night after it.
         let observations = schedule.map { assignment in
             observation(
-                date: assignment.date,
+                date: dateOffset(1, from: assignment.date),
                 tags: assignment.arm == .with ? [.alcohol] : [],
                 sleepPerformance: assignment.arm == .with ? 80 : 88
             )
@@ -316,7 +318,7 @@ final class GuidedExperimentTests: XCTestCase {
         XCTAssertEqual(outcome.trialNightDates?.count, outcome.trialUsableCount)
         XCTAssertEqual(
             Set(outcome.baselineNightDates ?? []),
-            Set(schedule.filter { $0.arm == .with }.map { calendar.startOfDay(for: $0.date) })
+            Set(schedule.filter { $0.arm == .with }.map { calendar.startOfDay(for: dateOffset(1, from: $0.date)) })
         )
         XCTAssertEqual(outcome.startDate, schedule.first?.date)
         XCTAssertEqual(outcome.direction, .avoid)
@@ -330,7 +332,7 @@ final class GuidedExperimentTests: XCTestCase {
         )
         // Every night alcohol-free: the "with" stretch has no adherent nights.
         let observations = schedule.map { assignment in
-            observation(date: assignment.date, tags: [], sleepPerformance: 85)
+            observation(date: dateOffset(1, from: assignment.date), tags: [], sleepPerformance: 85)
         }
 
         XCTAssertNil(GuidedExperiment.summarizeCrossover(
