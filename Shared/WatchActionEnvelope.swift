@@ -44,13 +44,11 @@ struct WatchActionEnvelope: Codable, Sendable {
     /// wake can pass a better one.
     var behaviorNightDate: Date { behaviorNightDate(morningBoundaryMinute: Self.defaultMorningBoundaryMinute) }
 
-    static let defaultMorningBoundaryMinute = 4 * 60
+    static let defaultMorningBoundaryMinute = BehaviorNight.defaultMorningBoundaryMinute
 
+    /// Shares its rule with every phone surface through `BehaviorNight`.
     func behaviorNightDate(morningBoundaryMinute: Int) -> Date {
-        let components = calendar.dateComponents([.hour, .minute], from: targetDate)
-        let minute = (components.hour ?? 12) * 60 + (components.minute ?? 0)
-        if minute < morningBoundaryMinute { return targetDate }
-        return calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
+        BehaviorNight.nightDate(forLogAt: targetDate, calendar: calendar, morningBoundaryMinute: morningBoundaryMinute)
     }
 }
 

@@ -57,7 +57,23 @@ enum SnapshotFreshness {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> State {
-        let nightDay = calendar.startOfDay(for: snapshot.date)
+        state(nightDate: snapshot.date, now: now, calendar: calendar)
+    }
+
+    /// The same rule for any night identified by the day it was woken on
+    /// (`SleepNightFeatures.date`, `SleepSnapshot.date`).
+    ///
+    /// This is the one definition of "last night" in Zoon. Today, the Sleep
+    /// tab, widgets, complications, Siri and the Coach all ask it before
+    /// calling the newest stored night "last night", so a phone that has not
+    /// synced cannot show a days-old night as if it were current on one
+    /// surface while another says it is old.
+    static func state(
+        nightDate: Date,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> State {
+        let nightDay = calendar.startOfDay(for: nightDate)
         let today = calendar.startOfDay(for: now)
         let days = calendar.dateComponents([.day], from: nightDay, to: today).day ?? 0
 
