@@ -15,7 +15,7 @@ struct SleepScoreWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .lastNight)) { entry in
             SleepScoreWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("Last Night")
         .description("Your sleep score and how the night went.")

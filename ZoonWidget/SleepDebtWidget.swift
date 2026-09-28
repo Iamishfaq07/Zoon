@@ -18,7 +18,7 @@ struct SleepDebtWidget: Widget {
                 // Required from iOS 17: widgets no longer draw their own
                 // background, the system does, and omitting this makes the
                 // widget render with a broken-looking transparent panel.
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("Sleep Shortfall")
         .description("Your estimated sleep shortfall, recent nights counting most.")

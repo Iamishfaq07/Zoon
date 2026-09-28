@@ -14,7 +14,7 @@ struct ForYourAgeWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .lastNight)) { entry in
             ForYourAgeWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("For Your Age")
         .description("Last night against the sleep range for your age, and your heart's overnight low.")

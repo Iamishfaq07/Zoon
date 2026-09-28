@@ -21,7 +21,7 @@ struct TonightWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: SleepTimelineProvider(kind: .tonight)) { entry in
             TonightWidgetView(entry: entry)
-                .containerBackground(for: .widget) { WidgetNightGround() }
+                .zoonWidgetChrome()
         }
         .configurationDisplayName("Tonight")
         .description("Tonight's bed and wake target, and where tomorrow is likely to land.")
