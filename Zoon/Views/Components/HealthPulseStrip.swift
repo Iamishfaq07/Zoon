@@ -186,7 +186,7 @@ struct HealthPulseStrip: View {
         let reportable = regularity.reportableIndex
         let tint: Color = {
             guard reportable != nil else { return Theme.inkSecondary }
-            switch regularity.band {
+            return switch regularity.band {
             case .exemplary: Theme.Metric.recoveryHigh
             case .consistent: Theme.Metric.battery
             case .variable: Theme.Metric.recoveryMid

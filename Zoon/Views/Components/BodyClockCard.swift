@@ -238,7 +238,7 @@ struct BodyClockCard: View {
 
     private var stabilitySymbol: String {
         guard let stability = bodyClock.confidentStability else { return "hourglass" }
-        switch stability {
+        return switch stability {
         case .tight: "target"
         case .typical: "circle.dashed"
         case .scattered: "scribble"
@@ -247,7 +247,7 @@ struct BodyClockCard: View {
 
     private var stabilityTint: Color {
         guard let stability = bodyClock.confidentStability else { return Theme.inkSecondary }
-        switch stability {
+        return switch stability {
         case .tight: Theme.Metric.recoveryHigh
         case .typical: Theme.Metric.sleep
         case .scattered: Theme.Metric.recoveryMid
