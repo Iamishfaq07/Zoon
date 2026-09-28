@@ -92,7 +92,7 @@ function serve() {
     if (hasScore) args.push('-i', score);
     args.push('-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p',
       '-c:v', 'libx264', '-preset', 'slow', '-crf', process.env.CRF || '14', '-profile:v', 'high', '-level:v', '5.2',
-      '-g', String(FPS), '-bf', '2', '-r', String(FPS),
+      '-g', String(FPS), '-bf', '2', '-r', String(FPS), '-x264-params', 'colorprim=bt709:transfer=bt709:colormatrix=bt709',
       '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv');
     if (hasScore) args.push('-c:a', 'aac', '-b:a', '320k', '-ar', '48000', '-shortest');
     args.push('-movflags', '+faststart', out);

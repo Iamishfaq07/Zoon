@@ -17,7 +17,7 @@ MASTER="$1"; OUT="${2:-.}"
 FFMPEG="${FFMPEG:-ffmpeg}"
 mkdir -p "$OUT"
 VF="scale=1080:1920:flags=lanczos,fps=30,format=yuv420p"
-X264="-c:v libx264 -preset slower -profile:v high -level:v 4.1 -x264-params aq-mode=3:aq-strength=1.0"
+X264="-c:v libx264 -preset slower -profile:v high -level:v 4.1 -x264-params aq-mode=3:aq-strength=1.0:colorprim=bt709:transfer=bt709:colormatrix=bt709"
 COLOR="-colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv"
 enc() { # enc <kbps video> <maxrate kbps> <audio kbps> <out>
   PASS="$OUT/.x264-$$"
