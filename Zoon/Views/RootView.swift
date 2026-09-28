@@ -112,6 +112,7 @@ struct RootView: View {
                     ],
                     selection: $selection
                 )
+                .background(alignment: .bottom) { TabBarScrim() }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -761,5 +762,35 @@ private struct ScheduleSyncTriggers: ViewModifier {
                     coordinator.republishGlanceSurfaces()
                 }
             }
+    }
+}
+
+/// Fades the scroll content out behind the floating tab bar.
+///
+/// Without it, text scrolled under the bar showed around its edges and
+/// below it -- "ZOON BRIEF" beside it, "7h 32m" beneath -- legible but
+/// unreachable, which the accessibility audit reports as text outside the
+/// accessibility tree. Decorative only: hidden from VoiceOver and passes
+/// touches through.
+private struct TabBarScrim: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let ground = ZoonNightGround.bottom(for: colorScheme)
+        LinearGradient(
+            stops: [
+                .init(color: ground.opacity(0), location: 0),
+                .init(color: ground.opacity(0.92), location: 0.35),
+                .init(color: ground, location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .padding(.top, -28)
+        // Past the bar's own gutters, where "ZO" and "Er" showed either side.
+        .padding(.horizontal, -60)
+        .ignoresSafeArea(edges: .bottom)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
