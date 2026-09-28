@@ -359,7 +359,11 @@ private struct GuidedExperimentCard: View {
                     Text("Judged on \(primaryMetric.shortLabel)")
                         .font(Theme.text(11))
                         .foregroundStyle(Theme.inkSecondary)
-                    if let tonight {
+                    // Never "Tonight: with alcohol". A behaviour that may only
+                    // be cut back is never on an assigned schedule (see
+                    // `ExperimentDesign.allowed(for:)`); this is the last
+                    // line of defence if one ever reaches the card.
+                    if let tonight, tag.exposureControl == .eitherDirection {
                         // The whole value of assigning nights in advance is
                         // that the person can read tonight's off a screen
                         // instead of deciding it in the moment.
@@ -461,7 +465,11 @@ private struct ExperimentPickerSheet: View {
                         }
                     }
                 } footer: {
-                    Text(design.rationale + " About \(design.plannedNights()) nights.")
+                    if design.isControlled {
+                        Text(design.rationale + " About \(design.plannedNights()) nights. Alcohol, nicotine, cannabis, caffeine and sleep aids are always tested as a before and after of cutting back, because this shape would schedule nights with them.")
+                    } else {
+                        Text(design.rationale + " About \(design.plannedNights()) nights.")
+                    }
                 }
                 Section {
                     Picker("This experiment is about", selection: $direction) {

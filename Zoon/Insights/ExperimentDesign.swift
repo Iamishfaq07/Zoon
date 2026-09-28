@@ -121,6 +121,24 @@ enum ExperimentDesign: String, Codable, CaseIterable, Sendable, Identifiable {
     /// being read off the past.
     var isControlled: Bool { self != .beforeAfter }
 
+    /// The designs a behaviour may be tested with.
+    ///
+    /// A controlled design assigns nights *with* the behaviour as well as
+    /// without it. For something with a known harm -- alcohol, nicotine,
+    /// cannabis, caffeine, a sleep aid (`BehaviorTag.ExposureControl`) --
+    /// that is Zoon scheduling a week of drinking or of a sleep aid, which
+    /// the picker promises it will never do and App Review guideline 1.4.3
+    /// does not allow. Those can only be tested as a before-and-after of
+    /// cutting back.
+    static func allowed(for tag: BehaviorTag) -> [ExperimentDesign] {
+        tag.exposureControl == .eitherDirection ? allCases : [.beforeAfter]
+    }
+
+    /// `self` when `tag` may be tested this way, otherwise before-and-after.
+    func permitted(for tag: BehaviorTag) -> ExperimentDesign {
+        Self.allowed(for: tag).contains(self) ? self : .beforeAfter
+    }
+
     // MARK: - Scheduling
 
     /// One night, and which arm it belongs to.

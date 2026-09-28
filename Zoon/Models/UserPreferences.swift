@@ -615,6 +615,11 @@ final class UserPreferences {
     var experimentSchedule: [ExperimentDesign.Assignment] {
         guard let design = experimentDesign, design.isControlled,
               let start = experimentStartDate else { return [] }
+        // A trial started by an earlier build could pair a controlled design
+        // with a behaviour that may only be cut back. Its plan would assign
+        // nights *with* alcohol or a sleep aid, so it has none: it reads as
+        // the before-and-after it should have been.
+        if let tag = activeExperimentTag, design.permitted(for: tag) != design { return [] }
         return design.schedule(startingOn: start, seed: experimentDesignSeed ?? 0)
     }
 
@@ -631,7 +636,9 @@ final class UserPreferences {
         experimentHypothesis = (hypothesis?.isEmpty ?? true) ? nil : hypothesis
         experimentPrimaryMetric = primaryMetric
         experimentDirection = direction
-        experimentDesign = design
+        // Never a design that would assign nights with a harmful behaviour;
+        // see `ExperimentDesign.allowed(for:)`.
+        experimentDesign = design.permitted(for: tag)
         // Drawn once, here, at the moment the trial begins -- before there is
         // a single night to look at.
         experimentDesignSeed = seed
@@ -661,7 +668,9 @@ final class UserPreferences {
         // Restored, not redrawn. Generating a fresh seed here would reshuffle
         // a running crossover's remaining blocks, which is the one thing the
         // seed exists to prevent.
-        experimentDesign = tag == nil ? nil : design
+        // A backup can carry a trial from before designs were checked
+        // against the behaviour; restored the same way a new one starts.
+        experimentDesign = tag.flatMap { tag in design.map { $0.permitted(for: tag) } }
         experimentDesignSeed = tag == nil ? nil : seed
     }
 
