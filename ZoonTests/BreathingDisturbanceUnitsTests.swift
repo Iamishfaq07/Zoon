@@ -62,7 +62,9 @@ final class BreathingDisturbanceUnitsTests: XCTestCase {
     }
 
     func testNightsWithoutAReadingAreUntouched() {
-        let night = Fixture.night(daysAgo: 1)
+        // The fixture carries a reading by default; this night has none.
+        var night = Fixture.night(daysAgo: 1)
+        night.breathingDisturbances = nil
         XCTAssertNil(BreathingDisturbanceUnits.nightsFromArchive([night], formatVersion: 6).first?.breathingDisturbances)
     }
 
