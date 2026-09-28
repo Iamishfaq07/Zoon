@@ -1442,9 +1442,20 @@ final class SleepDataCoordinator {
             let performance = min(
                 100, night.total24hAsleepMinutes / max(night.sleepNeedBaselineMinutes ?? goal, 1) * 100
             )
-            result[night.date] = RecoveryScore.compute(
+            // Only a score every other surface would also draw. A night with
+            // no HRV, resting HR or respiration (an iPhone-only or third-party
+            // sleep source) re-normalises onto sleep alone and can compute a
+            // confident 90-something that is really sleep duration; Today and
+            // the watch say "Limited" for it. Stored anyway, it reached the
+            // clinician report's Recovery bars, the year heatmap, the weekly
+            // report, the Coach and Cause Finder's correlations as recovery.
+            // Every consumer already treats a missing night as a gap.
+            let score = RecoveryScore.compute(
                 features: night, baseline: baseline, sleepPerformance: performance
-            ).percent
+            )
+            if let shown = score.presentation.score {
+                result[night.date] = shown
+            }
         }
 
         recoveryHistory = result
