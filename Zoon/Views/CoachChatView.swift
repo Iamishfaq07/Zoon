@@ -118,10 +118,8 @@ struct CoachChatView: View {
         // re-arming once the state resolves to something else or to
         // available.
         .task(id: availabilityPollTick) {
+            // No session to open here: `CoachChat` builds one per question.
             chat.noteAvailabilityChange()
-            if chat.conversationEngine == .appleIntelligence {
-                chat.ensureSession()
-            }
             guard chat.unavailabilityReason != nil, chat.isTransientlyUnavailable else { return }
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             guard !Task.isCancelled else { return }

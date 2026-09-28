@@ -13,9 +13,14 @@ import Foundation
 enum DiagnosticLanguageGuard {
 
     /// Diagnostic language this app must never produce.
+    ///
+    /// Suggesting a doctor is not on it. It used to be ("you should see a
+    /// doctor"), which threw away exactly the answers that point someone
+    /// worried about their breathing or their heart to care; naming a
+    /// condition is the harm, recommending a professional is not.
     static let bannedTerms = [
         "apnea", "apnoea", "insomnia", "narcolepsy", "diagnos",
-        "disorder", "syndrome", "disease", "you should see a doctor"
+        "disorder", "syndrome", "disease"
     ]
 
     /// Prescriptive health actions that are unsafe for a wellness model to

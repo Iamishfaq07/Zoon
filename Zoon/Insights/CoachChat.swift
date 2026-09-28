@@ -127,15 +127,6 @@ final class CoachChat {
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "CoachChat")
 
     #if canImport(FoundationModels)
-    // `@Observable`'s macro synthesises accessors for every stored property,
-    // and it cannot do that for one individually marked `@available` — the
-    // synthesized code would need to be conditionally available while the
-    // class itself isn't, which the compiler rejects outright. Boxing the
-    // iOS-26-only type behind `Any?` sidesteps the property needing its own
-    // availability annotation; the cast at each use site is where the real
-    // `#available` check still lives.
-    private var session: Any?
-
     /// The shape a chat answer is constrained to produce -- see
     /// `FoundationModelInsightEngine.GeneratedInsight` for the same pattern
     /// applied to the nightly insight. `@Guide` descriptions carry real
@@ -269,12 +260,6 @@ final class CoachChat {
             contextDigest: contextDigest,
             chartContext: chartContext
         )
-        #if canImport(FoundationModels)
-        session = nil
-        if conversationEngine == .appleIntelligence {
-            ensureSession()
-        }
-        #endif
     }
 
     /// Rules never opens a model. Apple Intelligence opens one only if it is
@@ -303,25 +288,6 @@ final class CoachChat {
 
     private var pendingContext: Context?
 
-    /// Opens a model session if this conversation froze on Apple Intelligence
-    /// and one is not already open. Never called for Rules. Never called to
-    /// upgrade a Rules transcript after the model finishes downloading.
-    func ensureSession() {
-        #if canImport(FoundationModels)
-        guard conversationEngine == .appleIntelligence else { return }
-        guard session == nil, isAvailable, #available(iOS 26.0, *),
-              let context = pendingContext else { return }
-        session = LanguageModelSession(
-            instructions: Self.instructions(
-                nightSummary: context.nightSummary,
-                contextDigest: context.contextDigest,
-                chartContext: context.chartContext
-            )
-        )
-        logger.notice("Opened a language model session")
-        #endif
-    }
-
     /// Poll from the view. If this chat is Rules because the model was not
     /// ready, surface a prompt to start a *new* conversation — do not switch.
     func noteAvailabilityChange() {
@@ -339,10 +305,6 @@ final class CoachChat {
         conversationEngine = .appleIntelligence
         messages = []
         pendingAction = nil
-        #if canImport(FoundationModels)
-        session = nil
-        ensureSession()
-        #endif
         messages.append(Message(
             role: .assistant,
             text: "New conversation on Apple Intelligence. Ask about last night, Recovery, Energy, or tonight's plan."
@@ -360,10 +322,19 @@ final class CoachChat {
         messages.append(Message(role: .user, text: trimmed))
         trimTranscriptIfNeeded()
 
+        // Before routing, tools or any model: a crisis, an urgent symptom, a
+        // medical-condition or dosing question always gets the same safe,
+        // referring answer, whichever tool keyword it also contains.
+        if let safety = CoachSafety.reply(to: trimmed) {
+            pendingAction = nil
+            messages.append(Message(role: .assistant, text: safety))
+            return
+        }
+
         switch CoachIntentRouter.classify(trimmed) {
         case .greeting:
             pendingAction = nil
-            messages.append(Message(role: .assistant, text: CoachIntentRouter.greetingReply()))
+            messages.append(Message(role: .assistant, text: CoachIntentRouter.greetingReply(to: trimmed)))
             return
         case .capabilities:
             pendingAction = nil
@@ -437,61 +408,113 @@ final class CoachChat {
     ///   contains must appear in these, in the conversation's facts, or in
     ///   the evidence catalog; anything else is a figure the model made up
     ///   and the whole answer is refused.
+    ///
+    /// **A fresh session for every question.** The on-device model has a
+    /// context window of a few thousand tokens, and a session keeps every
+    /// prompt and answer in its transcript. With one session for the whole
+    /// conversation -- each prompt carrying the facts and the evidence
+    /// catalog -- the window filled after a handful of turns; from then on
+    /// every `respond` threw, the error was only logged, and every answer
+    /// silently became the rules reply. Now each question gets its own
+    /// session built from the conversation's instructions, plus a short recap
+    /// of the latest turns so a follow-up like "why?" still has its referent.
+    /// If even that exceeds the window, it is retried once without the recap
+    /// and the longitudinal digest.
     private func generate(for question: String, facts: String?) async -> Message? {
         #if canImport(FoundationModels)
         guard conversationEngine == .appleIntelligence, isAvailable, #available(iOS 26.0, *),
-              let session = session as? LanguageModelSession else { return nil }
+              let context = pendingContext else { return nil }
         let catalogKeys = evidence?.catalog.keys.sorted().joined(separator: ", ") ?? "sleep, timing, hrv, heart, debt"
         let catalog = evidence?.promptCatalog ?? "None"
-        var prompt = question
-        if let facts {
-            prompt += "\n\nFACTS ZOON COMPUTED FOR THIS QUESTION (answer from these; quote numbers exactly as written):\n\(facts)"
-        }
-        prompt += "\n\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n\(catalog)"
-        do {
-            let response = try await session.respond(
-                to: prompt,
-                generating: ChatAnswer.self,
-                // A little range, so two questions about the same night are
-                // not answered in the same words. The facts, not the
-                // sampling, decide what is said.
-                options: GenerationOptions(temperature: 0.5)
-            )
-            let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
-            let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
-            let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
-            let known = [pendingContext?.nightSummary, pendingContext?.contextDigest,
-                         pendingContext?.chartContext, facts, catalog]
-                .compactMap { $0 }.joined(separator: "\n")
+        let recap = recentConversation()
 
-            guard !answer.isEmpty,
-                  CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known),
-                  !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
-                logger.notice("Chat answer was empty, used an unsupplied number, or failed the diagnostic-language check")
+        for compact in [false, true] {
+            let session = LanguageModelSession(
+                instructions: Self.instructions(
+                    nightSummary: context.nightSummary,
+                    contextDigest: compact ? nil : context.contextDigest,
+                    chartContext: context.chartContext
+                )
+            )
+            var prompt = ""
+            if !compact, let recap {
+                prompt += "RECENT CONVERSATION (so follow-ups make sense; facts still come only from the supplied sections):\n\(recap)\n\n"
+            }
+            prompt += "QUESTION: \(question)"
+            if let facts {
+                prompt += "\n\nFACTS ZOON COMPUTED FOR THIS QUESTION (answer from these; quote numbers exactly as written):\n\(facts)"
+            }
+            prompt += "\n\nEvidence catalog (only these IDs may be cited: \(catalogKeys)):\n\(catalog)"
+            do {
+                let response = try await session.respond(
+                    to: prompt,
+                    generating: ChatAnswer.self,
+                    // A little range, so two questions about the same night are
+                    // not answered in the same words. The facts, not the
+                    // sampling, decide what is said.
+                    options: GenerationOptions(temperature: 0.5)
+                )
+                let answer = response.content.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+                let grounding = response.content.groundedIn.trimmingCharacters(in: .whitespacesAndNewlines)
+                let bestAction = response.content.bestAction.trimmingCharacters(in: .whitespacesAndNewlines)
+                // The recap counts as known: a number the person typed, or an
+                // earlier answer already checked against its own facts, is not
+                // one the model invented.
+                let known = [context.nightSummary, context.contextDigest, context.chartContext,
+                             facts, catalog, compact ? nil : recap]
+                    .compactMap { $0 }.joined(separator: "\n")
+
+                guard !answer.isEmpty,
+                      CoachEvidence.numbersAreGrounded(answer + " " + bestAction, in: known),
+                      !DiagnosticLanguageGuard.rejects("\(answer) \(grounding) \(bestAction)") else {
+                    logger.notice("Chat answer was empty, used an unsupplied number, or failed the diagnostic-language check")
+                    return nil
+                }
+                let cited: String?
+                if grounding.isEmpty || grounding.lowercased() == "null" {
+                    cited = nil
+                } else {
+                    // An unknown ID is dropped rather than failing a good answer:
+                    // the chip is supporting material, the answer stands alone.
+                    cited = evidence?.catalog[grounding]
+                }
+                return Message(
+                    role: .assistant,
+                    text: answer,
+                    groundedIn: cited,
+                    bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction,
+                    source: .appleIntelligence
+                )
+            } catch let error as LanguageModelSession.GenerationError {
+                if case .exceededContextWindowSize = error, !compact {
+                    logger.notice("Chat prompt exceeded the context window; retrying without the recap and digest")
+                    continue
+                }
+                logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
+                return nil
+            } catch {
+                logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
                 return nil
             }
-            let cited: String?
-            if grounding.isEmpty || grounding.lowercased() == "null" {
-                cited = nil
-            } else {
-                // An unknown ID is dropped rather than failing a good answer:
-                // the chip is supporting material, the answer stands alone.
-                cited = evidence?.catalog[grounding]
-            }
-            return Message(
-                role: .assistant,
-                text: answer,
-                groundedIn: cited,
-                bestAction: bestAction.isEmpty || bestAction.lowercased() == "null" ? nil : bestAction,
-                source: .appleIntelligence
-            )
-        } catch {
-            logger.error("Chat generation failed: \(error.localizedDescription, privacy: .public)")
-            return nil
         }
+        return nil
         #else
         return nil
         #endif
+    }
+
+    /// The latest few turns before the question being asked, each cut short,
+    /// for the model's recap. `nil` at the start of a conversation.
+    private func recentConversation() -> String? {
+        var turns = messages
+        if turns.last?.role == .user { turns.removeLast() }
+        let recent = turns.suffix(4)
+        guard !recent.isEmpty else { return nil }
+        return recent.map { message in
+            let speaker = message.role == .user ? "Person" : "Zoon"
+            let text = message.text.count > 280 ? String(message.text.prefix(280)) + "…" : message.text
+            return "\(speaker): \(text)"
+        }.joined(separator: "\n")
     }
 
     /// Drops older turns when the transcript would crowd current facts out
