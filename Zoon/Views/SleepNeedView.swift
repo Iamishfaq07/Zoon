@@ -166,6 +166,12 @@ struct SleepNeedView: View {
                     .font(Theme.text(14))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if learned?.isOutsideAgeRange == true {
+                    Text("Your nights point outside what is usual at your age, so Zoon leans toward your goal until more nights agree.")
+                        .font(Theme.text(14))
+                        .foregroundStyle(Theme.Family.attention)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text("National Sleep Foundation recommendation. The dot is your baseline.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)

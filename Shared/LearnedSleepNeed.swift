@@ -105,7 +105,22 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
     /// Nights at which the blend is fully the learned estimate.
     static let fullConfidenceNights = 60
 
-    static func compute(goalMinutes: Double, history: [SleepNightFeatures]) -> LearnedSleepNeed {
+    /// Set when the learned figure fell outside what the National Sleep
+    /// Foundation calls possibly appropriate for the person's age, and the
+    /// blend was held closer to the goal because of it. `nil` on anything
+    /// stored before this existed, and when no age is known.
+    var isOutsideAgeRange: Bool? = nil
+
+    /// - Parameter ageGuideline: the recommendation for the person's age.
+    ///   A learned need outside its "may be appropriate" band -- under six
+    ///   hours for an adult -- is far more often weeks of short sleep than a
+    ///   body that needs less, so it is trusted half as much, the same
+    ///   discount constrained nights get, and never reaches high confidence.
+    static func compute(
+        goalMinutes: Double,
+        history: [SleepNightFeatures],
+        ageGuideline: SleepNeedGuideline? = nil
+    ) -> LearnedSleepNeed {
         let qualifying = history.filter { isHighQuality($0, goalMinutes: goalMinutes) }
         let count = qualifying.count
 
@@ -132,13 +147,18 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
             // free-day opportunity.
             weight *= 0.5
         }
+        let outsideAgeRange = ageGuideline.map { !$0.acceptableMinutes.contains(learned) }
+        if outsideAgeRange == true {
+            weight *= 0.5
+        }
         let blended = goalMinutes * (1 - weight) + learned * weight
 
         // The band is the qualifying nights' own 50th-to-70th percentile:
         // observed spread, not a modelled interval. See `typicalLowMinutes`.
         let durations = qualifying.map(\.timeAsleepMinutes)
         let confidence: Confidence
-        if count >= fullConfidenceNights && unconstrainedCount >= minimumUnconstrainedNights {
+        if count >= fullConfidenceNights && unconstrainedCount >= minimumUnconstrainedNights
+            && outsideAgeRange != true {
             confidence = .high
         } else {
             confidence = .moderate
@@ -151,7 +171,8 @@ struct LearnedSleepNeed: Codable, Hashable, Sendable {
             confidence: confidence,
             typicalLowMinutes: Statistics.percentile(durations, 50),
             typicalHighMinutes: Statistics.percentile(durations, 70),
-            spreadMinutes: Statistics.medianAbsoluteDeviation(durations)
+            spreadMinutes: Statistics.medianAbsoluteDeviation(durations),
+            isOutsideAgeRange: outsideAgeRange
         )
     }
 

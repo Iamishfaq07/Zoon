@@ -879,7 +879,8 @@ final class SleepDataCoordinator {
             let priorBeforeThisNight = priorFeaturesBeforeBatch.filter { $0.date < nightDate } + thisBatchFeaturesOldestFirst
             features.sleepNeedBaselineMinutes = LearnedSleepNeed.compute(
                 goalMinutes: goal,
-                history: priorBeforeThisNight
+                history: priorBeforeThisNight,
+                ageGuideline: SleepNeedGuideline.forAge(preferences.age)
             ).minutes
 
             store.upsert(

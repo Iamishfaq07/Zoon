@@ -97,7 +97,11 @@ struct DayContextBuilder {
         // there's enough history for one, not always the raw Settings goal --
         // see LearnedSleepNeed's own doc comment for why a straight average
         // of past nights isn't used instead.
-        let learnedNeed = LearnedSleepNeed.compute(goalMinutes: inputs.goalMinutes, history: history)
+        let learnedNeed = LearnedSleepNeed.compute(
+            goalMinutes: inputs.goalMinutes,
+            history: history,
+            ageGuideline: SleepNeedGuideline.forAge(inputs.age)
+        )
         let sleepNeed = SleepNeed.compute(
             goalMinutes: learnedNeed.minutes,
             outstandingDebtMinutes: night.sleepDebtMinutes ?? 0,

@@ -238,4 +238,29 @@ extension LearnedSleepNeedTests {
         XCTAssertEqual(need.qualifyingNightCount, 40)
         XCTAssertEqual(try XCTUnwrap(need.learnedMinutes), 465, accuracy: 1)
     }
+
+    // MARK: - Age
+
+    /// Ten and a half hours is outside what may be appropriate for an adult
+    /// (6-10 h) but inside it for a teenager (7-11 h). The same nights are
+    /// trusted less at 40 than at 16, and never to high confidence.
+    func testALearnedNeedOutsideTheAgeRangeIsHeldCloserToTheGoal() throws {
+        let history = qualifyingNights(LearnedSleepNeed.fullConfidenceNights, minutes: 630)
+        let adult = LearnedSleepNeed.compute(
+            goalMinutes: 480, history: history, ageGuideline: SleepNeedGuideline.forAge(40)
+        )
+        let teen = LearnedSleepNeed.compute(
+            goalMinutes: 480, history: history, ageGuideline: SleepNeedGuideline.forAge(16)
+        )
+        let unaged = LearnedSleepNeed.compute(goalMinutes: 480, history: history)
+
+        let learned = try XCTUnwrap(adult.learnedMinutes)
+        XCTAssertGreaterThan(learned, 600)
+        XCTAssertEqual(adult.isOutsideAgeRange, true)
+        XCTAssertEqual(teen.isOutsideAgeRange, false)
+        XCTAssertNil(unaged.isOutsideAgeRange)
+        XCTAssertLessThan(adult.minutes, teen.minutes, "held closer to the 480 goal")
+        XCTAssertEqual(teen.minutes, unaged.minutes, accuracy: 0.01)
+        XCTAssertNotEqual(adult.confidence, .high)
+    }
 }
