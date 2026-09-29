@@ -44,10 +44,10 @@ enum SnoreHabitLink {
         let logged = nights.compactMap { night -> (night: Night, tags: Set<String>)? in
             tagsByDay[night.day].map { (night: night, tags: $0) }
         }
-        let tags = Set(logged.flatMap(\.tags))
+        let tags = Set(logged.flatMap { $0.tags })
         return tags.compactMap { tag -> Link? in
-            let with = logged.filter { $0.tags.contains(tag) }.map(\.night.snorePercent)
-            let without = logged.filter { !$0.tags.contains(tag) }.map(\.night.snorePercent)
+            let with = logged.filter { $0.tags.contains(tag) }.map { $0.night.snorePercent }
+            let without = logged.filter { !$0.tags.contains(tag) }.map { $0.night.snorePercent }
             guard with.count >= minimumNightsEachSide, without.count >= minimumNightsEachSide else { return nil }
             let link = Link(
                 tag: tag,
