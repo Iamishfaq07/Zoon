@@ -121,8 +121,8 @@ struct BodyClockView: View {
     /// dial, its drag-to-inspect and its accessibility live in
     /// `ZoonBodyClockOrbit`; this only decides what goes on it.
     private func ring(bodyClock: BodyClock, night: SleepNightFeatures) -> some View {
-        let driftMinutes = bodyClock.drift(of: night.bedtime) ?? 0
-        let alignment = alignmentScore(driftMinutes: driftMinutes)
+        let drift = bodyClock.drift(of: night.bedtime)
+        let alignment = alignmentScore(driftMinutes: drift ?? 0)
         let energyMarks = energyWindows(bodyClock: bodyClock, night: night)
 
         return VStack(spacing: 16) {
@@ -141,7 +141,7 @@ struct BodyClockView: View {
                 legend(color: Theme.Family.circadian, label: "Energy")
             }
 
-            Text(alignmentSentence(driftMinutes: driftMinutes))
+            Text(alignmentSentence(driftMinutes: drift))
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
@@ -166,12 +166,19 @@ struct BodyClockView: View {
         ])
     }
 
-    private func alignmentSentence(driftMinutes: Double) -> String {
+    /// `nil` drift -- no usual window for that night yet -- used to read as
+    /// zero and say sleep started "right around" a window that did not exist.
+    /// Large drifts read in hours and minutes, not "135 minutes".
+    private func alignmentSentence(driftMinutes: Double?) -> String {
+        guard let driftMinutes else {
+            return "Last night against the window your recent nights point to."
+        }
         guard abs(driftMinutes) >= 10 else {
             return "Your sleep started right around your usual preferred timing."
         }
         let direction = driftMinutes > 0 ? "later" : "earlier"
-        return "Your sleep started about \(Int(abs(driftMinutes))) minutes \(direction) than your recent preferred timing."
+        let amount = SleepNightFeatures.formatMinutes(abs(driftMinutes))
+        return "Your sleep started about \(amount) \(direction) than your recent preferred timing."
     }
 
     // MARK: - Stability

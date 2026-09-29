@@ -49,7 +49,14 @@ struct TonightRoutineView: View {
                 } label: {
                     LabeledContent("Spoken voice", value: selectedVoiceLabel)
                 }
-                Toggle("Phase haptics", isOn: $store.value.routine.haptics)
+                // Voice, minimal and haptics-only cues already tap on every
+                // phase change, so this toggle only ever did anything in
+                // silent mode -- switching it off elsewhere changed nothing.
+                if store.value.routine.voiceMode.usesHaptics {
+                    LabeledContent("Phase haptics", value: "On with these cues")
+                } else {
+                    Toggle("Phase haptics", isOn: $store.value.routine.haptics)
+                }
                 Picker("Sound scene", selection: $store.value.routine.sceneID) {
                     Text("Soft rain").tag(UUID?.none)
                     ForEach(store.value.scenes) { Text($0.name).tag(Optional($0.id)) }
