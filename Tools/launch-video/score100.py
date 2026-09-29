@@ -19,9 +19,12 @@ import json, os, sys, wave
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SPEC = json.load(open(os.path.join(HERE, 'cues100.json')))
+# CUES=cues-free.json scores another film; its export can carry `pulses`
+# (sections for the clockwork bed), `swell` and `fadeout` (story seconds).
+SPEC = json.load(open(os.path.join(HERE, os.environ.get('CUES', 'cues100.json'))))
 # Optional cut list (see cuts90.json): story ranges left out of this mix.
-CUTS = json.load(open(os.path.join(HERE, sys.argv[1])))['cuts'] if len(sys.argv) > 1 else []
+# (pass '' as the cut list to write another output name without cutting)
+CUTS = json.load(open(os.path.join(HERE, sys.argv[1])))['cuts'] if len(sys.argv) > 1 and sys.argv[1] else []
 OUT = sys.argv[2] if len(sys.argv) > 2 else 'score100.wav'
 
 
@@ -363,7 +366,7 @@ for c in SPEC['cues']:
 # A clockwork pulse under the quieter scenes, so the reel keeps moving
 # between its hits: a tick and a softer tock every half second, a low thud on
 # the bar, all noise and transients.
-for a, b in [(25.9, 32.3), (45.8, 52.9), (65.0, 72.5), (74.2, 81.3), (84.0, 88.7)]:
+for a, b in SPEC.get('pulses', [(25.9, 32.3), (45.8, 52.9), (65.0, 72.5), (74.2, 81.3), (84.0, 88.7)]):
     k, tpos = 0, a
     while tpos < b:
         ramp = min(1, (tpos - a) / 0.8, (b - tpos) / 0.8)
@@ -378,8 +381,8 @@ for a, b in [(25.9, 32.3), (45.8, 52.9), (65.0, 72.5), (74.2, 81.3), (84.0, 88.7
 # A low room tone under everything after the cold open, so silence between
 # events has a floor. It dips at the start and swells into the final hit.
 t = np.arange(N) / SR
-room_env = np.clip((t - 2.5) / 3, 0, 1) * (1 - np.clip((t - O(98.8)) / 1.2, 0, 1))
-room_env *= 1 + 0.8 * np.exp(-((t - O(94.5)) / 1.5) ** 2)
+room_env = np.clip((t - 2.5) / 3, 0, 1) * (1 - np.clip((t - O(SPEC.get('fadeout', 98.8))) / 1.2, 0, 1))
+room_env *= 1 + 0.8 * np.exp(-((t - O(SPEC.get('swell', 94.5))) / 1.5) ** 2)
 L += noise(DUR, 35, 220) * room_env * 0.035
 R += noise(DUR, 35, 220) * room_env * 0.035
 
