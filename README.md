@@ -23,3 +23,13 @@ Built from `Tools/launch-video/showreel.html`, `score100.py` and `render100.js` 
 - `Zoon-Showreel-90s-WhatsApp-720p.mp4`: 720x1280, 15.6 MB, fits WhatsApp's 90-second Status and sends in a chat. For the best result, send with HD on, or as a Document.
 
 The 1:30 cut drops the holds after each beat and the recap montage (`Tools/launch-video/cuts90.json`). The sound was rebuilt on that cut, so every hit still lands.
+
+## Zoon Free (0:30)
+
+Every premium feature free, everything on device.
+
+- `Zoon-Free-16x9-1080p.mp4`: 1920x1080, for YouTube, X, LinkedIn and the website.
+- `Zoon-Free-9x16-1080p.mp4`: 1080x1920, rendered clean, for Reels, TikTok and Shorts.
+- `Zoon-Free-WhatsApp-30s.mp4`: 720x1280, 11 MB. Fits a single WhatsApp Status; send with HD on.
+
+Built from `Tools/launch-video/free.html` (with `reelkit.js`).
