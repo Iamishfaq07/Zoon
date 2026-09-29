@@ -143,7 +143,8 @@ final class CoachToolCatalogTests: XCTestCase {
             "Is late caffeine actually affecting me?", "How should I catch up on sleep this week?",
             "What should I focus on?", "What's my Load?", "Is my physiological load high?",
             "What's my sleep trend?", "How much sleep do I need at my age?",
-            "Why was my HRV low last night?", "Is a nap a good idea today?"
+            "Why was my HRV low last night?", "Is a nap a good idea today?",
+            "Did I snore last night?"
         ]
         let reached = Set(utterances.compactMap { CoachToolCatalog.interpret($0)?.kind })
         for kind in CoachToolCatalog.Kind.allCases {
@@ -229,5 +230,12 @@ final class CoachToolCatalogTests: XCTestCase {
             XCTAssertEqual(CoachToolCatalog.interpret(question)?.kind, .getForYourAge, question)
         }
         XCTAssertFalse(CoachToolCatalog.Kind.getForYourAge.changesState)
+    }
+
+    func testSnoringQuestionsReachSnoreCheck() {
+        for question in ["Did I snore last night?", "How much do I snore?", "Was my snoring worse this week?", "Have I snored less lately?"] {
+            XCTAssertEqual(CoachToolCatalog.interpret(question)?.kind, .getSnoring, question)
+        }
+        XCTAssertFalse(CoachToolCatalog.Kind.getSnoring.changesState)
     }
 }

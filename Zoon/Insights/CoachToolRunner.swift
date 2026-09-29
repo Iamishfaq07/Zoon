@@ -32,6 +32,7 @@ struct CoachToolRunner {
         case .getDailyLoad: dailyLoad()
         case .getForYourAge: await forYourAge()
         case .getNapAdvice: napAdvice()
+        case .getSnoring: snoring()
         case .logCaffeine: logCaffeine(minutes: call.proposedMinutes, servings: call.proposedServings)
         case .startNap: await startNap(minutes: call.proposedMinutes)
         case .prepareTomorrow: prepareTomorrow(minutes: call.proposedMinutes)
@@ -246,6 +247,50 @@ struct CoachToolRunner {
         }
         parts.append("These are population figures; your own trend matters more.")
         return parts.joined(separator: " ")
+    }
+
+    /// Last night's Snore Check, the recent average, and the logged
+    /// behaviour that goes with the biggest change in snoring, if any.
+    private func snoring() -> String? {
+        let nights = SnoreStore().nights
+        guard let last = nights.last else {
+            return "There are no Snore Check nights yet. Start it from the Sleep tab at bedtime, leave the phone on the nightstand, and the morning shows when you snored and how loud."
+        }
+        var parts: [String] = []
+        let report = last.report
+        let day = last.date.formatted(.dateTime.weekday(.wide))
+        if last.snoreMinutes >= 1 {
+            var sentence = "On \(day) night Snore Check flagged \(SnoreResultSummary.duration(last.snoreMinutes)) of snoring, \(report.sharePercent)% of the \(SnoreResultSummary.duration(last.monitoredMinutes)) it listened"
+            if report.episodeCount > 0 {
+                sentence += ", in \(report.episodeCount) episode\(report.episodeCount == 1 ? "" : "s")"
+                if let loudest = report.loudest { sentence += ", the loudest \(loudest.label.lowercased())" }
+            }
+            parts.append(sentence + ".")
+        } else {
+            parts.append("On \(day) night Snore Check flagged no snoring in the \(SnoreResultSummary.duration(last.monitoredMinutes)) it listened.")
+        }
+        let recent = nights.suffix(14).filter { $0.monitoredMinutes >= 60 }
+        if recent.count >= 3 {
+            let average = recent.reduce(0) { $0 + $1.snoreMinutes } / Double(recent.count)
+            parts.append("Across your last \(recent.count) nights it averaged \(SnoreResultSummary.duration(average)) a night.")
+        }
+        if let link = snoreHabitLinks(nights: nights).first, let tag = BehaviorTag(rawValue: link.tag) {
+            parts.append("On the \(link.withNights) nights you logged \(tag.label.lowercased()), you snored \(Int(link.withPercent.rounded()))% of the time monitored, against \(Int(link.withoutPercent.rounded()))% on \(link.withoutNights) nights without it. That is a pattern in your own nights, not proof of a cause.")
+        }
+        parts.append("Snoring on its own is not a medical finding; if it comes with gasping or daytime sleepiness, that is worth raising with a doctor.")
+        return parts.joined(separator: " ")
+    }
+
+    private func snoreHabitLinks(nights: [SnoreStore.NightSummary]) -> [SnoreHabitLink.Link] {
+        let calendar = Calendar.current
+        var tagsByDay: [Date: Set<String>] = [:]
+        for entry in coordinator.journal.allEntries() {
+            tagsByDay[calendar.startOfDay(for: entry.date)] = Set(entry.tagIdentifiers)
+        }
+        let snoreNights = nights
+            .filter { $0.monitoredMinutes >= 60 }
+            .map { SnoreHabitLink.Night(day: calendar.startOfDay(for: $0.date), snorePercent: Double($0.snorePercent)) }
+        return SnoreHabitLink.links(nights: snoreNights, tagsByDay: tagsByDay)
     }
 
     private func physiologicalLoad() -> String? {

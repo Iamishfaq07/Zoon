@@ -620,7 +620,7 @@ final class CoachChat {
         case .getRecovery, .getEnergy, .getMovement, .getFatigueContext, .getTrainingContext,
              .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
              .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
-             .getForYourAge, .getNapAdvice, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
+             .getForYourAge, .getNapAdvice, .getSnoring, .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
             nil
         }
     }

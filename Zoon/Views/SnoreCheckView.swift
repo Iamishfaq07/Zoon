@@ -25,6 +25,9 @@ struct SnoreCheckView: View {
     @State private var errorMessage: String?
     @State private var showingDetails = false
     @State private var showingHowItWorks = false
+    /// Snoring against logged behaviours; worked out once per new night,
+    /// not on every redraw of the live dial.
+    @State private var habitLinks: [SnoreHabitLink.Link] = []
 
     var body: some View {
         // Scrolls, with the button pinned to the bottom edge. The floating tab
@@ -51,6 +54,9 @@ struct SnoreCheckView: View {
                     if historyNights.count >= 2 {
                         historyCard
                     }
+                    if !shownHabitLinks.links.isEmpty {
+                        habitCard
+                    }
                     if !otherSounds.isEmpty {
                         otherSoundsCard
                     }
@@ -76,6 +82,9 @@ struct SnoreCheckView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: scenePhase) { _, phase in
             session.handleScenePhase(phase)
+        }
+        .task(id: session.history.count) {
+            habitLinks = computeHabitLinks()
         }
         .alert("Microphone access needed", isPresented: $permissionDenied) {
             Button("Open Settings") {
@@ -131,6 +140,25 @@ struct SnoreCheckView: View {
         let stored = session.history
         let nights = stored.isEmpty && LaunchOptions.isDemo ? SnoreSample.history() : stored
         return nights.suffix(14).map { SnoreHistoryChart.Night(date: $0.date, minutes: $0.snoreMinutes) }
+    }
+
+    /// Real links, or in the demo build sample ones, marked.
+    private var shownHabitLinks: (links: [SnoreHabitLink.Link], isSample: Bool) {
+        if !habitLinks.isEmpty || !session.history.isEmpty || !LaunchOptions.isDemo { return (habitLinks, false) }
+        return (SnoreSample.habitLinks, true)
+    }
+
+    private func computeHabitLinks() -> [SnoreHabitLink.Link] {
+        let calendar = Calendar.current
+        let nights = session.history
+            .filter { $0.monitoredMinutes >= 60 }
+            .map { SnoreHabitLink.Night(day: calendar.startOfDay(for: $0.date), snorePercent: Double($0.snorePercent)) }
+        guard nights.count >= SnoreHabitLink.minimumNightsEachSide * 2 else { return [] }
+        var tagsByDay: [Date: Set<String>] = [:]
+        for entry in coordinator.journal.allEntries() {
+            tagsByDay[calendar.startOfDay(for: entry.date)] = Set(entry.tagIdentifiers)
+        }
+        return SnoreHabitLink.links(nights: nights, tagsByDay: tagsByDay)
     }
 
     /// Coughs and a crying baby from Apple's classifier. Snoring has its own
@@ -453,6 +481,77 @@ struct SnoreCheckView: View {
         .glassCard()
     }
 
+    private var habitCard: some View {
+        let shown = shownHabitLinks
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                SectionHeader(
+                    title: "What goes with your snoring",
+                    subtitle: "Nights you listened and kept the Journal; the number is how many nights.",
+                    systemImage: "link"
+                )
+                Spacer(minLength: 8)
+                if shown.isSample {
+                    Text("Sample")
+                        .font(Theme.label(11, weight: .bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Theme.neutral(0.14), in: Capsule())
+                }
+            }
+            ForEach(shown.links.prefix(4), id: \.tag) { link in
+                habitRow(link)
+            }
+            Text("Snoring as a share of the time monitored, on nights you logged it against nights you logged without it. A pattern in your own nights, not proof of a cause.")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
+    private func habitRow(_ link: SnoreHabitLink.Link) -> some View {
+        let label = BehaviorTag(rawValue: link.tag)?.label ?? link.tag
+        let scale = max(link.withPercent, link.withoutPercent, 1)
+        let more = link.difference > 0
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(label).font(Theme.label(14, weight: .semibold))
+                Spacer()
+                Text("\(more ? "+" : "−")\(Int(abs(link.difference).rounded())) pts")
+                    .font(Theme.label(13, weight: .bold))
+                    .foregroundStyle(more ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh)
+                    .monospacedDigit()
+            }
+            habitBar("With", percent: link.withPercent, nights: link.withNights, scale: scale, tint: more ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh)
+            habitBar("Without", percent: link.withoutPercent, nights: link.withoutNights, scale: scale, tint: Theme.inkTertiary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(Int(link.withPercent.rounded())) percent snoring on \(link.withNights) nights with it, \(Int(link.withoutPercent.rounded())) percent on \(link.withoutNights) nights without.")
+    }
+
+    private func habitBar(_ label: String, percent: Double, nights: Int, scale: Double, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Text("\(label) · \(nights)")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .monospacedDigit()
+                .frame(width: 74, alignment: .leading)
+            GeometryReader { geo in
+                Capsule()
+                    .fill(tint.opacity(0.85))
+                    .frame(width: max(4, geo.size.width * percent / scale))
+            }
+            .frame(height: 8)
+            Text("\(Int(percent.rounded()))%")
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkSecondary)
+                .monospacedDigit()
+                .frame(width: 40, alignment: .trailing)
+        }
+    }
+
     private var otherSoundsCard: some View {
         let episodes = otherSounds
         return VStack(alignment: .leading, spacing: 10) {
@@ -699,6 +798,12 @@ private enum SnoreSample {
             endedAt: at(6, 48)
         )
     }
+
+    static let habitLinks = [
+        SnoreHabitLink.Link(tag: "alcohol", withPercent: 24, withoutPercent: 9, withNights: 4, withoutNights: 8),
+        SnoreHabitLink.Link(tag: "lateMeal", withPercent: 17, withoutPercent: 10, withNights: 3, withoutNights: 9),
+        SnoreHabitLink.Link(tag: "coolRoom", withPercent: 7, withoutPercent: 14, withNights: 5, withoutNights: 7)
+    ]
 
     static func history(now: Date = .now, calendar: Calendar = .current) -> [SnoreStore.NightSummary] {
         let minutes: [Double] = [34, 58, 12, 71, 40, 22, 95, 63, 30, 48, 17, 89]
