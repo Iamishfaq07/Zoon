@@ -152,4 +152,12 @@ final class ArchiveIntegrityTests: XCTestCase {
         XCTAssertEqual(store.importSessions([good]), 0, "an existing session is not duplicated")
         XCTAssertEqual(AlertnessCheckStore(defaults: defaults).sessions.map(\.id), [good.id])
     }
+
+    func testASnoreEpisodeThatEndsBeforeItStartsIsRejected() {
+        let snore = SnoreStore.NightSummary(
+            date: t0, monitoredMinutes: 60, snoreMinutes: 5,
+            episodes: [SnoreEpisodeRecord(start: t0.addingTimeInterval(600), end: t0, events: 3, loudness: .quiet)]
+        )
+        XCTAssertEqual(DataExporter.validationFailure(archive(snore: [snore])), "snore")
+    }
 }

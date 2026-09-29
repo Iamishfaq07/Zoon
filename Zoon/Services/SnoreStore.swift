@@ -34,6 +34,13 @@ final class SnoreStore {
         /// Monitored time as a percent of the intended sleep window (audit
         /// §8). `nil` on summaries stored before coverage was tracked.
         let coveragePercent: Int?
+        /// When snoring happened, episode by episode. `nil` on summaries
+        /// stored before episodes were kept.
+        let episodes: [SnoreEpisodeRecord]?
+        /// The listening session's ends, for the night timeline. `nil` on
+        /// older summaries.
+        let startedAt: Date?
+        let endedAt: Date?
 
         init(
             date: Date,
@@ -45,7 +52,10 @@ final class SnoreStore {
             endedUnexpectedly: Bool? = nil,
             monitoringQuality: String? = nil,
             interruptionDurationMinutes: Double? = nil,
-            coveragePercent: Int? = nil
+            coveragePercent: Int? = nil,
+            episodes: [SnoreEpisodeRecord]? = nil,
+            startedAt: Date? = nil,
+            endedAt: Date? = nil
         ) {
             self.date = date
             self.monitoredMinutes = monitoredMinutes
@@ -57,6 +67,20 @@ final class SnoreStore {
             self.monitoringQuality = monitoringQuality
             self.interruptionDurationMinutes = interruptionDurationMinutes
             self.coveragePercent = coveragePercent
+            self.episodes = episodes
+            self.startedAt = startedAt
+            self.endedAt = endedAt
+        }
+
+        /// Episodes, longest, loudness and the timeline span for this night.
+        var report: SnoreNightReport {
+            SnoreNightReport(
+                monitoredMinutes: monitoredMinutes,
+                snoreMinutes: snoreMinutes,
+                episodes: episodes,
+                startedAt: startedAt,
+                endedAt: endedAt
+            )
         }
 
         /// Prefers the night key so a row keeps one identity even if the
@@ -158,6 +182,9 @@ final class SnoreStore {
         let coverage: Int? = a.coveragePercent.flatMap { x in b.coveragePercent.map { min(100, x + $0) } }
         let qualities = [a.monitoringQuality, b.monitoringQuality]
             .compactMap { $0.flatMap(SnoreMonitoringConfidence.init(rawValue:)) }
+        let episodes: [SnoreEpisodeRecord]? = (a.episodes == nil && b.episodes == nil)
+            ? nil
+            : ((a.episodes ?? []) + (b.episodes ?? [])).sorted { $0.start < $1.start }
         return NightSummary(
             date: max(a.date, b.date),
             monitoredMinutes: a.monitoredMinutes + b.monitoredMinutes,
@@ -168,7 +195,10 @@ final class SnoreStore {
             endedUnexpectedly: either(a.endedUnexpectedly, b.endedUnexpectedly),
             monitoringQuality: qualities.min()?.rawValue,
             interruptionDurationMinutes: interruption,
-            coveragePercent: coverage
+            coveragePercent: coverage,
+            episodes: episodes,
+            startedAt: [a.startedAt, b.startedAt].compactMap { $0 }.min(),
+            endedAt: [a.endedAt, b.endedAt].compactMap { $0 }.max()
         )
     }
 

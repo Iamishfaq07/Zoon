@@ -4,9 +4,12 @@ import os
 
 /// Estimates snoring, on-device, from the phone's microphone.
 ///
-/// Apple's SoundAnalysis classifier is the primary snoring evidence when
-/// the taxonomy includes `"snoring"`. The heuristic is corroboration and
-/// the fallback. Raw audio is processed in ~100ms buffers and discarded.
+/// Two detectors hear the same buffers. `SnoreAcousticEngine` is Zoon's own:
+/// it judges each sound against the room's quiet level, its shape and its
+/// breathing rhythm, runs on the CPU, and keeps working with the screen
+/// locked. Apple's SoundAnalysis classifier confirms it when it is running,
+/// and vetoes it where it heard speech, music or a television. Raw audio is
+/// processed in ~100ms buffers and discarded.
 @MainActor
 @Observable
 final class SnoreDetector {
@@ -36,19 +39,24 @@ final class SnoreDetector {
     /// night the primary detector missed cannot read "Strong".
     private(set) var classifierOutageSeconds: Double = 0
 
+    /// Zoon's own detector: level against the room, shape, rhythm.
+    private(set) var acoustics = SnoreAcousticEngine()
+    /// Snoring episodes so far, fused from both detectors and merged. Kept
+    /// current once a second for the live screen.
+    private(set) var liveEpisodeCount = 0
+    private(set) var sessionStartedAt: Date?
+
     private var engine = AVAudioEngine()
     private let soundClassifier = SoundEventClassifier()
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "SnoreDetector")
     private var tapInstalled = false
-    private var cadence = SnoreCadenceTracker()
-    private var lastBurst: TimeInterval?
-    private var isInsideBurst = false
     private var tickAccumulator: TimeInterval = 0
     private let tickInterval: TimeInterval = 1.0
-    private var sessionStartedAt: Date?
     private var epoch: SoundAnalysisEpoch?
-    private var heuristicIntervals: [(start: TimeInterval, end: TimeInterval)] = []
-    private var heuristicOpenStart: TimeInterval?
+    private var clock = SnoreSessionClock()
+    /// Where the classifier heard speech, music or a television, merged.
+    /// Memory only: never stored, never shown.
+    private var vetoIntervals: [(start: TimeInterval, end: TimeInterval)] = []
     private var lastCheckpointAt: Date?
     private var openGapStartedAt: Date?
     private var sessionTimeZoneIdentifier: String = TimeZone.current.identifier
@@ -58,9 +66,15 @@ final class SnoreDetector {
     private var pendingGapClose = false
     var onPaused: (() -> Void)?
     var onResumed: (() -> Void)?
-    private let burstThresholdRMS: Float = 0.02
-    private let minimumLowFrequencyRatio: Float = 0.45
     private let eventCap = 80
+
+    /// Sounds shown on the night's timeline.
+    nonisolated static let displayIdentifiers: Set<String> = ["snoring", "cough", "coughing", "baby_cry_infant_cry", "baby_crying"]
+    /// Sounds that are not snoring however rhythmic they are. Used only to
+    /// drop the loudness engine's evidence where they were heard.
+    nonisolated static let vetoIdentifiers: Set<String> = ["speech", "music", "singing", "television", "radio", "laughter", "whispering", "shout"]
+    /// A veto needs a more confident label than a display event.
+    nonisolated static let vetoConfidence = 0.6
 
     var isAudioArriving: Bool {
         guard let lastBufferAt else { return false }
@@ -137,14 +151,13 @@ final class SnoreDetector {
         snoreSeconds = 0
         heuristicSnoreSeconds = 0
         classifierSnoreSeconds = 0
-        cadence = SnoreCadenceTracker()
-        lastBurst = nil
-        isInsideBurst = false
+        acoustics = SnoreAcousticEngine()
+        liveEpisodeCount = 0
+        clock = SnoreSessionClock()
+        vetoIntervals.removeAll()
         tickAccumulator = 0
         recentEvents.removeAll()
         classifierWindows.removeAll()
-        heuristicIntervals.removeAll()
-        heuristicOpenStart = nil
         lastBufferAt = nil
         sessionStartedAt = .now
         sessionID = UUID()
@@ -198,7 +211,6 @@ final class SnoreDetector {
 
     func pauseWithoutFinalizing() {
         guard isRunning else { return }
-        closeHeuristicIfNeeded(at: monitoredSeconds)
         removeTapIfNeeded()
         engine.stop()
         soundClassifier.stop()
@@ -239,7 +251,8 @@ final class SnoreDetector {
 
     func stop() -> SnoreStore.NightSummary? {
         guard isRunning || monitoredSeconds > 0 else { return nil }
-        closeHeuristicIfNeeded(at: monitoredSeconds)
+        acoustics.finish()
+        heuristicSnoreSeconds = acoustics.snoreSeconds
         removeTapIfNeeded()
         engine.stop()
         soundClassifier.stop()
@@ -268,8 +281,17 @@ final class SnoreDetector {
             endedUnexpectedly: false,
             monitoringQuality: frozenQuality?.rawValue,
             interruptionDurationMinutes: monitoringGaps.reduce(0) { $0 + $1.duration } / 60,
-            coveragePercent: liveBreakdown.coveragePercent
+            coveragePercent: liveBreakdown.coveragePercent,
+            episodes: episodeRecords,
+            startedAt: sessionStartedAt,
+            endedAt: .now
         )
+    }
+
+    /// The session's snoring episodes as stored: wall-clock times, breath
+    /// counts, loudness.
+    var episodeRecords: [SnoreEpisodeRecord] {
+        SnoreEpisodeRecord.make(fused: fusedIntervals, engineEpisodes: acoustics.allEpisodes, clock: clock)
     }
 
     /// Restores derived-only state from a crash/kill. Does not resume listening.
@@ -290,7 +312,9 @@ final class SnoreDetector {
     }
 
     private func beginEpoch() {
-        epoch = SoundAnalysisEpoch.beginningNow(sessionElapsed: monitoredSeconds, now: .now)
+        let now = Date.now
+        epoch = SoundAnalysisEpoch.beginningNow(sessionElapsed: monitoredSeconds, now: now)
+        clock.mark(session: monitoredSeconds, wall: now)
     }
 
     private func closeOpenGap() {
@@ -341,7 +365,7 @@ final class SnoreDetector {
         logger.info("Sound classification restarted")
     }
 
-    private let classifierRestartInterval: TimeInterval = 15 * 60
+    private let classifierRestartInterval: TimeInterval = 5 * 60
     private var lastClassifierRestartAttempt: TimeInterval = 0
 
     private func installTapAndStartEngine(releaseOwnerOnFailure: Bool = true) throws {
@@ -357,16 +381,14 @@ final class SnoreDetector {
             tapInstalled = false
         }
         input.installTap(onBus: 0, bufferSize: 4800, format: format) { [weak self] buffer, time in
-            guard let channel = buffer.floatChannelData?[0] else { return }
+            guard let channel = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
             let samples = UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))
-            let energy = SnoreSignalAnalyzer.energy(
-                samples: samples,
-                sampleRate: format.sampleRate
-            )
-            let bufferSeconds = Double(buffer.frameLength) / format.sampleRate
+            // Measured here, on the audio thread; only these few numbers
+            // cross to the main actor.
+            let frame = SnoreSignalAnalyzer.frame(samples: samples, sampleRate: format.sampleRate)
             self?.soundClassifier.process(buffer, atFramePosition: time.sampleTime)
             Task { @MainActor [weak self] in
-                self?.process(energy: energy, elapsed: bufferSeconds)
+                self?.process(frame: frame)
             }
         }
         tapInstalled = true
@@ -390,6 +412,13 @@ final class SnoreDetector {
 
     private func recordEvent(identifier: String, confidence: Double, start: TimeInterval, duration: TimeInterval) {
         let sessionStart = epoch?.sessionTime(local: start) ?? (monitoredSeconds)
+        if Self.vetoIdentifiers.contains(identifier) {
+            if confidence >= Self.vetoConfidence {
+                noteVeto(start: sessionStart, end: sessionStart + max(0, duration))
+            }
+            return
+        }
+        guard Self.displayIdentifiers.contains(identifier) else { return }
         let eventDate = epoch?.date(local: start) ?? sessionStartedAt?.addingTimeInterval(sessionStart) ?? .now
         classifierWindows.append(
             SnoreClassificationWindow(
@@ -410,7 +439,21 @@ final class SnoreDetector {
         compressEventsIfNeeded()
     }
 
-    private func process(energy: SnoreSignalAnalyzer.Energy, elapsed: Double) {
+    /// Merges a veto into the running list; classifier windows overlap, so
+    /// most extend the last one.
+    private func noteVeto(start: TimeInterval, end: TimeInterval) {
+        guard end > start else { return }
+        if let last = vetoIntervals.last, start <= last.end + 1.5 {
+            vetoIntervals[vetoIntervals.count - 1].end = max(last.end, end)
+        } else {
+            vetoIntervals.append((start: start, end: end))
+        }
+    }
+
+    private func process(frame: SnoreFrame) {
+        // A buffer already queued when capture stopped belongs to no session.
+        guard isRunning else { return }
+        let elapsed = frame.duration
         if pendingGapClose,
            SnoreResumePolicy.shouldCloseGap(engineStarted: isRunning, receivedBuffer: true) {
             closeOpenGap()
@@ -426,58 +469,31 @@ final class SnoreDetector {
             }
         }
 
-        let qualifiesAsLowBurst = energy.broadbandRMS >= burstThresholdRMS
-            && energy.lowFrequencyRatio >= minimumLowFrequencyRatio
-
-        if qualifiesAsLowBurst && !isInsideBurst {
-            let t = monitoredSeconds
-            cadence.registerBurst(at: t)
-            lastBurst = t
-        }
-        isInsideBurst = qualifiesAsLowBurst
+        acoustics.ingest(frame, endingAt: monitoredSeconds)
 
         guard tickAccumulator >= tickInterval else { return }
-        if cadence.isSnoring(at: monitoredSeconds) {
-            if heuristicOpenStart == nil {
-                heuristicOpenStart = max(0, monitoredSeconds - tickAccumulator)
-            }
-            heuristicSnoreSeconds += tickAccumulator
-        } else {
-            closeHeuristicIfNeeded(at: monitoredSeconds)
-        }
+        heuristicSnoreSeconds = acoustics.snoreSeconds
         refreshFusion()
         tickAccumulator = 0
-        cadence.prune(now: monitoredSeconds)
         maybeCheckpoint()
-    }
-
-    private func closeHeuristicIfNeeded(at t: TimeInterval) {
-        guard let start = heuristicOpenStart else { return }
-        if t > start {
-            heuristicIntervals.append((start: start, end: t))
-        }
-        heuristicOpenStart = nil
     }
 
     private func refreshFusion() {
         classifierSnoreSeconds = SnoreEpisodeAggregator.snoreSeconds(from: classifierWindows)
-        var heuristic = heuristicIntervals
-        if let open = heuristicOpenStart {
-            heuristic.append((start: open, end: monitoredSeconds))
-        }
+        let heuristic = acoustics.intervals
         if classifierAvailable, classifierSupportsSnoring {
-            let fused = SnoreEvidenceFusion.fuse(
+            fusedIntervals = SnoreEvidenceFusion.fuse(
                 classifier: SnoreEpisodeAggregator.mergedIntervals(from: classifierWindows),
-                heuristic: heuristic
+                heuristic: heuristic,
+                vetoes: vetoIntervals
             )
-            fusedIntervals = fused
-            snoreSeconds = SnoreEvidenceFusion.snoreSeconds(from: fused)
         } else {
-            fusedIntervals = heuristic.map {
-                SnoreEvidenceFusion.Interval(start: $0.start, end: $0.end, source: .heuristic, confidence: 0.4)
-            }
-            snoreSeconds = heuristicSnoreSeconds
+            fusedIntervals = SnoreEvidenceFusion.fuse(classifier: [], heuristic: heuristic, vetoes: vetoIntervals)
         }
+        snoreSeconds = SnoreEvidenceFusion.snoreSeconds(from: fusedIntervals)
+        liveEpisodeCount = SnoreEpisodeRecord.make(
+            fused: fusedIntervals, engineEpisodes: [], clock: clock
+        ).count
     }
 
     private func compressEventsIfNeeded() {
@@ -524,7 +540,8 @@ final class SnoreDetector {
             unexpectedEnd: unexpectedEnd,
             timezoneIdentifier: zone.identifier,
             nightKey: SnoreNight.key(forSessionStartedAt: started, in: zone),
-            monitoringQuality: unexpectedEnd ? liveQuality : frozenQuality ?? liveQuality
+            monitoringQuality: unexpectedEnd ? liveQuality : frozenQuality ?? liveQuality,
+            episodes: episodeRecords
         )
         checkpoint.save()
         lastCheckpointAt = checkpoint.lastCheckpoint

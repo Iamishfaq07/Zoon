@@ -59,4 +59,22 @@ final class SnoreCheckpointTests: XCTestCase {
         XCTAssertEqual(loaded?.monitoringQuality, .moderate)
         SnoreCheckpoint.clear(defaults: defaults)
     }
+
+    func testCheckpointKeepsEpisodesSoACrashKeepsWhenAsWellAsHowMuch() throws {
+        let defaults = UserDefaults(suiteName: "zoon.snore.checkpoint.episodes")!
+        defaults.removePersistentDomain(forName: "zoon.snore.checkpoint.episodes")
+        let start = Date(timeIntervalSince1970: 1_000)
+        let episodes = [
+            SnoreEpisodeRecord(start: start.addingTimeInterval(600), end: start.addingTimeInterval(900), events: 70, loudness: .moderate)
+        ]
+        SnoreCheckpoint(
+            sessionID: UUID(), startedAt: start, lastCheckpoint: start.addingTimeInterval(1_200),
+            monitoredSeconds: 1_200, snoreSeconds: 300, heuristicSeconds: 300, classifierSeconds: 0,
+            interruptionGaps: 0, classifierAvailable: false, windows: [], unexpectedEnd: true,
+            episodes: episodes
+        ).save(defaults: defaults)
+        let loaded = try XCTUnwrap(SnoreCheckpoint.load(defaults: defaults))
+        XCTAssertEqual(loaded.episodes, episodes)
+        SnoreCheckpoint.clear(defaults: defaults)
+    }
 }

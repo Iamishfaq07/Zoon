@@ -21,6 +21,9 @@ struct SnoreCheckpoint: Codable, Equatable, Sendable {
     var timezoneIdentifier: String?
     var nightKey: String?
     var monitoringQuality: SnoreMonitoringConfidence?
+    /// The session's snoring episodes so far, so a crash keeps *when* as
+    /// well as how much. `nil` in checkpoints written before episodes existed.
+    var episodes: [SnoreEpisodeRecord]?
 
     static let persistInterval: TimeInterval = 180
     static let storageKey = "zoon.snore.checkpoint"
@@ -29,7 +32,7 @@ struct SnoreCheckpoint: Codable, Equatable, Sendable {
         case sessionID, startedAt, lastCheckpoint, monitoredSeconds, snoreSeconds
         case heuristicSeconds, classifierSeconds, interruptionGaps, gaps
         case classifierAvailable, windows, unexpectedEnd
-        case timezoneIdentifier, nightKey, monitoringQuality
+        case timezoneIdentifier, nightKey, monitoringQuality, episodes
     }
 
     init(
@@ -47,7 +50,8 @@ struct SnoreCheckpoint: Codable, Equatable, Sendable {
         unexpectedEnd: Bool,
         timezoneIdentifier: String? = nil,
         nightKey: String? = nil,
-        monitoringQuality: SnoreMonitoringConfidence? = nil
+        monitoringQuality: SnoreMonitoringConfidence? = nil,
+        episodes: [SnoreEpisodeRecord]? = nil
     ) {
         self.sessionID = sessionID
         self.startedAt = startedAt
@@ -64,6 +68,7 @@ struct SnoreCheckpoint: Codable, Equatable, Sendable {
         self.timezoneIdentifier = timezoneIdentifier
         self.nightKey = nightKey
         self.monitoringQuality = monitoringQuality
+        self.episodes = episodes
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +88,7 @@ struct SnoreCheckpoint: Codable, Equatable, Sendable {
         timezoneIdentifier = try c.decodeIfPresent(String.self, forKey: .timezoneIdentifier)
         nightKey = try c.decodeIfPresent(String.self, forKey: .nightKey)
         monitoringQuality = try c.decodeIfPresent(SnoreMonitoringConfidence.self, forKey: .monitoringQuality)
+        episodes = try c.decodeIfPresent([SnoreEpisodeRecord].self, forKey: .episodes)
     }
 
     func save(defaults: UserDefaults = .standard) {
