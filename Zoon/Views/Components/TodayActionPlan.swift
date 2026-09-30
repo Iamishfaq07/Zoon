@@ -60,6 +60,68 @@ struct TodayActionPlan: View {
         return parts.joined(separator: " ")
     }
 
+    /// Wake-side of the first window to past the last one.
+    private var span: (start: Date, end: Date)? {
+        guard let first = forecast.windows.map(\.time).min(),
+              let last = forecast.windows.map(\.time).max(),
+              last > first else { return nil }
+        return (first.addingTimeInterval(-3600), last.addingTimeInterval(3600))
+    }
+
+    @ViewBuilder
+    private var dayStrip: some View {
+        if let span {
+            let total = span.end.timeIntervalSince(span.start)
+            let position: (Date) -> Double = { min(1, max(0, $0.timeIntervalSince(span.start) / total)) }
+            VStack(alignment: .leading, spacing: 6) {
+                GeometryReader { proxy in
+                    let width = proxy.size.width
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.neutral(0.10)).frame(height: 8)
+                        if let effortWindow {
+                            let start = position(effortWindow.time.addingTimeInterval(-45 * 60))
+                            let end = position(effortWindow.time.addingTimeInterval(45 * 60))
+                            Capsule()
+                                .fill(tint)
+                                .frame(width: max(8, (end - start) * width), height: 8)
+                                .offset(x: start * width)
+                        }
+                        if let dipWindow {
+                            Circle()
+                                .fill(Theme.Metric.recoveryMid)
+                                .frame(width: 10, height: 10)
+                                .offset(x: position(dipWindow.time) * width - 5)
+                        }
+                        Rectangle()
+                            .fill(Theme.ink)
+                            .frame(width: 2, height: 16)
+                            .offset(x: position(.now) * width - 1)
+                    }
+                    .frame(height: 16)
+                }
+                .frame(height: 16)
+                HStack(spacing: 12) {
+                    if let effortWindow {
+                        Label(forecast.timeRangeLabel(for: effortWindow), systemImage: band == .low ? "leaf.fill" : "bolt.fill")
+                            .foregroundStyle(tint)
+                    }
+                    if let dipWindow, dipWindow.time > .now {
+                        Label("Dip \(dipWindow.time.formatted(.dateTime.hour().minute()))", systemImage: "cloud.sun.fill")
+                            .foregroundStyle(Theme.Metric.recoveryMid)
+                    }
+                }
+                .font(Theme.text(11, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            }
+        } else {
+            Text(detail)
+                .font(Theme.text(13))
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     private var tint: Color {
         switch band {
         case .high: Theme.Family.recovery
@@ -91,10 +153,16 @@ struct TodayActionPlan: View {
                     Text(headline)
                         .font(Theme.label(15, weight: .semibold))
 
-                    Text(detail)
-                        .font(Theme.text(13))
-                        .foregroundStyle(Theme.inkSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    // The day as a strip rather than two sentences of
+                    // times: the best stretch lit, the dip marked, now as a
+                    // dot. The sentence is still the VoiceOver label.
+                    dayStrip
+                        .padding(.top, 6)
+                    if recovery.isEstimate {
+                        Text("Provisional while your baseline builds.")
+                            .font(Theme.evidence)
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
                 }
 
                 Spacer(minLength: 0)
