@@ -638,20 +638,21 @@ struct TodayView: View {
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Tomorrow", systemImage: "sunrise.fill")
             if let plan {
-                Text(plan.sentence)
-                    .font(Theme.text(17, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                // The three times, not the sentence that carried them: on
+                // Today this card is glanced at, and the bedtime was buried
+                // mid-sentence. The reasoning lives on the Tomorrow screen.
+                HStack(alignment: .top, spacing: 12) {
+                    tomorrowTime("Wind down", plan.windDown, tint: Theme.Family.bodySignals)
+                    tomorrowTime("Bed", plan.bedtime, tint: Theme.Family.sleep)
+                    tomorrowTime("Wake", plan.wake, tint: Theme.Family.circadian)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(plan.sentence)
                 HorizonStrip(
                     nodes: plan.nodes,
                     sleepWindowStart: plan.sleepWindowStart,
                     sleepWindowEnd: plan.sleepWindowEnd
                 )
-                Text(plan.caveat)
-                    .font(Theme.evidence)
-                    .foregroundStyle(Theme.inkTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("Name a morning start time and Zoon will arrange tonight around it.")
                     .font(Theme.text(15))
@@ -661,6 +662,21 @@ struct TodayView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
         .accessibilityHint("Opens Tomorrow")
+    }
+
+    private func tomorrowTime(_ title: String, _ time: Date, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(Theme.label(12, weight: .semibold))
+                .foregroundStyle(Theme.inkSecondary)
+            Text(time.formatted(date: .omitted, time: .shortened))
+                .font(Theme.heading(20))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func energyForecast(_ context: DayContext) -> EnergyForecast {

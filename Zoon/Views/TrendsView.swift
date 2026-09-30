@@ -282,9 +282,37 @@ struct TrendsView: View {
         var body: some View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Text("Fingerprint").font(.headline); Spacer(); Text("\(fingerprint.sampleCount) nights").font(.caption).foregroundStyle(Theme.inkSecondary) }
-                Text("Timing \(Int(fingerprint.timingStability * 100))% · continuity \(Int(fingerprint.continuity * 100))% · duration \(Int(fingerprint.durationStability * 100))%")
-                    .font(.subheadline).foregroundStyle(Theme.inkSecondary)
-            }.glassCard()
+                // Three rings instead of a line of percentages.
+                HStack(spacing: 0) {
+                    ring("Timing", fingerprint.timingStability, tint: Theme.Family.circadian)
+                    ring("Continuity", fingerprint.continuity, tint: Theme.Family.sleep)
+                    ring("Duration", fingerprint.durationStability, tint: Theme.Metric.recoveryHigh)
+                }
+            }
+            .glassCard()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Fingerprint over \(fingerprint.sampleCount) nights. Timing \(Int(fingerprint.timingStability * 100))%, continuity \(Int(fingerprint.continuity * 100))%, duration \(Int(fingerprint.durationStability * 100))%.")
+        }
+
+        private func ring(_ title: String, _ value: Double, tint: Color) -> some View {
+            let clamped = min(1, max(0, value))
+            return VStack(spacing: 6) {
+                ZStack {
+                    Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
+                    Circle()
+                        .trim(from: 0, to: clamped)
+                        .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(Int(clamped * 100))")
+                        .font(Theme.label(15, weight: .semibold))
+                        .monospacedDigit()
+                }
+                .frame(width: 58, height: 58)
+                Text(title)
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 

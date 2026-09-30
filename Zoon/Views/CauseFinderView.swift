@@ -479,13 +479,13 @@ private struct ExperimentPickerSheet: View {
                     }
                     .adaptiveSegmentedStyle()
                 } footer: {
-                    Text("What counts as a compliant night depends on this -- a night you had a drink is a broken trial for cutting back, but a successful one for doing more of something. Some behaviours can only be tested one way: Zoon will help you cut back on alcohol, nicotine, cannabis, late caffeine and sleep aids, but will not ask you to have more of them.")
+                    Text("Decides which nights count. Zoon only ever suggests cutting back on alcohol, nicotine, cannabis, late caffeine and sleep aids.")
                 }
                 Section {
                     TextField("What do you expect to find? (optional)", text: $hypothesis, axis: .vertical)
                         .lineLimit(1...3)
                 } footer: {
-                    Text("Your own note, shown alongside the result -- never fed into the comparison itself.")
+                    Text("Just for you. It never changes the result.")
                 }
                 Section {
                     Picker("Judge the result on", selection: $primaryMetric) {
@@ -494,7 +494,7 @@ private struct ExperimentPickerSheet: View {
                         }
                     }
                 } footer: {
-                    Text("Chosen now, before there's any data to look at -- picking whichever metric moved the most afterward would just be noise dressed up as a finding.")
+                    Text("Picked before the data, so the result can't be cherry-picked.")
                 }
                 // Only behaviours this direction may be tested in. Zoon does
                 // not ask anybody to drink, smoke or take more of a sleep aid
