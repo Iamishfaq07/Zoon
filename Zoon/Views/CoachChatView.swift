@@ -417,7 +417,7 @@ struct CoachChatView: View {
             return "Written from your own numbers. Nothing leaves the phone."
         }
         if preferences.preferredEngine == .ruleBased {
-            return "You chose Rules in Settings. Choose Apple Intelligence there for conversational answers."
+            return "You chose Rules under Who answers on the Coach tab. Choose Apple Intelligence there for conversational answers."
         }
         return chat.unavailabilityReason.map { "\($0) Answers come from Zoon's rules until then." }
             ?? "Answers come from Zoon's rules."
