@@ -217,13 +217,18 @@ struct TodayView: View {
                     .entrance(3)
                 TravelTonightCard()
                     .entrance(3)
-                NavigationLink {
-                    PlanHub(initial: .tomorrow)
-                } label: {
-                    tomorrowCard(context)
+                // Only when there is a morning start to plan for. Without one
+                // the card restated tonight's bedtime from the Tonight card
+                // right above it.
+                if preferences.commitment().event != nil {
+                    NavigationLink {
+                        PlanHub(initial: .tomorrow)
+                    } label: {
+                        tomorrowCard(context)
+                    }
+                    .buttonStyle(.plain)
+                    .entrance(4)
                 }
-                .buttonStyle(.plain)
-                .entrance(4)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
                 AdaptiveBriefCard(brief: adaptiveBrief(context, phase: .day))
@@ -298,8 +303,12 @@ struct TodayView: View {
                 )
                 .entrance(4)
 
-                OneThingCard(selection: oneThing(for: context, napMinutesToday: napMinutesToday))
-                    .entrance(4)
+                // The morning brief already names the day's best move; a
+                // second action card under it said the same thing twice.
+                if moment != .morning {
+                    OneThingCard(selection: oneThing(for: context, napMinutesToday: napMinutesToday))
+                        .entrance(4)
+                }
             }
 
             if moment == .day {
@@ -323,13 +332,18 @@ struct TodayView: View {
             if moment == .morning || moment == .day {
                 TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(6)
-                NavigationLink {
-                    PlanHub(initial: .tomorrow)
-                } label: {
-                    tomorrowCard(context)
+                // Only when there is a morning start to plan for. Without one
+                // the card restated tonight's bedtime from the Tonight card
+                // right above it.
+                if preferences.commitment().event != nil {
+                    NavigationLink {
+                        PlanHub(initial: .tomorrow)
+                    } label: {
+                        tomorrowCard(context)
+                    }
+                    .buttonStyle(.plain)
+                    .entrance(6)
                 }
-                .buttonStyle(.plain)
-                .entrance(6)
             }
 
             if moment == .day {
