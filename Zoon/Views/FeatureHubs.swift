@@ -90,6 +90,10 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
                 }
             }
         }
+        // Capped like a tab bar: at accessibility sizes each chip grew to a
+        // third of the screen and neighbours crowded into each other. The
+        // screen below still scales fully.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         // Full material, not 60%: scrolled text showed through the bar and
         // up under the title, which read as overlap.
         .background(.ultraThinMaterial)
@@ -495,6 +499,7 @@ struct InlineChipSwitcher<Choice: HubSection, Content: View>: View {
                     }
                 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             content(selection)
                 .id(selection)
                 .transition(.opacity)
