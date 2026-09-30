@@ -312,7 +312,7 @@ struct JournalView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
                 title: "Zoon Log",
-                subtitle: "Speak it, type it, or tap the chips below. Zoon proposes what it understood and waits for you.",
+                subtitle: "Say or type what you did.",
                 systemImage: "waveform.and.mic"
             )
 
@@ -482,11 +482,18 @@ struct JournalView: View {
     private var customSignals: some View {
         let store = customStore
         return VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "Your signals", subtitle: "Custom tags stay observational until there are enough nights.", systemImage: "plus.circle")
+            SectionHeader(title: "Your signals", systemImage: "plus.circle")
             if store.behaviors.isEmpty {
-                Text("Add signals like magnesium or prayer in More → Custom behaviours.")
-                    .font(Theme.evidence)
-                    .foregroundStyle(Theme.inkTertiary)
+                // Was a pointer to a More row that no longer exists; the
+                // screen is one tap away instead of a set of directions.
+                NavigationLink {
+                    CustomBehaviorsView()
+                } label: {
+                    Label("Add your own, like magnesium or prayer", systemImage: "plus")
+                        .font(Theme.label(13, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                }
+                .buttonStyle(.plain)
             } else {
                 FlowLayout(spacing: 8) {
                     ForEach(store.behaviors.filter(\.isActive)) { behavior in
@@ -497,7 +504,7 @@ struct JournalView: View {
                         )
                     }
                 }
-                Text("Zoon will describe what these went with once there are enough comparable nights. It will not tell you what to do about them.")
+                Text("Patterns show up once there are enough nights.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -851,7 +858,7 @@ struct JournalView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                Text("Zoon can only compare a behaviour against nights you have said it didn't happen on. Unanswered stays unknown.")
+                Text("Tap No when it didn't happen, so Zoon has nights to compare.")
                     .font(Theme.text(11))
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)

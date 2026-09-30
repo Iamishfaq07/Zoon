@@ -34,7 +34,7 @@ struct DiscoveriesStream: View {
                     PatternsHub(initial: .test)
                 } label: {
                     HStack(spacing: 3) {
-                        Text("Cause Finder")
+                        Text("Test a habit")
                         Image(systemName: "chevron.right").font(Theme.text(10, weight: .semibold))
                     }
                     .font(Theme.text(12, weight: .semibold))
@@ -88,7 +88,7 @@ struct DiscoveriesStream: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Open Cause Finder")
+        .accessibilityHint("Opens Test it in Your patterns")
     }
 
     /// "Associated with 12% better deep sleep" -- the finding's own

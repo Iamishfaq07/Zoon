@@ -57,6 +57,17 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
             .safeAreaInset(edge: .top, spacing: 0) { chips }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            // The screens inside keep their own `navigationTitle` for the
+            // places that still push them alone ("Cause Finder", "Weekly
+            // Report"). Inside a hub the chip already names the part, so the
+            // bar shows the hub's name whichever title wins the preference.
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title)
+                        .font(Theme.label(17, weight: .semibold))
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
             .hidesFloatingTabBar()
     }
 
