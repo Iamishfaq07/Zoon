@@ -947,10 +947,15 @@ struct CorrelationRow: View {
                     .foregroundStyle(tint)
             }
 
-            Text(finding.detail)
+            // The one-line sentence, not the full method paragraph; that
+            // lives behind a tap on Your patterns → Test it.
+            Text(finding.plainSentence)
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Text(finding.supportLine)
+                .font(Theme.evidence)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .padding(.vertical, 4)
     }
