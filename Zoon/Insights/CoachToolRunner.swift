@@ -222,7 +222,7 @@ struct CoachToolRunner {
     /// iPhone, not only where Apple Intelligence can phrase it.
     private func forYourAge() async -> String? {
         guard let profile = coordinator.demographic else {
-            return "Add your age in Settings, under Profile, or fill it from Health, and I can tell you how much sleep is recommended at your age and how your heart numbers compare."
+            return "Add your age in Settings, under You, or fill it from Health, and I can tell you how much sleep is recommended at your age and how your heart numbers compare."
         }
         var parts: [String] = []
         if let guideline = SleepNeedGuideline.forAge(profile.ageYears) {

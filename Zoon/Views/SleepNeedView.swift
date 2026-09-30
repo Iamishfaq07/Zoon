@@ -193,7 +193,7 @@ struct SleepNeedView: View {
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
             } else {
-                Text("Add your age in Settings, under Profile, to see how much sleep experts recommend at your age.")
+                Text("Add your age in Settings, under You, to see how much sleep experts recommend at your age.")
                     .font(Theme.text(14))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)

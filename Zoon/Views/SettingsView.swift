@@ -157,7 +157,7 @@ struct SettingsView: View {
                         .font(Theme.label(13, weight: .semibold))
                     }
                 } else {
-                    Text("Add your age under Profile to see how much sleep experts recommend at your age.")
+                    Text("Add your age under Profile, below, to see how much sleep experts recommend at your age.")
                         .font(Theme.text(13))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
