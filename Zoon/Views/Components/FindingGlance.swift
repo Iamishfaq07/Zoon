@@ -27,7 +27,7 @@ struct FindingGlance: View {
             withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { expanded.toggle() }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                AdaptiveStack(vertical: dynamicTypeSize.isAccessibilitySize, spacing: 10) {
+                AdaptiveStack(spacing: 10) {
                     Image(systemName: finding.symbol)
                         .font(Theme.text(14, weight: .semibold))
                         .foregroundStyle(verdictTint)
@@ -285,20 +285,5 @@ struct LabeledBar: View {
             }
         }
         .frame(height: 8)
-    }
-}
-
-/// An HStack that becomes a leading-aligned VStack when asked.
-struct AdaptiveStack<Content: View>: View {
-    let vertical: Bool
-    var spacing: CGFloat = 8
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        if vertical {
-            VStack(alignment: .leading, spacing: spacing, content: content)
-        } else {
-            HStack(spacing: spacing, content: content)
-        }
     }
 }
