@@ -1512,6 +1512,7 @@
 		F33FC9DFCE5EB5C090BB73BD /* WatchActionEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8606120C4F55B28506D369CC /* WatchActionEnvelope.swift */; };
 		F34B720ECBAAD65819ACF460 /* AwakeningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989913A05E83BD608848BE11 /* AwakeningPolicy.swift */; };
 		F36966CE4D0951197E13CE7D /* ModelHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D498E228ECF8D784E34F65 /* ModelHealth.swift */; };
+		F3A7F9B955C0DF31ABF53A1F /* FindingGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DB03DF738AE6A0AB848A64D /* FindingGlance.swift */; };
 		F40EECA04C7C6AED57BA4AFE /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4CCC9CCF7CEDBD7455FEF2 /* DeepLink.swift */; };
 		F412864F592136156853293B /* MorningBriefCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FB4B171A15A7BE8F3599BC6 /* MorningBriefCopy.swift */; };
 		F44A17BDC194CA025BB8AA3C /* CurrentPlanningInputsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E484B49D6BA6A843B48AB8A /* CurrentPlanningInputsTests.swift */; };
@@ -1805,6 +1806,7 @@
 		2D73DBEA8BBD67C287B016A2 /* ZoonFlowLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonFlowLayoutTests.swift"; sourceTree = "<group>"; };
 		2D8F6B0DA34DAFB54A499597 /* ZoonWhatIfLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ZoonWhatIfLab.swift"; sourceTree = "<group>"; };
 		2DA455F8F484404F9AA932A6 /* ReminderSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReminderSchedule.swift"; sourceTree = "<group>"; };
+		2DB03DF738AE6A0AB848A64D /* FindingGlance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FindingGlance.swift"; sourceTree = "<group>"; };
 		2E03AFA4718620CC22B5D2C0 /* forest.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "forest.mp3"; sourceTree = "<group>"; };
 		2EE6265522FB0106AC7CD9D4 /* DatedShortfallSeriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DatedShortfallSeriesTests.swift"; sourceTree = "<group>"; };
 		2F1D3D8C86204A5AA8EE1BF2 /* EnergyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyForecastTests.swift"; sourceTree = "<group>"; };
@@ -2513,6 +2515,7 @@
 				13B1CA5190E455E50384AA62,
 				ED990DA799A1CBDDF31B58AD,
 				B506B3BA4A57688A5E304ED1,
+				2DB03DF738AE6A0AB848A64D,
 				9B0270263CE62B9C1BB2D468,
 				BFB3C23F8240B4F9AD67AE02,
 				24DC2CD5D6AFA2720A49EFCE,
@@ -3947,6 +3950,7 @@
 				032C6B14D3F96F99ED9344B4,
 				461499C279B984083CF31802,
 				BA0D76E22DF7D3F40C4CBBD0,
+				F3A7F9B955C0DF31ABF53A1F,
 				D92C20AD9E19D6322BE37D32,
 				96583164B236BBE666AAB3FF,
 				DAF8AC227A7A632ED9FC4C52,

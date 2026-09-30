@@ -55,7 +55,7 @@ struct SleepPlaybookView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("What's usually there on your best nights")
                 .font(Theme.heading(18))
-            Text("Built from your own history -- conditions that show up disproportionately around your best sleep, not a hypothesis test on any one behaviour.")
+            Text("From your own nights. Patterns, not proof.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
         }
@@ -92,12 +92,38 @@ private struct FactorRow: View {
                 Spacer()
             }
 
-            Text("Present on \(Int((factor.bestNightsRate * 100).rounded()))% of your best nights, vs \(Int((factor.otherNightsRate * 100).rounded()))% on the rest -- \(factor.sampleSize) best nights with a known answer, \(factor.confidence.label.lowercased()).")
-                .font(Theme.text(11))
-                .foregroundStyle(Theme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            // Two bars instead of a sentence of percentages: how often this
+            // was there on your best nights, against the rest.
+            rateBar("Best nights", rate: factor.bestNightsRate, tint: Theme.Metric.recoveryHigh)
+            rateBar("Other nights", rate: factor.otherNightsRate, tint: Theme.neutral(0.35))
+            Text("\(factor.sampleSize) best nights · \(factor.confidence.label)")
+                .font(Theme.evidence)
+                .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(factor.label). Present on \(Int((factor.bestNightsRate * 100).rounded()))% of your best nights, vs \(Int((factor.otherNightsRate * 100).rounded()))% on the rest. \(factor.sampleSize) best nights, \(factor.confidence.label.lowercased()).")
+    }
+
+    private func rateBar(_ title: String, rate: Double, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .frame(width: 78, alignment: .leading)
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.neutral(0.08))
+                    Capsule().fill(tint).frame(width: max(6, proxy.size.width * min(1, max(0, rate))))
+                }
+            }
+            .frame(height: 8)
+            Text("\(Int((rate * 100).rounded()))%")
+                .font(Theme.text(11, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.inkSecondary)
+                .frame(minWidth: 36, alignment: .trailing)
+        }
     }
 }
 

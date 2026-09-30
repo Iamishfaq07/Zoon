@@ -151,17 +151,23 @@ struct StressDetailView: View {
     }
 
     private var explanationCard: some View {
+        // Four paragraphs of method became one line and a fold. The line is
+        // the thing people need; the rest is for whoever asks how.
         VStack(alignment: .leading, spacing: 10) {
-            Text("Compares your heart rate and HRV so far today against your own baseline -- a live, same-day reading rather than a look back at last night. Not a measure of psychological stress.")
-            Text("Workouts, the minutes right after them, and unlogged high-movement hours are excluded before averaging, so ordinary exertion doesn't read as elevated load. That exclusion is hour-grained, not perfect -- check today's Daily Load if this reads high and you know you've been active.")
-            if let reason = stress.experimentalReason {
-                Text(reason)
-            }
-            Text("Resolution is limited by however much of the day has elapsed so far, which is why this reads as \"so far today\" rather than a final number.")
+            Label("Today's heart rate and HRV against your own normal. Not psychological stress.", systemImage: "heart.text.square")
+                .font(Theme.text(13))
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            ExplainDisclosure(
+                title: "How it's measured",
+                lines: [
+                    "A live reading for today so far, not a look back at last night.",
+                    "Workouts and the time right after them are left out, so exercise doesn't read as load. Check Daily Load if you've been active.",
+                    "It sharpens as the day goes on.",
+                ] + (stress.experimentalReason.map { [$0] } ?? []),
+                systemImage: "info.circle"
+            )
         }
-        .font(Theme.text(12))
-        .foregroundStyle(Theme.inkSecondary)
-        .fixedSize(horizontal: false, vertical: true)
         .glassCard()
     }
 }

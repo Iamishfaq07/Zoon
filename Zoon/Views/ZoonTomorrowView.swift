@@ -55,21 +55,16 @@ struct ZoonTomorrowView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(plan.why, id: \.self) { line in
-                            Text(line)
-                                .font(Theme.text(15))
-                                .foregroundStyle(Theme.inkSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-
-                    LabeledContent("Confidence", value: plan.confidence.label)
-
-                    Text(plan.caveat)
-                        .font(Theme.evidence)
-                        .foregroundStyle(Theme.inkTertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    // The reasoning used to follow as three paragraphs, a
+                    // confidence row and a caveat -- under times that had
+                    // already answered the question. Folded to one line.
+                    ExplainDisclosure(
+                        title: "Why these times?",
+                        lines: plan.why,
+                        footnote: plan.caveat,
+                        confidence: ConfidenceDots(confidence: plan.confidence)
+                    )
+                    .accessibilityHint(plan.confidence.label)
                 } else {
                     ZoonEmptyState(
                         kind: .noData(
@@ -278,7 +273,7 @@ struct ZoonTomorrowView: View {
                     .monospacedDigit()
             }
             .onChange(of: preferences.morningReadyBufferMinutes) { _, _ in Haptics.select() }
-            Text("Tomorrow's plan puts your wake this long before the commitment. It is your estimate, not a physiological constant. Your wake alarm and Tonight still follow your usual wake, so set an earlier alarm if you need one.")
+            Text("Your wake lands this long before the start. Set an earlier alarm if you need one.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -293,10 +288,18 @@ struct ZoonTomorrowView: View {
                 get: { preferences.calendarAccessEnabled },
                 set: { preferences.calendarAccessEnabled = $0 }
             ))
-            Text("Optional. Zoon reads only the start time of your first morning event on each of the next 7 days, to plan tonight and the week ahead. Only tomorrow's time is kept, and turning this off deletes it. Titles, people and locations are not stored.")
+            Label("Start times only. No titles, people or places.", systemImage: "lock.fill")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
+            ExplainDisclosure(
+                title: "What Zoon reads",
+                lines: [
+                    "The start time of your first morning event on each of the next 7 days.",
+                    "Only tomorrow's time is kept. Turning this off deletes it.",
+                ],
+                systemImage: "info.circle"
+            )
             if preferences.calendarAccessEnabled {
                 Text(calendarStatus)
                     .font(Theme.evidence)

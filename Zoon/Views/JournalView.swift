@@ -403,7 +403,7 @@ struct JournalView: View {
                 }
             }
 
-            Text("Speech and parsing both happen on this device. Audio is never stored, and proposed observations are not saved or used as evidence until you tap Confirm and save.")
+            Label("On this device. Audio is never kept. Nothing saves until you confirm.", systemImage: "lock.fill")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

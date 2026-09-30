@@ -281,10 +281,22 @@ struct RecoveryBreakdownCard: View {
 
             if recovery.dataCompletenessPercent < 100 {
                 Divider().overlay(Theme.cardStroke)
-                Text("Based on \(recovery.availableComponentCount) of \(recovery.components.count) signals tonight (\(recovery.dataCompletenessPercent)% of the full model). Missing signals were excluded, not assumed average.")
-                    .font(Theme.text(10))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                // One segment per signal, lit when it counted: the coverage
+                // reads as a shape before the words do.
+                HStack(spacing: 8) {
+                    HStack(spacing: 3) {
+                        ForEach(recovery.components.indices, id: \.self) { index in
+                            Capsule()
+                                .fill(recovery.components[index].isAvailable ? Theme.Metric.recoveryHigh : Theme.neutral(0.15))
+                                .frame(width: 14, height: 5)
+                        }
+                    }
+                    Text("\(recovery.availableComponentCount) of \(recovery.components.count) signals. Missing ones left out, not guessed.")
+                        .font(Theme.text(10))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
             }
         }
         .glassCard()
