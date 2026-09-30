@@ -165,6 +165,7 @@ struct ExplainDisclosure: View {
 
     @State private var expanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -173,13 +174,18 @@ struct ExplainDisclosure: View {
                 withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: systemImage)
-                        .font(Theme.text(13, weight: .semibold))
-                        .foregroundStyle(Theme.Family.sleep)
+                    // At accessibility sizes the icon and dots took the width
+                    // and the title broke one word per line; the title wins.
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Image(systemName: systemImage)
+                            .font(Theme.text(13, weight: .semibold))
+                            .foregroundStyle(Theme.Family.sleep)
+                    }
                     Text(title)
                         .font(Theme.label(14, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
-                    if let confidence { confidence }
+                    if let confidence, !dynamicTypeSize.isAccessibilitySize { confidence }
                     Image(systemName: "chevron.down")
                         .font(Theme.text(11, weight: .semibold))
                         .foregroundStyle(Theme.inkTertiary)

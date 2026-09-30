@@ -90,7 +90,9 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
                 }
             }
         }
-        .background(.ultraThinMaterial.opacity(0.6))
+        // Full material, not 60%: scrolled text showed through the bar and
+        // up under the title, which read as overlap.
+        .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.cardStroke).frame(height: 0.5)
         }
