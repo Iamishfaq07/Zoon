@@ -84,27 +84,13 @@ struct SleepResilienceCard: View {
                     let longest = max(1, byType.compactMap { $0.result.state.medianNights }.max() ?? 1)
                     ForEach(byType) { typed in
                         let value = typed.result.state.medianNights ?? 0
-                        HStack(spacing: 8) {
-                            Text(typed.kind.label)
-                                .font(Theme.label(12, weight: .medium))
-                                .frame(width: 96, alignment: .leading)
-                                .lineLimit(2)
-                                .minimumScaleFactor(0.8)
-                            GeometryReader { proxy in
-                                ZStack(alignment: .leading) {
-                                    Capsule().fill(Theme.neutral(0.08))
-                                    Capsule()
-                                        .fill(Theme.Metric.strain.opacity(0.8))
-                                        .frame(width: max(6, proxy.size.width * value / longest))
-                                }
-                            }
-                            .frame(height: 8)
-                            Text(String(format: value < 10 ? "%.1f" : "%.0f", value))
-                                .font(Theme.text(11, weight: .semibold))
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.inkSecondary)
-                                .frame(minWidth: 28, alignment: .trailing)
-                        }
+                        LabeledBar(
+                            title: typed.kind.label,
+                            valueText: String(format: value < 10 ? "%.1f" : "%.0f", value),
+                            fraction: value / longest,
+                            tint: Theme.Metric.strain.opacity(0.8),
+                            labelWidth: 96
+                        )
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(typed.kind.label), \(typed.sentence). \(typed.result.eventCount) episodes.")
                     }

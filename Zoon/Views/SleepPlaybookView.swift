@@ -106,25 +106,15 @@ private struct FactorRow: View {
     }
 
     private func rateBar(_ title: String, rate: Double, tint: Color) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(Theme.text(11))
-                .foregroundStyle(Theme.inkTertiary)
-                .frame(width: 78, alignment: .leading)
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.neutral(0.08))
-                    Capsule().fill(tint).frame(width: max(6, proxy.size.width * min(1, max(0, rate))))
-                }
-            }
-            .frame(height: 8)
-            Text("\(Int((rate * 100).rounded()))%")
-                .font(Theme.text(11, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(Theme.inkSecondary)
-                .frame(minWidth: 36, alignment: .trailing)
-        }
+        LabeledBar(
+            title: title,
+            valueText: "\(Int((rate * 100).rounded()))%",
+            fraction: rate,
+            tint: tint,
+            labelWidth: 78
+        )
     }
+
 }
 
 #Preview("Sleep Playbook") {
