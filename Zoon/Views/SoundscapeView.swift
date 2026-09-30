@@ -246,7 +246,7 @@ struct SoundscapeView: View {
             Label("On this device", systemImage: "internaldrive")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.Metric.battery)
-            Text("Made on this phone, nothing streamed. Keeps playing when locked; a timer fades it out.")
+            Text("All on this phone, nothing streamed. Keeps playing when locked; a timer fades it out.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
