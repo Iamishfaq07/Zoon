@@ -21,33 +21,44 @@ struct SettingsView: View {
     @State private var showingDeleteFailure = false
     @State private var isFillingProfile = false
     @State private var profileFillMessage: String?
+    @State private var group: SettingsGroup = .you
 
     var body: some View {
         // Bindings are built by hand rather than with @Bindable because each
         // setter has to trigger a recompute, not just store a value.
         Form {
-            Section("Your experience") {
-                Toggle("Score-light mode", isOn: $setup.value.scoreLight)
-                    .accessibilityIdentifier("scoreLightToggle")
-                Text("Show sleep and timing first. Scores remain available when you choose to open details.").font(.caption)
-                // Only what configures the app. Tonight routine, Repair sleep
-                // data and Custom behaviours were here too, one tap from the
-                // same rows in More, which is where Settings is opened from.
-                NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
-                NavigationLink("Work roster") { ShiftRosterView() }
+            // Thirteen sections in one scroll, grouped into four. The picker
+            // stays at the top; each group is a screenful at most.
+            Section {
+                Picker("Settings group", selection: $group) {
+                    ForEach(SettingsGroup.allCases) { group in
+                        Text(group.label).tag(group)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
             }
-            goalSection
-            appearanceSection
-            remindersSection
-            obligationDaysSection
-            cycleSection
-            lifestyleInsightsSection
-            trackedBehaviorsSection
-            profileSection
-            engineSection
-            sourceSection
-            dataSection
-            medicalSection
+            switch group {
+            case .you:
+                youSections
+            case .schedule:
+                remindersSection
+                obligationDaysSection
+                Section {
+                    NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
+                    NavigationLink("Work roster") { ShiftRosterView() }
+                }
+            case .health:
+                trackedBehaviorsSection
+                lifestyleInsightsSection
+                cycleSection
+                sourceSection
+            case .app:
+                engineSection
+                dataSection
+                medicalSection
+            }
         }
         .scrollContentBackground(.hidden)
         // Every writer HealthKit knows, so the source section can offer one
@@ -77,6 +88,31 @@ struct SettingsView: View {
         } message: {
             Text("Zoon cleared every store it could, but one or more local files or database rows reported an error. Try again before uninstalling the app.")
         }
+    }
+
+    enum SettingsGroup: String, CaseIterable, Identifiable {
+        case you, schedule, health, app
+        var id: String { rawValue }
+        var label: String {
+            switch self {
+            case .you: "You"
+            case .schedule: "Schedule"
+            case .health: "Health"
+            case .app: "App"
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var youSections: some View {
+        Section("Your experience") {
+            Toggle("Score-light mode", isOn: $setup.value.scoreLight)
+                .accessibilityIdentifier("scoreLightToggle")
+            Text("Show sleep and timing first. Scores remain available when you choose to open details.").font(.caption)
+        }
+        goalSection
+        profileSection
+        appearanceSection
     }
 
     // MARK: - Sections
