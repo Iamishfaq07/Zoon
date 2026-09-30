@@ -627,7 +627,7 @@ struct SettingsView: View {
             // does, alongside a place in `EngineChoice.shippingCases`.
 
             NavigationLink("How your Sleep Intelligence score works") {
-                AlgorithmTransparencyView()
+                DataHub(initial: .method)
             }
             .font(.caption)
         } header: {
@@ -700,7 +700,7 @@ struct SettingsView: View {
             }
 
             NavigationLink {
-                DataPrivacyView()
+                DataHub(initial: .privacy)
             } label: {
                 Label("Data Quality & Privacy", systemImage: "checkmark.shield")
             }
