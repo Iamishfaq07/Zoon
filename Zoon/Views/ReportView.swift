@@ -285,10 +285,10 @@ struct ReportView: View {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(
                     title: "What Changed",
-                    subtitle: "Meaningful shifts only -- small night-to-night noise is filtered out.",
+                    subtitle: "Real shifts only, not nightly noise.",
                     systemImage: "arrow.up.arrow.down"
                 )
-                ForEach(trends.prefix(4)) { trend in
+                ForEach(trends.prefix(3)) { trend in
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: trend.isImprovement ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
                             .font(Theme.text(14))
@@ -312,25 +312,11 @@ struct ReportView: View {
 
         if let finding {
             VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: "Top Habit Association", systemImage: "sparkle.magnifyingglass")
-                HStack(alignment: .top, spacing: 11) {
-                    Image(systemName: finding.symbol)
-                        .font(Theme.text(13))
-                        .foregroundStyle(finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid)
-                        .frame(width: 26, height: 26)
-                        .background(
-                            (finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid).opacity(0.15),
-                            in: Circle()
-                        )
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(finding.headline)
-                            .font(Theme.label(13, weight: .semibold))
-                        Text(finding.detail)
-                            .font(Theme.text(11))
-                            .foregroundStyle(Theme.inkSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+                SectionHeader(title: "Top habit link", systemImage: "sparkle.magnifyingglass")
+                // The same row as Your patterns: verdict, with/without bars,
+                // confidence dots. Was the correlator's full statistical
+                // paragraph, bootstrap range and all.
+                FindingGlance(finding: finding)
                 NavigationLink("See all patterns") {
                     PatternsHub(initial: .test)
                 }
