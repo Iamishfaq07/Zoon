@@ -90,7 +90,7 @@ struct DataPrivacyView: View {
         } header: {
             Text("Where data lives")
         } footer: {
-            Text("Delete Everything removes SwiftData rows, preferences, naps, snore summaries, widget files, Watch context, AI cache, reminders, and live activities. HealthKit remains untouched.")
+            Text("Deletes everything Zoon stored on this phone and Watch. Your Health data is not touched.")
         }
     }
 
@@ -103,7 +103,7 @@ struct DataPrivacyView: View {
         } header: {
             Text("Permissions")
         } footer: {
-            Text("Apple does not reveal whether individual HealthKit read categories were denied. Coverage above shows what Zoon actually received without guessing about your permission choices.")
+            Text("Apple doesn't say which permissions were denied, so this shows what actually arrived.")
         }
     }
 

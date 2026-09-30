@@ -502,7 +502,7 @@ struct SnoreCheckView: View {
             ForEach(shown.links.prefix(4), id: \.tag) { link in
                 habitRow(link)
             }
-            Text("Snoring as a share of the time monitored, on nights you logged it against nights you logged without it. A pattern in your own nights, not proof of a cause.")
+            Text("Snoring on nights with and without each habit. A pattern, not a cause.")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

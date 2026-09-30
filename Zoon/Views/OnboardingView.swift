@@ -186,7 +186,7 @@ struct OnboardingView: View {
     /// All three stay optional.
     private var profilePickers: some View {
         VStack(spacing: 10) {
-            Text("Optional. Sets the sleep range experts recommend for you, and what counts as typical deep sleep and heart rate for someone like you. Stays on this iPhone.")
+            Text("Optional. Tunes your sleep range and typical numbers to your age. Stays on this iPhone.")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)

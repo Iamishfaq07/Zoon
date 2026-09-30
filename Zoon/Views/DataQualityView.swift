@@ -109,7 +109,7 @@ struct DataQualityView: View {
     private var lapseSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             ZoonSectionHeader("When it stopped")
-            Text("Coverage is how much arrived. This is when a signal last showed up — the difference between a watch charged irregularly and a sensor that went quiet on a particular night.")
+            Text("When each signal last arrived.")
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
