@@ -87,7 +87,7 @@ struct BodyClockView: View {
     /// body clock instead of that clock under travel conditions.
     private var travelLink: some View {
         NavigationLink {
-            TravelPlanView()
+            PlanHub(initial: .travel)
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "airplane")

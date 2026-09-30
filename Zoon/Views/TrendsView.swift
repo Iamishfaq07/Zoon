@@ -107,7 +107,7 @@ struct TrendsView: View {
                         )
                         // The moons had no key: a full moon is a night that
                         // reached the goal, and nothing on screen said so.
-                        Text("Each moon fills with how much of your \(preferences.sleepGoalDisplay) goal you slept. Tap one to open that night.")
+                        Text("Fuller moon, closer to your \(preferences.sleepGoalDisplay) goal. Tap one.")
                             .font(Theme.evidence)
                             .foregroundStyle(Theme.inkTertiary)
                             .multilineTextAlignment(.center)
@@ -115,18 +115,25 @@ struct TrendsView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .entrance(1)
-                    SleepResilienceCard(nights: coordinator.recentNights)
-                        .entrance(2)
-                    LongTermBaselineCard(
-                        signals: coordinator.longTermSignals(window: baselineWindow),
-                        window: $baselineWindow
-                    )
+                    // Three comparison cards, one slot. A deep link to the
+                    // age card (screenshots, `-zoonScrollTo`) opens on it.
+                    InlineChipSwitcher(
+                        initial: LaunchOptions.scrollTarget == Self.forYourAgeAnchor ? CompareChoice.age : .bounce
+                    ) { choice in
+                        switch choice {
+                        case .bounce:
+                            SleepResilienceCard(nights: coordinator.recentNights)
+                        case .baseline:
+                            LongTermBaselineCard(
+                                signals: coordinator.longTermSignals(window: baselineWindow),
+                                window: $baselineWindow
+                            )
+                        case .age:
+                            ForYourAgeCard()
+                        }
+                    }
+                    .id(Self.forYourAgeAnchor)
                     .entrance(2)
-                    // Directly under the personal baselines: first "am I
-                    // changing?", then "is this usual for someone like me?"
-                    ForYourAgeCard()
-                        .id(Self.forYourAgeAnchor)
-                        .entrance(2)
                     if let selectedNight {
                         NavigationLink {
                             PastNightDetailView(night: selectedNight)
@@ -150,24 +157,10 @@ struct TrendsView: View {
                     ExploreGrid(title: "Explore your sleep") {
                         ExploreTile(
                             title: "Your patterns",
-                            subtitle: "What repeats, night after night",
+                            subtitle: "What goes with your good and bad nights",
                             symbol: "square.grid.3x3.fill",
                             tint: Theme.Family.sleep
-                        ) { PatternsView() }
-
-                        ExploreTile(
-                            title: "Sleep eras",
-                            subtitle: "Stretches where your sleep changed character",
-                            symbol: "timeline.selection",
-                            tint: Theme.Family.circadian
-                        ) { SleepErasView() }
-
-                        ExploreTile(
-                            title: "Year in Sleep",
-                            subtitle: "Every night of the year at once",
-                            symbol: "calendar",
-                            tint: Theme.Family.recovery
-                        ) { YearHeatmapView() }
+                        ) { PatternsHub() }
 
                         ExploreTile(
                             title: "Chart builder",
@@ -176,21 +169,14 @@ struct TrendsView: View {
                             tint: Theme.Family.bodySignals
                         ) { ChartBuilderView() }
 
+                        // Week, month, year and the doctor's PDF were four
+                        // tiles and a More row; one hub holds them now.
                         ExploreTile(
-                            title: "Your month",
-                            subtitle: "A calendar of moons, and a card to share",
-                            symbol: "moon.stars.fill",
-                            tint: Theme.Family.sleep
-                        ) { MonthRecapView() }
-
-                        // Reviewing the week belongs where the week is
-                        // reviewed; it was only in More.
-                        ExploreTile(
-                            title: "Weekly report",
-                            subtitle: "This week against last, in one page",
+                            title: "Reports",
+                            subtitle: "Week, month, year and eras",
                             symbol: "calendar.badge.clock",
                             tint: Theme.Family.recovery
-                        ) { ReportView() }
+                        ) { ReportsHub() }
 
                         // This tab carries most of the app's vocabulary.
                         ExploreTile(
@@ -198,7 +184,7 @@ struct TrendsView: View {
                             subtitle: "Every term here, said plainly",
                             symbol: "character.book.closed.fill",
                             tint: Theme.Family.circadian
-                        ) { GlossaryView() }
+                        ) { LearnHub(initial: .words) }
                     }
                     .entrance(2)
 
@@ -230,10 +216,19 @@ struct TrendsView: View {
                     } else {
                     VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                             ZoonSectionHeader("Over time") { windowPicker.frame(maxWidth: 160) }
-                            DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
-                            HRVChartCard(nights: nights, tagsByDate: tagsByDate)
-                            SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
-                            ConsistencyChartCard(nights: nights)
+                            // Four stacked charts became one, with chips.
+                            InlineChipSwitcher(initial: ChartChoice.duration) { choice in
+                                switch choice {
+                                case .duration:
+                                    DurationChartCard(nights: nights, goalMinutes: preferences.sleepGoalMinutes, tagsByDate: tagsByDate)
+                                case .hrv:
+                                    HRVChartCard(nights: nights, tagsByDate: tagsByDate)
+                                case .debt:
+                                    SleepDebtChartCard(nights: nights, debtMinutes: debtMinutesForDisplayedNights)
+                                case .consistency:
+                                    ConsistencyChartCard(nights: nights)
+                                }
+                            }
                             if let fingerprint = SleepFingerprint.make(from: coordinator.recentNights, days: window.days) {
                                 // The card was already showing the summary
                                 // while a chip at the foot of the tab linked
@@ -274,6 +269,44 @@ struct TrendsView: View {
         }
     }
 
+    private enum CompareChoice: String, HubSection {
+        case bounce, baseline, age
+        var label: String {
+            switch self {
+            case .bounce: "Bounce-back"
+            case .baseline: "Your baseline"
+            case .age: "For your age"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .bounce: "arrow.uturn.backward"
+            case .baseline: "chart.line.flattrend.xyaxis"
+            case .age: "person.2"
+            }
+        }
+    }
+
+    private enum ChartChoice: String, HubSection {
+        case duration, hrv, debt, consistency
+        var label: String {
+            switch self {
+            case .duration: "Sleep"
+            case .hrv: "HRV"
+            case .debt: "Owed"
+            case .consistency: "Timing"
+            }
+        }
+        var symbol: String {
+            switch self {
+            case .duration: "bed.double.fill"
+            case .hrv: "waveform.path.ecg"
+            case .debt: "hourglass"
+            case .consistency: "metronome"
+            }
+        }
+    }
+
     /// The scroll anchor `-zoonScrollTo` names for the age card.
     static let forYourAgeAnchor = "forYourAge"
 
@@ -282,9 +315,37 @@ struct TrendsView: View {
         var body: some View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack { Text("Fingerprint").font(.headline); Spacer(); Text("\(fingerprint.sampleCount) nights").font(.caption).foregroundStyle(Theme.inkSecondary) }
-                Text("Timing \(Int(fingerprint.timingStability * 100))% · continuity \(Int(fingerprint.continuity * 100))% · duration \(Int(fingerprint.durationStability * 100))%")
-                    .font(.subheadline).foregroundStyle(Theme.inkSecondary)
-            }.glassCard()
+                // Three rings instead of a line of percentages.
+                HStack(spacing: 0) {
+                    ring("Timing", fingerprint.timingStability, tint: Theme.Family.circadian)
+                    ring("Continuity", fingerprint.continuity, tint: Theme.Family.sleep)
+                    ring("Duration", fingerprint.durationStability, tint: Theme.Metric.recoveryHigh)
+                }
+            }
+            .glassCard()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Fingerprint over \(fingerprint.sampleCount) nights. Timing \(Int(fingerprint.timingStability * 100))%, continuity \(Int(fingerprint.continuity * 100))%, duration \(Int(fingerprint.durationStability * 100))%.")
+        }
+
+        private func ring(_ title: String, _ value: Double, tint: Color) -> some View {
+            let clamped = min(1, max(0, value))
+            return VStack(spacing: 6) {
+                ZStack {
+                    Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
+                    Circle()
+                        .trim(from: 0, to: clamped)
+                        .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("\(Int(clamped * 100))")
+                        .font(Theme.label(15, weight: .semibold))
+                        .monospacedDigit()
+                }
+                .frame(width: 58, height: 58)
+                Text(title)
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 

@@ -43,7 +43,7 @@ struct SleepToolsStrip: View {
                     .buttonStyle(PressableStyle())
 
                     NavigationLink {
-                        TonightRoutineView()
+                        PlanHub(initial: .tonight)
                     } label: {
                         tile("Wind Down", symbol: "wind", tint: Theme.Metric.recoveryHigh, status: windDownStatus)
                     }

@@ -177,14 +177,14 @@ struct TodayNeedTracks: View {
                 value: SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes),
                 fraction: 1,
                 tint: Theme.Family.circadian,
-                destination: SleepNeedView()
+                destination: NeedHub(initial: .need)
             )
             track(
                 label: "Debt",
                 value: debt > 1 ? SleepNightFeatures.formatMinutes(debt) : "None",
                 fraction: min(1, debt / need),
                 tint: debt > 1 ? Theme.Family.attention : Theme.Family.recovery,
-                destination: SleepDebtView()
+                destination: NeedHub(initial: .owed)
             )
         }
     }

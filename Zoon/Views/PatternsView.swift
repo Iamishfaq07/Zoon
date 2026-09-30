@@ -133,21 +133,7 @@ struct PatternsView: View {
                     if index > 0 {
                         Divider().overlay(Theme.neutral(0.10))
                     }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(finding.label)
-                            .font(Theme.label(14, weight: .semibold))
-                        Text(finding.plainSentence)
-                            .font(Theme.text(13))
-                            .foregroundStyle(Theme.inkSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        // The count is never hidden. A finding from 6 matched
-                        // nights and one from 60 read identically without it.
-                        Text(finding.supportLine)
-                            .font(Theme.evidence)
-                            .foregroundStyle(Theme.inkTertiary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
+                    FindingGlance(finding: finding)
                 }
             }
         }

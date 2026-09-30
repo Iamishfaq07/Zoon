@@ -173,7 +173,7 @@ struct DiscoveriesCard: View {
     var body: some View {
         if !top.isEmpty || experimentHeadline != nil {
             NavigationLink {
-                CauseFinderView()
+                PatternsHub(initial: .test)
             } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionHeader(title: "Discoveries", systemImage: "sparkle.magnifyingglass")

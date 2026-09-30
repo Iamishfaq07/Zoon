@@ -138,13 +138,22 @@ struct BreathingHealthView: View {
                 )
 
                 if case .repeatedPattern(let elevated, let window) = health.pattern {
-                    Text("Elevated on \(elevated) of the last \(window) classified nights. Consider discussing a repeated pattern like this with a healthcare professional if it continues.")
+                    // A row of nights, lit where it ran high, then one line.
+                    HStack(spacing: 4) {
+                        ForEach(0..<window, id: \.self) { index in
+                            Capsule()
+                                .fill(index < elevated ? Theme.Metric.recoveryMid : Theme.neutral(0.15))
+                                .frame(height: 6)
+                        }
+                    }
+                    .accessibilityHidden(true)
+                    Text("High on \(elevated) of \(window) nights. If this keeps up, mention it to a doctor.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if case .unclassified(let window) = health.pattern {
-                    Text("Your device recorded breathing disturbances on \(window) of these nights but didn't classify them. The trend above is real; Zoon won't call any of it elevated on its own, because that classification comes from Apple and isn't available here.")
+                    Text("Recorded on \(window) nights but not graded by Apple, so Zoon won't call any of it high.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)

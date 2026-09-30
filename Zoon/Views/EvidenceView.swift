@@ -151,14 +151,14 @@ struct EvidenceView: View {
                 Text(entry.headline)
                     .font(Theme.text(14))
                     .fixedSize(horizontal: false, vertical: true)
-                if let confidence = entry.confidence {
-                    Text(confidence.label)
-                        .font(Theme.text(11))
-                        .foregroundStyle(Theme.inkTertiary)
-                }
             }
             Spacer(minLength: 0)
+            if let confidence = entry.confidence {
+                ConfidenceDots(confidence: confidence)
+            }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel([entry.headline, entry.confidence?.label].compactMap { $0 }.joined(separator: ". "))
     }
 
     // MARK: - Belief history
@@ -241,18 +241,25 @@ struct EvidenceView: View {
             associatedTags: Set(findings.compactMap(\.tag)),
             settledTags: Set(coordinator.experiments.outcomes.map(\.tag))
         ) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(proposal.headline)
-                    .font(Theme.label(16, weight: .semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(proposal.sentence)
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(proposal.caveat)
-                    .font(Theme.text(11))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "flask.fill")
+                        .font(Theme.text(15, weight: .semibold))
+                        .foregroundStyle(Theme.Metric.recoveryHigh)
+                        .frame(width: 34, height: 34)
+                        .background(Theme.Metric.recoveryHigh.opacity(0.14), in: Circle())
+                        .accessibilityHidden(true)
+                    Text(proposal.headline)
+                        .font(Theme.label(16, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                // The reasoning and caveat were two paragraphs under the
+                // headline; they are the "why", so they fold like one.
+                ExplainDisclosure(
+                    title: "Why test this?",
+                    lines: [proposal.sentence],
+                    footnote: proposal.caveat
+                )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard()
@@ -265,7 +272,7 @@ struct EvidenceView: View {
     /// believe".
     private var sensorTruthLink: some View {
         NavigationLink {
-            SensorTruthView()
+            DataHub(initial: .sources)
         } label: {
             // At accessibility sizes the two lines wrap to eight or more,
             // and a 14pt icon centred against that block floats down beside

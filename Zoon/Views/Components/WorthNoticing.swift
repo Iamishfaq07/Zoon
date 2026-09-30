@@ -75,7 +75,7 @@ struct WorthNoticing: View {
                 headline: radar.stateHeadline,
                 detail: radar.stateDetail,
                 linkLabel: "View Body Signals"
-            ) { HealthRadarView() }
+            ) { BodyHub(initial: .signals) }
 
         case let .stress(stress):
             notice(
@@ -112,7 +112,7 @@ struct WorthNoticing: View {
             }
 
         case let .proactive(item):
-            NavigationLink { PersonalLearningView() } label: {
+            NavigationLink { PatternsHub(initial: .learned) } label: {
                 noticeText(
                     symbol: item.kind == .debt ? "moon.zzz.fill" : "clock.arrow.circlepath",
                     tint: Theme.Family.sleep,

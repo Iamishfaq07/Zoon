@@ -21,14 +21,14 @@ struct FloatingMetricCluster: View {
                 SleepDetailView(context: context)
             }
             pill(label: "Need", value: SleepNightFeatures.formatMinutes(needMinutes), tint: Theme.Metric.recoveryHigh) {
-                SleepNeedView()
+                NeedHub(initial: .need)
             }
             pill(
                 label: "Debt",
                 value: debtMinutes > 1 ? SleepNightFeatures.formatMinutes(debtMinutes) : "None",
                 tint: debtMinutes > 1 ? Theme.Metric.recoveryMid : Theme.Metric.recoveryHigh
             ) {
-                SleepDebtView()
+                NeedHub(initial: .owed)
             }
         }
     }

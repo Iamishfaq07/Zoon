@@ -41,7 +41,7 @@ struct PersonalLearningView: View {
         VStack(alignment: .leading, spacing: 7) {
             Text("What Zoon is learning about your response")
                 .font(Theme.heading(25))
-            Text("These are observational summaries from your own history. Zoon withholds them until there is enough repeated data and never treats them as medical conclusions.")
+            Text("Patterns from your own nights, shown once there's enough data. Not medical advice.")
                 .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
         }.glassCard()
     }
@@ -177,7 +177,7 @@ struct ProactiveZoonCard: View {
 
     var body: some View {
         if let first = items.first {
-            NavigationLink { PersonalLearningView() } label: {
+            NavigationLink { PatternsHub(initial: .learned) } label: {
                 VStack(alignment: .leading, spacing: 7) {
                     Label("Worth checking", systemImage: "bell.badge.fill")
                         .font(Theme.kicker).foregroundStyle(Theme.Family.attention)

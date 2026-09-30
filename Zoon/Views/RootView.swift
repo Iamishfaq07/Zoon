@@ -521,16 +521,36 @@ struct SleepTabView: View {
                         // Planning follows analysis.
                         VStack(alignment: .leading, spacing: Theme.stackSpacing) {
                             ZoonSectionHeader("Tonight and beyond")
-                            SleepNeedCard(need: context.sleepNeed)
-                            if let clock = context.bodyClock {
-                                BodyClockCard(
-                                    bodyClock: clock,
-                                    plannedBedtime: coordinator.tonightEpisode(for: context)?.bed ?? context.targetBedtime(),
-                                    actualBedtime: context.night.bedtime,
-                                    actualWakeTime: context.night.wakeTime
-                                )
+                            // Two tiles, not three full cards: Today already
+                            // shows the need and the body clock in detail,
+                            // and this tab is about last night. Each tile
+                            // opens the full screen.
+                            HStack(spacing: 12) {
+                                NavigationLink {
+                                    NeedHub(initial: .need)
+                                } label: {
+                                    SleepTabTile(
+                                        title: "Tonight's need",
+                                        value: SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes),
+                                        detail: "Includes paying back",
+                                        symbol: "bed.double.fill",
+                                        tint: Theme.Family.sleep
+                                    )
+                                }
+                                .buttonStyle(PressableStyle())
+                                NavigationLink {
+                                    BodyClockView()
+                                } label: {
+                                    SleepTabTile(
+                                        title: "Body clock",
+                                        value: context.bodyClock.map { BodyClock.formatted(hour: $0.onsetHour) } ?? "Learning",
+                                        detail: context.chronotype.kind.label,
+                                        symbol: context.chronotype.kind.symbol,
+                                        tint: Theme.Family.circadian
+                                    )
+                                }
+                                .buttonStyle(PressableStyle())
                             }
-                            ChronotypeCard(chronotype: context.chronotype)
                             NavigationLink {
                                 NightHistoryView()
                             } label: {
@@ -792,5 +812,45 @@ private struct TabBarScrim: View {
         .ignoresSafeArea(edges: .bottom)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+/// A small square for the Sleep tab: a label, one number, one line under it.
+private struct SleepTabTile: View {
+    let title: String
+    let value: String
+    let detail: String
+    let symbol: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(Theme.text(12, weight: .semibold))
+                    .foregroundStyle(tint)
+                Text(title)
+                    .font(Theme.label(12, weight: .semibold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(Theme.text(10, weight: .semibold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            Text(value)
+                .font(Theme.heading(22))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(detail)
+                .font(Theme.text(11))
+                .foregroundStyle(Theme.inkTertiary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+        .accessibilityElement(children: .combine)
     }
 }

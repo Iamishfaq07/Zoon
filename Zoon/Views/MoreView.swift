@@ -25,6 +25,7 @@ struct MoreView: View {
     @State private var showingRestorePreview = false
     @State private var restoring = false
     @State private var importMessage: String?
+    @State private var showsBackup = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -39,47 +40,30 @@ struct MoreView: View {
                     // data repair tool beside the reading list; Repair now
                     // sits with Data quality, the screen that sends people
                     // to it.
-                    sectionLabel("Plan")
-                    navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
-                    navRow("Tomorrow", "Protect a morning start time", "sunrise.fill", Theme.Metric.battery) {
-                        ZoonTomorrowView()
+                    // Fourteen rows became six. Related screens now share
+                    // one hub each (see `FeatureHubs.swift`), so this list
+                    // names the questions, and the hub's chips name the
+                    // screens inside.
+                    sectionLabel("Plan and review")
+                    navRow("Plan", "Tonight, tomorrow and travel", "moon.stars.fill", Theme.Metric.sleep) { PlanHub() }
+                    navRow("Reports", "Your week, month and year, and a PDF for a doctor", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
+                        ReportsHub()
                     }
-                    navRow("Travel plan", "Active trip sits on Tonight", "airplane", Theme.Metric.strain) {
-                        TravelPlanView()
-                    }
-
-                    sectionLabel("Review")
-                    navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
-                        ReportView()
-                    }
-                    navRow("Clinician Report", "7/30/90-day PDF summary to share", "doc.text.fill", Theme.Metric.hrv) {
-                        ClinicianReportView()
+                    navRow("Your patterns", "What goes with your good and bad nights", "sparkles", Theme.Family.sleep) {
+                        PatternsHub()
                     }
                     navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
                         AchievementsView()
                     }
 
-                    sectionLabel("Your data")
-                    navRow("How well Zoon knows you", "Maturity by domain, not a score", "circle.hexagongrid.fill", Theme.Metric.hrv) {
-                        ModelHealthView()
+                    sectionLabel("Your data and settings")
+                    navRow("Your data", "What Zoon measured, estimated and knows", "waveform.path.ecg", Theme.Metric.hrv) {
+                        DataHub()
                     }
-                    navRow("Data quality", "What actually arrived this month", "waveform.path.ecg", Theme.Metric.recoveryMid) {
-                        DataQualityView()
+                    navRow("Learn", "Sleep science and every word, in plain language", "book.pages.fill", Theme.Metric.sleep) {
+                        LearnHub()
                     }
-                    navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
-                    navRow("Custom behaviours", "Track signals unique to your routine",
-                            "plus.circle.fill", Theme.Family.sleep) {
-                        CustomBehaviorsView()
-                    }
-
-                    sectionLabel("Learn and settings")
-                    navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
-                        ArticlesView()
-                    }
-                    navRow("What the words mean", "Every term in the app, said plainly", "character.book.closed.fill", Theme.Family.bodySignals) {
-                        GlossaryView()
-                    }
-                    navRow("Settings", "Goal, engine, privacy, replay first night", "gearshape.fill", .secondary) {
+                    navRow("Settings", "Goal, your own behaviours, privacy", "gearshape.fill", .secondary) {
                         SettingsView()
                     }
 
@@ -102,13 +86,13 @@ struct MoreView: View {
             }
             .navigationDestination(for: DeepLink.Destination.self) { destination in
                 switch destination {
-                case .report: ReportView()
+                case .report: ReportsHub(initial: .week)
                 case .settings: SettingsView()
                 case .badges: AchievementsView()
-                case .evidence: EvidenceView()
-                case .patterns: PatternsView()
-                case .sensorTruth: SensorTruthView()
-                case .tomorrow: ZoonTomorrowView()
+                case .evidence: PatternsHub(initial: .proven)
+                case .patterns: PatternsHub(initial: .noticed)
+                case .sensorTruth: DataHub(initial: .sources)
+                case .tomorrow: PlanHub(initial: .tomorrow)
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock, .windDown: EmptyView()
                 // Presented as its own sheet from GlobalPresentation, not
@@ -187,12 +171,29 @@ struct MoreView: View {
 
     private var dataCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(
-                title: "Your Data",
-                subtitle: "Local-first has to mean portable. Take it with you whenever you like.",
-                systemImage: "square.and.arrow.up"
-            )
+            Button {
+                Haptics.select()
+                withAnimation(Motion.standard) { showsBackup.toggle() }
+            } label: {
+                HStack {
+                    SectionHeader(
+                        title: "Back up or move",
+                        subtitle: "Export, share or restore everything",
+                        systemImage: "square.and.arrow.up"
+                    )
+                    Image(systemName: "chevron.down")
+                        .font(Theme.text(12, weight: .semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .rotationEffect(.degrees(showsBackup ? 180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(showsBackup ? "Expanded" : "Collapsed")
 
+            // Folded: a passphrase field and four export rows are used a
+            // few times a year, and sat open on every visit to More.
+            if showsBackup || exportURL != nil || restoring {
             Toggle("Encrypt JSON backup", isOn: $encryptBackup)
             SecureField("Backup passphrase (for export or import)", text: $archivePassphrase)
                 .textContentType(.password)
@@ -225,7 +226,7 @@ struct MoreView: View {
                 actionRow("Import a backup", "Restores everything an export contains", "square.and.arrow.down", Theme.Metric.hrv)
             }
             .buttonStyle(.plain)
-
+            }
         }
         .glassCard()
     }
@@ -314,38 +315,42 @@ struct MoreView: View {
 
     // MARK: - Static cards
 
+    /// Four promises as four badges. They were four paragraphs, and the
+    /// promise is the part people remember; the detail is read aloud by
+    /// VoiceOver and lives in Settings → Data Quality & Privacy.
     private var privacyCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Privacy", systemImage: "lock.shield.fill")
-            // Exports are plain JSON unless the toggle above is on; say which.
-            privacyRow("wifi.slash", "No network calls",
-                       encryptBackup
-                           ? "Zoon contains no URLSession and no analytics. Health data stays on this device unless you explicitly export an encrypted file."
-                           : "Zoon contains no URLSession and no analytics. Health data stays on this device unless you explicitly export a file. Exports are unencrypted unless you turn on Encrypt JSON backup.")
-            privacyRow("iphone", "Processed on device",
-                       "Every score, insight, and sound is computed locally.")
-            privacyRow("eye.slash", "Read-only Health access",
-                       "Zoon requests read permission only. It can never write to your Health data.")
-            privacyRow("person.crop.circle.badge.xmark", "No account, no analytics",
-                       "No sign-in, no telemetry, no third-party SDKs.")
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                privacyBadge("wifi.slash", "No network calls", "Zoon makes no network calls and has no analytics.")
+                privacyBadge("iphone", "All on device", "Every score, insight and sound is computed on this phone.")
+                privacyBadge("eye.slash", "Read-only Health", "Zoon can read Health data but never write to it.")
+                privacyBadge("person.crop.circle.badge.xmark", "No account", "No sign-in, no telemetry, no third-party code.")
+            }
+            if !encryptBackup {
+                Label("Exports are unencrypted while Encrypt is off.", systemImage: "exclamationmark.triangle")
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.Metric.recoveryMid)
+            }
         }
         .glassCard()
     }
 
-    private func privacyRow(_ symbol: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 11) {
+    private func privacyBadge(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(spacing: 8) {
             Image(systemName: symbol)
-                .font(Theme.text(13))
+                .font(Theme.text(13, weight: .semibold))
                 .foregroundStyle(Theme.Metric.recoveryHigh)
-                .frame(width: 24)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(Theme.label(12, weight: .semibold))
-                Text(detail)
-                    .font(Theme.text(10))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                .frame(width: 30, height: 30)
+                .background(Theme.Metric.recoveryHigh.opacity(0.12), in: Circle())
+            Text(title)
+                .font(Theme.label(12, weight: .semibold))
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title). \(detail)")
     }
 
     private var aboutCard: some View {

@@ -45,6 +45,12 @@ struct SensitivityCurveCard: View {
             if curve.readings.contains(where: { $0.intervalLower != nil }) {
                 DisclosureGroup(isExpanded: $showsIntervals) {
                     VStack(alignment: .leading, spacing: 6) {
+                        // The caveat rides with the intervals rather than
+                        // under every card: it qualifies the same numbers.
+                        Text(curve.caveat)
+                            .font(Theme.evidence)
+                            .foregroundStyle(Theme.inkTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
                         ForEach(curve.readings) { reading in
                             if let text = reading.intervalText(outcome: curve.outcome) {
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -64,12 +70,12 @@ struct SensitivityCurveCard: View {
                         .font(Theme.label(13, weight: .semibold))
                 }
                 .onChange(of: showsIntervals) { _, _ in Haptics.select() }
+            } else {
+                Text(curve.caveat)
+                    .font(Theme.evidence)
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(curve.caveat)
-                .font(Theme.evidence)
-                .foregroundStyle(Theme.inkTertiary)
-                .fixedSize(horizontal: false, vertical: true)
         }
         .glassCard()
     }
@@ -129,24 +135,14 @@ struct SensitivityCurveCard: View {
 /// have to change.
 struct SensitivityGapsCard: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(
-                title: "What Zoon cannot chart yet",
-                subtitle: "Asked for, but not stored in a form that would support it.",
-                systemImage: "questionmark.circle"
-            )
-            ForEach(SensitivityCurve.unavailable) { entry in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.behaviour)
-                        .font(Theme.label(13, weight: .semibold))
-                    Text(entry.reason)
-                        .font(Theme.evidence)
-                        .foregroundStyle(Theme.inkTertiary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .glassCard()
+        // One line with the names; the reasons are folded. This card was a
+        // column of paragraphs about things Zoon does *not* show, which is
+        // the part of the screen people most reasonably skip.
+        ExplainDisclosure(
+            title: "Not charted yet: \(SensitivityCurve.unavailable.map(\.behaviour).joined(separator: ", "))",
+            lines: SensitivityCurve.unavailable.map { "\($0.behaviour): \($0.reason)" },
+            footnote: "Asked for, but not stored in a form that would support it.",
+            systemImage: "questionmark.circle"
+        )
     }
 }

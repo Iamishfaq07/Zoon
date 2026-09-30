@@ -31,10 +31,10 @@ struct DiscoveriesStream: View {
         VStack(alignment: .leading, spacing: 14) {
             ZoonSectionHeader("Discoveries") {
                 NavigationLink {
-                    CauseFinderView()
+                    PatternsHub(initial: .test)
                 } label: {
                     HStack(spacing: 3) {
-                        Text("Cause Finder")
+                        Text("Test a habit")
                         Image(systemName: "chevron.right").font(Theme.text(10, weight: .semibold))
                     }
                     .font(Theme.text(12, weight: .semibold))
@@ -52,7 +52,7 @@ struct DiscoveriesStream: View {
                 .padding(.vertical, -16)
             } else {
                 ForEach(top) { finding in
-                    NavigationLink { CauseFinderView() } label: { findingRow(finding) }
+                    NavigationLink { PatternsHub(initial: .test) } label: { findingRow(finding) }
                         .buttonStyle(.plain)
                 }
                 if let activeExperiment {
@@ -88,7 +88,7 @@ struct DiscoveriesStream: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Open Cause Finder")
+        .accessibilityHint("Opens Test it in Your patterns")
     }
 
     /// "Associated with 12% better deep sleep" -- the finding's own
@@ -135,7 +135,7 @@ struct ExperimentPreview: View {
 
     var body: some View {
         NavigationLink {
-            CauseFinderView()
+            PatternsHub(initial: .test)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {

@@ -53,21 +53,27 @@ struct SleepResilienceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Sleep resilience", systemImage: "arrow.uturn.backward")
-            Text(sentence)
-                .font(Theme.text(22, weight: .semibold))
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 8) {
-                Text("Disruption")
-                    .font(Theme.label(11, weight: .semibold))
-                    .foregroundStyle(Theme.inkTertiary)
-                Circle().fill(Theme.Metric.strain).frame(width: 8, height: 8)
-                Capsule().fill(Theme.neutral(0.16)).frame(height: 2)
-                Circle().fill(Theme.neutral(0.3)).frame(width: 8, height: 8)
-                Capsule().fill(Theme.neutral(0.16)).frame(height: 2)
-                Circle().fill(Theme.Metric.recoveryHigh).frame(width: 8, height: 8)
-                Text("Baseline")
-                    .font(Theme.label(11, weight: .semibold))
-                    .foregroundStyle(Theme.inkTertiary)
+            // A number and a path, not a 22-point sentence. When there is a
+            // measurement, the path has one step per night it takes to get
+            // back, so "1 night" and "3 nights" look different before either
+            // is read.
+            if case .measured(let median) = bounce.state {
+                let nights = max(1, Int(median.rounded()))
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(nights)")
+                        .font(Theme.numeral(44))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.Metric.recoveryHigh)
+                    Text(nights == 1 ? "night to bounce back\nafter a short night" : "nights to bounce back\nafter a short night")
+                        .font(Theme.text(14, weight: .medium))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                BouncePath(steps: nights)
+            } else {
+                Text(sentence)
+                    .font(Theme.text(17, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if !byType.isEmpty {
                 Divider().overlay(Theme.cardStroke)
@@ -75,30 +81,40 @@ struct SleepResilienceCard: View {
                     Text("By what disrupted it")
                         .font(Theme.label(11, weight: .semibold))
                         .foregroundStyle(Theme.inkSecondary)
+                    let longest = max(1, byType.compactMap { $0.result.state.medianNights }.max() ?? 1)
                     ForEach(byType) { typed in
-                        // Label and value stack rather than sit side by side
-                        // at accessibility sizes: "usual bounce-back: 2.6
-                        // nights" is already a long value and pinning it
-                        // beside a label is where it starts wrapping into
-                        // one word per line.
-                        ViewThatFits(in: .horizontal) {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                typeLabel(typed)
-                                Spacer(minLength: 6)
-                                typeValue(typed)
+                        let value = typed.result.state.medianNights ?? 0
+                        HStack(spacing: 8) {
+                            Text(typed.kind.label)
+                                .font(Theme.label(12, weight: .medium))
+                                .frame(width: 96, alignment: .leading)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.8)
+                            GeometryReader { proxy in
+                                ZStack(alignment: .leading) {
+                                    Capsule().fill(Theme.neutral(0.08))
+                                    Capsule()
+                                        .fill(Theme.Metric.strain.opacity(0.8))
+                                        .frame(width: max(6, proxy.size.width * value / longest))
+                                }
                             }
-                            VStack(alignment: .leading, spacing: 1) {
-                                typeLabel(typed)
-                                typeValue(typed)
-                            }
+                            .frame(height: 8)
+                            Text(String(format: value < 10 ? "%.1f" : "%.0f", value))
+                                .font(Theme.text(11, weight: .semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.inkSecondary)
+                                .frame(minWidth: 28, alignment: .trailing)
                         }
-                        .accessibilityElement(children: .combine)
+                        .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(typed.kind.label), \(typed.sentence). \(typed.result.eventCount) episodes.")
                     }
+                    Text("Nights to bounce back, by cause")
+                        .font(Theme.evidence)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
 
-            Text("Measured against your own nights and your own variability. Not an age, not a diagnosis.")
+            Text("Against your own nights. Not a diagnosis.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -106,22 +122,6 @@ struct SleepResilienceCard: View {
         .glassCard()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(sentence)
-    }
-
-    private func typeLabel(_ typed: SleepResilience.TypedResult) -> some View {
-        Text(typed.kind.label)
-            .font(Theme.label(12, weight: .medium))
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// The episode count travels with the number, always. A bounce-back
-    /// measured across three disruptions and one measured across twenty are
-    /// not the same claim, and the number alone does not say which.
-    private func typeValue(_ typed: SleepResilience.TypedResult) -> some View {
-        Text("\(typed.sentence) · \(typed.result.eventCount.pluralized("episode"))")
-            .font(Theme.text(11))
-            .foregroundStyle(Theme.inkSecondary)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var sentence: String {
@@ -135,6 +135,43 @@ struct SleepResilienceCard: View {
         case .measured(let median):
             let nights = Int(median.rounded())
             return "You typically return to your usual sleep length within \(nights) night\(nights == 1 ? "" : "s") after a short night."
+        }
+    }
+}
+
+/// Short night, then one step per night of recovery, ending at your usual
+/// length. The steps fill in turn when the card appears.
+private struct BouncePath: View {
+    let steps: Int
+
+    @State private var shown = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let count = min(steps, 6)
+        HStack(spacing: 6) {
+            VStack(spacing: 3) {
+                Circle().fill(Theme.Metric.strain).frame(width: 12, height: 12)
+                Text("Short").font(Theme.text(10)).foregroundStyle(Theme.inkTertiary)
+            }
+            ForEach(0..<count, id: \.self) { index in
+                Capsule()
+                    .fill(index < shown ? Theme.Metric.recoveryHigh.opacity(0.35 + 0.6 * Double(index + 1) / Double(count)) : Theme.neutral(0.12))
+                    .frame(height: 4)
+                    .padding(.bottom, 14)
+            }
+            VStack(spacing: 3) {
+                Circle().fill(shown >= count ? Theme.Metric.recoveryHigh : Theme.neutral(0.25)).frame(width: 12, height: 12)
+                Text("Usual").font(Theme.text(10)).foregroundStyle(Theme.inkTertiary)
+            }
+        }
+        .accessibilityHidden(true)
+        .task {
+            guard !reduceMotion else { shown = count; return }
+            for step in 1...max(1, count) {
+                try? await Task.sleep(for: .milliseconds(220))
+                withAnimation(.easeOut(duration: 0.25)) { shown = step }
+            }
         }
     }
 }

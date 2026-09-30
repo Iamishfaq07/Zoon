@@ -217,13 +217,18 @@ struct TodayView: View {
                     .entrance(3)
                 TravelTonightCard()
                     .entrance(3)
-                NavigationLink {
-                    ZoonTomorrowView()
-                } label: {
-                    tomorrowCard(context)
+                // Only when there is a morning start to plan for. Without one
+                // the card restated tonight's bedtime from the Tonight card
+                // right above it.
+                if preferences.commitment().event != nil {
+                    NavigationLink {
+                        PlanHub(initial: .tomorrow)
+                    } label: {
+                        tomorrowCard(context)
+                    }
+                    .buttonStyle(.plain)
+                    .entrance(4)
                 }
-                .buttonStyle(.plain)
-                .entrance(4)
             } else if moment == .day && !scoreLight {
                 daytimeHero(context).entrance(0)
                 AdaptiveBriefCard(brief: adaptiveBrief(context, phase: .day))
@@ -298,8 +303,12 @@ struct TodayView: View {
                 )
                 .entrance(4)
 
-                OneThingCard(selection: oneThing(for: context, napMinutesToday: napMinutesToday))
-                    .entrance(4)
+                // The morning brief already names the day's best move; a
+                // second action card under it said the same thing twice.
+                if moment != .morning {
+                    OneThingCard(selection: oneThing(for: context, napMinutesToday: napMinutesToday))
+                        .entrance(4)
+                }
             }
 
             if moment == .day {
@@ -323,13 +332,18 @@ struct TodayView: View {
             if moment == .morning || moment == .day {
                 TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(6)
-                NavigationLink {
-                    ZoonTomorrowView()
-                } label: {
-                    tomorrowCard(context)
+                // Only when there is a morning start to plan for. Without one
+                // the card restated tonight's bedtime from the Tonight card
+                // right above it.
+                if preferences.commitment().event != nil {
+                    NavigationLink {
+                        PlanHub(initial: .tomorrow)
+                    } label: {
+                        tomorrowCard(context)
+                    }
+                    .buttonStyle(.plain)
+                    .entrance(6)
                 }
-                .buttonStyle(.plain)
-                .entrance(6)
             }
 
             if moment == .day {
@@ -638,20 +652,21 @@ struct TodayView: View {
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Tomorrow", systemImage: "sunrise.fill")
             if let plan {
-                Text(plan.sentence)
-                    .font(Theme.text(17, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                // The three times, not the sentence that carried them: on
+                // Today this card is glanced at, and the bedtime was buried
+                // mid-sentence. The reasoning lives on the Tomorrow screen.
+                HStack(alignment: .top, spacing: 12) {
+                    tomorrowTime("Wind down", plan.windDown, tint: Theme.Family.bodySignals)
+                    tomorrowTime("Bed", plan.bedtime, tint: Theme.Family.sleep)
+                    tomorrowTime("Wake", plan.wake, tint: Theme.Family.circadian)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(plan.sentence)
                 HorizonStrip(
                     nodes: plan.nodes,
                     sleepWindowStart: plan.sleepWindowStart,
                     sleepWindowEnd: plan.sleepWindowEnd
                 )
-                Text(plan.caveat)
-                    .font(Theme.evidence)
-                    .foregroundStyle(Theme.inkTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("Name a morning start time and Zoon will arrange tonight around it.")
                     .font(Theme.text(15))
@@ -661,6 +676,21 @@ struct TodayView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
         .accessibilityHint("Opens Tomorrow")
+    }
+
+    private func tomorrowTime(_ title: String, _ time: Date, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(Theme.label(12, weight: .semibold))
+                .foregroundStyle(Theme.inkSecondary)
+            Text(time.formatted(date: .omitted, time: .shortened))
+                .font(Theme.heading(20))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func energyForecast(_ context: DayContext) -> EnergyForecast {
@@ -775,7 +805,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 14) {
             ZoonSectionHeader("Today's energy") {
                 NavigationLink {
-                    EnergyDetailView(context: context)
+                    BodyHub(initial: .energy)
                 } label: {
                     HStack(spacing: 3) {
                         Text("Details")

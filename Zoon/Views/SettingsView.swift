@@ -130,7 +130,7 @@ struct SettingsView: View {
         } header: {
             Text("Sleep Goal")
         } footer: {
-            Text("Your sleep score, sleep need and shortfall are measured against this. Zoon then learns your real need from your best-rested nights.")
+            Text("Your starting point. Zoon then learns your real need from your best-rested nights.")
         }
     }
 
@@ -152,7 +152,7 @@ struct SettingsView: View {
         } header: {
             Text("Appearance")
         } footer: {
-            Text("Replay shows the star field and moon again. Nights, journal and Health access stay. Zoon was built dark-first for a bedroom screen.")
+            Text("Replay shows the welcome again. Your data stays.")
         }
     }
 
@@ -340,11 +340,7 @@ struct SettingsView: View {
         } header: {
             Text("Reminders")
         } footer: {
-            Text("""
-                Scheduled on this device. Zoon has no push notifications and no server, \
-                so nothing about your sleep leaves the phone to deliver these. The time \
-                moves with your sleep debt, so it is re-armed each time you open the app.
-                """)
+            Text("Scheduled on this phone. Nothing leaves it. The time follows your sleep debt.")
         }
     }
 
@@ -382,7 +378,7 @@ struct SettingsView: View {
         } header: {
             Text("Obligation days")
         } footer: {
-            Text("The days you have a fixed commitment on. Everything else is treated as a free day when Zoon looks at your schedule's regularity.")
+            Text("Days with a fixed start. The rest count as free days.")
         }
     }
 
@@ -449,13 +445,7 @@ struct SettingsView: View {
         } header: {
             Text("Cycle")
         } footer: {
-            Text("""
-                Off by default. Turning this on asks Health for your logged period \
-                dates specifically — a separate permission from everything else Zoon \
-                reads. Useful because a normal luteal-phase shift in HRV and resting \
-                heart rate can otherwise look identical to the illness-drift pattern \
-                Body Signals watches for.
-                """)
+            Text("Asks Health for your period dates, so a normal cycle shift isn't mistaken for getting ill. Off by default.")
         }
     }
 
@@ -490,15 +480,7 @@ struct SettingsView: View {
         } header: {
             Text("Lifestyle Insights")
         } footer: {
-            Text("""
-                Off by default. Turning this on asks Health for caffeine, alcohol, \
-                time in daylight, Mindfulness sessions and the daily mood you log \
-                (State of Mind) — a separate permission from everything else Zoon \
-                reads. Shown alongside your Journal tags as measured reference. \
-                When your watch measured ten minutes or more of morning daylight, \
-                tonight's "time outdoors this morning" is marked yes for you; it is \
-                never marked no, and an answer you gave is never changed.
-                """)
+            Text("Off by default. Ten minutes of morning daylight ticks \"time outdoors\" for you; your own answers are never changed.")
         }
     }
 
@@ -512,8 +494,13 @@ struct SettingsView: View {
             NavigationLink("Tracked Behaviours") {
                 TrackedBehaviorsView()
             }
+            // Moved here from More: adding your own behaviour and choosing
+            // which ones the Journal asks about are the same decision.
+            NavigationLink("Your own behaviours") {
+                CustomBehaviorsView()
+            }
         } footer: {
-            Text("Choose which behaviours the Journal asks about each day. Everything is tracked until you narrow it down.")
+            Text("Choose what the Journal asks about each day, or add your own.")
         }
     }
 
@@ -674,11 +661,7 @@ struct SettingsView: View {
             } header: {
                 Text("Sleep Source")
             } footer: {
-                Text("""
-                    When more than one source reports sleep for the same night, Zoon picks \
-                    whichever has the richest data automatically. Choose one here to always \
-                    prefer it instead.
-                    """)
+                Text("Zoon picks the richest source each night. Choose one to always use it.")
             }
         }
     }
@@ -700,7 +683,7 @@ struct SettingsView: View {
     private var dataSection: some View {
         Section {
             NavigationLink("Data Quality") {
-                DataQualityView()
+                DataHub(initial: .arrived)
             }
             LabeledContent("Nights recorded", value: "\(coordinator.recentNights.count)")
             LabeledContent("Naps logged", value: "\(naps.naps.count)")
