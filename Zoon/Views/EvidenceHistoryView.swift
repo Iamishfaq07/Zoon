@@ -30,7 +30,7 @@ struct EvidenceHistoryView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
-                Text("What Zoon believed, and when. Earlier readings are never overwritten -- if a longer stretch of nights changes the answer, both are here.")
+                Text("What Zoon believed, and when. Old readings are kept.")
                     .font(Theme.text(13))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -39,7 +39,7 @@ struct EvidenceHistoryView: View {
 
                 let claims = EvidenceLedger.claimIDs(in: history)
                 if claims.isEmpty {
-                    Text("Nothing recorded yet. Once Zoon can compare enough of your nights to say something about a habit, the first reading lands here and stays.")
+                    Text("Nothing yet. The first reading about a habit lands here.")
                         .font(Theme.text(13))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)

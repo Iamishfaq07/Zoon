@@ -400,7 +400,7 @@ struct SleepDetailView: View {
                         .foregroundStyle(source.available ? Theme.Metric.recoveryHigh : Theme.inkSecondary)
                 }
             }
-            Text("Missing data is never treated as zero -- a metric with nothing available here is simply left out of tonight's score and comparisons.")
+            Text("Missing data is left out, never counted as zero.")
                 .font(Theme.text(9))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

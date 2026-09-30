@@ -392,7 +392,7 @@ private struct GuidedExperimentCard: View {
             DisclosureGroup("Logging plan and night coverage") {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Answer Yes or No for \(tag.label.lowercased()) each day. Also log travel and illness.")
-                    Text("This is a personal association test. An inconclusive result means the data did not separate the possibilities.")
+                    Text("A test on your own nights. \"Inconclusive\" means the data couldn't tell.")
                         .foregroundStyle(Theme.inkSecondary)
                     ForEach(observations.filter { $0.date >= (startDate ?? .distantPast) }.sorted { $0.date > $1.date }, id: \.date) { observation in
                         VStack(alignment: .leading) {

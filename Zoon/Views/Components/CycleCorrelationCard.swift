@@ -57,7 +57,7 @@ struct CycleCorrelationCard: View {
                 }
             }
 
-            Text("These are calendar estimates, not detected physiological phases or ovulation. Irregular histories remain unclassified.")
+            Text("Calendar estimates, not detected phases.")
                 .font(.caption2)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

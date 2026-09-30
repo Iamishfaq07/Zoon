@@ -184,7 +184,7 @@ struct SleepNeedView: View {
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if learned?.isOutsideAgeRange == true {
-                    Text("Your nights point outside what is usual at your age, so Zoon leans toward your goal until more nights agree.")
+                    Text("Unusual for your age, so Zoon leans on your goal until more nights agree.")
                         .font(Theme.text(14))
                         .foregroundStyle(Theme.Family.attention)
                         .fixedSize(horizontal: false, vertical: true)
@@ -248,7 +248,7 @@ struct SleepNeedView: View {
                     .monospacedDigit()
             }
             if abs(rowSum - total) >= 5 {
-                Text("Tonight's plan moves bedtime by a bounded amount each night, so its target can differ from the sum above.")
+                Text("Tonight's plan moves bedtime a little at a time, so it can differ from this.")
                     .font(Theme.text(10))
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)

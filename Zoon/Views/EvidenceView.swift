@@ -353,7 +353,7 @@ struct EvidenceView: View {
     }
 
     private var emptyState: some View {
-        Text("Nothing worth claiming yet. A few more nights, and anything Zoon finds will show up here ranked by how it found it.")
+        Text("Nothing yet. Findings show up here after a few more nights.")
             .font(Theme.text(13))
             .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)

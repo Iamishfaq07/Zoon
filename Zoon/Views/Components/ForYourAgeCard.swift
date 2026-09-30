@@ -118,7 +118,7 @@ struct ForYourAgeCard: View {
                 profilePrompt
             }
 
-            Text("Ranges from published studies of healthy adults. Your own trend matters more than where you sit in a crowd.")
+            Text("From studies of healthy adults. Your own trend matters more.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

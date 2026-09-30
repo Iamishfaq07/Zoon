@@ -32,7 +32,7 @@ struct FirstNightCard: View {
                 dataPoint("Respiration", available: night.avgRespiratoryRate != nil)
             }
 
-            Text("Personal baselines become more accurate as you collect more nights -- scores and comparisons below will start appearing over the next couple of weeks.")
+            Text("Comparisons fill in over the next couple of weeks.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

@@ -59,7 +59,7 @@ struct SleepRunwayCard: View {
                 .font(Theme.text(12))
 
             if !plan.usedCalendar {
-                Text("No calendar commitments are feeding this. It is built from your own habit and any morning time you set.")
+                Text("From your habit and any morning time you set.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)

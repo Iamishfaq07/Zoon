@@ -96,7 +96,7 @@ struct RegularityCard: View {
                     Text("24-hour regularity \(Int(academic.index.rounded()))")
                         .font(Theme.label(13, weight: .semibold))
                         .monospacedDigit()
-                    Text("Academic formula over full calendar days, including daytime. Not the timing number above — daytime awake-to-awake agreement would flatten that one.")
+                    Text("A research measure over whole days, so it differs from the timing number above.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)

@@ -24,7 +24,7 @@ struct AlgorithmTransparencyView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("How your score works")
                 .font(Theme.heading(20))
-            Text("Five sleep-period components. Recovery and body-signal anomalies are kept separate so the headline remains easy to interpret.")
+            Text("Five parts of the night. Recovery and body signals are kept separate.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

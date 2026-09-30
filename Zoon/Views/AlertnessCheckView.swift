@@ -46,7 +46,7 @@ struct AlertnessCheckView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Optional 20–30 second check", systemImage: "hand.tap.fill")
                 .font(Theme.label(15, weight: .semibold))
-            Text("Tap when the moon changes. Zoon records reaction time, lapses, and how alert you feel as a personal outcome alongside your sleep history.")
+            Text("Tap when the moon changes. Zoon keeps your reaction time beside your sleep.")
                 .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
             Text("Wellness information only. This is not a medical, neurological, driving, or fitness-for-duty test.")
                 .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)

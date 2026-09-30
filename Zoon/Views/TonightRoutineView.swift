@@ -200,7 +200,7 @@ struct SavedSleepPlansView: View {
                         }
                     }
                 }.onDelete { store.value.plans.remove(atOffsets: $0) }
-                Text("The earliest active sleep window takes priority. Saved times feed Tonight and enabled reminders or alarms.").font(.caption)
+                Text("The earliest active schedule wins. It sets Tonight, reminders and alarms.").font(.caption)
             }
             Section("New schedule") {
                 TextField("Name", text: $name)

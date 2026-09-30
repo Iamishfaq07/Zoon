@@ -64,7 +64,7 @@ struct DataQualityView: View {
         VStack(alignment: .leading, spacing: 10) {
             ZoonSectionHeader("What Zoon couldn't read")
             if readProblems.isEmpty {
-                Text("Every read since Zoon opened worked. A gap above means nothing was recorded, not that Zoon couldn't reach it.")
+                Text("Every read worked. A gap means nothing was recorded.")
                     .font(Theme.text(12))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)

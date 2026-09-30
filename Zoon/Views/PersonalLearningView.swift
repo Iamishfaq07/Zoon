@@ -114,7 +114,7 @@ struct PersonalLearningView: View {
                     .foregroundStyle(link.isReady ? Theme.ink : Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if link.isReady {
-                    Text("Full night: within 15 minutes of your need. Short night: an hour or more below it. Nights in between are left out.")
+                    Text("Full night: within 15 min of your need. Short: an hour or more under.")
                         .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
