@@ -53,7 +53,7 @@ struct SensorTruthView: View {
         ScrollViewReader { proxy in
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                Text("A wrist temperature is a thing a sensor recorded. A REM minute-count is a model's guess. Both look the same on a card, so here is which is which.")
+                Text("Some numbers are measured by a sensor. Others are estimates. Here is which is which.")
                     .font(Theme.text(13))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
