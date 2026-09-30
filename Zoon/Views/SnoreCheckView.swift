@@ -336,10 +336,14 @@ struct SnoreCheckView: View {
             }
 
             if flagged {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // Stacked: side by side, "1 h 29 min" broke onto two lines
+                // with "min" alone on the second.
+                VStack(alignment: .leading, spacing: 2) {
                     Text(SnoreResultSummary.duration(summary.snoreMinutes))
                         .font(Theme.numeral(40))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     Text("snoring · \(report.sharePercent)% of the time monitored")
                         .font(Theme.text(14))
                         .foregroundStyle(Theme.inkSecondary)

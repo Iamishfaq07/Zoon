@@ -11,7 +11,7 @@ struct TonightRoutineView: View {
         Form {
             Section {
                 Label("Settle into tonight", systemImage: "moon.stars.fill").font(.title2.bold())
-                Text("Begin with guided breathing and your sound scene. Audio fades at the end. Your routine continues when you leave this screen.")
+                Text("Breathing, then your sound scene, fading out. Keeps going if you leave.")
                     .font(.callout).foregroundStyle(Theme.inkSecondary)
                 if let window = store.value.nextWindow() {
                     LabeledContent("Saved bedtime", value: window.start.formatted(date: .abbreviated, time: .shortened))
@@ -22,7 +22,7 @@ struct TonightRoutineView: View {
             }
 
             Section {
-                RelatedReading(placement: .tonightRoutine, title: "Setting up for tonight")
+                RelatedReading(placement: .tonightRoutine, title: "Setting up for tonight", showsChevron: false)
             }
             Section("Routine") {
                 Stepper("\(store.value.routine.minutes) minutes", value: $store.value.routine.minutes, in: 5...120, step: 5)

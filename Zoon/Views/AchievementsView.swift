@@ -100,7 +100,7 @@ struct AchievementsView: View {
                 }
             }
 
-            Text("Badges are never taken away. Nothing here depends on an unbroken run — a sleep app that punishes one bad night is working against you.")
+            Text("Badges are never taken away. One bad night costs you nothing.")
                 .font(.caption2)
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)

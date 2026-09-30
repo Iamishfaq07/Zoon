@@ -11,7 +11,17 @@ import SwiftUI
 /// no-nap day behind it contributes nothing to the estimate, so reporting it
 /// in the sample size would overstate what the number rests on.
 struct NapLearningCard: View {
-    let findings: [NapLearning.Finding]
+    let allFindings: [NapLearning.Finding]
+
+    init(findings: [NapLearning.Finding]) {
+        self.allFindings = findings
+    }
+
+    /// An "insufficient data" finding was drawn as a card saying there was
+    /// nothing to say yet ("0 logged nap days"). No finding, no card.
+    private var findings: [NapLearning.Finding] {
+        allFindings.filter { $0.confidence != .insufficient }
+    }
 
     var body: some View {
         if findings.isEmpty {

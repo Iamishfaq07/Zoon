@@ -18,6 +18,9 @@ struct RelatedReading: View {
     /// Shown above the row. Named for what the reading answers rather than
     /// labelled "Learn", which says where it came from instead.
     var title: String = "Worth reading"
+    /// Off inside a `Form`, which draws its own disclosure chevron on every
+    /// NavigationLink row -- two chevrons side by side otherwise.
+    var showsChevron: Bool = true
 
     private var articles: [Article] { Article.reading(for: placement) }
 
@@ -58,9 +61,11 @@ struct RelatedReading: View {
 
                             Spacer(minLength: 8)
 
-                            Image(systemName: "chevron.right")
-                                .font(Theme.text(11, weight: .semibold))
-                                .foregroundStyle(Theme.inkTertiary)
+                            if showsChevron {
+                                Image(systemName: "chevron.right")
+                                    .font(Theme.text(11, weight: .semibold))
+                                    .foregroundStyle(Theme.inkTertiary)
+                            }
                         }
                         .padding(.vertical, 12)
                         .contentShape(Rectangle())
