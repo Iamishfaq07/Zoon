@@ -89,11 +89,11 @@ struct WhyScoreWaterfall: View {
     @ViewBuilder
     private func destination(for component: SleepIntelligenceScore.Component) -> some View {
         switch component.label {
-        case "Duration": SleepNeedView()
-        case "Regularity": RegularityDetailView()
-        case "Recovery": RecoveryDetailView()
+        case "Duration": NeedHub(initial: .need)
+        case "Regularity": BodyHub(initial: .rhythm)
+        case "Recovery": BodyHub(initial: .recovery)
         case "Timing": BodyClockView()
-        case "Breathing": BreathingHealthView()
+        case "Breathing": BodyHub(initial: .breathing)
         default: SleepDetailView(context: context)
         }
     }

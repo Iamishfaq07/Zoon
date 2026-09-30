@@ -45,7 +45,7 @@ struct CoreIntelligenceGrid: View {
             icon: AnyView(ZoonIcon.SleepNeed(tint: Theme.Metric.sleep, fraction: fraction)),
             tint: Theme.Metric.sleep, zoomID: "sleepNeed"
         ) {
-            SleepNeedView(zoomNamespace: zoom, zoomID: "sleepNeed")
+            NeedHub(initial: .need, zoomNamespace: zoom, zoomID: "sleepNeed")
         } visual: {
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.neutral(0.10)).frame(height: 6)
@@ -75,7 +75,7 @@ struct CoreIntelligenceGrid: View {
             icon: AnyView(ZoonIcon.SleepDebt(tint: Theme.Metric.temperature, deficit: fraction)),
             tint: Theme.Metric.temperature, zoomID: "sleepDebt"
         ) {
-            SleepDebtView(zoomNamespace: zoom, zoomID: "sleepDebt")
+            NeedHub(initial: .owed, zoomNamespace: zoom, zoomID: "sleepDebt")
         } visual: {
             ZStack {
                 Circle()
@@ -138,7 +138,7 @@ struct CoreIntelligenceGrid: View {
             icon: AnyView(ZoonIcon.BodySignals(tint: Theme.Metric.recoveryMid)),
             tint: Theme.Metric.recoveryMid, zoomID: "bodySignals"
         ) {
-            HealthRadarView(zoomNamespace: zoom, zoomID: "bodySignals")
+            BodyHub(initial: .signals, zoomNamespace: zoom, zoomID: "bodySignals")
         } visual: {
             HStack(spacing: 3) {
                 ForEach(0..<4, id: \.self) { index in

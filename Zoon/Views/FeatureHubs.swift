@@ -17,17 +17,40 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
     let title: String
     @State private var selection: Choice
     @ViewBuilder let content: (Choice) -> Content
+    /// Set when the hub is pushed from a tile with a zoom transition. The
+    /// transition belongs to the pushed view, which is the hub, so the hub
+    /// applies it and the screens inside are built without one.
+    var zoomNamespace: Namespace.ID?
+    var zoomID: String?
 
     @Namespace private var chipSpace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(title: String, initial: Choice, @ViewBuilder content: @escaping (Choice) -> Content) {
+    init(
+        title: String,
+        initial: Choice,
+        zoomNamespace: Namespace.ID? = nil,
+        zoomID: String? = nil,
+        @ViewBuilder content: @escaping (Choice) -> Content
+    ) {
         self.title = title
         _selection = State(initialValue: initial)
+        self.zoomNamespace = zoomNamespace
+        self.zoomID = zoomID
         self.content = content
     }
 
     var body: some View {
+        // Branching the view, not the transition value: `.zoom` and
+        // `.automatic` are different concrete types (see BodyClockView).
+        if let zoomNamespace, let zoomID {
+            hub.navigationTransition(.zoom(sourceID: zoomID, in: zoomNamespace))
+        } else {
+            hub
+        }
+    }
+
+    private var hub: some View {
         content(selection)
             .id(selection)
             .transition(.opacity)
@@ -291,6 +314,106 @@ struct LearnHub: View {
             switch section {
             case .articles: ArticlesView()
             case .words: GlossaryView()
+            }
+        }
+    }
+}
+
+// MARK: - Your body
+
+/// The body-signal screens, one per signal, used to be reached from four
+/// different cards with no way across. Side by side here.
+enum BodySection: String, HubSection {
+    case recovery, rhythm, energy, breathing, signals
+
+    var label: String {
+        switch self {
+        case .recovery: "Recovery"
+        case .rhythm: "Rhythm"
+        case .energy: "Energy"
+        case .breathing: "Breathing"
+        case .signals: "All signals"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .recovery: "heart.fill"
+        case .rhythm: "metronome"
+        case .energy: "bolt.fill"
+        case .breathing: "lungs.fill"
+        case .signals: "dot.radiowaves.left.and.right"
+        }
+    }
+}
+
+struct BodyHub: View {
+    var initial: BodySection = .recovery
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
+    @Environment(SleepDataCoordinator.self) private var coordinator
+
+    var body: some View {
+        FeatureHub(title: "Your body", initial: initial, zoomNamespace: zoomNamespace, zoomID: zoomID) { section in
+            switch section {
+            case .recovery: RecoveryDetailView()
+            case .rhythm: RegularityDetailView()
+            case .energy:
+                if let context = coordinator.state.context {
+                    EnergyDetailView(context: context)
+                } else {
+                    ZoonEmptyState(
+                        kind: .noData(
+                            title: "No energy picture yet",
+                            message: "Zoon needs last night's sleep before it can forecast today's energy.",
+                            unlocks: ["Energy through the day", "Daily load"]
+                        )
+                    )
+                    .padding()
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .nightBackground()
+                }
+            case .breathing: BreathingHealthView()
+            case .signals: HealthRadarView()
+            }
+        }
+    }
+}
+
+// MARK: - Sleep need
+
+/// How much sleep you need and how much you are owed are one question asked
+/// two ways -- the need tonight includes paying some of it back -- and they
+/// were two screens.
+enum NeedSection: String, HubSection {
+    case need, owed
+
+    var label: String {
+        switch self {
+        case .need: "Your need"
+        case .owed: "Owed"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .need: "bed.double.fill"
+        case .owed: "hourglass"
+        }
+    }
+}
+
+struct NeedHub: View {
+    var initial: NeedSection = .need
+    var zoomNamespace: Namespace.ID? = nil
+    var zoomID: String? = nil
+
+    var body: some View {
+        FeatureHub(title: "Sleep need", initial: initial, zoomNamespace: zoomNamespace, zoomID: zoomID) { section in
+            switch section {
+            case .need: SleepNeedView()
+            case .owed: SleepDebtView()
             }
         }
     }

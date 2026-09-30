@@ -75,7 +75,7 @@ struct WorthNoticing: View {
                 headline: radar.stateHeadline,
                 detail: radar.stateDetail,
                 linkLabel: "View Body Signals"
-            ) { HealthRadarView() }
+            ) { BodyHub(initial: .signals) }
 
         case let .stress(stress):
             notice(

@@ -69,7 +69,7 @@ struct HealthPulseStrip: View {
 
     private var recoveryTile: some View {
         NavigationLink {
-            RecoveryDetailView()
+            BodyHub(initial: .recovery)
         } label: {
             VStack(spacing: 4) {
                 ZStack {
@@ -113,7 +113,7 @@ struct HealthPulseStrip: View {
         let tint: Color = state.tint
 
         return NavigationLink {
-            HealthRadarView()
+            BodyHub(initial: .signals)
         } label: {
             VStack(spacing: 4) {
                 HStack(spacing: 2) {
@@ -149,7 +149,7 @@ struct HealthPulseStrip: View {
         }()
 
         return NavigationLink {
-            BreathingHealthView()
+            BodyHub(initial: .breathing)
         } label: {
             VStack(spacing: 4) {
                 HStack(alignment: .bottom, spacing: 2) {
@@ -195,7 +195,7 @@ struct HealthPulseStrip: View {
         }()
 
         return NavigationLink {
-            RegularityDetailView()
+            BodyHub(initial: .rhythm)
         } label: {
             VStack(spacing: 4) {
                 ZStack(alignment: .leading) {

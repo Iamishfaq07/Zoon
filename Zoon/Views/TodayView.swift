@@ -791,7 +791,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 14) {
             ZoonSectionHeader("Today's energy") {
                 NavigationLink {
-                    EnergyDetailView(context: context)
+                    BodyHub(initial: .energy)
                 } label: {
                     HStack(spacing: 3) {
                         Text("Details")
