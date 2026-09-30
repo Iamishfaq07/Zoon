@@ -8,7 +8,7 @@ struct TravelTonightCard: View {
     var body: some View {
         if let trip = setup.value.trip, isActive(trip) {
             NavigationLink {
-                TravelPlanView()
+                PlanHub(initial: .travel)
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Travel")

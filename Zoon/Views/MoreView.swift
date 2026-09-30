@@ -39,47 +39,30 @@ struct MoreView: View {
                     // data repair tool beside the reading list; Repair now
                     // sits with Data quality, the screen that sends people
                     // to it.
-                    sectionLabel("Plan")
-                    navRow("Tonight", "Breathing, saved sounds and your schedule", "moon.stars.fill", Theme.Metric.sleep) { TonightRoutineView() }
-                    navRow("Tomorrow", "Protect a morning start time", "sunrise.fill", Theme.Metric.battery) {
-                        ZoonTomorrowView()
+                    // Fourteen rows became six. Related screens now share
+                    // one hub each (see `FeatureHubs.swift`), so this list
+                    // names the questions, and the hub's chips name the
+                    // screens inside.
+                    sectionLabel("Plan and review")
+                    navRow("Plan", "Tonight, tomorrow and travel", "moon.stars.fill", Theme.Metric.sleep) { PlanHub() }
+                    navRow("Reports", "Your week, month and year, and a PDF for a doctor", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
+                        ReportsHub()
                     }
-                    navRow("Travel plan", "Active trip sits on Tonight", "airplane", Theme.Metric.strain) {
-                        TravelPlanView()
-                    }
-
-                    sectionLabel("Review")
-                    navRow("Weekly Report", "Your week in review", "calendar.badge.clock", Theme.Metric.recoveryHigh) {
-                        ReportView()
-                    }
-                    navRow("Clinician Report", "7/30/90-day PDF summary to share", "doc.text.fill", Theme.Metric.hrv) {
-                        ClinicianReportView()
+                    navRow("Your patterns", "What goes with your good and bad nights", "sparkles", Theme.Family.sleep) {
+                        PatternsHub()
                     }
                     navRow("Badges", "What you've earned so far", "hexagon.fill", Theme.Metric.recoveryMid) {
                         AchievementsView()
                     }
 
-                    sectionLabel("Your data")
-                    navRow("How well Zoon knows you", "Maturity by domain, not a score", "circle.hexagongrid.fill", Theme.Metric.hrv) {
-                        ModelHealthView()
+                    sectionLabel("Your data and settings")
+                    navRow("Your data", "What Zoon measured, estimated and knows", "waveform.path.ecg", Theme.Metric.hrv) {
+                        DataHub()
                     }
-                    navRow("Data quality", "What actually arrived this month", "waveform.path.ecg", Theme.Metric.recoveryMid) {
-                        DataQualityView()
+                    navRow("Learn", "Sleep science and every word, in plain language", "book.pages.fill", Theme.Metric.sleep) {
+                        LearnHub()
                     }
-                    navRow("Repair sleep data", "Check coverage and manage local corrections", "wrench.and.screwdriver", Theme.Metric.sleep) { DataRepairView() }
-                    navRow("Custom behaviours", "Track signals unique to your routine",
-                            "plus.circle.fill", Theme.Family.sleep) {
-                        CustomBehaviorsView()
-                    }
-
-                    sectionLabel("Learn and settings")
-                    navRow("Learn", "Sleep science, in plain language", "book.pages.fill", Theme.Metric.sleep) {
-                        ArticlesView()
-                    }
-                    navRow("What the words mean", "Every term in the app, said plainly", "character.book.closed.fill", Theme.Family.bodySignals) {
-                        GlossaryView()
-                    }
-                    navRow("Settings", "Goal, engine, privacy, replay first night", "gearshape.fill", .secondary) {
+                    navRow("Settings", "Goal, your own behaviours, privacy", "gearshape.fill", .secondary) {
                         SettingsView()
                     }
 
@@ -102,13 +85,13 @@ struct MoreView: View {
             }
             .navigationDestination(for: DeepLink.Destination.self) { destination in
                 switch destination {
-                case .report: ReportView()
+                case .report: ReportsHub(initial: .week)
                 case .settings: SettingsView()
                 case .badges: AchievementsView()
-                case .evidence: EvidenceView()
-                case .patterns: PatternsView()
-                case .sensorTruth: SensorTruthView()
-                case .tomorrow: ZoonTomorrowView()
+                case .evidence: PatternsHub(initial: .proven)
+                case .patterns: PatternsHub(initial: .noticed)
+                case .sensorTruth: DataHub(initial: .sources)
+                case .tomorrow: PlanHub(initial: .tomorrow)
                 // Owned by the Sleep tab.
                 case .soundscapes, .nap, .sleepDetail, .nightHistory, .breathing, .snoreCheck, .bodyClock, .windDown: EmptyView()
                 // Presented as its own sheet from GlobalPresentation, not

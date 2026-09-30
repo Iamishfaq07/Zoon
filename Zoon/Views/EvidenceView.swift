@@ -272,7 +272,7 @@ struct EvidenceView: View {
     /// believe".
     private var sensorTruthLink: some View {
         NavigationLink {
-            SensorTruthView()
+            DataHub(initial: .sources)
         } label: {
             // At accessibility sizes the two lines wrap to eight or more,
             // and a 14pt icon centred against that block floats down beside

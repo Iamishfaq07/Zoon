@@ -218,7 +218,7 @@ struct TodayView: View {
                 TravelTonightCard()
                     .entrance(3)
                 NavigationLink {
-                    ZoonTomorrowView()
+                    PlanHub(initial: .tomorrow)
                 } label: {
                     tomorrowCard(context)
                 }
@@ -324,7 +324,7 @@ struct TodayView: View {
                 TonightSection(context: context, autopilot: autopilotPlan(context), episode: coordinator.tonightEpisode(), lastSync: coordinator.lastRefresh, showsDataStatus: true)
                     .entrance(6)
                 NavigationLink {
-                    ZoonTomorrowView()
+                    PlanHub(initial: .tomorrow)
                 } label: {
                     tomorrowCard(context)
                 }

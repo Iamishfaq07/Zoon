@@ -332,7 +332,7 @@ struct ReportView: View {
                     }
                 }
                 NavigationLink("See all patterns") {
-                    CauseFinderView()
+                    PatternsHub(initial: .test)
                 }
                 .font(Theme.text(11, weight: .semibold))
             }

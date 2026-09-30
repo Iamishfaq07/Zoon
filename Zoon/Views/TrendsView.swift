@@ -150,24 +150,10 @@ struct TrendsView: View {
                     ExploreGrid(title: "Explore your sleep") {
                         ExploreTile(
                             title: "Your patterns",
-                            subtitle: "What repeats, night after night",
+                            subtitle: "What goes with your good and bad nights",
                             symbol: "square.grid.3x3.fill",
                             tint: Theme.Family.sleep
-                        ) { PatternsView() }
-
-                        ExploreTile(
-                            title: "Sleep eras",
-                            subtitle: "Stretches where your sleep changed character",
-                            symbol: "timeline.selection",
-                            tint: Theme.Family.circadian
-                        ) { SleepErasView() }
-
-                        ExploreTile(
-                            title: "Year in Sleep",
-                            subtitle: "Every night of the year at once",
-                            symbol: "calendar",
-                            tint: Theme.Family.recovery
-                        ) { YearHeatmapView() }
+                        ) { PatternsHub() }
 
                         ExploreTile(
                             title: "Chart builder",
@@ -176,21 +162,14 @@ struct TrendsView: View {
                             tint: Theme.Family.bodySignals
                         ) { ChartBuilderView() }
 
+                        // Week, month, year and the doctor's PDF were four
+                        // tiles and a More row; one hub holds them now.
                         ExploreTile(
-                            title: "Your month",
-                            subtitle: "A calendar of moons, and a card to share",
-                            symbol: "moon.stars.fill",
-                            tint: Theme.Family.sleep
-                        ) { MonthRecapView() }
-
-                        // Reviewing the week belongs where the week is
-                        // reviewed; it was only in More.
-                        ExploreTile(
-                            title: "Weekly report",
-                            subtitle: "This week against last, in one page",
+                            title: "Reports",
+                            subtitle: "Week, month, year and eras",
                             symbol: "calendar.badge.clock",
                             tint: Theme.Family.recovery
-                        ) { ReportView() }
+                        ) { ReportsHub() }
 
                         // This tab carries most of the app's vocabulary.
                         ExploreTile(
@@ -198,7 +177,7 @@ struct TrendsView: View {
                             subtitle: "Every term here, said plainly",
                             symbol: "character.book.closed.fill",
                             tint: Theme.Family.circadian
-                        ) { GlossaryView() }
+                        ) { LearnHub(initial: .words) }
                     }
                     .entrance(2)
 

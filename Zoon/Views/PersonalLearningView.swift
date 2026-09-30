@@ -177,7 +177,7 @@ struct ProactiveZoonCard: View {
 
     var body: some View {
         if let first = items.first {
-            NavigationLink { PersonalLearningView() } label: {
+            NavigationLink { PatternsHub(initial: .learned) } label: {
                 VStack(alignment: .leading, spacing: 7) {
                     Label("Worth checking", systemImage: "bell.badge.fill")
                         .font(Theme.kicker).foregroundStyle(Theme.Family.attention)

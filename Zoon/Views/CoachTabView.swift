@@ -132,41 +132,22 @@ struct CoachTabView: View {
                 // These answer "why does it say that", which is a question
                 // about the coach -- so they belong on the coach's own tab,
                 // not at the bottom of the charts tab.
+                // Five tiles for five screens became two tiles for the two
+                // hubs that now hold them.
                 ExploreGrid(title: "How Zoon knows you") {
                     ExploreTile(
-                        title: "What Zoon knows",
-                        subtitle: "The evidence behind every claim",
+                        title: "Your patterns",
+                        subtitle: "What Zoon noticed, how sure it is, and what to test",
                         symbol: "checkmark.seal.fill",
                         tint: Theme.Family.recovery
-                    ) { EvidenceView() }
+                    ) { PatternsHub(initial: .proven) }
 
                     ExploreTile(
-                        title: "How well it knows you",
+                        title: "Your data",
                         subtitle: "How much history it is working from",
                         symbol: "square.stack.3d.up.fill",
                         tint: Theme.Family.bodySignals
-                    ) { ModelHealthView() }
-
-                    ExploreTile(
-                        title: "Personal learning",
-                        subtitle: "What it has worked out about you",
-                        symbol: "sparkles.rectangle.stack.fill",
-                        tint: Theme.Family.sleep
-                    ) { PersonalLearningView() }
-
-                    ExploreTile(
-                        title: "Sleep Playbook",
-                        subtitle: "Your habits, and what to try next",
-                        symbol: "checklist",
-                        tint: Theme.Family.circadian
-                    ) { SleepPlaybookView() }
-
-                    ExploreTile(
-                        title: "Tomorrow",
-                        subtitle: "One plan for a morning that has a start time",
-                        symbol: "sunrise.fill",
-                        tint: Theme.Family.sleep
-                    ) { ZoonTomorrowView() }
+                    ) { DataHub() }
                 }
                 .entrance(3)
 

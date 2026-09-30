@@ -512,8 +512,13 @@ struct SettingsView: View {
             NavigationLink("Tracked Behaviours") {
                 TrackedBehaviorsView()
             }
+            // Moved here from More: adding your own behaviour and choosing
+            // which ones the Journal asks about are the same decision.
+            NavigationLink("Your own behaviours") {
+                CustomBehaviorsView()
+            }
         } footer: {
-            Text("Choose which behaviours the Journal asks about each day. Everything is tracked until you narrow it down.")
+            Text("Choose what the Journal asks about each day, or add your own.")
         }
     }
 
@@ -700,7 +705,7 @@ struct SettingsView: View {
     private var dataSection: some View {
         Section {
             NavigationLink("Data Quality") {
-                DataQualityView()
+                DataHub(initial: .arrived)
             }
             LabeledContent("Nights recorded", value: "\(coordinator.recentNights.count)")
             LabeledContent("Naps logged", value: "\(naps.naps.count)")

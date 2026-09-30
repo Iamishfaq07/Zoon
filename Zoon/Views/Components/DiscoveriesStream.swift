@@ -31,7 +31,7 @@ struct DiscoveriesStream: View {
         VStack(alignment: .leading, spacing: 14) {
             ZoonSectionHeader("Discoveries") {
                 NavigationLink {
-                    CauseFinderView()
+                    PatternsHub(initial: .test)
                 } label: {
                     HStack(spacing: 3) {
                         Text("Cause Finder")
@@ -52,7 +52,7 @@ struct DiscoveriesStream: View {
                 .padding(.vertical, -16)
             } else {
                 ForEach(top) { finding in
-                    NavigationLink { CauseFinderView() } label: { findingRow(finding) }
+                    NavigationLink { PatternsHub(initial: .test) } label: { findingRow(finding) }
                         .buttonStyle(.plain)
                 }
                 if let activeExperiment {
@@ -135,7 +135,7 @@ struct ExperimentPreview: View {
 
     var body: some View {
         NavigationLink {
-            CauseFinderView()
+            PatternsHub(initial: .test)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
