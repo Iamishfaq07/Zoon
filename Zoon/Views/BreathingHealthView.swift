@@ -229,10 +229,24 @@ struct BreathingHealthView: View {
                             .font(Theme.label(12))
                             .foregroundStyle(Theme.inkSecondary)
                         Spacer()
-                        Text("\(night.snorePercent)% of \(Int(night.monitoredMinutes))m monitored")
+                        Text(snoreLine(night))
                             .font(Theme.label(12, weight: .semibold))
                             .monospacedDigit()
+                        if let loudest = night.report.loudest {
+                            Circle()
+                                .fill(loudest.tint)
+                                .frame(width: 7, height: 7)
+                                .accessibilityLabel("Loudest \(loudest.label.lowercased())")
+                        }
                     }
+                    .accessibilityElement(children: .combine)
+                }
+                NavigationLink {
+                    SnoreCheckView()
+                } label: {
+                    Text("Open Snore Check")
+                        .font(Theme.label(13, weight: .semibold))
+                        .frame(minHeight: 44)
                 }
             }
             .glassCard()
@@ -245,6 +259,17 @@ struct BreathingHealthView: View {
             }
             .glassCard()
         }
+    }
+
+    /// "42 min · 9% · 5 episodes", or "None flagged in 7 h".
+    private func snoreLine(_ night: SnoreStore.NightSummary) -> String {
+        guard night.snoreMinutes >= 1 else {
+            return "None flagged in \(SnoreResultSummary.duration(night.monitoredMinutes))"
+        }
+        var parts = [SnoreResultSummary.duration(night.snoreMinutes), "\(night.snorePercent)%"]
+        let count = night.report.episodeCount
+        if count > 0 { parts.append("\(count) episode\(count == 1 ? "" : "s")") }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Safety

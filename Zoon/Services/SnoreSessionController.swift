@@ -85,6 +85,18 @@ final class SnoreSessionController {
     var interruptionGaps: Int { detector.interruptionGaps }
     var monitoringGaps: [SnoreMonitoringGap] { detector.monitoringGaps }
     var fusedIntervals: [SnoreEvidenceFusion.Interval] { detector.fusedIntervals }
+    /// Every stored night, oldest first.
+    var history: [SnoreStore.NightSummary] { store.nights }
+    /// How far the room's sound stands above its quiet level right now, dB.
+    var levelAboveRoomDB: Double { detector.acoustics.levelAboveFloorDB }
+    /// Whether Zoon's engine is inside a snoring episode right now.
+    var isSnoringNow: Bool { detector.acoustics.isInEpisode }
+    /// Seconds since the last snore-shaped sound, in monitored time.
+    var secondsSinceSnoreSound: Double? {
+        detector.acoustics.lastCandidateEnd.map { max(0, detector.monitoredSeconds - $0) }
+    }
+    var liveEpisodeCount: Int { detector.liveEpisodeCount }
+    var sessionStartedAt: Date? { detector.sessionStartedAt }
 
     func dismissRecoveredCheckpoint() {
         recoveredCheckpoint = nil
@@ -118,7 +130,10 @@ final class SnoreSessionController {
             isPartial: true,
             endedUnexpectedly: true,
             monitoringQuality: checkpoint.monitoringQuality?.rawValue,
-            interruptionDurationMinutes: checkpoint.interruptionDuration / 60
+            interruptionDurationMinutes: checkpoint.interruptionDuration / 60,
+            episodes: checkpoint.episodes,
+            startedAt: checkpoint.startedAt,
+            endedAt: checkpoint.lastCheckpoint
         )
     }
 

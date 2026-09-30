@@ -22,12 +22,23 @@ enum SnoreEvidenceFusion: Sendable {
         var duration: TimeInterval { max(0, end - start) }
     }
 
+    /// - Parameter vetoes: spans where Apple's classifier heard something
+    ///   that is not snoring (speech, music, a television). The loudness
+    ///   engine's evidence inside them is dropped: a voice at breathing
+    ///   rhythm is still a voice. The classifier's own snoring windows are
+    ///   never vetoed -- it heard snoring there itself.
     static func fuse(
         classifier: [(start: TimeInterval, end: TimeInterval, confidence: Double)],
-        heuristic: [(start: TimeInterval, end: TimeInterval)]
+        heuristic: [(start: TimeInterval, end: TimeInterval)],
+        vetoes: [(start: TimeInterval, end: TimeInterval)] = []
     ) -> [Interval] {
         let classified = classifier.filter { $0.end > $0.start }
-        let heuristicOnly = heuristic.filter { $0.end > $0.start }
+        var heuristicOnly = heuristic.filter { $0.end > $0.start }
+        for veto in vetoes where veto.end > veto.start {
+            heuristicOnly = heuristicOnly.flatMap {
+                slice($0, subtracting: (veto.start - vetoSlack, veto.end + vetoSlack))
+            }
+        }
 
         var tagged: [Interval] = classified.map {
             Interval(start: $0.start, end: $0.end, source: .classifier, confidence: clamp($0.confidence))
@@ -60,6 +71,10 @@ enum SnoreEvidenceFusion: Sendable {
             heuristic: heuristic
         )
     }
+
+    /// Seconds either side of a veto that go with it: classifier windows are
+    /// about a second long and start a little after the sound does.
+    static let vetoSlack: TimeInterval = 1
 
     static func snoreSeconds(from intervals: [Interval]) -> Double {
         merge(intervals.map { ($0.start, $0.end) }).reduce(0) { $0 + ($1.end - $1.start) }

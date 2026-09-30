@@ -189,8 +189,16 @@ otherwise arrive as the same sentence on the same kind of card.
   pattern can look identical without it
 - **Wind Down** — a narrated 4-7-8 breathing exercise, spoken on-device with
   no bundled audio
-- **Snore Check** — an on-device estimate from the microphone, run manually;
-  audio is processed in short bursts and never saved, only a minutes count
+- **Snore Check** — an on-device estimate from the microphone, run manually.
+  Zoon's own engine judges every sound three ways: against the room's quiet
+  level (learned continuously, so a fan becomes the room), by its shape (the
+  length of a breath, low-pitched, periodic) and by its rhythm (a run at
+  breathing intervals), and keeps working with the screen locked. Apple's
+  sound classifier confirms it when it is running and vetoes it where it hears
+  speech, music or a TV. The morning shows each snoring episode on a timeline,
+  coloured by loudness relative to the room, plus the longest, the loudest,
+  the busiest hour and the nights before. Audio is processed in tenths of a
+  second and never saved: only episode times, lengths and loudness are kept
 - **Wake window** notification, honestly scoped: nudges within your usual
   wake time from historical data, not a live sleep-stage alarm
 - **Morning brief** notification, off by default: fires 30 minutes after

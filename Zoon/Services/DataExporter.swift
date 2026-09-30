@@ -535,7 +535,11 @@ enum DataExporter {
 
         for summary in archive.snoreSummaries ?? [] {
             guard minutes(summary.monitoredMinutes), minutes(summary.snoreMinutes),
-                  summary.snoreMinutes <= summary.monitoredMinutes + 0.5
+                  summary.snoreMinutes <= summary.monitoredMinutes + 0.5,
+                  (summary.episodes?.count ?? 0) <= 5_000,
+                  (summary.episodes ?? []).allSatisfy({
+                      $0.end >= $0.start && $0.duration <= 86_400 && (0...100_000).contains($0.events ?? 0)
+                  })
             else { return "snore" }
         }
 

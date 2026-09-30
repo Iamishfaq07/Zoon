@@ -227,4 +227,27 @@ final class SnoreStoreTests: XCTestCase {
         XCTAssertEqual(adopted, 0)
         XCTAssertEqual(store.nights.count, 1)
     }
+
+    func testMergingTwoSessionsKeepsEveryEpisodeAndTheWholeSpan() {
+        let evening = localNoon(plusHours: 10)
+        let a = SnoreStore.NightSummary(
+            date: evening, monitoredMinutes: 200, snoreMinutes: 20,
+            episodes: [SnoreEpisodeRecord(start: evening.addingTimeInterval(3_600), end: evening.addingTimeInterval(4_200), events: 150, loudness: .loud)],
+            startedAt: evening, endedAt: evening.addingTimeInterval(12_000)
+        )
+        let b = SnoreStore.NightSummary(
+            date: evening, monitoredMinutes: 150, snoreMinutes: 10,
+            episodes: [SnoreEpisodeRecord(start: evening.addingTimeInterval(14_000), end: evening.addingTimeInterval(14_600), events: nil, loudness: nil)],
+            startedAt: evening.addingTimeInterval(13_000), endedAt: evening.addingTimeInterval(22_000)
+        )
+        let merged = SnoreStore.merging(b, a)
+        XCTAssertEqual(merged.episodes?.count, 2)
+        XCTAssertEqual(merged.episodes?.first?.loudness, .loud, "sorted by time")
+        XCTAssertEqual(merged.startedAt, evening)
+        XCTAssertEqual(merged.endedAt, evening.addingTimeInterval(22_000))
+        XCTAssertNil(SnoreStore.merging(
+            SnoreStore.NightSummary(date: evening, monitoredMinutes: 1, snoreMinutes: 0),
+            SnoreStore.NightSummary(date: evening, monitoredMinutes: 1, snoreMinutes: 0)
+        ).episodes, "two summaries from before episodes stay without them")
+    }
 }

@@ -42,6 +42,9 @@ enum CoachToolCatalog {
         /// nap already taken and how far away tonight's bedtime is. A read;
         /// starting one is `startNap`, which confirms.
         case getNapAdvice
+        /// Snore Check nights: last night, the recent average, and what
+        /// logged behaviours go with more snoring.
+        case getSnoring
         case logCaffeine
         case startNap
         case prepareTomorrow
@@ -61,7 +64,7 @@ enum CoachToolCatalog {
                  .getMovement, .getTonight, .getTomorrow, .getFatigueContext, .getTrainingContext,
                  .getTrendSummary, .getMonthlyChange, .getBehaviorEvidence, .getLearningStatus,
                  .getWeeklyPlan, .getCurrentPriority, .getPhysiologicalLoad, .getDailyLoad,
-                 .getForYourAge, .getNapAdvice:
+                 .getForYourAge, .getNapAdvice, .getSnoring:
                 false
             }
         }
@@ -82,7 +85,7 @@ enum CoachToolCatalog {
             case .getShortfall, .getEnergy, .getMovement, .getTonight, .getTomorrow,
                  .getFatigueContext, .getTrainingContext, .getTrendSummary, .getMonthlyChange,
                  .getBehaviorEvidence, .getLearningStatus, .getWeeklyPlan, .getCurrentPriority,
-                 .getPhysiologicalLoad, .getDailyLoad, .getForYourAge, .getNapAdvice,
+                 .getPhysiologicalLoad, .getDailyLoad, .getForYourAge, .getNapAdvice, .getSnoring,
                  .logCaffeine, .startNap, .prepareTomorrow, .setAlarm:
                 false
             }
@@ -114,6 +117,7 @@ enum CoachToolCatalog {
             case .getDailyLoad: "Read today's Load."
             case .getForYourAge: "Read the sleep range and heart context for your age."
             case .getNapAdvice: "Read whether a nap fits today."
+            case .getSnoring: "Read Snore Check nights and what goes with more snoring."
             case .logCaffeine: "Log caffeine after you confirm."
             case .startNap: "Start a nap after you confirm."
             case .prepareTomorrow: "Open Tomorrow after you confirm the time."
@@ -151,6 +155,11 @@ enum CoachToolCatalog {
         // recovery look like tomorrow" opened the Tomorrow planner and
         // `.getTomorrow` was declared but returned by nothing.
         //
+        // Snoring before anything about last night or the week: "Did I snore
+        // last night?" is a Snore Check question, not the night's score.
+        if matches(q, ["snore", "snoring", "snored"]) {
+            return Call(kind: .getSnoring)
+        }
         // Questions about the week, before anything about one night: "How did
         // I sleep this week?" was answered with last night's score, and "What
         // changed this week?" with a month-long comparison.

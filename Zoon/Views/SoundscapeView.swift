@@ -7,6 +7,10 @@ struct SoundscapeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let timerOptions: [Int?] = [nil, 15, 30, 45, 60, 90]
+    /// A timer chosen before anything is playing, started with the sound.
+    /// The chips used to be disabled until a sound was on, so the timer had
+    /// to be set in the dark after pressing play.
+    @State private var pendingTimer: Int?
 
     var body: some View {
         ScrollView {
@@ -139,7 +143,11 @@ struct SoundscapeView: View {
         let isActive = engine.playing == sound
 
         return Button {
+            let wasPlaying = engine.isPlaying
             engine.play(sound)
+            if !wasPlaying, engine.playing == sound, engine.timerMinutes == nil, let pendingTimer {
+                engine.setTimer(minutes: pendingTimer)
+            }
             Haptics.tap()
         } label: {
             VStack(alignment: .leading, spacing: 8) {
@@ -185,7 +193,9 @@ struct SoundscapeView: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(
                 title: "Sleep Timer",
-                subtitle: "Fades out over the last minute rather than cutting — an abrupt stop can wake you.",
+                subtitle: engine.isPlaying
+                    ? "Fades out over the last minute rather than cutting — an abrupt stop can wake you."
+                    : "Pick one now and it starts with the sound. It fades out over the last minute.",
                 systemImage: "timer"
             )
 
@@ -199,11 +209,16 @@ struct SoundscapeView: View {
     }
 
     private func timerChip(_ minutes: Int?) -> some View {
-        let isSelected = engine.timerMinutes == minutes
+        let isSelected = engine.isPlaying ? engine.timerMinutes == minutes : pendingTimer == minutes
         let label = minutes.map { "\($0)m" } ?? "Off"
 
         return Button {
-            engine.setTimer(minutes: minutes)
+            if engine.isPlaying {
+                engine.setTimer(minutes: minutes)
+            } else {
+                pendingTimer = minutes
+            }
+            Haptics.select()
         } label: {
             Text(label)
                 .font(Theme.label(13, weight: .semibold))
@@ -222,8 +237,8 @@ struct SoundscapeView: View {
                 .foregroundStyle(isSelected ? Color.white : Color.secondary)
         }
         .buttonStyle(.plain)
-        .disabled(!engine.isPlaying)
-        .opacity(engine.isPlaying ? 1 : 0.45)
+        .frame(minHeight: 44)
+        .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
     }
 
     private var explanation: some View {

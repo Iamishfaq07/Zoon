@@ -40,11 +40,13 @@ final class SoundEventClassifier: NSObject, SNResultsObserving, @unchecked Senda
     /// reasonable floor.
     private static let confidenceFloor: Double = 0.5
 
-    /// Categories worth surfacing on a sleeping person's own record of their
-    /// own night. Deliberately narrow, and deliberately excludes "speech".
-    private static let trackedIdentifiers: Set<String> = [
-        "snoring", "cough", "coughing", "baby_cry_infant_cry", "baby_crying"
-    ]
+    /// Categories passed on to `SnoreDetector`: the few worth surfacing on a
+    /// sleeping person's record of their own night, plus the ones that veto
+    /// the loudness engine (speech, music, a television). Those are used in
+    /// memory to drop snoring evidence where they were heard and are never
+    /// stored or shown -- see `SnoreDetector.vetoIdentifiers`.
+    private static let trackedIdentifiers: Set<String> = SnoreDetector.displayIdentifiers
+        .union(SnoreDetector.vetoIdentifiers)
 
     private let logger = Logger(subsystem: "com.zoon.sleep", category: "SoundEventClassifier")
     private let analysisLock = NSLock()
