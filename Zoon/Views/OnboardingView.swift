@@ -110,10 +110,9 @@ struct OnboardingView: View {
             title: "The night, in one look",
             subtitle: "\u{2068}راتھ\u{2069}  ·  Move the moon. This is not another tracker.",
             body: """
-                Zoon reads the sleep your Watch already kept and tells the story \
-                of last night — why it went the way it did, not just how long it lasted.
+                The story of last night, from the sleep your Watch already kept.
 
-                It is not a medical device. For sleep problems that persist, talk to a doctor.
+                Not a medical device. For lasting sleep problems, see a doctor.
                 """
         )
     }
@@ -125,13 +124,10 @@ struct OnboardingView: View {
             title: "It never leaves",
             subtitle: "No account. No server. No network code.",
             body: """
-                Zoon reads from Health and never writes to it. Everything is computed here.
+                Reads from Health, never writes. Everything is worked out here.
 
-                Next, iOS will ask twice: first for Sleep, which Zoon cannot \
-                function without, then for heart rate, HRV, breathing, your age and \
-                sex and the rest, which fit Recovery, Body Signals and your sleep \
-                range to you. Leave everything on if you can \
-                — Zoon cannot tell afterward if a switch got turned off.
+                iOS will ask twice: Sleep first, then heart and breathing. \
+                Leave them on for the full picture.
                 """
         )
     }
