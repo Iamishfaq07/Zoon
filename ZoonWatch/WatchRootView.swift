@@ -426,12 +426,15 @@ private struct TonightPage: View {
             }
 
             if !snapshot.tomorrowRangeLabel.isEmpty {
+                // One line that shrinks, and the first thing to give way:
+                // on a 40 mm case it ran off the bottom of the page.
                 Text(snapshot.tomorrowRangeLabel)
                     .font(Theme.text(9))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .layoutPriority(-1)
             }
         }
         .frame(maxWidth: .infinity)

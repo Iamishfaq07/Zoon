@@ -90,7 +90,7 @@ struct MorningInThree: Sendable, Hashable {
         } else if debtMinutes >= debtWorthMentioningMinutes {
             today = Line(
                 label: "TODAY",
-                headline: "You're about \(SleepNightFeatures.formatMinutes(debtMinutes)) behind",
+                headline: "\(SleepNightFeatures.formatMinutes(debtMinutes)) behind on sleep",
                 // Names the goal, not the method. "An earlier night beats a
                 // lie-in" is true of an office worker with a fixed alarm and
                 // false of a night-shift nurse, someone mid-timezone-shift,
