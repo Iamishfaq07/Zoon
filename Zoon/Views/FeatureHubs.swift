@@ -418,3 +418,67 @@ struct NeedHub: View {
         }
     }
 }
+
+// MARK: - Inline switcher
+
+/// A chip row over one card slot, for sections that stacked several cards of
+/// the same kind -- four charts in a row, three comparison cards -- where
+/// people read the first and scroll past the rest. One slot, and the chips
+/// say what else it can show.
+struct InlineChipSwitcher<Choice: HubSection, Content: View>: View {
+    @State private var selection: Choice
+    let choices: [Choice]
+    @ViewBuilder let content: (Choice) -> Content
+
+    @Namespace private var chipSpace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(initial: Choice, choices: [Choice]? = nil, @ViewBuilder content: @escaping (Choice) -> Content) {
+        _selection = State(initialValue: initial)
+        self.choices = choices ?? Array(Choice.allCases)
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(choices, id: \.self) { choice in
+                        let selected = choice == selection
+                        Button {
+                            guard !selected else { return }
+                            Haptics.select()
+                            withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { selection = choice }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: choice.symbol)
+                                    .font(Theme.text(11, weight: .semibold))
+                                Text(choice.label)
+                                    .font(Theme.label(12, weight: .semibold))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 32)
+                            .foregroundStyle(selected ? Color.black : Theme.inkSecondary)
+                            .background {
+                                if selected {
+                                    Capsule()
+                                        .fill(Theme.Family.sleep)
+                                        .matchedGeometryEffect(id: "chip", in: chipSpace)
+                                } else {
+                                    Capsule().fill(Theme.neutral(0.08))
+                                }
+                            }
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(selected ? [.isSelected] : [])
+                    }
+                }
+            }
+            content(selection)
+                .id(selection)
+                .transition(.opacity)
+        }
+    }
+}
