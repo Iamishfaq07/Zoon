@@ -62,10 +62,7 @@ struct SleepPlaybookView: View {
     }
 
     private var emptyState: some View {
-        Text("""
-            Nothing clears the bar yet. Zoon needs at least \(SleepPlaybook.minimumNights) journaled nights, \
-            and a condition needs a real enough gap between your best nights and the rest before it shows up here.
-            """)
+        Text("Nothing yet. Needs at least \(SleepPlaybook.minimumNights) journaled nights.")
             .font(.caption)
             .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)

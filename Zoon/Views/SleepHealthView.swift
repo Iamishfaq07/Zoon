@@ -109,12 +109,7 @@ struct SleepHealthView: View {
             Label("How this is measured", systemImage: "info.circle")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
-            Text("""
-                A slower-moving picture than any single night: sufficiency, regularity, continuity and \
-                estimated sleep debt every time, plus breathing stability and self-reported restfulness \
-                when there's enough data behind them. Components with nothing real to measure are left out \
-                rather than guessed at, so the score you see is only ever built from what Zoon actually knows.
-                """)
+            Text("A slower picture than one night, built only from what Zoon actually measured.")
                 .font(Theme.text(10))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

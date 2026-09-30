@@ -288,13 +288,7 @@ struct BreathingHealthView: View {
             Label("What this screen can't tell you", systemImage: "exclamationmark.shield")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
-            Text("""
-                Zoon cannot diagnose sleep apnea, or any other condition, from consumer-device \
-                measurements. It can only show you the pattern in your own recorded data. If \
-                breathing disturbances stay elevated over time, or you notice symptoms like \
-                loud snoring with gasping or persistent daytime sleepiness, talk to a healthcare \
-                professional.
-                """)
+            Text("Zoon can't diagnose sleep apnea or anything else. If this stays high, or you gasp or feel very sleepy by day, see a doctor.")
                 .font(Theme.text(10))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
