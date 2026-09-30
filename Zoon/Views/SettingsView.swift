@@ -631,10 +631,9 @@ struct SettingsView: View {
                 lines.append("At \(age): a maximum heart rate near \(maximum) bpm for Daily Load and Energy Reserve.")
             }
         } else {
-            lines.append("Age sets the sleep range experts recommend for you and your maximum heart rate.")
+            lines.append("Tunes your sleep range, heart zones and typical numbers.")
         }
-        lines.append("Age and sex also set what counts as typical deep sleep, heart rate, HRV and cardio fitness for someone like you, on Insights. BMI adjusts the deep-sleep expectation slightly.")
-        lines.append("All optional. They never leave this iPhone.")
+        lines.append("Optional, and never leaves this iPhone.")
         return lines.joined(separator: " ")
     }
 

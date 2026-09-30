@@ -137,14 +137,14 @@ struct CoachTabView: View {
                 ExploreGrid(title: "How Zoon knows you") {
                     ExploreTile(
                         title: "Your patterns",
-                        subtitle: "What Zoon noticed, how sure it is, and what to test",
+                        subtitle: "What goes with your nights",
                         symbol: "checkmark.seal.fill",
                         tint: Theme.Family.recovery
                     ) { PatternsHub(initial: .proven) }
 
                     ExploreTile(
                         title: "Your data",
-                        subtitle: "How much history it is working from",
+                        subtitle: "What Zoon has to go on",
                         symbol: "square.stack.3d.up.fill",
                         tint: Theme.Family.bodySignals
                     ) { DataHub() }
