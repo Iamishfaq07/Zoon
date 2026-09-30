@@ -153,9 +153,6 @@ struct CoachTabView: View {
 
                 engineCard
                     .entrance(4)
-
-                capabilityCard
-                    .entrance(5)
             }
             .padding()
         }
@@ -222,6 +219,12 @@ struct CoachTabView: View {
     /// mechanical had no reason to look for it there, and someone who did
     /// find it got no hint that the choice might not be available to them at
     /// all.
+    /// Who answers and what it can see, as one card.
+    ///
+    /// These were two cards, and on a phone without Apple Intelligence the
+    /// same reason appeared three times: as an info line and a warning in
+    /// the first, and again in the second. One picker, one status line, one
+    /// row of counts.
     private var engineCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: "Who answers", systemImage: "cpu")
@@ -244,72 +247,37 @@ struct CoachTabView: View {
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // The requirements, stated whichever engine is selected.
-            //
-            // Apple Intelligence is not a preference that works everywhere:
-            // it needs hardware most iPhones in use do not have. Saying so
-            // before it is picked is the difference between "I chose it and
-            // nothing happened" and "I can't have this yet" -- and Rules is a
-            // real answer on every device, not a consolation.
-            Label(
-                CoachChat.unavailabilityReason
-                    ?? "Apple Intelligence uses the on-device system model when it is available. Rules answers on every device.",
-                systemImage: "info.circle"
-            )
-            .font(Theme.text(11))
-            .foregroundStyle(Theme.inkTertiary)
-            .fixedSize(horizontal: false, vertical: true)
+            statusLine
 
-            // Why it cannot run here, when it cannot.
-            if preferences.preferredEngine == .appleIntelligence,
-               let reason = CoachChat.unavailabilityReason {
-                Label(reason, systemImage: "exclamationmark.triangle")
-                    .font(Theme.text(12))
-                    .foregroundStyle(Theme.Metric.recoveryMid)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // Why a model that *can* run fell back anyway.
-            if preferences.preferredEngine == .appleIntelligence,
-               CoachChat.unavailabilityReason == nil,
-               let reason = FoundationModelDiagnostics.shared.lastFailureReason {
-                Label(reason, systemImage: "exclamationmark.triangle")
-                    .font(Theme.text(12))
-                    .foregroundStyle(Theme.Metric.recoveryLow)
-                    .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 16) {
+                contextRow("\(coordinator.recentNights.count.pluralized("night"))", symbol: "bed.double.fill")
+                contextRow("\(journalEntryCount.pluralized("journal entry", "journal entries"))", symbol: "square.and.pencil")
             }
         }
         .glassCard()
     }
 
-    private var capabilityCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "What Zoon can see", systemImage: "eye")
-
-            if let reason = CoachChat.unavailabilityReason {
-                Label("Local answers are ready. Optional generated explanations: " + reason, systemImage: "checkmark.circle")
-                    .font(Theme.text(12))
-                    .foregroundStyle(Theme.Metric.recoveryMid)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Label("Answered on this device. Nothing leaves your phone.", systemImage: "lock.fill")
-                    .font(Theme.text(12))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Divider().overlay(Theme.cardStroke)
-
-            contextRow(
-                "\(coordinator.recentNights.count) night\(coordinator.recentNights.count == 1 ? "" : "s") of history",
-                symbol: "bed.double.fill"
-            )
-            contextRow(
-                "\(journalEntryCount) journal entr\(journalEntryCount == 1 ? "y" : "ies")",
-                symbol: "square.and.pencil"
-            )
+    /// The one line that says whether answers stay on the phone, or why the
+    /// chosen engine is not the one answering.
+    @ViewBuilder
+    private var statusLine: some View {
+        if preferences.preferredEngine == .appleIntelligence, let reason = CoachChat.unavailabilityReason {
+            Label("Rules is answering. \(reason)", systemImage: "exclamationmark.triangle")
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.Metric.recoveryMid)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if preferences.preferredEngine == .appleIntelligence,
+                  let reason = FoundationModelDiagnostics.shared.lastFailureReason {
+            Label(reason, systemImage: "exclamationmark.triangle")
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.Metric.recoveryLow)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Label("Answered on this device. Nothing leaves your phone.", systemImage: "lock.fill")
+                .font(Theme.text(12))
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .glassCard()
     }
 
     private var journalEntryCount: Int {
