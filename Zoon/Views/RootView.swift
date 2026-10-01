@@ -517,7 +517,8 @@ struct SleepTabView: View {
                                         value: SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes),
                                         detail: "Includes paying back",
                                         symbol: "bed.double.fill",
-                                        tint: Theme.Family.sleep
+                                        tint: Theme.Family.sleep,
+                                        graphic: .ring(min(1, context.night.timeAsleepMinutes / max(1, context.sleepNeed.totalNeedMinutes)))
                                     )
                                 }
                                 .buttonStyle(PressableStyle())
@@ -529,7 +530,8 @@ struct SleepTabView: View {
                                         value: context.bodyClock.map { BodyClock.formatted(hour: $0.onsetHour) } ?? "Learning",
                                         detail: context.chronotype.kind.label,
                                         symbol: context.chronotype.kind.symbol,
-                                        tint: Theme.Family.circadian
+                                        tint: Theme.Family.circadian,
+                                        graphic: context.bodyClock.map { .dial(hour: $0.onsetHour) }
                                     )
                                 }
                                 .buttonStyle(PressableStyle())
@@ -805,6 +807,17 @@ private struct SleepTabTile: View {
     let detail: String
     let symbol: String
     let tint: Color
+    var graphic: Graphic? = nil
+
+    /// A small picture of the number, so each tile reads before its text.
+    enum Graphic {
+        /// Last night against the need, 0...1.
+        case ring(Double)
+        /// A 24-hour dial with this hour (0..<24, may be negative) marked.
+        case dial(hour: Double)
+    }
+
+    @State private var progress: Double = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -821,12 +834,20 @@ private struct SleepTabTile: View {
                     .font(Theme.text(10, weight: .semibold))
                     .foregroundStyle(Theme.inkTertiary)
             }
-            Text(value)
-                .font(Theme.heading(22))
-                .monospacedDigit()
-                .foregroundStyle(tint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            HStack(alignment: .center, spacing: 8) {
+                Text(value)
+                    .font(Theme.heading(22))
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                if let graphic {
+                    graphicView(graphic)
+                        .frame(width: 30, height: 30)
+                        .accessibilityHidden(true)
+                }
+            }
             Text(detail)
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
@@ -835,5 +856,38 @@ private struct SleepTabTile: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
         .accessibilityElement(children: .combine)
+        .drawOnce(id: value, progress: $progress)
+    }
+
+    @ViewBuilder
+    private func graphicView(_ graphic: Graphic) -> some View {
+        switch graphic {
+        case .ring(let fraction):
+            ZStack {
+                Circle().stroke(Theme.neutral(0.12), lineWidth: 4)
+                Circle()
+                    .trim(from: 0, to: min(1, max(0, fraction)) * progress)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+        case .dial(let hour):
+            // Midnight at the top, like a clock face for the whole day.
+            let normalised = (hour.truncatingRemainder(dividingBy: 24) + 24).truncatingRemainder(dividingBy: 24)
+            ZStack {
+                Circle().stroke(Theme.neutral(0.12), lineWidth: 2)
+                ForEach(0..<4, id: \.self) { quarter in
+                    Capsule()
+                        .fill(Theme.neutral(0.25))
+                        .frame(width: 1.5, height: 4)
+                        .offset(y: -12)
+                        .rotationEffect(.degrees(Double(quarter) * 90))
+                }
+                Circle()
+                    .fill(tint)
+                    .frame(width: 7, height: 7)
+                    .offset(y: -13)
+                    .rotationEffect(.degrees(normalised / 24 * 360 * progress))
+            }
+        }
     }
 }
