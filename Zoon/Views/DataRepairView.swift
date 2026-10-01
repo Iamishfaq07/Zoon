@@ -27,7 +27,7 @@ struct DataRepairView: View {
                 Button("Refresh from Health") { Task { await coordinator.refresh() } }
                     .disabled(coordinator.isRefreshing)
                 if let refresh = coordinator.lastRefresh { LabeledContent("Last refresh", value: refresh.formatted()) }
-                NavigationLink("Inspect sensor coverage") { SensorTruthView() }
+                NavigationLink { SensorTruthView() } label: { Label("Inspect sensor coverage", systemImage: "sensor.tag.radiowaves.forward") }
                 Picker("Preferred sleep source", selection: Binding(
                     get: { preferences.preferredSleepSourceName ?? "" },
                     set: { value in

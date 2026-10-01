@@ -58,7 +58,7 @@ struct TravelPlanView: View {
                         origin: origin.identifier
                     )
                 }
-                NavigationLink("Choose sleep times for this trip") { SavedSleepPlansView() }
+                NavigationLink { SavedSleepPlansView() } label: { Label("Choose sleep times for this trip", systemImage: "calendar") }
                 if let bodyClock {
                     planSection(bodyClock: bodyClock)
                 } else {
