@@ -18,7 +18,7 @@ struct FloatingMetricCluster: View {
     var body: some View {
         AdaptiveStack(spacing: 10) {
             pill(label: "Sleep", value: SleepNightFeatures.formatMinutes(timeAsleepMinutes), tint: Theme.Metric.sleep) {
-                SleepDetailView(context: context)
+                NightHub(initial: .numbers)
             }
             pill(label: "Need", value: SleepNightFeatures.formatMinutes(needMinutes), tint: Theme.Metric.recoveryHigh) {
                 NeedHub(initial: .need)

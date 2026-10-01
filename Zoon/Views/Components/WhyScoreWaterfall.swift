@@ -94,7 +94,7 @@ struct WhyScoreWaterfall: View {
         case "Recovery": BodyHub(initial: .recovery)
         case "Timing": BodyClockView()
         case "Breathing": BodyHub(initial: .breathing)
-        default: SleepDetailView(context: context)
+        default: NightHub(initial: .numbers)
         }
     }
 

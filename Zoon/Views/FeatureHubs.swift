@@ -506,3 +506,48 @@ struct InlineChipSwitcher<Choice: HubSection, Content: View>: View {
         }
     }
 }
+
+// MARK: - Last night
+
+/// Last night's numbers and last night's story were two screens, reached
+/// from two different links on the Sleep tab ("All details", "Full story")
+/// and a third on Today. One night, one screen.
+enum NightSection: String, HubSection {
+    case numbers, story
+
+    var label: String {
+        switch self {
+        case .numbers: "Details"
+        case .story: "Story"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .numbers: "chart.bar.fill"
+        case .story: "text.book.closed"
+        }
+    }
+}
+
+struct NightHub: View {
+    var initial: NightSection = .numbers
+
+    @Environment(SleepDataCoordinator.self) private var coordinator
+
+    var body: some View {
+        FeatureHub(title: "Last night", initial: initial) { section in
+            switch section {
+            case .numbers:
+                if let context = coordinator.state.context {
+                    SleepDetailView(context: context)
+                } else {
+                    ContentUnavailableView("No night yet", systemImage: "moon.zzz", description: Text("Last night's details appear once Health has a night."))
+                        .nightBackground()
+                }
+            case .story:
+                SleepStoryView()
+            }
+        }
+    }
+}

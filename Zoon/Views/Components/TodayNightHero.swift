@@ -159,7 +159,7 @@ struct TodayNeedTracks: View {
                 value: SleepNightFeatures.formatMinutes(slept),
                 fraction: slept / need,
                 tint: Theme.Family.sleep,
-                destination: SleepDetailView(context: context)
+                destination: NightHub(initial: .numbers)
             )
 
             if napMinutesToday > 0 {

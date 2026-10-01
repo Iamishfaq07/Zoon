@@ -153,7 +153,7 @@ struct SleepSummaryStrip: View {
 
     var body: some View {
         NavigationLink {
-            SleepDetailView(context: context)
+            NightHub(initial: .numbers)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {

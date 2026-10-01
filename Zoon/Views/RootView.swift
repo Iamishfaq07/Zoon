@@ -467,26 +467,9 @@ struct SleepTabView: View {
                         SleepStoryMoments(story: story(for: context), night: context.night)
                             .entrance(3)
 
-                        // Beside the moments it summarises, rather than as a
-                        // chip on another tab.
-                        NavigationLink {
-                            SleepStoryView()
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "clock.arrow.circlepath")
-                                    .foregroundStyle(Theme.Family.sleep)
-                                Text("Read the full night's story")
-                                    .font(Theme.label(14, weight: .semibold))
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(Theme.text(11, weight: .semibold))
-                                    .foregroundStyle(Theme.inkTertiary)
-                            }
-                            .padding(14)
-                            .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        }
-                        .buttonStyle(PressableStyle())
-                        .entrance(3)
+                        // "Read the full night's story" was a second link to
+                        // the story right under "What happened", whose header
+                        // already opens it.
 
                         SleepSoundsHero()
                             .entrance(4)
@@ -503,7 +486,7 @@ struct SleepTabView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             ZoonSectionHeader("Last night in numbers") {
                                 NavigationLink {
-                                    SleepDetailView(context: context)
+                                    NightHub(initial: .numbers)
                                 } label: {
                                     HStack(spacing: 3) {
                                         Text("All details")
@@ -595,8 +578,8 @@ struct SleepTabView: View {
                 // any capture to reach them.
                 case .nightHistory: NightHistoryView()
                 case .sleepDetail:
-                    if let context = coordinator.state.context {
-                        SleepDetailView(context: context)
+                    if coordinator.state.context != nil {
+                        NightHub(initial: .numbers)
                     } else {
                         ContentUnavailableView(
                             "No night yet",
