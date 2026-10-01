@@ -46,8 +46,8 @@ struct SettingsView: View {
                 remindersSection
                 obligationDaysSection
                 Section {
-                    NavigationLink("Saved sleep schedules") { SavedSleepPlansView() }
-                    NavigationLink("Work roster") { ShiftRosterView() }
+                    NavigationLink { SavedSleepPlansView() } label: { Label("Saved sleep schedules", systemImage: "calendar") }
+                    NavigationLink { ShiftRosterView() } label: { Label("Work roster", systemImage: "briefcase") }
                 }
             case .health:
                 trackedBehaviorsSection
@@ -527,13 +527,17 @@ struct SettingsView: View {
     /// its own screen instead of an inline explainer.
     private var trackedBehaviorsSection: some View {
         Section {
-            NavigationLink("Tracked Behaviours") {
+            NavigationLink {
                 TrackedBehaviorsView()
+            } label: {
+                Label("Tracked Behaviours", systemImage: "checklist")
             }
             // Moved here from More: adding your own behaviour and choosing
             // which ones the Journal asks about are the same decision.
-            NavigationLink("Your own behaviours") {
+            NavigationLink {
                 CustomBehaviorsView()
+            } label: {
+                Label("Your own behaviours", systemImage: "plus.circle")
             }
         } footer: {
             Text("Choose what the Journal asks about each day, or add your own.")
@@ -661,8 +665,10 @@ struct SettingsView: View {
             // App Review guideline 2.1 rejects. It returns here when a model
             // does, alongside a place in `EngineChoice.shippingCases`.
 
-            NavigationLink("How your Sleep Intelligence score works") {
+            NavigationLink {
                 DataHub(initial: .method)
+            } label: {
+                Label("How your Sleep Intelligence score works", systemImage: "function")
             }
             .font(.caption)
         } header: {
@@ -717,8 +723,10 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section {
-            NavigationLink("Data Quality") {
+            NavigationLink {
                 DataHub(initial: .arrived)
+            } label: {
+                Label("Data Quality", systemImage: "waveform.path.ecg")
             }
             LabeledContent("Nights recorded", value: "\(coordinator.recentNights.count)")
             LabeledContent("Naps logged", value: "\(naps.naps.count)")
