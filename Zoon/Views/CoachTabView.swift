@@ -78,7 +78,7 @@ struct CoachTabView: View {
                             CoachChatView(night: night, initialPrompt: category.question)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(category.kicker)
+                                Label(category.kicker, systemImage: category.symbol)
                                     .font(Theme.kicker)
                                     .tracking(1.0)
                                     .textCase(.uppercase)
@@ -162,6 +162,7 @@ struct CoachTabView: View {
         let kicker: String
         let question: String
         let tint: Color
+        var symbol: String = "sparkles"
     }
 
     /// This week's question is duration-only, from Cause Finder's strongest
@@ -192,11 +193,11 @@ struct CoachTabView: View {
             : "How should I prepare for tomorrow?"
 
         return [
-            Category(kicker: "This week", question: week.question, tint: Theme.Family.sleep),
-            Category(kicker: "Today", question: today, tint: Theme.Family.sleep),
-            Category(kicker: "Trend", question: trend, tint: Theme.Family.recovery),
-            Category(kicker: "Discovery", question: discovery, tint: Theme.Family.bodySignals),
-            Category(kicker: "Plan", question: plan, tint: Theme.Family.circadian)
+            Category(kicker: "This week", question: week.question, tint: Theme.Family.sleep, symbol: "calendar"),
+            Category(kicker: "Today", question: today, tint: Theme.Family.sleep, symbol: "sun.max"),
+            Category(kicker: "Trend", question: trend, tint: Theme.Family.recovery, symbol: "chart.line.uptrend.xyaxis"),
+            Category(kicker: "Discovery", question: discovery, tint: Theme.Family.bodySignals, symbol: "magnifyingglass"),
+            Category(kicker: "Plan", question: plan, tint: Theme.Family.circadian, symbol: "moon.stars")
         ]
     }
 
