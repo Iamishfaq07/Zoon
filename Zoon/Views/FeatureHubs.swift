@@ -112,6 +112,8 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
             HStack(spacing: 6) {
                 Image(systemName: section.symbol)
                     .font(Theme.text(12, weight: .semibold))
+                    // A small bounce on the chip you just chose.
+                    .symbolEffect(.bounce, value: selected)
                 Text(section.label)
                     .font(Theme.label(13, weight: .semibold))
                     .lineLimit(1)

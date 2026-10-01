@@ -17,6 +17,8 @@ struct TodayActionPlan: View {
     let forecast: EnergyForecast
 
     private var band: RecoveryScore.Band { recovery.band }
+    /// Grows the best stretch in on appear.
+    @State private var stripProgress: Double = 0
 
     /// The best window for effort: the day's highest named peak still ahead,
     /// falling back to the highest of the day once they have all passed.
@@ -83,7 +85,7 @@ struct TodayActionPlan: View {
                             let end = position(effortWindow.time.addingTimeInterval(45 * 60))
                             Capsule()
                                 .fill(tint)
-                                .frame(width: max(8, (end - start) * width), height: 8)
+                                .frame(width: max(8, (end - start) * width * stripProgress), height: 8)
                                 .offset(x: start * width)
                         }
                         if let dipWindow {
@@ -100,6 +102,7 @@ struct TodayActionPlan: View {
                     .frame(height: 16)
                 }
                 .frame(height: 16)
+                .drawOnce(id: effortWindow?.time, progress: $stripProgress)
                 HStack(spacing: 12) {
                     if let effortWindow {
                         Label(forecast.timeRangeLabel(for: effortWindow), systemImage: band == .low ? "leaf.fill" : "bolt.fill")
