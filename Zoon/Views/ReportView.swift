@@ -62,10 +62,9 @@ struct ReportView: View {
                 .foregroundStyle(Theme.inkSecondary)
 
             if let recovery = report.averageRecovery {
-                Text("\(Int(recovery))%")
-                    .font(Theme.numeral(50))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.recoveryColor(recovery))
+                // The week's recovery inside a ring that draws to it, so the
+                // header reads as a shape before it reads as a number.
+                WeekRecoveryRing(percent: recovery)
                 // WeeklyReport only guards `nightCount > 0`, so a one-night
                 // week is reachable and read "across 1 nights".
                 //
@@ -387,4 +386,32 @@ struct ActivitySheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+/// The weekly report's headline: average recovery as a ring and a number.
+private struct WeekRecoveryRing: View {
+    let percent: Double
+    @State private var progress: Double = 0
+
+    var body: some View {
+        let tint = Theme.recoveryColor(percent)
+        let fraction = min(1, max(0, percent / 100))
+        ZStack {
+            Circle()
+                .stroke(Theme.neutral(0.10), lineWidth: 10)
+            Circle()
+                .trim(from: 0, to: fraction * progress)
+                .stroke(tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(Int(percent))%")
+                .font(Theme.numeral(40))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+        }
+        .frame(width: 150, height: 150)
+        .padding(.vertical, 4)
+        .drawOnce(id: percent, progress: $progress)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Average recovery \(Int(percent)) percent")
+    }
 }
