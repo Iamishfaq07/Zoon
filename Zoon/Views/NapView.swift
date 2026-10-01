@@ -375,11 +375,7 @@ struct NapView: View {
             Label("Nap timing", systemImage: "lightbulb.fill")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(.yellow)
-            Text("""
-                Naps after about 3pm eat into the sleep pressure you need for tonight. \
-                If you're short on sleep and it's already evening, going to bed earlier \
-                beats napping.
-                """)
+            Text("Naps after about 3pm cut into tonight's sleep. Late in the day, an early bedtime beats a nap.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

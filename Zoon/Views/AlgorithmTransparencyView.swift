@@ -24,7 +24,7 @@ struct AlgorithmTransparencyView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("How your score works")
                 .font(Theme.heading(20))
-            Text("Five sleep-period components. Recovery and body-signal anomalies are kept separate so the headline remains easy to interpret.")
+            Text("Five parts of the night. Recovery and body signals are kept separate.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -60,12 +60,7 @@ struct AlgorithmTransparencyView: View {
             Label("Missing data doesn't count against you", systemImage: "checkmark.shield")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.inkSecondary)
-            Text("""
-                Components with missing data -- not enough timing history or a source without \
-                stage detail -- are excluded, and the remaining \
-                components' weights scale up to fill 100%. A night is never scored as if a \
-                missing input were zero.
-                """)
+            Text("Missing parts are left out and the rest scale up to 100%. Never scored as zero.")
                 .font(Theme.text(10))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

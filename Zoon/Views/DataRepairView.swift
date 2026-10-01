@@ -23,7 +23,7 @@ struct DataRepairView: View {
     var body: some View {
         Form {
             Section("Check the source") {
-                Text("Missing readings can mean no samples, an unworn Watch, a sync delay, or unavailable Health access. Zoon cannot distinguish these from a read query.")
+                Text("A gap can mean the Watch was off, a sync delay, or Health access. Zoon can't tell which.")
                 Button("Refresh from Health") { Task { await coordinator.refresh() } }
                     .disabled(coordinator.isRefreshing)
                 if let refresh = coordinator.lastRefresh { LabeledContent("Last refresh", value: refresh.formatted()) }
@@ -38,7 +38,7 @@ struct DataRepairView: View {
                 }
             }
             Section("Local corrections") {
-                Text("Health is never overwritten. You can exclude a night from comparisons, or move the recorded bedtime and wake so Zoon's engines read the session you actually had. Every change can be undone.")
+                Text("Skip a night or fix its bedtime and wake. Health is never changed, and you can undo.")
                 ForEach(repairNights, id: \.nightKey) { night in
                     Button {
                         let existing = setup.value.repairs.first { $0.nightKey == night.nightKey }

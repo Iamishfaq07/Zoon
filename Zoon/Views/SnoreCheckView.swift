@@ -336,10 +336,14 @@ struct SnoreCheckView: View {
             }
 
             if flagged {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // Stacked: side by side, "1 h 29 min" broke onto two lines
+                // with "min" alone on the second.
+                VStack(alignment: .leading, spacing: 2) {
                     Text(SnoreResultSummary.duration(summary.snoreMinutes))
                         .font(Theme.numeral(40))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     Text("snoring · \(report.sharePercent)% of the time monitored")
                         .font(Theme.text(14))
                         .foregroundStyle(Theme.inkSecondary)
@@ -502,7 +506,7 @@ struct SnoreCheckView: View {
             ForEach(shown.links.prefix(4), id: \.tag) { link in
                 habitRow(link)
             }
-            Text("Snoring as a share of the time monitored, on nights you logged it against nights you logged without it. A pattern in your own nights, not proof of a cause.")
+            Text("Snoring on nights with and without each habit. A pattern, not a cause.")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -603,7 +607,7 @@ struct SnoreCheckView: View {
                     step(1, "Listens against your room", "It learns how quiet your bedroom is, and only notices sounds that rise above it, so a fan or traffic doesn't count.")
                     step(2, "Checks each sound's shape", "A snore is low-pitched and lasts about as long as a breath. Clicks, speech and passing cars are the wrong shape.")
                     step(3, "Waits for the rhythm of breathing", "Snoring repeats with every breath. Only a run of them becomes an episode, so a single cough or word never does.")
-                    Text("When Apple's sound classifier is running, it double-checks the result and rules out speech, music and TV. Audio is analysed in tenths of a second and thrown away: Zoon keeps only the times, lengths and loudness of each episode, on this iPhone.")
+                    Text("Apple's sound check also rules out speech, music and TV when it can. Audio is thrown away as it goes; only times and loudness are kept.")
                         .font(Theme.text(12))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)

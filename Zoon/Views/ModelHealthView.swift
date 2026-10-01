@@ -27,7 +27,7 @@ struct ModelHealthView: View {
                     ContentUnavailableView(
                         "Nothing to describe yet",
                         systemImage: "questionmark.circle",
-                        description: Text("Once Zoon has a few nights, this page will say which parts of what it knows are settled and which are still forming.")
+                        description: Text("After a few nights, this shows what Zoon is sure of and what is still forming.")
                     )
                     .padding(.top, 40)
                 } else {

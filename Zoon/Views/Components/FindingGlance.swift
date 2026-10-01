@@ -15,6 +15,7 @@ struct FindingGlance: View {
 
     @State private var expanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var verdictTint: Color {
         finding.isImprovement ? Theme.Metric.recoveryHigh : Theme.Metric.recoveryMid
@@ -26,7 +27,7 @@ struct FindingGlance: View {
             withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { expanded.toggle() }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
+                AdaptiveStack(spacing: 10) {
                     Image(systemName: finding.symbol)
                         .font(Theme.text(14, weight: .semibold))
                         .foregroundStyle(verdictTint)
@@ -35,7 +36,7 @@ struct FindingGlance: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(finding.label)
                             .font(Theme.label(14, weight: .semibold))
-                            .lineLimit(1)
+                            .lineLimit(2)
                         HStack(spacing: 4) {
                             Image(systemName: finding.isImprovement ? "arrow.up.right" : "arrow.down.right")
                                 .font(Theme.text(10, weight: .bold))
@@ -84,26 +85,13 @@ struct FindingGlance: View {
     }
 
     private func bar(title: String, value: Double, fraction: Double, tint: Color) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(Theme.text(11))
-                .foregroundStyle(Theme.inkTertiary)
-                .frame(width: 52, alignment: .leading)
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.neutral(0.08))
-                    Capsule()
-                        .fill(tint)
-                        .frame(width: max(6, proxy.size.width * fraction))
-                }
-            }
-            .frame(height: 8)
-            Text(Self.value(value, metric: finding.metric))
-                .font(Theme.text(11, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(Theme.inkSecondary)
-                .frame(minWidth: 48, alignment: .trailing)
-        }
+        LabeledBar(
+            title: title,
+            valueText: Self.value(value, metric: finding.metric),
+            fraction: fraction,
+            tint: tint,
+            labelWidth: 52
+        )
     }
 
     /// An unsigned median in the metric's own units.
@@ -177,6 +165,7 @@ struct ExplainDisclosure: View {
 
     @State private var expanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -185,13 +174,18 @@ struct ExplainDisclosure: View {
                 withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { expanded.toggle() }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: systemImage)
-                        .font(Theme.text(13, weight: .semibold))
-                        .foregroundStyle(Theme.Family.sleep)
+                    // At accessibility sizes the icon and dots took the width
+                    // and the title broke one word per line; the title wins.
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Image(systemName: systemImage)
+                            .font(Theme.text(13, weight: .semibold))
+                            .foregroundStyle(Theme.Family.sleep)
+                    }
                     Text(title)
                         .font(Theme.label(14, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
-                    if let confidence { confidence }
+                    if let confidence, !dynamicTypeSize.isAccessibilitySize { confidence }
                     Image(systemName: "chevron.down")
                         .font(Theme.text(11, weight: .semibold))
                         .foregroundStyle(Theme.inkTertiary)
@@ -232,5 +226,64 @@ struct ExplainDisclosure: View {
         .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.neutral(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+/// A label, a bar and a value on one line -- or, at accessibility text
+/// sizes, the label and value on a line with the bar underneath. A fixed
+/// label column at those sizes broke "With" into "Wi / th".
+struct LabeledBar: View {
+    let title: String
+    let valueText: String
+    let fraction: Double
+    let tint: Color
+    var labelWidth: CGFloat = 60
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    label
+                    Spacer(minLength: 8)
+                    value
+                }
+                track
+            }
+        } else {
+            HStack(spacing: 8) {
+                label.frame(width: labelWidth, alignment: .leading)
+                track
+                value.frame(minWidth: 36, alignment: .trailing)
+            }
+        }
+    }
+
+    private var label: some View {
+        Text(title)
+            .font(Theme.text(11))
+            .foregroundStyle(Theme.inkTertiary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+    }
+
+    private var value: some View {
+        Text(valueText)
+            .font(Theme.text(11, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(Theme.inkSecondary)
+    }
+
+    private var track: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.neutral(0.08))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: max(6, proxy.size.width * min(1, max(0, fraction))))
+            }
+        }
+        .frame(height: 8)
     }
 }

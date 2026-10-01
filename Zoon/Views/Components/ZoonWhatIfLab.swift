@@ -212,7 +212,7 @@ struct ZoonWhatIfLab: View {
                         String(format: "%.2f SD", abs(balance.standardisedDifference))
                     )
                 }
-                Text("Each night was paired with a night of the same day shape and a similar setup, from a similar stretch of your history. Pairs further apart than Zoon's limit were not made at all.")
+                Text("Each night is compared with a similar night from your own history.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)

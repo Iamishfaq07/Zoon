@@ -47,7 +47,7 @@ struct ClinicianReportView: View {
     }
 
     private var header: some View {
-        Text("A PDF summary of your sleep data, formatted for a clinician to skim -- light background, print-friendly, generated entirely on this device.")
+        Text("A printable PDF of your sleep for a doctor. Made on this device.")
             .font(.caption)
             .foregroundStyle(Theme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)

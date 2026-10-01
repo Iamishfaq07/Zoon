@@ -246,12 +246,7 @@ struct SoundscapeView: View {
             Label("On this device", systemImage: "internaldrive")
                 .font(Theme.label(12, weight: .semibold))
                 .foregroundStyle(Theme.Metric.battery)
-            Text("""
-                Brown, pink and white are generated so they never seam. Weather, \
-                night and room are recorded loops bundled in the app — nothing is \
-                streamed. Sounds keep playing with the screen locked; set a timer \
-                and they fade out over the last minute.
-                """)
+            Text("All on this phone, nothing streamed. Keeps playing when locked; a timer fades it out.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

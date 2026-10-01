@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Today's ranked stream: up to three useful things that are not already
-/// already in the hero, the pulse or the plan.
+/// Today's ranked stream: up to two useful things that are not already in
+/// the hero, the pulse or the plan. Was three; the third was the one people
+/// scrolled past, and it is still on its own screen.
 ///
 /// Replaces five always-present cards (`HealthRadarCard`, `StressCard`,
 /// `RecoveryModeCard`, `LightCoachCard`, `PersonalizationProgressCard`) with
@@ -50,7 +51,7 @@ struct WorthNoticing: View {
             .filter { $0.kind != .bodySignals }
             .map(Item.proactive))
         if nightsTracked < 30 { ranked.append(.learning(nightsTracked: nightsTracked, taggedNights: taggedNights)) }
-        return Array(ranked.prefix(3))
+        return Array(ranked.prefix(2))
     }
 
     var body: some View {

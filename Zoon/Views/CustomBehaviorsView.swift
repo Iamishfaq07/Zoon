@@ -11,7 +11,7 @@ struct CustomBehaviorsView: View {
                     TextField("e.g. evening medication", text: $newName)
                     Button("Add") { store.add(name: newName); newName = "" }.disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                Text("Custom signals stay on this device and appear as optional journal prompts. Zoon will not infer health effects until you have enough observations.")
+                Text("Your own things to track in the Journal. Stays on this phone.")
                     .font(.caption).foregroundStyle(Theme.inkSecondary)
             }
             Section("Your signals") {

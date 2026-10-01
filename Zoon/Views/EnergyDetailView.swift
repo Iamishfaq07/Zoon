@@ -216,7 +216,7 @@ private struct CognitiveEnergyCard: View {
                 }
             }
 
-            Text("Estimated from last night's HRV, the overnight heart-rate dip, and REM/Deep mix. Nothing on a wrist measures cognition.")
+            Text("An estimate from last night's HRV, heart rate and sleep stages.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)

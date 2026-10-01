@@ -66,11 +66,11 @@ struct ShiftRosterView: View {
                     step: 5
                 )
             } footer: {
-                Text("Door to door, each way. It sets how early the sleep before a shift has to end and how late the sleep after it can start.")
+                Text("Door to door, each way. Sets when sleep around a shift can fit.")
             }
 
             Section {
-                Text("Schedule support only. Nothing here is a judgement about the work itself, and nothing about your roster leaves this device.")
+                Text("Stays on this device.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
             }

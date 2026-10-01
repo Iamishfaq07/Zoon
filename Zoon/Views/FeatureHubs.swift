@@ -90,7 +90,13 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
                 }
             }
         }
-        .background(.ultraThinMaterial.opacity(0.6))
+        // Capped like a tab bar: at accessibility sizes each chip grew to a
+        // third of the screen and neighbours crowded into each other. The
+        // screen below still scales fully.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        // Full material, not 60%: scrolled text showed through the bar and
+        // up under the title, which read as overlap.
+        .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.cardStroke).frame(height: 0.5)
         }
@@ -261,7 +267,7 @@ struct ReportsHub: View {
 // MARK: - Your data
 
 enum DataSection: String, HubSection {
-    case overview, sources, arrived, repair
+    case overview, sources, arrived, repair, privacy, method
 
     var label: String {
         switch self {
@@ -269,6 +275,8 @@ enum DataSection: String, HubSection {
         case .sources: "Sources"
         case .arrived: "Arrived"
         case .repair: "Fix"
+        case .privacy: "Privacy"
+        case .method: "How it works"
         }
     }
 
@@ -278,6 +286,8 @@ enum DataSection: String, HubSection {
         case .sources: "sensor.tag.radiowaves.forward"
         case .arrived: "waveform.path.ecg"
         case .repair: "wrench.and.screwdriver"
+        case .privacy: "lock.shield"
+        case .method: "function"
         }
     }
 }
@@ -292,6 +302,8 @@ struct DataHub: View {
             case .sources: SensorTruthView()
             case .arrived: DataQualityView()
             case .repair: DataRepairView()
+            case .privacy: DataPrivacyView()
+            case .method: AlgorithmTransparencyView()
             }
         }
     }
@@ -487,6 +499,7 @@ struct InlineChipSwitcher<Choice: HubSection, Content: View>: View {
                     }
                 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             content(selection)
                 .id(selection)
                 .transition(.opacity)

@@ -31,10 +31,10 @@ struct DiscoveriesStream: View {
         VStack(alignment: .leading, spacing: 14) {
             ZoonSectionHeader("Discoveries") {
                 NavigationLink {
-                    PatternsHub(initial: .test)
+                    PatternsHub(initial: .noticed)
                 } label: {
                     HStack(spacing: 3) {
-                        Text("Test a habit")
+                        Text("All patterns")
                         Image(systemName: "chevron.right").font(Theme.text(10, weight: .semibold))
                     }
                     .font(Theme.text(12, weight: .semibold))
@@ -51,9 +51,11 @@ struct DiscoveriesStream: View {
                 ))
                 .padding(.vertical, -16)
             } else {
+                // The same row Your patterns draws, so a finding looks the
+                // same wherever it appears. Tap expands it in place.
                 ForEach(top) { finding in
-                    NavigationLink { PatternsHub(initial: .test) } label: { findingRow(finding) }
-                        .buttonStyle(.plain)
+                    FindingGlance(finding: finding)
+                        .glassCard()
                 }
                 if let activeExperiment {
                     ExperimentPreview(tag: activeExperiment.tag, status: activeExperiment.status)

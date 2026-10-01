@@ -7,7 +7,7 @@ struct SleepErasView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Sleep eras").font(Theme.heading(26))
-                Text("A timeline of stable stretches in your history. Zoon reports timing and duration shifts without guessing why they happened.")
+                Text("Stretches where your sleep held steady, and where it shifted.")
                     .font(Theme.text(14)).foregroundStyle(Theme.inkSecondary)
                 let eras = SleepEras.detect(in: Array(coordinator.recentNights.suffix(365)))
                 if eras.isEmpty {

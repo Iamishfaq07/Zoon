@@ -268,7 +268,7 @@ struct ZoonConstellation: View {
 
                 ZoonEvidenceBadge(confidence: edge.evidence)
 
-                Text("Zoon found this by comparing your own nights. It's a pattern in your data, not proof that one causes the other — nights like these usually differ in other ways too.")
+                Text("A pattern in your own nights, not proof of a cause.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)

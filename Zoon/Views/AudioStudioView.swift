@@ -47,7 +47,7 @@ struct AudioStudioView: View {
                 }
             }
             Section {
-                Text("Brown, pink and white are generated so they never seam. Rain, wind, fire and the rest are the recorded loops bundled in the app. Levels mix at reduced gain. An active timer is inherited when you switch sounds, and the remaining time stays visible. Off means Off.")
+                Text("Mix up to a few sounds and save the scene. A running timer carries over.")
                     .font(.caption).foregroundStyle(Theme.inkSecondary)
             }
         }

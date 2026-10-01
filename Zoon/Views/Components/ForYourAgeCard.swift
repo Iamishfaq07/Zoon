@@ -118,7 +118,7 @@ struct ForYourAgeCard: View {
                 profilePrompt
             }
 
-            Text("Ranges from published studies of healthy adults. Your own trend matters more than where you sit in a crowd.")
+            Text("From studies of healthy adults. Your own trend matters more.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -203,7 +203,7 @@ struct ForYourAgeCard: View {
                 .tint(Theme.Metric.sleep)
                 .disabled(isFilling)
             }
-            Text(fillMessage ?? "Or set them in Settings, under Profile. They stay on this iPhone.")
+            Text(fillMessage ?? "Or set them in Settings, under You. They stay on this iPhone.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -225,7 +225,7 @@ struct ForYourAgeCard: View {
         if profile.sex != nil { filled.append("sex") }
         if profile.bodyMassIndex != nil { filled.append("BMI") }
         guard !filled.isEmpty else {
-            return "Health did not share an age or sex. You can set them in Settings, under Profile."
+            return "Health did not share an age or sex. You can set them in Settings, under You."
         }
         return "Filled your \(ListFormatter.localizedString(byJoining: filled)) from Health."
     }

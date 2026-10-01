@@ -46,7 +46,7 @@ struct SleepOpportunityCard: View {
             }
 
             if opportunity.opportunityIsEstimated {
-                Text("Your time in bed was estimated from the sleep period rather than measured, so the split between the two is not stated.")
+                Text("Time in bed was estimated, so the split isn't shown.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
                     .fixedSize(horizontal: false, vertical: true)

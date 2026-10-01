@@ -71,9 +71,8 @@ struct TodayNightHero: View {
             VStack(spacing: 4) {
                 Text("\(context.night.formattedTimeAsleep) asleep")
                     .font(Theme.numeral(28))
-                Text("of \(SleepNightFeatures.formatMinutes(context.sleepNeed.totalNeedMinutes)) need")
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.inkSecondary)
+                // "of 9h 16m need" dropped: the Sleep / Need / Debt bars sit
+                // directly under this hero on every screen that shows it.
                 if !scoreLight {
                     Text("\(context.sleepIntelligence.confidence.label) · \(context.sleepIntelligence.dataCompletenessPercent)% data coverage")
                         .font(Theme.evidence)

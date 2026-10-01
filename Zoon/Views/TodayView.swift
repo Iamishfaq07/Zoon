@@ -190,15 +190,9 @@ struct TodayView: View {
                 AdaptiveBriefCard(brief: adaptiveBrief(context, phase: moment))
                     .entrance(0)
 
-                let steps = tonightSteps(context)
-                if !steps.isEmpty {
-                    TonightPlanCardView(
-                        steps: steps,
-                        targetMinutes: context.tonight.suggestedSleepTargetMinutes,
-                        bedIn: plannedBedtime(context).map { $0.timeIntervalSinceNow }
-                    )
-                    .entrance(1)
-                }
+                // The plan card listed wind-down and bed; the Tonight section
+                // below draws the same times on its timeline, with the
+                // countdown and the editor. One of them, not both.
 
                 // Actual against need, on one scale. The shortfall between
                 // them is what the hero above is counting, so `TodayNeedTracks`
