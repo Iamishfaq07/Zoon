@@ -328,12 +328,24 @@ struct TrendsView: View {
         }
 
         private func ring(_ title: String, _ value: Double, tint: Color) -> some View {
+            FingerprintRing(title: title, value: value, tint: tint)
+        }
+    }
+
+    /// One fingerprint ring, drawn in on appear.
+    private struct FingerprintRing: View {
+        let title: String
+        let value: Double
+        let tint: Color
+        @State private var progress: Double = 0
+
+        var body: some View {
             let clamped = min(1, max(0, value))
             return VStack(spacing: 6) {
                 ZStack {
                     Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
                     Circle()
-                        .trim(from: 0, to: clamped)
+                        .trim(from: 0, to: clamped * progress)
                         .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     Text("\(Int(clamped * 100))")
@@ -346,6 +358,7 @@ struct TrendsView: View {
                     .foregroundStyle(Theme.inkSecondary)
             }
             .frame(maxWidth: .infinity)
+            .drawOnce(id: value, progress: $progress)
         }
     }
 

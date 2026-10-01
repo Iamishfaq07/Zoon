@@ -109,6 +109,7 @@ struct FindingGlance: View {
 struct ConfidenceDots: View {
     let filled: Int
     let caption: String
+    @State private var progress: Double = 0
 
     init(filled: Int, caption: String) {
         self.filled = filled
@@ -136,11 +137,15 @@ struct ConfidenceDots: View {
         VStack(alignment: .trailing, spacing: 3) {
             HStack(spacing: 3) {
                 ForEach(0..<3, id: \.self) { index in
+                    // Lit one after another as the row appears.
+                    let lit = index < filled && progress * 3 > Double(index)
                     Circle()
-                        .fill(index < filled ? Theme.Family.sleep : Theme.neutral(0.15))
+                        .fill(lit ? Theme.Family.sleep : Theme.neutral(0.15))
                         .frame(width: 6, height: 6)
+                        .scaleEffect(lit ? 1 : 0.8)
                 }
             }
+            .drawOnce(id: filled, progress: $progress)
             Text(caption)
                 .font(Theme.text(10))
                 .foregroundStyle(Theme.inkTertiary)
@@ -240,6 +245,9 @@ struct LabeledBar: View {
     var labelWidth: CGFloat = 60
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// 0 → 1 once on appear: the bar grows to its value rather than
+    /// arriving full, so the eye lands on the comparison.
+    @State private var progress: Double = 0
 
     var body: some View {
         if dynamicTypeSize.isAccessibilitySize {
@@ -281,9 +289,10 @@ struct LabeledBar: View {
                 Capsule().fill(Theme.neutral(0.08))
                 Capsule()
                     .fill(tint)
-                    .frame(width: max(6, proxy.size.width * min(1, max(0, fraction))))
+                    .frame(width: max(6, proxy.size.width * min(1, max(0, fraction)) * progress))
             }
         }
         .frame(height: 8)
+        .drawOnce(id: fraction, progress: $progress)
     }
 }

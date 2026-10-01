@@ -27,7 +27,7 @@ struct SoundscapeView: View {
                     }
                 }
                 nowPlaying
-                NavigationLink("Mix and save scenes") { AudioStudioView() }
+                NavigationLink { AudioStudioView() } label: { Label("Mix and save scenes", systemImage: "slider.horizontal.3") }
                     .buttonStyle(.bordered)
                 grid
                 timerCard

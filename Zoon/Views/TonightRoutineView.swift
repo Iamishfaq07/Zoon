@@ -18,7 +18,7 @@ struct TonightRoutineView: View {
                     LabeledContent("Saved wake time", value: window.end.formatted(date: .abbreviated, time: .shortened))
                     Text("Alarm status and permissions are shown in Settings.").font(.caption)
                 }
-                NavigationLink("Travel and shift schedules") { SavedSleepPlansView() }
+                NavigationLink { SavedSleepPlansView() } label: { Label("Travel and shift schedules", systemImage: "calendar") }
             }
 
             Section {
@@ -61,7 +61,7 @@ struct TonightRoutineView: View {
                     Text("Soft rain").tag(UUID?.none)
                     ForEach(store.value.scenes) { Text($0.name).tag(Optional($0.id)) }
                 }
-                NavigationLink("Create a sound scene") { AudioStudioView() }
+                NavigationLink { AudioStudioView() } label: { Label("Create a sound scene", systemImage: "slider.horizontal.3") }
                 if controller.active {
                     Text(stageCopy)
                         .font(.caption)
@@ -226,7 +226,7 @@ struct SavedSleepPlansView: View {
                         weekdays: repeating ? weekdays : [], firstDate: firstDate))
                 }.disabled(name.isEmpty || (repeating && weekdays.isEmpty))
             }
-            Section { NavigationLink("Travel planning guidance") { TravelPlanView() } }
+            Section { NavigationLink { TravelPlanView() } label: { Label("Travel planning guidance", systemImage: "airplane") } }
         }
         .navigationTitle("Sleep schedules")
         .scrollContentBackground(.hidden).nightBackground()

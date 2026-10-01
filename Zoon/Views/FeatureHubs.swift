@@ -112,13 +112,15 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
             HStack(spacing: 6) {
                 Image(systemName: section.symbol)
                     .font(Theme.text(12, weight: .semibold))
+                    // A small bounce on the chip you just chose.
+                    .symbolEffect(.bounce, value: selected)
                 Text(section.label)
                     .font(Theme.label(13, weight: .semibold))
                     .lineLimit(1)
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 36)
-            .foregroundStyle(selected ? Color.black : Theme.inkSecondary)
+            .foregroundStyle(selected ? Color.black : Theme.ink)
             .background {
                 if selected {
                     Capsule()
@@ -482,7 +484,7 @@ struct InlineChipSwitcher<Choice: HubSection, Content: View>: View {
                             }
                             .padding(.horizontal, 12)
                             .frame(minHeight: 32)
-                            .foregroundStyle(selected ? Color.black : Theme.inkSecondary)
+                            .foregroundStyle(selected ? Color.black : Theme.ink)
                             .background {
                                 if selected {
                                     Capsule()
