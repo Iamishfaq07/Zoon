@@ -531,7 +531,7 @@ struct SleepTabView: View {
                                         detail: context.chronotype.kind.label,
                                         symbol: context.chronotype.kind.symbol,
                                         tint: Theme.Family.circadian,
-                                        graphic: context.bodyClock.map { .dial(hour: $0.onsetHour) }
+                                        graphic: context.bodyClock.map { SleepTabTile.Graphic.dial(hour: $0.onsetHour) }
                                     )
                                 }
                                 .buttonStyle(PressableStyle())
