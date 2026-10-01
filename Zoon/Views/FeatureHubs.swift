@@ -120,7 +120,7 @@ struct FeatureHub<Choice: HubSection, Content: View>: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 36)
-            .foregroundStyle(selected ? Color.black : Theme.inkSecondary)
+            .foregroundStyle(selected ? Color.black : Theme.ink)
             .background {
                 if selected {
                     Capsule()
@@ -484,7 +484,7 @@ struct InlineChipSwitcher<Choice: HubSection, Content: View>: View {
                             }
                             .padding(.horizontal, 12)
                             .frame(minHeight: 32)
-                            .foregroundStyle(selected ? Color.black : Theme.inkSecondary)
+                            .foregroundStyle(selected ? Color.black : Theme.ink)
                             .background {
                                 if selected {
                                     Capsule()
