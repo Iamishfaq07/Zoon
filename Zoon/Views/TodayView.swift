@@ -725,47 +725,6 @@ struct TodayView: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// Tonight's three steps, built from the plan the app already computes.
-    ///
-    /// Wind down is half an hour before the target bedtime -- the same
-    /// half-hour `TonightSection` already talks about, given a place on the
-    /// line rather than only a sentence.
-    private func tonightSteps(_ context: DayContext) -> [TonightPlanCardView.Step] {
-        // Every time from the one resolved episode. The wake used to be
-        // `bed + targetSleep`, a third wake time beside the alarm's and the
-        // Tonight section's, and on a night the target does not fit it was
-        // later than the wake the alarm would actually ring at.
-        guard let plan = autopilotPlan(context), let episode = coordinator.tonightEpisode() else { return [] }
-        let windDown = episode.windDown
-        let bed = episode.bed
-        let wake = episode.wake
-
-        var bedNote: String?
-        // The shift, not the repayment: the repayment is how much extra
-        // sleep tonight asks for, the shift is how far bed actually moved
-        // after the nightly cap. Quoting the first as the second claimed a
-        // 30-minute move the cap had held to 20.
-        // And only when the autopilot set tonight's bed: under a plan the
-        // person made, "earlier than your habit" describes a bed nobody chose.
-        if episode.source != .autopilot {
-            bedNote = nil
-        } else if plan.shiftMinutes <= -1, plan.debtRepaymentMinutes >= 1 {
-            bedNote = "\(Int((-plan.shiftMinutes).rounded())) minutes earlier than your habit, to start clearing the shortfall."
-        } else if plan.isHolding {
-            bedNote = "Where you already are — this target is holding, not correcting."
-        }
-
-        return [
-            .init(kind: .windDown, time: windDown, note: nil),
-            .init(kind: .bed, time: bed, note: bedNote),
-            // Said where the numbers are. The card shows the target above
-            // these times, and a window shorter than the target with nothing
-            // beside it reads as a plan that fits.
-            .init(kind: .wake, time: wake, note: episode.isFeasible ? nil
-                  : "This window leaves \(SleepNightFeatures.formatMinutes(episode.shortfallMinutes)) of the target for another night.")
-        ]
-    }
-
     /// Signed change in shortfall against the same weekday last week.
     ///
     /// Negative is an improvement. Takes the *delta* from one same-basis

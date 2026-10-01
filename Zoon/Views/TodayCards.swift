@@ -146,52 +146,6 @@ struct BodyBatteryCard: View {
     }
 }
 
-/// Compact sleep row on Today; the full breakdown lives on the Sleep tab.
-struct SleepSummaryStrip: View {
-    let context: DayContext
-    @Environment(UserPreferences.self) private var preferences
-
-    var body: some View {
-        NavigationLink {
-            NightHub(initial: .numbers)
-        } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    SectionHeader(
-                        title: preferences.isShiftWorkModeEnabled ? "Last Sleep" : "Last Night",
-                        systemImage: "moon.stars.fill"
-                    )
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(Theme.text(12, weight: .semibold))
-                        .foregroundStyle(Theme.inkTertiary)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text(context.night.formattedTimeAsleep)
-                        .font(Theme.numeral(34))
-                        .monospacedDigit()
-                    Text("\(Int(context.sleepNeed.performancePercent))% of target")
-                        .font(Theme.label(13))
-                        .foregroundStyle(Theme.inkSecondary)
-                }
-
-                if !context.night.stageSegments.isEmpty {
-                    HypnogramView(
-                        segments: context.night.stageSegments,
-                        height: 74,
-                        showsAxis: false
-                    )
-                } else {
-                    StageProportionBar(features: context.night)
-                }
-            }
-            .glassCard()
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 /// Shows the recovery score's working — which input dragged it where.
 struct RecoveryBreakdownCard: View {
     let recovery: RecoveryScore
