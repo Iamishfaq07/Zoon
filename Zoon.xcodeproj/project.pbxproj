@@ -1310,7 +1310,6 @@
 		D2CD334CF637BA3CF0B9DC83 /* InsightsStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CBABA0AC99BAC050FEE0BD /* InsightsStream.swift */; };
 		D30BFA76715BAFEF0BAF4A53 /* CoachEvaluationCorpusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F31F39739914A8706F8284 /* CoachEvaluationCorpusTests.swift */; };
 		D397403DABFEACAA41DB8475 /* SleepNeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06932F33E82F37E1B73B42C /* SleepNeed.swift */; };
-		D3B728E1CEEFC7AF4FDE89D9 /* InsightsDigestCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49024A9138A57C2C104AFE9B /* InsightsDigestCards.swift */; };
 		D3FFCF8C78027D3A0CBA4340 /* LiquidGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB10ECD97AF5D0E09BBA243 /* LiquidGlass.swift */; };
 		D43021B56705E4994768953A /* WorkoutDeduplicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0965A618AF99EA660DDA2E88 /* WorkoutDeduplicator.swift */; };
 		D47B473D64B9E813F5C3F79C /* SoundscapeCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C79D6A0BD6897F64AF3B91E /* SoundscapeCatalogTests.swift */; };
@@ -1886,7 +1885,6 @@
 		47BC319A68574029649CCE8F /* BodyBatteryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BodyBatteryTests.swift"; sourceTree = "<group>"; };
 		4870E4E4D42B77014AC62F37 /* EnergyDriversTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyDriversTests.swift"; sourceTree = "<group>"; };
 		48C0B21A20D867A2BE763FD3 /* ReminderScheduleStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReminderScheduleStatusTests.swift"; sourceTree = "<group>"; };
-		49024A9138A57C2C104AFE9B /* InsightsDigestCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InsightsDigestCards.swift"; sourceTree = "<group>"; };
 		490F6EA8AB3100BA90479FF6 /* HealthRadarPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HealthRadarPresentationTests.swift"; sourceTree = "<group>"; };
 		49631B20B1506B60BDEB8FC7 /* LaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LaunchOptions.swift"; sourceTree = "<group>"; };
 		4980E3BEBDBC7753D6697D62 /* NapCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NapCoach.swift"; sourceTree = "<group>"; };
@@ -2526,7 +2524,6 @@
 				427D7648D38B1148AC3FFCDB,
 				12AB23E8C636FD67F0EFBBA9,
 				45237B7D4C6548BAEC55290F,
-				49024A9138A57C2C104AFE9B,
 				53636D4BAAB21D53B0232B06,
 				F0CBABA0AC99BAC050FEE0BD,
 				A39A9E863D2EDC167F3A32A7,
@@ -3960,7 +3957,6 @@
 				2633F84AED3B6953ABBD7C6E,
 				8508204FEC412F59D8F3D82F,
 				E7E68658D923ECD0BD14401E,
-				D3B728E1CEEFC7AF4FDE89D9,
 				677698CE93C3E4DF75B50AA1,
 				D2CD334CF637BA3CF0B9DC83,
 				50821C2AAC01B71256BBEE4A,
