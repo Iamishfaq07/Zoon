@@ -172,24 +172,4 @@ struct PersonalLearningView: View {
     }
 }
 
-struct ProactiveZoonCard: View {
-    let items: [PersonalLearning.ProactiveItem]
-
-    var body: some View {
-        if let first = items.first {
-            NavigationLink { PatternsHub(initial: .learned) } label: {
-                VStack(alignment: .leading, spacing: 7) {
-                    Label("Worth checking", systemImage: "bell.badge.fill")
-                        .font(Theme.kicker).foregroundStyle(Theme.Family.attention)
-                    Text(first.title).font(Theme.label(16, weight: .semibold))
-                    Text(first.detail).font(Theme.text(12)).foregroundStyle(Theme.inkSecondary)
-                    Text(first.action).font(Theme.label(12, weight: .semibold)).foregroundStyle(Theme.Family.sleep)
-                }.frame(maxWidth: .infinity, alignment: .leading).glassCard()
-            }
-            .buttonStyle(PressableStyle())
-            .accessibilityHint("Opens personal learning details")
-        }
-    }
-}
-
 #Preview { NavigationStack { PersonalLearningView() }.zoonPreviewEnvironment() }

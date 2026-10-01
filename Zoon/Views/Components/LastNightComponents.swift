@@ -126,7 +126,7 @@ struct SleepStoryMoments: View {
             VStack(alignment: .leading, spacing: 12) {
                 ZoonSectionHeader("What happened") {
                     NavigationLink {
-                        SleepStoryView()
+                        NightHub(initial: .story)
                     } label: {
                         HStack(spacing: 3) {
                             Text("Full story")
