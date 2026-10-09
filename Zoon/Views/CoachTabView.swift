@@ -298,20 +298,26 @@ struct CoachTabView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Ask Zoon")
-                .font(Theme.heading(28))
-            // Was "Your sleep intelligence assistant", which is a tagline:
-            // true of the screen before any data existed and after all of it
-            // was deleted. `capabilityCard` states the evidence base
-            // properly, but it sits at the bottom, below every question --
-            // so the one thing that decides whether an answer is worth
-            // asking for arrived after the asking. This is the short form of
-            // it, in the space the tagline was wasting.
-            Text(evidenceLine)
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .center, spacing: 14) {
+            // The app's own moon beside the title: the Coach tab was the one
+            // main screen that opened on bare text.
+            MoonFill(fill: 0.62, active: true, size: 52)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Ask Zoon")
+                    .font(Theme.heading(28))
+                // Was "Your sleep intelligence assistant", which is a tagline:
+                // true of the screen before any data existed and after all of it
+                // was deleted. `capabilityCard` states the evidence base
+                // properly, but it sits at the bottom, below every question --
+                // so the one thing that decides whether an answer is worth
+                // asking for arrived after the asking. This is the short form of
+                // it, in the space the tagline was wasting.
+                Text(evidenceLine)
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The two lines are one statement, and VoiceOver reading "Ask Zoon"

@@ -355,11 +355,17 @@ struct MoreView: View {
 
     private var aboutCard: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Zoon")
-                .font(Theme.label(15, weight: .bold))
-            Text("“Zoon” means moon in Kashmiri.")
-                .font(.caption)
-                .foregroundStyle(Theme.inkSecondary)
+            HStack(spacing: 12) {
+                MoonFill(fill: 0.62, active: true, size: 36)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Zoon")
+                        .font(Theme.label(15, weight: .bold))
+                    Text("“Zoon” means moon in Kashmiri.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+            }
             Text(SleepInsight.disclaimer)
                 .font(Theme.text(10))
                 .foregroundStyle(Theme.inkTertiary)
