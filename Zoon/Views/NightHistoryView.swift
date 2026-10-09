@@ -13,15 +13,20 @@ struct NightHistoryView: View {
         coordinator.recentNights.sorted { $0.date > $1.date }
     }
 
+    /// The same goal the film strip fills its moons against.
+    private var goalMinutes: Double {
+        coordinator.state.context?.sleepNeed.totalNeedMinutes
+            ?? coordinator.recentNights.last?.sleepNeedBaselineMinutes
+            ?? 480
+    }
+
     var body: some View {
         ScrollView {
             CascadeStack(alignment: .leading, spacing: 16) {
                 if !nights.isEmpty {
                     NightFilmStrip(
                         nights: nights,
-                        goalMinutes: coordinator.state.context?.sleepNeed.totalNeedMinutes
-                            ?? coordinator.recentNights.last?.sleepNeedBaselineMinutes
-                            ?? 480
+                        goalMinutes: goalMinutes
                     )
                     .padding(.horizontal)
                 }
@@ -57,6 +62,14 @@ struct NightHistoryView: View {
 
     private func row(for night: SleepNightFeatures) -> some View {
         HStack(spacing: 13) {
+            // Each row carries the strip's moon, filled to how much of the
+            // goal the night reached, so the list reads at a glance too.
+            MoonFill(
+                fill: min(1, max(0, night.timeAsleepMinutes / max(1, goalMinutes))),
+                active: false,
+                size: 30
+            )
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(night.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                     .font(Theme.label(14, weight: .semibold))
