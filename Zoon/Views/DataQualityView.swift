@@ -43,11 +43,7 @@ struct DataQualityView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("What Zoon has actually seen")
                 .font(Theme.heading(20))
-            Text("""
-                Coverage over the last \(quality.windowDays) days for every metric a score on this app \
-                depends on. A gap here is the real reason a score's confidence is lower than usual -- \
-                not a hidden fault.
-                """)
+            Text("The last \(quality.windowDays) days, metric by metric. A gap is why a score is less sure.")
                 .font(.caption)
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -64,9 +60,14 @@ struct DataQualityView: View {
         VStack(alignment: .leading, spacing: 10) {
             ZoonSectionHeader("What Zoon couldn't read")
             if readProblems.isEmpty {
-                Text("Every read worked. A gap means nothing was recorded.")
+                Label {
+                    Text("Every read worked. A gap means nothing was recorded.")
+                        .foregroundStyle(Theme.inkSecondary)
+                } icon: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Theme.Metric.recoveryHigh)
+                }
                     .font(Theme.text(12))
-                    .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("dataQuality.readsOK")
             } else {
