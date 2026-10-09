@@ -339,7 +339,14 @@ struct ReportView: View {
     }
 
     private func nightRow(_ label: String, _ night: SleepNightFeatures, tint: Color) -> some View {
-        HStack {
+        HStack(spacing: 12) {
+            // The night as a moon against the goal, as on Past Nights.
+            MoonFill(
+                fill: min(1, max(0, night.timeAsleepMinutes / max(1, preferences.sleepGoalMinutes))),
+                active: false,
+                size: 30
+            )
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(Theme.text(10))
