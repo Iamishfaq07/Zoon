@@ -88,6 +88,10 @@ struct ModelHealthView: View {
             Text(stage.label)
                 .font(Theme.numeral(28))
                 .foregroundStyle(tint(for: stage))
+            // The same four-step ladder each area uses below, at full width:
+            // where the whole picture sits, before any of it is read.
+            steps(stage)
+                .padding(.vertical, 2)
             Text(stage.meaning)
                 .font(Theme.text(13))
                 .foregroundStyle(Theme.inkSecondary)
