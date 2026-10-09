@@ -78,7 +78,7 @@ struct CoachTabView: View {
                             CoachChatView(night: night, initialPrompt: category.question)
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(category.kicker)
+                                Label(category.kicker, systemImage: category.symbol)
                                     .font(Theme.kicker)
                                     .tracking(1.0)
                                     .textCase(.uppercase)
@@ -162,6 +162,7 @@ struct CoachTabView: View {
         let kicker: String
         let question: String
         let tint: Color
+        var symbol: String = "sparkles"
     }
 
     /// This week's question is duration-only, from Cause Finder's strongest
@@ -192,11 +193,11 @@ struct CoachTabView: View {
             : "How should I prepare for tomorrow?"
 
         return [
-            Category(kicker: "This week", question: week.question, tint: Theme.Family.sleep),
-            Category(kicker: "Today", question: today, tint: Theme.Family.sleep),
-            Category(kicker: "Trend", question: trend, tint: Theme.Family.recovery),
-            Category(kicker: "Discovery", question: discovery, tint: Theme.Family.bodySignals),
-            Category(kicker: "Plan", question: plan, tint: Theme.Family.circadian)
+            Category(kicker: "This week", question: week.question, tint: Theme.Family.sleep, symbol: "calendar"),
+            Category(kicker: "Today", question: today, tint: Theme.Family.sleep, symbol: "sun.max"),
+            Category(kicker: "Trend", question: trend, tint: Theme.Family.recovery, symbol: "chart.line.uptrend.xyaxis"),
+            Category(kicker: "Discovery", question: discovery, tint: Theme.Family.bodySignals, symbol: "magnifyingglass"),
+            Category(kicker: "Plan", question: plan, tint: Theme.Family.circadian, symbol: "moon.stars")
         ]
     }
 
@@ -297,20 +298,26 @@ struct CoachTabView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Ask Zoon")
-                .font(Theme.heading(28))
-            // Was "Your sleep intelligence assistant", which is a tagline:
-            // true of the screen before any data existed and after all of it
-            // was deleted. `capabilityCard` states the evidence base
-            // properly, but it sits at the bottom, below every question --
-            // so the one thing that decides whether an answer is worth
-            // asking for arrived after the asking. This is the short form of
-            // it, in the space the tagline was wasting.
-            Text(evidenceLine)
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .center, spacing: 14) {
+            // The app's own moon beside the title: the Coach tab was the one
+            // main screen that opened on bare text.
+            MoonFill(fill: 0.62, active: true, size: 52)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Ask Zoon")
+                    .font(Theme.heading(28))
+                // Was "Your sleep intelligence assistant", which is a tagline:
+                // true of the screen before any data existed and after all of it
+                // was deleted. `capabilityCard` states the evidence base
+                // properly, but it sits at the bottom, below every question --
+                // so the one thing that decides whether an answer is worth
+                // asking for arrived after the asking. This is the short form of
+                // it, in the space the tagline was wasting.
+                Text(evidenceLine)
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The two lines are one statement, and VoiceOver reading "Ask Zoon"
