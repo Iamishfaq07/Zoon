@@ -237,7 +237,19 @@ struct BreathingHealthView: View {
                         Text(night.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
                             .font(Theme.label(12))
                             .foregroundStyle(Theme.inkSecondary)
-                        Spacer()
+                            .frame(minWidth: 84, alignment: .leading)
+                        // Share of the night spent snoring, on a 0-40% scale
+                        // so a typical night isn't a sliver.
+                        GeometryReader { proxy in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Theme.neutral(0.08))
+                                Capsule()
+                                    .fill(night.report.loudest?.tint ?? Theme.Family.breathing)
+                                    .frame(width: max(3, proxy.size.width * min(1, Double(night.snorePercent) / 40)))
+                            }
+                        }
+                        .frame(height: 6)
+                        .accessibilityHidden(true)
                         Text(snoreLine(night))
                             .font(Theme.label(12, weight: .semibold))
                             .monospacedDigit()
