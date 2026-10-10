@@ -14,6 +14,21 @@ Implemented assets:
 - `Zoon/Assets.xcassets/AppIcon.appiconset/icon-1024-dark.png`
 - `Zoon/Assets.xcassets/AppIcon.appiconset/icon-1024-tinted.png`
 
+## Alternate icons (October 2026)
+
+The crescent stays the default. Four alternates can be picked in
+Settings > You > App icon:
+
+- **Moon**: the app's own moon at the phase the app draws it.
+- **Ring**: a flat moon inside the progress ring used across the app.
+- **Stars**: a warm crescent with three stars.
+- **Moonrise**: a large moon breaking through the top-right corner.
+
+`Tools/generate-alternate-icons.py` draws them into
+`Zoon/Assets.xcassets/AppIcon*.appiconset` (light, dark and tinted) with a
+small `IconPreview*` image each for the picker. The build lists them in
+`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`.
+
 ## Previous identity reference
 
 ![Previous Zoon icon](icon-concepts/previous-app-icon.png)

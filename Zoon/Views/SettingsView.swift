@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Pushed from the More tab, so it supplies no `NavigationStack` of its own.
 struct SettingsView: View {
@@ -113,6 +114,7 @@ struct SettingsView: View {
         goalSection
         profileSection
         appearanceSection
+        AppIconSection()
     }
 
     // MARK: - Sections
@@ -760,6 +762,90 @@ struct SettingsView: View {
         } footer: {
             Text("Deleting removes Zoon's local copy only. Health keeps the originals.")
         }
+    }
+}
+
+/// The Home Screen icon. The crescent is the default; the other four are
+/// alternates the build declares (ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES
+/// in Tools/generate-pbxproj.py) and Tools/generate-alternate-icons.py draws.
+/// Each shows as its own picture, because an icon is chosen by looking.
+private struct AppIconSection: View {
+    private struct Option: Identifiable {
+        /// `nil` is the default icon, as `setAlternateIconName` expects.
+        let iconName: String?
+        let label: String
+        let preview: String
+        var id: String { iconName ?? "default" }
+    }
+
+    private static let options = [
+        Option(iconName: nil, label: "Crescent", preview: "IconPreviewDefault"),
+        Option(iconName: "AppIconTextured", label: "Moon", preview: "IconPreviewTextured"),
+        Option(iconName: "AppIconRing", label: "Ring", preview: "IconPreviewRing"),
+        Option(iconName: "AppIconCrescent", label: "Stars", preview: "IconPreviewCrescent"),
+        Option(iconName: "AppIconMoonrise", label: "Moonrise", preview: "IconPreviewMoonrise"),
+    ]
+
+    @State private var current: String?
+    @State private var failed = false
+
+    var body: some View {
+        if UIApplication.shared.supportsAlternateIcons {
+            Section {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(Self.options) { option in
+                            tile(option)
+                        }
+                    }
+                    .padding(.vertical, 6)
+                }
+            } header: {
+                Text("App icon")
+            } footer: {
+                if failed {
+                    Text("iOS didn't change the icon. Try again.")
+                }
+            }
+            .onAppear { current = UIApplication.shared.alternateIconName }
+        }
+    }
+
+    private func tile(_ option: Option) -> some View {
+        let selected = option.iconName == current
+        return Button {
+            guard !selected else { return }
+            Haptics.select()
+            Task {
+                do {
+                    try await UIApplication.shared.setAlternateIconName(option.iconName)
+                    current = option.iconName
+                    failed = false
+                } catch {
+                    failed = true
+                }
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(option.preview)
+                    .resizable()
+                    .frame(width: 58, height: 58)
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 15, style: .continuous)
+                            .strokeBorder(selected ? Theme.Family.sleep : .clear, lineWidth: 2.5)
+                            .padding(-4)
+                    }
+                Text(option.label)
+                    .font(Theme.text(11, weight: selected ? .semibold : .regular))
+                    .foregroundStyle(selected ? Theme.ink : Theme.inkSecondary)
+            }
+            .padding(4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(option.label) icon")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

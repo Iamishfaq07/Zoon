@@ -9,7 +9,7 @@ bundled asset, and nothing in this repository recorded them.
 git history and its embedded metadata. None of the 27 sound files carries
 an ID3 title, artist, copyright or licence tag, and neither the commit that
 added them (`01d1ba3`, "Bundle recorded sleep soundscapes on device") nor
-the one that added the moon photograph (`a519626`) names a source. So the
+the one that added the moon image (`a519626`) names a source. So the
 source and licence columns say **not recorded**. They are not guesses, and
 nothing here should be read as clearance. Each **needs review** row needs the
 person who supplied the file to fill in its origin and licence before an
@@ -54,8 +54,9 @@ runtime (`SoundscapeEngine`) and have no file to license.
 
 | File | Role | Added in | Source | Licence | Status |
 |---|---|---|---|---|---|
-| `Zoon/Assets.xcassets/MoonTexture.imageset/moon.png` (and the widget catalog copy) | full-moon photograph, phase applied in code | `a519626` (2026-09-11, #317) | not recorded | not recorded | **needs review**. If it's a NASA/LRO image it's generally public domain but still needs attribution checked; that has to be confirmed, not assumed |
-| `Zoon/Assets.xcassets/AppIcon.appiconset` (light, dark, tinted 1024 px) | app icon | see `docs/APP-ICON-2026.md` | not recorded. `Tools/generate-app-icon.py` draws a plain vector crescent, but the design doc describes the shipped icon as carrying "lunar texture", so the committed PNGs may not come from that script | not recorded | **needs review**: confirm whether the texture comes from the moon photograph above or another image |
+| `Zoon/Assets.xcassets/MoonTexture.imageset/moon.png` (and the widget catalog copy) | full-moon image, phase applied in code | `a519626` (2026-09-11, #317) | AI-generated, supplied by the owner (confirmed 2026-10-10) | owner's own; no third-party licence. Keep the generator's terms on file, in case they limit commercial use | cleared by owner |
+| `Zoon/Assets.xcassets/AppIcon.appiconset` (light, dark, tinted 1024 px) | app icon | see `docs/APP-ICON-2026.md` | not recorded. `Tools/generate-app-icon.py` draws a plain vector crescent, but the design doc describes the shipped icon as carrying "lunar texture", so the committed PNGs may not come from that script | not recorded | **needs review**: confirm whether the texture comes from the moon image above (AI-generated, cleared) or another image |
+| `Zoon/Assets.xcassets/AppIcon{Textured,Ring,Crescent,Moonrise}.appiconset` and `IconPreview*.imageset` | alternate app icons and their Settings previews | added 2026-10-10 | drawn by `Tools/generate-alternate-icons.py`. Textured and Moonrise use the moon image above, the other two are shapes only | owner's own | cleared: no third-party material |
 
 ## Code
 

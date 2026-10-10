@@ -869,6 +869,7 @@ configs = {
 }
 
 APP_SETTINGS = TARGET_COMMON + f"""				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconTextured AppIconRing AppIconCrescent AppIconMoonrise";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Zoon/Zoon.entitlements;
 				// Both at once, as Xcode sets it up when a capability needs a
