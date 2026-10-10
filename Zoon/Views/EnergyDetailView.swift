@@ -96,9 +96,9 @@ struct EnergyDetailView: View {
         }
         switch context.strain.value {
         case 14...:
-            return "Give tonight extra time in bed — a day this hard raises what your body needs to recover from it."
+            return "Give tonight extra time in bed. A day this hard needs it."
         case 10..<14:
-            return "Protect your usual bedtime tonight; a strenuous day is the one most easily undone by a late one."
+            return "Keep your usual bedtime tonight. A late one undoes a hard day most."
         default:
             return nil
         }
@@ -155,8 +155,8 @@ struct EnergyDetailView: View {
                 symbol: "flame.fill",
                 tint: Theme.Metric.strain,
                 explanation: [
-                    "Daily Load is a cardiovascular load score built from your heart rate through the day, weighted by how far above resting it ran and for how long -- not just a step count or a workout minutes total.",
-                    "It's read next to Sleep Need and Recovery deliberately: a high-load day increases what your body needs from that night's sleep to fully recover."
+                    "How hard your heart worked today: how far above resting, and for how long.",
+                    "A hard day raises what tonight's sleep needs to cover."
                 ],
                 // `confidenceNote` used to be appended to the prose above,
                 // where it read as a third paragraph about the metric rather

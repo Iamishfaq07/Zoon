@@ -182,33 +182,21 @@ struct SleepMetricBoard: View {
             Cell(
                 id: "efficiency", label: "Efficiency", value: "\(Int(night.sleepEfficiencyPercent))%",
                 caveat: night.timeInBedIsEstimated ? "in-bed estimated" : nil,
-                definition: ("Sleep Efficiency", "gauge.with.dots.needle.67percent", [
-                    "The percentage of your time in bed that you actually spent asleep -- total sleep time divided by time in bed.",
-                    "Above 85% is generally considered efficient. A lower number usually means either a long time falling asleep or a lot of time awake overnight, both shown here separately."
-                ])
+                definition: ("Sleep Efficiency", "gauge.with.dots.needle.67percent", NightDefinitions.efficiency)
             ),
             Cell(
                 id: "waso", label: "Awake overnight", value: SleepNightFeatures.formatMinutes(night.awakeMinutes),
-                definition: ("WASO", "moon.zzz", [
-                    "Wake After Sleep Onset -- the total time spent awake between falling asleep and your final wake-up, added across every awakening rather than just how many there were.",
-                    "Under about 20 minutes total is typical for an efficient night."
-                ])
+                definition: ("WASO", "moon.zzz", NightDefinitions.waso)
             ),
             Cell(
                 id: "wakes", label: "Awakenings", value: "\(night.wakeCount)",
-                definition: ("Awakenings", "eye", [
-                    "Meaningful wake periods after you first fell asleep, not counting brief stirs before sleep onset. Everyone wakes briefly several times a night without remembering it -- this counts the ones long enough to register.",
-                    "There's no universal 'normal' count; it's most useful compared against your own recent nights rather than a fixed target."
-                ])
+                definition: ("Awakenings", "eye", NightDefinitions.awakenings)
             )
         ]
         if let latency = night.sleepLatencyMinutes {
             result.append(Cell(
                 id: "latency", label: "Fell asleep in", value: "\(Int(latency))m",
-                definition: ("Sleep Latency", "hourglass", [
-                    "The time from getting into bed to your first sustained sleep. Only available when your sleep source records in-bed time -- Apple Watch alone doesn't.",
-                    "Under 20 minutes is typical for most people. A latency that's crept up over several nights is often more meaningful than one long night."
-                ])
+                definition: ("Sleep Latency", "hourglass", NightDefinitions.latency)
             ))
         }
         if night.hasStageBreakdown {
@@ -218,10 +206,7 @@ struct SleepMetricBoard: View {
         result.append(Cell(
             id: "inBed", label: night.timeInBedIsEstimated ? "In bed (est.)" : "In bed",
             value: SleepNightFeatures.formatMinutes(night.timeInBedMinutes),
-            definition: night.timeInBedIsEstimated ? ("Estimated Time in Bed", "bed.double", [
-                "Your sleep source doesn't record when you got into or out of bed, so this is the span from your first sleep reading to your last -- it leaves out time lying awake before falling asleep or after waking, so it tends to run a little short.",
-                "An iPhone sleep schedule or a third-party app that logs in-bed time directly would make this exact instead of estimated."
-            ]) : nil
+            definition: night.timeInBedIsEstimated ? ("Estimated Time in Bed", "bed.double", NightDefinitions.inBedEstimated) : nil
         ))
         return result
     }
@@ -296,4 +281,31 @@ struct SleepMetricBoard: View {
         .nightBackground()
     }
     .zoonPreviewEnvironment()
+}
+
+/// What the night's timing figures mean, shared by Sleep Detail and the Last
+/// Night grid. Each was two long paragraphs, written twice and drifting
+/// apart; now it is two short lines in one place.
+enum NightDefinitions {
+    static let efficiency = [
+        "Time asleep divided by time in bed.",
+        "Above 85% is efficient. Lower usually means a slow start or time awake."
+    ]
+    static let efficiencyEstimated = "In-bed time is estimated tonight, so this reads a little high."
+    static let waso = [
+        "All the time awake between falling asleep and your final wake.",
+        "Under about 20 minutes is typical."
+    ]
+    static let awakenings = [
+        "Wake-ups long enough to register. Everyone has a few they don't remember.",
+        "Best compared with your own nights, not a fixed number."
+    ]
+    static let latency = [
+        "Bed to first sustained sleep. Needs in-bed time, which a Watch alone doesn't record.",
+        "Under 20 minutes is typical. A slow creep over nights matters more than one."
+    ]
+    static let inBedEstimated = [
+        "Your source doesn't log getting into bed, so this runs from first to last sleep reading. It reads a little short.",
+        "An iPhone sleep schedule makes it exact."
+    ]
 }
