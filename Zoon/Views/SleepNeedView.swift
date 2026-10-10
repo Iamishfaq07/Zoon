@@ -133,15 +133,15 @@ struct SleepNeedView: View {
     /// mostly the goal the person set.
     private var provenanceLine: String {
         guard let learned else {
-            return "Your baseline is learned from nights you have actually slept."
+            return "Learned from nights you sleep."
         }
         guard learned.learnedMinutes != nil else {
-            return "Still your stated goal. Zoon needs \(LearnedSleepNeed.minimumQualifyingNights) qualifying nights before it starts learning a baseline of your own, and has \(learned.qualifyingNightCount)."
+            return "Your goal for now. \(learned.qualifyingNightCount) of \(LearnedSleepNeed.minimumQualifyingNights) nights toward your own."
         }
-        let basis = "Learned from \(learned.qualifyingNightCount) qualifying nights"
+        let basis = "From \(learned.qualifyingNightCount) of your nights"
         return learned.showsRange
-            ? "\(basis) — the range is where the middle of those nights sat, not a margin of error. Tonight's target adds today's adjustments below."
-            : "\(basis), still blended with your stated goal. Tonight's target adds today's adjustments below."
+            ? "\(basis). The range is where most of them sat."
+            : "\(basis), blended with your goal."
     }
 
     /// The expert recommendation for the person's age, drawn on the same
@@ -189,11 +189,11 @@ struct SleepNeedView: View {
                         .foregroundStyle(Theme.Family.attention)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("National Sleep Foundation recommendation. The dot is your baseline.")
+                Text("National Sleep Foundation range. The dot is you.")
                     .font(Theme.evidence)
                     .foregroundStyle(Theme.inkTertiary)
             } else {
-                Text("Add your age in Settings, under You, to see how much sleep experts recommend at your age.")
+                Text("Add your age in Settings › You to compare.")
                     .font(Theme.text(14))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -207,11 +207,11 @@ struct SleepNeedView: View {
         let yours = SleepNightFeatures.formatMinutes(baseline)
         switch guideline.fit(baseline) {
         case .withinRecommended:
-            return "Your baseline of \(yours) sits inside the range for \(guideline.groupName)."
+            return "\(yours) is inside the range for \(guideline.groupName)."
         case .belowRecommended, .wellBelow:
-            return "Your baseline of \(yours) is under the range for \(guideline.groupName). If you often feel sleepy in the day, you may need more than you have been getting."
+            return "\(yours) is under the range for \(guideline.groupName). Sleepy by day? You may need more."
         case .aboveRecommended, .wellAbove:
-            return "Your baseline of \(yours) is over the range for \(guideline.groupName). Some people simply need more; if you still wake unrefreshed, it is worth mentioning to a doctor."
+            return "\(yours) is over the range for \(guideline.groupName). If you still wake unrefreshed, mention it to a doctor."
         }
     }
 
@@ -227,8 +227,14 @@ struct SleepNeedView: View {
         let rowSum = rows.reduce(0) { $0 + $1.minutes }
         return VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "What it's built from", systemImage: "list.bullet.rectangle")
+            NeedStackBar(minutes: rows.map { $0.minutes }, colors: rows.indices.map { Self.segmentColor($0) })
+                .frame(height: 14)
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack {
+                    Circle()
+                        .fill(row.minutes >= 0 ? Self.segmentColor(index) : Theme.neutral(0.25))
+                        .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
                     Text(row.label)
                         .font(Theme.label(12))
                     Spacer()
@@ -255,6 +261,16 @@ struct SleepNeedView: View {
             }
         }
         .glassCard()
+    }
+
+    /// The baseline in the sleep colour, each addition in a lighter or
+    /// warmer step after it.
+    private static func segmentColor(_ index: Int) -> Color {
+        let palette: [Color] = [
+            Theme.Family.sleep, Theme.Family.bodySignals, Theme.Family.circadian,
+            Theme.Family.breathing, Theme.Family.recovery
+        ]
+        return palette[index % palette.count]
     }
 
     @State private var selectedDate: Date?
@@ -328,43 +344,54 @@ struct SleepNeedView: View {
     }
 
     private var explanationCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("How this is estimated", systemImage: "info.circle")
-                .font(Theme.label(12, weight: .semibold))
-                .foregroundStyle(Theme.inkSecondary)
-            Text(learnedExplanationText)
-                .font(Theme.text(10))
-                .foregroundStyle(Theme.inkTertiary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .glassCard()
+        ExplainDisclosure(title: "How this is worked out", lines: explanationLines, systemImage: "info.circle")
     }
 
-    private var learnedExplanationText: String {
-        let base: String
+    private var explanationLines: [String] {
+        var lines: [String]
         if let learned, learned.learnedMinutes != nil {
-            base = """
-                The baseline starts from your own recent history rather than just your goal: \
-                the typical duration of your efficient, unfragmented, well-measured nights \
-                (\(learned.qualifyingNightCount) of them so far), blended with your Settings \
-                goal -- more weight on your own history the more qualifying nights you have, \
-                up to \(LearnedSleepNeed.fullConfidenceNights).
-                """
+            lines = [
+                "Baseline: your usual length on clean, well-measured nights (\(learned.qualifyingNightCount) so far), blended with your goal.",
+                "The more nights, the more weight on yours, up to \(LearnedSleepNeed.fullConfidenceNights)."
+            ]
         } else {
-            base = """
-                Starts from your sleep goal in Settings. Once you have \
-                \(LearnedSleepNeed.minimumQualifyingNights) or more nights of efficient, \
-                well-measured sleep, this baseline starts blending in a figure learned from \
-                your own history instead of relying on the goal alone.
-                """
+            lines = [
+                "Baseline: your goal in Settings for now.",
+                "After \(LearnedSleepNeed.minimumQualifyingNights) clean nights, Zoon blends in what it learns from you."
+            ]
         }
-        return base + """
-             Tonight's target then adds a slice of the shortfall through last night and \
-            today's exertion, and takes off today's naps -- so a harder day or a short night \
-            genuinely raises it instead of treating every night the same. The shortfall itself \
-            is tracked separately, each night against the need Zoon had learned by then -- see \
-            Sleep Debt for how that number is built.
-            """
+        lines.append("Tonight's target adds part of your sleep debt and today's effort, and takes off naps.")
+        lines.append("Sleep debt is counted on its own, under Owed.")
+        return lines
+    }
+}
+
+/// The target as one bar: the baseline, then each addition after it, so
+/// the eye sees how much of tonight is the usual night and how much is
+/// today. Reductions (naps) are left out of the bar; their rows say so.
+private struct NeedStackBar: View {
+    let minutes: [Double]
+    let colors: [Color]
+    @State private var progress: Double = 0
+
+    var body: some View {
+        let positive = minutes.map { max(0, $0) }
+        let total = max(1, positive.reduce(0, +))
+        GeometryReader { proxy in
+            let usable = proxy.size.width - CGFloat(max(0, positive.count - 1)) * 2
+            HStack(spacing: 2) {
+                ForEach(Array(positive.enumerated()), id: \.offset) { index, value in
+                    if value > 0 {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(colors[index])
+                            .frame(width: max(3, usable * CGFloat(value / total) * progress))
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .drawOnce(id: minutes, progress: $progress)
+        .accessibilityHidden(true)
     }
 }
 

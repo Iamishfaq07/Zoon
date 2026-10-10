@@ -92,7 +92,7 @@ struct BreathingHealthView: View {
             }
 
             if health.disturbanceTrend.count < 2 {
-                Text("Needs a Series 9 / Ultra 2 or later with the feature enabled, and a few nights of history.")
+                Text("Needs Apple Watch Series 9 or Ultra 2 or later, with the feature on.")
                     .font(.caption)
                     .foregroundStyle(Theme.inkSecondary)
             } else {
@@ -262,7 +262,7 @@ struct BreathingHealthView: View {
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 SectionHeader(title: "Snoring", systemImage: "waveform.and.mic")
-                Text("No Snore Check sessions yet. Run one from the Sleep tab to start building history here.")
+                Text("No Snore Check nights yet. Start one from the Sleep tab.")
                     .font(.caption)
                     .foregroundStyle(Theme.inkSecondary)
             }

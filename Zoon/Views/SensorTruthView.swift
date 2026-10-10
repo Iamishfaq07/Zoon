@@ -53,14 +53,6 @@ struct SensorTruthView: View {
         ScrollViewReader { proxy in
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                Text("Some numbers are measured by a sensor. Others are estimates. Here is which is which.")
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .glassCard()
-                    .entrance(0)
-
                 if coordinator.recentNights.contains(where: { $0.timingProvenance == .locallyCorrected }) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(SleepTimingProvenance.locallyCorrected.label)
@@ -89,8 +81,10 @@ struct SensorTruthView: View {
 
                 needModelSection.entrance(3)
 
-                ForEach(Array(SensorTruth.all.enumerated()), id: \.element.id) { index, fact in
-                    row(fact).entrance(min(index + 4, 6))
+                // Fifteen cards of two paragraphs each became four cards, one
+                // per kind of claim, with each number a row that opens.
+                ForEach(Array(Self.groups.enumerated()), id: \.element.kind) { index, group in
+                    provenanceGroup(group.kind, facts: group.facts).entrance(min(index + 4, 6))
                 }
             }
             .padding(.horizontal)
@@ -151,7 +145,7 @@ struct SensorTruthView: View {
                     .font(Theme.label(15, weight: .semibold))
             }
 
-            Text("Counted from your last \(report.nightsConsidered) nights from this source, not from a list of what the model is supposed to do.")
+            Text("From your last \(report.nightsConsidered) nights on this source.")
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -172,7 +166,7 @@ struct SensorTruthView: View {
             // Different reason, different sentence -- see
             // `Report.missingBecauseAppleOnly`.
             ForEach(report.missingBecauseAppleOnly) { entry in
-                missingRow(entry, note: "Apple Watch only. No third-party watch can write this to Health, so there is no setting to change.")
+                missingRow(entry, note: "Apple Watch only. Other watches can't send this to Health.")
             }
 
             if !report.provided.isEmpty {
@@ -269,10 +263,10 @@ struct SensorTruthView: View {
                 }
             } else {
                 let usable = overall?.usable ?? 0
-                Text("\(usable) of \(NeedModelEvaluation.minimumUsable) rated mornings so far. Rate how rested you feel in the Journal and this will check the model against it.")
+                Text("\(usable) of \(NeedModelEvaluation.minimumUsable) rated mornings so far. Rate how rested you feel in the Journal.")
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text("An association in your own data. It checks the model; it does not change it.")
+            Text("Checks the model. Doesn't change it.")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -305,7 +299,7 @@ struct SensorTruthView: View {
                 reliabilityRow(result)
             }
 
-            Text("Scored by rebuilding each range from the nights before it, so no night helped predict itself.")
+            Text("Each range rebuilt from the nights before it.")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -527,41 +521,53 @@ struct SensorTruthView: View {
         }
     }
 
-    private func row(_ fact: SensorTruth.Fact) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(fact.quantity.label)
-                    .font(Theme.label(15, weight: .semibold))
-                Spacer(minLength: 8)
-                Text(fact.provenance.label)
-                    .font(Theme.text(11, weight: .semibold))
-                    .foregroundStyle(tint(fact.provenance))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(tint(fact.provenance).opacity(0.15), in: Capsule())
+    /// The facts sorted by kind of claim, strongest first, skipping any
+    /// kind nothing is.
+    private struct FactGroup {
+        let kind: SensorTruth.Provenance
+        let facts: [SensorTruth.Fact]
+    }
+
+    private static var groups: [FactGroup] {
+        SensorTruth.Provenance.allCases.sorted(by: >).compactMap { kind in
+            let facts = SensorTruth.all.filter { $0.provenance == kind }
+            return facts.isEmpty ? nil : FactGroup(kind: kind, facts: facts)
+        }
+    }
+
+    private func provenanceGroup(_ kind: SensorTruth.Provenance, facts: [SensorTruth.Fact]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: Self.symbol(kind))
+                    .font(Theme.text(14, weight: .semibold))
+                    .foregroundStyle(tint(kind))
+                    .frame(width: 34, height: 34)
+                    .background(tint(kind).opacity(0.15), in: Circle())
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(kind.label)
+                        .font(Theme.label(15, weight: .semibold))
+                    Text(kind.explanation)
+                        .font(Theme.text(12))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-
-            Text(fact.quantity.whatItIs)
-                .font(Theme.text(13))
-                .foregroundStyle(Theme.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            // The limit is the reason this screen exists, so it is never
-            // collapsed behind a disclosure.
-            Text(fact.quantity.limit)
-                .font(Theme.text(12))
-                .foregroundStyle(Theme.inkTertiary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if fact.isWeakenedByItsInputs, let first = fact.weakenedBy.first {
-                Text("Shown as \(fact.provenance.label.lowercased()) because \(first.label.lowercased()) is.")
-                    .font(Theme.text(12))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+            ForEach(facts) { fact in
+                Divider().overlay(Theme.neutral(0.10))
+                SensorFactRow(fact: fact, tint: tint(kind))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard()
+    }
+
+    private static func symbol(_ provenance: SensorTruth.Provenance) -> String {
+        switch provenance {
+        case .measured: "sensor.fill"
+        case .derived: "function"
+        case .inferred: "wand.and.stars"
+        case .selfReported: "person.fill"
+        }
     }
 
     /// Same colour vocabulary as the Evidence screen's tiers: cooling as the
@@ -587,4 +593,70 @@ struct SensorTruthView: View {
     NavigationStack { SensorTruthView() }
         .zoonPreviewEnvironment()
         .environment(\.dynamicTypeSize, .accessibility3)
+}
+
+/// One number on the provenance list: its name, and on a tap what it is and
+/// where it stops being trustworthy. The limit used to be printed for all
+/// fifteen at once, which is the page people scrolled past.
+private struct SensorFactRow: View {
+    let fact: SensorTruth.Fact
+    let tint: Color
+
+    @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button {
+            Haptics.select()
+            withAnimation(Motion.respecting(reduceMotion, Motion.standard)) { expanded.toggle() }
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(fact.quantity.label)
+                        .font(Theme.text(14, weight: .medium))
+                        .foregroundStyle(Theme.ink)
+                    if fact.isWeakenedByItsInputs {
+                        // Marked, not explained, until opened.
+                        Image(systemName: "arrow.down.circle")
+                            .font(Theme.text(11, weight: .semibold))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.down")
+                        .font(Theme.text(10, weight: .semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .rotationEffect(.degrees(expanded ? 180 : 0))
+                }
+                .frame(minHeight: 32)
+
+                if expanded {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(fact.quantity.whatItIs)
+                            .font(Theme.text(13))
+                            .foregroundStyle(Theme.inkSecondary)
+                        Label {
+                            Text(fact.quantity.limit)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundStyle(tint)
+                        }
+                        .font(Theme.text(12))
+                        .foregroundStyle(Theme.inkTertiary)
+                        if fact.isWeakenedByItsInputs, let first = fact.weakenedBy.first {
+                            Text("Shown as \(fact.provenance.label.lowercased()) because \(first.label.lowercased()) is.")
+                                .font(Theme.text(12))
+                                .foregroundStyle(Theme.inkTertiary)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+        .accessibilityHint(expanded ? "Hides the details" : "Shows what it is and its limits")
+    }
 }

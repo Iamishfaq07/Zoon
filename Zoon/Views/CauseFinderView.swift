@@ -18,11 +18,30 @@ struct CauseFinderView: View {
     @Environment(UserPreferences.self) private var preferences
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case helps = "Helps", hurts = "Hurts", noEffect = "No Clear Link", learning = "Still Learning"
+        case helps = "Helps", hurts = "Hurts", noEffect = "No link", learning = "Learning"
         var id: String { rawValue }
+
+        var symbol: String {
+            switch self {
+            case .helps: "arrow.up.right"
+            case .hurts: "arrow.down.right"
+            case .noEffect: "equal"
+            case .learning: "hourglass"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .helps: Theme.Family.recovery
+            case .hurts: Theme.Family.attention
+            case .noEffect: Theme.inkSecondary
+            case .learning: Theme.Family.sleep
+            }
+        }
     }
 
     @State private var tab: Tab = .helps
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingExperimentPicker = false
 
     /// Computed once per `body` evaluation and threaded through, rather than
@@ -35,10 +54,6 @@ struct CauseFinderView: View {
         coordinator.journalObservations()
     }
 
-    private func findings(from observations: [JournalCorrelator.Observation]) -> [JournalCorrelator.Finding] {
-        JournalCorrelator().findings(from: observations, catalog: coordinator.behaviorCatalog)
-    }
-
     var body: some View {
         let observations = observations()
         return ScrollView {
@@ -47,12 +62,9 @@ struct CauseFinderView: View {
                 experimentSection(observations)
                 pastExperimentsSection
 
-                Picker("", selection: $tab) {
-                    ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .adaptiveSegmentedStyle()
-
-                content(observations)
+                let groups = Groups(observations: observations, catalog: coordinator.behaviorCatalog)
+                scoreboard(groups)
+                content(groups)
                 RelatedReading(placement: .behaviours, title: "On habits and sleep")
             }
             .padding()
@@ -94,14 +106,37 @@ struct CauseFinderView: View {
                 onEnd: { coordinator.endActiveExperiment() }
             )
         } else {
+            // The point of this tab is testing a habit, so the way in is a
+            // card rather than a small link above four tabs of findings.
             Button {
+                Haptics.select()
                 showingExperimentPicker = true
             } label: {
-                Label("Start a guided experiment", systemImage: "flask")
-                    .font(Theme.text(12, weight: .semibold))
-                    .foregroundStyle(Theme.Metric.sleep)
+                HStack(spacing: 12) {
+                    Image(systemName: "flask.fill")
+                        .font(Theme.text(18, weight: .semibold))
+                        .foregroundStyle(Theme.Family.sleep)
+                        .frame(width: 44, height: 44)
+                        .background(Theme.Family.sleep.opacity(0.15), in: Circle())
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Test a habit")
+                            .font(Theme.label(15, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text("Change one thing and see what your nights say.")
+                            .font(Theme.text(12))
+                            .foregroundStyle(Theme.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(Theme.text(12, weight: .semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .glassCard()
         }
     }
 
@@ -126,47 +161,123 @@ struct CauseFinderView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("What affects your sleep?")
                 .font(Theme.heading(20))
-            Text("Patterns found in your own sleep history -- an association, not proof of cause.")
+            Text("From your own nights. Linked, not proven.")
                 .font(Theme.text(12))
                 .foregroundStyle(Theme.inkSecondary)
         }
     }
 
+    /// Every behaviour, sorted into the four states it can honestly be in.
+    /// Worked out once per render so the scoreboard and the list below it
+    /// agree.
+    private struct Groups {
+        let helps: [JournalCorrelator.Finding]
+        let hurts: [JournalCorrelator.Finding]
+        let noEffect: [BehaviorID]
+        let learning: [JournalCorrelator.LearningTag]
+        let comparisons: Int
+
+        init(observations: [JournalCorrelator.Observation], catalog: BehaviorCatalog) {
+            let correlator = JournalCorrelator()
+            let findings = correlator.findings(from: observations, catalog: catalog)
+            helps = findings.filter(\.isImprovement)
+            hurts = findings.filter { !$0.isImprovement }
+            noEffect = correlator.testedNoEffect(from: observations, catalog: catalog)
+            learning = correlator.stillLearning(from: observations, catalog: catalog)
+            comparisons = correlator.comparisonCount(from: observations, catalog: catalog)
+        }
+
+        func count(_ tab: Tab) -> Int {
+            switch tab {
+            case .helps: helps.count
+            case .hurts: hurts.count
+            case .noEffect: noEffect.count
+            case .learning: learning.count
+            }
+        }
+    }
+
+    /// The four states as counts you can tap, in place of a segmented
+    /// control whose labels said nothing about what was behind them. The
+    /// split is the first answer: three helping, one hurting, five still
+    /// learning.
+    private func scoreboard(_ groups: Groups) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: 8)], spacing: 8) {
+            ForEach(Tab.allCases) { option in
+                let selected = option == tab
+                Button {
+                    Haptics.select()
+                    withAnimation(Motion.respecting(reduceMotion, Motion.tap)) { tab = option }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: option.symbol)
+                            .font(Theme.text(12, weight: .bold))
+                            .symbolEffect(.bounce, value: selected)
+                        Text("\(groups.count(option))")
+                            .font(Theme.heading(22))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        Text(option.rawValue)
+                            .font(Theme.text(11, weight: .medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .foregroundStyle(selected ? option.tint : Theme.inkSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(selected ? option.tint.opacity(0.16) : Theme.neutral(0.05))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(selected ? option.tint.opacity(0.5) : .clear, lineWidth: 1)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(option.rawValue): \(groups.count(option))")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
     @ViewBuilder
-    private func content(_ observations: [JournalCorrelator.Observation]) -> some View {
+    private func content(_ groups: Groups) -> some View {
         switch tab {
         case .helps:
-            comparisonNote(observations)
-            let helpful = findings(from: observations).filter(\.isImprovement)
-            if helpful.isEmpty {
-                emptyState("Nothing clears the bar yet. Keep logging -- a real helpful pattern will show up here once there's enough matched data.")
+            comparisonNote(groups.comparisons)
+            if groups.helps.isEmpty {
+                emptyState("Nothing clears the bar yet. Keep logging.")
             } else {
-                ForEach(helpful) { CauseFinderRow(finding: $0) }
+                ForEach(groups.helps) { CauseFinderRow(finding: $0) }
             }
         case .hurts:
-            comparisonNote(observations)
-            let harmful = findings(from: observations).filter { !$0.isImprovement }
-            if harmful.isEmpty {
-                emptyState("Nothing clears the bar yet. That's a genuinely good sign, not a data gap.")
+            comparisonNote(groups.comparisons)
+            if groups.hurts.isEmpty {
+                emptyState("Nothing clears the bar. A good sign.")
             } else {
-                ForEach(harmful) { CauseFinderRow(finding: $0) }
+                ForEach(groups.hurts) { CauseFinderRow(finding: $0) }
             }
         case .noEffect:
-            let catalog = coordinator.behaviorCatalog
-            let noEffect = JournalCorrelator().testedNoEffect(from: observations, catalog: catalog)
-            if noEffect.isEmpty {
-                emptyState("Nothing here yet. Behaviours land in this tab once there's enough logged data to test them, whether or not a pattern turns up.")
+            if groups.noEffect.isEmpty {
+                emptyState("Nothing tested yet.")
             } else {
-                ForEach(noEffect, id: \.self) { behavior in
+                // Said once for the list, not on every row.
+                Text("No clear link so far. That isn't proof of no effect.")
+                    .font(Theme.text(11))
+                    .foregroundStyle(Theme.inkTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                let catalog = coordinator.behaviorCatalog
+                ForEach(groups.noEffect, id: \.self) { behavior in
                     NoEffectRow(label: catalog.label(for: behavior), symbol: catalog.symbol(for: behavior))
                 }
             }
         case .learning:
-            let learning = JournalCorrelator().stillLearning(from: observations, catalog: coordinator.behaviorCatalog)
-            if learning.isEmpty {
-                emptyState("Tag a behaviour in the Journal on a few nights and it'll show up here while Zoon builds enough comparable nights to say anything about it.")
+            if groups.learning.isEmpty {
+                emptyState("Tag a habit in the Journal and it shows up here while Zoon gathers nights.")
             } else {
-                ForEach(learning) { LearningRow(tag: $0) }
+                ForEach(groups.learning) { LearningRow(tag: $0) }
             }
         }
     }
@@ -175,10 +286,9 @@ struct CauseFinderView: View {
     /// against the number of places Zoon looked. See
     /// `JournalCorrelator.comparisonCount`.
     @ViewBuilder
-    private func comparisonNote(_ observations: [JournalCorrelator.Observation]) -> some View {
-        let count = JournalCorrelator().comparisonCount(from: observations, catalog: coordinator.behaviorCatalog)
+    private func comparisonNote(_ count: Int) -> some View {
         if count > 1 {
-            Text("Zoon compared \(count) behaviour and outcome pairs. With that many, a few can look notable by chance.")
+            Label("\(count) pairs checked. A few may be chance.", systemImage: "die.face.3")
                 .font(Theme.text(11))
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -264,40 +374,44 @@ private struct CauseFinderRow: View {
     }
 }
 
+/// A behaviour still gathering nights: one dot per night it needs, filled
+/// for the nights it has. Counting dots replaced a bar and a sentence that
+/// said the same thing in words.
 private struct LearningRow: View {
     let tag: JournalCorrelator.LearningTag
+    @State private var progress: Double = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Image(systemName: tag.symbol)
-                    .foregroundStyle(Theme.inkSecondary)
-                    .frame(width: 24, height: 24)
-                    .background(Theme.neutral(0.06), in: Circle())
+        let needed = JournalCorrelator.minimumMatchedPairs
+        let have = min(tag.loggedNights, needed)
+        HStack(spacing: 10) {
+            Image(systemName: tag.symbol)
+                .foregroundStyle(Theme.inkSecondary)
+                .frame(width: 28, height: 28)
+                .background(Theme.neutral(0.06), in: Circle())
+            VStack(alignment: .leading, spacing: 6) {
                 Text(tag.label)
                     .font(Theme.label(14, weight: .semibold))
-                Spacer()
-                Text("\(tag.loggedNights) / \(JournalCorrelator.minimumMatchedPairs)")
-                    .font(Theme.text(11, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.inkSecondary)
-            }
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.neutral(0.08))
-                    Capsule()
-                        .fill(Theme.Metric.sleep)
-                        .frame(width: geo.size.width * tag.progress)
+                HStack(spacing: 4) {
+                    ForEach(0..<needed, id: \.self) { index in
+                        let lit = index < have && progress * Double(needed) > Double(index)
+                        Circle()
+                            .fill(lit ? Theme.Family.sleep : Theme.neutral(0.12))
+                            .frame(width: 8, height: 8)
+                            .scaleEffect(lit ? 1 : 0.85)
+                    }
                 }
+                .drawOnce(id: have, progress: $progress)
             }
-            .frame(height: 5)
-
-            Text("Needs about \(tag.remainingNights) more comparable night\(tag.remainingNights == 1 ? "" : "s") before Zoon will call anything a pattern.")
-                .font(Theme.text(10))
+            Spacer(minLength: 8)
+            Text(tag.remainingNights == 0 ? "Ready" : "\(tag.remainingNights) to go")
+                .font(Theme.text(11, weight: .semibold))
+                .monospacedDigit()
                 .foregroundStyle(Theme.inkTertiary)
         }
         .glassCard()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(tag.label): \(have) of \(needed) nights logged")
     }
 }
 
@@ -309,18 +423,18 @@ private struct NoEffectRow: View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
                 .foregroundStyle(Theme.inkSecondary)
-                .frame(width: 24, height: 24)
+                .frame(width: 28, height: 28)
                 .background(Theme.neutral(0.06), in: Circle())
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label)
-                    .font(Theme.label(14, weight: .semibold))
-                Text("No clear association in your data so far. That is not evidence of no effect.")
-                    .font(Theme.text(11))
-                    .foregroundStyle(Theme.inkSecondary)
-            }
+            Text(label)
+                .font(Theme.label(14, weight: .semibold))
             Spacer()
+            Image(systemName: "equal.circle")
+                .foregroundStyle(Theme.inkTertiary)
+                .accessibilityHidden(true)
         }
         .glassCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): no clear link")
     }
 }
 
