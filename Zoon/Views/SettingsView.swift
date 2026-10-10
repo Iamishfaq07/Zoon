@@ -86,7 +86,7 @@ struct SettingsView: View {
         .alert("Some data could not be deleted", isPresented: $showingDeleteFailure) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Zoon cleared every store it could, but one or more local files or database rows reported an error. Try again before uninstalling the app.")
+            Text("Some data couldn't be cleared. Try again before deleting the app.")
         }
     }
 
@@ -108,7 +108,7 @@ struct SettingsView: View {
         Section("Your experience") {
             Toggle("Score-light mode", isOn: $setup.value.scoreLight)
                 .accessibilityIdentifier("scoreLightToggle")
-            Text("Show sleep and timing first. Scores remain available when you choose to open details.").font(.caption)
+            Text("Sleep and timing first. Scores stay a tap away.").font(.caption)
         }
         goalSection
         profileSection
@@ -157,7 +157,7 @@ struct SettingsView: View {
                         .font(Theme.label(13, weight: .semibold))
                     }
                 } else {
-                    Text("Add your age under Profile, below, to see how much sleep experts recommend at your age.")
+                    Text("Add your age below to see the recommended range.")
                         .font(Theme.text(13))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -166,7 +166,7 @@ struct SettingsView: View {
         } header: {
             Text("Sleep Goal")
         } footer: {
-            Text("Your starting point. Zoon then learns your real need from your best-rested nights.")
+            Text("A starting point. Zoon learns your real need from your nights.")
         }
     }
 
@@ -286,7 +286,7 @@ struct SettingsView: View {
                             : .primary
                     )
 
-                    Text("Add Zoon as a filter to any Focus (Settings → Focus → Add Filter) and these nudges pause while it's on. Your wake alarm still sounds.")
+                    Text("Add Zoon as a Focus filter to pause these. Your alarm still sounds.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -376,7 +376,7 @@ struct SettingsView: View {
         } header: {
             Text("Reminders")
         } footer: {
-            Text("Scheduled on this phone. Nothing leaves it. The time follows your sleep debt.")
+            Text("Set on this phone. The time follows your sleep debt.")
         }
     }
 
@@ -481,7 +481,7 @@ struct SettingsView: View {
         } header: {
             Text("Cycle")
         } footer: {
-            Text("Asks Health for your period dates, so a normal cycle shift isn't mistaken for getting ill. Off by default.")
+            Text("Reads period dates so a normal cycle shift isn't mistaken for illness.")
         }
     }
 
@@ -702,7 +702,7 @@ struct SettingsView: View {
             } header: {
                 Text("Sleep Source")
             } footer: {
-                Text("Zoon picks the richest source each night. Choose one to always use it.")
+                Text("Zoon picks the fullest source each night, or choose one.")
             }
         }
     }
