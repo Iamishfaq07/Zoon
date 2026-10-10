@@ -47,7 +47,7 @@ struct DiscoveriesStream: View {
                 ZoonEmptyState(kind: .learning(
                     collected: taggedNights,
                     typicallyNeeded: JournalCorrelator.minimumMatchedPairs...(JournalCorrelator.minimumMatchedPairs * 2),
-                    message: "Tag a few behaviours in the Journal. Once Zoon has enough comparable nights it will start exploring patterns."
+                    message: "Tag a few habits in the Journal and patterns start here."
                 ))
                 .padding(.vertical, -16)
             } else {
@@ -83,7 +83,7 @@ struct DiscoveriesStream: View {
 
             PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
 
-            Text("\(finding.matchedPairCount) matched night\(finding.matchedPairCount == 1 ? "" : "s") · association, not proof of cause")
+            Text("\(finding.matchedPairCount) matched night\(finding.matchedPairCount == 1 ? "" : "s") · linked, not proven")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
         }
@@ -156,7 +156,7 @@ struct ExperimentPreview: View {
                 switch status {
                 case let .learning(learning):
                     ribbon(filled: learning.loggedNights, total: JournalCorrelator.minimumMatchedPairs)
-                    Text("Night \(learning.loggedNights) of about \(JournalCorrelator.minimumMatchedPairs) · \(learning.remainingNights) to go before a first read")
+                    Text("\(learning.loggedNights) of \(JournalCorrelator.minimumMatchedPairs) nights · \(learning.remainingNights) to go")
                         .font(Theme.evidence)
                         .foregroundStyle(Theme.inkTertiary)
                 case let .result(helpful, harmful):

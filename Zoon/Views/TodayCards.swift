@@ -82,8 +82,8 @@ struct BodyBatteryCard: View {
                     symbol: "bolt.fill",
                     tint: Theme.Metric.battery,
                     explanation: [
-                        "Fills overnight based on how restorative your sleep was, then drains through the day with activity and stress signals -- a same-day curve, not a running average.",
-                        "Tap and drag anywhere on the chart below to see the exact level at any point in the day."
+                        "Fills overnight with restful sleep, then drains with activity and stress through the day.",
+                        "Drag along the chart to see any moment."
                     ]
                 )
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
@@ -155,7 +155,7 @@ struct RecoveryBreakdownCard: View {
             HStack(alignment: .top) {
                 SectionHeader(
                     title: "What drove your recovery",
-                    subtitle: "Each input measured against your own baseline, not a population average.",
+                    subtitle: "Each against your own baseline.",
                     systemImage: "chart.bar.doc.horizontal"
                 )
                 Spacer(minLength: 8)
@@ -164,8 +164,8 @@ struct RecoveryBreakdownCard: View {
                     symbol: "chart.bar.doc.horizontal",
                     tint: Theme.recoveryColor(Double(recovery.percent)),
                     explanation: [
-                        "Recovery blends several signals -- your recovery signal (HRV), resting heart rate, and how much of your sleep need you met among them -- each compared against your own baseline rather than a fixed target.",
-                        "The bars above show how much each input pulled the score up or down. A signal with nothing to measure tonight (no reading, or no baseline yet) is left out entirely and its weight redistributes among the rest -- it's never scored as average or assumed fine."
+                        "Blends HRV, resting heart rate and how much sleep you got, each against your own baseline.",
+                        "The bars show how much each pulled the score. A missing signal is left out, never guessed."
                     ]
                 )
             }
@@ -271,8 +271,8 @@ struct HRVStatusCard: View {
                     symbol: "heart.text.square",
                     tint: tint,
                     explanation: [
-                        "This compares your HRV this week against your own rolling quarterly range, not a population average -- what's balanced for you can be a meaningful drop for someone else.",
-                        "It needs a few weeks of nights before the range is trustworthy, and one low night on its own is normal noise, not a signal."
+                        "Your HRV this week against your own range from the last few months.",
+                        "Needs a few weeks to settle. One low night is just noise."
                     ],
                     relatedArticleID: "hrv-explained",
                     // The only call site on this screen with an exact

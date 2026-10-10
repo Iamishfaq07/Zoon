@@ -474,7 +474,7 @@ struct TodayView: View {
     private func staleNightNotice(_ context: DayContext) -> some View {
         if !nightIsCurrent(context) {
             Label {
-                Text("No night recorded for last night yet. Showing your latest, from \(context.night.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))).")
+                Text("No night yet for last night. Showing \(context.night.date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))).")
                     .fixedSize(horizontal: false, vertical: true)
             } icon: {
                 Image(systemName: "clock.arrow.circlepath")
@@ -662,7 +662,7 @@ struct TodayView: View {
                     sleepWindowEnd: plan.sleepWindowEnd
                 )
             } else {
-                Text("Name a morning start time and Zoon will arrange tonight around it.")
+                Text("Set a morning start and Zoon plans tonight around it.")
                     .font(Theme.text(15))
                     .foregroundStyle(Theme.inkSecondary)
             }
@@ -716,8 +716,8 @@ struct TodayView: View {
                 tint: Theme.Family.attention,
                 explanation: [
                     SleepVocabulary.sleepDebt.meaning,
-                    "Each night you sleep less than you need adds to it; recent nights count most, and older ones fade a little every night. A long night doesn't wipe it out at once, which is why Tonight's plan moves your bedtime earlier by minutes rather than hours. A nap lowers tonight's target rather than this figure.",
-                    "It is an estimate from your own sleep and need, not a medical measure."
+                    "Short nights add to it. Recent ones count most; older ones fade.",
+                    "One long night won't clear it, so Tonight moves bedtime by minutes, not hours."
                 ],
                 label: "What does this mean?"
             )
