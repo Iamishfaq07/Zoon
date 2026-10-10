@@ -23,8 +23,6 @@ struct WhatChangedStream: View {
         let isImprovement: Bool?
     }
 
-    private var currentWeek: [SleepNightFeatures] { Array(nights.suffix(7)) }
-    private var previousWeek: [SleepNightFeatures] { Array(nights.dropLast(7).suffix(7)) }
 
     var changes: [Change] {
         // One engine, shared with `WhatChangedCard`. These four comparisons

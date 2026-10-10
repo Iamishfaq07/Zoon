@@ -264,7 +264,6 @@ struct AudioWaveform: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isActive: Bool
 
-    @State private var phase: Double = 0
     @State private var visible = true
     @Environment(\.scenePhase) private var scenePhase
 

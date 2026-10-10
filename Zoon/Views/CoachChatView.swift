@@ -479,59 +479,6 @@ struct CoachChatView: View {
 
     static let starterQuestions = CoachSuggestionProvider.chatStarters
     static let followUpQuestions = CoachSuggestionProvider.chatFollowUps
-
-    private func unavailable(_ reason: String) -> some View {
-        VStack(spacing: 14) {
-            Spacer()
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 34))
-                .foregroundStyle(Theme.inkSecondary)
-            Text(reason)
-                .font(Theme.text(14))
-                .foregroundStyle(Theme.inkSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            // Only when waiting might actually help (see
-            // `isTransientlyUnavailable`) -- a button that can't change
-            // anything (device ineligible, Apple Intelligence off) would be
-            // worse than none, since tapping it would look like it does
-            // something and never does.
-            if chat.isTransientlyUnavailable {
-                // Apple Intelligence's on-device model download is a
-                // multi-gigabyte OS-level process this app has no visibility
-                // into or control over -- it can genuinely take a long time,
-                // especially on cellular or a first-time setup. Saying so
-                // plainly is more honest than a bare "Try again" that implies
-                // the app itself might be able to resolve it faster.
-                Text("This can take a while depending on your connection. Zoon checks automatically every few seconds.")
-                    .font(Theme.text(11))
-                    .foregroundStyle(Theme.inkTertiary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-
-                Button {
-                    Haptics.tap()
-                    isCheckingNow = true
-                    availabilityPollTick += 1
-                    Task {
-                        try? await Task.sleep(nanoseconds: 600_000_000)
-                        isCheckingNow = false
-                    }
-                } label: {
-                    if isCheckingNow {
-                        Label("Checking…", systemImage: "arrow.clockwise")
-                    } else {
-                        Label("Check again", systemImage: "arrow.clockwise")
-                    }
-                }
-                .font(Theme.label(13, weight: .semibold))
-                .buttonStyle(.bordered)
-                .tint(Theme.Metric.sleep)
-                .disabled(isCheckingNow)
-            }
-            Spacer()
-        }
-    }
 }
 
 /// Three dots that pulse while an answer is being written. Still when
