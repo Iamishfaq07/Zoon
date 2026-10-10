@@ -56,6 +56,7 @@ runtime (`SoundscapeEngine`) and have no file to license.
 |---|---|---|---|---|---|
 | `Zoon/Assets.xcassets/MoonTexture.imageset/moon.png` (and the widget catalog copy) | full-moon image, phase applied in code | `a519626` (2026-09-11, #317) | AI-generated, supplied by the owner (confirmed 2026-10-10) | owner's own; no third-party licence. Keep the generator's terms on file, in case they limit commercial use | cleared by owner |
 | `Zoon/Assets.xcassets/AppIcon.appiconset` (light, dark, tinted 1024 px) | app icon | see `docs/APP-ICON-2026.md` | not recorded. `Tools/generate-app-icon.py` draws a plain vector crescent, but the design doc describes the shipped icon as carrying "lunar texture", so the committed PNGs may not come from that script | not recorded | **needs review**: confirm whether the texture comes from the moon image above (AI-generated, cleared) or another image |
+| `Zoon/Assets.xcassets/AppIcon{Textured,Ring,Crescent,Moonrise}.appiconset` and `IconPreview*.imageset` | alternate app icons and their Settings previews | added 2026-10-10 | drawn by `Tools/generate-alternate-icons.py`. Textured and Moonrise use the moon image above, the other two are shapes only | owner's own | cleared: no third-party material |
 
 ## Code
 
