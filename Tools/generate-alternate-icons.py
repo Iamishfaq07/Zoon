@@ -99,40 +99,90 @@ def star(d, x, y, r, a=255):
         pts.append((x + rr * math.cos(ang), y + rr * math.sin(ang)))
     d.polygon(pts, fill=(255, 255, 255, a))
 
+
+def star_field(im, seed, count=40, region=(0, 0, 1, 1), max_alpha=170):
+    """A sparse, fixed field of small stars inside `region` (fractions of S)."""
+    rnd = random.Random(seed)
+    layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    x0, y0, x1, y1 = region
+    for _ in range(count):
+        x = rnd.uniform(x0, x1) * S
+        y = rnd.uniform(y0, y1) * S
+        r = rnd.choice([2.5, 3.5, 4.5, 6])
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(255, 255, 255, rnd.randint(50, max_alpha)))
+    im.alpha_composite(layer)
+
+
+def comet_arc(im, c, R, w, start_deg, sweep_deg, tail=(124, 108, 255), head=(196, 186, 255)):
+    """An arc from a clear tail to a bright head, clockwise from `start_deg`
+    (0 = 3 o'clock), with a glowing point at the head. The same comet the
+    app's loading ring draws."""
+    layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    steps = int(sweep_deg * 2)
+    for i in range(steps):
+        t = i / steps
+        a = start_deg + sweep_deg * t
+        colour = tuple(round(p + (q - p) * t) for p, q in zip(tail, head))
+        alpha = int(255 * min(1, t * 1.35))
+        d.arc([c - R, c - R, c + R, c + R], a, a + sweep_deg / steps + 0.6, fill=colour + (alpha,), width=int(w))
+    im.alpha_composite(layer)
+    end = math.radians(start_deg + sweep_deg)
+    hx, hy = c + (R - w / 2) * math.cos(end), c + (R - w / 2) * math.sin(end)
+    glow(im, hx, hy, w * 1.1, color=head, alpha=200, blur=w * 0.9)
+    dot = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(dot).ellipse([hx - w * 0.62, hy - w * 0.62, hx + w * 0.62, hy + w * 0.62], fill=(255, 255, 255, 255))
+    im.alpha_composite(dot)
+
+
+def rim_light(im, cx, cy, r, fill, color=(214, 206, 255), alpha=90):
+    """A soft halo hugging the lit limb, so the moon sits in light."""
+    halo = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(halo).ellipse([cx - r * 1.06, cy - r * 1.06, cx + r * 1.06, cy + r * 1.06], fill=255)
+    ImageDraw.Draw(halo).ellipse([cx - r, cy - r, cx + r, cy + r], fill=0)
+    side = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(side).rectangle([cx, 0, S, S], fill=255)  # lit from the right
+    halo = ImageChops.multiply(halo, side).filter(ImageFilter.GaussianBlur(r * 0.05))
+    layer = Image.new("RGBA", (S, S), color + (0,))
+    layer.putalpha(halo.point(lambda v: v * alpha // 255))
+    im.alpha_composite(layer)
+
+
 def finish(im, name):
     return im.convert("RGB").resize((1024, 1024), Image.LANCZOS)
 
 # 1. Textured gibbous: the app's own moon at the phase the app draws it.
 def textured():
     im = background()
+    star_field(im, seed=11, count=46)
     glow(im, S * 0.5, S * 0.5, S * 0.36, alpha=120)
     size = int(S * 0.64)
+    rim_light(im, S / 2, S / 2, size / 2, 0.62)
     moon = textured_moon(size, 0.62)
     im.alpha_composite(moon, ((S - size) // 2, (S - size) // 2))
     return finish(im, "1-textured.png")
 
-# 2. Ring: a flat moon inside a progress ring, the app's ring motif.
+# 2. Ring: the app's moon inside the loading ring's comet.
 def ring():
     im = background()
-    glow(im, S * 0.5, S * 0.5, S * 0.3, alpha=90)
-    c, R, w = S / 2, S * 0.34, S * 0.055
+    star_field(im, seed=23, count=30, max_alpha=120)
+    glow(im, S * 0.5, S * 0.5, S * 0.32, alpha=95)
+    c, R, w = S / 2, S * 0.36, S * 0.052
     track = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(track).arc([c - R, c - R, c + R, c + R], 0, 360, fill=(255, 255, 255, 30), width=int(w))
+    ImageDraw.Draw(track).arc([c - R, c - R, c + R, c + R], 0, 360, fill=(255, 255, 255, 26), width=int(w))
     im.alpha_composite(track)
-    d = ImageDraw.Draw(im)
-    d.arc([c - R, c - R, c + R, c + R], -90, -90 + 0.72 * 360, fill=VIOLET + (255,), width=int(w))
-    # rounded cap at the end of the arc
-    for ang in (-90, -90 + 0.72 * 360):
-        t = math.radians(ang)
-        x, y = c + (R - w / 2) * math.cos(t), c + (R - w / 2) * math.sin(t)
-        d.ellipse([x - w / 2, y - w / 2, x + w / 2, y + w / 2], fill=VIOLET + (255,))
-    size = int(S * 0.40)
-    im.alpha_composite(flat_moon(size, 0.62), (int(c - size / 2), int(c - size / 2)))
+    # Head at about one o'clock, tail sweeping 300 degrees behind it.
+    comet_arc(im, c, R, w, start_deg=-60 - 300, sweep_deg=300)
+    size = int(S * 0.46)
+    im.alpha_composite(textured_moon(size, 0.62), (int(c - size / 2), int(c - size / 2)))
     return finish(im, "2-ring.png")
+
 
 # 3. Crescent and stars: vector, cream on deep violet.
 def crescent():
     im = background((22, 16, 52), (52, 36, 102))
+    star_field(im, seed=31, count=26, max_alpha=110)
     glow(im, S * 0.46, S * 0.52, S * 0.3, color=(160, 140, 255), alpha=80)
     size = int(S * 0.62)
     m = Image.new("L", (size, size), 0)
@@ -146,6 +196,11 @@ def crescent():
     for y in range(size):
         t = y / size
         gd.line([(0, y), (size, y)], fill=(255, int(246 - 22 * t), int(224 - 40 * t), 255))
+    # A touch of shade toward the inner edge, so the crescent has volume.
+    shade = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(shade).ellipse([size * 0.22, -size * 0.1, size * 1.2, size * 0.98], fill=70)
+    shade = shade.filter(ImageFilter.GaussianBlur(size * 0.08))
+    grad = Image.composite(Image.new("RGBA", (size, size), (214, 176, 140, 255)), grad, shade)
     grad.putalpha(m)
     im.alpha_composite(grad, (int(S * 0.17), int(S * 0.19)))
     d = ImageDraw.Draw(im)
@@ -157,6 +212,7 @@ def crescent():
 # 4. Moonrise: a large textured moon breaking the top-right corner.
 def moonrise():
     im = background((10, 10, 24), (34, 26, 70))
+    star_field(im, seed=47, count=34, region=(0.04, 0.08, 0.5, 0.6), max_alpha=150)
     size = int(S * 1.05)
     # Waning, so the lit limb faces down-left into the frame.
     moon = textured_moon(size, 0.78, earthshine=0.06, waxing=False)

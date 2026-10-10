@@ -198,7 +198,12 @@ struct MoreView: View {
             SecureField("Backup passphrase (for export or import)", text: $archivePassphrase)
                 .textContentType(.password)
             Text("Encrypted backups need this passphrase to restore. Zoon does not save it.").font(.caption).foregroundStyle(Theme.inkSecondary)
-            if restoring { ProgressView("Restoring backup…") }
+            if restoring {
+                HStack(spacing: 10) {
+                    ZoonLoadingRing(size: 18, lineWidth: 2.5, showsMoon: false)
+                    Text("Restoring backup…")
+                }
+            }
             if let url = exportURL {
                 ShareLink(item: url) {
                     actionRow("Share export", "Ready — tap to send", "square.and.arrow.up.fill", Theme.Metric.battery)

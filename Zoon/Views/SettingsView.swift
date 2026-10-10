@@ -607,7 +607,7 @@ struct SettingsView: View {
                         Label("Fill from Health", systemImage: "heart.text.square")
                         if isFillingProfile {
                             Spacer()
-                            ProgressView()
+                            ZoonLoadingRing(size: 18, lineWidth: 2.5, showsMoon: false)
                         }
                     }
                 }

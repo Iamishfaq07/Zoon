@@ -171,9 +171,6 @@ struct ZoonEmptyState: View {
 struct ZoonLoadingState: View {
     var title: String = "Gathering last night"
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var sweep = false
-
     var body: some View {
         VStack(spacing: 22) {
             ZStack {
@@ -181,31 +178,7 @@ struct ZoonLoadingState: View {
                     .frame(height: 220)
                     .clipShape(Circle())
                     .padding(12)
-
-                Circle()
-                    .stroke(Theme.neutral(0.12), lineWidth: 5)
-                    .frame(width: 148, height: 148)
-
-                Circle()
-                    .trim(from: 0, to: reduceMotion ? 0.62 : (sweep ? 1 : 0.12))
-                    .stroke(
-                        Theme.Metric.sleep,
-                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                    )
-                    .frame(width: 148, height: 148)
-                    .rotationEffect(.degrees(-90))
-                    .animation(
-                        reduceMotion
-                            ? nil
-                            : .easeInOut(duration: 2.1).repeatForever(autoreverses: true),
-                        value: sweep
-                    )
-
-                // The drawn moon, not `moonphase.waxing.crescent`. That
-                // symbol renders its unlit half as a filled slab, and
-                // `.hierarchical` turns it into a grey-and-white split disc
-                // that reads as a sphere rather than a moon.
-                MoonFill(fill: 0.34, active: true, size: 84)
+                ZoonLoadingRing(size: 148)
             }
             .frame(height: 244)
 
@@ -220,9 +193,97 @@ struct ZoonLoadingState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 36)
-        .onAppear { sweep = true }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
+    }
+}
+
+/// Zoon's loading ring: a comet arc circling a faint track, its head a
+/// small glowing point, twelve hour marks that light as it passes, and --
+/// at full size -- the moon in the middle slowly waxing and waning.
+///
+/// It replaced a trim that grew from 12% to full and shrank back from a
+/// fixed point at the top, which never went round and read as a progress
+/// bar changing its mind. Driven by a `TimelineView`, so it costs nothing
+/// off screen; still under Reduce Motion, where it holds one frame.
+struct ZoonLoadingRing: View {
+    var size: CGFloat = 148
+    var lineWidth: CGFloat = 5
+    /// The moon in the middle. Off for the small inline version.
+    var showsMoon = true
+    var tint: Color = Theme.Metric.sleep
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// How much of the circle the comet's tail covers.
+    private static let tail = 0.3
+    /// One lap, in seconds.
+    private static let lap = 1.6
+    /// One full wax and wane of the moon, in seconds.
+    private static let lunation = 8.0
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let seconds = context.date.timeIntervalSinceReferenceDate
+            let turn = reduceMotion ? 0.62 : (seconds / Self.lap).truncatingRemainder(dividingBy: 1)
+            let phase = reduceMotion ? 0.62 : 0.5 - 0.42 * cos(seconds / Self.lunation * 2 * .pi)
+            ZStack {
+                Circle()
+                    .stroke(Theme.neutral(0.10), lineWidth: lineWidth)
+                if size >= 60 {
+                    hourMarks(turn: turn)
+                }
+                comet(turn: turn)
+                if showsMoon {
+                    MoonFill(fill: phase, active: true, size: size * 0.57)
+                }
+            }
+            .frame(width: size, height: size)
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// The arc from a clear tail to a bright head, with the head at the top
+    /// when `turn` is 0 and going clockwise.
+    private func comet(turn: Double) -> some View {
+        let sweep = Self.tail * 360
+        return ZStack {
+            Circle()
+                .trim(from: 0, to: Self.tail)
+                .stroke(
+                    AngularGradient(
+                        colors: [tint.opacity(0), tint.opacity(0.55), tint],
+                        center: .center,
+                        startAngle: .degrees(0),
+                        endAngle: .degrees(sweep)
+                    ),
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(turn * 360 - 90 - sweep))
+            Circle()
+                .fill(Color.white)
+                .frame(width: lineWidth * 1.5, height: lineWidth * 1.5)
+                .shadow(color: tint, radius: lineWidth * 1.6)
+                .offset(y: -size / 2)
+                .rotationEffect(.degrees(turn * 360))
+        }
+    }
+
+    /// Twelve marks just inside the track, lit by the head as it passes and
+    /// fading behind it, like hours going by.
+    private func hourMarks(turn: Double) -> some View {
+        ZStack {
+            ForEach(0..<12, id: \.self) { hour in
+                let behind = (turn - Double(hour) / 12 + 1).truncatingRemainder(dividingBy: 1)
+                let glow = max(0, 1 - behind * 3)
+                Circle()
+                    .fill(Theme.neutral(0.16).opacity(1 - glow))
+                    .overlay(Circle().fill(tint.opacity(glow)))
+                    .frame(width: lineWidth * 0.8, height: lineWidth * 0.8)
+                    .offset(y: -(size / 2 - lineWidth * 2.6))
+                    .rotationEffect(.degrees(Double(hour) * 30))
+            }
+        }
     }
 }
 
