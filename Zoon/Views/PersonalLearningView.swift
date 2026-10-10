@@ -11,8 +11,6 @@ struct PersonalLearningView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.stackSpacing) {
-                introduction
-                    .entrance(0)
                 unlockMap
                     .entrance(0)
                 moodSection
@@ -37,48 +35,97 @@ struct PersonalLearningView: View {
         .task(id: coordinator.recentNights.count) { calculate() }
     }
 
-    private var introduction: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text("What Zoon is learning about your response")
-                .font(Theme.heading(25))
-            Text("Patterns from your own nights, shown once there's enough data. Not medical advice.")
-                .font(Theme.text(13)).foregroundStyle(Theme.inkSecondary)
-        }.glassCard()
-    }
-
-    /// Audit §17.5: what the history unlocks, from the engines' own
-    /// thresholds. Nights, not dates.
+    /// What the history unlocks, from the engines' own thresholds (audit
+    /// §17.5). A ring for how much is open, then the path as a timeline.
+    /// Each step used to carry its own sentence; only the one being worked
+    /// towards does now, since that is the only one anyone acts on.
     private var unlockMap: some View {
         let nights = coordinator.recentNights.count
-        return VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(
-                title: "What \(nights) \(nights == 1 ? "night" : "nights") can tell you",
-                subtitle: "Each of these waits for enough of your own nights. A missed night is just one more to go.",
-                systemImage: "lock.open"
-            )
-            ForEach(LearningUnlockMap.progress(nightCount: nights), id: \.milestone.id) { item in
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Image(systemName: symbol(for: item.state))
-                        .foregroundStyle(item.state == .unlocked ? Theme.Family.recovery : Theme.inkTertiary)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text(item.milestone.title).font(Theme.label(14, weight: .semibold))
-                            Spacer()
-                            Text(stateLabel(item.state))
-                                .font(Theme.text(12))
-                                .foregroundStyle(Theme.inkSecondary)
-                        }
-                        Text(item.milestone.detail)
-                            .font(Theme.text(12))
-                            .foregroundStyle(Theme.inkTertiary)
-                            .fixedSize(horizontal: false, vertical: true)
+        let items = LearningUnlockMap.progress(nightCount: nights)
+        let unlocked = items.filter { $0.state == .unlocked }.count
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                UnlockRing(fraction: items.isEmpty ? 0 : Double(unlocked) / Double(items.count)) {
+                    VStack(spacing: 0) {
+                        Text("\(unlocked)")
+                            .font(Theme.heading(24))
+                            .monospacedDigit()
+                        Text("of \(items.count)")
+                            .font(Theme.text(11))
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(item.milestone.title): \(stateLabel(item.state)). \(item.milestone.detail)")
+                .frame(width: 78, height: 78)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(nights) \(nights == 1 ? "night" : "nights") in")
+                        .font(Theme.heading(20))
+                    Text("Each night opens more.")
+                        .font(Theme.text(13))
+                        .foregroundStyle(Theme.inkSecondary)
+                }
             }
-        }.glassCard()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(unlocked) of \(items.count) unlocked after \(nights) nights")
+
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.milestone.id) { index, item in
+                    HStack(alignment: .top, spacing: 12) {
+                        // The node, and the path down to the next one.
+                        VStack(spacing: 0) {
+                            Image(systemName: symbol(for: item.state))
+                                .font(Theme.text(16, weight: .semibold))
+                                .foregroundStyle(tint(for: item.state))
+                                .frame(width: 22, height: 22)
+                            if index < items.count - 1 {
+                                Capsule()
+                                    .fill(item.state == .unlocked ? Theme.Family.recovery.opacity(0.6) : Theme.neutral(0.12))
+                                    .frame(width: 2)
+                                    .frame(minHeight: 14, maxHeight: .infinity)
+                            }
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(item.milestone.title)
+                                    .font(Theme.label(14, weight: .semibold))
+                                    .foregroundStyle(item.state == .unlocked || isNext(item.state) ? Theme.ink : Theme.inkSecondary)
+                                Spacer(minLength: 8)
+                                Text(stateLabel(item.state))
+                                    .font(Theme.text(12, weight: isNext(item.state) ? .semibold : .regular))
+                                    .monospacedDigit()
+                                    .foregroundStyle(isNext(item.state) ? Theme.Family.sleep : Theme.inkTertiary)
+                            }
+                            if isNext(item.state) {
+                                Text(item.milestone.detail)
+                                    .font(Theme.text(12))
+                                    .foregroundStyle(Theme.inkSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(.bottom, 12)
+                    }
+                    // Sized to its content so the connector can stretch to
+                    // the row's full height inside the scroll view.
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(item.milestone.title): \(stateLabel(item.state)). \(item.milestone.detail)")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard()
+    }
+
+    private func isNext(_ state: LearningUnlockMap.State) -> Bool {
+        if case .next = state { return true }
+        return false
+    }
+
+    private func tint(for state: LearningUnlockMap.State) -> Color {
+        switch state {
+        case .unlocked: Theme.Family.recovery
+        case .next: Theme.Family.sleep
+        case .later: Theme.inkTertiary
+        }
     }
 
     private func symbol(for state: LearningUnlockMap.State) -> String {
@@ -103,18 +150,18 @@ struct PersonalLearningView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
                 title: "Mood and sleep",
-                subtitle: "Mood you log in Apple Health, after nights that met your need and after short ones.",
+                subtitle: "Logged mood after full and short nights.",
                 systemImage: "face.smiling"
             )
             if !preferences.lifestyleInsightsEnabled {
-                learningMessage("Turn on Lifestyle Insights in Settings to compare your sleep with the daily mood you log in the Health app or the Mindfulness app on Apple Watch. Zoon only reads it, on this device.")
+                learningMessage("Turn on Lifestyle Insights in Settings to compare with the mood you log in Health.")
             } else if let link = coordinator.moodSleepLink {
                 Text(link.sentence)
                     .font(Theme.label(14, weight: link.isReady ? .semibold : .regular))
                     .foregroundStyle(link.isReady ? Theme.ink : Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if link.isReady {
-                    Text("Full night: within 15 min of your need. Short: an hour or more under.")
+                    Text("Full: within 15 min of your need. Short: an hour under.")
                         .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -126,14 +173,14 @@ struct PersonalLearningView: View {
 
     @ViewBuilder private var resilienceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Sleep resilience", subtitle: "How quickly your recent range returned after repeated disruptions.", systemImage: "arrow.uturn.forward.circle")
+            SectionHeader(title: "Sleep resilience", subtitle: "How fast you bounce back after a disruption.", systemImage: "arrow.uturn.forward.circle")
             if resilience.isEmpty {
-                learningMessage("Log at least two travel, stressful, or major timing disruptions. Zoon also needs five earlier nights and two stable nights after each one.")
+                learningMessage("Log two disruptions, like travel or a stressful day.")
             } else {
                 ForEach(resilience) { result in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(result.sentence).font(Theme.label(14, weight: .semibold))
-                        Text("Median across \(result.disruptions) supported disruptions; recovery requires two consecutive nights in range.")
+                        Text("Typical of \(result.disruptions) disruptions. Back means two nights in range.")
                             .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
                     }
                 }
@@ -143,15 +190,15 @@ struct PersonalLearningView: View {
 
     @ViewBuilder private var circadianSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Circadian response", subtitle: "Your timing after morning daylight, compared with explicitly logged no-daylight mornings.", systemImage: "sun.horizon.fill")
+            SectionHeader(title: "Circadian response", subtitle: "Your timing after morning daylight.", systemImage: "sun.horizon.fill")
             if let circadian {
                 Text(circadian.sentence).font(Theme.label(15, weight: .semibold))
-                Text("Approximate uncertainty ±\(circadian.uncertaintyMinutes) minutes · \(circadian.daylightNights) daylight nights · \(circadian.comparisonNights) comparison nights")
+                Text("±\(circadian.uncertaintyMinutes) min · \(circadian.daylightNights) with daylight · \(circadian.comparisonNights) without")
                     .font(Theme.evidence).foregroundStyle(Theme.inkSecondary)
-                Text("This is an association. Other differences between those days may explain it.")
+                Text("A link, not proof.")
                     .font(Theme.evidence).foregroundStyle(Theme.inkTertiary)
             } else {
-                learningMessage("Answer Morning daylight in the Journal on at least six yes and six no days. Zoon will stay quiet if the difference is small.")
+                learningMessage("Log Morning daylight in the Journal on six yes and six no days.")
             }
         }.glassCard()
     }
@@ -173,3 +220,28 @@ struct PersonalLearningView: View {
 }
 
 #Preview { NavigationStack { PersonalLearningView() }.zoonPreviewEnvironment() }
+
+/// A ring that fills to `fraction` once, with whatever sits in its middle.
+private struct UnlockRing<Center: View>: View {
+    let fraction: Double
+    @ViewBuilder var center: Center
+    @State private var progress: Double = 0
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Theme.neutral(0.10), lineWidth: 8)
+            Circle()
+                .trim(from: 0, to: max(0.001, fraction * progress))
+                .stroke(
+                    AngularGradient(
+                        colors: [Theme.Family.sleep, Theme.Family.recovery],
+                        center: .center
+                    ),
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+            center
+        }
+        .drawOnce(id: fraction, progress: $progress)
+    }
+}
