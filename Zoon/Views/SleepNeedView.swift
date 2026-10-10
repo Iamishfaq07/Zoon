@@ -227,7 +227,7 @@ struct SleepNeedView: View {
         let rowSum = rows.reduce(0) { $0 + $1.minutes }
         return VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "What it's built from", systemImage: "list.bullet.rectangle")
-            NeedStackBar(minutes: rows.map(\.minutes), colors: rows.indices.map(Self.segmentColor))
+            NeedStackBar(minutes: rows.map { $0.minutes }, colors: rows.indices.map { Self.segmentColor($0) })
                 .frame(height: 14)
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack {
