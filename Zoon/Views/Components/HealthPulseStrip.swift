@@ -73,19 +73,15 @@ struct HealthPulseStrip: View {
         } label: {
             VStack(spacing: 4) {
                 ZStack {
-                    Circle().stroke(Theme.neutral(0.10), lineWidth: 3)
                     // Same gate as the hero ring and the wrist: an arc is a
                     // statement of the number, so a withheld score draws no
-                    // arc rather than a quiet one.
-                    if let score = recoveryState.score {
-                        Circle()
-                            .trim(from: 0, to: Double(score) / 100)
-                            .stroke(
-                                Theme.recoveryColor(Double(score)),
-                                style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                            )
-                            .rotationEffect(.degrees(-90))
-                    }
+                    // arc (fraction 0, track only) rather than a quiet one.
+                    ZoonArc(
+                        fraction: recoveryState.score.map { Double($0) / 100 } ?? 0,
+                        tint: recoveryState.score.map { Theme.recoveryColor(Double($0)) } ?? Theme.inkTertiary,
+                        lineWidth: 3,
+                        trackOpacity: 0.10
+                    )
                 }
                 .frame(width: 22, height: 22)
                 pulseLabel("Recovery", value: recoveryState.placeholder)

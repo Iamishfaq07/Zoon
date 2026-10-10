@@ -428,6 +428,12 @@ struct ZoonArc: View, Animatable {
     var tint: Color
     var lineWidth: CGFloat
     var trackOpacity: Double = 0.12
+    /// How much of the circle the whole gauge covers: 1 for a ring, 0.75
+    /// for a gauge open at the bottom, 0.5 for a half dial.
+    var span: Double = 1
+    /// Where the gauge starts, in degrees clockwise from three o'clock.
+    /// -90 starts at the top.
+    var rotation: Double = -90
 
     /// `nonisolated`, as `RevealMask` in HypnogramV4: `Animatable` is not
     /// main-actor isolated, and SwiftUI reads this while interpolating.
@@ -438,25 +444,31 @@ struct ZoonArc: View, Animatable {
 
     var body: some View {
         let f = min(1, max(0, fraction))
+        let end = span * f
         ZStack {
             Circle()
-                .stroke(Theme.neutral(trackOpacity), lineWidth: lineWidth)
-            if f > 0.002 {
-                arc(f)
+                .trim(from: 0, to: span)
+                .stroke(Theme.neutral(trackOpacity), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(rotation))
+            if end > 0.002 {
+                arc(end)
                     .blur(radius: lineWidth * 0.9)
                     .opacity(0.45)
-                arc(f)
+                arc(end)
                 // The head reads as light only when there is room for it;
                 // on a thin ring it would be a speck.
                 if lineWidth >= 5 {
                     GeometryReader { proxy in
                         let radius = min(proxy.size.width, proxy.size.height) / 2
+                        let angle = (rotation + 360 * end) * .pi / 180
                         Circle()
                             .fill(Color.white)
                             .frame(width: lineWidth * 0.6, height: lineWidth * 0.6)
                             .shadow(color: tint, radius: lineWidth * 0.8)
-                            .position(x: proxy.size.width / 2, y: proxy.size.height / 2 - radius)
-                            .rotationEffect(.degrees(f * 360))
+                            .position(
+                                x: proxy.size.width / 2 + radius * cos(angle),
+                                y: proxy.size.height / 2 + radius * sin(angle)
+                            )
                     }
                 }
             }
@@ -464,18 +476,18 @@ struct ZoonArc: View, Animatable {
         .accessibilityHidden(true)
     }
 
-    private func arc(_ f: Double) -> some View {
+    private func arc(_ end: Double) -> some View {
         Circle()
-            .trim(from: 0, to: f)
+            .trim(from: 0, to: end)
             .stroke(
                 AngularGradient(
                     colors: [tint.opacity(0.5), tint],
                     center: .center,
                     startAngle: .degrees(0),
-                    endAngle: .degrees(360 * f)
+                    endAngle: .degrees(360 * end)
                 ),
                 style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
             )
-            .rotationEffect(.degrees(-90))
+            .rotationEffect(.degrees(rotation))
     }
 }

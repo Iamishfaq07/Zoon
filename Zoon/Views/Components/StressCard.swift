@@ -59,11 +59,7 @@ struct StressCard: View {
         } label: {
             HStack(spacing: 14) {
                 ZStack {
-                    Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
-                    Circle()
-                        .trim(from: 0, to: Double(stress.percent) / 100)
-                        .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
+                    ZoonArc(fraction: Double(stress.percent) / 100, tint: tint, lineWidth: 6, trackOpacity: 0.10)
                     Text("\(stress.percent)")
                         .font(Theme.numeral(15))
                         .monospacedDigit()
