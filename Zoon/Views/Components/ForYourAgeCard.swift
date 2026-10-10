@@ -189,7 +189,7 @@ struct ForYourAgeCard: View {
                 } label: {
                     HStack(spacing: 8) {
                         if isFilling {
-                            ProgressView()
+                            ZoonLoadingRing(size: 18, lineWidth: 2.5, showsMoon: false)
                         } else {
                             Image(systemName: "heart.text.square.fill")
                         }
