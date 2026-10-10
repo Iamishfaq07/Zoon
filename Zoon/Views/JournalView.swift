@@ -234,7 +234,7 @@ struct JournalView: View {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(
                     title: "Let Health fill some of this in",
-                    subtitle: "Caffeine, alcohol, time in daylight and mindful minutes, read from Health beside your tags. Asks its own permission; stays on this iPhone.",
+                    subtitle: "Caffeine, alcohol, daylight and mindful minutes from Health. Stays on this iPhone.",
                     systemImage: "heart.text.square"
                 )
                 Button {
@@ -257,7 +257,7 @@ struct JournalView: View {
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(
                     title: "Measured today",
-                    subtitle: "From Health, not the Journal -- reference alongside your tags.",
+                    subtitle: "From Health, beside your tags.",
                     systemImage: "heart.text.square"
                 )
                 FlowLayout(spacing: 8) {
@@ -403,7 +403,7 @@ struct JournalView: View {
                 }
             }
 
-            Label("On this device. Audio is never kept. Nothing saves until you confirm.", systemImage: "lock.fill")
+            Label("On this device. Audio isn't kept. Nothing saves until you confirm.", systemImage: "lock.fill")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -891,7 +891,7 @@ struct JournalView: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(
                 title: "What your habits cost you",
-                subtitle: "Behaviours with enough tagged nights to compare. Patterns, not proof of cause.",
+                subtitle: "Habits with enough nights to compare. Linked, not proven.",
                 systemImage: "chart.xyaxis.line"
             )
 

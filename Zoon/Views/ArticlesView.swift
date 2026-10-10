@@ -136,26 +136,38 @@ struct ArticleDetailView: View {
                 hero
 
                 VStack(alignment: .leading, spacing: 18) {
+                    // The point first. It used to close the article, after
+                    // every paragraph -- read only by the people who needed
+                    // it least. Most readers skim; this is what they keep.
+                    if let takeaway = article.takeaway {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "lightbulb.fill")
+                                .font(Theme.text(14))
+                                .foregroundStyle(Theme.Metric.battery)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("In short")
+                                    .font(Theme.kicker)
+                                    .tracking(1.0)
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(Theme.Metric.battery)
+                                Text(takeaway)
+                                    .font(Theme.text(14, weight: .medium))
+                                    .foregroundStyle(Theme.ink)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .glassCard()
+                        .accessibilityElement(children: .combine)
+                    }
+
                     ForEach(Array(article.body.enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph)
                             .font(Theme.text(15))
                             .foregroundStyle(.primary.opacity(0.9))
                             .lineSpacing(5)
                             .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    if let takeaway = article.takeaway {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "lightbulb.fill")
-                                .font(Theme.text(14))
-                                .foregroundStyle(Theme.Metric.battery)
-                            Text(takeaway)
-                                .font(Theme.text(13, weight: .medium))
-                                .foregroundStyle(Theme.inkSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(14)
-                        .glassCard()
                     }
                 }
                 .padding(.horizontal)
