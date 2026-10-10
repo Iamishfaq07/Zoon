@@ -4,7 +4,6 @@ import SwiftUI
 struct EnergyForecastCard: View {
     let forecast: EnergyForecast
 
-    @State private var showingInfo = false
     /// Drag position as a 0...1 fraction across the curve's width -- same
     /// touch-to-time convention `HypnogramView` uses for its own scrubber.
     @State private var selectedFraction: CGFloat?

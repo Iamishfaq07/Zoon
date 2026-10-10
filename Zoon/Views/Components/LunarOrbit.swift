@@ -39,7 +39,6 @@ struct LunarOrbit: View {
     var showsComponents: Bool = true
 
     @State private var progress: Double = 0
-    @State private var scrubFraction: CGFloat?
     @State private var lastDetent: Int?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

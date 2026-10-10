@@ -273,7 +273,7 @@ struct ZoonTomorrowView: View {
                     .monospacedDigit()
             }
             .onChange(of: preferences.morningReadyBufferMinutes) { _, _ in Haptics.select() }
-            Text("Your wake lands this long before the start. Set an earlier alarm if you need one.")
+            Text("Time between waking and the start.")
                 .font(Theme.evidence)
                 .foregroundStyle(Theme.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -319,8 +319,8 @@ struct ZoonTomorrowView: View {
     private var calendarStatus: String {
         guard case let .calendar(event) = commitment else {
             return preferences.calendarCommitmentRecord == nil
-                ? "No qualifying morning event found for tomorrow. Tomorrow's plan is using the time you set."
-                : "The last event Zoon read no longer applies to tomorrow, so it is not being used."
+                ? "No morning event tomorrow. Using the time you set."
+                : "The last event read is out of date, so it isn't used."
         }
         return "Using tomorrow's first commitment at \(event.start.formatted(date: .omitted, time: .shortened))."
     }

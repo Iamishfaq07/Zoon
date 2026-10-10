@@ -580,29 +580,3 @@ enum DataExporter {
         return nil
     }
 }
-
-/// A `FileDocument` wrapper so `ShareLink` and `.fileExporter` can carry the
-/// archive without a temp file dance at every call site.
-struct ExportDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json, .commaSeparatedText] }
-
-    let data: Data
-    let type: UTType
-
-    init(data: Data, type: UTType) {
-        self.data = data
-        self.type = type
-    }
-
-    init(configuration: ReadConfiguration) throws {
-        guard let contents = configuration.file.regularFileContents else {
-            throw DataExporter.ImportError.unreadable
-        }
-        self.data = contents
-        self.type = .json
-    }
-
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: data)
-    }
-}

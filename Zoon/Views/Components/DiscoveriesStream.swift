@@ -2,11 +2,9 @@ import SwiftUI
 
 /// Discoveries as findings, not as a link to a feature.
 ///
-/// Each finding is laid out as the spec asks: the behaviour, the effect in
-/// plain words, the sample size, and an evidence badge -- with the
-/// `PairedDotPlot` of its actual matched pairs as the visual signature. All
-/// of it reads `JournalCorrelator.Finding` verbatim (`pairDeltas`,
-/// `matchedPairCount`, `confidence`); nothing is re-derived.
+/// Each finding is a `FindingGlance`, the same row Your patterns draws: the
+/// behaviour, a better/worse verdict, with/without bars and confidence dots,
+/// all read from `JournalCorrelator.Finding` verbatim.
 ///
 /// Renders nothing until there is a finding or a running experiment, and
 /// shows the learning state below the Cause Finder threshold instead.
@@ -47,7 +45,7 @@ struct DiscoveriesStream: View {
                 ZoonEmptyState(kind: .learning(
                     collected: taggedNights,
                     typicallyNeeded: JournalCorrelator.minimumMatchedPairs...(JournalCorrelator.minimumMatchedPairs * 2),
-                    message: "Tag a few behaviours in the Journal. Once Zoon has enough comparable nights it will start exploring patterns."
+                    message: "Tag a few habits in the Journal and patterns start here."
                 ))
                 .padding(.vertical, -16)
             } else {
@@ -61,55 +59,6 @@ struct DiscoveriesStream: View {
                     ExperimentPreview(tag: activeExperiment.tag, status: activeExperiment.status)
                 }
             }
-        }
-    }
-
-    private func findingRow(_ finding: JournalCorrelator.Finding) -> some View {
-        let tint = finding.isImprovement ? Theme.Family.recovery : Theme.Family.attention
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: finding.symbol)
-                    .font(Theme.text(12, weight: .semibold))
-                    .foregroundStyle(tint)
-                Text(finding.label)
-                    .font(Theme.label(15, weight: .semibold))
-                Spacer(minLength: 0)
-                ZoonEvidenceBadge(confidence: Self.metricConfidence(finding.confidence))
-            }
-
-            Text(effectSentence(finding))
-                .font(Theme.text(14))
-                .fixedSize(horizontal: false, vertical: true)
-
-            PairedDotPlot(deltas: finding.pairDeltas, tint: tint)
-
-            Text("\(finding.matchedPairCount) matched night\(finding.matchedPairCount == 1 ? "" : "s") · association, not proof of cause")
-                .font(Theme.evidence)
-                .foregroundStyle(Theme.inkTertiary)
-        }
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens Test it in Your patterns")
-    }
-
-    /// "Associated with 12% better deep sleep" -- the finding's own
-    /// `headline`, reworded from "Tag: 12% better deep sleep" to a sentence.
-    private func effectSentence(_ finding: JournalCorrelator.Finding) -> String {
-        guard finding.hasRelativeScale else {
-            return "Associated with \(finding.signedEffectLabel) \(finding.metric.shortLabel) on matched nights"
-        }
-        let direction = finding.isImprovement ? "better" : "worse"
-        return "Associated with \(String(format: "%.0f%%", abs(finding.percentChange))) \(direction) \(finding.metric.shortLabel) on matched nights"
-    }
-
-    /// `JournalCorrelator.Confidence` has three levels to `MetricConfidence`'s
-    /// four; there is no "insufficient" finding because one is never emitted.
-    private static func metricConfidence(_ confidence: JournalCorrelator.Confidence) -> MetricConfidence {
-        switch confidence {
-        case .low: .low
-        case .moderate: .moderate
-        case .high: .high
         }
     }
 }
@@ -156,7 +105,7 @@ struct ExperimentPreview: View {
                 switch status {
                 case let .learning(learning):
                     ribbon(filled: learning.loggedNights, total: JournalCorrelator.minimumMatchedPairs)
-                    Text("Night \(learning.loggedNights) of about \(JournalCorrelator.minimumMatchedPairs) · \(learning.remainingNights) to go before a first read")
+                    Text("\(learning.loggedNights) of \(JournalCorrelator.minimumMatchedPairs) nights · \(learning.remainingNights) to go")
                         .font(Theme.evidence)
                         .foregroundStyle(Theme.inkTertiary)
                 case let .result(helpful, harmful):
