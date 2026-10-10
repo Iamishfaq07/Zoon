@@ -40,17 +40,7 @@ struct TodayNightHero: View {
                     .frame(width: 268, height: 268)
                     .opacity(0.85)
 
-                Circle()
-                    .stroke(Theme.neutral(0.14), lineWidth: 10)
-                    .frame(width: 236, height: 236)
-
-                Circle()
-                    .trim(from: 0, to: fill)
-                    .stroke(
-                        Theme.Family.sleep,
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
+                ZoonArc(fraction: fill, tint: Theme.Family.sleep, lineWidth: 10, trackOpacity: 0.14)
                     .frame(width: 236, height: 236)
                     .animation(reduceMotion ? nil : Motion.standard, value: fill)
 
