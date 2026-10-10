@@ -143,38 +143,51 @@ struct TravelPlanView: View {
                     .frame(width: 170)
                 }
 
-                Text(headline(for: plan))
-                    .font(Theme.text(13))
-                    .foregroundStyle(Theme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                shiftBadge(plan)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(detailed ? plan.steps : plan.simpleSteps) { step in
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(step.when)
-                                .font(Theme.label(11, weight: .semibold))
-                                .textCase(.uppercase)
-                                .tracking(0.6)
-                                .foregroundStyle(Theme.Family.circadian)
-                            Text(step.action)
-                                .font(Theme.text(14))
-                                .fixedSize(horizontal: false, vertical: true)
+                // The steps as a path: a node per step, joined, so the plan
+                // reads as a sequence before any of it is read as words.
+                let steps = detailed ? plan.steps : plan.simpleSteps
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(spacing: 0) {
+                                Text("\(index + 1)")
+                                    .font(Theme.label(11, weight: .bold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Theme.Family.circadian)
+                                    .frame(width: 24, height: 24)
+                                    .background(Theme.Family.circadian.opacity(0.16), in: Circle())
+                                if index < steps.count - 1 {
+                                    Capsule()
+                                        .fill(Theme.Family.circadian.opacity(0.3))
+                                        .frame(width: 2)
+                                        .frame(minHeight: 10, maxHeight: .infinity)
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(step.when)
+                                    .font(Theme.label(11, weight: .semibold))
+                                    .textCase(.uppercase)
+                                    .tracking(0.6)
+                                    .foregroundStyle(Theme.Family.circadian)
+                                Text(step.action)
+                                    .font(Theme.text(14))
+                            }
+                            .padding(.bottom, 14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityElement(children: .combine)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(caveats(for: plan), id: \.self) { caveat in
-                        Text(caveat)
-                            .font(Theme.evidence)
-                            .foregroundStyle(Theme.inkTertiary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
             .glassCard()
+
+            let notes = caveats(for: plan)
+            if !notes.isEmpty {
+                ExplainDisclosure(title: "Good to know", lines: notes, systemImage: "info.circle")
+            }
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 SectionHeader(title: "Travel plan", systemImage: "list.bullet")
@@ -193,11 +206,35 @@ struct TravelPlanView: View {
     private var noPlanReason: String {
         switch TravelPlan.direction(for: trip) {
         case .negligible:
-            return "Your destination is within \(Int(TravelPlan.negligibleShiftHours)) hours of home. "
-                + "That is a late night, not a time-zone problem — Zoon has nothing to shift."
+            return "Under \(Int(TravelPlan.negligibleShiftHours)) hours from home. That's a late night, not jet lag."
         case .eastward, .westward:
             return "Zoon could not build a plan for this trip."
         }
+    }
+
+    /// The shift as one big signed number and which way the clock moves,
+    /// in place of a sentence that said the same.
+    private func shiftBadge(_ plan: TravelPlan.Plan) -> some View {
+        let east = plan.direction == .eastward
+        let hours = abs(plan.shiftHours)
+        let rendered = hours == hours.rounded() ? String(Int(hours)) : String(format: "%.1f", hours)
+        return HStack(spacing: 14) {
+            Image(systemName: east ? "sunrise.fill" : "sunset.fill")
+                .font(Theme.text(22, weight: .semibold))
+                .foregroundStyle(Theme.Family.circadian)
+                .frame(width: 52, height: 52)
+                .background(Theme.Family.circadian.opacity(0.14), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(east ? "+" : "−")\(rendered)h")
+                    .font(Theme.numeral(30))
+                    .monospacedDigit()
+                Text(east ? "Clock moves earlier · the harder way" : "Clock moves later · the easier way")
+                    .font(Theme.text(12))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(headline(for: plan))
     }
 
     private func headline(for plan: TravelPlan.Plan) -> String {
