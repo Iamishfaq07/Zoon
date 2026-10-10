@@ -322,46 +322,30 @@ struct SleepDetailView: View {
                 SleepNightFeatures.formatMinutes(context.night.timeInBedMinutes),
                 definitionTitle: context.night.timeInBedIsEstimated ? "Estimated Time in Bed" : nil,
                 definitionSymbol: "bed.double",
-                definition: context.night.timeInBedIsEstimated ? [
-                    "Your sleep source (most often an Apple Watch on its own) doesn't record when you got into or out of bed, so this is standing in with the span from your first sleep reading to your last -- it leaves out any time spent lying awake before falling asleep or after waking, so it tends to run a little short.",
-                    "An iPhone sleep schedule or a third-party app that logs in-bed time directly would make this exact instead of estimated."
-                ] : nil
+                definition: context.night.timeInBedIsEstimated ? NightDefinitions.inBedEstimated : nil
             )
             row(
                 "Efficiency", "\(Int(context.night.sleepEfficiencyPercent))%",
                 definitionTitle: "Sleep Efficiency", definitionSymbol: "gauge.with.dots.needle.67percent",
-                definition: [
-                    "The percentage of your time in bed that you actually spent asleep -- total sleep time divided by time in bed.",
-                    "Above 85% is generally considered efficient. A lower number usually means either a long time falling asleep or a lot of time awake overnight, both broken out separately below."
-                ] + (context.night.timeInBedIsEstimated ? [
-                    "Tonight's time-in-bed figure is estimated rather than measured (see the row above), so this efficiency number is likely a little higher than your true efficiency would read with exact in-bed data."
-                ] : [])
+                definition: NightDefinitions.efficiency
+                    + (context.night.timeInBedIsEstimated ? [NightDefinitions.efficiencyEstimated] : [])
             )
             if let latency = context.night.sleepLatencyMinutes {
                 row(
                     "Fell asleep in", "\(Int(latency)) min",
                     definitionTitle: "Sleep Latency", definitionSymbol: "hourglass",
-                    definition: [
-                        "The time from getting into bed to your first sustained sleep. Only available when your sleep source records in-bed time -- Apple Watch alone doesn't, so this needs an iPhone sleep schedule or a third-party app contributing that data.",
-                        "Under 20 minutes is typical for most people. A latency that's crept up over several nights is often more meaningful than one long night."
-                    ]
+                    definition: NightDefinitions.latency
                 )
             }
             row(
                 "Awakenings", "\(context.night.wakeCount)",
                 definitionTitle: "Awakenings", definitionSymbol: "eye",
-                definition: [
-                    "Meaningful wake periods after you first fell asleep, not counting brief stirs before sleep onset. Everyone wakes briefly several times a night without remembering it -- this counts the ones long enough to register.",
-                    "There's no universal 'normal' count; it's most useful compared against your own recent nights rather than a fixed target."
-                ]
+                definition: NightDefinitions.awakenings
             )
             row(
                 "Time awake overnight", SleepNightFeatures.formatMinutes(context.night.awakeMinutes),
                 definitionTitle: "WASO", definitionSymbol: "moon.zzz",
-                definition: [
-                    "Wake After Sleep Onset -- the total time spent awake between falling asleep and your final wake-up, added across every awakening rather than just how many there were.",
-                    "Under about 20 minutes total is typical for an efficient night. This is the same time that's subtracted out of total sleep time and time in bed above."
-                ]
+                definition: NightDefinitions.waso
             )
         }
     }

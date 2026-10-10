@@ -604,10 +604,10 @@ struct SnoreCheckView: View {
 
             if showingHowItWorks {
                 VStack(alignment: .leading, spacing: 12) {
-                    step(1, "Listens against your room", "It learns how quiet your bedroom is, and only notices sounds that rise above it, so a fan or traffic doesn't count.")
-                    step(2, "Checks each sound's shape", "A snore is low-pitched and lasts about as long as a breath. Clicks, speech and passing cars are the wrong shape.")
-                    step(3, "Waits for the rhythm of breathing", "Snoring repeats with every breath. Only a run of them becomes an episode, so a single cough or word never does.")
-                    Text("Apple's sound check also rules out speech, music and TV when it can. Audio is thrown away as it goes; only times and loudness are kept.")
+                    step(1, "Listens against your room", "Learns your room's quiet, so a fan or traffic doesn't count.")
+                    step(2, "Checks each sound's shape", "Low-pitched, about a breath long. Clicks, speech and cars don't fit.")
+                    step(3, "Waits for the rhythm of breathing", "Only a run of snores counts, so one cough never does.")
+                    Text("Speech, music and TV are ruled out too. Audio is discarded as it goes; only times and loudness are kept.")
                         .font(Theme.text(12))
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
