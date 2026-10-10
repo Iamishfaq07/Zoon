@@ -112,12 +112,14 @@ struct RegularityCard: View {
 
     private var dial: some View {
         ZStack {
-            Circle()
-                .trim(from: 0, to: 0.75)
-                .stroke(Theme.neutral(0.08), style: StrokeStyle(lineWidth: 9, lineCap: .round))
-            Circle()
-                .trim(from: 0, to: animated ? 0.75 * (regularity.index / 100) : 0)
-                .stroke(tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+            ZoonArc(
+                fraction: animated ? regularity.index / 100 : 0,
+                tint: tint,
+                lineWidth: 9,
+                trackOpacity: 0.08,
+                span: 0.75,
+                rotation: 0
+            )
         }
         // Rotated so the 3/4 arc opens at the bottom, like a gauge. The label
         // sits in an overlay outside the rotation so it stays upright.

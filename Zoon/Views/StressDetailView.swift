@@ -39,11 +39,7 @@ struct StressDetailView: View {
     private var headerCard: some View {
         VStack(spacing: 10) {
             ZStack {
-                Circle().stroke(Theme.neutral(0.10), lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: Double(stress.percent) / 100)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+                ZoonArc(fraction: Double(stress.percent) / 100, tint: tint, lineWidth: 10, trackOpacity: 0.10)
                 VStack(spacing: 0) {
                     Text("\(stress.percent)")
                         .font(Theme.numeral(30))

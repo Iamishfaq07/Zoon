@@ -77,16 +77,14 @@ struct CoreIntelligenceGrid: View {
         ) {
             NeedHub(initial: .owed, zoomNamespace: zoom, zoomID: "sleepDebt")
         } visual: {
-            ZStack {
-                Circle()
-                    .trim(from: 0, to: 0.5)
-                    .stroke(Theme.neutral(0.10), style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                    .rotationEffect(.degrees(180))
-                Circle()
-                    .trim(from: 0, to: 0.5 * fraction)
-                    .stroke(Theme.Metric.temperature, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                    .rotationEffect(.degrees(180))
-            }
+            ZoonArc(
+                fraction: fraction,
+                tint: Theme.Metric.temperature,
+                lineWidth: 6,
+                trackOpacity: 0.10,
+                span: 0.5,
+                rotation: 180
+            )
             .frame(height: 20)
         } stat: {
             debt < 1 ? "Clear" : "\(SleepNightFeatures.formatMinutes(debt)) short"

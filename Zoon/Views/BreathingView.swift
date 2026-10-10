@@ -230,16 +230,13 @@ struct BreathingView: View {
                 .opacity(0.72)
                 .scaleEffect(reduceMotion ? 0.85 : scale)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.1), value: scale)
-            Circle()
-                .stroke(Theme.neutral(0.10), lineWidth: 4)
-                .padding(4)
-            if isRunning, coach.phase != .rest {
-                Circle()
-                    .trim(from: 0, to: coach.phaseProgress)
-                    .stroke(phaseTint, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .padding(4)
-            }
+            ZoonArc(
+                fraction: isRunning && coach.phase != .rest ? coach.phaseProgress : 0,
+                tint: phaseTint,
+                lineWidth: 4,
+                trackOpacity: 0.10
+            )
+            .padding(4)
             if let countdown {
                 Text("\(countdown)")
                     .font(Theme.numeral(44))
