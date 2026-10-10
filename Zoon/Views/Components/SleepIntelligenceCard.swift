@@ -50,10 +50,10 @@ struct SleepIntelligenceCard: View {
                         // components were renamed to "Timing" and "Stage Pattern",
                         // so the one place explaining the score used two words for
                         // it that appear nowhere else in the app.
-                        "Combines five sleep-period components -- Duration, Continuity, Regularity, Timing, and Stage Pattern. Recovery and body-signal anomalies are reported separately.",
-                        "A component with no data tonight (not enough timing history or no stage detail) is left out and the rest are reweighted to fill 100% -- missing data never counts against you.",
-                        "Stage Pattern compares your Deep and REM share of sleep with your own nights from the same kind of device, and only counts stages your watch or wearable classified. It is 5% of the score and says nothing about whether more deep sleep is better.",
-                        "A night well short of your need is capped: 60 minutes short can be at most Good, 120 at most Fair, 180 Poor. When that happens the card says so."
+                        "Five parts: Duration, Continuity, Regularity, Timing and Stage Pattern. Recovery is scored separately.",
+                        "A part with no data tonight is left out and the rest fill in. Missing data never counts against you.",
+                        "Stage Pattern compares your deep and REM share with your own nights. It's 5% of the score.",
+                        "A short night is capped: 1h short is at most Good, 2h Fair, 3h Poor."
                     ],
                     // No baseline facet. Each component is already scored
                     // against its own `expectedNeutral`, so "your usual" is
@@ -120,7 +120,7 @@ struct SleepIntelligenceCard: View {
                 contributorGroup("What held you back", score.negativeContributors, positive: false)
             }
             if score.positiveContributors.isEmpty && score.negativeContributors.isEmpty {
-                Text("Every component landed close to neutral tonight -- nothing stood out either way.")
+                Text("Every part landed near neutral. Nothing stood out.")
                     .font(.caption)
                     .foregroundStyle(Theme.inkSecondary)
             }

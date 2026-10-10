@@ -39,8 +39,8 @@ struct RegularityCard: View {
                     symbol: "repeat",
                     tint: tint,
                     explanation: [
-                        "Measures how consistent your sleep and wake times are night to night, on a 0-100 scale. It describes timing, not duration.",
-                        "Social jetlag is the gap between your work-day and free-day sleep midpoints. A large gap behaves physiologically a lot like crossing time zones, even without travelling."
+                        "How steady your sleep and wake times are, 0 to 100. Timing, not length.",
+                        "Social jetlag: the gap between work-day and free-day sleep. A big gap acts like crossing time zones."
                     ],
                     relatedArticleID: "sleep-consistency"
                 )
@@ -96,7 +96,7 @@ struct RegularityCard: View {
                     Text("24-hour regularity \(Int(academic.index.rounded()))")
                         .font(Theme.label(13, weight: .semibold))
                         .monospacedDigit()
-                    Text("A research measure over whole days, so it differs from the timing number above.")
+                    Text("A research measure over whole days, so it differs from the one above.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -196,8 +196,8 @@ struct HealthRadarCard: View {
                         symbol: "dot.radiowaves.left.and.right",
                         tint: tint,
                         explanation: [
-                            "Watches several vitals at once -- resting heart rate, HRV, respiratory rate, wrist temperature -- for a sustained drift together over multiple nights, which is a stronger signal than any one of them moving alone.",
-                            "This is a wellness observation, not a diagnosis. It cannot identify illness, only flag a pattern worth paying attention to."
+                            "Watches resting heart rate, HRV, breathing rate and wrist temperature for a drift together over several nights.",
+                            "A pattern worth noticing, not a diagnosis."
                         ]
                     )
                     StatusPill(text: radar.stateShortLabel, tint: tint)
