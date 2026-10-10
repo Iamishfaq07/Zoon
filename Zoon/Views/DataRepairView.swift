@@ -23,7 +23,9 @@ struct DataRepairView: View {
     var body: some View {
         Form {
             Section("Check the source") {
-                Text("A gap can mean the Watch was off, a sync delay, or Health access. Zoon can't tell which.")
+                Label("A gap can be the Watch, a sync delay or Health access.", systemImage: "questionmark.circle")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
                 Button("Refresh from Health") { Task { await coordinator.refresh() } }
                     .disabled(coordinator.isRefreshing)
                 if let refresh = coordinator.lastRefresh { LabeledContent("Last refresh", value: refresh.formatted()) }
@@ -38,7 +40,9 @@ struct DataRepairView: View {
                 }
             }
             Section("Local corrections") {
-                Text("Skip a night or fix its bedtime and wake. Health is never changed, and you can undo.")
+                Label("Fix or skip a night. Health stays as recorded.", systemImage: "arrow.uturn.backward.circle")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.inkSecondary)
                 ForEach(repairNights, id: \.nightKey) { night in
                     Button {
                         let existing = setup.value.repairs.first { $0.nightKey == night.nightKey }
@@ -47,23 +51,31 @@ struct DataRepairView: View {
                         bedShift = existing?.bedtimeShiftMinutes ?? 0
                         wakeShift = existing?.wakeShiftMinutes ?? 0
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text(night.date, style: .date)
+                                Text(night.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day())
+                                    .foregroundStyle(Theme.ink)
                                 Spacer()
                                 if let existing = setup.value.repairs.first(where: { $0.nightKey == night.nightKey }),
                                    existing.hasBoundaryEdit {
-                                    Text("Locally corrected")
+                                    Label("Corrected", systemImage: "arrow.left.and.right")
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(Theme.Family.sleep)
                                 } else if let existing = setup.value.repairs.first(where: { $0.nightKey == night.nightKey }),
                                           existing.excluded {
-                                    Text("Excluded")
+                                    Label("Skipped", systemImage: "eye.slash")
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(Theme.inkSecondary)
                                 }
                             }
-                            Text("\(night.formattedTimeAsleep) · \(night.sourceName ?? "Source unavailable")").font(.caption)
+                            // Where the night sat, on one evening-to-noon
+                            // scale for every row, so an odd window stands
+                            // out before anyone reads a time.
+                            NightWindowStrip(bed: night.bedtime, wake: night.wakeTime)
+                                .frame(height: 6)
+                            Text("\(night.formattedTimeAsleep) · \(night.sourceName ?? "Unknown source")")
+                                .font(.caption)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                     }
                 }
@@ -187,8 +199,6 @@ private struct RepairEditor: View {
                         value: "Core \(Int(night.coreMinutes.rounded())) · Deep \(Int(night.deepMinutes.rounded())) · REM \(Int(night.remMinutes.rounded()))"
                     )
                 }
-                Text("Apple Health is not changed. Zoon engines read the local overlay below.")
-                    .font(.caption)
             }
             Section("Move the bounds") {
                 BoundTimeline(
@@ -200,30 +210,22 @@ private struct RepairEditor: View {
                 .frame(height: 56)
                 .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
 
-                Stepper(
-                    "Bedtime \(DataRepairView.shiftLabel(bedShift))",
-                    value: $bedShift,
-                    in: -LocalSleepCorrection.maximumShiftMinutes...LocalSleepCorrection.maximumShiftMinutes,
-                    step: 5
-                )
+                shiftHeader("Bedtime", systemImage: "moon.fill", minutes: bedShift)
                 Slider(
                     value: $bedShift,
                     in: -LocalSleepCorrection.maximumShiftMinutes...LocalSleepCorrection.maximumShiftMinutes,
                     step: 5
                 )
                 .accessibilityLabel("Bedtime shift")
-                Stepper(
-                    "Wake \(DataRepairView.shiftLabel(wakeShift))",
-                    value: $wakeShift,
-                    in: -LocalSleepCorrection.maximumShiftMinutes...LocalSleepCorrection.maximumShiftMinutes,
-                    step: 5
-                )
+                .accessibilityValue(DataRepairView.shiftLabel(bedShift))
+                shiftHeader("Wake", systemImage: "sun.max.fill", minutes: wakeShift)
                 Slider(
                     value: $wakeShift,
                     in: -LocalSleepCorrection.maximumShiftMinutes...LocalSleepCorrection.maximumShiftMinutes,
                     step: 5
                 )
                 .accessibilityLabel("Wake shift")
+                .accessibilityValue(DataRepairView.shiftLabel(wakeShift))
             }
             if hasShift {
                 Section("Preview before saving") {
@@ -244,10 +246,9 @@ private struct RepairEditor: View {
                             value: "\(workoutLabel(night.lastWorkoutHoursBeforeBed)) → \(workoutLabel(corrected.lastWorkoutHoursBeforeBed))"
                         )
                     }
-                    Text(SleepTimingProvenance.locallyCorrected.explanation)
+                    Text("Saved in Zoon only, and you can revert.")
                         .font(.caption)
-                    Text("Save writes a reversible overlay. Revert restores the HealthKit bounds inside Zoon.")
-                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             Section("Save") {
@@ -267,6 +268,17 @@ private struct RepairEditor: View {
         }
         .navigationTitle("Review change")
         .toolbar { Button("Cancel", action: onCancel) }
+    }
+
+    private func shiftHeader(_ title: String, systemImage: String, minutes: Double) -> some View {
+        HStack {
+            Label(title, systemImage: systemImage)
+            Spacer()
+            Text(DataRepairView.shiftLabel(minutes))
+                .monospacedDigit()
+                .foregroundStyle(abs(minutes) >= 1 ? Theme.Family.sleep : Theme.inkSecondary)
+                .contentTransition(.numericText())
+        }
     }
 
     private func windowLabel(_ bed: Date, _ wake: Date) -> String {
@@ -342,5 +354,34 @@ private struct BoundTimeline: View {
                 .offset(x: x)
         }
         .frame(height: height)
+    }
+}
+
+/// One night's bed-to-wake on a fixed 6pm-to-2pm scale, so every row in the
+/// list shares an axis and a late or broken window shows by position.
+private struct NightWindowStrip: View {
+    let bed: Date
+    let wake: Date
+
+    private static let spanHours: Double = 20
+
+    var body: some View {
+        let calendar = Calendar.current
+        let evening = calendar.date(
+            bySettingHour: 18, minute: 0, second: 0,
+            of: calendar.date(byAdding: .day, value: -1, to: wake) ?? wake
+        ) ?? wake
+        let start = min(1, max(0, bed.timeIntervalSince(evening) / 3600 / Self.spanHours))
+        let end = min(1, max(start, wake.timeIntervalSince(evening) / 3600 / Self.spanHours))
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.neutral(0.08))
+                Capsule()
+                    .fill(Theme.Family.sleep)
+                    .frame(width: max(4, proxy.size.width * (end - start)))
+                    .offset(x: proxy.size.width * start)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }

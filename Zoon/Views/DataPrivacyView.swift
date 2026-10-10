@@ -45,15 +45,7 @@ struct DataPrivacyView: View {
     private var coverageSection: some View {
         Section {
             if let night = latest {
-                coverageRow("Sleep duration", available: night.timeAsleepMinutes > 0)
-                coverageRow("Sleep stages", available: night.hasStageBreakdown)
-                coverageRow("Heart rate", available: night.avgHeartRate != nil)
-                coverageRow("Resting heart rate", available: night.restingHeartRate != nil)
-                coverageRow("HRV", available: night.avgHRV != nil)
-                coverageRow("Respiratory rate", available: night.avgRespiratoryRate != nil)
-                coverageRow("Blood oxygen", available: night.avgSpO2 != nil)
-                coverageRow("Wrist temperature", available: night.wristTempDeltaC != nil)
-                coverageRow("Breathing disturbances", available: night.breathingDisturbances != nil)
+                coverageGrid(Self.coverage(of: night))
 
                 if let source = night.sourceName {
                     LabeledContent("Sleep source", value: source)
@@ -68,7 +60,7 @@ struct DataPrivacyView: View {
         } header: {
             Text("Last-night coverage")
         } footer: {
-            Text("Unavailable data is excluded from scores rather than treated as average or zero.")
+            Text("Missing data is left out of scores, never filled in.")
         }
     }
 
@@ -90,7 +82,7 @@ struct DataPrivacyView: View {
         } header: {
             Text("Where data lives")
         } footer: {
-            Text("Deletes everything Zoon stored on this phone and Watch. Your Health data is not touched.")
+            Text("No account, no server. Health stays as recorded.")
         }
     }
 
@@ -103,18 +95,70 @@ struct DataPrivacyView: View {
         } header: {
             Text("Permissions")
         } footer: {
-            Text("Apple doesn't say which permissions were denied, so this shows what actually arrived.")
+            Text("iOS doesn't say what was denied, so coverage above shows what arrived.")
         }
     }
 
-    private func coverageRow(_ label: String, available: Bool) -> some View {
-        LabeledContent(label) {
-            Label(
-                available ? "Available" : "Missing",
-                systemImage: available ? "checkmark.circle.fill" : "minus.circle"
-            )
-            .foregroundStyle(available ? Theme.Metric.recoveryHigh : Color.gray)
+    private struct Signal: Identifiable {
+        let label: String
+        let symbol: String
+        let available: Bool
+        var id: String { label }
+    }
+
+    private static func coverage(of night: SleepNightFeatures) -> [Signal] {
+        [
+            Signal(label: "Duration", symbol: "bed.double.fill", available: night.timeAsleepMinutes > 0),
+            Signal(label: "Stages", symbol: "chart.bar.fill", available: night.hasStageBreakdown),
+            Signal(label: "Heart rate", symbol: "heart.fill", available: night.avgHeartRate != nil),
+            Signal(label: "Resting HR", symbol: "heart.text.square.fill", available: night.restingHeartRate != nil),
+            Signal(label: "HRV", symbol: "waveform.path.ecg", available: night.avgHRV != nil),
+            Signal(label: "Breathing rate", symbol: "lungs.fill", available: night.avgRespiratoryRate != nil),
+            Signal(label: "Blood oxygen", symbol: "drop.fill", available: night.avgSpO2 != nil),
+            Signal(label: "Wrist temp", symbol: "thermometer.medium", available: night.wristTempDeltaC != nil),
+            Signal(label: "Disturbances", symbol: "wind", available: night.breathingDisturbances != nil),
+        ]
+    }
+
+    /// Last night's signals as tiles, lit when they arrived. Nine rows of
+    /// "Available" / "Missing" said the same thing as one grid you can
+    /// take in at once.
+    private func coverageGrid(_ signals: [Signal]) -> some View {
+        let arrived = signals.filter(\.available).count
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(arrived)")
+                    .font(Theme.heading(24))
+                    .monospacedDigit()
+                Text("of \(signals.count) arrived")
+                    .font(Theme.text(13))
+                    .foregroundStyle(Theme.inkSecondary)
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 8)], spacing: 8) {
+                ForEach(signals) { signal in
+                    VStack(spacing: 6) {
+                        Image(systemName: signal.available ? signal.symbol : "minus")
+                            .font(Theme.text(16, weight: .semibold))
+                            .foregroundStyle(signal.available ? Theme.Metric.recoveryHigh : Theme.inkTertiary)
+                            .frame(height: 20)
+                        Text(signal.label)
+                            .font(Theme.text(11, weight: .medium))
+                            .foregroundStyle(signal.available ? Theme.ink : Theme.inkTertiary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(signal.available ? Theme.Metric.recoveryHigh.opacity(0.10) : Theme.neutral(0.04))
+                    )
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(signal.label): \(signal.available ? "arrived" : "missing")")
+                }
+            }
         }
+        .padding(.vertical, 4)
     }
 
     private func freshnessLabel(since date: Date) -> String {
