@@ -414,3 +414,68 @@ struct RangeGauge: View {
     .nightBackground()
     .preferredColorScheme(.dark)
 }
+
+/// A progress ring in Zoon's ring style: a faint track, an arc that deepens
+/// from a softer start to full colour at its end, a soft bloom under it, and
+/// a glowing point at the head -- the loading ring's comet, come to rest at
+/// the value.
+///
+/// `Animatable`, so an animated change to `fraction` (`drawOnce`, or an
+/// `.animation(value:)` above it) redraws every frame: the gradient and the
+/// head stay on the arc's end the whole way round instead of jumping there.
+struct ZoonArc: View, Animatable {
+    var fraction: Double
+    var tint: Color
+    var lineWidth: CGFloat
+    var trackOpacity: Double = 0.12
+
+    /// `nonisolated`, as `RevealMask` in HypnogramV4: `Animatable` is not
+    /// main-actor isolated, and SwiftUI reads this while interpolating.
+    nonisolated var animatableData: Double {
+        get { fraction }
+        set { fraction = newValue }
+    }
+
+    var body: some View {
+        let f = min(1, max(0, fraction))
+        ZStack {
+            Circle()
+                .stroke(Theme.neutral(trackOpacity), lineWidth: lineWidth)
+            if f > 0.002 {
+                arc(f)
+                    .blur(radius: lineWidth * 0.9)
+                    .opacity(0.45)
+                arc(f)
+                // The head reads as light only when there is room for it;
+                // on a thin ring it would be a speck.
+                if lineWidth >= 5 {
+                    GeometryReader { proxy in
+                        let radius = min(proxy.size.width, proxy.size.height) / 2
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: lineWidth * 0.6, height: lineWidth * 0.6)
+                            .shadow(color: tint, radius: lineWidth * 0.8)
+                            .position(x: proxy.size.width / 2, y: proxy.size.height / 2 - radius)
+                            .rotationEffect(.degrees(f * 360))
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func arc(_ f: Double) -> some View {
+        Circle()
+            .trim(from: 0, to: f)
+            .stroke(
+                AngularGradient(
+                    colors: [tint.opacity(0.5), tint],
+                    center: .center,
+                    startAngle: .degrees(0),
+                    endAngle: .degrees(360 * f)
+                ),
+                style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+            )
+            .rotationEffect(.degrees(-90))
+    }
+}

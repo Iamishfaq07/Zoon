@@ -863,13 +863,7 @@ private struct SleepTabTile: View {
     private func graphicView(_ graphic: Graphic) -> some View {
         switch graphic {
         case .ring(let fraction):
-            ZStack {
-                Circle().stroke(Theme.neutral(0.12), lineWidth: 4)
-                Circle()
-                    .trim(from: 0, to: min(1, max(0, fraction)) * progress)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-            }
+            ZoonArc(fraction: min(1, max(0, fraction)) * progress, tint: tint, lineWidth: 4)
         case .dial(let hour):
             // Midnight at the top, like a clock face for the whole day.
             let normalised = (hour.truncatingRemainder(dividingBy: 24) + 24).truncatingRemainder(dividingBy: 24)

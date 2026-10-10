@@ -343,11 +343,7 @@ struct TrendsView: View {
             let clamped = min(1, max(0, value))
             return VStack(spacing: 6) {
                 ZStack {
-                    Circle().stroke(Theme.neutral(0.10), lineWidth: 6)
-                    Circle()
-                        .trim(from: 0, to: clamped * progress)
-                        .stroke(tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
+                    ZoonArc(fraction: clamped * progress, tint: tint, lineWidth: 6, trackOpacity: 0.10)
                     Text("\(Int(clamped * 100))")
                         .font(Theme.label(15, weight: .semibold))
                         .monospacedDigit()
