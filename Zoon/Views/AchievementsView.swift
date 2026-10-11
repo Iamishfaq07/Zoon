@@ -64,19 +64,14 @@ struct AchievementsView: View {
     private var summary: some View {
         VStack(spacing: 14) {
             ZStack {
-                Circle()
-                    .stroke(Theme.neutral(0.08), lineWidth: 10)
-                Circle()
-                    .trim(from: 0, to: Double(unlockedCount) / Double(max(1, achievements.count)))
-                    .stroke(
-                        AngularGradient(
-                            colors: [Theme.Metric.sleep, Theme.Metric.battery, Theme.Metric.recoveryMid],
-                            center: .center
-                        ),
-                        style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(reduceMotion ? nil : Motion.value, value: unlockedCount)
+                ZoonArc(
+                    fraction: Double(unlockedCount) / Double(max(1, achievements.count)),
+                    tint: Theme.Metric.recoveryMid,
+                    lineWidth: 10,
+                    trackOpacity: 0.08,
+                    colors: [Theme.Metric.sleep, Theme.Metric.battery, Theme.Metric.recoveryMid]
+                )
+                .animation(reduceMotion ? nil : Motion.value, value: unlockedCount)
 
                 VStack(spacing: -1) {
                     Text("\(unlockedCount)")

@@ -434,6 +434,9 @@ struct ZoonArc: View, Animatable {
     /// Where the gauge starts, in degrees clockwise from three o'clock.
     /// -90 starts at the top.
     var rotation: Double = -90
+    /// Colours from the arc's start to its end, for a ring that tells its
+    /// story in more than one hue. Defaults to `tint`, softer to full.
+    var colors: [Color]? = nil
 
     /// `nonisolated`, as `RevealMask` in HypnogramV4: `Animatable` is not
     /// main-actor isolated, and SwiftUI reads this while interpolating.
@@ -464,7 +467,7 @@ struct ZoonArc: View, Animatable {
                         Circle()
                             .fill(Color.white)
                             .frame(width: lineWidth * 0.6, height: lineWidth * 0.6)
-                            .shadow(color: tint, radius: lineWidth * 0.8)
+                            .shadow(color: colors?.last ?? tint, radius: lineWidth * 0.8)
                             .position(
                                 x: proxy.size.width / 2 + radius * cos(angle),
                                 y: proxy.size.height / 2 + radius * sin(angle)
@@ -481,7 +484,7 @@ struct ZoonArc: View, Animatable {
             .trim(from: 0, to: end)
             .stroke(
                 AngularGradient(
-                    colors: [tint.opacity(0.5), tint],
+                    colors: colors ?? [tint.opacity(0.5), tint],
                     center: .center,
                     startAngle: .degrees(0),
                     endAngle: .degrees(360 * end)
