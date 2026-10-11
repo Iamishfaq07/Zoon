@@ -150,19 +150,14 @@ struct NapView: View {
 
         return VStack(spacing: 16) {
             ZStack {
-                Circle()
-                    .stroke(Theme.neutral(0.08), lineWidth: 14)
-                Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(
-                        AngularGradient(
-                            colors: [Theme.Metric.strain, Theme.Metric.sleep],
-                            center: .center
-                        ),
-                        style: StrokeStyle(lineWidth: 14, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(Motion.respecting(reduceMotion, .linear(duration: 1)), value: progress)
+                ZoonArc(
+                    fraction: progress,
+                    tint: Theme.Metric.sleep,
+                    lineWidth: 14,
+                    trackOpacity: 0.08,
+                    colors: [Theme.Metric.strain, Theme.Metric.sleep]
+                )
+                .animation(Motion.respecting(reduceMotion, .linear(duration: 1)), value: progress)
 
                 // The moon behind the countdown, filling as the nap runs.
                 // The ring already says how far along it is; the moon says
