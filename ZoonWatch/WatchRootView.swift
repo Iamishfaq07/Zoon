@@ -204,10 +204,32 @@ struct ZoonWatchDial: View {
             ZStack {
                 Circle().stroke(Color.white.opacity(isLuminanceReduced ? 0.08 : 0.12), lineWidth: lineWidth)
                 if statesValue {
+                    let shown = revealed || reduceMotion ? progress : 0
+                    // The phone's ring style: deepening to full colour at the
+                    // end, with a glowing head. Flat in always-on, where the
+                    // screen is dimmed and a glow is light it shouldn't spend.
                     Circle()
-                        .trim(from: 0, to: revealed || reduceMotion ? progress : 0)
-                        .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                        .trim(from: 0, to: shown)
+                        .stroke(
+                            isLuminanceReduced
+                                ? AnyShapeStyle(tint)
+                                : AnyShapeStyle(AngularGradient(
+                                    colors: [tint.opacity(0.5), tint],
+                                    center: .center,
+                                    startAngle: .degrees(0),
+                                    endAngle: .degrees(360 * max(progress, 0.01))
+                                )),
+                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                        )
                         .rotationEffect(.degrees(-90))
+                    if !isLuminanceReduced && progress > 0.01 {
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: lineWidth * 0.6, height: lineWidth * 0.6)
+                            .shadow(color: tint, radius: lineWidth * 0.8)
+                            .offset(y: -diameter / 2)
+                            .rotationEffect(.degrees(360 * shown))
+                    }
                 }
                 VStack(spacing: 0) {
                     Text(displayText ?? "\(value)")
