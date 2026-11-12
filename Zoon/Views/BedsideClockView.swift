@@ -44,6 +44,7 @@ struct BedsideClockView: View {
     @Environment(SleepDataCoordinator.self) private var coordinator
     @Environment(SoundscapeEngine.self) private var audio
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("zoon.bedside.tone") private var toneRaw = Tone.red.rawValue
     @AppStorage("zoon.bedside.dim") private var dim = 0.25
@@ -59,7 +60,9 @@ struct BedsideClockView: View {
     /// Nothing when neither is within a night's reach: a wake time 20 hours
     /// off is not information anyone wants at 2am.
     private func wakeTime(at now: Date) -> Date? {
-        let candidates = [wakeAlarm.scheduledWakeTime, coordinator.state.context?.tonight?.wakeTime(now: opened)]
+        // The resolved episode, as every Tonight surface uses: it honours a
+        // saved schedule, and exists without a recorded night.
+        let candidates = [wakeAlarm.scheduledWakeTime, coordinator.tonightEpisode(now: opened)?.wake]
         return candidates
             .compactMap { $0 }
             .first { $0 > now && $0.timeIntervalSince(now) < 16 * 3600 }
@@ -122,6 +125,16 @@ struct BedsideClockView: View {
             opened = .now
             UIApplication.shared.isIdleTimerDisabled = true
             scheduleHide()
+        }
+        // The app re-arms the alarm each time it comes forward, on another
+        // `WakeAlarm`. Read what it stored again, once at once and once
+        // after it has had a moment to finish.
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            wakeAlarm = WakeAlarm()
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            wakeAlarm = WakeAlarm()
         }
         .onDisappear {
             hideTask?.cancel()
