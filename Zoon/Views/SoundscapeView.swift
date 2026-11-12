@@ -4,6 +4,7 @@ import SwiftUI
 struct SoundscapeView: View {
 
     @Environment(SoundscapeEngine.self) private var engine
+    @State private var showingBedside = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let timerOptions: [Int?] = [nil, 15, 30, 45, 60, 90]
@@ -27,8 +28,16 @@ struct SoundscapeView: View {
                     }
                 }
                 nowPlaying
-                NavigationLink { AudioStudioView() } label: { Label("Mix and save scenes", systemImage: "slider.horizontal.3") }
+                HStack(spacing: 10) {
+                    NavigationLink { AudioStudioView() } label: { Label("Mix and save scenes", systemImage: "slider.horizontal.3") }
+                        .buttonStyle(.bordered)
+                    Button {
+                        showingBedside = true
+                    } label: {
+                        Label("Bedside clock", systemImage: "clock.fill")
+                    }
                     .buttonStyle(.bordered)
+                }
                 grid
                 timerCard
                 explanation
@@ -38,6 +47,7 @@ struct SoundscapeView: View {
         }
         .nightBackground()
         .navigationTitle("Sleep Sounds")
+        .fullScreenCover(isPresented: $showingBedside) { BedsideClockView() }
         .hidesFloatingTabBar()
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
