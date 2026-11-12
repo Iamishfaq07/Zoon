@@ -114,7 +114,14 @@ final class WakeAlarm {
     }
 
     init() {
-        scheduledWakeTime = UserDefaults.standard.object(forKey: Self.scheduledWakeTimeKey) as? Date
+        scheduledWakeTime = Self.storedScheduledWakeTime
+    }
+
+    /// What the last successful `schedule(at:)` on any instance stored. For
+    /// a view that only shows the time and must not hold a copy that goes
+    /// stale when another instance re-arms the alarm.
+    static var storedScheduledWakeTime: Date? {
+        UserDefaults.standard.object(forKey: scheduledWakeTimeKey) as? Date
     }
 
     /// Schedules the wake alarm for `wakeTime`, replacing any previously

@@ -527,6 +527,10 @@ final class SoundscapeEngine {
         interruptionMessage = nil
         player?.pause()
         for layer in scenePlayers {
+            // Each layer is an engine with its own watchdog. Unless it knows
+            // the pause was asked for, it reads the silence as a stall and
+            // starts itself again eight seconds later.
+            layer.pausedByUser = true
             layer.player?.pause()
         }
         publishNowPlaying()
@@ -542,7 +546,9 @@ final class SoundscapeEngine {
         if playing != nil, player != nil, restartEnginesIfNeeded() {
             player?.play()
             for layer in scenePlayers {
+                layer.pausedByUser = false
                 layer.player?.play()
+                layer.lastSuccessfulPlayback = .now
             }
             lastSuccessfulPlayback = .now
             publishNowPlaying()

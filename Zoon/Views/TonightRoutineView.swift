@@ -6,6 +6,7 @@ struct TonightRoutineView: View {
     @State private var store = PersonalSetupStore.shared
     @State private var controller = TonightRoutineController.shared
     @State private var showingVoiceStudio = false
+    @State private var showingBedside = false
 
     var body: some View {
         Form {
@@ -19,6 +20,11 @@ struct TonightRoutineView: View {
                     Text("Alarm status and permissions are shown in Settings.").font(.caption)
                 }
                 NavigationLink { SavedSleepPlansView() } label: { Label("Travel and shift schedules", systemImage: "calendar") }
+                Button {
+                    showingBedside = true
+                } label: {
+                    Label("Bedside clock", systemImage: "clock.fill")
+                }
             }
 
             Section {
@@ -89,6 +95,7 @@ struct TonightRoutineView: View {
             }
         }
         .navigationTitle("Tonight")
+        .fullScreenCover(isPresented: $showingBedside) { BedsideClockView() }
         .scrollContentBackground(.hidden).nightBackground()
         .hidesFloatingTabBar()
         .onAppear { controller.reconcile() }
