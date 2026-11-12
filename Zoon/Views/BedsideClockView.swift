@@ -58,7 +58,7 @@ struct BedsideClockView: View {
     /// The armed alarm if there is one ahead, else tonight's planned wake.
     /// Nothing when neither is within a night's reach: a wake time 20 hours
     /// off is not information anyone wants at 2am.
-    private func wake(at now: Date) -> Date? {
+    private func wakeTime(at now: Date) -> Date? {
         let candidates = [wakeAlarm.scheduledWakeTime, coordinator.state.context?.tonight?.wakeTime(now: opened)]
         return candidates
             .compactMap { $0 }
@@ -70,7 +70,7 @@ struct BedsideClockView: View {
         // screen should spend as little as it can.
         TimelineView(.everyMinute) { context in
             let now = context.date
-            let wake = wake(at: now)
+            let wake = wakeTime(at: now)
             ZStack {
                 Color.black.ignoresSafeArea()
 
