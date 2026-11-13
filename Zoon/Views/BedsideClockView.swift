@@ -11,6 +11,9 @@ import UIKit
 /// to read without glasses, and controls that fade away after a few seconds
 /// so the only thing lit is the time.
 ///
+/// In the twenty minutes before the wake the screen brightens from black to
+/// warm light (`DawnRamp`): a sunrise, for a room that has none.
+///
 /// Presented full screen. The display stays awake while it is open and goes
 /// back to normal the moment it closes.
 struct BedsideClockView: View {
@@ -47,6 +50,8 @@ struct BedsideClockView: View {
 
     @AppStorage("zoon.bedside.tone") private var toneRaw = Tone.red.rawValue
     @AppStorage("zoon.bedside.dim") private var dim = 0.25
+    /// Brighten gradually before the wake. On unless switched off.
+    @AppStorage("zoon.bedside.sunrise") private var sunrise = true
 
     @State private var opened = Date.now
     @State private var showsControls = true
@@ -70,17 +75,45 @@ struct BedsideClockView: View {
             .first { $0 > now && $0.timeIntervalSince(now) < 16 * 3600 }
     }
 
+    /// The wake the sunrise is timed to. Unlike `wakeTime(at:)` it keeps a
+    /// wake that has just passed, so the light holds for a while after it
+    /// and does not snap back to dark at the minute you are meant to get up.
+    private func dawnWake(at now: Date) -> Date? {
+        [WakeAlarm.storedScheduledWakeTime, coordinator.tonightEpisode(now: opened)?.wake]
+            .compactMap { $0 }
+            .first { $0.timeIntervalSince(now) > -30 * 60 && $0.timeIntervalSince(now) < 16 * 3600 }
+    }
+
+    /// Black through ember to warm morning light. Red rises first and blue
+    /// last, as the sky does.
+    private static func dawnColor(_ dawn: Double) -> Color {
+        Color(red: pow(dawn, 0.6), green: 0.80 * pow(dawn, 1.4), blue: 0.52 * pow(dawn, 2.2))
+    }
+
+    /// What the clock is drawn in: the chosen tone at night, and a dark ink
+    /// once the screen behind it is bright enough to need one.
+    private func ink(_ dawn: Double) -> Color {
+        dawn > 0.55 ? Color(red: 0.16, green: 0.07, blue: 0.03) : tone.color
+    }
+
     var body: some View {
         // One tick a minute: the clock shows no seconds, and a bedside
         // screen should spend as little as it can.
         TimelineView(.everyMinute) { context in
             let now = context.date
             let wake = wakeTime(at: now)
+            let dawn = sunrise ? DawnRamp.progress(now: now, wake: dawnWake(at: now)) : 0
             ZStack {
                 Color.black.ignoresSafeArea()
+                // The sunrise: nothing until twenty minutes before the wake,
+                // then the whole screen warms, a step each minute, eased so
+                // the steps do not show.
+                Self.dawnColor(dawn)
+                    .ignoresSafeArea()
+                    .animation(.linear(duration: 55), value: dawn)
 
                 VStack(spacing: 18) {
-                    moon(now: now, wake: wake)
+                    moon(now: now, wake: wake, ink: ink(dawn))
 
                     Text(now, format: .dateTime.hour().minute())
                         .font(.system(size: 96, weight: .semibold, design: .rounded))
@@ -103,17 +136,18 @@ struct BedsideClockView: View {
                         .accessibilityElement(children: .combine)
                     }
                 }
-                .foregroundStyle(tone.color)
+                .foregroundStyle(ink(dawn))
                 .padding(.horizontal, 24)
                 // Moved a few points each minute so no pixel stays lit all
                 // night.
                 .offset(Self.drift(at: now))
                 // Dimmed by fading towards black, not by the system
                 // brightness, which would stay changed after the app closes.
-                .opacity(1 - dim * 0.75)
+                // The dimming lifts as the sunrise comes up.
+                .opacity(1 - dim * 0.75 * (1 - dawn))
 
                 if showsControls {
-                    controls
+                    controls(ink: ink(dawn))
                         .transition(.opacity)
                 }
             }
@@ -136,7 +170,7 @@ struct BedsideClockView: View {
 
     /// Fills from the moment the clock was opened to the wake time, so a
     /// glance says how much of the night is behind you without any sums.
-    private func moon(now: Date, wake: Date?) -> some View {
+    private func moon(now: Date, wake: Date?, ink: Color) -> some View {
         let fraction: Double = {
             guard let wake, wake > opened else { return 0.5 }
             return min(1, max(0.04, now.timeIntervalSince(opened) / wake.timeIntervalSince(opened)))
@@ -146,12 +180,12 @@ struct BedsideClockView: View {
             // then multiplied by the tone: lit parts take the tone's colour
             // and the dark side stays dark.
             .saturation(0)
-            .colorMultiply(tone.color)
+            .colorMultiply(ink)
             .opacity(0.85)
             .accessibilityHidden(true)
     }
 
-    private var controls: some View {
+    private func controls(ink: Color) -> some View {
         VStack {
             HStack {
                 Spacer()
@@ -161,7 +195,7 @@ struct BedsideClockView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 17, weight: .semibold))
                         .frame(width: 44, height: 44)
-                        .background(tone.color.opacity(0.16), in: Circle())
+                        .background(ink.opacity(0.16), in: Circle())
                 }
                 .accessibilityLabel("Close bedside clock")
             }
@@ -179,7 +213,7 @@ struct BedsideClockView: View {
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .padding(.horizontal, 18)
                         .frame(minHeight: 44)
-                        .background(tone.color.opacity(0.16), in: Capsule())
+                        .background(ink.opacity(0.16), in: Capsule())
                     }
                 }
 
@@ -201,13 +235,28 @@ struct BedsideClockView: View {
                     }
                 }
 
+                Button {
+                    sunrise.toggle()
+                    scheduleHide()
+                } label: {
+                    Label(
+                        sunrise ? "Sunrise wake on" : "Sunrise wake off",
+                        systemImage: sunrise ? "sunrise.fill" : "sunrise"
+                    )
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 44)
+                    .background(ink.opacity(sunrise ? 0.24 : 0.08), in: Capsule())
+                }
+                .accessibilityHint("The screen brightens over \(Int(DawnRamp.leadMinutes)) minutes before your wake time")
+
                 HStack(spacing: 12) {
                     Image(systemName: "sun.min")
                     Slider(value: Binding(
                         get: { 1 - dim },
                         set: { dim = 1 - $0; scheduleHide() }
                     ), in: 0...1)
-                    .tint(tone.color)
+                    .tint(ink)
                     .accessibilityLabel("Brightness")
                     Image(systemName: "sun.max")
                 }
@@ -215,7 +264,7 @@ struct BedsideClockView: View {
             }
             .padding(.bottom, 12)
         }
-        .foregroundStyle(tone.color)
+        .foregroundStyle(ink)
         .buttonStyle(.plain)
         .padding(20)
     }
