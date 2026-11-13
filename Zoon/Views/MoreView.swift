@@ -361,7 +361,9 @@ struct MoreView: View {
     private var aboutCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                MoonFill(fill: 0.62, active: true, size: 36)
+                // Tonight's actual moon, not a fixed one.
+                let phase = LunarPhase()
+                MoonFill(fill: phase.illumination, active: true, size: 36, waxing: phase.isWaxing)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Zoon")
@@ -369,6 +371,9 @@ struct MoreView: View {
                     Text("“Zoon” means moon in Kashmiri.")
                         .font(.caption)
                         .foregroundStyle(Theme.inkSecondary)
+                    Text("Tonight: \(phase.summary)")
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
             Text(SleepInsight.disclaimer)

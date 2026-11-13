@@ -301,7 +301,7 @@ struct CoachTabView: View {
         HStack(alignment: .center, spacing: 14) {
             // The app's own moon beside the title: the Coach tab was the one
             // main screen that opened on bare text.
-            MoonFill(fill: 0.62, active: true, size: 52)
+            MoonFill(fill: LunarPhase().illumination, active: true, size: 52, waxing: LunarPhase().isWaxing)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Ask Zoon")
